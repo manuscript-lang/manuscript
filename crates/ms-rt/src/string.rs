@@ -498,6 +498,43 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     }
 }
 
+/// A growable byte buffer the text formatters append to, so building a long text is linear.
+pub struct StrBuf(Vec<u8>);
+
+/// Starts an empty string builder (finish it with [`msrt_strbuf_finish`]).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
+    Box::into_raw(Box::new(StrBuf(Vec::new())))
+}
+
+/// Appends a string's bytes to the builder.
+///
+/// # Safety
+/// `buf` must come from `msrt_strbuf_new` and `s` must be live.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const StrObj) {
+    // SAFETY: the caller passes a live builder and string.
+    unsafe {
+        let text = bytes(s);
+        let out = &mut (*buf).0;
+        if out.len() + text.len() > MAX_BYTES {
+            fault::fault(b"string: limit exceeded");
+        }
+        out.extend_from_slice(text);
+    }
+}
+
+/// Consumes the builder and returns its text.
+///
+/// # Safety
+/// `buf` must come from `msrt_strbuf_new` and is not used afterwards.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf) -> *mut StrObj {
+    // SAFETY: the builder was boxed by `msrt_strbuf_new` and is consumed once.
+    let buf = unsafe { Box::from_raw(buf) };
+    from_bytes(&buf.0)
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrObj) -> *mut StrObj {
     // SAFETY: caller passes a live string.
