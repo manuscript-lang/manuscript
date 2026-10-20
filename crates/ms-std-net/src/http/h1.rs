@@ -179,7 +179,7 @@ fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
     Ok(found)
 }
 
-/// Request body framing the way net/http reads it: chunked wins over a length.
+/// Request body framing as the server reads it: chunked wins over a length.
 pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
     let bad_length = BadMessage::new(400, "Bad Request");
     let encodings: Vec<&[u8]> = field(&head.fields, "Transfer-Encoding").collect();

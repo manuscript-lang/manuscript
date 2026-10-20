@@ -1,4 +1,4 @@
-//! Distinguished-name text in the format of Go's `pkix.Name.String`.
+//! Distinguished-name text in the RFC 2253 style used in certificate subjects.
 
 use x509_parser::x509::X509Name;
 
@@ -17,7 +17,7 @@ struct Fields {
     extra: Vec<(String, String)>,
 }
 
-/// `pkix.Name.String` of a parsed certificate name: the sequence is the
+/// Text of a parsed certificate name: the sequence is the
 /// nonstandard attributes in certificate order, then C, ST, L, street, postal
 /// code, O, OU, CN, serial number, printed from last to first.
 pub fn format(name: &X509Name<'_>) -> String {
@@ -83,7 +83,7 @@ fn attribute(label: &str, value: &str, known: bool) -> String {
     format!("{label}={}", escape(value))
 }
 
-/// Go escapes the RFC 2253 specials, a leading `#` or space, and a trailing space.
+/// The RFC 2253 specials, a leading `#` or space, and a trailing space are escaped.
 fn escape(value: &str) -> String {
     let last = value.chars().count().saturating_sub(1);
     let mut out = String::with_capacity(value.len());
@@ -111,7 +111,7 @@ fn printable(c: char) -> bool {
     c.is_ascii_alphanumeric() || " '()+,-./:=?".contains(c)
 }
 
-/// DER of a Go string: PrintableString when possible, otherwise UTF8String.
+/// DER of a string: PrintableString when possible, otherwise UTF8String.
 fn der_string(value: &str) -> Vec<u8> {
     let tag = if value.chars().all(printable) {
         0x13

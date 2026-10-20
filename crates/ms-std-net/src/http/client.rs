@@ -1,5 +1,5 @@
 //! HTTP/1.1 client: pooled keep-alive connections, redirects, cookies, gzip and
-//! streaming response bodies, following Go's `net/http` client as configured by
+//! streaming response bodies, as configured by
 //! `@std/http`.
 
 use super::cookies::Jar;
@@ -1145,7 +1145,7 @@ fn trim_value(value: &[u8]) -> &[u8] {
     &value[start..end]
 }
 
-/// Request line and headers in Go's order: `Host`, `User-Agent`, body framing,
+/// Request line and headers in wire order: `Host`, `User-Agent`, body framing,
 /// the caller's headers sorted by name, then the transport's own.
 fn encode_head(
     out: &mut Vec<u8>,
@@ -1668,7 +1668,7 @@ mod tests {
         String::from_utf8(body.read_all().unwrap()).unwrap()
     }
 
-    /// The request line and headers Go's client sends, from `Go 1.x`:
+    /// The request line and headers the client sends:
     /// `GET /p?x=1` with `Accept-Encoding: gzip` only when decompress is on.
     #[test]
     fn writes_requests_like_go() {

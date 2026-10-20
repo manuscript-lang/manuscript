@@ -1,8 +1,7 @@
 //! Turn the repository's existing Manuscript sources into corpus fixtures.
 //!
 //! Candidates come from `.ms` files and projects in the tree, from
-//! ```` ```manuscript ```` fences in `documentation/`, and from a JSON-lines
-//! list of snippets embedded in Go tests (`tests/conformance/tools/extract_go_sources.go`).
+//! ```` ```manuscript ```` fences in `documentation/`.
 //! Each candidate is classified by asking the oracle to check it: parse errors
 //! become `parse` fixtures, type errors `check` fixtures, clean programs with
 //! `main` become `run` fixtures, clean programs with `test` blocks `test`
@@ -28,7 +27,7 @@ pub enum Body {
 pub struct Candidate {
     /// Where it came from, recorded in the fixture header.
     pub origin: String,
-    /// Directory (`go-tests`, `e2e`, ...) and slug that make the fixture id.
+    /// Directory (`snippets`, `e2e`, ...) and slug that make the fixture id.
     pub category: String,
     pub slug: String,
     pub body: Body,
@@ -225,37 +224,6 @@ pub fn scan_docs(repo: &Path) -> Vec<Candidate> {
                 }
             }
         }
-    }
-    out
-}
-
-/// Candidates from the Go-test extractor's JSON lines.
-pub fn scan_go_sources(jsonl: &str) -> Vec<Candidate> {
-    let mut out = Vec::new();
-    let mut seen_per_func: BTreeMap<String, usize> = BTreeMap::new();
-    for line in jsonl.lines() {
-        let Ok(rec) = json::parse(line) else { continue };
-        let (Some(file), Some(func), Some(text)) = (
-            rec.get("file").and_then(Json::as_str),
-            rec.get("func").and_then(Json::as_str),
-            rec.get("text").and_then(Json::as_str),
-        ) else {
-            continue;
-        };
-        let line_no = rec.get("line").and_then(Json::as_i64).unwrap_or(0);
-        let dir = Path::new(file)
-            .parent()
-            .map(|p| p.to_string_lossy().replace('\\', "/"))
-            .unwrap_or_default();
-        let key = format!("{dir}/{func}");
-        let n = seen_per_func.entry(key.clone()).or_default();
-        *n += 1;
-        out.push(Candidate {
-            origin: format!("{file}:{line_no} {func}"),
-            category: "go-tests".to_string(),
-            slug: format!("{}-{}", slugify(&key), n),
-            body: Body::Source(text.to_string()),
-        });
     }
     out
 }
@@ -846,13 +814,5 @@ mod tests {
             category_of("bench/perf/kernels/ms"),
             ("bench".into(), "perf-kernels-ms".into())
         );
-    }
-
-    #[test]
-    fn go_sources_parse() {
-        let line = r#"{"file":"pkg/a/a_test.go","line":3,"func":"TestX","label":"l","text":"fn f() Int:\n    return 1\n"}"#;
-        let c = scan_go_sources(line);
-        assert_eq!(c.len(), 1);
-        assert_eq!(c[0].slug, "pkg-a-testx-1");
     }
 }

@@ -1,4 +1,4 @@
-//! `.env` file parsing, ported from `parseEnvironment` in `pkg/runtime/process.go`.
+//! `.env` file parsing.
 //!
 //! The whole text is parsed before anything is applied. Quoted values may span lines; comments
 //! outside quotes and an `export ` prefix are accepted.

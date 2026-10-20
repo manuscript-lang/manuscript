@@ -1,6 +1,6 @@
 //! Address text helpers shared by the network modules.
 
-/// Splits `host:port` like Go's `net.SplitHostPort`: `[v6]:port` removes the
+/// Splits `host:port`: `[v6]:port` removes the
 /// brackets, a bare host may hold no colon, and the port may be empty.
 pub fn split_host_port(hostport: &str) -> Option<(&str, &str)> {
     if let Some(rest) = hostport.strip_prefix('[') {

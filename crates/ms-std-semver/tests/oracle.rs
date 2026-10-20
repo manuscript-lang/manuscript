@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/semver.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/semver.tsv`, a recorded corpus.
 use ms_std_semver::*;
 
 fn text(tok: &str) -> String {

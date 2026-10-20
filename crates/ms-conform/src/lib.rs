@@ -1,7 +1,7 @@
 //! Conformance corpus runner for any `ms` binary.
 //!
 //! The corpus under `tests/conformance/fixtures` pairs Manuscript programs with
-//! expectations recorded from the Go implementation (the oracle). This crate
+//! frozen expectations. This crate
 //! discovers fixtures, observes what an `ms` binary does with them, compares the
 //! observation with the recorded expectation, records new expectations, runs
 //! differential fuzzing and benchmarks. See `tests/conformance/README.md`.

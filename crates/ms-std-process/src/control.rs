@@ -1,4 +1,4 @@
-//! Process-wide controls, ported from `osProcessControl` in `pkg/runtime/process.go`.
+//! Process-wide controls.
 use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;

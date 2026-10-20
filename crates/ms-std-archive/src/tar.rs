@@ -1,5 +1,4 @@
-//! Tar reading and writing with the behavior of Go's `archive/tar` as used by
-//! `pkg/runtime/archive.go`: USTAR, GNU long names and PAX records are read; writing emits
+//! Tar reading and writing for `@std/archive`: USTAR, GNU long names and PAX records are read; writing emits
 //! USTAR headers when the path fits and PAX path records otherwise, with deterministic metadata.
 use alloc::collections::BTreeMap;
 use alloc::string::String;

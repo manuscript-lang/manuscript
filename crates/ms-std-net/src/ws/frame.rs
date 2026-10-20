@@ -1,8 +1,7 @@
 //! WebSocket frames (RFC 6455) and permessage-deflate (RFC 7692, no context takeover).
 //!
 //! [`Decoder`] is a resumable, pure state machine: push bytes in, pull [`Event`]s out. It
-//! reproduces the checks of gorilla's `advanceFrame` in the same order and with the same
-//! texts, because the Go runtime surfaces them. Encoding helpers build whole frames.
+//! checks frames in RFC 6455 order and reports the failure texts used by the socket. Encoding helpers build whole frames.
 
 use flate2::{Compress, Compression, Decompress, FlushCompress, FlushDecompress, Status};
 use ring::rand::{SecureRandom, SystemRandom};
@@ -35,7 +34,7 @@ pub mod code {
     pub const TLS_HANDSHAKE: u16 = 1015;
 }
 
-/// Whether a close code may appear on the wire (gorilla's `isValidReceivedCloseCode`).
+/// Whether a close code may appear on the wire (RFC 6455 section 7.4).
 pub fn valid_received_close_code(c: u16) -> bool {
     matches!(
         c,
@@ -53,7 +52,7 @@ pub fn valid_received_close_code(c: u16) -> bool {
     ) || (3000..=4999).contains(&c)
 }
 
-/// gorilla's `CloseError.Error()`: `websocket: close 1006 (abnormal closure): unexpected EOF`.
+/// The text of a close error: `websocket: close 1006 (abnormal closure): unexpected EOF`.
 pub fn close_error_text(c: u16, reason: &str) -> String {
     let name = match c {
         code::NORMAL => " (normal)",
@@ -88,7 +87,7 @@ pub fn format_close(c: u16, reason: &str) -> Vec<u8> {
     out
 }
 
-/// The payload gorilla sends for a protocol error: 1002 and the message, cut to 125 bytes.
+/// The payload sent for a protocol error: 1002 and the message, cut to 125 bytes.
 pub fn protocol_error_payload(message: &str) -> Vec<u8> {
     let mut data = format_close(code::PROTOCOL_ERROR, message);
     data.truncate(MAX_CONTROL_PAYLOAD);
@@ -167,8 +166,7 @@ pub fn encode_frame(
     out
 }
 
-/// A control frame; `None` when the payload exceeds 125 bytes (gorilla's
-/// `errInvalidControlFrame`).
+/// A control frame; `None` when the payload exceeds 125 bytes.
 pub fn encode_control(opcode: u8, payload: &[u8], masked: bool) -> Option<Vec<u8>> {
     if payload.len() > MAX_CONTROL_PAYLOAD {
         return None;
@@ -218,9 +216,9 @@ pub fn encode_message(
 }
 
 const SYNC_TAIL: [u8; 4] = [0x00, 0x00, 0xff, 0xff];
-/// What gorilla appends before inflating: an empty stored block, then a final empty block.
+/// What is appended before inflating: an empty stored block, then a final empty block.
 const INFLATE_TAIL: [u8; 9] = [0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff];
-/// Gorilla's `defaultCompressionLevel`.
+/// Default compression level.
 const DEFLATE_LEVEL: u32 = 1;
 
 /// Raw-deflates one message with a sync flush and strips the trailing `00 00 ff ff`
@@ -256,7 +254,7 @@ pub enum InflateError {
     Corrupt,
 }
 
-/// Inflates a message payload as gorilla does: appends the sync tail and a final empty block
+/// Inflates a message payload per RFC 7692: appends the sync tail and a final empty block
 /// and reads to the end, failing as soon as the output passes `max` bytes.
 pub fn inflate_message(data: &[u8], max: u64) -> Result<Vec<u8>, InflateError> {
     let mut input = Vec::with_capacity(data.len() + INFLATE_TAIL.len());
@@ -304,8 +302,7 @@ pub enum Event {
 }
 
 /// A failure of the stream. `body` is true when it happened after the first frame of a data
-/// message was accepted; gorilla reports those through the message reader, and the Go runtime
-/// words them as a truncated exchange.
+/// message was accepted; those are worded as a truncated exchange.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// A protocol violation. The peer is sent close 1002 with the text (see
@@ -334,7 +331,7 @@ enum Stage {
     Payload(Frame),
 }
 
-/// Reads frames the way gorilla's `Conn` does for one direction.
+/// Reads frames for one direction.
 pub struct Decoder {
     /// Reading as the server: frames must be masked (and must not be, for a client).
     server: bool,
@@ -343,7 +340,7 @@ pub struct Decoder {
     input: Vec<u8>,
     start: usize,
     stage: Stage,
-    /// A data message is split and not yet finished (gorilla's `!readFinal`).
+    /// A data message is split and not yet finished (a fragmented message).
     fragmenting: bool,
     /// The first frame of the current message has been accepted.
     in_body: bool,
@@ -484,7 +481,7 @@ impl Decoder {
         }
     }
 
-    /// gorilla's checks on the first two header bytes, run before the rest of the header is
+    /// Checks on the first two header bytes, run before the rest of the header is
     /// awaited, collecting every reason into one comma-separated text.
     fn check_first_two(&self, b0: u8, b1: u8) -> Result<(), DecodeError> {
         let opcode = b0 & 0x0f;
@@ -785,7 +782,7 @@ mod tests {
     }
 
     #[test]
-    fn protocol_violations_use_gorilla_texts() {
+    fn protocol_violations_use_close_texts() {
         let masked = |op, fin, rsv: u8, payload: &[u8]| {
             let mut f = encode_frame(op, fin, false, payload, Some(KEY));
             f[0] |= rsv;
@@ -822,7 +819,7 @@ mod tests {
             protocol_text(&masked(OP_TEXT, true, 0, b"a"), false, false),
             "bad MASK"
         );
-        // Several reasons are joined in gorilla's order.
+        // Several reasons are joined in a fixed order.
         assert_eq!(
             protocol_text(&masked(5, false, 0x20, b""), true, false),
             "RSV2 set, bad opcode 5"
@@ -951,13 +948,13 @@ mod tests {
             inflate_message(&deflate_message(&big), u64::MAX).unwrap(),
             big
         );
-        // The empty message is the single byte 00, as in the recorded gorilla output below.
+        // The empty message is the single byte 00, as in the recorded output below.
         assert_eq!(deflate_message(b""), [0x00]);
     }
 
     #[test]
-    fn inflates_what_gorilla_wrote() {
-        // Recorded by running the vendored gorilla server with compression enabled: the
+    fn inflates_recorded_server_output() {
+        // Recorded from a server with compression enabled: the
         // payloads of its RSV1 text frames for "hello hello hello", "" and binary "x".
         let hello: &[u8] = &[
             0x00, 0x11, 0x00, 0xee, 0xff, b'h', b'e', b'l', b'l', b'o', b' ', b'h', b'e', b'l',

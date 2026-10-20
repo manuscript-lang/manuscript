@@ -1,5 +1,5 @@
-//! A port of the parts of Go's `net/url` that `pkg/runtime/url.go` relies on. Strings are byte
-//! vectors because Go strings may hold invalid UTF-8 after unescaping.
+//! URL parsing and escaping over byte vectors, because strings may hold invalid UTF-8 after
+//! unescaping.
 
 use alloc::vec::Vec;
 

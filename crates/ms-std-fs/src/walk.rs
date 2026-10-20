@@ -1,5 +1,4 @@
-//! Tree operations: glob queries, `copy_tree` and `copy`, ported from `pkg/runtime/fs_copy.go`
-//! and the glob and watch parts of `pkg/runtime/fs.go`.
+//! Tree operations: glob queries, `copy_tree` and `copy`.
 use crate::err::{Fail, Res};
 use crate::ops;
 use crate::path;

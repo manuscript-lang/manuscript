@@ -1,5 +1,4 @@
-//! `@std/url.ms` natives, behaviorally identical to `pkg/runtime/url.go` (which wraps Go's
-//! `net/url`, ported in [`gourl`]).
+//! `@std/url.ms` natives, built on the byte-oriented parser in [`gourl`].
 #![no_std]
 
 extern crate alloc;

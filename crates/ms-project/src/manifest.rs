@@ -1,6 +1,6 @@
 //! `ms.toml` reading: the supported subset is `[project]` and `[aliases]`
 //! tables holding double-quoted string values. Diagnostics, locations and their
-//! order are identical to the Go implementation.
+//! order are pinned by the project tests.
 
 use std::collections::{BTreeMap, BTreeSet};
 

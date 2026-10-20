@@ -48,4 +48,4 @@ Verified: public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and
 
 Apply when: adding a module or public member.
 Evidence: [development checks](../documentation/contributing/development.md), [runtime conventions](../documentation/contributing/runtime-conventions.md), [bindings](../stdlib/bindings.json), [docgen](../crates/ms-guide/src/docgen.rs).
-Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform-rust`.
+Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform`.

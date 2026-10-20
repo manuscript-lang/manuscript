@@ -8,7 +8,7 @@ Decision: the user required that the standard library, as the reference, use onl
 
 Apply when: changing impl parsing, method declaration rules, stdlib receiver operations, or docs that show type declarations with methods.
 Evidence: [contract rules](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../crates/ms-syntax/src/parser.rs), [inherent method fixture](../tests/e2e/testdata/accept/inherent-methods.ms).
-Verify: `fn` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make conform-rust` still binds every receiver operation.
+Verify: `fn` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make conform` still binds every receiver operation.
 
 ### An unsaved overlay cannot replace a dangling source symlink
 

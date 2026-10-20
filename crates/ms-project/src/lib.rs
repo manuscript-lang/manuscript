@@ -17,8 +17,7 @@
 //! * [`discover_modules`] / [`discover_modules_with_overlay`] - test and source
 //!   module discovery.
 //!
-//! The Go implementation has no `ms.lock`; the only locks in `pkg/build` are
-//! cache-directory file locks, which belong to the build driver, not here.
+//! `ms.lock` handling and build-cache file locks belong to the build driver, not here.
 
 pub mod discovery;
 pub mod error;

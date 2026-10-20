@@ -1,4 +1,4 @@
-//! `http.DetectContentType`: the content type net/http assigns to a response
+//! `http.DetectContentType`: the content type assigned to a response
 //! body when the handler sets none.
 
 const WS: &[u8] = b"\t\n\x0c\r ";
@@ -218,7 +218,7 @@ pub fn detect(data: &[u8]) -> &'static str {
 mod tests {
     use super::detect;
 
-    /// Vectors recorded from Go's `http.DetectContentType`.
+    /// Recorded vectors.
     #[test]
     fn matches_go() {
         let cases: &[(&[u8], &str)] = &[

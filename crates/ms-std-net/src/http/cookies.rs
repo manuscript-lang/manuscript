@@ -1,4 +1,4 @@
-//! A cookie jar with the matching rules of Go's `net/http/cookiejar`.
+//! A cookie jar with RFC 6265 matching rules.
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -288,7 +288,7 @@ impl Jar {
         })
     }
 
-    /// `Cookies(u)`: the `name=value` pairs to send, in Go's order.
+    /// `Cookies(u)`: the `name=value` pairs to send, in order.
     pub fn cookies(&mut self, scheme: &str, host: &str, path: &str) -> Vec<String> {
         if scheme != "http" && scheme != "https" {
             return Vec::new();
@@ -372,7 +372,7 @@ mod tests {
         j.set_cookies(url.0, url.1, url.2, &lines);
     }
 
-    /// Expected values were recorded from Go's `cookiejar` with the public suffix list.
+    /// Expected values were recorded with the public suffix list.
     #[test]
     fn host_only_domain_path_and_secure() {
         let mut j = Jar::new();

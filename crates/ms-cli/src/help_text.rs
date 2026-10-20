@@ -1,5 +1,4 @@
-//! Generated from the Go `ms help` output, then edited for the Rust implementation.
-//! Intentional differences from the Go text are listed in `tests/differential/expected.txt`.
+//! The `ms help` text.
 
 pub const HELP: &str = r#"Usage: ms <command> [arguments] [options]
        ms help [command]

@@ -30,7 +30,7 @@ pub const GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 pub const DEFLATE_RESPONSE: &str =
     "permessage-deflate; server_no_context_takeover; client_no_context_takeover";
 
-/// Go's `base64.StdEncoding` accepts non-zero trailing bits; the strict default does not.
+/// Standard base64 accepts non-zero trailing bits; the strict default does not.
 const LENIENT: GeneralPurpose = GeneralPurpose::new(
     &alphabet::STANDARD,
     GeneralPurposeConfig::new().with_decode_allow_trailing_bits(true),
@@ -115,7 +115,7 @@ fn next_token_or_quoted(s: &str) -> (String, &str) {
     (String::new(), "")
 }
 
-/// gorilla's `tokenListContainsValue`: whether a comma-separated header holds `value` as a
+/// Whether a comma-separated header holds `value` as a
 /// token, ignoring ASCII case. A malformed element skips the rest of that header line.
 pub fn token_list_contains(fields: &Fields, name: &str, value: &str) -> bool {
     values(fields, name).any(|line| line_has_token(&String::from_utf8_lossy(line), value))
@@ -155,7 +155,7 @@ impl Extension {
     }
 }
 
-/// gorilla's `parseExtensions`; a malformed element ends that header line.
+/// Parses `Sec-WebSocket-Extensions`; a malformed element ends that header line.
 pub fn parse_extensions(fields: &Fields) -> Vec<Extension> {
     let mut out = Vec::new();
     for line in values(fields, "Sec-WebSocket-Extensions") {
@@ -219,7 +219,7 @@ pub fn offered_subprotocols(fields: &Fields) -> Vec<String> {
     line.split(',').map(|p| p.trim().to_string()).collect()
 }
 
-/// The subprotocol gorilla selects: the first server protocol, in the server's order, that
+/// The subprotocol selected: the first server protocol, in the server's order, that
 /// the client offered; empty when none matches.
 pub fn select_subprotocol(offered: &[String], server: &[String]) -> String {
     server
@@ -229,7 +229,7 @@ pub fn select_subprotocol(offered: &[String], server: &[String]) -> String {
         .unwrap_or_default()
 }
 
-/// The origin policy of the Go runtime's `Upgrade`. `host` is the request's `Host` and `tls`
+/// The origin policy of the server upgrade. `host` is the request's `Host` and `tls`
 /// whether the connection is TLS.
 ///
 /// A missing or empty `Origin` is accepted. Otherwise it must be a bare `http` or `https`
@@ -275,7 +275,7 @@ pub struct ServerOptions<'a> {
     pub allowed_origins: &'a [String],
     /// Subprotocols the server speaks, in order of preference.
     pub subprotocols: &'a [String],
-    /// Negotiate permessage-deflate when the client offers it. The Go runtime never does.
+    /// Negotiate permessage-deflate when the client offers it.
     pub compression: bool,
 }
 
@@ -290,11 +290,11 @@ pub struct Accepted {
     pub response: Vec<u8>,
 }
 
-/// A refused upgrade: the status gorilla answers and its handshake error text.
+/// A refused upgrade: the status answered and its handshake error text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rejected {
     pub status: u16,
-    /// gorilla's `HandshakeError` text, for example
+    /// The handshake error text, for example
     /// `websocket: request origin not allowed`.
     pub message: &'static str,
 }
@@ -304,12 +304,12 @@ impl Rejected {
         Rejected { status, message }
     }
 
-    /// The error the Go runtime returns: `Failed(<handshake error text>)`.
+    /// The error returned: `Failed(<handshake error text>)`.
     pub fn error(&self) -> WsErr {
         WsErr::Failed(self.message.to_string())
     }
 
-    /// The error response gorilla writes through `http.Error`; `date` is the Unix time for the
+    /// The error response written for a refusal; `date` is the Unix time for the
     /// `Date` header. `close` appends `Connection: close`.
     pub fn response(&self, date: i64, close: bool) -> Vec<u8> {
         let body = format!("{}\n", h1::status_text(self.status));
@@ -333,8 +333,8 @@ impl Rejected {
     }
 }
 
-/// Validates an upgrade request in gorilla's order (`Connection`, `Upgrade`, method, version,
-/// origin, key) and builds the `101` response. The HTTP version is not checked, as in gorilla.
+/// Validates an upgrade request in this order (`Connection`, `Upgrade`, method, version,
+/// origin, key) and builds the `101` response. The HTTP version is not checked.
 pub fn accept(req: &Request<'_>, options: &ServerOptions<'_>) -> Result<Accepted, Rejected> {
     let fields = req.fields;
     if !token_list_contains(fields, "Connection", "upgrade") {
@@ -418,7 +418,7 @@ pub struct ClientRequest<'a> {
     pub compression: bool,
 }
 
-/// The upgrade request as `http.Request.Write` emits it for gorilla's dialer: request line,
+/// The upgrade request as the dialer sends it: request line,
 /// `Host`, `User-Agent`, then the remaining headers sorted by name.
 pub fn client_request(req: &ClientRequest<'_>) -> Vec<u8> {
     let mut headers: Vec<(String, Vec<u8>)> = vec![
@@ -481,14 +481,14 @@ fn clean_value(value: &[u8]) -> Vec<u8> {
 /// A refused server response.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClientFailure {
-    /// Not a valid `101` for this key (`ErrBadHandshake`).
+    /// Not a valid `101` for this key.
     BadHandshake,
     /// permessage-deflate without both no-context-takeover parameters.
     InvalidCompression,
 }
 
 impl ClientFailure {
-    /// gorilla's error text.
+    /// The error text.
     pub fn message(&self) -> &'static str {
         match self {
             ClientFailure::BadHandshake => "websocket: bad handshake",
@@ -504,14 +504,14 @@ impl ClientFailure {
 /// The outcome of a valid server response.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClientAccepted {
-    /// `Sec-WebSocket-Protocol` of the response, taken as sent (gorilla does not check it
+    /// `Sec-WebSocket-Protocol` of the response, taken as sent (it is not checked
     /// against the offers); empty when absent.
     pub subprotocol: String,
     pub compress: bool,
 }
 
-/// gorilla's client checks on the response: status 101, `Upgrade` and `Connection` tokens,
-/// the accept key, then the extension (applied whenever the server sends it, as gorilla does
+/// The client's checks on the response: status 101, `Upgrade` and `Connection` tokens,
+/// the accept key, then the extension (applied whenever the server sends it, as usual
 /// even when the client did not offer it).
 pub fn check_response(
     status: u16,
@@ -602,7 +602,7 @@ mod tests {
         assert!(!valid_challenge_key("dGhlIHNhbXBsZSBub25jZQ"));
         // 15 bytes.
         assert!(!valid_challenge_key("dGhlIHNhbXBsZSBub24="));
-        // Non-zero trailing bits are accepted like Go's StdEncoding.
+        // Non-zero trailing bits are accepted by standard base64.
         assert!(valid_challenge_key("dGhlIHNhbXBsZSBub25jZR=="));
     }
 
@@ -615,7 +615,7 @@ mod tests {
     }
 
     #[test]
-    fn token_lists_follow_gorilla() {
+    fn token_lists_follow_rfc() {
         let f = fields(&[
             ("Connection", "keep-alive , UPGRADE"),
             ("X", "a b, upgrade"),
@@ -633,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn extensions_parse_like_gorilla() {
+    fn extensions_parse() {
         let f = fields(&[(
             "Sec-WebSocket-Extensions",
             "permessage-deflate; client_max_window_bits=\"15\", x-other;a=b",
@@ -657,7 +657,7 @@ mod tests {
         let offered = offered_subprotocols(&f);
         assert_eq!(offered, vec!["a", "b"]);
         let server = vec!["b".to_string(), "a".to_string()];
-        // Recorded from gorilla: offers a, b against [b, a] select b.
+        // Offers a, b against [b, a] select b.
         assert_eq!(select_subprotocol(&offered, &server), "b");
         assert_eq!(select_subprotocol(&offered, &["z".to_string()]), "");
         assert_eq!(select_subprotocol(&[], &server), "");
@@ -717,7 +717,7 @@ mod tests {
         let a = accept(&request(&f), &options).unwrap();
         assert_eq!(a.subprotocol, "b");
         assert!(!a.compress);
-        // Byte for byte what the vendored gorilla wrote (recorded by running it).
+        // Byte for byte the expected response.
         let want = format!(
             "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {SAMPLE_ACCEPT}\r\nSec-WebSocket-Protocol: b\r\n\r\n"
         );
@@ -778,7 +778,7 @@ mod tests {
         let r = reject(&f, "GET");
         assert_eq!(r.status, 400);
         assert!(r.message.contains("must be the Base64 text of 16 bytes"));
-        // The checks run in gorilla's order: a bad key hides behind a bad method.
+        // The checks run in a fixed order: a bad key hides behind a bad method.
         assert_eq!(reject(&f, "PUT").status, 405);
     }
 

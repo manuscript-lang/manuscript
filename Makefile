@@ -5,7 +5,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: setup tools doctor verify verify-full check lint repo-check unit test build conform-rust leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
+.PHONY: setup tools doctor verify verify-full check lint repo-check unit test build conform leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
 
 setup: tools
 
@@ -18,7 +18,7 @@ doctor:
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
 verify: check lint repo-check unit docs-check licenses-check
 
-verify-full: verify conform-rust book-check dist-check
+verify-full: verify conform book-check dist-check
 
 check:
 	cargo fmt --all --check
@@ -40,16 +40,16 @@ unit:
 	cargo nextest run --workspace
 	cargo test --workspace --doc
 
-test: unit conform-rust
+test: unit conform
 
 build:
 	cargo build --release --locked -p ms-cli
 
 # The run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose
-# answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
+# answer depends on aliasing; known differences are listed in tests/conformance/expect-fail.txt.
 # CONFORM_SHARD=i/n splits the run.
-conform-rust:
-	sh scripts/conform-rust.sh
+conform:
+	sh scripts/conform.sh
 
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
 leak-check:

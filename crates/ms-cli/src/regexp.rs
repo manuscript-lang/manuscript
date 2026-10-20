@@ -1,5 +1,5 @@
-//! Validation of `--match` / `--exclude` patterns. Go uses RE2 syntax; the
-//! `regex` crate implements the same dialect. Error text follows Go's
+//! Validation of `--match` / `--exclude` patterns. Patterns use RE2 syntax, as in the
+//! `regex` crate. Error text follows the
 //! `error parsing regexp: <reason>: `<fragment>`` form for the common mistakes.
 
 pub fn validate(pattern: &str) -> Result<(), String> {

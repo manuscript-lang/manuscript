@@ -452,7 +452,7 @@ pub(crate) mod testing {
     use super::*;
     use std::thread;
 
-    /// A server answering every question with fixed records, like the Go test's `fakeDNS`.
+    /// A server answering every question with fixed records, for tests.
     pub fn fake_dns() -> SocketAddr {
         let sock = UdpSocket::bind("127.0.0.1:0").unwrap();
         let addr = sock.local_addr().unwrap();

@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/regex.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/regex.tsv`, a recorded corpus.
 use ms_std_core::Fail;
 use ms_std_regex::{Regex, compile};
 use std::collections::BTreeMap;

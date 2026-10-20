@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/crypto_asym.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/crypto_asym.tsv`, a recorded corpus.
 //! Randomized operations (ECDSA, PSS, OAEP) are checked for success/failure parity only; their
 //! outputs are verified by the recorded Go signatures and ciphertexts instead.
 use ms_std_crypto::asym::*;

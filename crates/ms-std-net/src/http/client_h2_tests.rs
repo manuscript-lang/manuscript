@@ -250,7 +250,7 @@ fn h2_client(opts: ClientOptions, settings: Settings) -> (Rc<Network>, Rc<Client
     (net, client)
 }
 
-/// A client with Go-like windows.
+/// A client with large windows.
 fn client(opts: ClientOptions) -> (Rc<Network>, Rc<Client>) {
     h2_client(opts, h2client::client_settings(None))
 }

@@ -241,7 +241,7 @@ pub fn escapes(rel: &str) -> bool {
 }
 
 /// `filepath.EvalSymlinks`: every component is resolved with `lstat`, errors
-/// carry the failing prefix exactly as Go reports them.
+/// carry the failing prefix.
 #[cfg(not(windows))]
 pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
     let mut path = path.as_bytes().to_vec();

@@ -1,4 +1,4 @@
-//! Embed the release version shared with the Go implementation (`.msversion`) and the native
+//! Embed the release version from `.msversion` and the native
 //! static library (`ms-native`: the runtime plus every `ms-std-*` crate) that compiled programs link.
 
 use std::path::{Path, PathBuf};

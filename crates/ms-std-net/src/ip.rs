@@ -1,6 +1,6 @@
 //! `IpAddress` and `Cidr`: validated numeric addresses and ranges.
 //!
-//! Text follows Go's `net/netip`: IPv4-mapped IPv6 input is normalized to IPv4,
+//! Text: IPv4-mapped IPv6 input is normalized to IPv4,
 //! zones are rejected, IPv6 prints in RFC 5952 form, and a 4-in-6 address keeps
 //! the `::ffff:a.b.c.d` spelling when it appears inside an IPv6 prefix.
 
@@ -32,7 +32,7 @@ pub fn ip_text(ip: &IpAddr) -> String {
     }
 }
 
-/// RFC 5952 text with Go's spelling of IPv4-mapped addresses.
+/// RFC 5952 text with the IPv4-mapped spelling.
 pub fn ipv6_text(ip: &Ipv6Addr) -> String {
     let groups = ip.segments();
     if let Some(v4) = ip.to_ipv4_mapped() {
@@ -145,7 +145,7 @@ fn mask(ip: IpAddr, bits: u8) -> IpAddr {
 mod tests {
     use super::*;
 
-    // Recorded from Go `net.ParseIP` + `netip.AddrFromSlice` (see the oracle program in the PR).
+    // Recorded vectors.
     const IPS: &[(&str, Option<&str>)] = &[
         ("1.2.3.4", Some("1.2.3.4")),
         ("01.2.3.4", None),

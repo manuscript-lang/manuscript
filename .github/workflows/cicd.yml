@@ -60,8 +60,8 @@ jobs:
         include:
           # `full`: format, clippy, every crate's tests and doc tests. `corpus`: the frozen
           # conformance corpus against the Rust ms on this platform. Failures shared with
-          # Linux are in tests/conformance/rust-expect-fail.txt; platform-only ones go in
-          # tests/conformance/rust-expect-fail.<os>.txt with a reason.
+          # Linux are in tests/conformance/expect-fail.txt; platform-only ones go in
+          # tests/conformance/expect-fail.<os>.txt with a reason.
           - { os: linux, arch: amd64, runner: ubuntu-24.04, full: true, corpus: true }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
           - { os: darwin, arch: amd64, runner: macos-15-intel }
@@ -215,7 +215,7 @@ jobs:
           cargo test --locked -p ms-driver --lib -- --nocapture
       - name: Rust ms replays the corpus
         if: matrix.corpus
-        run: sh scripts/conform-rust.sh
+        run: sh scripts/conform.sh
       - name: Show why a failing test-phase fixture does not run
         if: failure() && matrix.corpus && matrix.os != 'linux'
         run: |
@@ -245,7 +245,7 @@ jobs:
         with:
           name: rust-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            .artifacts/conform-rust.md
+            .artifacts/conform.md
             ${{ runner.temp }}/ms-clif-tests-*
             ${{ runner.temp }}/ms-native-conformance/
             ${{ runner.temp }}/ms-dwarf-*

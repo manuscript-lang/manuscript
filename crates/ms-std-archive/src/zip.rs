@@ -1,5 +1,4 @@
-//! Zip reading and writing with the checks of Go's `archive/zip` as used by
-//! `pkg/runtime/archive.go`: end-of-central-directory search (with prefix data and zip64),
+//! Zip reading and writing for `@std/archive`: end-of-central-directory search (with prefix data and zip64),
 //! stored and deflated members, data descriptors and CRC verification.
 use alloc::vec::Vec;
 use ms_std_compress::{crc32, inflate};

@@ -1,4 +1,4 @@
-//! `@std/log.ms` natives: the record encoder and logger state of `pkg/runtime/log.go`.
+//! `@std/log.ms` natives: the record encoder and logger state.
 //!
 //! A [`Logger`] turns a level, message and optional JSON fields into the newline-terminated JSON
 //! line a transport writes. Transports (streams, files, stdout), the clock and interface dispatch

@@ -1,16 +1,15 @@
-//! A WebSocket message session over a [`Connection`], the Rust counterpart of `osWebSocket`
-//! in `pkg/runtime/websocket.go` on top of gorilla's `Conn`.
+//! A WebSocket message session over a [`Connection`].
 //!
 //! Everything runs on the ms thread. Reads and writes go through `Connection::read` and
 //! `Connection::write`, which wait while serving queued HTTP handlers, so a nested call on the
 //! same socket is possible; a second receive on a busy socket fails and a send queued behind a
 //! running write is written by it, in order.
 //!
-//! Error texts follow what the Go runtime reports: peer close frames and transport failures
+//! Error texts: peer close frames and transport failures
 //! are `Failed("websocket: close 1006 (abnormal closure): unexpected EOF")` and the like, and
 //! anything that goes wrong after the first frame of a message was accepted reads
-//! `connection closed before the exchange completed`, because the Go runtime reads message
-//! bodies through a reader whose errors it cannot tell apart.
+//! `connection closed before the exchange completed`, because message bodies are read through
+//! a reader whose errors cannot be told apart.
 
 use super::frame::{
     self, DecodeError, Decoder, Event, OP_BINARY, OP_CLOSE, OP_PING, OP_PONG, OP_TEXT, code,
@@ -26,7 +25,7 @@ use std::rc::Rc;
 /// `io.ErrUnexpectedEOF`).
 pub const TRUNCATED: &str = "connection closed before the exchange completed";
 
-/// gorilla's `writeWait`, used for pongs and close replies.
+/// Write deadline, used for pongs and close replies.
 const CONTROL_WRITE_NANOS: i64 = 1_000_000_000;
 /// The deadline of `ping` in `websocket.ms`.
 const PING_WRITE_NANOS: i64 = 1_000_000_000;
@@ -87,7 +86,7 @@ pub struct Socket {
     reading: Cell<bool>,
     queue: RefCell<VecDeque<Vec<u8>>>,
     flushing: Cell<bool>,
-    /// gorilla's sticky `writeErr`: a failed write or a sent close frame.
+    /// Sticky write error: a failed write or a sent close frame.
     write_error: RefCell<Option<WsErr>>,
     /// `close()` ran.
     closed: Cell<bool>,
@@ -197,7 +196,7 @@ impl Socket {
         }
     }
 
-    /// Writes one encoded frame (or message). A failure is sticky, as in gorilla; a nested
+    /// Writes one encoded frame (or message). A failure is sticky; a nested
     /// call while a write is running only queues its bytes behind it.
     fn write(&self, bytes: Vec<u8>, timeout: Option<i64>, on_timeout: WsErr) -> Result<(), WsErr> {
         if let Some(e) = self.write_error.borrow().clone() {
@@ -377,7 +376,7 @@ impl Socket {
         Ok(Some(Message { data, text }))
     }
 
-    /// gorilla's default ping handler: a pong with the same payload. A sent close frame and
+    /// Default ping handler: a pong with the same payload. A sent close frame and
     /// a timeout are ignored; any other write failure ends the session.
     fn answer_ping(&self, payload: &[u8]) -> Result<(), WsErr> {
         let timed_out = WsErr::Timeout;
@@ -397,7 +396,7 @@ impl Socket {
         Err(self.finish(Self::failed_text(text, body)))
     }
 
-    /// gorilla's default close handler echoes the code; the receive then ends with the close
+    /// Default close handler: echoes the code; the receive then ends with the close
     /// error, which is a normal end for 1000 and 1001.
     fn peer_closed(&self, status: u16, reason: &str) -> Result<Option<Message>, WsErr> {
         let echo = frame::format_close(status, "");
