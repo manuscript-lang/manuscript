@@ -569,7 +569,8 @@ impl FnLower<'_> {
                         .expect("copy"),
                     None => {
                         let fmt = self.cx.format_fn(b.m, t, false);
-                        b.call(fmt, &[cap])
+                        let top = b.iconst(0);
+                        b.call(fmt, &[cap, top])
                     }
                 };
                 b.ret(Some(text));
