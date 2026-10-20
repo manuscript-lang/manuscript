@@ -21,10 +21,8 @@ ms-std-fs = { path = "../ms-std-fs" }
 ms-std-core = { path = "../ms-std-core" }
 ms-std-io = { path = "../ms-std-io" }
 ms-std-process = { path = "../ms-std-process" }
+mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 unicode-normalization = { version = "0.1.24", default-features = false }
-
-[target.'cfg(unix)'.dependencies]
-mio = { version = "1", default-features = false, features = ["os-poll", "os-ext"] }
 
 [lints]
 workspace = true
