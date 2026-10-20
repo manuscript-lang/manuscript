@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections are mutable references: assignment shares the instance and `.clone()` copies its storage.
+Collections are values: assignment copies, so two names never change one list, map, or set, and `.clone()` makes an explicit deep copy. (Several passages below still describe the earlier shared-reference model; where they differ, this rule and the [ownership notes](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) win.)
 
 `List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
@@ -86,7 +86,7 @@ values.append(3)
 # values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones copy outer storage and keep nested references. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return new shallow copies (Bytes `reversed()` too).
+Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return new shallow copies (Bytes `reversed()` too).
 
 List `slice` returns `Result[List[T], CollectionError]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise `CollectionError.OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 

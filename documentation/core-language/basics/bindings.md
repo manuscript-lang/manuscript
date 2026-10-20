@@ -74,6 +74,6 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-Binding mutability and object mutation are separate: a `let` record still allows field updates. Assigning a record or collection keeps the same instance; `.clone()` makes a shallow copy.
+Binding mutability and object mutation are separate: a `let` record still allows field updates. Assigning a record or collection copies it; `.clone()` makes an explicit deep copy.
 
 Assignment does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup using an immutable binding. See [mutation and references](../types/references.md).
