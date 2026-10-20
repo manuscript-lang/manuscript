@@ -188,3 +188,12 @@ fn entries_keys_and_add_default_from_lower() {
     );
     assert!(mir.contains("msrt_map_contains"));
 }
+
+#[test]
+fn impl_method_inherits_contract_defaults_and_binds_with_a_changed_receiver() {
+    let mir = lower(
+        "inherited",
+        "import {Commands, Subprocess, CommandOutput, CommandError} from \"@std/process.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Duration from \"@std/time.ms\"\nimport {CsvOptions} from \"@std/csv.ms\"\n\ntype Capture:\n    calls: Int\n\nimpl Commands for Capture:\n    fn run(\n        program: String,\n        arguments: List[String],\n        input: Bytes,\n        max_output_bytes: Optional[Int],\n        timeout: Optional[Duration]\n    ) Result[CommandOutput, CommandError]:\n        self.calls += 1\n        return ok(CommandOutput(0, input, \"\".to_bytes()))\n\n    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:\n        return error(CommandError.Unavailable)\n\nexport fn main() Int:\n    var capture = Capture(0)\n    let bound = capture.run\n    let r = capture.run(\"x\", [])\n    let o = CsvOptions()\n    return 0\n",
+    );
+    assert!(mir.contains("msrt_string_to_bytes"));
+}

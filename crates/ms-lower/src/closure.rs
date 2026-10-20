@@ -363,9 +363,7 @@ impl FnLower<'_> {
                 return Err(Error::new("method value with changed parameters"));
             }
             let fid = self.cx.function_for(self.b.m, &c, &subst)?;
-            if vars.is_empty()
-                && let Some(thunk) = self.default_thunk(e, fid, &c, &subst, Some(recv_mty))?
-            {
+            if let Some(thunk) = self.default_thunk(e, fid, &c, &subst, Some(recv_mty))? {
                 let recv = self.expr(left)?;
                 if self.dead {
                     return Ok(recv);
@@ -415,39 +413,7 @@ impl FnLower<'_> {
                         all.extend_from_slice(rest);
                         b.call(fid, &all)
                     }
-                    Ok((fid, true)) => {
-                        // The method changes its receiver; the closure's copy takes the change.
-                        let own = if b.m.needs_drop(recv_mty) {
-                            b.emit(Op::Copy, &[this], Imm::None, Some(recv_mty))
-                                .expect("copy")
-                        } else {
-                            this
-                        };
-                        let slot = b
-                            .emit(Op::Slot, &[], Imm::Ty(recv_mty), Some(MTy::PTR))
-                            .expect("slot");
-                        let put = if b.m.needs_drop(recv_mty) {
-                            Op::Put
-                        } else {
-                            Op::Store
-                        };
-                        b.emit(put, &[slot, own], Imm::None, None);
-                        let mut all = vec![slot];
-                        all.extend_from_slice(rest);
-                        let r = b.call(fid, &all);
-                        let take = if b.m.needs_drop(recv_mty) {
-                            Op::Take
-                        } else {
-                            Op::Load
-                        };
-                        let after = b
-                            .emit(take, &[slot], Imm::Ty(recv_mty), Some(recv_mty))
-                            .expect("take");
-                        if b.m.needs_drop(recv_mty) {
-                            b.emit(Op::Drop, &[after], Imm::None, None);
-                        }
-                        r
-                    }
+                    Ok((fid, true)) => call_changing_receiver(&mut b, fid, this, recv_mty, rest),
                 };
                 b.ret(Some(r));
                 let f = b.into_func();
@@ -727,6 +693,40 @@ impl FnLower<'_> {
     }
 }
 
+/// Calls a method that changes its receiver: the closure's copy goes into a slot the callee
+/// takes from and puts back into, and takes the change.
+fn call_changing_receiver(
+    b: &mut FuncBuilder<'_>,
+    fid: FuncId,
+    this: Value,
+    recv_ty: MTy,
+    rest: &[Value],
+) -> Value {
+    let drops = b.m.needs_drop(recv_ty);
+    let own = if drops {
+        b.emit(Op::Copy, &[this], Imm::None, Some(recv_ty))
+            .expect("copy")
+    } else {
+        this
+    };
+    let slot = b
+        .emit(Op::Slot, &[], Imm::Ty(recv_ty), Some(MTy::PTR))
+        .expect("slot");
+    let put = if drops { Op::Put } else { Op::Store };
+    b.emit(put, &[slot, own], Imm::None, None);
+    let mut all = vec![slot];
+    all.extend_from_slice(rest);
+    let r = b.call(fid, &all);
+    let take = if drops { Op::Take } else { Op::Load };
+    let after = b
+        .emit(take, &[slot], Imm::Ty(recv_ty), Some(recv_ty))
+        .expect("take");
+    if drops {
+        b.emit(Op::Drop, &[after], Imm::None, None);
+    }
+    r
+}
+
 /// Lowers a thunk that fills the defaults of the parameters a function value takes as optionals.
 pub(crate) fn build_default_thunk(
     cx: &mut Cx,
@@ -761,7 +761,9 @@ fn lower_default_thunk(
         own: false,
     });
     let callee = job.callable.clone();
-    if !fl.cx.var_positions(&callee).is_empty() {
+    let vars = fl.cx.var_positions(&callee);
+    let changes_receiver = vars == [0] && job.recv.is_some();
+    if !vars.is_empty() && !changes_receiver {
         return Err(Error::new(
             "a function value with defaults cannot change its parameters",
         ));
@@ -781,11 +783,21 @@ fn lower_default_thunk(
         });
     }
     let fid = fl.cx.function_for(fl.b.m, &callee, &job.subst)?;
-    let mut vals: Vec<Value> = recv.iter().map(|r| r.v).collect();
+    let mut vals: Vec<Value> = Vec::new();
     for s in slots.into_iter().flatten() {
         vals.push(fl.borrow(s));
     }
-    let r = fl.b.call(fid, &vals);
+    let r = match (recv, changes_receiver) {
+        (Some(this), true) => {
+            let recv_ty = fl.ty_of(this.v);
+            call_changing_receiver(&mut fl.b, fid, this.v, recv_ty, &vals)
+        }
+        _ => {
+            let mut all: Vec<Value> = recv.iter().map(|r| r.v).collect();
+            all.extend(vals);
+            fl.b.call(fid, &all)
+        }
+    };
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())

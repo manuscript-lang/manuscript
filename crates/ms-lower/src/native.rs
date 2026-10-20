@@ -2291,6 +2291,9 @@ impl<'a> FnLower<'a> {
                         .collect();
                     Ok(self.lit(&text))
                 }
+                ExprKind::Call { .. } if self.cx.module(module).is_err() => {
+                    self.literal_default(d, &p.ty)
+                }
                 _ => {
                     let Ok(hir) = self.cx.module(module) else {
                         continue;

@@ -229,6 +229,9 @@ impl<'a> FnLower<'a> {
                 let v = self.b.opt_none(mty);
                 return Ok(Val { v, own: false });
             }
+            if let Some((decl, sig)) = self.contract_operation(callee) {
+                return self.contract_default(decl.as_ref(), &sig, i);
+            }
             return Err(Error::new(format!("missing argument {}", binding.name)));
         };
         // `none` in a bundled declaration carries no checked expression.
@@ -559,7 +562,7 @@ impl<'a> FnLower<'a> {
                         let v = self.b.opt_none(t);
                         Val { v, own: false }
                     } else {
-                        self.contract_default(m, i)?
+                        self.contract_default(m.decl.as_ref(), &m.ty, i)?
                     }
                 }
             };
@@ -571,45 +574,78 @@ impl<'a> FnLower<'a> {
         Ok(self.val(v, true))
     }
 
+    /// The contract operation an implementation method fulfils: its parameters without a
+    /// default of their own take the contract's.
+    fn contract_operation(
+        &self,
+        callee: &Callable,
+    ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+        let im = self.cx.methods.iter().find(|m| {
+            !m.id.as_str().is_empty() && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
+        })?;
+        let def = im.contract.as_ref()?.def.as_ref()?;
+        let ops = def.operations.borrow();
+        let op = ops.iter().find(|o| Some(o.name) == im.name())?;
+        Some((op.decl.clone(), op.ty.clone()))
+    }
+
+    /// The bytes default `"".to_bytes()` of a bundled declaration.
+    pub(crate) fn empty_bytes(&mut self) -> Result<Val, Error> {
+        let empty = self.b.str_lit("");
+        let v = self.call_runtime("msrt_string_to_bytes", &[empty], MTy::BYTES)?;
+        Ok(Val { v, own: true })
+    }
+
     /// The default written on parameter `i` of a contract operation. Bundled declarations
     /// carry no checked expressions, so only literal defaults are understood: `false`, a
     /// number, a text literal, and `"".to_bytes()`.
-    fn contract_default(&mut self, m: &ct::MethodRef, i: usize) -> Result<Val, Error> {
+    fn contract_default(
+        &mut self,
+        decl: Option<&ms_check::syntax::FuncRef>,
+        sig: &ct::Ty,
+        i: usize,
+    ) -> Result<Val, Error> {
         let missing = || Error::new("missing argument");
-        let default = m
-            .decl
-            .as_ref()
+        let default = decl
             .and_then(|d| d.func())
             .and_then(|f| f.params.get(i))
             .and_then(|p| p.default.as_ref())
             .ok_or_else(missing)?;
-        let param_ty = m.ty.params.get(i).ok_or_else(missing)?.ty.clone();
-        let want = self.cx.lower_ty(self.b.m, &param_ty)?;
-        let text = |parts: &[ms_syntax::ast::TextPart]| match parts {
-            [ms_syntax::ast::TextPart::Lit(t)] => Some(t.to_string()),
-            _ => None,
-        };
-        let v = match (&default.kind, self.b.m.types.kind(want)) {
+        let param_ty = sig.params.get(i).ok_or_else(missing)?.ty.clone();
+        self.literal_default(default, &param_ty)
+    }
+
+    /// A default of a bundled declaration, which carries no checked expressions: `false`, a
+    /// number, a text literal, `"".to_bytes()`, or a record built from its own field defaults.
+    pub(crate) fn literal_default(&mut self, default: &Expr, ty: &ct::Ty) -> Result<Val, Error> {
+        let missing = || Error::new("missing argument");
+        let want = self.cx.lower_ty(self.b.m, ty)?;
+        let v = match (&default.kind, self.b.m.types.kind(want).clone()) {
+            (ExprKind::Call { .. }, TyKind::Rec(r)) => {
+                let mut vals = Vec::new();
+                for i in 0..ct::fields(ty).len() {
+                    let earlier: Vec<(ct::Name, Value)> = ct::fields(ty)
+                        .iter()
+                        .zip(&vals)
+                        .map(|(f, v)| (f.name, *v))
+                        .collect();
+                    vals.push(self.field_default(ty, None, i, &earlier)?);
+                }
+                let v = self.b.rec_new(r, &vals);
+                return Ok(Val { v, own: true });
+            }
             (ExprKind::Bool(b), TyKind::Bool) => self.b.bconst(*b),
             (ExprKind::Number(n), TyKind::Int) => {
                 let value: i64 = n.as_str().parse().map_err(|_| missing())?;
                 self.b.iconst(value)
             }
-            (ExprKind::Text(parts), TyKind::Str) => {
-                let t = text(parts).ok_or_else(missing)?;
-                return Ok(Val {
-                    v: self.b.str_lit(&t),
-                    own: true,
-                });
-            }
-            (ExprKind::Call { .. }, TyKind::Bytes) => {
-                let empty = self.b.str_lit("");
-                let bytes = self.call_runtime("msrt_string_to_bytes", &[empty], MTy::BYTES)?;
-                return Ok(Val {
-                    v: bytes,
-                    own: true,
-                });
-            }
+            (ExprKind::Text(parts), TyKind::Str) => match parts.as_slice() {
+                [ms_syntax::ast::TextPart::Lit(t)] => {
+                    return Ok(self.lit(t));
+                }
+                _ => return Err(missing()),
+            },
+            (ExprKind::Call { .. }, TyKind::Bytes) => return self.empty_bytes(),
             _ => return Err(missing()),
         };
         Ok(Val { v, own: false })
@@ -754,10 +790,14 @@ impl<'a> FnLower<'a> {
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is_std("Optional") {
             return Ok(self.none_owned(fm));
         }
+        let Ok(hir) = self.cx.module(sym.module) else {
+            let x = self.literal_default(d, &ft)?;
+            return Ok(self.owned(x));
+        };
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, ct::substitution(t));
         let saved_file = self.file;
-        self.hir = self.cx.module(sym.module)?;
+        self.hir = hir;
         self.file = self.b.m.add_file(sym.module.as_str());
         self.bind_field_reads(d, earlier);
         // A default reports its own position, not the caller statement\'s.
