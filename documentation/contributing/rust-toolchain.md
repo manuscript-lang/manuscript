@@ -29,9 +29,9 @@ cargo nextest run --workspace
 cargo test --workspace --doc
 ```
 
-CI runs these as **Rust format and clippy**, **Rust tests** (two nextest partitions plus doc tests), and **Rust corpus** (four shards). Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
+CI runs these in one **Rust** job per platform; linux-amd64 runs fmt, clippy, nextest, doc tests, and the corpus. Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
 
-The conformance corpus in `tests/conformance/` holds programs with expectations first recorded from the Go `ms` and now frozen. `make conform-rust` replays it against the Rust binary (CI shards it four ways). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+The conformance corpus in `tests/conformance/` holds programs with expectations first recorded from the Go `ms` and now frozen. `make conform-rust` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 Runtime memory safety is checked under Miri, which needs a nightly toolchain and is not part of CI:
 
