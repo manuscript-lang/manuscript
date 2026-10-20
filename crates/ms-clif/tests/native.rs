@@ -144,6 +144,47 @@ b0:
     assert_eq!(o.code, 4950 % 7);
 }
 
+/// Values defined before a loop and used only after it are spilled around the loop.
+#[test]
+fn values_live_across_a_loop() {
+    let src = r#"module "cold"
+entry @main
+fn @cold(%a: int, %b: int, %c: int, %d: int, %e: int, %n: int) -> int {
+b0:
+  %z: int = iconst 0
+  br b1(%z, %z)
+b1(%i: int, %acc: int):
+  %t: bool = icmp.lt %i, %n
+  br_if %t, b2(), b3()
+b2:
+  %s: int = iadd.chk %acc, %i
+  %one: int = iconst 1
+  %j: int = iadd %i, %one
+  br b1(%j, %s)
+b3:
+  %p: int = iadd.chk %a, %b
+  %q: int = iadd.chk %c, %d
+  %r: int = iadd.chk %p, %q
+  %u: int = iadd.chk %r, %e
+  %v: int = iadd.chk %u, %acc
+  ret %v
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 1
+  %b: int = iconst 2
+  %c: int = iconst 3
+  %d: int = iconst 4
+  %e: int = iconst 5
+  %n: int = iconst 10
+  %r: int = call @cold(%a, %b, %c, %d, %e, %n)
+  ret %r
+}
+"#;
+    let o = same(src, "values_live_across_a_loop");
+    assert_eq!(o.code, 15 + 45);
+}
+
 /// Every fixture shared with the interpreter tests must agree natively.
 #[test]
 fn shared_fixtures() {
