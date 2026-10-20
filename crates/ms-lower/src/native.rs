@@ -701,6 +701,14 @@ impl<'a> FnLower<'a> {
         let recv = if snapshot {
             let v = self.owned(recv);
             self.hold_temp(Val { v, own: true })
+        } else if recv.own
+            && view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr))
+        {
+            // A `try` in an argument may return early: the receiver is released by then.
+            self.hold_temp(recv)
         } else {
             recv
         };

@@ -217,3 +217,12 @@ fn error_category_tests_standard_error_tables() {
     );
     assert!(mir.contains("iface.is"));
 }
+
+#[test]
+fn try_in_an_argument_releases_the_receiver_and_earlier_arguments() {
+    let mir = lower(
+        "trydrop",
+        "import {headers, HttpHeaders, HttpMethod} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn hs() Result[HttpHeaders, Error]: return ok(headers())\n\nfn one() Result[Int, Error]: return ok(1)\n\nfn go(n: Int) Result[Int, Error]:\n    let r = network().request(method: HttpMethod.Get, url: \"http://x/{n}\", headers: (try hs()), body: \"\")\n    let s = \"abc {n}\".replace(\"a\", \"b\", max_replacements: (try one()))\n    return ok(0)\n\nexport fn main() Int:\n    let r = go(1)\n    return 0\n",
+    );
+    assert!(mir.contains("drop"));
+}

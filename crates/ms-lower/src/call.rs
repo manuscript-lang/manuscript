@@ -520,6 +520,16 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        // A `try` in an argument may return early: what was evaluated before it is released then.
+        let any_try = view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr));
+        let recv = if recv.own && any_try {
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let rty = self.ty_of(recv.v);
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("contract receiver is not an interface value"));
@@ -533,7 +543,7 @@ impl<'a> FnLower<'a> {
         let sig = self.b.m.ifaces[iface.index()].methods[k].clone();
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
-        for a in &view.arguments {
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
@@ -545,6 +555,14 @@ impl<'a> FnLower<'a> {
                     Val { v, own: true }
                 }
                 None => x,
+            };
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
+            let x = if later_try && x.own {
+                self.hold_temp(x)
+            } else {
+                x
             };
             let idx = params
                 .iter()
