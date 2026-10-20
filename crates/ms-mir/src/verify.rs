@@ -937,6 +937,12 @@ impl Verifier<'_> {
                 let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, a) if n == "Shared" && a.as_slice() == [res.unwrap_or(Ty::UNIT)]);
                 want(ok, "shared.get reads the payload of a Shared[T]")
             }
+            Op::SharedAddr => {
+                arity(1)?;
+                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, _) if n == "Shared")
+                    && res == Some(Ty::PTR);
+                want(ok, "shared.addr yields a ptr to the payload of a Shared[T]")
+            }
             Op::Copy => {
                 arity(1)?;
                 want(
