@@ -84,6 +84,21 @@ unsafe extern "C-unwind" {
     fn msrt_free(ptr: *mut u8);
 }
 
+unsafe extern "C-unwind" {
+    fn msrt_task_sleep(ns: i64) -> u32;
+}
+
+/// Parks the running task for `ns` nanoseconds so other tasks keep running, and unwinds the
+/// program when a stop request (or task cancellation) ends the wait early.
+pub fn task_sleep(ns: i64) {
+    /// The runtime's `WAIT_CANCELLED` bit.
+    const WAIT_CANCELLED: u32 = 16;
+    // SAFETY: parks the current task; no Rust borrow is held across the call.
+    if unsafe { msrt_task_sleep(ns) } & WAIT_CANCELLED != 0 {
+        cancelled();
+    }
+}
+
 /// Aborts the program when a stop request is pending (call between blocking steps of long operations).
 pub fn poll_cancel() {
     if cancel_pending() {

@@ -274,7 +274,7 @@ pub enum Op {
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListPush,
     // Optionals.
-    OptSome, OptNone, OptIsSome, OptGet, OptUnwrap,
+    OptSome, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
     StrLen,
     // Shared[T].
@@ -391,7 +391,7 @@ impl Op {
         Op::RecNew, Op::RecGet, Op::RecSet, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListPush,
-        Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
+        Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
@@ -467,6 +467,7 @@ impl Op {
             Op::OptIsSome => ("opt.is_some", K::None, true, effects!()),
             Op::OptGet => ("opt.get", K::None, true, effects!()),
             Op::OptUnwrap => ("opt.unwrap", K::None, true, effects!(faults)),
+            Op::OptUnbox => ("opt.unbox", K::None, true, effects!(writes, rc)),
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
             Op::SharedNew => ("shared.new", K::None, true, effects!(alloc)),
             Op::SharedGet => ("shared.get", K::None, true, effects!(reads)),

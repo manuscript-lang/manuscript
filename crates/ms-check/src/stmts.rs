@@ -371,7 +371,7 @@ impl Checker {
     fn check_with(&mut self, s: &Stmt, name: Name, value: &Expr, body: &[Stmt]) -> (bool, bool) {
         let i = self.expression(value, None);
         let t = i.t();
-        if !self.closeable(&t) {
+        if !is_invalid_id(&t) && !self.closeable(&t) {
             let msg = self.with_not_closeable_message(&t);
             self.type_error(s.pos, msg);
         }

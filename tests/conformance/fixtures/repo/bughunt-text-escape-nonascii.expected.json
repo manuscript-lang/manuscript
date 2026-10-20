@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1001",
+        "phase": "parse",
+        "message": "unknown text escape: a backslash followed by 'é'; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}",
+        "position": {
+          "file": "bughunt-text-escape-nonascii.ms",
+          "line": 4,
+          "column": 14,
+          "offset": 110
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

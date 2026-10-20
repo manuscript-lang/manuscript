@@ -157,3 +157,62 @@ fn a_copy_whose_source_dies_right_after_becomes_a_move() {
     assert_eq!(count(&m, "build", Op::Drop), 0);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
+
+const UNWRAP: &str = r#"module "t"
+alt List { Nil, More(next: List) }
+entry @main
+
+fn @build(%n: int) -> opt<List> inline(never) {
+b0:
+  %z: int = iconst 0
+  %lt: bool = icmp.le %n, %z
+  br_if %lt, b1(), b2()
+b1():
+  %nil: List = alt.new List.Nil
+  %s: opt<List> = opt.some %nil
+  ret %s
+b2():
+  %one: int = iconst 1
+  %m: int = isub.chk %n, %one
+  %r: opt<List> = call @build (%m)
+  %ok: bool = opt.is_some %r
+  br_if %ok, b3(), b4()
+b3():
+  %p: List = opt.get %r
+  %c: List = copy %p
+  drop %r
+  %more: List = alt.new List.More %c
+  %s2: opt<List> = opt.some %more
+  ret %s2
+b4():
+  drop %r
+  %none: opt<List> = opt.none
+  %own: opt<List> = copy %none
+  ret %own
+}
+
+fn @main() -> int export {
+b0:
+  %n: int = iconst 50
+  %r: opt<List> = call @build (%n)
+  %ok: bool = opt.is_some %r
+  drop %r
+  %i: int = b2i %ok
+  ret %i
+}
+"#;
+
+#[test]
+fn unwrapping_an_owned_option_moves_the_payload_out() {
+    let mut m = parse_module(UNWRAP).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    // Only the owned `none` copy stays.
+    assert_eq!(count(&m, "build", Op::Copy), 1);
+    assert_eq!(count(&m, "build", Op::OptUnbox), 1);
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}

@@ -350,3 +350,130 @@ fn native_method_labels_bind_by_name() {
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
+
+/// Decoding a deeply nested JSON document moves each subtree out of its `Optional` result
+/// instead of deep-copying it, so the cost is linear in depth (it was quadratic: 20 000 levels
+/// took 16 seconds).
+#[test]
+fn native_json_parse_of_deep_nesting_is_linear() {
+    let dir = scratch("native-json-deep");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {parse, JsonValue, JsonError} from \"@std/json.ms\"\n\nexport fn main() Int:\n    let n = 50000\n    let text = \"{\"[\".repeat(n).get()}1{\"]\".repeat(n).get()}\"\n    let r: Result[JsonValue, JsonError] = parse(text)\n    if r.is_error():\n        return 1\n    return 0\n",
+    );
+    let backend = RustBackend::new(Native);
+    let started = std::time::Instant::now();
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(30),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+/// A handler that sleeps parks only its own task: other requests keep being served meanwhile.
+/// `time.sleep` used to block the whole scheduler, so four 500 ms requests took two seconds and
+/// a quick request waited behind them.
+#[test]
+fn native_http_handlers_sleep_without_blocking_other_requests() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpStream;
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+
+    let dir = scratch("native-http-sleep");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+    );
+    let exe = dir.join("server");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!(status, 0, "{err}");
+    let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let address = line.trim().to_string();
+    let get = move |path: &'static str| {
+        let address = address.clone();
+        std::thread::spawn(move || {
+            let mut stream = TcpStream::connect(&address).unwrap();
+            write!(
+                stream,
+                "GET {path} HTTP/1.1\r\nHost: a\r\nConnection: close\r\n\r\n"
+            )
+            .unwrap();
+            let mut reply = String::new();
+            stream.read_to_string(&mut reply).unwrap();
+            reply
+        })
+    };
+    let started = Instant::now();
+    let slow: Vec<_> = (0..4).map(|_| get("/slow")).collect();
+    std::thread::sleep(Duration::from_millis(100));
+    let quick_started = Instant::now();
+    let quick = get("/quick").join().unwrap();
+    let quick_took = quick_started.elapsed();
+    for reply in slow {
+        let reply = reply.join().unwrap();
+        assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
+    }
+    let total = started.elapsed();
+    child.kill().unwrap();
+    child.wait().unwrap();
+    assert!(quick.starts_with("HTTP/1.1 200"), "{quick}");
+    assert!(quick_took < Duration::from_millis(300), "{quick_took:?}");
+    assert!(total < Duration::from_millis(1500), "{total:?}");
+}
+
+/// `stdout().flush()` writes the buffered output at once rather than at exit.
+#[test]
+fn native_stdout_flush_reaches_a_pipe_immediately() {
+    use std::io::{BufRead, BufReader};
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+
+    let dir = scratch("native-flush");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import stdout from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nexport fn main() Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(duration(3000000000))\n    return 0\n",
+    );
+    let exe = dir.join("flush");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!(status, 0, "{err}");
+    let started = Instant::now();
+    let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let took = started.elapsed();
+    child.kill().unwrap();
+    child.wait().unwrap();
+    assert_eq!(line, "first\n");
+    assert!(took < Duration::from_secs(2), "{took:?}");
+}
+
+/// The TLS stack's C objects survive the debug strip of the embedded archive: a program that
+/// serves HTTP links. `llvm-strip --strip-debug` once corrupted `ring`'s objects for GNU ld.
+#[test]
+fn native_programs_using_tls_and_http_link() {
+    let dir = scratch("native-link-net");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            return 0\n    return 1\n",
+    );
+    let exe = dir.join("net");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert_eq!(Command::new(&exe).status().unwrap().code(), Some(0));
+}
