@@ -990,7 +990,8 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::Opt(inner), _) if opt_method(name) => {
-                self.optional_method(e, name, recv, inner, args)
+                let out = self.emty(e)?;
+                self.optional_method(out, e.pos, name, recv, inner, args)
             }
             (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") => {
                 let out = self.emty(e)?;
@@ -1173,6 +1174,15 @@ impl<'a> FnLower<'a> {
             (self.b.m.types.kind(rty).clone(), name.as_str())
         {
             return self.result_method(result, &name, recv, a, args.to_vec());
+        }
+        if let (TyKind::Opt(inner), true) = (self.b.m.types.kind(rty).clone(), opt_method(&name)) {
+            let at = ms_syntax::Pos::default();
+            return self.optional_method(result, at, &name, recv, inner, args.to_vec());
+        }
+        if let (TyKind::Obj(n, _), "get_or") = (self.b.m.types.kind(rty).clone(), name.as_str())
+            && n == "Map"
+        {
+            return self.map_get_or(recv, &m.ty.params, args, result);
         }
         if let (TyKind::List(elem), "get") = (self.b.m.types.kind(rty).clone(), name.as_str()) {
             let find = |want: bool| args.iter().find(|a| (a.name.as_str() == "default") == want);
@@ -1533,7 +1543,8 @@ impl<'a> FnLower<'a> {
 
     fn optional_method(
         &mut self,
-        e: &Expr,
+        out: MTy,
+        at: ms_syntax::Pos,
         name: &str,
         recv: Val,
         inner: MTy,
@@ -1590,7 +1601,6 @@ impl<'a> FnLower<'a> {
                     .first()
                     .copied()
                     .ok_or_else(|| Error::new("missing function"))?;
-                let out = self.emty(e)?;
                 let by_map = name == "map";
                 let keep = name == "or_else";
                 self.two_ways(
@@ -1623,7 +1633,7 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
-            "ok_or" | "ok_or_else" => self.optional_ok_or(e, name, recv, args),
+            "ok_or" | "ok_or_else" => self.optional_ok_or(out, at, name, recv, args),
             _ => Err(Error::new(format!("unsupported Optional method {name}"))),
         }
     }
@@ -1631,14 +1641,14 @@ impl<'a> FnLower<'a> {
     /// `opt.ok_or(cause)` and `opt.ok_or_else(create)`.
     fn optional_ok_or(
         &mut self,
-        e: &Expr,
+        out: MTy,
+        at: ms_syntax::Pos,
         name: &str,
         recv: Val,
         args: Vec<NArg>,
     ) -> Result<Val, Error> {
         let r = recv.v;
         let some = self.b.opt_is_some(r);
-        let out = self.emty(e)?;
         let TyKind::Alt(res) = self.b.m.types.kind(out).clone() else {
             return Err(Error::new("ok_or without a Result type"));
         };
@@ -1650,7 +1660,7 @@ impl<'a> FnLower<'a> {
             index(self.b.m, "error").ok_or_else(|| Error::new("not a Result"))?,
         );
         let cause = args.first().copied();
-        let line = e.pos.line;
+        let line = at.line;
         let file = self.b.m.files[self.file as usize].clone();
         self.two_ways(
             some,
