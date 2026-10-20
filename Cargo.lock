@@ -1248,6 +1248,9 @@ dependencies = [
 [[package]]
 name = "ms-std-math"
 version = "0.1.0"
+dependencies = [
+ "ms-std-core",
+]
 
 [[package]]
 name = "ms-std-net"
