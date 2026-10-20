@@ -9,10 +9,6 @@ description = "Manuscript native runtime: allocator, reference counting, strings
 crate-type = ["staticlib", "rlib"]
 
 [features]
-# Default build is freestanding (`no_std` over libc) and defines the panic
-# handler, which is what the staticlib needs. `std` links the standard library
-# instead (no panic handler), for Rust crates that embed the runtime as an rlib.
-std = []
 # Allocation counters (always on in unit tests).
 stats = []
 

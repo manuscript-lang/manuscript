@@ -11,6 +11,8 @@
 #![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
+#[cfg(unix)]
+extern crate std;
 
 mod inventory;
 
@@ -320,6 +322,10 @@ mod imp {
     use ms_rt_abi::{
         STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED,
     };
+    use rustix::io::Errno;
+    use rustix::process::{Pid, Signal, getpriority_process, getuid, setpriority_process};
+    use rustix::system::uname as host_uname;
+    use std::os::unix::ffi::OsStrExt;
 
     pub enum Field {
         Release,
@@ -337,49 +343,30 @@ mod imp {
 
     /// Signal and priority constants by name; the values are the host's.
     pub const CONSTANTS: &[(&str, i64)] = &[
-        ("SIGHUP", libc::SIGHUP as i64),
-        ("SIGINT", libc::SIGINT as i64),
-        ("SIGQUIT", libc::SIGQUIT as i64),
-        ("SIGABRT", libc::SIGABRT as i64),
-        ("SIGKILL", libc::SIGKILL as i64),
-        ("SIGUSR1", libc::SIGUSR1 as i64),
-        ("SIGSEGV", libc::SIGSEGV as i64),
-        ("SIGUSR2", libc::SIGUSR2 as i64),
-        ("SIGPIPE", libc::SIGPIPE as i64),
-        ("SIGALRM", libc::SIGALRM as i64),
-        ("SIGTERM", libc::SIGTERM as i64),
-        ("SIGCHLD", libc::SIGCHLD as i64),
-        ("SIGCONT", libc::SIGCONT as i64),
-        ("SIGSTOP", libc::SIGSTOP as i64),
+        ("SIGHUP", Signal::HUP.as_raw() as i64),
+        ("SIGINT", Signal::INT.as_raw() as i64),
+        ("SIGQUIT", Signal::QUIT.as_raw() as i64),
+        ("SIGABRT", Signal::ABORT.as_raw() as i64),
+        ("SIGKILL", Signal::KILL.as_raw() as i64),
+        ("SIGUSR1", Signal::USR1.as_raw() as i64),
+        ("SIGSEGV", Signal::SEGV.as_raw() as i64),
+        ("SIGUSR2", Signal::USR2.as_raw() as i64),
+        ("SIGPIPE", Signal::PIPE.as_raw() as i64),
+        ("SIGALRM", Signal::ALARM.as_raw() as i64),
+        ("SIGTERM", Signal::TERM.as_raw() as i64),
+        ("SIGCHLD", Signal::CHILD.as_raw() as i64),
+        ("SIGCONT", Signal::CONT.as_raw() as i64),
+        ("SIGSTOP", Signal::STOP.as_raw() as i64),
         ("PRIORITY_LOW", 19),
         ("PRIORITY_HIGH", -20),
     ];
 
-    /// This thread's `errno` slot.
-    fn errno_slot() -> *mut i32 {
-        // SAFETY: the libc accessor returns the calling thread's slot.
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        unsafe {
-            libc::__errno_location()
-        }
-        // SAFETY: the libc accessor returns the calling thread's slot.
-        #[cfg(not(any(target_os = "linux", target_os = "android")))]
-        unsafe {
-            libc::__error()
-        }
-    }
-
-    pub(crate) fn errno() -> i32 {
-        // SAFETY: the slot is this thread's.
-        unsafe { *errno_slot() }
-    }
-
     /// The status of an OS error; other errors are `Failed` with a fixed text.
-    fn status_of(e: i32) -> u8 {
+    fn status_of(e: Errno) -> u8 {
         match e {
-            libc::EINVAL => STATUS_INVALID_INPUT,
-            libc::ESRCH | libc::ENOENT => STATUS_NOT_FOUND,
-            libc::EPERM | libc::EACCES => STATUS_PERMISSION_DENIED,
+            Errno::INVAL => STATUS_INVALID_INPUT,
+            Errno::SRCH | Errno::NOENT => STATUS_NOT_FOUND,
+            Errno::PERM | Errno::ACCESS => STATUS_PERMISSION_DENIED,
             _ => {
                 ms_std_rt::record_failure(b"system call failed".to_vec());
                 STATUS_FAILED
@@ -401,50 +388,28 @@ mod imp {
     }
 
     pub fn hostname() -> Result<Vec<u8>, u8> {
-        let mut buf = vec![0u8; 256];
-        // SAFETY: the buffer is writable for its length.
-        let rc = unsafe { libc::gethostname(buf.as_mut_ptr().cast(), buf.len()) };
-        if rc != 0 {
-            return Err(status_of(errno()));
-        }
-        let end = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-        buf.truncate(end);
-        utf8(buf)
+        utf8(host_uname().nodename().to_bytes().to_vec())
     }
 
     pub fn uname(field: Field) -> Result<Vec<u8>, u8> {
-        // SAFETY: `utsname` is plain data that `uname` fills.
-        let mut u: libc::utsname = unsafe { core::mem::zeroed() };
-        // SAFETY: `u` is writable.
-        if unsafe { libc::uname(&mut u) } != 0 {
-            return Err(status_of(errno()));
-        }
+        let u = host_uname();
         let text = match field {
-            Field::Release => &u.release,
-            Field::Version => &u.version,
-            Field::Machine => &u.machine,
+            Field::Release => u.release(),
+            Field::Version => u.version(),
+            Field::Machine => u.machine(),
         };
-        // SAFETY: `uname` NUL-terminates every field.
-        let bytes = unsafe { CStr::from_ptr(text.as_ptr()) }.to_bytes();
-        utf8(bytes.trim_ascii().to_vec())
+        utf8(text.to_bytes().trim_ascii().to_vec())
     }
 
     pub fn home_directory() -> Result<Vec<u8>, u8> {
-        // SAFETY: the name is NUL-terminated.
-        let env = unsafe { libc::getenv(c"HOME".as_ptr()) };
-        if !env.is_null() {
-            // SAFETY: `getenv` returns a NUL-terminated string.
-            let home = unsafe { CStr::from_ptr(env) }.to_bytes();
-            if !home.is_empty() {
-                return utf8(home.to_vec());
-            }
+        if let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) {
+            return utf8(home.as_bytes().to_vec());
         }
         user().map(|u| u.home)
     }
 
     pub fn user() -> Result<User, u8> {
-        // SAFETY: plain system call.
-        let uid = unsafe { libc::getuid() };
+        let uid = getuid().as_raw();
         let mut buf = vec![0u8; 1024];
         loop {
             // SAFETY: `passwd` is plain data that `getpwuid_r` fills.
@@ -459,7 +424,7 @@ mod imp {
                 continue;
             }
             if rc != 0 {
-                return Err(status_of(rc));
+                return Err(status_of(Errno::from_raw_os_error(rc)));
             }
             if found.is_null() {
                 return Err(STATUS_NOT_FOUND);
@@ -481,32 +446,27 @@ mod imp {
         }
     }
 
-    pub fn get_priority(pid: i64) -> Result<i64, u8> {
-        if !(0..=i64::from(i32::MAX)).contains(&pid) {
-            return Err(STATUS_INVALID_INPUT);
-        }
-        // SAFETY: -1 is a valid priority, so `errno` is cleared first and read after.
-        unsafe {
-            *errno_slot() = 0;
-            let p = libc::getpriority(libc::PRIO_PROCESS, pid as libc::id_t);
-            if p == -1 && errno() != 0 {
-                return Err(status_of(errno()));
-            }
-            Ok(i64::from(p))
+    /// `None` is the calling process, as for pid 0.
+    fn process(pid: i64) -> Result<Option<Pid>, u8> {
+        let raw = i32::try_from(pid).map_err(|_| STATUS_INVALID_INPUT)?;
+        match raw {
+            0 => Ok(None),
+            1.. => Ok(Pid::from_raw(raw)),
+            _ => Err(STATUS_INVALID_INPUT),
         }
     }
 
+    pub fn get_priority(pid: i64) -> Result<i64, u8> {
+        let pid = process(pid)?;
+        getpriority_process(pid).map(i64::from).map_err(status_of)
+    }
+
     pub fn set_priority(pid: i64, priority: i64) -> Result<(), u8> {
-        if !(0..=i64::from(i32::MAX)).contains(&pid) || !(-20..=19).contains(&priority) {
+        let pid = process(pid)?;
+        if !(-20..=19).contains(&priority) {
             return Err(STATUS_INVALID_INPUT);
         }
-        // SAFETY: plain system call.
-        let rc =
-            unsafe { libc::setpriority(libc::PRIO_PROCESS, pid as libc::id_t, priority as i32) };
-        if rc != 0 {
-            return Err(status_of(errno()));
-        }
-        Ok(())
+        setpriority_process(pid, priority as i32).map_err(status_of)
     }
 }
 

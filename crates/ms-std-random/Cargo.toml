@@ -12,7 +12,7 @@ ms-std-core = { path = "../ms-std-core" }
 ms-std-rt = { path = "../ms-std-rt" }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

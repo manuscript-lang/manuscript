@@ -156,11 +156,11 @@ impl Stream {
     pub fn stat(&mut self) -> Res<Info> {
         self.admit(Access::Any)?;
         let st = sys::fstat(self.fd).map_err(|e| self.fail("stat", e))?;
-        let name = path::stat_name(&self.name);
-        if core::str::from_utf8(name).is_err() {
+        let name = path::base(&self.name);
+        if core::str::from_utf8(&name).is_err() {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
-        Ok(ops::info_of(&st, name, sys::birth_time_fd(self.fd)))
+        Ok(ops::info_of(&st, &name))
     }
 
     pub fn truncate(&mut self, size: i64) -> Res<()> {

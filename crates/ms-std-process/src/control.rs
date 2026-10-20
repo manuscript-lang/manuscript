@@ -3,11 +3,7 @@ use crate::envfile;
 #[cfg(unix)]
 use alloc::string::String;
 use alloc::vec::Vec;
-#[cfg(unix)]
-use core::ffi::CStr;
-#[cfg(unix)]
-use ms_rt_abi::STATUS_UNSUPPORTED;
-use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::ops::read_bounded;
 use ms_std_fs::sys::{self, CPath};
@@ -31,20 +27,41 @@ fn nul_free(bytes: &[u8]) -> bool {
     !bytes.contains(&0)
 }
 
-#[cfg(unix)]
 pub fn working_directory() -> Res<Vec<u8>> {
-    let cwd = sys::getcwd().map_err(|e| Fail::errno(e, "getwd", b""))?;
-    utf8(cwd)
+    let cwd = std::env::current_dir().map_err(|e| Fail::errno(os_code(&e), "getwd", b""))?;
+    let text = cwd
+        .into_os_string()
+        .into_string()
+        .map_err(|_| Fail::status(STATUS_UNSUPPORTED))?;
+    Ok(text.into_bytes())
 }
 
-#[cfg(unix)]
 pub fn change_directory(path: &[u8]) -> Res<()> {
-    let p = CPath::new(path).ok_or_else(Fail::invalid)?;
-    // SAFETY: `p` is NUL-terminated.
-    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
-        return Err(Fail::errno(sys::errno(), "chdir", path));
+    let dir = os_str(path).ok_or_else(Fail::invalid)?;
+    std::env::set_current_dir(&dir).map_err(|e| Fail::errno(os_code(&e), "chdir", path))
+}
+
+/// The OS error code of `e`, or `EINVAL`-like `0` when it carries none.
+fn os_code(e: &std::io::Error) -> i32 {
+    e.raw_os_error().unwrap_or(0)
+}
+
+/// `bytes` as an OS string; `None` when empty, NUL-containing or (on Windows) not UTF-8.
+fn os_str(bytes: &[u8]) -> Option<std::ffi::OsString> {
+    if bytes.is_empty() || bytes.contains(&0) {
+        return None;
     }
-    Ok(())
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        Some(std::ffi::OsString::from_vec(bytes.to_vec()))
+    }
+    #[cfg(windows)]
+    {
+        core::str::from_utf8(bytes)
+            .ok()
+            .map(std::ffi::OsString::from)
+    }
 }
 
 #[cfg(unix)]
@@ -219,68 +236,38 @@ pub fn set_title(title: &[u8]) -> Res<()> {
 // ---------------------------------------------------------------------------
 
 /// The live environment as `(name, value)` pairs; any non-UTF-8 entry is `Unsupported`.
-#[cfg(unix)]
 pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
     let mut out = Vec::new();
-    // SAFETY: `environ` is a NULL-terminated array of C strings.
-    unsafe {
-        let mut p = environ;
-        while !(*p).is_null() {
-            let entry = CStr::from_ptr(*p).to_bytes();
-            if core::str::from_utf8(entry).is_err() {
-                return Err(Fail::status(STATUS_UNSUPPORTED));
-            }
-            if let Some(at) = entry.iter().position(|&c| c == b'=') {
-                out.push((entry[..at].to_vec(), entry[at + 1..].to_vec()));
-            }
-            p = p.add(1);
-        }
+    for (name, value) in std::env::vars_os() {
+        let (Some(name), Some(value)) = (name.to_str(), value.to_str()) else {
+            return Err(Fail::status(STATUS_UNSUPPORTED));
+        };
+        out.push((name.as_bytes().to_vec(), value.as_bytes().to_vec()));
     }
     Ok(out)
 }
 
-#[cfg(unix)]
-unsafe extern "C" {
-    static environ: *const *const libc::c_char;
-}
-
-#[cfg(unix)]
 pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
-    if name.is_empty() || name.contains(&b'=') || name.contains(&0) {
+    if name.contains(&b'=') || value.is_some_and(|v| v.contains(&0)) {
         return Err(Fail::invalid());
     }
-    let n = CPath::new(name).ok_or_else(Fail::invalid)?;
-    match value {
-        Some(v) => {
-            let v = CPath::new(v).ok_or_else(Fail::invalid)?;
-            // SAFETY: both strings are NUL-terminated.
-            if unsafe { libc::setenv(n.as_ptr(), v.as_ptr(), 1) } != 0 {
-                return Err(Fail::errno(sys::errno(), "setenv", name));
-            }
-        }
-        None => {
-            // SAFETY: `n` is NUL-terminated.
-            if unsafe { libc::unsetenv(n.as_ptr()) } != 0 {
-                return Err(Fail::errno(sys::errno(), "unsetenv", name));
-            }
+    let key = os_str(name).ok_or_else(Fail::invalid)?;
+    // SAFETY: the runtime is single threaded, so nothing reads the environment concurrently.
+    unsafe {
+        match value {
+            Some(v) => std::env::set_var(&key, os_str_value(v).ok_or_else(Fail::invalid)?),
+            None => std::env::remove_var(&key),
         }
     }
     Ok(())
 }
 
-/// Whether the environment already has the variable `name`.
-#[cfg(unix)]
-fn has_variable(name: &CPath) -> bool {
-    // SAFETY: `name` is NUL-terminated.
-    !unsafe { libc::getenv(name.as_ptr()) }.is_null()
-}
-
-#[cfg(windows)]
-fn has_variable(name: &CPath) -> bool {
-    alloc::ffi::CString::new(name.bytes())
-        .ok()
-        .and_then(|c| sys::env(&c))
-        .is_some()
+/// Like [`os_str`] but an empty value is allowed.
+fn os_str_value(bytes: &[u8]) -> Option<std::ffi::OsString> {
+    if bytes.is_empty() {
+        return Some(std::ffi::OsString::new());
+    }
+    os_str(bytes)
 }
 
 pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
@@ -297,8 +284,8 @@ pub fn load_environment(path: &[u8], max: i64) -> Res<()> {
     let text = core::str::from_utf8(&data).map_err(|_| Fail::status(STATUS_INVALID_DATA))?;
     let entries = envfile::parse(text).ok_or_else(|| Fail::status(STATUS_INVALID_DATA))?;
     for (key, value) in entries {
-        let k = CPath::new(key.as_bytes()).ok_or_else(Fail::invalid)?;
-        if !has_variable(&k) {
+        let k = os_str(key.as_bytes()).ok_or_else(Fail::invalid)?;
+        if std::env::var_os(&k).is_none() {
             set_environment(key.as_bytes(), Some(value.as_bytes()))?;
         }
     }
@@ -357,22 +344,24 @@ pub struct Info {
     pub effective_gid: i64,
 }
 
+/// The path of the running executable.
+pub(crate) fn executable() -> Res<Vec<u8>> {
+    let path = std::env::current_exe().map_err(|e| Fail::errno(os_code(&e), "executable", b""))?;
+    let text = path
+        .into_os_string()
+        .into_string()
+        .map_err(|_| Fail::status(STATUS_UNSUPPORTED))?;
+    Ok(text.into_bytes())
+}
+
 #[cfg(unix)]
 pub fn info() -> Res<Info> {
-    #[cfg(target_os = "linux")]
-    let executable = {
-        let p = CPath::new(b"/proc/self/exe").expect("no NUL");
-        sys::readlink(&p).map_err(|e| Fail::errno(e, "readlink", b"/proc/self/exe"))?
-    };
-    #[cfg(not(target_os = "linux"))]
-    let executable = Vec::new();
-    let executable = utf8(executable)?;
     // SAFETY: plain system calls.
     unsafe {
         Ok(Info {
-            pid: libc::getpid() as i64,
+            pid: std::process::id() as i64,
             parent_pid: libc::getppid() as i64,
-            executable,
+            executable: executable()?,
             uid: libc::getuid() as i64,
             gid: libc::getgid() as i64,
             effective_uid: libc::geteuid() as i64,
