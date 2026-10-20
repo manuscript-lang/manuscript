@@ -1233,6 +1233,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-path",
  "ms-std-rt",
  "windows-sys 0.61.2",
@@ -1253,6 +1254,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-fs",
  "ms-std-rt",
 ]

@@ -269,7 +269,7 @@ mod fs_io {
             assert_eq!(msstd_fs_file_seek(handle, 0, 0, &mut size), STATUS_OK);
             assert_eq!(msstd_fs_file_read_file(handle, 0, 0, &mut out), STATUS_OK);
             assert_eq!(contents(&out), b"aXYd");
-            msstd_io_close(handle);
+            msstd_io_close(handle.cast());
             assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
             ms_std_rt::release(handle.cast());
 
@@ -538,10 +538,10 @@ mod process {
             let stdout = msstd_process_subprocess_stream(child, 1);
             let mut data = empty();
             ms_std_rt::write_bytes(b"ping", &mut data);
-            assert_eq!(msstd_io_write_bytes(stdin, &data), STATUS_OK);
-            msstd_io_close(stdin);
+            assert_eq!(msstd_io_write_bytes(stdin.cast(), &data), STATUS_OK);
+            msstd_io_close(stdin.cast());
             let mut chunk = empty();
-            assert_eq!(msstd_io_read(stdout, 0, 0, &mut chunk), STATUS_OK);
+            assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk), STATUS_OK);
             assert_eq!(ms_std_rt::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(

@@ -6,9 +6,6 @@
 //! its Go-style text from `msstd_io_failure_message`. Outputs are written only on success.
 //! Generic `copy`/`read_all`/`read_line` over user-defined `ReadStream`s stay compiler-lowered.
 #![no_std]
-// The exports below are the C ABI compiled code links against.
-#![allow(unsafe_code)]
-#![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
 
@@ -16,124 +13,95 @@ pub use ms_std_fs::stream;
 
 mod accumulate;
 
-use ms_rt_abi::{STATUS_NONE, STATUS_OK, StrObj, VecVal};
-use ms_std_rt::{
-    Handle, fault, new_handle, new_string, record_failure, str_bytes, vec_bytes, write_bytes,
-};
+use alloc::vec::Vec;
+use ms_rt_abi::{STATUS_NONE, StrObj};
+use ms_std_core::{ObjMut, ObjRef, Object, StatusCode, Text, native};
+use ms_std_rt::{fault, record_failure};
 use stream::{IoFail, IoRes, Stream};
 
-type Host = Handle<Stream>;
-
-fn done<T>(r: IoRes<T>, ok: impl FnOnce(T)) -> u8 {
-    match r {
-        Ok(v) => {
-            ok(v);
-            STATUS_OK
-        }
-        Err(IoFail { status, message }) => {
-            record_failure(message);
-            status
-        }
-    }
-}
-
-fn optional(has: u8, v: i64) -> Option<i64> {
-    (has != 0).then_some(v)
-}
-
-/// The text of the last `FAILED` stream result.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_io_failure_message() -> *mut StrObj {
-    ms_std_rt::failure_message()
-}
-
-/// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_io_standard(which: i64) -> *mut Host {
-    new_handle(Stream::standard(which))
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8 {
-    // SAFETY: arguments follow the ABI contract.
-    done(Stream::open(unsafe { str_bytes(path) }), |s| unsafe {
-        *out = new_handle(s)
+/// A stream result as a status: a failure records its text for `msstd_io_failure_message`.
+fn status<T>(r: IoRes<T>) -> Result<T, StatusCode> {
+    r.map_err(|IoFail { status, message }| {
+        record_failure(message);
+        StatusCode(status)
     })
 }
 
-/// Reads a chunk; `STATUS_NONE` at end of stream.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_read(
-    h: *mut Host,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `h` is a live stream handle.
-    let r = unsafe { (*h).value.read(optional(has_max, max)) };
-    match r {
-        Ok(None) => STATUS_NONE,
-        // SAFETY: `out` is writable.
-        other => done(other, |c| unsafe {
-            write_bytes(&c.unwrap_or_default(), out)
-        }),
+/// Like [`status`], with end of stream (`None`) as `STATUS_NONE`.
+fn chunk(r: IoRes<Option<Vec<u8>>>) -> Result<Vec<u8>, StatusCode> {
+    status(r)?.ok_or(StatusCode(STATUS_NONE))
+}
+
+fn optional(has: bool, v: i64) -> Option<i64> {
+    has.then_some(v)
+}
+
+native! {
+    /// The text of the last `FAILED` stream result.
+    safe fn msstd_io_failure_message() -> *mut StrObj {
+        ms_std_rt::failure_message()
     }
-}
 
-/// Reads one line without its ending; `STATUS_NONE` at end of stream.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_read_line(
-    h: *mut Host,
-    has_max: u8,
-    max: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `h` is a live stream handle.
-    let r = unsafe { (*h).value.read_line(optional(has_max, max)) };
-    match r {
-        Ok(None) => STATUS_NONE,
-        // SAFETY: `out` is writable.
-        other => done(other, |l| unsafe {
-            *out = new_string(&l.unwrap_or_default())
-        }),
+    /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
+    safe fn msstd_io_standard(which: i64) -> Object<Stream> {
+        Object(Stream::standard(which))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_write_bytes(h: *mut Host, data: *const VecVal) -> u8 {
-    // SAFETY: `h` is a live stream handle and `data` a live byte vector.
-    done(unsafe { (*h).value.write(vec_bytes(data)) }, |()| ())
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_write(h: *mut Host, data: *const StrObj) -> u8 {
-    // SAFETY: `h` is a live stream handle and `data` a live string.
-    done(unsafe { (*h).value.write(str_bytes(data)) }, |()| ())
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_flush(h: *mut Host) -> u8 {
-    // SAFETY: `h` is a live stream handle.
-    done(unsafe { (*h).value.flush() }, |()| ())
-}
-
-/// Closes the stream; a failing descriptor release raises a fault with its text.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_close(h: *mut Host) {
-    // SAFETY: `h` is a live stream handle.
-    if let Err(IoFail { message, .. }) = unsafe { (*h).value.close() } {
-        fault(core::str::from_utf8(&message).unwrap_or("close failed"));
+    fn msstd_io_open(path: &str) -> Result<Object<Stream>, StatusCode> {
+        status(Stream::open(path.as_bytes())).map(Object)
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_io_is_closed(h: *const Host) -> u8 {
-    // SAFETY: `h` is a live stream handle.
-    unsafe { (*h).value.is_closed() as u8 }
+    /// Reads a chunk; `STATUS_NONE` at end of stream.
+    fn msstd_io_read(
+        h: ObjMut<Stream>,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<u8>, StatusCode> {
+        let mut h = h;
+        chunk(h.read(optional(has_max, max)))
+    }
+
+    /// Reads one line without its ending; `STATUS_NONE` at end of stream.
+    fn msstd_io_read_line(
+        h: ObjMut<Stream>,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Text, StatusCode> {
+        let mut h = h;
+        chunk(h.read_line(optional(has_max, max))).map(Text)
+    }
+
+    fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]) -> Result<(), StatusCode> {
+        let mut h = h;
+        status(h.write(data))
+    }
+
+    fn msstd_io_write(h: ObjMut<Stream>, data: &str) -> Result<(), StatusCode> {
+        let mut h = h;
+        status(h.write(data.as_bytes()))
+    }
+
+    fn msstd_io_flush(h: ObjMut<Stream>) -> Result<(), StatusCode> {
+        let mut h = h;
+        status(h.flush())
+    }
+
+    /// Closes the stream; a failing descriptor release raises a fault with its text.
+    fn msstd_io_close(h: ObjMut<Stream>) -> () {
+        let mut h = h;
+        if let Err(IoFail { message, .. }) = h.close() {
+            fault(core::str::from_utf8(&message).unwrap_or("close failed"));
+        }
+    }
+
+    fn msstd_io_is_closed(h: ObjRef<Stream>) -> bool {
+        h.is_closed()
+    }
 }
 
 /// Stand-ins for the runtime symbols `ms-std-rt` links against, so the crate's unit tests link alone.
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod runtime_stubs {
     #[unsafe(no_mangle)]
     pub static msrt_cancel_flag: u8 = 0;

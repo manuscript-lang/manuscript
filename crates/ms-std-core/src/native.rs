@@ -573,19 +573,20 @@ unsafe impl<'a, T: IntoAbi> FromAbi<'a> for Out<'a, T> {
     }
 }
 
-/// A reference-counted runtime object (header plus a pointer to a boxed Rust value), returned to
-/// Manuscript as a `Shared`-class handle. The runtime frees the value when the count reaches zero.
+/// A reference-counted runtime object (header followed by the Rust value), returned to Manuscript
+/// as a `Shared`-class handle. The runtime drops the value when the count reaches zero. The layout
+/// matches `ms_std_rt::Handle<T>`, so crates move between the two one function at a time.
 #[repr(C)]
 pub struct ObjCell<T> {
     header: ms_rt_abi::Obj,
-    state: *mut T,
+    value: T,
 }
 
 unsafe extern "C" fn cell_drop<T>(o: *mut ms_rt_abi::Obj) {
     let c = o.cast::<ObjCell<T>>();
     // SAFETY: `o` is an `ObjCell<T>` built by `Object::into_raw`; freed once, at count zero.
     unsafe {
-        drop(Box::from_raw((*c).state));
+        core::ptr::drop_in_place(&mut (*c).value);
         msrt_free(o.cast());
     }
 }
@@ -618,7 +619,7 @@ impl<T: AbiHandle> IntoAbi for Object<T> {
                     rc: 1,
                     drop: Some(cell_drop::<T>),
                 },
-                state: Box::into_raw(Box::new(self.0)),
+                value: self.0,
             });
             p
         }
@@ -628,7 +629,7 @@ impl<T: AbiHandle> IntoAbi for Object<T> {
 unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjRef<'a, T> {
     unsafe fn from_raw(raw: *const ObjCell<T>) -> ObjRef<'a, T> {
         // SAFETY: caller contract.
-        ObjRef(unsafe { &*(*raw).state })
+        ObjRef(unsafe { &(*raw).value })
     }
 }
 
@@ -654,7 +655,7 @@ impl<T: AbiHandle> AbiType for ObjMut<'_, T> {
 unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjMut<'a, T> {
     unsafe fn from_raw(raw: *mut ObjCell<T>) -> ObjMut<'a, T> {
         // SAFETY: caller contract.
-        ObjMut(unsafe { &mut *(*raw).state })
+        ObjMut(unsafe { &mut (*raw).value })
     }
 }
 
