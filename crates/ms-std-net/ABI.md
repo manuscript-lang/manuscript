@@ -152,8 +152,9 @@ idle_timeout: OptWire, decompress: u8, cookies: u8, tls: TlsOptionsWire }`;
 max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `RequestWire
 { method, path, query, protocol, headers, body }` and `ResponseWire { status, headers,
 body }` (all fields owned, +1); `ClientResponseWire { status, headers, protocol, body }`;
-`MetadataWire { status, headers, protocol }`; `StreamWire { data, read }` borrows a
-`ReadStream` for uploads (`read` follows the `Connection.read` convention).
+`MetadataWire { status, headers, protocol }`; `request_stream` takes a `src`
+closure (compiler generated, borrowed for the call) wrapping the `ReadStream`; its code word
+follows the `Connection.read` convention: `read(env, has_max, max, out, present, err) -> status`.
 
 ```text
 msrt_net_network_http_client(net, opts, out, err) -> u8

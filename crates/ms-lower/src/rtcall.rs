@@ -467,6 +467,18 @@ impl FnLower<'_> {
                     vals.push(value);
                     i += 1;
                 }
+                "src" => {
+                    // The upload of a request: the closure the runtime reads chunks through.
+                    let input = *inputs
+                        .get(cursor)
+                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
+                    cursor += 1;
+                    let stream = input
+                        .val
+                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
+                    let env = self.upload_env(stream)?;
+                    vals.push(env);
+                }
                 "env" => {
                     // The handler of a server: the closure the runtime calls per request.
                     let input = *inputs
