@@ -406,4 +406,3 @@ impl SetBuilder[T]:
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]:
-
