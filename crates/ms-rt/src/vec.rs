@@ -298,6 +298,16 @@ pub unsafe extern "C-unwind" fn msrt_list_index_of(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&*v, &*d);
+        if d.kind == KIND_INT && v.len > 0 {
+            let items = core::slice::from_raw_parts(v.ptr as *const i64, v.len);
+            return match find_int(items, *(probe as *const i64)) {
+                Some(i) => {
+                    *out = i as i64;
+                    1
+                }
+                None => 0,
+            };
+        }
         for i in 0..v.len {
             if slot_eq(d, elem(v, d, i), probe) {
                 *out = i as i64;
@@ -306,6 +316,19 @@ pub unsafe extern "C-unwind" fn msrt_list_index_of(
         }
         0
     }
+}
+
+/// Index of the first `target` in `items`; 8 elements are compared per step so the scan vectorizes.
+fn find_int(items: &[i64], target: i64) -> Option<usize> {
+    let (chunks, rest) = items.as_chunks::<8>();
+    let mut base = 0;
+    for chunk in chunks {
+        if chunk.iter().fold(false, |hit, &x| hit | (x == target)) {
+            return chunk.iter().position(|&x| x == target).map(|j| base + j);
+        }
+        base += 8;
+    }
+    rest.iter().position(|&x| x == target).map(|j| base + j)
 }
 
 #[unsafe(no_mangle)]
@@ -1459,6 +1482,20 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn find_int_matches_a_plain_scan() {
+        for len in 0..40usize {
+            let items: Vec<i64> = (0..len as i64).map(|i| i * 3 % 7).collect();
+            for target in -1..8 {
+                assert_eq!(
+                    find_int(&items, target),
+                    items.iter().position(|&x| x == target),
+                    "{items:?} {target}"
+                );
+            }
+        }
+    }
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::testutil;
 
