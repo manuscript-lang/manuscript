@@ -17,6 +17,8 @@ const CLEANUP_GRACE_SECS: u32 = 30;
 
 static ARGC: Global<i32> = Global::new(0);
 static ARGV: Global<*const *const u8> = Global::new(core::ptr::null());
+/// Leading program arguments that `msrt_args` hides: the test runner's selector.
+static ARG_SKIP: Global<i32> = Global::new(0);
 static MAIN_FN: Global<Option<extern "C-unwind" fn() -> i64>> = Global::new(None);
 static MAIN_RESULT: Global<i64> = Global::new(0);
 /// `CLOCK_MONOTONIC` nanoseconds when the runtime started; 0 before `msrt_start`.
@@ -259,25 +261,38 @@ pub unsafe extern "C-unwind" fn msrt_argv(out: *mut VecVal) {
     }
 }
 
-/// `args()`: `List[String]` of the program arguments (argv[1..]).
+/// The test runner calls this once it has read the test selector, so `args()` is the
+/// program's own arguments.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_args_consume() {
+    // SAFETY: the runner calls this once, before any task runs.
+    unsafe { *ARG_SKIP.ptr() = 1 };
+}
+
+/// `args()`: `List[String]` of the program arguments (argv[1..], less the test selector).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_args(out: *mut VecVal) {
     // SAFETY: argv was recorded by `msrt_start` (or is empty).
     unsafe {
         let (argc, argv) = (*ARGC.ptr(), *ARGV.ptr());
-        let n = if argc > 1 { argc as usize - 1 } else { 0 };
+        let first = 1 + *ARG_SKIP.ptr();
+        let n = if argc > first {
+            (argc - first) as usize
+        } else {
+            0
+        };
         let p = if n == 0 {
             core::ptr::null_mut()
         } else {
             alloc::alloc(n * 8)
         } as *mut *mut ms_rt_abi::StrObj;
         for i in 0..n {
-            let mut a = *argv.add(i + 1);
+            let mut a = *argv.add(i + first as usize);
             let mut len = 0;
             while *a.add(len) != 0 {
                 len += 1;
             }
-            a = *argv.add(i + 1);
+            a = *argv.add(i + first as usize);
             *p.add(i) = string::from_bytes(core::slice::from_raw_parts(a, len));
         }
         *out = VecVal {

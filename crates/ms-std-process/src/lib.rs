@@ -624,6 +624,96 @@ pub unsafe extern "C" fn msstd_process_subprocess_close(h: *mut ChildHandle) {
     }
 }
 
+/// `uptime()` as `Result[Duration, ProcessError]`: the nanoseconds since the runtime started.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_elapsed(out: *mut i64) -> u8 {
+    // SAFETY: `out` is writable.
+    unsafe { out.write(uptime_ns()) };
+    STATUS_OK
+}
+
+/// The live environment as a `Map[String, String]`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8 {
+    finish(control::environment(), |pairs| {
+        // SAFETY: `out` is writable.
+        unsafe {
+            ms_std_rt::write_string_map(
+                pairs
+                    .iter()
+                    .map(|(k, v)| (k.as_slice(), ms_std_rt::MapValue::Str(v))),
+                false,
+                out,
+            );
+        }
+    })
+}
+
+/// One field of `ProcessInfo` per getter, so the generated code builds the record without a
+/// shared layout. A host that cannot answer reads as an empty or zero field.
+fn info_or_default() -> control::Info {
+    control::info().unwrap_or(control::Info {
+        pid: 0,
+        parent_pid: 0,
+        executable: Vec::new(),
+        uid: -1,
+        gid: -1,
+        effective_uid: -1,
+        effective_gid: -1,
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_pid() -> i64 {
+    info_or_default().pid
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_parent_pid() -> i64 {
+    info_or_default().parent_pid
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_executable() -> *mut StrObj {
+    new_string(&info_or_default().executable)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_process_info_arguments(out: *mut VecVal) {
+    // SAFETY: `out` is writable; `msrt_argv` initialises the list.
+    unsafe { msrt_argv(out) };
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_os() -> *mut StrObj {
+    new_string(control::OS.as_bytes())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_architecture() -> *mut StrObj {
+    new_string(control::ARCH.as_bytes())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_uid() -> i64 {
+    info_or_default().uid
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_gid() -> i64 {
+    info_or_default().gid
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_effective_uid() -> i64 {
+    info_or_default().effective_uid
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_process_info_effective_gid() -> i64 {
+    info_or_default().effective_gid
+}
+
 /// Stand-ins for the runtime symbols the crate links against, so its unit tests link alone.
 #[cfg(test)]
 mod runtime_stubs {
