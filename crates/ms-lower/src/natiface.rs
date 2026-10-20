@@ -29,6 +29,10 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("terminal/terminal", "terminal", "", 0),
     ("time/clock", "time", "", 0),
     ("time/wall_clock", "time", "", 0),
+    // The rules are the table: `path_win` forwards with the Windows flag set.
+    ("random/entropy", "random", "", 0),
+    ("path/posix", "path", "", 0),
+    ("path/win32", "path_win", "", 0),
     ("net/network", "net", "msrt_net_network", 0),
 ];
 
@@ -42,6 +46,9 @@ const UNIT_DATA: &[(&str, &str)] = &[
     ("terminal", "Terminal"),
     ("time", "Clock"),
     ("time", "WallClock"),
+    ("random", "Entropy"),
+    ("path", "PathOperations"),
+    ("path_win", "PathOperations"),
 ];
 
 /// A constant argument the runtime symbol takes after the operation's own.
@@ -321,6 +328,7 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     ("io", "Files", "open", "msstd_io_open", &[]),
+    ("random", "Entropy", "bytes", "msstd_random_os_bytes", &[]),
     ("io", "File", "read", "msstd_io_read", &[]),
     ("io", "File", "close", "msstd_io_close", &[]),
     ("io", "ReadStream", "read", "msstd_io_read", &[]),
@@ -939,8 +947,19 @@ impl Cx {
             let row = METHODS
                 .iter()
                 .find(|(md, i, op, ..)| *md == module && *i == iface_name && *op == s.name);
-            let sym = row.map(|r| r.3.to_string());
-            let extras = row.map(|r| r.4.to_vec()).unwrap_or_default();
+            let (sym, extras) =
+                if let Some(windows) = module.strip_prefix("path").map(|r| r == "_win") {
+                    // Every operation is the `msrt_path_<operation>` entry point with the rules flag.
+                    (
+                        Some(format!("msrt_path_{}", s.name)),
+                        vec![("windows", Extra::Bool(windows))],
+                    )
+                } else {
+                    (
+                        row.map(|r| r.3.to_string()),
+                        row.map(|r| r.4.to_vec()).unwrap_or_default(),
+                    )
+                };
             let mut ps = vec![Param {
                 ty: MTy::PTR,
                 mode: Mode::Borrow,
@@ -1066,12 +1085,17 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
             Extra::Int(i) => (ct::int(), fl.b.iconst(i)),
         };
-        decl.push(ct::Param { name, ty });
-        nargs.push(NArg {
-            name,
-            val: Val { v, own: false },
-            wrapped: false,
-        });
+        // The rules flag leads a path entry point's arguments.
+        let lead = sym.starts_with("msrt_path_");
+        decl.insert(if lead { 0 } else { decl.len() }, ct::Param { name, ty });
+        nargs.insert(
+            if lead { 0 } else { nargs.len() },
+            NArg {
+                name,
+                val: Val { v, own: false },
+                wrapped: false,
+            },
+        );
     }
     if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;

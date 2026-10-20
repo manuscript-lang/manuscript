@@ -193,7 +193,7 @@ impl FnLower<'_> {
 
     /// Returns `failed` (a `Result` whose error case is `err`) as the error of this operation.
     #[allow(clippy::too_many_arguments)]
-    fn fail_with(
+    pub(crate) fn fail_with(
         &mut self,
         failed: Value,
         src: AltId,
@@ -223,7 +223,7 @@ impl FnLower<'_> {
     }
 }
 
-fn case(s: &FnLower<'_>, a: AltId, name: &str) -> Result<usize, Error> {
+pub(crate) fn case(s: &FnLower<'_>, a: AltId, name: &str) -> Result<usize, Error> {
     s.b.m.alts[a.index()]
         .cases
         .iter()
@@ -232,7 +232,7 @@ fn case(s: &FnLower<'_>, a: AltId, name: &str) -> Result<usize, Error> {
 }
 
 /// The interface of `v` and the index of its method `name`.
-fn method(s: &FnLower<'_>, v: Value, name: &str) -> Result<(IfaceId, u32), Error> {
+pub(crate) fn method(s: &FnLower<'_>, v: Value, name: &str) -> Result<(IfaceId, u32), Error> {
     let TyKind::Iface(i) = s.b.m.types.kind(s.ty_of(v)).clone() else {
         return Err(Error::new("a stream operand must be an interface"));
     };

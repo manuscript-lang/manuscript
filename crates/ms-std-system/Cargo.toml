@@ -3,7 +3,7 @@ name = "ms-std-system"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript standard-library natives for @std/system (host details and priorities over libc)"
+description = "Manuscript standard-library natives for @std/system (host details and priorities over rustix)"
 
 [lib]
 crate-type = ["rlib"]
@@ -15,6 +15,7 @@ ms-std-rt = { path = "../ms-std-rt" }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", default-features = false }
+rustix = { version = "1", default-features = false, features = ["std", "process", "system", "thread", "param"] }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt", features = ["std"] }

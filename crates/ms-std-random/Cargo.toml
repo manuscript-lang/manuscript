@@ -9,6 +9,7 @@ description = "Native implementation of @std/random.ms"
 getrandom = { version = "0.4", default-features = false, features = ["sys_rng"] }
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-core = { path = "../ms-std-core" }
+ms-std-rt = { path = "../ms-std-rt" }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt", features = ["std"] }

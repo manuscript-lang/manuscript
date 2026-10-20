@@ -203,32 +203,14 @@ pub fn interfaces() -> Result<Vec<Interface>, u8> {
 
 /// The whole of `path`; `/proc` files report no size, so it reads until the end.
 #[cfg(any(target_os = "linux", target_os = "android"))]
-fn read_file(path: &core::ffi::CStr) -> Result<Vec<u8>, u8> {
-    // SAFETY: the path is NUL-terminated.
-    let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
-    if fd < 0 {
-        return Err(match crate::imp::errno() {
-            libc::ENOENT => STATUS_NOT_FOUND,
-            libc::EACCES | libc::EPERM => STATUS_PERMISSION_DENIED,
-            _ => failed(b"cannot read host statistics"),
-        });
-    }
-    let mut data = Vec::new();
-    let mut chunk = [0u8; 4096];
-    loop {
-        // SAFETY: `chunk` is writable for its length.
-        let n = unsafe { libc::read(fd, chunk.as_mut_ptr().cast(), chunk.len()) };
-        if n < 0 && crate::imp::errno() == libc::EINTR {
-            continue;
-        }
-        if n <= 0 {
-            break;
-        }
-        data.extend_from_slice(&chunk[..n as usize]);
-    }
-    // SAFETY: `fd` is open and owned here.
-    unsafe { libc::close(fd) };
-    Ok(data)
+fn read_file(path: &str) -> Result<Vec<u8>, u8> {
+    use std::io::ErrorKind;
+
+    std::fs::read(path).map_err(|e| match e.kind() {
+        ErrorKind::NotFound => STATUS_NOT_FOUND,
+        ErrorKind::PermissionDenied => STATUS_PERMISSION_DENIED,
+        _ => failed(b"cannot read host statistics"),
+    })
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -251,8 +233,8 @@ fn field<'a>(line: &'a [u8], key: &[u8]) -> Option<&'a [u8]> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn cpus() -> Result<Vec<Cpu>, u8> {
-    let stat = read_file(c"/proc/stat")?;
-    let info = read_file(c"/proc/cpuinfo").unwrap_or_default();
+    let stat = read_file("/proc/stat")?;
+    let info = read_file("/proc/cpuinfo").unwrap_or_default();
     // (model, MHz) of each `processor` block.
     let mut models: Vec<(Vec<u8>, i64)> = Vec::new();
     for line in info.split(|&b| b == b'\n') {
@@ -266,10 +248,9 @@ pub fn cpus() -> Result<Vec<Cpu>, u8> {
             }
         }
     }
-    // SAFETY: plain system call.
-    let hertz = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
-    #[allow(clippy::useless_conversion)] // `c_long` is narrower than `i64` on 32-bit hosts
-    let ticks = i64::from(hertz).max(1);
+    let ticks = i64::try_from(rustix::param::clock_ticks_per_second())
+        .unwrap_or(i64::MAX)
+        .max(1);
     let ms = |jiffies: i64| jiffies.saturating_mul(1000) / ticks;
     let mut cpus: Vec<Cpu> = Vec::new();
     for line in stat.split(|&b| b == b'\n') {
@@ -303,30 +284,29 @@ pub fn cpus() -> Result<Vec<Cpu>, u8> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
+#[allow(clippy::useless_conversion)] // `sysinfo` fields are narrower than 64 bits on 32-bit hosts
 pub fn metrics() -> Result<Metrics, u8> {
-    let mem = read_file(c"/proc/meminfo")?;
-    let kib = |key: &[u8]| {
-        mem.split(|&b| b == b'\n')
-            .find_map(|l| field(l, key))
-            .map_or(0, number)
-            .saturating_mul(1024)
-    };
-    let free = kib(b"MemFree");
-    let uptime = read_file(c"/proc/uptime")?;
-    let mut load = [0f64; 3];
-    // SAFETY: `load` is writable for three doubles.
-    if unsafe { libc::getloadavg(load.as_mut_ptr(), 3) } != 3 {
-        load = [0.0; 3];
-    }
+    let info = rustix::system::sysinfo();
+    let unit = u64::from(info.mem_unit.max(1));
+    let bytes = |n: u64| i64::try_from(n.saturating_mul(unit)).unwrap_or(i64::MAX);
+    let free = bytes(info.freeram.into());
+    // `sysinfo` has no available-memory figure; kernels before 3.14 lack `MemAvailable` too,
+    // and free memory is the honest lower bound.
+    let available = read_file("/proc/meminfo")
+        .ok()
+        .and_then(|mem| {
+            mem.split(|&b| b == b'\n')
+                .find_map(|l| field(l, b"MemAvailable"))
+                .map(number)
+        })
+        .map_or(0, |kib| kib.saturating_mul(1024));
+    // Load averages are fixed-point with 16 fractional bits.
+    let load = info.loads.map(|l| l as f64 / 65536.0);
     Ok(Metrics {
-        total_memory: kib(b"MemTotal"),
+        total_memory: bytes(info.totalram.into()),
         free_memory: free,
-        // Kernels before 3.14 lack `MemAvailable`; free memory is the honest lower bound.
-        available_memory: match kib(b"MemAvailable") {
-            0 => free,
-            n => n,
-        },
-        uptime_ns: number(&uptime).saturating_mul(1_000_000_000),
+        available_memory: if available == 0 { free } else { available },
+        uptime_ns: i64::from(info.uptime).saturating_mul(1_000_000_000),
         load,
         parallelism: parallelism(),
     })
@@ -335,15 +315,10 @@ pub fn metrics() -> Result<Metrics, u8> {
 /// Logical processors this process may run on.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn parallelism() -> i64 {
-    // SAFETY: `cpu_set_t` is plain data that the call fills.
-    let mut set: libc::cpu_set_t = unsafe { core::mem::zeroed() };
-    // SAFETY: `set` is writable for the stated size.
-    let rc = unsafe { libc::sched_getaffinity(0, core::mem::size_of_val(&set), &mut set) };
-    if rc != 0 {
-        return crate::imp::cpu_count();
+    match rustix::thread::sched_getaffinity(None) {
+        Ok(set) => i64::from(set.count()).max(1),
+        Err(_) => crate::imp::cpu_count(),
     }
-    // SAFETY: `set` was filled above.
-    i64::from(unsafe { libc::CPU_COUNT(&set) }).max(1)
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
