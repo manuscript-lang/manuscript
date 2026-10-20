@@ -394,11 +394,18 @@ impl<'m> Gen<'m> {
 }
 
 pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
+    let isa_builder = cranelift_native::builder().map_err(|e| e.to_string())?;
+    let arm64_coff = windows_arm64(isa_builder.triple());
     let mut flags = settings::builder();
     flags
         .set("opt_level", opts.opt_level)
         .map_err(|e| e.to_string())?;
-    flags.set("is_pic", "true").map_err(|e| e.to_string())?;
+    // Cranelift's ARM64 COFF writer supports absolute addresses, but not GOT or
+    // ADRP data relocations. The PE linker records these absolute addresses in
+    // the image's base-relocation table so the loader can still relocate it.
+    flags
+        .set("is_pic", if arm64_coff { "false" } else { "true" })
+        .map_err(|e| e.to_string())?;
     flags
         .set("preserve_frame_pointers", "true")
         .map_err(|e| e.to_string())?;
@@ -408,8 +415,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     flags
         .set("unwind_info", "false")
         .map_err(|e| e.to_string())?;
-    let isa = cranelift_native::builder()
-        .map_err(|e| e.to_string())?
+    let isa = isa_builder
         .finish(settings::Flags::new(flags))
         .map_err(|e| e.to_string())?;
     let builder = ObjectBuilder::new(isa, m.name.as_str(), default_libcall_names())
@@ -560,6 +566,14 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     product.emit().map_err(|e| Error(e.to_string()))
 }
 
+fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
+    triple.operating_system == target_lexicon::OperatingSystem::Windows
+        && matches!(
+            triple.architecture,
+            target_lexicon::Architecture::Aarch64(_)
+        )
+}
+
 /// Layout facts of the emitted `ms.tables` blob needed to relocate it after `finish`.
 struct Tables {
     id: DataId,
@@ -707,6 +721,28 @@ fn define_with(
     name: &str,
     source: Option<&Func>,
 ) -> Result<(), Error> {
+    if windows_arm64(g.module.isa().triple()) {
+        // Non-PIC near symbols also select unsupported ADRP relocations.
+        // Far symbol addresses use the COFF writer's supported Abs8 form.
+        for value in ctx.func.global_values.values_mut() {
+            if let ir::GlobalValueData::Symbol { colocated, .. } = value {
+                *colocated = false;
+            }
+        }
+        let addresses: Vec<_> = ctx
+            .func
+            .layout
+            .blocks()
+            .flat_map(|block| ctx.func.layout.block_insts(block))
+            .filter_map(|inst| match ctx.func.dfg.insts[inst] {
+                ir::InstructionData::FuncAddr { func_ref, .. } => Some(func_ref),
+                _ => None,
+            })
+            .collect();
+        for func_ref in addresses {
+            ctx.func.dfg.ext_funcs[func_ref].colocated = false;
+        }
+    }
     if g.opts.dump_clif {
         eprintln!("; {name}\n{}", ctx.func.display());
     }
