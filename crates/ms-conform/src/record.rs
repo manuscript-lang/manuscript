@@ -51,7 +51,10 @@ fn unrecordable(obs: &Json) -> Option<String> {
         if obs.get(key).is_some() {
             return Some(format!(
                 "observation has {key}: {}",
-                obs.compact().chars().take(300).collect::<String>()
+                obs.compact(ms_json::Escape::Plain)
+                    .chars()
+                    .take(300)
+                    .collect::<String>()
             ));
         }
     }
@@ -82,7 +85,7 @@ fn record_one(
             return Err(format!("unstable between runs:\n{d}"));
         }
     }
-    let mut doc = Json::obj();
+    let mut doc = Json::object();
     doc.set("format", Json::int(1));
     doc.set("phase", Json::str(fx.phase.name()));
     doc.set("oracle", Json::str(version));
@@ -106,7 +109,7 @@ pub fn record(ctx: &Ctx, fixtures: &[&Fixture], opts: RecordOpts) -> RecordSumma
         match result {
             Ok((_, false)) => summary.unchanged += 1,
             Ok((doc, true)) => {
-                let text = doc.pretty();
+                let text = doc.pretty_line(ms_json::Escape::Plain);
                 if fs::read_to_string(&fx.expected_path).is_ok_and(|old| old == text) {
                     summary.unchanged += 1;
                 } else if fs::write(&fx.expected_path, text).is_ok() {

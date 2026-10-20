@@ -113,8 +113,10 @@ impl Script {
 
     pub fn request(&mut self, method: &str, params: Json) -> i64 {
         self.next += 1;
-        self.labels
-            .insert(self.next, format!("{method} {}", params.encode()));
+        self.labels.insert(
+            self.next,
+            format!("{method} {}", params.compact(ms_json::Escape::Plain)),
+        );
         self.messages.push(obj([
             ("jsonrpc", "2.0".into()),
             ("id", self.next.into()),
@@ -168,7 +170,7 @@ impl Script {
         for message in self.messages.iter().chain(finish.messages.iter()) {
             let body = match message {
                 Json::Str(s) if s.starts_with("\u{0}raw") => s["\u{0}raw".len()..].to_string(),
-                other => other.encode(),
+                other => other.compact(ms_json::Escape::Plain),
             };
             bytes.extend_from_slice(
                 format!("Content-Length: {}\r\n\r\n{body}", body.len()).as_bytes(),
@@ -234,7 +236,13 @@ pub fn canonical(value: &Json) -> String {
             fields.sort_by(|a, b| a.0.cmp(&b.0));
             let inner: Vec<String> = fields
                 .into_iter()
-                .map(|(k, v)| format!("{}:{}", Json::Str(k.clone()).encode(), canonical(v)))
+                .map(|(k, v)| {
+                    format!(
+                        "{}:{}",
+                        Json::Str(k.clone()).compact(ms_json::Escape::Plain),
+                        canonical(v)
+                    )
+                })
                 .collect();
             format!("{{{}}}", inner.join(","))
         }
@@ -242,7 +250,7 @@ pub fn canonical(value: &Json) -> String {
             let inner: Vec<String> = items.iter().map(canonical).collect();
             format!("[{}]", inner.join(","))
         }
-        other => other.encode(),
+        other => other.compact(ms_json::Escape::Plain),
     }
 }
 

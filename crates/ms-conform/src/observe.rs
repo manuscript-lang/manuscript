@@ -90,7 +90,7 @@ pub fn observe(ctx: &Ctx, fx: &Fixture) -> Json {
             Phase::Test => test_phase(ctx, fx, &work, &entry),
         },
         Err(e) => {
-            let mut o = Json::obj();
+            let mut o = Json::object();
             o.set("harness_error", Json::str(e.to_string()));
             o
         }
@@ -117,7 +117,7 @@ fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         args.extend(fx.args.iter().map(String::as_str));
     }
     let out = ctx.invoke(fx, &args, work, &fx.stdin);
-    let mut o = Json::obj();
+    let mut o = Json::object();
     process_fields(&mut o, &out, work);
     o.set(
         "stdout",
@@ -131,13 +131,13 @@ fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
 }
 
 fn parse_json_output(out: &Output, work: &Path) -> Json {
-    match crate::json::parse(&out.stdout_text()) {
+    match crate::json::parse(out.stdout_text()) {
         Ok(mut j) => {
             j.map_strings(&|s| normalize_text(s, work));
             j
         }
         Err(e) => {
-            let mut o = Json::obj();
+            let mut o = Json::object();
             o.set("unparsable_json", Json::str(e));
             o.set(
                 "stdout",
@@ -159,7 +159,7 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     let json_out = ctx.invoke(fx, &["check", entry, "--json"], work, b"");
     let report = parse_json_output(&json_out, work);
     let text_out = ctx.invoke(fx, &["check", entry], work, b"");
-    let mut o = Json::obj();
+    let mut o = Json::object();
     process_fields(&mut o, &json_out, work);
     if let Some(v) = report.get("format") {
         o.set("format", v.clone());
@@ -168,7 +168,7 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     if report.get("unparsable_json").is_some() {
         o.set("raw", report);
     }
-    let mut text = Json::obj();
+    let mut text = Json::object();
     text.set("exit_code", Json::int(text_out.code as i64));
     text.set(
         "stdout",
@@ -192,7 +192,7 @@ fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         .filter(|d| d.get("phase").and_then(Json::as_str) == Some("parse"))
         .cloned()
         .collect();
-    let mut o = Json::obj();
+    let mut o = Json::object();
     o.set("diagnostics", Json::Arr(parse_diags));
     if report.get("unparsable_json").is_some() {
         o.set("raw", report);
@@ -261,7 +261,7 @@ fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     let mut keys = BTreeSet::new();
     shape(&report, "", &mut keys);
     strip_durations(&mut report);
-    let mut o = Json::obj();
+    let mut o = Json::object();
     process_fields(&mut o, &out, work);
     o.set("report", report);
     o.set(
@@ -308,6 +308,9 @@ mod tests {
         )
         .unwrap();
         strip_durations(&mut j);
-        assert_eq!(j.compact(), r#"{"summary":{"x":1},"tests":[{}]}"#);
+        assert_eq!(
+            j.compact(ms_json::Escape::Plain),
+            r#"{"summary":{"x":1},"tests":[{}]}"#
+        );
     }
 }

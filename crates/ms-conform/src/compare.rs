@@ -29,7 +29,7 @@ fn flatten(value: &Json, path: &str, out: &mut Vec<String>) {
                 out.push(format!("{path}:{}| {line}", i + 1));
             }
         }
-        other => out.push(format!("{path}: {}", other.compact())),
+        other => out.push(format!("{path}: {}", other.compact(ms_json::Escape::Plain))),
     }
 }
 
