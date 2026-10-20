@@ -112,7 +112,7 @@ pub fn scan_tree(repo: &Path) -> Vec<Candidate> {
     for path in files {
         let rel = path.strip_prefix(repo).unwrap_or(&path);
         let rel_text = rel.to_string_lossy().replace('\\', "/");
-        if rel_text.starts_with("pkg/stdlib/") || rel_text.starts_with("tests/conformance/") {
+        if rel_text.starts_with("stdlib/") || rel_text.starts_with("tests/conformance/") {
             continue; // declaration files and the corpus itself
         }
         let Ok(source) = fs::read_to_string(&path) else {

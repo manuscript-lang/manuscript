@@ -37,7 +37,7 @@ examples, and deletion as well as new prose.
   stale. Trace changed concepts through the README, tutorials, exact rules,
   library comments, CLI help, and agent cheat sheet where relevant; searching an
   old spelling alone misses obsolete claims and recommended patterns. Edit
-  library prose in `pkg/stdlib/*.ms` and regenerate derived output. Check incoming
+  library prose in `stdlib/*.ms` and regenerate derived output. Check incoming
   links before deleting superseded design or verification records; retain useful
   current architecture and evidence.
 

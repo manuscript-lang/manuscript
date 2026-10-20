@@ -47,7 +47,7 @@ fn stop_requested(sig: i32) {
     // SAFETY: the shield counter and cancel flag are word-sized and only read here.
     unsafe {
         if *fault::SHIELD.ptr() == 0 {
-            core::ptr::write_volatile(core::ptr::addr_of_mut!(fault::msrt_cancel_flag), sig as u8);
+            fault::msrt_cancel_flag.store(sig as u8, Ordering::Relaxed);
         }
     }
     arm_grace_timer();
@@ -72,7 +72,7 @@ unsafe fn run_main() {
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
         let value = f();
-        if core::ptr::read_volatile(core::ptr::addr_of!(fault::msrt_cancel_flag)) != 0 {
+        if fault::msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
         }
         if !(0..=MAX_MAIN_EXIT).contains(&value) {

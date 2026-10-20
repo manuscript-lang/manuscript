@@ -21,7 +21,7 @@ Use for `pkg/syntax/`, `pkg/lexer/`, `pkg/parser/`, `pkg/frontend/`, `pkg/checke
 
 ## Rust pipeline
 
-`crates/` holds the Rust pipeline (`ms-syntax`, `ms-check`, `ms-mir`, `ms-clif`, `ms-lower`, `ms-driver`) that is replacing the Go one above; the Go code stays until cutover. Read [Rust toolchain](../../documentation/contributing/rust-toolchain.md) and `crates/DESIGN.md`. A syntax, checking, or diagnostic change reaches both pipelines until cutover, and the conformance corpus (`make conform-oracle`, `ms-conform run`) compares them. Ownership and `var` rules live in `crates/ms-check/OWNERSHIP.md`. Do not add code only to reproduce Go output where Rust std covers the concept.
+`crates/` holds the Rust pipeline (`ms-syntax`, `ms-check`, `ms-mir`, `ms-clif`, `ms-lower`, `ms-driver`) that is replacing the Go one above; the Go code stays until cutover. Read [Rust toolchain](../../documentation/contributing/rust-toolchain.md) and `crates/DESIGN.md`. A syntax, checking, or diagnostic change reaches both pipelines until cutover, and the frozen conformance corpus (`make conform-rust`, `ms-conform run`) gates the Rust `ms`. Ownership and `var` rules live in `crates/ms-check/OWNERSHIP.md`. Do not add code only to reproduce Go output where Rust std covers the concept.
 
 ## Syntax and parsing
 

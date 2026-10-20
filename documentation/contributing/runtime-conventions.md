@@ -9,7 +9,7 @@ weight = 22
 
 ## The contract is generated
 
-`make stdgen` (`go run ./scripts/stdgen pkg/runtime`) writes two file kinds from `@std` declarations in `pkg/stdlib/*.ms`:
+`make stdgen` (`go run ./scripts/stdgen pkg/runtime`) writes two file kinds from `@std` declarations in `stdlib/*.ms`:
 
 - `std_types_gen.go` always builds. It declares standard records, sum types (`Name_Case` structs behind a sealed interface), and contracts (Go interfaces).
 - `std_<module>_gen.go` builds only with `-tags rtcheck`. Each `check_*` function pins a native function, operation, or implementation to the exact signature the lowerer calls. `go build -tags rtcheck -gcflags=-e ./pkg/runtime 2>&1 | grep std_<module>_gen.go` lists what a module lacks; empty means complete.

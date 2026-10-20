@@ -57,7 +57,7 @@ Apply when: removing or renaming language constructs or standard APIs.
 Evidence: none recorded.
 Verify: inventory related exported helpers and aliases before editing, regenerate references, then check every surface covered by the removal request. Follow an explicit zero-reference request when deciding whether rejection tests should retain the old spelling.
 
-Verified: when rebasing standard-library work onto current main, migrate new conformance fixtures and documentation examples to ordinary `if not (...)` checks returning `panic`; do not restore the removed testing module or its native bindings from a stash. The source-level [built-in parity fixture](../tests/e2e/testdata/accept/builtin-parity.ms) exercises this form, and [standard bindings](../pkg/stdlib/bindings.json) remain free of the removed module.
+Verified: when rebasing standard-library work onto current main, migrate new conformance fixtures and documentation examples to ordinary `if not (...)` checks returning `panic`; do not restore the removed testing module or its native bindings from a stash. The source-level [built-in parity fixture](../tests/e2e/testdata/accept/builtin-parity.ms) exercises this form, and [standard bindings](../stdlib/bindings.json) remain free of the removed module.
 
 ### Error translation does not need a dedicated standard helper
 
@@ -76,7 +76,7 @@ Verify: examples compile with compatible `try` calls and introduce only the conc
 Decision: the stdlib revamp explicitly replaces compiler-only equality/hashing bounds with `Equal` and `Hashable` interfaces. Data keeps reference semantics (no move to value semantics was adopted), and explicit implementations select domain identity. Custom equality requires an explicit consistent hash before the type becomes a key; structural hashing cannot silently use different fields.
 
 Apply when: changing equality operators, generic bounds, contract views, key lookup, or implementation visibility.
-Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../pkg/stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
+Evidence: [equality rules](../documentation/core-language/types/equality-and-hashing.md), [source interfaces](../stdlib/equality.ms), and [compiled domain-key fixture](../tests/e2e/testdata/accept/stdlib-revamp.ms).
 Verify: two keys with equal IDs and different labels compare equal and occupy one map entry; an equality override without a hash is rejected as a map key. Keep local implementation selection when forwarding generic arguments.
 
 Decision: all values may be passed freely, and closures have ordinary captures. Concurrency and shared-state guards were removed pending a ground-up redesign.
@@ -139,7 +139,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
-Evidence: [CLI contract](../pkg/stdlib/process.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
+Evidence: [CLI contract](../stdlib/process.ms), [entry validation](../pkg/compiler/compiler.go), and [execution-local accessors](../pkg/runtime/host.go).
 Verify: a parameterless entry runs; parameterized entries fail; imported accessors share roots across derived executions and imported helpers, while separate tests receive separate root wrappers.
 
 ### Keep short bodies available without a second function kind
@@ -168,7 +168,7 @@ Decision: the later request to accept `Queue[Int](capacity: 4)` permits a plain 
 Decision: the user asked for `if let name = optional:` (with `else`) and that a match with only two arms is an anti-pattern. `if let` unwraps an Optional (present) or a Result (ok, error not captured; extended by a later request); the binding is immutable and scoped to the then-branch. MSL108 advises on Optional matches whose only arms are some and none, and MSL109 on Result matches whose only arms are ok and error; user alternatives are not covered. Decision (Chinmay, after #587): show no `match` as a way to unwrap a Result anywhere (docs, examples, stdlib, fixtures that are not testing pattern semantics): use `try`, `if let`, `get(default)`, or `is_ok`/`is_error`/`err`. Stdlib sources use `if let`; accepted conformance fixtures keep their some/none matches because they exercise match-expression semantics.
 Evidence: [if let rules](../documentation/core-language/control-flow/conditionals.md#unwrapping-an-optional-or-result), [native fixture](../tests/e2e/testdata/accept/if-let.ms), [lint](../pkg/tooling/optional_match_lint.go).
 Apply when: changing Optional declarations, alternative method lookup, fallback evaluation, or introductory examples.
-Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../pkg/stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
+Evidence: [Optional contract](../documentation/core-language/types/optionals.md#checking-and-extracting-values), [optional argument rules](../documentation/core-language/types/optionals.md#passing-optional-arguments), [canonical declaration](../stdlib/optional.ms), [compiled method fixture](../tests/e2e/testdata/accept/optional-methods.ms), and [argument conformance](../tests/e2e/testdata/accept/optional-arguments.ms).
 Verify: false and zero are present; eager `get(default)` values evaluate normally; `or_else` callbacks run exactly once only for none; `get()` with no default on none or error faults clearly. Extraction retains nested type arguments and payload identity, stored receiver methods still work, and local alternatives with the same spelling receive no native methods.
 
 Verified: Optional argument checking retains the expression's source type and records wrapping separately, so editor queries and Boolean folding keep their existing meaning. Reuse an inferred payload type before retrying with context: checking every nested call twice causes exponential work for both accepted and rejected inputs. Evidence: [source/AST regression](../pkg/checker/optional_test.go), [nested call regression](../pkg/compiler/optional_test.go), and [argument checking](../pkg/checker/calls.go). The same rule applies to successful independent generic argument checks: reuse their checked information within the owning call, then apply ordinary expected-type and conversion checks. Do not cache probes across calls or scopes. Contextual callback probes can be retained within their owning call only when their final function signature is identical and contains no unresolved inference variables; replay retained root diagnostics once. A complete result signature alone is insufficient: earlier unresolved or conflicting returns, and `try` checked before the enclosing result is known, can require the final context to repair a valid body. Record this dependence and recheck those bodies; invalid result slots can be reused only when the final signature retains exactly those slots. Evidence: [callback complexity and context regressions](../pkg/compiler/callback_work_test.go), [native callback metadata](../tests/e2e/testdata/accept/callback-probe-reuse.ms), and [issue #151](https://github.com/manuscript-lang/manuscript/issues/151). Evidence: [deep generic arguments](../pkg/compiler/inference_work_test.go) and [native order, conversions, and captures](../tests/e2e/testdata/accept/inference-call-order.ms).
@@ -245,10 +245,10 @@ returning a Result when its enclosing function does not.
 
 Decision: Chinmay required `Result[T, E: Error]`; arbitrary error values (`String`, `Int`, collections) are rejected. Plain text uses `TextError("message")` and domain errors declare `impl Error`. Generic helpers over Result write `E: Error`.
 
-Verified: the bound lives on `Result` in `pkg/stdlib/result.ms`, so annotations and inferred call results (including `Optional.ok_or`) hit the ordinary type-argument bound check. Native declaration default bounds (`ok_or[E: Error = MissingValue]`) are checked after standard impls bind.
+Verified: the bound lives on `Result` in `stdlib/result.ms`, so annotations and inferred call results (including `Optional.ok_or`) hit the ordinary type-argument bound check. Native declaration default bounds (`ok_or[E: Error = MissingValue]`) are checked after standard impls bind.
 
 Apply when: adding Result-returning APIs, examples, or tests that need an error value.
-Evidence: [Result source](../pkg/stdlib/result.ms), [results guide](../documentation/core-language/errors/results.md).
+Evidence: [Result source](../stdlib/result.ms), [results guide](../documentation/core-language/errors/results.md).
 Verify: `Result[Int, String]` fails with "String does not satisfy Error"; `Result[Int, TextError]` and `Result[T, Error]` pass.
 
 ### Grouped bindings are one-kind blocks, not tuple patterns

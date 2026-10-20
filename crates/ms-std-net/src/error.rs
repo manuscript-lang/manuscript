@@ -1,7 +1,7 @@
 //! Error types of the network modules and their diagnostics.
 //!
 //! The status byte a fallible native returns is `1 + the case's declaration
-//! index` in the corresponding `pkg/stdlib/*.ms` error type (`0` is success).
+//! index` in the corresponding `stdlib/*.ms` error type (`0` is success).
 //! The `Failed` case carries its message through a trailing `*mut *mut StrObj`.
 
 use std::fmt;
