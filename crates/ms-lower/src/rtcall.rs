@@ -193,13 +193,15 @@ pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String>
 
 /// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
 /// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 14] = [
+const STATUS_CASES: [(i64, &str); 15] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
     (4, "InvalidData"),
     (5, "NotFound"),
     (6, "AlreadyExists"),
+    // `ms-std-crypto`'s `STATUS_AUTHENTICATION_FAILED` shares the code; the error alternative decides.
+    (6, "AuthenticationFailed"),
     (7, "NotEmpty"),
     (8, "PermissionDenied"),
     (9, "Unsupported"),
@@ -531,6 +533,14 @@ impl FnLower<'_> {
                         vals.push(slot);
                     } else {
                         let v = self.borrow(x);
+                        // An enum crosses as its case index.
+                        let v = if p.ty == "i64"
+                            && matches!(self.b.m.types.kind(self.ty_of(v)), TyKind::Alt(_))
+                        {
+                            self.b.alt_tag(v)
+                        } else {
+                            v
+                        };
                         vals.push(v);
                     }
                 }

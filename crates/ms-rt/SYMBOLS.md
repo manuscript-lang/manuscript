@@ -170,6 +170,8 @@ msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_trap_begin() -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
+msrt_trap_end() -> !
+msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
 msrt_list_with_capacity( d: *const TypeDesc, cap: i64, out: *mut VecVal, )
 msrt_list_drop(v: *mut VecVal, d: *const TypeDesc)
@@ -286,6 +288,19 @@ msrt_crypto_ecdsa_generate(curve: i64, out: *mut VecVal) -> u8
 msrt_crypto_public_key_der(key: *const VecVal, out: *mut VecVal) -> u8
 msrt_crypto_ecdh_shared_secret( private_key: *const VecVal, peer: *const VecVal, out: *mut VecVal, ) -> u8
 msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8
+msrt_crypto_seal(key: *const VecVal, nonce: *const VecVal, data: *const VecVal, aad: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_open(key: *const VecVal, nonce: *const VecVal, data: *const VecVal, aad: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_aes_ctr(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_aes_cbc_encrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_ecdsa_sign(private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_rsa_sign(private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_rsa_sign_pss(private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_rsa_encrypt(private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_rsa_decrypt(private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal) -> u8
+msrt_crypto_ecdsa_verify(public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal) -> u8
+msrt_crypto_rsa_verify(public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal) -> u8
+msrt_crypto_rsa_verify_pss(public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal) -> u8
 msrt_csv_parse( text: *const StrObj, delimiter: *const StrObj, line_ending: *const StrObj, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, out: *mut VecVal, ) -> u8
 msrt_csv_stringify( rows: *const VecVal, delimiter: *const StrObj, line_ending: *const StrObj, has_max_bytes: u8, max_bytes: i64, out: *mut *mut StrObj, ) -> u8
 msstd_decimal_literal(text: *const StrObj, out: *mut Dec)

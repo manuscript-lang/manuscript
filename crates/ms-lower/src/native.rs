@@ -213,6 +213,23 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
             }
+            "crypto/derive_key" => {
+                // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let mut vals = vec![self.b.iconst(3)];
+                for a in &args {
+                    vals.push(self.borrow(a.val));
+                }
+                let sym = "msrt_crypto_derive_key";
+                let sig = crate::rtcall::rt_sig(sym)
+                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                self.finish_rt_call(sym, &sig, true, vals, result)
+            }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
             "time/clock" => self.time_clock(e, false),
@@ -630,6 +647,8 @@ impl<'a> FnLower<'a> {
         if let Some(sym) = match native {
             "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
             "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+            "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
+            "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
             "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
             "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
             _ => None,
