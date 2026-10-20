@@ -45,36 +45,16 @@ jobs:
           fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
 
-  # Format and lint once; clippy also type-checks every target for the test jobs.
-  rust-lint:
-    name: Rust format and clippy
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-
-  # nextest runs each test in its own process, so tests that share process-global
-  # state (the runtime allocator, the environment) cannot interfere.
+  # Format, lint, and test in one job: each separate job pays runner queueing, checkout,
+  # and cache restore again, and clippy leaves the test build warm. nextest runs each test
+  # in its own process, so tests that share process-global state (the runtime allocator,
+  # the environment) cannot interfere.
   rust-test:
-    name: Rust tests (partition ${{ matrix.partition }})
+    name: Rust format, clippy and tests
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        partition: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -86,10 +66,10 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
-      - run: cargo nextest run --workspace --partition hash:${{ matrix.partition }}/2
-      - name: Doc tests
-        if: matrix.partition == 1
-        run: cargo test --workspace --doc
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo nextest run --workspace
+      - run: cargo test --workspace --doc
 
   # The frozen conformance corpus replayed against the Rust `ms`; known differences are
   # listed in tests/conformance/rust-expect-fail.txt.
@@ -102,7 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -112,7 +92,7 @@ jobs:
           shared-key: rust-conform
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Rust ms replays the corpus
-        run: make conform-rust CONFORM_SHARD=${{ matrix.shard }}/4
+        run: make conform-rust CONFORM_SHARD=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -128,7 +108,7 @@ jobs:
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-lint, rust-test, rust-conform, rust-native]
+    needs: [changes, rust-test, rust-conform, rust-native]
     if: always()
     runs-on: ubuntu-latest
     steps:

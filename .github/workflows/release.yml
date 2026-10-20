@@ -20,9 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Pull requests package and verify the linux-amd64 archive; every target runs on
+      # merge groups and tags.
       matrix:
-        os: [linux, darwin, windows]
-        arch: [amd64, arm64]
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[{"os":"linux","arch":"amd64"}]' || '[{"os":"linux","arch":"amd64"},{"os":"linux","arch":"arm64"},{"os":"darwin","arch":"amd64"},{"os":"darwin","arch":"arm64"},{"os":"windows","arch":"amd64"},{"os":"windows","arch":"arm64"}]') }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,25 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: linux
-            arch: amd64
-            runner: ubuntu-24.04
-          - os: linux
-            arch: arm64
-            runner: ubuntu-24.04-arm
-          - os: darwin
-            arch: amd64
-            runner: macos-15-intel
-          - os: darwin
-            arch: arm64
-            runner: macos-15
-          - os: windows
-            arch: amd64
-            runner: windows-2025
-          - os: windows
-            arch: arm64
-            runner: windows-11-arm
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel"},{"os":"darwin","arch":"arm64","runner":"macos-15"},{"os":"windows","arch":"amd64","runner":"windows-2025"},{"os":"windows","arch":"arm64","runner":"windows-11-arm"}]') }}
     runs-on: ${{ matrix.runner }}
     defaults:
       run:

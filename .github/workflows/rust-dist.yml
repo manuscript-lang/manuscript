@@ -18,6 +18,17 @@ on:
       - 'scripts/package-rust.sh'
       - 'examples/hello/**'
       - '.github/workflows/rust-dist.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.cargo/**'
+      - 'scripts/package-rust.sh'
+      - 'examples/hello/**'
+      - '.github/workflows/rust-dist.yml'
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
@@ -40,14 +51,10 @@ jobs:
     continue-on-error: ${{ matrix.os != 'linux' && !startsWith(github.ref, 'refs/tags/v') }}
     strategy:
       fail-fast: false
+      # Pull requests build the linux-amd64 leg; every platform runs on main, merge
+      # groups, and tags, where queueing on scarce macOS and Windows runners costs nothing.
       matrix:
-        include:
-          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
-          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
-          - { os: darwin, arch: amd64, runner: macos-15-intel }
-          - { os: darwin, arch: arm64, runner: macos-15 }
-          - { os: windows, arch: amd64, runner: windows-2025 }
-          - { os: windows, arch: arm64, runner: windows-11-arm }
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel"},{"os":"darwin","arch":"arm64","runner":"macos-15"},{"os":"windows","arch":"amd64","runner":"windows-2025"},{"os":"windows","arch":"arm64","runner":"windows-11-arm"}]') }}
     defaults:
       run:
         shell: bash
