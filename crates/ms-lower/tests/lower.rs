@@ -208,3 +208,12 @@ fn instant_arithmetic() {
     assert!(mir.contains("msstd_time_instant_difference"));
     assert!(mir.contains("msstd_time_instant_unshift"));
 }
+
+#[test]
+fn error_category_tests_standard_error_tables() {
+    let mir = lower(
+        "category",
+        "import {category} from \"@std/errors.ms\"\nimport {IoError} from \"@std/io.ms\"\n\nexport fn main() Int:\n    let cause: Error = IoError.Closed\n    let c = category(cause)\n    return 0\n",
+    );
+    assert!(mir.contains("iface.is"));
+}

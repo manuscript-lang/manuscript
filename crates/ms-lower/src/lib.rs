@@ -7,6 +7,7 @@
 //! calls (`ms-rt`) or small MIR sequences.
 
 mod call;
+mod category;
 mod closure;
 mod codecstream;
 mod cx;

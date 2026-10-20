@@ -331,7 +331,12 @@ impl<'a> FnLower<'a> {
     fn has_native_call(&self, native: &str) -> bool {
         matches!(
             native,
-            "math/min" | "math/max" | "math/max_of" | "math/min_of" | "time/duration"
+            "math/min"
+                | "math/max"
+                | "math/max_of"
+                | "math/min_of"
+                | "time/duration"
+                | "errors/category"
         ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
@@ -348,6 +353,13 @@ impl<'a> FnLower<'a> {
         }
         if matches!(native, "math/max_of" | "math/min_of") {
             return self.extreme_of(native == "math/max_of", args, result);
+        }
+        if native == "errors/category" {
+            let cause = self.borrow(args[0].val);
+            let cty = self.ty_of(cause);
+            let f = self.cx.category_fn(self.b.m, cty, result);
+            let v = self.b.call(f, &[cause]);
+            return Ok(Val { v, own: true });
         }
         if native == "time/duration" {
             return Ok(Val {

@@ -35,6 +35,8 @@ pub enum JobKind {
     IfaceThunk(Rc<IfaceThunkJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
+    /// The shared category of a standard error value.
+    Category(MTy),
     /// A copy of an HTML parse tree into `HtmlNode`.
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
@@ -116,6 +118,8 @@ pub struct Cx {
     pub insts: HashMap<String, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
+    /// Alternatives declared by the standard library.
+    pub std_alts: std::collections::HashSet<usize>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
@@ -155,6 +159,7 @@ impl Cx {
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),
+            std_alts: Default::default(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
@@ -244,6 +249,11 @@ impl Cx {
             Kind::Alternative => {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
                 self.tycache.insert(key.to_string(), ty);
+                if t.symbol()
+                    .is_some_and(|s| s.module.as_str().starts_with("@std/"))
+                {
+                    self.std_alts.insert(id.index());
+                }
                 let mut cases = Vec::new();
                 for c in ct::cases(t) {
                     let mut fields = Vec::new();
