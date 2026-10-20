@@ -222,9 +222,17 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     let ProjectError::Path(path_error) = error else {
         return error.to_string();
     };
-    let mut name = path_error.path.clone();
+    // `gopath` speaks `/` only; Windows spells the same paths with `\` and a `\\?\` prefix.
+    let slashed = |path: &str| {
+        if cfg!(windows) {
+            path.trim_start_matches(r"\\?\").replace('\\', "/")
+        } else {
+            path.to_string()
+        }
+    };
+    let mut name = slashed(&path_error.path);
     if let Ok(cwd) = std::env::current_dir()
-        && let Ok(relative) = gopath::rel(&cwd.to_string_lossy(), &name)
+        && let Ok(relative) = gopath::rel(&slashed(&cwd.to_string_lossy()), &name)
         && !relative.starts_with("..")
     {
         name = relative;
