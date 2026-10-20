@@ -1045,6 +1045,20 @@ impl<'a> FnLower<'a> {
                 None => Val { v: new, own: true },
             });
         }
+        if let (TyKind::List(elem), "take" | "drop") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            let sym = if name == "take" {
+                "msrt_list_take"
+            } else {
+                "msrt_list_drop_n"
+            };
+            let d = self.type_desc(elem);
+            let r = self.borrow(recv);
+            let n = self.borrow(args[0].val);
+            let out = self.call_runtime(sym, &[r, d, n], rty)?;
+            return Ok(Val { v: out, own: true });
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -2387,13 +2401,14 @@ fn build_stream_method(
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;
     let args = b.params();
-    if name == "write" {
-        let sym = if stderr {
-            "msrt_io_write_stderr"
-        } else {
-            "msrt_io_write_stdout"
+    if name == "write" || name == "write_bytes" {
+        let (sym, arg) = match (name == "write", stderr) {
+            (true, true) => ("msrt_io_write_stderr", MTy::STR),
+            (true, false) => ("msrt_io_write_stdout", MTy::STR),
+            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
+            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
         };
-        let ext = runtime_fn(b.m, sym, &[MTy::STR], MTy::UNIT);
+        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
         b.call_rt(ext, &[args[1]]);
     }
     match b.m.types.kind(ret).clone() {
