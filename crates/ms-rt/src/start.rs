@@ -94,8 +94,8 @@ mod os {
         grace_expired()
     }
 
-    fn install(sig: i32, handler: extern "C" fn(i32)) {
-        let act = sys::sigaction_t::new(handler as *const () as usize, 0);
+    fn install(sig: i32, handler: usize) {
+        let act = sys::sigaction_t::new(handler, 0);
         // SAFETY: installs a handler that only touches atomics and async-signal-safe calls.
         unsafe { sys::sigaction(sig, &act, core::ptr::null_mut()) };
     }
@@ -106,9 +106,12 @@ mod os {
     }
 
     pub fn install_stop_handlers() {
-        install(sys::SIGINT, on_stop);
-        install(sys::SIGTERM, on_stop);
-        install(sys::SIGALRM, on_alarm);
+        install(sys::SIGINT, on_stop as *const () as usize);
+        install(sys::SIGTERM, on_stop as *const () as usize);
+        install(sys::SIGALRM, on_alarm as *const () as usize);
+        // A write to a closed socket or pipe must surface as EPIPE, not kill the process
+        // (Rust's own runtime does the same). Spawned children get the default back.
+        install(sys::SIGPIPE, sys::SIG_IGN);
     }
 
     extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {

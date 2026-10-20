@@ -22,6 +22,9 @@ pub const MAP_ANONYMOUS: c_int = 0x20;
 pub const MAP_NORESERVE: c_int = 0x4000;
 
 pub const SIGINT: c_int = 2;
+pub const SIGPIPE: c_int = 13;
+/// `SIG_IGN` as a `sigaction` handler value.
+pub const SIG_IGN: usize = 1;
 pub const SIGALRM: c_int = 14;
 pub const SIGTERM: c_int = 15;
 pub const SIGPROF: c_int = 27;
