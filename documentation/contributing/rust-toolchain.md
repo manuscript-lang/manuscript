@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-The Rust and Cranelift implementation of `ms` is replacing the Go one. Until cutover the Go `ms` is the shipped binary and the differential-test oracle; the Rust `ms` builds from the same checkout and is packaged by the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml). The Go code stays until the Rust `ms` passes the conformance corpus.
+The Rust and Cranelift implementation of `ms` is replacing the Go one. Release tags publish the Rust `ms` (`release.yml` calls the workflow below and uploads its six archives); the Go `ms` stays only until it is deleted. The Rust `ms` builds from the same checkout and is packaged by the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml). The Go code stays until the Rust `ms` passes the conformance corpus.
 
 ## Build and run
 
@@ -16,7 +16,7 @@ cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
 
-`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively; the darwin and windows legs are experimental and may fail without turning the check red.
+`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively; on pull requests the darwin and windows legs are experimental and may fail without turning the check red, while a release tag requires all six.
 
 `.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them. On Windows, fault reporting uses native unwind records to reach the first generated source frame, then follows contiguous generated callers. Attribution stops at a native callback or generated glue boundary; complete mixed native/generated stack unwinding is not supported.
 
@@ -31,7 +31,7 @@ cargo test --workspace --doc
 
 CI runs these as **Rust format and clippy**, **Rust tests** (two nextest partitions plus doc tests), and **Rust corpus** (four shards). Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
 
-The conformance corpus in `tests/conformance/` holds programs with expectations recorded from the Go `ms`. `make conform-oracle` replays it against the Go binary itself; `cargo run -q -p ms-conform -- run --ms target/release/ms --exclude-tag aliasing` replays it against the Rust binary. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+The conformance corpus in `tests/conformance/` holds programs with expectations first recorded from the Go `ms` and now frozen. `make conform-rust` replays it against the Rust binary (CI shards it four ways); `make conform-oracle` re-checks it against the Go binary locally until the Go code is removed. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 ## Crates
 

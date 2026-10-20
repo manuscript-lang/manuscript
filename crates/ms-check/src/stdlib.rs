@@ -1,6 +1,6 @@
 //! The bundled standard declarations (`pkg/checker/standard.go`).
 //!
-//! `pkg/stdlib/*.ms` and `bindings.json` are embedded unchanged. Native
+//! `stdlib/*.ms` and `bindings.json` are embedded unchanged. Native
 //! modules (declarations without bodies) are declared once per thread; source
 //! modules (declarations with bodies) are checked lazily with the ordinary
 //! checker and shared by every program.

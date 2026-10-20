@@ -80,7 +80,7 @@ subsequent matching; invalid initial patterns still return `InvalidInput`.
 Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
 
 Apply when: changing HTTP adapters, repeated fields, or header representation bridges.
-Evidence: header regressions, [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../pkg/stdlib/http.ms).
+Evidence: header regressions, [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), and [header contracts](../stdlib/http.ms).
 Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. The #171 migration uses indexed ASCII header groups and shared list membership: cache received conversions once, test alias/mutation/remove/clone semantics, and measure common lookup/proxy paths. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and clone are distinct operations.
 
 ### Empty cleanup omission needs callable ownership evidence
@@ -127,7 +127,7 @@ Decision: the stdlib request calls for consolidated grouping and one spelling pe
 Verified: canonical declarations, runtime dispatch, checker rules, conformance, and generated references now implement this direction. Optional also has presence and extraction methods; keep routine absence handling available without requiring a match.
 
 Apply when: changing library signatures, bounds/interfaces, queue APIs, scheduling, grouping, examples, or documentation.
-Evidence: [current declarations](../pkg/stdlib/intrinsics.ms); [stdlib contract](../pkg/stdlib/intrinsics.ms); runtime regressions; [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
+Evidence: [current declarations](../stdlib/intrinsics.ms); [stdlib contract](../stdlib/intrinsics.ms); runtime regressions; [compiled Optional methods](../tests/e2e/testdata/accept/optional-methods.ms).
 Verify: inspect current declarations and called behavior against the latest direction. Preserve omitted/none/explicit-limit behavior, custom equality/hash coherence. Do not restore removed APIs from older documentation or another branch.
 
 ### Networking completeness includes interruption and shutdown
@@ -142,10 +142,10 @@ Verify: run relevant native and compiled cases for blocked I/O cancellation, con
 
 Decision: return more specific standard-library errors instead of the shared `LibraryError`. Public error types live with their package and contain domain-relevant cases. All standard errors explicitly implement the ordinary `Error` operation contract. The newer simplification lets implementing errors pass directly into Error boundaries and propagate with `try`; the concrete receiver and fields are retained for specific handling.
 
-Decision: keep typed diagnostic information in ordinary domain error fields. The request to simplify error handling supersedes the extra details wrapper introduced earlier in this chat. Records and alternative case payloads already support fields of different types; `Result[T, E]` and `try` retain them. Add a cause field only when the domain needs it. Ordinary errors reuse their original runtime value at an Error boundary; local implementations and generic receivers retain scoped dispatch evidence. See [error details](../pkg/stdlib/intrinsics.ms), [compiled typed errors](../tests/e2e/testdata/accept/library-errors.ms), and [cross-module error dispatch](../tests/e2e/testdata/projects/error_boundaries/main.ms).
+Decision: keep typed diagnostic information in ordinary domain error fields. The request to simplify error handling supersedes the extra details wrapper introduced earlier in this chat. Records and alternative case payloads already support fields of different types; `Result[T, E]` and `try` retain them. Add a cause field only when the domain needs it. Ordinary errors reuse their original runtime value at an Error boundary; local implementations and generic receivers retain scoped dispatch evidence. See [error details](../stdlib/intrinsics.ms), [compiled typed errors](../tests/e2e/testdata/accept/library-errors.ms), and [cross-module error dispatch](../tests/e2e/testdata/projects/error_boundaries/main.ms).
 
 Apply when: adding or changing fallible standard APIs, native adapters, or error propagation.
-Evidence: [error contracts](../pkg/stdlib/intrinsics.ms); native identity and stream-cause regressions; [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
+Evidence: [error contracts](../stdlib/intrinsics.ms); native identity and stream-cause regressions; [compiled matching and mapping](../tests/e2e/testdata/accept/library-errors.ms).
 Verify: native error values carry the declared Result's error identity; unrelated domains cannot propagate implicitly; stream helpers preserve the original IoError case and payload.
 
 ### Host API names do not establish units or write guarantees
@@ -153,7 +153,7 @@ Verify: native error values carry the declared Result's error identity; unrelate
 Verified: ProcessControl.monotonic_time returns time.Since(runtime initialization) as nanoseconds and shares the process uptime origin; host uptime and Clock instants have different origins/domains. FileHandle count-returning writes loop to complete the input, just like Unit-returning native stream writes. A count result does not imply partial success, and failures do not retain a prefix count. The file stream adapter preserves Closed/InvalidInput but translates other filesystem cases to IoError.Failed.
 
 Apply when: documenting host contracts or proposing typed time, flag, stream, or error adapters. Trace validator/conversion/result code before inferring semantics from names or result shapes; retain explicit migration decisions for public replacements.
-Evidence: [host contracts](../pkg/stdlib/intrinsics.ms), [process accounting](../pkg/stdlib/process.ms), nanosecond bracketing, and [called host contracts](../tests/e2e/testdata/stdlib/host-contracts.ms).
+Evidence: [host contracts](../stdlib/intrinsics.ms), [process accounting](../stdlib/process.ms), nanosecond bracketing, and [called host contracts](../tests/e2e/testdata/stdlib/host-contracts.ms).
 Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-chunk byte counts, sequential/positional EOF, shared adapter close and concrete domain errors in compiled tests.
 
 ### Native constructor arguments need not be readable fields
@@ -161,7 +161,7 @@ Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-
 Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Removing the bogus field without preserving `ConstructorSignature` also loses editor constructor parameters. Checking and editor queries now share that constructor signature separately from the native `values() List[Int]` operation, which uses the existing free function's implementation. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
 
 Apply when: describing native schemas or replacing bogus native fields with operations. Preserve dedicated constructor arguments separately from receiver declarations and bindings.
-Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../pkg/stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
+Evidence: [constructor signatures](../pkg/checker/types.go), [constructor checking](../pkg/checker/calls.go), [byte declarations](../stdlib/bytes.ms), [native receiver identities](../internal/nativeabi/receivers.go), [editor signature regressions](../pkg/tooling/lsp/features_test.go), and [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
 Verify: named and positional Bytes construction and direct, stored, and free extraction calls execute; mutating the input or extracted list leaves Bytes unchanged. Editor signature help retains the required values List; generated metadata must list `values` as an operation, with no data field.
 
 ### Borrowing file descriptors must preserve pollable I/O
@@ -204,7 +204,7 @@ Verify: get(default) returns a JsonLimits record with negative and absent Option
 Verified: Go's CSV writer emits the same bare line ending for zero fields and one empty field, while its reader skips blank lines. Manuscript must explicitly quote the sole empty field to retain that row, including the quotes in the output budget. Empty rows still serialize as skipped blank lines; changing reader behavior would alter that contract.
 
 Apply when: changing CSV adapters or relying on a host codec's round-trip behavior.
-Evidence: CSV implementation, [called CSV regressions](../tests/e2e/testdata/stdlib/csv.ms), and [CSV contract](../pkg/stdlib/json.ms).
+Evidence: CSV implementation, [called CSV regressions](../tests/e2e/testdata/stdlib/csv.ms), and [CSV contract](../stdlib/json.ms).
 Verify: round-trip consecutive single empty fields with LF/CRLF and alternate delimiters; check distinct empty-row output and exact byte, row, and cell budgets.
 
 ### Native transformations need output implementation evidence
@@ -220,7 +220,7 @@ Verify: a generic input forwarded from another module still maps to a set dedupl
 Verified: stripping continuation lines before joining loses paragraph breaks and can misclassify comment markers inside an open quote. Quoted and plain folding remove the first break before empty lines; folded blocks do so only between ordinary lines, preserving breaks around more-indented content. Chomping also needs to know whether the final physical line had a terminator.
 
 Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
-Evidence: [YAML parser](../pkg/stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../pkg/stdlib/json.ms), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
+Evidence: [YAML parser](../stdlib/yaml.ms), [called scalar regressions](../tests/e2e/testdata/stdlib/yaml.ms), [YAML contract](../stdlib/json.ms), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization.
 
 ### List traversal follows the captured Go slice header
@@ -334,7 +334,7 @@ runtime marked-body control does not establish compiler proof or payload parity.
 Decision: Map and Set iterate in insertion order, and keys use the `Hashable` interface with `Equal`. Pick a failure mode by cause: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. Mutators use verbs (`add`, `remove`, `clear`) and return the receiver; do not reintroduce removed alias spellings (#358). Blocking stdin/stdout reads are not made cancellable; do not add runtime machinery to interrupt them.
 
 Apply when: adding or renaming collection, standard-library, or I/O members; choosing between Optional, Result, and a fault.
-Evidence: [failure-mode rule](../pkg/stdlib/intrinsics.ms), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
+Evidence: [failure-mode rule](../stdlib/intrinsics.ms), [collection order and mutation](../documentation/core-language/types/collections.md), and [equality interfaces](../documentation/core-language/types/equality-and-hashing.md).
 Verify: iteration after removals and re-adds keeps insertion order for the remaining keys; a new member documents its failure mode and has a doc comment with an example.
 
 ### Test plans distinguish declarations from executions
@@ -346,7 +346,7 @@ for skip and intentional unrun outcomes without masking an active incomplete tes
 Apply when: changing test options, event reporting, or testing helpers.
 Evidence: [event reader checks](../internal/cli/test_result_test.go),
 [native runner checks](../tests/e2e/testing_runner_test.go), and
-[helper contracts](../pkg/stdlib/testing.ms).
+[helper contracts](../stdlib/testing.ms).
 Verify: list executes no bodies, fail-fast retains later not_run entries, repeated
 names retain indices, and fault assertions propagate cancellation and skip.
 Standalone builds combine runtime imports into one file: alias math/rand as
@@ -363,7 +363,7 @@ ordinary test blocks; do not restore these wrappers without a new direction.
 
 Apply when: adding BDD helpers or test suite grouping.
 Evidence: the user's explicit removal request in this conversation;
-[testing declarations](../pkg/stdlib/testing.ms).
+[testing declarations](../stdlib/testing.ms).
 Verify: standard testing exports contain assertions, fail and skip, with no
 callback suite wrappers.
 
@@ -396,7 +396,7 @@ Decision: the owner asked for `json.parse` and `json.stringify` themselves to wo
 Verified: `try` gives its operand no backward context (core-language fixture cl-14), so write `try parse[T](text)`. A record decode builds the struct through `defaultArgument`, so field defaults run in the record's module with earlier fields in scope; an absent `Optional` field without a default is `none`. Map keys are parsed per key type, and two members that read as one key (`"1"`, `"01"`) are `InvalidData`. A cycle is found by tracking pointer-typed containers only for types that can reach themselves (`mayCycle`). Interface values have no JSON form: a view's concrete type is unknown to the encoder, and giving every view an encoder would pull JSON into every program that uses a contract.
 
 Apply when: adding a standard value type with its own text or number form (extend `JsonEncNative` and `JsonDecNative` together), changing the encoding, or adding typed YAML/TOML encoding.
-Evidence: [declarations and guide](../pkg/stdlib/json.ms), [generator](../pkg/lower/json.go), [runtime helpers](../pkg/runtime/json_codec.go), [accepted forms](../pkg/checker/json_parse_test.go), [native conformance](../tests/e2e/testdata/stdlib/json.ms).
+Evidence: [declarations and guide](../stdlib/json.ms), [generator](../pkg/lower/json.go), [runtime helpers](../pkg/runtime/json_codec.go), [accepted forms](../pkg/checker/json_parse_test.go), [native conformance](../tests/e2e/testdata/stdlib/json.ms).
 Verify: a record with a function field and a `none` field encodes without them; `Wrapper[Wrapper[String]]` with a defaulted field decodes; a round trip through `stringify` returns identical text.
 
 ### O(1) runtime helpers do not poll for cancellation
@@ -417,7 +417,7 @@ Verify: `go test ./pkg/runtime ./tests/e2e` and `bench/perf/programs/run.sh` (`r
 Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
 
 Apply when: adding or changing a write-like standard operation, or implementing `WriteStream`/`Transport` in source.
-Evidence: user request in the project thread; `pkg/stdlib/io.ms`, `pkg/stdlib/fs.ms`, `tests/e2e/testdata/stdlib/support/streams.ms`.
+Evidence: user request in the project thread; `stdlib/io.ms`, `stdlib/fs.ms`, `tests/e2e/testdata/stdlib/support/streams.ms`.
 Verify: `make stdlib-check`; `stdout().write("text")` and `write_bytes(bytes)` both type-check.
 
 ### Collections are constructed from lists, not chained mutation
@@ -425,7 +425,7 @@ Verify: `make stdlib-check`; `stdout().write("text")` and `write_bytes(bytes)` b
 Decision: `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (insertion order kept, duplicates collapsed); migrate chained `.add` construction in tests and examples. Do not add a second construction spelling (variadic, literal) without a new decision.
 
 Apply when: adding collection constructors or writing fixtures that need a populated Set.
-Evidence: [Set declaration](../pkg/stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
+Evidence: [Set declaration](../stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.
 
 
