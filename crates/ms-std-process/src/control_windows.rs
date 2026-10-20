@@ -1,14 +1,13 @@
 //! Process-wide controls on Windows, following `hostos` and `os` in Go: there are no user or group
 //! ids, no umask, no `exec`, and signals are `TerminateProcess`.
-use crate::control::{Info, Usage};
+use crate::control::{Info, Usage, executable};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::UnsafeCell;
-use core::ptr::{null, null_mut};
 use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_UNSUPPORTED};
 use ms_std_fs::err::{Fail, Res, describe};
-use ms_std_fs::sys::{self, CPath};
+use ms_std_fs::sys;
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_INVALID_HANDLE, FILETIME, GetLastError, HANDLE,
 };
@@ -16,10 +15,6 @@ use windows_sys::Win32::System::Console::{GetConsoleTitleW, SetConsoleTitleW};
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
-use windows_sys::Win32::System::Environment::{
-    FreeEnvironmentStringsW, GetEnvironmentStringsW, SetCurrentDirectoryW, SetEnvironmentVariableW,
-};
-use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
 use windows_sys::Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
 use windows_sys::Win32::System::Threading::{
@@ -44,21 +39,6 @@ fn wide(bytes: &[u8]) -> Option<Vec<u16>> {
 
 fn narrow(w: &[u16]) -> Vec<u8> {
     String::from_utf16_lossy(w).into_bytes()
-}
-
-pub fn working_directory() -> Res<Vec<u8>> {
-    let cwd = sys::getcwd().map_err(|e| Fail::errno(e, "getwd", b""))?;
-    utf8(cwd)
-}
-
-pub fn change_directory(path: &[u8]) -> Res<()> {
-    CPath::new(path).ok_or_else(Fail::invalid)?;
-    let w = wide(path).ok_or_else(Fail::invalid)?;
-    // SAFETY: `w` is NUL-terminated.
-    if unsafe { SetCurrentDirectoryW(w.as_ptr()) } == 0 {
-        return Err(Fail::errno(sys::errno(), "chdir", path));
-    }
-    Ok(())
 }
 
 /// `hostos.SendSignal`: signal 0 probes the process, 2, 9 and 15 terminate it.
@@ -175,25 +155,6 @@ impl Title {
     }
 }
 
-/// The path of the running executable.
-fn executable() -> Res<Vec<u8>> {
-    let mut buf: Vec<u16> = alloc::vec![0; 512];
-    loop {
-        // SAFETY: `buf` is writable for its length.
-        let n =
-            unsafe { GetModuleFileNameW(null_mut(), buf.as_mut_ptr(), buf.len() as u32) } as usize;
-        if n == 0 {
-            return Err(Fail::raw(sys::errno()));
-        }
-        if n >= buf.len() {
-            let len = buf.len() * 2;
-            buf.resize(len, 0);
-            continue;
-        }
-        return Ok(narrow(&buf[..n]));
-    }
-}
-
 pub fn title() -> Res<Vec<u8>> {
     if let Some(value) = TITLE.with(|t| t.clone()) {
         return Ok(value);
@@ -225,60 +186,6 @@ pub fn set_title(title: &[u8]) -> Res<()> {
         }
     }
     TITLE.with(|t| *t = Some(title.to_vec()));
-    Ok(())
-}
-
-/// The live environment as `(name, value)` pairs; any non-UTF-8 entry is `Unsupported`.
-pub fn environment() -> Res<Vec<(Vec<u8>, Vec<u8>)>> {
-    // SAFETY: plain query; the block is freed below.
-    let block = unsafe { GetEnvironmentStringsW() };
-    if block.is_null() {
-        return Err(Fail::raw(sys::errno()));
-    }
-    let mut out = Vec::new();
-    let mut p = block;
-    // SAFETY: the block is a sequence of NUL-terminated strings ended by an empty one.
-    unsafe {
-        while *p != 0 {
-            let mut len = 0;
-            while *p.add(len) != 0 {
-                len += 1;
-            }
-            let entry = narrow(core::slice::from_raw_parts(p, len));
-            p = p.add(len + 1);
-            // Entries such as `=C:=C:\dir` carry per-drive directories, not variables.
-            if entry.first() == Some(&b'=') {
-                continue;
-            }
-            if let Some(at) = entry.iter().position(|&c| c == b'=') {
-                out.push((entry[..at].to_vec(), entry[at + 1..].to_vec()));
-            }
-        }
-        FreeEnvironmentStringsW(block);
-    }
-    Ok(out)
-}
-
-pub fn set_environment(name: &[u8], value: Option<&[u8]>) -> Res<()> {
-    if name.is_empty() || name.contains(&b'=') || name.contains(&0) {
-        return Err(Fail::invalid());
-    }
-    let n = wide(name).ok_or_else(Fail::invalid)?;
-    let v = match value {
-        Some(v) => Some(wide(v).ok_or_else(Fail::invalid)?),
-        None => None,
-    };
-    // SAFETY: both strings are NUL-terminated; a null value deletes the variable.
-    let ok =
-        unsafe { SetEnvironmentVariableW(n.as_ptr(), v.as_ref().map_or(null(), |v| v.as_ptr())) };
-    if ok == 0 {
-        let op = if value.is_some() {
-            "setenv"
-        } else {
-            "unsetenv"
-        };
-        return Err(Fail::errno(sys::errno(), op, name));
-    }
     Ok(())
 }
 
@@ -356,7 +263,7 @@ fn parent_pid(pid: u32) -> i64 {
 }
 
 pub fn info() -> Res<Info> {
-    let executable = utf8(executable()?)?;
+    let executable = executable()?;
     // SAFETY: plain query.
     let pid = unsafe { GetCurrentProcessId() };
     // Windows has no user or group ids; Go reports -1 for each.

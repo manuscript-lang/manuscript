@@ -28,6 +28,7 @@ mod messages;
 mod mutation;
 mod natiface;
 mod native;
+mod random;
 mod rtcall;
 mod runner;
 mod stmt;

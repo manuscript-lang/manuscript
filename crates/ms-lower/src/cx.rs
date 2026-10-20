@@ -31,7 +31,7 @@ pub enum JobKind {
     BoundNative(Rc<BoundNativeJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
-    /// A copier of a parsed HTML tree into `HtmlNode` values.
+    /// A copy of an HTML parse tree into `HtmlNode`.
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),

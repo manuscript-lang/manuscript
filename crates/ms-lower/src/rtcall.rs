@@ -202,7 +202,7 @@ pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String>
 
 /// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
 /// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 14] = [
+const STATUS_CASES: [(i64, &str); 16] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
@@ -217,6 +217,8 @@ const STATUS_CASES: [(i64, &str); 14] = [
     (12, "Unavailable"),
     (13, "Timeout"),
     (14, "OutputLimit"),
+    (15, "NotTerminal"),
+    (17, "Busy"),
 ];
 
 /// `STATUS_NONE`: end of stream or an absent optional.
@@ -467,6 +469,18 @@ impl FnLower<'_> {
                     vals.push(has);
                     vals.push(value);
                     i += 1;
+                }
+                "src" => {
+                    // The upload of a request: the closure the runtime reads chunks through.
+                    let input = *inputs
+                        .get(cursor)
+                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
+                    cursor += 1;
+                    let stream = input
+                        .val
+                        .ok_or_else(|| Error::new(format!("{sym}: missing upload")))?;
+                    let env = self.upload_env(stream)?;
+                    vals.push(env);
                 }
                 "env" => {
                     // The handler of a server: the closure the runtime calls per request.
@@ -916,7 +930,12 @@ impl FnLower<'_> {
             None
         };
         if let (Some(inner), Some(code)) = (eof, code) {
-            return self.status_optional_result(sym, code, slot, inner, result);
+            let take = &mut |s: &mut Self| {
+                Ok(s.b
+                    .emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
+                    .expect("take"))
+            };
+            return self.status_optional_result(sym, code, take, result);
         }
         let wrap = match wrap {
             Some(i) => {
@@ -1017,7 +1036,7 @@ impl FnLower<'_> {
     }
 
     /// The payload-free case of `a` whose index is `code`, trying cases from `from`.
-    fn enum_from_index(
+    pub(crate) fn enum_from_index(
         &mut self,
         a: ms_mir::types::AltId,
         code: Value,
@@ -1129,12 +1148,11 @@ impl FnLower<'_> {
     }
 
     /// `ok(some(value))` for status zero, `ok(none)` for `STATUS_NONE`, else the error the status names.
-    fn status_optional_result(
+    pub(crate) fn status_optional_result(
         &mut self,
         sym: &str,
         code: Value,
-        slot: Value,
-        inner: MTy,
+        take: &mut dyn FnMut(&mut Self) -> Result<Value, Error>,
         result: MTy,
     ) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
@@ -1150,9 +1168,7 @@ impl FnLower<'_> {
             good,
             result,
             &mut |s| {
-                let v =
-                    s.b.emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
-                        .expect("take");
+                let v = take(s)?;
                 let some = s.b.opt_some(v);
                 Ok(Some(s.b.alt_new(a, ok as u32, &[some])))
             },

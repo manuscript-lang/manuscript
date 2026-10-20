@@ -4,8 +4,8 @@ use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, SHARED_VA
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::{
-    self, BlockArg, FuncRef, GlobalValue, InstBuilder, MemFlagsData, StackSlotData, StackSlotKind,
-    TrapCode, Value, types,
+    self, BlockArg, FuncRef, GlobalValue, InstBuilder, InstructionData, MemFlagsData, Opcode,
+    StackSlotData, StackSlotKind, TrapCode, Value, ValueDef, types,
 };
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
@@ -49,6 +49,9 @@ pub struct Lower<'a, 'm> {
     lazy: Vec<bool>,
     /// MIR block being lowered.
     cur: usize,
+    /// Result paired with the preceding overflow flag. Reuse only on the very
+    /// next instruction, so the defining instruction always dominates the use.
+    overflow_result: Option<(Op, Value, Value, Value)>,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
@@ -77,6 +80,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             pslots: HashMap::new(),
             lazy: Vec::new(),
             cur: 0,
+            overflow_result: None,
             blocks: Vec::new(),
             unsupported: None,
         }
@@ -103,6 +107,64 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn iconst(&mut self, v: i64) -> Value {
         self.b.ins().iconst(types::I64, v)
+    }
+
+    fn const_of(&self, v: Value) -> Option<i64> {
+        let dfg = &self.b.func.dfg;
+        let ValueDef::Result(i, _) = dfg.value_def(v) else {
+            return None;
+        };
+        match dfg.insts[i] {
+            InstructionData::UnaryImm {
+                opcode: Opcode::Iconst,
+                imm,
+            } => Some(imm.bits()),
+            _ => None,
+        }
+    }
+
+    /// The constant operand of a multiplication and the other operand.
+    fn mul_const(&self, x: Value, y: Value) -> Option<(Value, i64)> {
+        match (self.const_of(x), self.const_of(y)) {
+            (_, Some(c)) => Some((x, c)),
+            (Some(c), _) => Some((y, c)),
+            _ => None,
+        }
+    }
+
+    /// `x * y`, using shifts and adds (which fold into `lea`) for small constants.
+    fn mul(&mut self, x: Value, y: Value) -> Value {
+        if let Some((x, c)) = self.mul_const(x, y) {
+            match c {
+                1 => return x,
+                c if c > 1 && (c as u64).is_power_of_two() => {
+                    return self.b.ins().ishl_imm_u(x, c.trailing_zeros() as i64);
+                }
+                3 | 5 | 9 => {
+                    let t = self.b.ins().ishl_imm_u(x, (c - 1).trailing_zeros() as i64);
+                    return self.b.ins().iadd(x, t);
+                }
+                _ => {}
+            }
+        }
+        self.b.ins().imul(x, y)
+    }
+
+    /// `x * y` and its signed-overflow flag; a constant factor is a range check.
+    fn mul_overflow(&mut self, x: Value, y: Value) -> (Value, Value) {
+        if let Some((x, c)) = self.mul_const(x, y)
+            && c >= 2
+        {
+            let (lo, hi) = (i64::MIN / c, i64::MAX / c);
+            let off = self.b.ins().iadd_imm_s(x, lo.wrapping_neg());
+            let of = self
+                .b
+                .ins()
+                .icmp_imm_u(IntCC::UnsignedGreaterThan, off, hi.wrapping_sub(lo));
+            let k = self.iconst(c);
+            return (self.mul(x, k), of);
+        }
+        self.b.ins().smul_overflow(x, y)
     }
 
     fn zero(&mut self, l: Leaf) -> Value {
@@ -1099,6 +1161,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     });
                 }
             }
+            self.overflow_result = None;
             for inst in &f.blocks[b.index()].insts {
                 self.set_loc(inst.loc);
                 self.refresh(f, inst.args.iter().copied());
@@ -1281,6 +1344,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn lower_inst(&mut self, f: &Func, inst: &Inst) {
         let checks = self.g.opts.checks;
+        let previous_overflow = self.overflow_result.take();
         let m = self.g.m;
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
@@ -1307,7 +1371,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().iadd(x, y)
+                if let Some((Op::IAdd, _, _, v)) =
+                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
+                {
+                    v
+                } else {
+                    self.b.ins().iadd(x, y)
+                }
             }],
             Op::ISub => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1315,25 +1385,56 @@ impl<'a, 'm> Lower<'a, 'm> {
             }],
             Op::IMul => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().imul(x, y)
+                if let Some((Op::IMul, _, _, v)) =
+                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
+                {
+                    v
+                } else {
+                    self.mul(x, y)
+                }
             }],
             Op::INeg => vec![{
                 let x = self.a(inst, 0)[0];
                 self.b.ins().ineg(x)
             }],
+            Op::IAddOverflow | Op::IMulOverflow => {
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let (v, of) = if inst.op == Op::IAddOverflow {
+                    self.b.ins().sadd_overflow(x, y)
+                } else {
+                    self.mul_overflow(x, y)
+                };
+                self.overflow_result = Some((
+                    if inst.op == Op::IAddOverflow {
+                        Op::IAdd
+                    } else {
+                        Op::IMul
+                    },
+                    x,
+                    y,
+                    v,
+                ));
+                vec![of]
+            }
+            Op::IntOverflowIf => {
+                if checks {
+                    self.fault_if(self.a(inst, 0)[0], "msrt_fault_int_overflow", vec![]);
+                }
+                vec![]
+            }
             Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if !checks {
                     vec![match inst.op {
                         Op::IAddChk => self.b.ins().iadd(x, y),
                         Op::ISubChk => self.b.ins().isub(x, y),
-                        _ => self.b.ins().imul(x, y),
+                        _ => self.mul(x, y),
                     }]
                 } else {
                     let (v, of) = match inst.op {
                         Op::IAddChk => self.b.ins().sadd_overflow(x, y),
                         Op::ISubChk => self.b.ins().ssub_overflow(x, y),
-                        _ => self.b.ins().smul_overflow(x, y),
+                        _ => self.mul_overflow(x, y),
                     };
                     self.fault_if(of, "msrt_fault_int_overflow", vec![]);
                     vec![v]

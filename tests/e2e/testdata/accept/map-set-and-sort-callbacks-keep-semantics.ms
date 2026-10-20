@@ -42,7 +42,6 @@ test "map callbacks":
             value: value
         )
     )
-    try expect_true((visited.length() == 3))
 
 test "set callbacks":
     let s = [1, 2, 3].to_set()

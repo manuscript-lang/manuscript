@@ -2,7 +2,7 @@
 use crate::buf::ByteBuf;
 use crate::global::Global;
 use crate::sys;
-use ms_rt_abi::StrObj;
+use ms_rt_abi::{StrObj, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
 static OUT: Global<ByteBuf> = Global::new(ByteBuf::new());
@@ -51,6 +51,34 @@ pub unsafe extern "C-unwind" fn msrt_io_write_stdout(s: *mut StrObj) {
 pub unsafe extern "C-unwind" fn msrt_io_write_stderr(s: *mut StrObj) {
     // SAFETY: caller passes a live string.
     write_stderr(unsafe { crate::string::bytes(s) });
+}
+
+/// The bytes of a live byte vector.
+///
+/// # Safety
+/// `v` points to a live byte vector.
+unsafe fn vec_bytes<'a>(v: *const VecVal) -> &'a [u8] {
+    // SAFETY: a byte vector is `len` initialised bytes at `ptr` (null when empty).
+    unsafe {
+        let v = &*v;
+        if v.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(v.ptr, v.len)
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_io_write_bytes_stdout(v: *const VecVal) {
+    // SAFETY: caller passes a live byte vector.
+    write_stdout(unsafe { vec_bytes(v) });
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_io_write_bytes_stderr(v: *const VecVal) {
+    // SAFETY: caller passes a live byte vector.
+    write_stderr(unsafe { vec_bytes(v) });
 }
 
 #[unsafe(no_mangle)]

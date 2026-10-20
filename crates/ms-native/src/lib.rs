@@ -25,5 +25,7 @@ extern crate ms_std_random;
 extern crate ms_std_regex;
 extern crate ms_std_rt;
 extern crate ms_std_semver;
+extern crate ms_std_system;
+extern crate ms_std_terminal;
 extern crate ms_std_time;
 extern crate ms_std_url;

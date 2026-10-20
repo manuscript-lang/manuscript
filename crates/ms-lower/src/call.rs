@@ -354,7 +354,7 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| n.to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if ms_check::effects::collection_mutation(&self.ety(recv_expr), &method) {
+        if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         let recv = self.expr(recv_expr)?;

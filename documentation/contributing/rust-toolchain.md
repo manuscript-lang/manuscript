@@ -18,7 +18,7 @@ target/release/ms run examples/hello/ms.toml -- first second
 
 `sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively; the darwin and windows legs are experimental and may fail without turning the check red.
 
-`.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them.
+`.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them. On Windows, fault reporting uses native unwind records to reach the first generated source frame, then follows contiguous generated callers. Attribution stops at a native callback or generated glue boundary; complete mixed native/generated stack unwinding is not supported.
 
 ## Checks
 

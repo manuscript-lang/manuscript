@@ -183,6 +183,19 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
+            "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
+            | "random/choice" => self.random_native(e, view, native),
+            "html/parse" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                let rty = self.emty(e)?;
+                self.html_parse(e, rty, &args)
+            }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -191,23 +204,6 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.at(e.pos);
                 self.map_from_entries(args[0].val, result)
-            }
-            "html/parse" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let func = sym.decl.as_ref().and_then(|d| d.func());
-                self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                let result = self.emty(e)?;
-                let node = self
-                    .ety(e)
-                    .args
-                    .first()
-                    .cloned()
-                    .ok_or_else(|| Error::new("parse returns a Result"))?;
-                self.at(e.pos);
-                self.html_parse(&node, &args, result)
             }
             // `shift(values)` removes the first item of the caller's list.
             "collections/shift" => {
@@ -290,8 +286,8 @@ impl<'a> FnLower<'a> {
                 self.call_runtime("msstd_time_sleep", &[d], MTy::UNIT)?;
                 Ok(self.dummy(MTy::UNIT))
             }
-            "math/min" => self.math_extreme(e, view, false),
-            "math/max" => self.math_extreme(e, view, true),
+            "math/min" => self.math_extreme(view, false),
+            "math/max" => self.math_extreme(view, true),
             "math/min_of" => self.math_extreme_of(e, view, false),
             "math/max_of" => self.math_extreme_of(e, view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
@@ -322,6 +318,29 @@ impl<'a> FnLower<'a> {
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 let result = self.emty(e)?;
                 self.at(e.pos);
+                if other.starts_with("path/") {
+                    // The host-rule functions share the interface's entry points; the leading
+                    // `windows` flag selects the host's rules.
+                    let name = ct::n("windows");
+                    let v = self.b.bconst(cfg!(windows));
+                    args.insert(
+                        0,
+                        NArg {
+                            name,
+                            val: Val { v, own: false },
+                            wrapped: false,
+                        },
+                    );
+                    let mut decl = params.to_vec();
+                    decl.insert(
+                        0,
+                        ct::Param {
+                            name,
+                            ty: ct::bool_(),
+                        },
+                    );
+                    return self.native_call(other, &decl, &args, result);
+                }
                 self.native_call(other, params, &args, result)
             }
         }
@@ -1073,7 +1092,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::effects::collection_mutation(&m.receiver, &name) {
+        if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned(Val { v: b, own: false });
@@ -1779,7 +1798,14 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
+            "append"
+                | "set"
+                | "prepend"
+                | "insert"
+                | "remove"
+                | "pop"
+                | "shift"
+                | "reverse_in_place"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         if !is_list || runtime_only {
@@ -1871,6 +1897,7 @@ impl<'a> FnLower<'a> {
                 Ok((out, None))
             }
             "pop" | "shift" => {
+                let from_front = name == "shift";
                 let optty = self.b.m.types.opt(elem);
                 let n = self.b.list_len(old);
                 let zero = self.b.iconst(0);
@@ -1887,16 +1914,18 @@ impl<'a> FnLower<'a> {
                 let cur = self.b.use_var(acc);
                 let one = self.b.iconst(1);
                 let last = self.b.binop(Op::ISub, n, one);
-                let at = if name == "pop" { last } else { zero };
+                let at = if from_front { self.b.iconst(0) } else { last };
                 let x = self.b.list_get(cur, at);
                 let xo = self.owned(Val { v: x, own: false });
                 let some = self.b.opt_some(xo);
+                let placeholder = self.b.use_var(res);
+                self.drop_value(placeholder);
                 self.b.def_var(res, some);
                 let d2 = self.type_desc(elem);
-                let rest = if name == "pop" {
-                    self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?
-                } else {
+                let rest = if from_front {
                     self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?
+                } else {
+                    self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?
                 };
                 self.drop_value(cur);
                 self.b.def_var(acc, rest);
@@ -2459,13 +2488,14 @@ fn build_stream_method(
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;
     let args = b.params();
-    if name == "write" {
-        let sym = if stderr {
-            "msrt_io_write_stderr"
-        } else {
-            "msrt_io_write_stdout"
+    if name == "write" || name == "write_bytes" {
+        let (sym, arg) = match (name == "write", stderr) {
+            (true, true) => ("msrt_io_write_stderr", MTy::STR),
+            (true, false) => ("msrt_io_write_stdout", MTy::STR),
+            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
+            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
         };
-        let ext = runtime_fn(b.m, sym, &[MTy::STR], MTy::UNIT);
+        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
         b.call_rt(ext, &[args[1]]);
     }
     match b.m.types.kind(ret).clone() {

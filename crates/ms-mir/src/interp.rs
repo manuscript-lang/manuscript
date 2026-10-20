@@ -533,6 +533,13 @@ impl<'m> Interp<'m> {
             Op::ISub => set!(Val::Int(int!(0).wrapping_sub(int!(1)))),
             Op::IMul => set!(Val::Int(int!(0).wrapping_mul(int!(1)))),
             Op::INeg => set!(Val::Int(int!(0).wrapping_neg())),
+            Op::IAddOverflow => set!(Val::Bool(int!(0).overflowing_add(int!(1)).1)),
+            Op::IMulOverflow => set!(Val::Bool(int!(0).overflowing_mul(int!(1)).1)),
+            Op::IntOverflowIf => {
+                if boolean!(0) {
+                    return Err(overflow());
+                }
+            }
             Op::IAddChk => set!(Val::Int(int!(0).checked_add(int!(1)).ok_or_else(overflow)?)),
             Op::ISubChk => set!(Val::Int(int!(0).checked_sub(int!(1)).ok_or_else(overflow)?)),
             Op::IMulChk => set!(Val::Int(int!(0).checked_mul(int!(1)).ok_or_else(overflow)?)),
