@@ -20,28 +20,28 @@ fn cpath(p: &[u8]) -> Res<CPath> {
     CPath::new(p).ok_or_else(Fail::invalid)
 }
 
-fn lstat(p: &[u8]) -> Res<libc::stat> {
+fn lstat(p: &[u8]) -> Res<sys::Stat> {
     sys::stat(&cpath(p)?, false).map_err(|e| Fail::errno(e, "lstat", p))
 }
 
-fn is_dir(st: &libc::stat) -> bool {
-    sys::is_dir(st)
+fn is_dir(st: &sys::Stat) -> bool {
+    st.is_dir()
 }
 
-fn is_link(st: &libc::stat) -> bool {
-    st.st_mode & libc::S_IFMT == libc::S_IFLNK
+fn is_link(st: &sys::Stat) -> bool {
+    st.is_link()
 }
 
-fn is_regular(st: &libc::stat) -> bool {
-    st.st_mode & libc::S_IFMT == libc::S_IFREG
+fn is_regular(st: &sys::Stat) -> bool {
+    st.is_regular()
 }
 
-fn same_file(a: &libc::stat, b: &libc::stat) -> bool {
-    a.st_dev == b.st_dev && a.st_ino == b.st_ino
+fn same_file(a: &sys::Stat, b: &sys::Stat) -> bool {
+    a.same_file(b)
 }
 
 /// The entries of a directory in native order.
-fn read_dir(p: &[u8]) -> Res<Vec<(Vec<u8>, u8)>> {
+fn read_dir(p: &[u8]) -> Res<sys::DirEntries> {
     sys::read_dir(&cpath(p)?).map_err(|e| Fail::errno(e, "open", p))
 }
 
@@ -111,10 +111,12 @@ pub fn glob(root: &[u8], pattern: &[u8], max: i64) -> Res<Vec<Vec<u8>>> {
 fn within_path(source: &[u8], target: &[u8]) -> bool {
     let source = path::clean(source);
     let target = path::clean(target);
-    if source == b"/" {
-        return target.first() == Some(&b'/');
+    if source.last().is_some_and(|&c| path::is_sep(c)) {
+        return target.starts_with(&source);
     }
-    target == source || (target.starts_with(&source) && target.get(source.len()) == Some(&b'/'))
+    target == source
+        || (target.starts_with(&source)
+            && target.get(source.len()).is_some_and(|&c| path::is_sep(c)))
 }
 
 /// `resolveDestination`: resolves the existing ancestors of `dest` through links.
@@ -125,7 +127,7 @@ fn resolve_destination(dest: &[u8]) -> Result<Vec<u8>, Fail> {
         let c = cpath(&ancestor)?;
         match sys::stat(&c, false) {
             Ok(_) => break,
-            Err(libc::ENOENT) => {}
+            Err(e) if sys::is_not_found(e) => {}
             Err(e) => return Err(Fail::errno(e, "lstat", &ancestor)),
         }
         let parent = path::dir(&ancestor);
@@ -143,33 +145,20 @@ fn resolve_destination(dest: &[u8]) -> Result<Vec<u8>, Fail> {
 }
 
 fn remove_ignoring_missing(p: &[u8]) -> Res<()> {
-    let c = cpath(p)?;
-    let e = match sys::unlink(&c) {
-        Ok(()) => return Ok(()),
-        Err(e) => e,
-    };
-    match sys::rmdir(&c) {
-        Ok(()) => Ok(()),
-        Err(libc::ENOTDIR) if e == libc::ENOENT => Ok(()),
-        Err(e1) => {
-            let e = if e1 != libc::ENOTDIR { e1 } else { e };
-            if e == libc::ENOENT {
-                Ok(())
-            } else {
-                Err(Fail::errno(e, "remove", p))
-            }
-        }
+    match sys::remove(&cpath(p)?) {
+        Err(e) if !sys::is_not_found(e) => Err(Fail::errno(e, "remove", p)),
+        _ => Ok(()),
     }
 }
 
-fn open_out(dest: &[u8], mode: u32) -> Res<i32> {
+fn open_out(dest: &[u8], mode: u32) -> Res<sys::Fd> {
     let c = cpath(dest)?;
-    sys::open(&c, libc::O_WRONLY | libc::O_CREAT | libc::O_EXCL, mode)
+    sys::open(&c, sys::O_WRONLY | sys::O_CREAT | sys::O_EXCL, mode)
         .map_err(|e| Fail::errno(e, "open", dest))
 }
 
 /// Copies `input` to `output`, charging `bytes`; fails with `LimitExceeded` past the budget.
-fn copy_stream(input: i32, output: i32, dest: &[u8], bytes: &mut i64) -> Res<()> {
+fn copy_stream(input: sys::Fd, output: sys::Fd, dest: &[u8], bytes: &mut i64) -> Res<()> {
     let mut buffer = alloc::vec![0u8; 65536];
     loop {
         poll_cancel();
@@ -231,10 +220,10 @@ fn copy_tree_at(
                 return Err(Fail::status(STATUS_ALREADY_EXISTS));
             }
         }
-        Err(libc::ENOENT) => {}
+        Err(e) if sys::is_not_found(e) => {}
         Err(e) => return Err(Fail::errno(e, "lstat", dest)),
     }
-    let perm = info.st_mode & 0o777;
+    let perm = info.mode & 0o777;
     if is_link(&info) {
         let target =
             sys::readlink(&cpath(source)?).map_err(|e| Fail::errno(e, "readlink", source))?;
@@ -251,7 +240,8 @@ fn copy_tree_at(
             return Err(Fail::failed("destination is not a directory"));
         }
         match sys::mkdir(&cpath(dest)?, perm as u32) {
-            Ok(()) | Err(libc::EEXIST) => {}
+            Ok(()) => {}
+            Err(e) if sys::is_exists(e) => {}
             Err(e) => return Err(Fail::errno(e, "mkdir", dest)),
         }
         for (name, _) in read_dir(source)? {
@@ -270,8 +260,8 @@ fn copy_tree_at(
             "copy_tree requires regular files, directories, or symlinks",
         ));
     }
-    let input = sys::open(&cpath(source)?, libc::O_RDONLY, 0)
-        .map_err(|e| Fail::errno(e, "open", source))?;
+    let input =
+        sys::open(&cpath(source)?, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
     let result = (|| {
         if replace {
             remove_ignoring_missing(dest)?;
@@ -347,40 +337,26 @@ fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
     Ok(())
 }
 
-fn chtimes(dest: &[u8], info: &libc::stat) -> Res<()> {
+fn chtimes(dest: &[u8], info: &sys::Stat) -> Res<()> {
     let c = cpath(dest)?;
-    sys::utimens(
-        &c,
-        (info.st_atime as i64, info.st_atime_nsec as i64),
-        (info.st_mtime as i64, info.st_mtime_nsec as i64),
-        true,
-    )
-    .map_err(|e| Fail::errno(e, "chtimes", dest))
-}
-
-/// `st_mode` as `u32` (it is `u16` on macOS).
-#[allow(clippy::useless_conversion)]
-fn mode_bits(mode: libc::mode_t) -> u32 {
-    mode.into()
+    sys::utimens(&c, info.accessed, info.modified, true)
+        .map_err(|e| Fail::errno(e, "chtimes", dest))
 }
 
 fn chmod_path(dest: &[u8], mode: u32) -> Res<()> {
     sys::chmod(&cpath(dest)?, mode & 0o7777).map_err(|e| Fail::errno(e, "chmod", dest))
 }
 
-/// Linux `FICLONE`: shares the extents of `source` with a new `destination`.
-#[cfg(target_os = "linux")]
+/// Shares the extents of `source` with a new `destination` where the host supports it.
 fn clone_file(source: &[u8], destination: &[u8]) -> Result<(), Fail> {
-    let input = sys::open(&cpath(source)?, libc::O_RDONLY, 0)
-        .map_err(|e| Fail::errno(e, "open", source))?;
+    let input =
+        sys::open(&cpath(source)?, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
     let result = (|| {
         let st = sys::fstat(input).map_err(|e| Fail::errno(e, "stat", source))?;
-        let output = open_out(destination, st.st_mode & 0o7777)?;
-        // SAFETY: both descriptors are open; FICLONE takes the source descriptor.
-        let r = unsafe { libc::ioctl(output, 0x4004_9409 as _, input) };
-        let e = sys::errno();
+        let output = open_out(destination, st.mode & 0o7777)?;
+        let r = sys::clone_file(output, input);
         let _ = sys::close(output);
-        if r != 0 {
+        if let Err(e) = r {
             let _ = sys::unlink(&cpath(destination)?);
             return Err(Fail::errno(e, "ioctl", destination));
         }
@@ -388,11 +364,6 @@ fn clone_file(source: &[u8], destination: &[u8]) -> Result<(), Fail> {
     })();
     let _ = sys::close(input);
     result
-}
-
-#[cfg(not(target_os = "linux"))]
-fn clone_file(_: &[u8], _: &[u8]) -> Result<(), Fail> {
-    Err(Fail::status(STATUS_UNSUPPORTED))
 }
 
 impl Copier<'_, '_> {
@@ -413,7 +384,7 @@ impl Copier<'_, '_> {
         }
         let previous = match sys::stat(&cpath(dest)?, false) {
             Ok(st) => Some(st),
-            Err(libc::ENOENT) => None,
+            Err(e) if sys::is_not_found(e) => None,
             Err(e) => return Err(Fail::errno(e, "lstat", dest)),
         };
         if let Some(prev) = &previous
@@ -447,7 +418,7 @@ impl Copier<'_, '_> {
         if !is_regular(&info) {
             return Err(Fail::invalid());
         }
-        if info.st_size as i64 > self.o.bytes {
+        if info.size > self.o.bytes {
             return Err(limit_exceeded());
         }
         self.copy_file(source, dest, &info, exists)
@@ -457,8 +428,8 @@ impl Copier<'_, '_> {
         &mut self,
         source: &[u8],
         dest: &[u8],
-        info: &libc::stat,
-        previous: Option<&libc::stat>,
+        info: &sys::Stat,
+        previous: Option<&sys::Stat>,
     ) -> Res<()> {
         if !self.o.recursive {
             return Err(Fail::invalid());
@@ -480,7 +451,7 @@ impl Copier<'_, '_> {
         &mut self,
         source: &[u8],
         dest: &[u8],
-        info: &libc::stat,
+        info: &sys::Stat,
         exists: bool,
     ) -> Res<()> {
         if !exists {
@@ -490,7 +461,7 @@ impl Copier<'_, '_> {
             self.copy(&path::join(source, &name), &path::join(dest, &name))?;
         }
         if !exists {
-            chmod_path(dest, mode_bits(info.st_mode))?;
+            chmod_path(dest, info.mode)?;
         }
         if self.o.preserve {
             return chtimes(dest, info);
@@ -498,14 +469,8 @@ impl Copier<'_, '_> {
         Ok(())
     }
 
-    fn copy_file(
-        &mut self,
-        source: &[u8],
-        dest: &[u8],
-        info: &libc::stat,
-        exists: bool,
-    ) -> Res<()> {
-        let input = sys::open(&cpath(source)?, libc::O_RDONLY, 0)
+    fn copy_file(&mut self, source: &[u8], dest: &[u8], info: &sys::Stat, exists: bool) -> Res<()> {
+        let input = sys::open(&cpath(source)?, sys::O_RDONLY, 0)
             .map_err(|e| Fail::errno(e, "open", source))?;
         let result = self.copy_file_from(input, source, dest, info, exists);
         let _ = sys::close(input);
@@ -514,10 +479,10 @@ impl Copier<'_, '_> {
 
     fn copy_file_from(
         &mut self,
-        input: i32,
+        input: sys::Fd,
         source: &[u8],
         dest: &[u8],
-        info: &libc::stat,
+        info: &sys::Stat,
         exists: bool,
     ) -> Res<()> {
         let acquired = sys::fstat(input).map_err(|e| Fail::errno(e, "stat", source))?;
@@ -532,11 +497,11 @@ impl Copier<'_, '_> {
                 Ok(()) => {
                     let cloned =
                         sys::stat(&cpath(dest)?, true).map_err(|e| Fail::errno(e, "stat", dest))?;
-                    if cloned.st_size as i64 > self.o.bytes {
+                    if cloned.size > self.o.bytes {
                         return Err(limit_exceeded());
                     }
-                    self.o.bytes -= cloned.st_size as i64;
-                    chmod_path(dest, mode_bits(info.st_mode))?;
+                    self.o.bytes -= cloned.size;
+                    chmod_path(dest, info.mode)?;
                     return if self.o.preserve {
                         chtimes(dest, info)
                     } else {
@@ -551,14 +516,10 @@ impl Copier<'_, '_> {
                 }
             }
         }
-        let output = open_out(dest, mode_bits(info.st_mode) & 0o7777)?;
+        let output = open_out(dest, info.mode & 0o7777)?;
         let copied = copy_stream(input, output, dest, &mut self.o.bytes);
         let chmoded = copied.and_then(|()| {
-            // SAFETY: plain system call on the open output descriptor.
-            if unsafe { libc::fchmod(output, (info.st_mode & 0o7777) as libc::mode_t) } != 0 {
-                return Err(Fail::errno(sys::errno(), "chmod", dest));
-            }
-            Ok(())
+            sys::fchmod(output, info.mode & 0o7777).map_err(|e| Fail::errno(e, "chmod", dest))
         });
         let closed = sys::close(output).map_err(|e| Fail::errno(e, "close", dest));
         chmoded.and(closed)?;
@@ -756,7 +717,7 @@ impl GlobState {
         if is_link(&info) && o.follow_links {
             match sys::stat(&cpath(p)?, true) {
                 Ok(st) => info = st,
-                Err(libc::ENOENT) => return Ok(()),
+                Err(e) if sys::is_not_found(e) => return Ok(()),
                 Err(e) => return Err(Fail::errno(e, "stat", p)),
             }
         }

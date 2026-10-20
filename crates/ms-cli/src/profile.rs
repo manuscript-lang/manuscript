@@ -17,7 +17,7 @@
 //!   standard output is captured into the document (`stdout`, or
 //!   `stdout_base64` when it is not UTF-8); its standard error stays live.
 //! * Arguments after `--` go to the program. `ms profile` returns the
-//!   program's exit status (255 when it died from a signal).
+//!   program's exit status (128 + signal when it died from a signal).
 //!
 //! ## What runs
 //!

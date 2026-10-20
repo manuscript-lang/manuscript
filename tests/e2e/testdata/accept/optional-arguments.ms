@@ -15,7 +15,11 @@ fn flag(value: Optional[Bool]) Bool: value.get()
 fn success(value: Optional[Result[Int, TextError]]) Int:
     return value.get().get(-1)
 
-fn context[T](value: Optional[T], fallback: T) T: value.get(fallback)
+fn context[T](value: Optional[T], fallback: T) T:
+    if let inner = value:
+        return inner
+
+    return fallback
 
 type Failure:
     detail: String
@@ -47,7 +51,7 @@ impl Read for Reader:
 type Counter:
     calls: Int
 
-fn next(counter: Counter) Int:
+fn next(var counter: Counter) Int:
     counter.calls += 1
     return counter.calls
 
@@ -58,7 +62,7 @@ fn invoke(value: Optional[fn(value: Int) Int]) Int: value.get()(4)
 
 fn increment(value: Int) Int: value + 1
 
-fn mutate(value: Optional[Counter]) Unit: value.get().calls = 9
+fn calls_of(value: Optional[Counter]) Int: value.get().calls
 
 test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
@@ -106,15 +110,15 @@ test "constructor fields and methods use optional arguments":
     try expect_equal(read(4), 6)
     let view = Read(reader)
     try expect_equal(view.read(5), 7)
-    let counter = Counter(0)
-    mutate(counter)
+    let counter = Counter(9)
+    try expect_equal(calls_of(counter.clone()), 9)
     try expect_equal(counter.calls, 9)
     let notice = Notice(Failure("detail"))
     try expect_equal(notice.failure.get().message(), "detail")
 
 test "wrapping evaluates arguments once in written order":
-    let counter = Counter(0)
-    try expect_equal(ordered(second: next(counter), first: next(counter)), 21)
+    var counter = Counter(0)
+    try expect_equal(ordered(second: next(var counter), first: next(var counter)), 21)
     try expect_equal(counter.calls, 2)
 
 test "queue capacity accepts a plain value or omission":

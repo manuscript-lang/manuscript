@@ -724,8 +724,11 @@ fn define_with(
                 ranges.push((r.start, file, line, scope));
             }
         }
+        // Frames of inlined callees return to the physical function's file, so a function
+        // without a position of its own borrows the first file its lines name.
         let (file, line) = if f.loc.is_none() {
-            (u32::MAX, 0)
+            let first = ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX);
+            (first.unwrap_or(u32::MAX), 0)
         } else {
             (f.loc.file, f.loc.line)
         };

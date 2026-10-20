@@ -250,3 +250,18 @@ fn native_tests_run_one_process_each() {
     assert_eq!(status, 0, "{json}");
     assert!(json.contains("\"passed\": 1"), "{json}");
 }
+
+/// Drop and copy of a long chain of a recursive alternative loop over its tail; the copy keeps
+/// every payload (`Tag(n, ..)`) and the original stays intact.
+#[test]
+fn native_chains_copy_and_drop_iteratively() {
+    let dir = scratch("native-chain");
+    let source = write(
+        &dir,
+        "main.ms",
+        "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\nfn build(n: Int) Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\nfn sum(l: Link, acc: Int) Int:\n    match l:\n        End:\n            return acc\n        More(r):\n            return sum(r, acc)\n        Tag(n, r):\n            return sum(r, acc + n)\n\nexport fn main() Int:\n    let a = build(100000)\n    let b = a\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
+    );
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+}

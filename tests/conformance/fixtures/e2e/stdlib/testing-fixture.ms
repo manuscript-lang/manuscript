@@ -10,10 +10,10 @@ fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    fn before_each() Unit:
+    var fn before_each() Unit:
         self.value = 1
 
-    fn after_each() Unit:
+    var fn after_each() Unit:
         self.value = 10
 
 test "first fixture use":

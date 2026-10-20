@@ -36,7 +36,12 @@ fn analyze(filename: &str, overlay: &Overlay) -> Checked {
 
 /// `project_sources` also checks every source file of a manifest's project
 /// (`ms check`); `entry` allows the entry requirement (never for `ms lint`).
-fn analyze_with(filename: &str, overlay: &Overlay, project_sources: bool, entry: bool) -> Checked {
+pub(super) fn analyze_with(
+    filename: &str,
+    overlay: &Overlay,
+    project_sources: bool,
+    entry: bool,
+) -> Checked {
     let editor = EditorOptions {
         overlay: overlay.clone(),
         project_sources,
@@ -214,11 +219,11 @@ fn checked_line(input: &AnalysisInput, checked: &Checked) -> String {
 
 /// How often watched files are polled, and how long a change settles before
 /// the rerun (editors often save in several steps).
-const WATCH_INTERVAL: Duration = Duration::from_millis(10);
-const WATCH_SETTLE: Duration = Duration::from_millis(10);
+pub(super) const WATCH_INTERVAL: Duration = Duration::from_millis(10);
+pub(super) const WATCH_SETTLE: Duration = Duration::from_millis(10);
 
 /// The input, its manifest, and every local module the analysis loaded.
-fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
+pub(super) fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
     let mut files = Vec::new();
     files.extend(absolute(input));
     if !checked.project_root.is_empty() {
@@ -238,19 +243,19 @@ fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
     files
 }
 
-fn absolute(path: &str) -> Option<String> {
+pub(super) fn absolute(path: &str) -> Option<String> {
     let path = std::path::absolute(path).ok()?;
     Some(path.to_string_lossy().into_owned())
 }
 
 #[derive(PartialEq)]
-struct FileState {
+pub(super) struct FileState {
     size: u64,
     modified: Option<SystemTime>,
 }
 
 /// `None` for a file that does not exist.
-fn file_state(path: &str) -> Option<FileState> {
+pub(super) fn file_state(path: &str) -> Option<FileState> {
     let meta = std::fs::metadata(path).ok()?;
     Some(FileState {
         size: meta.len(),

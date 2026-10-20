@@ -1,10 +1,10 @@
 import {expect_true} from "@std/testing.ms"
 
-fn keep(list: List[fn() Int], value: Int) Unit:
+fn keep(var list: List[fn() Int], value: Int) Unit:
     list.append(value: fn() Int: value)
     return unit
 
-fn grow(list: List[Int], value: Int) Int:
+fn grow(var list: List[Int], value: Int) Int:
     list.append(value: value)
     return value
 
@@ -40,8 +40,10 @@ test "list callbacks":
         )
     )
     try expect_true((items.count(predicate: fn(value: Int) Bool: value > 1) == 3))
-    let retained = List[fn() Int]()
-    items.for_each(operation: fn(value: Int) Unit: keep(list: retained, value: value))
+    var retained = List[fn() Int]()
+    items.for_each(
+        operation: fn(value: Int) Unit: keep(list: var retained, value: value)
+    )
     let called = retained.map(fn(value: fn() Int) Int: value())
     try expect_true(
         (
@@ -57,6 +59,6 @@ test "list callbacks":
     var grown = List[Int]()
     grown.append(value: 1)
     grown.append(value: 2)
-    let seen = grown.map(fn(value: Int) Int: grow(list: grown, value: value))
+    let seen = grown.map(fn(value: Int) Int: grow(list: var grown, value: value))
     try expect_true((seen.length() == 2 and grown.length() == 4))
     try expect_true((nested(items: items).get(index: 2) == 7))

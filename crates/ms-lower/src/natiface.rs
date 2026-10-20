@@ -26,6 +26,7 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("process/commands", "process", "", 0),
     ("time/clock", "time", "", 0),
     ("time/wall_clock", "time", "", 0),
+    ("net/network", "net", "msrt_net_network", 0),
 ];
 
 /// Interfaces whose values carry no data.
@@ -54,6 +55,258 @@ type MethodRow = (
 );
 
 const METHODS: &[MethodRow] = &[
+    (
+        "net",
+        "Network",
+        "bind_datagram",
+        "msrt_net_network_bind_datagram",
+        &[],
+    ),
+    ("net", "Network", "close", "msrt_net_network_close", &[]),
+    ("net", "Network", "connect", "msrt_net_network_connect", &[]),
+    (
+        "net",
+        "Network",
+        "connect_unix",
+        "msrt_net_network_connect_unix",
+        &[],
+    ),
+    ("net", "Network", "listen", "msrt_net_network_listen", &[]),
+    (
+        "net",
+        "Network",
+        "listen_unix",
+        "msrt_net_network_listen_unix",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
+        "restrict",
+        "msrt_net_network_restrict",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
+        "with_resolver",
+        "msrt_net_network_with_resolver",
+        &[],
+    ),
+    ("net", "Network", "lookup", "msrt_net_network_lookup", &[]),
+    (
+        "net",
+        "Connection",
+        "close",
+        "msrt_net_connection_close",
+        &[],
+    ),
+    (
+        "net",
+        "Connection",
+        "local_address",
+        "msrt_net_connection_local_address",
+        &[],
+    ),
+    (
+        "net",
+        "Connection",
+        "peer_address",
+        "msrt_net_connection_peer_address",
+        &[],
+    ),
+    ("net", "Connection", "read", "msrt_net_connection_read", &[]),
+    (
+        "net",
+        "Connection",
+        "write",
+        "msrt_net_connection_write",
+        &[],
+    ),
+    (
+        "net",
+        "Connection",
+        "write_bytes",
+        "msrt_net_connection_write_bytes",
+        &[],
+    ),
+    (
+        "net",
+        "Connection",
+        "shutdown_write",
+        "msrt_net_connection_shutdown_write",
+        &[],
+    ),
+    ("net", "Listener", "accept", "msrt_net_listener_accept", &[]),
+    (
+        "net",
+        "Listener",
+        "address",
+        "msrt_net_listener_address",
+        &[],
+    ),
+    ("net", "Listener", "close", "msrt_net_listener_close", &[]),
+    (
+        "net",
+        "DatagramSocket",
+        "address",
+        "msrt_net_datagram_address",
+        &[],
+    ),
+    (
+        "net",
+        "DatagramSocket",
+        "close",
+        "msrt_net_datagram_close",
+        &[],
+    ),
+    (
+        "net",
+        "DatagramSocket",
+        "receive",
+        "msrt_net_datagram_receive",
+        &[],
+    ),
+    (
+        "net",
+        "DatagramSocket",
+        "send",
+        "msrt_net_datagram_send",
+        &[],
+    ),
+    (
+        "net",
+        "DatagramSocket",
+        "send_bytes",
+        "msrt_net_datagram_send_bytes",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
+        "http_client",
+        "msrt_net_network_http_client",
+        &[],
+    ),
+    ("net", "Network", "request", "msrt_net_network_request", &[]),
+    (
+        "net",
+        "Network",
+        "request_bytes",
+        "msrt_net_network_request_bytes",
+        &[],
+    ),
+    ("net", "Network", "serve", "msrt_net_network_serve", &[]),
+    (
+        "net",
+        "Network",
+        "serve_stream",
+        "msrt_net_network_serve_stream",
+        &[],
+    ),
+    ("net", "HttpClient", "close", "msrt_http_client_close", &[]),
+    (
+        "net",
+        "HttpClient",
+        "request",
+        "msrt_http_client_request",
+        &[],
+    ),
+    (
+        "net",
+        "HttpClient",
+        "request_bytes",
+        "msrt_http_client_request_bytes",
+        &[],
+    ),
+    (
+        "net",
+        "HttpServer",
+        "address",
+        "msrt_http_server_address",
+        &[],
+    ),
+    ("net", "HttpServer", "close", "msrt_http_server_close", &[]),
+    ("net", "HttpServer", "wait", "msrt_http_server_wait", &[]),
+    ("http", "ResponseBody", "close", "msrt_http_body_close", &[]),
+    (
+        "http",
+        "ResponseBody",
+        "metadata",
+        "msrt_http_body_metadata",
+        &[],
+    ),
+    ("http", "ResponseBody", "read", "msrt_http_body_read", &[]),
+    (
+        "http",
+        "HttpExchange",
+        "close",
+        "msrt_http_exchange_close",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "headers",
+        "msrt_http_exchange_headers",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "method",
+        "msrt_http_exchange_method",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "path",
+        "msrt_http_exchange_path",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "protocol",
+        "msrt_http_exchange_protocol",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "query",
+        "msrt_http_exchange_query",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "read",
+        "msrt_http_exchange_read",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "send_headers",
+        "msrt_http_exchange_send_headers",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "write",
+        "msrt_http_exchange_write",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "write_bytes",
+        "msrt_http_exchange_write_bytes",
+        &[],
+    ),
     ("io", "Files", "open", "msstd_io_open", &[]),
     ("io", "File", "read", "msstd_io_read", &[]),
     ("io", "File", "close", "msstd_io_close", &[]),
@@ -261,6 +514,20 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_temporary_close",
         &[],
     ),
+    (
+        "crypto",
+        "Hasher",
+        "update",
+        "msrt_crypto_hasher_update",
+        &[],
+    ),
+    (
+        "crypto",
+        "Hasher",
+        "finish",
+        "msrt_crypto_hasher_finish",
+        &[],
+    ),
     ("time", "Clock", "now", "msstd_time_clock_now", &[]),
     ("time", "WallClock", "now", "msstd_time_wall_clock_now", &[]),
     (
@@ -358,6 +625,7 @@ impl Cx {
     ) -> Result<VtableId, Error> {
         let mut module = sym
             .strip_prefix("msstd_")
+            .or_else(|| sym.strip_prefix("msrt_"))
             .and_then(|r| r.split('_').next())
             .ok_or_else(|| Error::new(format!("{sym} returns an interface")))?;
         let ity = self
@@ -481,7 +749,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         return Ok(());
     };
     let takes_handle = crate::rtcall::rt_sig(sym)
-        .and_then(|s| s.params.first().map(|p| p.name == "h"))
+        .and_then(|s| {
+            s.params
+                .first()
+                .map(|p| p.name == "h" || p.ty == "*const Obj")
+        })
         .unwrap_or(false);
     let recv = takes_handle.then(|| {
         let handle =
@@ -555,8 +827,10 @@ impl FnLower<'_> {
             self.b.unit()
         } else {
             let ht = handle_ty(self.b.m);
-            let k = self.b.iconst(constant);
-            self.call_runtime(make, &[k], ht)?
+            // A constructor that takes no argument ignores the constant.
+            let takes_constant = crate::rtcall::rt_sig(make).is_some_and(|s| !s.params.is_empty());
+            let k = takes_constant.then(|| self.b.iconst(constant));
+            self.call_runtime(make, k.as_slice(), ht)?
         };
         let v = self
             .b

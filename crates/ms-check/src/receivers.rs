@@ -18,6 +18,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("digest", "crypto/hash_algorithm_digest"),
             ("hmac", "crypto/hash_algorithm_hmac"),
+            ("hasher", "crypto/hash_algorithm_hasher"),
+            ("hmac_hasher", "crypto/hash_algorithm_hmac_hasher"),
         ],
     ),
     (
@@ -25,6 +27,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("compress", "compress/format_compress"),
             ("decompress", "compress/format_decompress"),
+            ("compress_stream", "compress/format_compress_stream"),
+            ("decompress_stream", "compress/format_decompress_stream"),
         ],
     ),
     (

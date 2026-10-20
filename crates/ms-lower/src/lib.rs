@@ -8,6 +8,7 @@
 
 mod call;
 mod closure;
+mod codecstream;
 mod cx;
 mod eq;
 mod expr;
@@ -16,6 +17,7 @@ mod fsinfo;
 mod fswalk;
 mod func;
 mod html;
+mod httpserve;
 mod iface;
 mod iterate;
 mod json;

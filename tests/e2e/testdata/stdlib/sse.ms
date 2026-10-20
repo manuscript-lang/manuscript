@@ -11,10 +11,10 @@ type Chunks:
     failure: Optional[IoError]
 
 impl ReadStream for Chunks:
-    fn close() Unit:
+    var fn close() Unit:
         self.closed = true
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
@@ -123,7 +123,7 @@ test "multi-byte scalars survive every chunk split":
     try expect("data: é\u{20ac}😀\nevent: 世界\n\n", "世界|é\u{20ac}😀|-")
 
 fn invalid_bytes() Bytes:
-    let builder = BytesBuilder()
+    var builder = BytesBuilder()
     builder.concat("data: ".to_bytes())
     builder.append(255)
     builder.concat("\n\n".to_bytes())

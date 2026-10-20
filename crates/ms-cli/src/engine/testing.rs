@@ -10,16 +10,17 @@
 //! the test returned an error, and the text after the marker is the message;
 //! any other status (a fault, abort or signal) is a failure described by how
 //! the process ended, with its standard error text after the marker-free part.
+//! `skip` ends the test with status 0 after writing [`SKIP_MARKER`] and the
+//! reason to standard error; the test is reported skipped, not passed.
 //!
 //! The test's standard output goes to the command's standard output between
 //! its `RUN` and result lines; standard error passes through. Selection
 //! (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
 //! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here. Fixtures
 //! therefore run once per test, not once per module as in the Go
-//! implementation, and there is no way to report a skip.
+//! implementation.
 
 use std::io::Read;
-use std::os::unix::process::ExitStatusExt;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -28,6 +29,9 @@ use ms_driver::Lower;
 use ms_project::gopath;
 
 use ms_lower::FAILURE_MARKER;
+
+/// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
+pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
 use super::{RustBackend, TempDir, compile};
 use crate::backend::{BackendResult, Io, TestRequest};
@@ -121,6 +125,7 @@ enum Status {
     NotRun,
     Passed,
     Failed,
+    Skipped,
 }
 
 impl Status {
@@ -129,6 +134,7 @@ impl Status {
             Status::NotRun => "not_run",
             Status::Passed => "passed",
             Status::Failed => "failed",
+            Status::Skipped => "skipped",
         }
     }
 }
@@ -350,6 +356,11 @@ impl Runner<'_> {
                     out.line(format!("PASS {name}"));
                     case.status = Status::Passed;
                 }
+                Ran::Skipped(why) => {
+                    out.line(format!("SKIP {name}: {why}"));
+                    case.status = Status::Skipped;
+                    case.failure = why;
+                }
                 Ran::Failed(why) => {
                     failed += 1;
                     out.line(format!("FAIL {name}: {why}"));
@@ -366,7 +377,15 @@ impl Runner<'_> {
             out.line("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file");
             reason = "no_tests".into();
         }
-        out.line(format!("{} tests, {failed} failed", plan.len()));
+        let skipped = document.count(Status::Skipped);
+        if skipped > 0 {
+            out.line(format!(
+                "{} tests, {failed} failed, {skipped} skipped",
+                plan.len()
+            ));
+        } else {
+            out.line(format!("{} tests, {failed} failed", plan.len()));
+        }
         document.finish(&reason, started.elapsed());
         if reason == "cancelled" && failed == 0 {
             1
@@ -414,8 +433,8 @@ impl Runner<'_> {
         if waited.timed_out {
             let limit = self.options.timeout.unwrap_or_default();
             return Ran::Failed(format!(
-                "timed out after {}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
-                go_duration(limit)
+                "timed out after {:?}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
+                limit
             ));
         }
         if waited.interrupted {
@@ -427,6 +446,10 @@ impl Runner<'_> {
             return Ran::Failed(message.trim_end_matches('\n').to_string());
         }
         if waited.status.success() {
+            if let Some((before, reason)) = errors.split_once(SKIP_MARKER) {
+                let _ = out.io.stderr.write_all(before.as_bytes());
+                return Ran::Skipped(reason.trim_end_matches('\n').to_string());
+            }
             let _ = out.io.stderr.write_all(errors.as_bytes());
             return Ran::Passed;
         }
@@ -456,44 +479,23 @@ fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> 
 
 enum Ran {
     Passed,
+    Skipped(String),
     Failed(String),
     Cancelled,
 }
 
 fn describe_exit(status: &std::process::ExitStatus) -> String {
-    match (status.code(), status.signal()) {
-        (Some(code), _) => format!("exited with status {code}"),
-        (None, Some(signal)) => format!("was terminated by signal {signal}"),
-        _ => "ended abnormally".to_string(),
+    if let Some(code) = status.code() {
+        return format!("exited with status {code}");
     }
-}
-
-/// Go's `time.Duration.String` for the whole-second limits `--timeout` takes.
-fn go_duration(limit: Duration) -> String {
-    let nanos = limit.as_nanos();
-    if nanos >= 1_000_000_000 {
-        let seconds = limit.as_secs();
-        let fraction = limit.subsec_nanos();
-        let (hours, minutes, seconds) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-        let mut text = String::new();
-        if hours > 0 {
-            text.push_str(&format!("{hours}h"));
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(signal) = status.signal() {
+            return format!("was terminated by signal {signal}");
         }
-        if hours > 0 || minutes > 0 {
-            text.push_str(&format!("{minutes}m"));
-        }
-        if fraction == 0 {
-            text.push_str(&format!("{seconds}s"));
-        } else {
-            let digits = format!("{fraction:09}");
-            text.push_str(&format!("{seconds}.{}s", digits.trim_end_matches('0')));
-        }
-        text
-    } else if nanos >= 1_000_000 {
-        format!("{}ms", nanos as f64 / 1e6)
-    } else {
-        format!("{nanos}ns")
     }
+    "ended abnormally".to_string()
 }
 
 /// Seeded Fisher-Yates. The permutation for a seed differs from Go's.
@@ -619,7 +621,8 @@ impl Document {
                 item
             })
             .collect();
-        let finished = self.count(Status::Passed) + self.count(Status::Failed);
+        let finished =
+            self.count(Status::Passed) + self.count(Status::Failed) + self.count(Status::Skipped);
         let not_run = if self.completed {
             self.tests.len() as i64 - finished
         } else {
@@ -636,7 +639,7 @@ impl Document {
                     .with("selected", Json::int(self.tests.len() as i64))
                     .with("passed", Json::int(self.count(Status::Passed)))
                     .with("failed", Json::int(self.count(Status::Failed)))
-                    .with("skipped", Json::int(0))
+                    .with("skipped", Json::int(self.count(Status::Skipped)))
                     .with("not_run", Json::int(not_run))
                     .with("duration_ns", Json::int(self.duration.as_nanos() as i64)),
             )
@@ -698,14 +701,6 @@ mod tests {
     }
 
     #[test]
-    fn go_duration_text() {
-        assert_eq!(go_duration(Duration::from_secs(60)), "1m0s");
-        assert_eq!(go_duration(Duration::from_secs(30)), "30s");
-        assert_eq!(go_duration(Duration::from_millis(1500)), "1.5s");
-        assert_eq!(go_duration(Duration::from_secs(3661)), "1h1m1s");
-    }
-
-    #[test]
     fn shuffle_is_a_seeded_permutation() {
         let mut a: Vec<u32> = (0..10).collect();
         let mut b = a.clone();
@@ -727,9 +722,11 @@ mod tests {
         assert!(failure_position("no location").is_none());
     }
 
+    #[cfg(unix)]
     const NAMES: [&str; 4] = ["m::pass", "m::fail", "m::crash", "m::hang"];
 
     /// A shell script that speaks the test executable protocol.
+    #[cfg(unix)]
     fn script(dir: &std::path::Path) -> std::path::PathBuf {
         use std::os::unix::fs::PermissionsExt;
         let path = dir.join("program");
@@ -739,6 +736,7 @@ case "$1" in
 1) printf '\001FAIL\001boom\n  at src/a.ms:3:4 in m::fail\n' >&2; exit 1;;
 2) ulimit -c 0; kill -SEGV $$;;
 3) sleep 30;;
+4) printf '\001SKIP\001not today\n' >&2; exit 0;;
 esac
 "#;
         std::fs::write(&path, text).unwrap();
@@ -746,7 +744,12 @@ esac
         path
     }
 
+    #[cfg(unix)]
     fn run_script(arguments: &[&str]) -> (i32, String, Document) {
+        run_names(arguments, &NAMES)
+    }
+
+    fn run_names(arguments: &[&str], names: &[&str]) -> (i32, String, Document) {
         let directory = TempDir::create("ms-tests-unit-").unwrap();
         let executable = script(&directory.0);
         let options = parse_options(&args(arguments)).unwrap();
@@ -755,7 +758,7 @@ esac
             working: "/",
             options: &options,
         };
-        let available: Vec<String> = NAMES.iter().map(|n| n.to_string()).collect();
+        let available: Vec<String> = names.iter().map(|n| n.to_string()).collect();
         let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
         let mut input: &[u8] = &[];
         let mut io = Io {
@@ -773,6 +776,7 @@ esac
         (status, text, document)
     }
 
+    #[cfg(unix)]
     #[test]
     fn each_test_runs_in_its_own_process() {
         let (status, text, document) = run_script(&["--timeout=400ms"]);
@@ -789,6 +793,24 @@ esac
         assert_eq!(statuses, ["passed", "failed", "failed", "failed"]);
         let json = document.to_json().encode();
         assert!(json.contains("\"position\""), "{json}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_skipping_test_is_reported_skipped() {
+        let names = ["m::pass", "m::fail", "m::crash", "m::hang", "m::skip"];
+        let (status, text, document) = run_names(&["--test=m::pass", "--test=m::skip"], &names);
+        assert_eq!(status, 0, "{text}");
+        let expected = [
+            "RUN m::pass\nhello from pass\nPASS m::pass\n",
+            "RUN m::skip\nSKIP m::skip: not today\n",
+            "2 tests, 0 failed, 1 skipped\n",
+        ];
+        assert_eq!(text, expected.concat());
+        let json = document.to_json().encode();
+        assert!(json.contains("\"status\": \"skipped\""), "{json}");
+        assert!(json.contains("\"skipped\": 1"), "{json}");
+        assert!(json.contains("\"not_run\": 0"), "{json}");
     }
 
     #[test]

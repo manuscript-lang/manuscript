@@ -128,11 +128,11 @@ test "type patterns compare exact generic applications":
     let text = Error(TaggedError("text diagnostic"))
     (
         (
-            tagged_detail(integer) != "integer 7"
+            tagged_detail(Error(TaggedError(7))) != "integer 7"
             or tagged_detail(text) != "text diagnostic"
         )
     ) | try expect_false
-    (generic_type_pattern(cause: integer, expected: 1)) | try expect_true
+    (generic_type_pattern(cause: Error(TaggedError(7)), expected: 1)) | try expect_true
     generic_type_pattern(cause: integer, expected: "different type") | try expect_false
 
 test "Error views can be stored and matched":
@@ -216,21 +216,24 @@ fn describe_direct(cause: Error) String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
-    var original = ReadError(
+    let original = ReadError(
         diagnostic: "read failed",
         path: "settings.json",
-        attempt: 2,
+        attempt: 3,
         retryable: true
     )
-    let shared: Error = original
-    (describe_direct(original) != "read failed" or shared.message() != "read failed") | try expect_false
+    let shared: Error = Error(original.clone())
+    (
+        describe_direct(
+            original.clone()
+        ) != "read failed" or shared.message() != "read failed"
+    ) | try expect_false
     let results: List[Result[Unit, Error]] = [
-        general_read(original),
-        forward_read(original),
-        generic_propagation(original),
-        error(original)
+        general_read(original.clone()),
+        forward_read(original.clone()),
+        generic_propagation(original.clone()),
+        error(original.clone())
     ]
-    original.attempt = 3
 
     for result in results:
         let cause = match result:
@@ -247,18 +250,16 @@ test "specific errors pass directly into Error boundaries":
                         or not read.retryable
                     )
                 ) | try expect_false
-                read.path = "changed.json"
-                read.path = "settings.json"
             _:
                 return fail(message: "Error boundary lost original type")
 
     match shared:
         ReadError(read):
-            read.path = "changed.json"
+            read.path | try expect_equal(expected: "settings.json")
         _:
             return fail(message: "shared Error lost concrete type")
 
-    original.path | try expect_equal(expected: "changed.json")
+    original.path | try expect_equal(expected: "settings.json")
 
 fn read_success() Result[Int, ReadError]:
     return ok(7)
@@ -322,8 +323,8 @@ interface Label[T]:
 type Labelled[T]:
     value: T
 
-impl Label[T] for Labelled[T]:
-    fn label() T:
+impl Label[String] for Labelled[String]:
+    fn label() String:
         return self.value
 
 fn match_label(view: Label[String]) String:
@@ -336,14 +337,14 @@ fn match_label(view: Label[String]) String:
 type Count:
     value: Int
 
-fn counted_view(count: Count) Label[String]:
+fn counted_view(var count: Count) Label[String]:
     count.value = count.value + 1
     return Label[String](Labelled("label diagnostic"))
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
-    let count = Count(value: 0)
+    var count = Count(value: 0)
 
-    match counted_view(count):
+    match counted_view(var count):
         Labelled[String](receiver):
             try expect_equal(receiver.value, "label diagnostic")
         _:

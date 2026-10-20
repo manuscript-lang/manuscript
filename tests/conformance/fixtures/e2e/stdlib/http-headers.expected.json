@@ -21,7 +21,7 @@
         },
         {
           "index": 2,
-          "name": "http-headers.ms::lookup shares mutable membership and clone separates it",
+          "name": "http-headers.ms::lookup returns membership and clone separates it",
           "status": "passed"
         },
         {
@@ -45,7 +45,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN http-headers.ms::one header type preserves repeated values through buffered requests\nPASS http-headers.ms::one header type preserves repeated values through buffered requests\nRUN http-headers.ms::streaming proxy uses the same byte-valued header type\nPASS http-headers.ms::streaming proxy uses the same byte-valued header type\nRUN http-headers.ms::lookup shares mutable membership and clone separates it\nPASS http-headers.ms::lookup shares mutable membership and clone separates it\nRUN http-headers.ms::explicit text extraction fails with typed UTF8 error\nPASS http-headers.ms::explicit text extraction fails with typed UTF8 error\nRUN http-headers.ms::empty options and an omitted request body use checked defaults\nPASS http-headers.ms::empty options and an omitted request body use checked defaults\n5 tests, 0 failed\n",
+      "stdout": "RUN http-headers.ms::one header type preserves repeated values through buffered requests\nPASS http-headers.ms::one header type preserves repeated values through buffered requests\nRUN http-headers.ms::streaming proxy uses the same byte-valued header type\nPASS http-headers.ms::streaming proxy uses the same byte-valued header type\nRUN http-headers.ms::lookup returns membership and clone separates it\nPASS http-headers.ms::lookup returns membership and clone separates it\nRUN http-headers.ms::explicit text extraction fails with typed UTF8 error\nPASS http-headers.ms::explicit text extraction fails with typed UTF8 error\nRUN http-headers.ms::empty options and an omitted request body use checked defaults\nPASS http-headers.ms::empty options and an omitted request body use checked defaults\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

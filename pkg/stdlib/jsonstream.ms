@@ -77,7 +77,7 @@ fn starts_value(byte: Int) Bool:
         or byte == 110
     )
 
-fn reset(state: Decoder) Unit:
+fn reset(var state: Decoder) Unit:
     state.pending = BytesBuilder()
     state.size = 0
     state.depth = 0
@@ -85,23 +85,23 @@ fn reset(state: Decoder) Unit:
     state.in_string = false
     state.escaped = false
 
-fn fail(state: Decoder, cause: JsonError) Result[List[JsonValue], JsonError]:
+fn fail(var state: Decoder, cause: JsonError) Result[List[JsonValue], JsonError]:
     # Dropping the partial value releases its buffered bytes.
-    reset(state)
+    reset(var state)
     state.failure = some(cause)
     return error(cause)
 
 # Parses the buffered value and clears the scanner for the next one.
-fn complete(state: Decoder) Result[JsonValue, JsonError]:
+fn complete(var state: Decoder) Result[JsonValue, JsonError]:
     let bytes = state.pending.freeze()
-    reset(state)
+    reset(var state)
     if let text = bytes.decode_utf8():
         return parse(text, some(state.limits))
 
     return error(JsonError.InvalidData)
 
 # Consumes one byte and reports whether it finished a value.
-fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
+fn scan(var state: Decoder, byte: Int) Result[Bool, JsonError]:
     if state.mode == 0:
         if is_space(byte): return ok(false)
         if not starts_value(byte): return error(JsonError.InvalidData)
@@ -151,39 +151,39 @@ fn scan(state: Decoder, byte: Int) Result[Bool, JsonError]:
     return ok(false)
 
 # Consumes one byte and returns the value it completes, if any.
-fn step(state: Decoder, byte: Int) Result[Optional[JsonValue], JsonError]:
-    let done = try scan(state, byte)
+fn step(var state: Decoder, byte: Int) Result[Optional[JsonValue], JsonError]:
+    let done = try scan(var state, byte)
     if not done: return ok(none)
 
-    let value = try complete(state)
+    let value = try complete(var state)
     return ok(some(value))
 
 impl JsonDecoder for Decoder:
-    fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]:
+    var fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
         if let failure = self.failure: return error(failure)
 
         var values: List[JsonValue] = []
 
         for byte in chunk.values():
-            let stepped = step(self, byte)
-            if stepped.is_error(): return fail(self, stepped.err())
+            let stepped = step(var self, byte)
+            if stepped.is_error(): return fail(var self, stepped.err())
 
             if let found = stepped.get(): values.append(found)
 
         return ok(values)
 
-    fn finish() Result[List[JsonValue], JsonError]:
+    var fn finish() Result[List[JsonValue], JsonError]:
         if self.finished: return error(JsonError.InvalidInput)
         if let failure = self.failure: return error(failure)
 
         self.finished = true
         var values: List[JsonValue] = []
         if self.mode == 0: return ok(values)
-        if self.mode != 3: return fail(self, JsonError.InvalidData)
+        if self.mode != 3: return fail(var self, JsonError.InvalidData)
 
-        let completed = complete(self)
-        if completed.is_error(): return fail(self, completed.err())
+        let completed = complete(var self)
+        if completed.is_error(): return fail(var self, completed.err())
 
         values.append(completed.get())
         return ok(values)

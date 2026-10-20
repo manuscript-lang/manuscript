@@ -15,6 +15,7 @@
 //! | record | the fields' leaves in declaration order |
 //! | `Optional[String]` (single-pointer payloads) | nullable `i64` |
 //! | `Optional[T]` otherwise | `present: i8`, then `T`'s leaves |
+//! | `Optional[T]` that reaches itself by value | nullable `i64` pointer to a block of `T`'s leaves |
 //! | alternative | `tag: i64`, then payload slots shared by all cases |
 //! | recursive alternative | `i64` pointer to a heap block `{ tag, payload }` |
 //! | interface | `data, vtable` |
@@ -108,6 +109,7 @@ pub struct Layouts<'m> {
     pub m: &'m Module,
     cache: RefCell<HashMap<Ty, Shape>>,
     boxed: RefCell<HashMap<AltId, bool>>,
+    boxed_opts: RefCell<HashMap<Ty, bool>>,
 }
 
 impl<'m> Layouts<'m> {
@@ -117,6 +119,7 @@ impl<'m> Layouts<'m> {
             m,
             cache: RefCell::new(HashMap::new()),
             boxed: RefCell::new(HashMap::new()),
+            boxed_opts: RefCell::new(HashMap::new()),
         }
     }
 
@@ -130,6 +133,19 @@ impl<'m> Layouts<'m> {
         let target = self.m.types.find(&TyKind::Alt(a));
         let b = target.is_some_and(|t| self.reaches_by_value(t, t, &mut Vec::new()));
         self.boxed.borrow_mut().insert(a, b);
+        b
+    }
+
+    /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
+    /// and therefore holds its payload in a heap block behind a nullable pointer.
+    pub fn opt_is_boxed(&self, inner: Ty) -> bool {
+        if let Some(b) = self.boxed_opts.borrow().get(&inner) {
+            return *b;
+        }
+        self.boxed_opts.borrow_mut().insert(inner, false);
+        let target = self.m.types.find(&TyKind::Opt(inner));
+        let b = target.is_some_and(|t| self.reaches_by_value(t, t, &mut Vec::new()));
+        self.boxed_opts.borrow_mut().insert(inner, b);
         b
     }
 
@@ -159,6 +175,11 @@ impl<'m> Layouts<'m> {
             // Stop at other boxed alternatives: they are one pointer.
             if let TyKind::Alt(a) = self.m.types.kind(c)
                 && self.is_boxed(*a)
+            {
+                continue;
+            }
+            if let TyKind::Opt(i) = self.m.types.kind(c)
+                && self.opt_is_boxed(*i)
             {
                 continue;
             }
@@ -208,7 +229,8 @@ impl<'m> Layouts<'m> {
 
     /// Whether `Optional[inner]` is a nullable pointer.
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
-        matches!(self.m.types.kind(inner), TyKind::Str | TyKind::Fn(..))
+        self.opt_is_boxed(inner)
+            || matches!(self.m.types.kind(inner), TyKind::Str | TyKind::Fn(..))
             || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
     }
 

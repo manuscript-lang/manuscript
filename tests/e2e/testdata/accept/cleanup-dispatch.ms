@@ -15,16 +15,16 @@ type Resource:
     unexpected: List[Int]
 
 impl OtherClose for Resource:
-    fn close(flag: Bool) Int:
+    var fn close(flag: Bool) Int:
         self.unexpected.append(1)
         return 0
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.closed.value = true
 
 impl Disposable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.closed.value = true
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:

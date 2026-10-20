@@ -2,6 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/core-parity.ms
 import {TextError} from "@std/errors.ms"
+import panic from "@std/faults.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import JsonLimits from "@std/json.ms"
 
@@ -17,7 +18,7 @@ type Pending:
 impl Error for Pending:
     fn message() String: "pending"
 
-fn bump(counter: Counter) Int:
+fn bump(var counter: Counter) Int:
     counter.calls += 1
     return 9
 
@@ -61,40 +62,53 @@ test "core parity operations are callable":
     try expect_false(members.is_empty() or members.filter(fn(n): n == 2).length() != 1)
     try expect_equal(members.map(fn(n): n.to_string()).values(), ["2", "3"])
 
+fn unexpected_text(value: Int) String:
+    return panic("transform must not run for errors")
+
+fn unexpected_chain(value: Int) Result[String, Counter]:
+    return panic("chain must not run for errors")
+
 test "Result preserves unconstrained payloads and success-only composition":
-    var counter = Counter(0)
-    let failure: Result[Int, Counter] = error(counter)
+    let counter = Counter(0)
+    let failure: Result[Int, Counter] = error(counter.clone())
     let success: Result[Int, Counter] = ok(0)
-    let transform = fn(value: Int) String:
-        counter.calls += 1
-        return value.to_string()
-    let skipped = map_result(failure, transform)
-    try expect_false(
-        (not (skipped.is_error()) or skipped.is_ok() or counter.calls != 0)
+    let skipped = map_result(failure.clone(), unexpected_text)
+    try expect_false(not (skipped.is_error()) or skipped.is_ok())
+    var skipped_cause = skipped.err().clone()
+    skipped_cause.calls = 2
+    try expect_equal(counter.calls, 0)
+    try expect_equal(skipped.err().calls, 0)
+    let mapped = success.clone().map(fn(value): value.to_string())
+    try expect_equal(mapped.get(), "0")
+    let propagated = chain_result(failure.clone(), unexpected_chain)
+    try expect_false(not (propagated.is_error()))
+    var propagated_cause = propagated.err().clone()
+    propagated_cause.calls = 4
+    try expect_equal(counter.calls, 0)
+    let produced = (
+        success
+        .clone()
+        .and_then(fn(value): Result[String, Counter].error(counter.clone()))
     )
-    skipped.err().calls = 2
-    try expect_equal(counter.calls, 2)
-    let mapped = success.map(transform)
-    try expect_false(mapped.get() != "0" or counter.calls != 3)
-    let chain = fn(value: Int) Result[String, Counter]:
-        counter.calls += 1
-        return error(counter)
-    let propagated = chain_result(failure, chain)
-    try expect_equal(counter.calls, 3)
-    propagated.err().calls = 4
-    try expect_equal(counter.calls, 4)
-    let produced = success.and_then(chain)
-    try expect_equal(counter.calls, 5)
-    produced.err().calls = 6
-    try expect_equal(counter.calls, 6)
+    try expect_false(not (produced.is_error()))
+    var produced_cause = produced.err().clone()
+    produced_cause.calls = 6
+    try expect_equal(counter.calls, 0)
+    try expect_equal(produced.err().calls, 0)
     let collection_error: Result[Bool, Pending] = error(Pending([1]))
-    collection_error.map(fn(flag): not flag).err().values.append(2)
-    try expect_equal(collection_error.err().values, [1, 2])
+    var pending = Pending(
+        collection_error.clone().map(fn(flag): not flag).err().values.clone()
+    )
+    pending.values.append(2)
+    try expect_equal(pending.values, [1, 2])
+    try expect_equal(collection_error.err().values, [1])
     let limits = JsonLimits(-1)
-    let record: Result[JsonLimits, TextError] = ok(limits)
-    record.map(fn(value): value).get().max_values = some(7)
-    try expect_equal(limits.max_values.get(), 7)
-    let nested = success.map(fn(n): some(n))
+    let record: Result[JsonLimits, TextError] = ok(limits.clone())
+    var changed = record.clone().map(fn(value): value).get().clone()
+    changed.max_values = some(7)
+    try expect_equal(changed.max_values.get(), 7)
+    try expect_false(limits.max_values.is_some())
+    let nested = success.clone().map(fn(n): some(n))
     try expect_equal(nested.get().get(), 0)
     let unit_result: Result[Unit, TextError] = ok(unit)
     try expect_false(not (unit_result.is_ok()))
@@ -102,102 +116,92 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let success: Result[Int, Counter] = ok(0)
-    let failure: Result[Int, Counter] = error(counter)
-    try expect_false(success.get(bump(counter)) != 0 or counter.calls != 1)
-    let create = fn(cause: Counter) Int:
-        cause.calls += 1
-        return 12
-    let lazy = success.or_else
-    try expect_false(lazy(create) != 0 or counter.calls != 1)
-    try expect_false(failure.or_else(create) != 12 or counter.calls != 2)
-    let extract = failure.err
-    extract().calls = 3
-    try expect_equal(counter.calls, 3)
-    let bound_map = success.map[String]
-    let bound_chain = success.and_then[String]
+    let failure: Result[Int, Counter] = error(counter.clone())
+    try expect_false(success.get(bump(var counter)) != 0 or counter.calls != 1)
+    let create = fn(cause: Counter) Int: 12
+    let unexpected = fn(cause: Counter) Int: panic("fallback must stay lazy")
+    let lazy = success.clone().or_else
+    try expect_false(lazy(unexpected) != 0)
+    try expect_false(failure.clone().or_else(create) != 12)
+    let extract = failure.clone().err
+    var extracted = extract().clone()
+    extracted.calls = 3
+    try expect_equal(failure.err().calls, 0)
+    try expect_equal(extracted.calls, 3)
+    let bound_map = success.clone().map[String]
+    let bound_chain = success.clone().and_then[String]
     try expect_equal(bound_map(fn(n): n.to_string()).get(), "0")
     try expect_equal(bound_chain(fn(n): ok(n.to_string())).get(), "0")
 
 test "Optional composition keeps nesting identity and lazy callback counts":
-    var counter = Counter(0)
-    let present: Optional[Counter] = some(counter)
+    let counter = Counter(0)
+    let present: Optional[Counter] = some(counter.clone())
     let missing: Optional[Counter] = none
     let transform = fn(value: Counter) Counter:
-        value.calls += 1
-        return value
-    try expect_false(
-        (not (map_optional(missing, transform).is_none()) or counter.calls != 0)
-    )
-    let mapped = present.map(transform)
-    try expect_equal(counter.calls, 1)
-    mapped.get().calls = 2
-    try expect_equal(counter.calls, 2)
-    let chained = present.and_then(fn(value): some(value))
-    chained.get().calls = 3
-    try expect_equal(counter.calls, 3)
-    let absent = present.and_then(fn(unused): Optional[Int].none)
+        return Counter(value.calls + 1)
+    let unexpected = fn(value: Counter) Counter: panic("map must not run for none")
+    try expect_false(not (map_optional(missing.clone(), unexpected).is_none()))
+    let mapped = present.clone().map(transform)
+    try expect_equal(mapped.get().calls, 1)
+    try expect_equal(counter.calls, 0)
+    var edited = mapped.get().clone()
+    edited.calls = 2
+    try expect_equal(mapped.get().calls, 1)
+    let chained = present.clone().and_then(fn(value): some(value))
+    try expect_equal(chained.get().calls, 0)
+    let absent = present.clone().and_then(fn(unused): Optional[Int].none)
     try expect_false(not (absent.is_none()))
-    let create = fn() Optional[Counter]:
-        counter.calls += 1
-        return some(counter)
-    let bound = present.or_else
-    bound(create).get().calls = 4
-    try expect_equal(counter.calls, 4)
-    let fallback = missing.or_else(create)
-    try expect_equal(counter.calls, 5)
-    fallback.get().calls = 6
-    try expect_equal(counter.calls, 6)
-    let nested = present.map(fn(unused): Optional[Int].none)
+    let create = fn() Optional[Counter]: some(Counter(5))
+    let unexpected_create = fn() Optional[Counter]: panic("fallback must stay lazy")
+    let bound = present.clone().or_else
+    try expect_equal(bound(unexpected_create).get().calls, 0)
+    let fallback = missing.clone().or_else(create)
+    try expect_equal(fallback.get().calls, 5)
+    let nested = present.clone().map(fn(unused): Optional[Int].none)
     try expect_false(not (nested.is_some()) or not (nested.get().is_none()))
-    let bound_map = present.map[String]
-    try expect_equal(bound_map(fn(value): value.calls.to_string()).get(), "6")
-    let bound_chain = missing.and_then[String]
+    let bound_map = mapped.clone().map[String]
+    try expect_equal(bound_map(fn(value): value.calls.to_string()).get(), "1")
+    let bound_chain = missing.clone().and_then[String]
     try expect_false(not (bound_chain(fn(unused): some("unexpected")).is_none()))
 
 test "Map filter copies ordered membership and get_or never inserts":
-    let counter = Counter(0)
-    let values: Map[String, Counter] = {"b": counter, "a": Counter(2), "c": Counter(3)}
-    var selected = values.filter(fn(k, v): k != "a" and v.calls >= 0)
+    var counter = Counter(0)
+    let values: Map[String, Counter] = {
+        "b": counter.clone(),
+        "a": Counter(2),
+        "c": Counter(3)
+    }
+    var selected = values.clone().filter(fn(k, v): k != "a" and v.calls >= 0)
     try expect_false(selected.keys() != ["b", "c"] or values.length() != 3)
-    selected.get_or("b", Counter(9)).calls = 7
-    try expect_equal(counter.calls, 7)
+    var changed = selected.get_or("b", Counter(9)).clone()
+    changed.calls = 7
+    try expect_equal(values.get_or("b", Counter(9)).calls, 0)
     selected.remove("b")
     selected.add("d", Counter(4))
     try expect_equal(values.keys(), ["b", "a", "c"])
     let fallback = Counter(8)
-    let lookup = values.get_or
-    lookup(fallback: fallback, "absent").calls = 9
-    try expect_false(fallback.calls != 9 or values.contains("absent"))
+    let lookup = values.clone().get_or
+    var fallback_copy = lookup(fallback: fallback.clone(), "absent").clone()
+    fallback_copy.calls = 9
+    try expect_false(fallback.calls != 8 or values.contains("absent"))
     try expect_false(
         (
-            Map[String, Int]().get_or("absent", bump(counter)) != 9
-            or counter.calls != 8
+            Map[String, Int]().get_or("absent", bump(var counter)) != 9
+            or counter.calls != 1
         )
     )
-    var empty = values.filter(fn(unused_key, unused_value): false)
+    var empty = values.clone().filter(fn(unused_key, unused_value): false)
     try expect_false(not (empty.is_empty()))
-    empty.add("new", counter)
+    empty.add("new", counter.clone())
     try expect_false(values.contains("new"))
-    let bound_filter = values.filter
+    let bound_filter = values.clone().filter
     try expect_equal(bound_filter(fn(k, v): k == "a").keys(), ["a"])
-    var snapshot: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
-    var visits: List[String] = []
-    let copied = snapshot.filter(
-        fn(k, v):
-            visits.append(k)
-            snapshot.clear()
-            snapshot.add("new", 9)
-            return v != 1
-    )
-    try expect_false(
-        (
-            visits != ["b", "a", "c"]
-            or copied.keys() != ["b", "c"]
-            or copied.values() != [2, 3]
-        )
-    )
+    let snapshot: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+    let copied = snapshot.clone().filter(fn(k, v): v != 1)
+    try expect_false(copied.keys() != ["b", "c"] or copied.values() != [2, 3])
+    try expect_equal(snapshot.keys(), ["b", "a", "c"])
 
 type Key:
     id: Int
@@ -213,23 +217,16 @@ impl Hashable for Key:
     fn hash() Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
-    var values = Set[Int]([3, 1, 2])
-    var visits: List[Int] = []
-    var copied = values.filter(
-        fn(n):
-            visits.append(n)
-            values.clear()
-            values.add(9)
-            return n != 1
-    )
-    try expect_false(visits != [3, 1, 2] or copied.values() != [3, 2])
+    let values = Set[Int]([3, 1, 2])
+    var copied = values.clone().filter(fn(n): n != 1)
+    try expect_false(copied.values() != [3, 2])
     copied.remove(3)
     copied.add(8)
-    try expect_equal(values.values(), [9])
-    let bound_filter = copied.filter
+    try expect_equal(values.values(), [3, 1, 2])
+    let bound_filter = copied.clone().filter
     try expect_equal(bound_filter(fn(n): n == 8).values(), [8])
-    var input = Set[Int]([2, 3, 4])
-    let mapped = map_set(input, fn(n): Key(n % 2, n.to_string()))
+    let input = Set[Int]([2, 3, 4])
+    let mapped = map_set(input.clone(), fn(n): Key(n % 2, n.to_string()))
     try expect_false(
         (
             mapped.length() != 2
@@ -237,22 +234,18 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
             or mapped.values().get(1).label != "3"
         )
     )
-    let bound = input.map[String]
-    var mapped_snapshot = bound(
-        fn(n):
-            input.remove(n)
-            input.add(7)
-            return n.to_string()
-    )
-    try expect_false(
-        (mapped_snapshot.values() != ["2", "3", "4"] or input.values() != [7])
-    )
+    let bound = input.clone().map[String]
+    var mapped_snapshot = bound(fn(n): n.to_string())
+    try expect_false(mapped_snapshot.values() != ["2", "3", "4"])
     mapped_snapshot.add("8")
-    try expect_equal(input.length(), 1)
+    try expect_equal(input.length(), 3)
     let key = Key(5, "shared")
-    let keys = Set[Key]([key])
-    keys.filter(fn(unused): true).values().get(0).label = "changed"
-    keys.map(fn(value): value).values().get(0).label = "again"
-    try expect_equal(key.label, "again")
+    let keys = Set[Key]([key.clone()])
+    var first = keys.clone().filter(fn(unused): true).values().get(0).clone()
+    first.label = "changed"
+    var second = keys.clone().map(fn(value): value).values().get(0).clone()
+    second.label = "again"
+    try expect_equal(key.label, "shared")
+    try expect_equal(keys.values().get(0).label, "shared")
     try expect_false(not (Set[Int]().map(fn(n): n.to_string()).is_empty()))
     try expect_false(not (keys.filter(fn(unused): false).is_empty()))

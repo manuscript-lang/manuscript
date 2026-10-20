@@ -15,6 +15,7 @@ mod run;
 mod runtime;
 pub mod testing;
 mod tooling;
+mod watch;
 
 use std::path::{Path, PathBuf};
 
@@ -26,9 +27,9 @@ use ms_driver::{
 use crate::backend::{
     AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest, BuildType, DiagramRequest,
     FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, TestRequest,
-    not_implemented,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
+use crate::json::Json;
 use crate::util::plural;
 
 /// The `ms` engine for native builds. `L` turns a checked program into MIR.
@@ -80,14 +81,14 @@ impl<L: Lower> Backend for RustBackend<L> {
 
     fn run(&self, request: &RunRequest, io: &mut Io) -> BackendResult {
         if request.watch {
-            return not_implemented("run --watch");
+            return watch::run(self, request, io);
         }
         run::run(self, request, io)
     }
 
     fn test(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
         if request.watch {
-            return not_implemented("test --watch");
+            return watch::test(self, request, io);
         }
         testing::test(self, request, io)
     }
@@ -187,7 +188,12 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         message: issue.message.clone(),
         position: position(issue.pos),
         end: issue.end.map(position),
-        fix: None,
+        fix: issue.fix.as_ref().map(|fix| {
+            Json::object()
+                .with("position", position(fix.pos).to_json())
+                .with("end", position(fix.end).to_json())
+                .with("replacement", Json::str(&fix.replacement))
+        }),
     }
 }
 

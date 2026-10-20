@@ -90,6 +90,8 @@ fn is_higher_order(name: &str) -> bool {
         name,
         "map"
             | "filter"
+            | "flat_map"
+            | "group_by"
             | "count"
             | "some"
             | "every"
@@ -233,6 +235,28 @@ impl<'a> FnLower<'a> {
                 })?;
                 let _ = result;
                 shifted.ok_or_else(|| Error::new("shift yields the first item"))
+            }
+            "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
+                // The digest of the `HashAlgorithm` case of that name.
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::BYTES));
+                }
+                let data = args
+                    .first()
+                    .ok_or_else(|| Error::new("a digest without data"))?;
+                let data = self.borrow(data.val);
+                let alg = match native {
+                    "crypto/sha256" => 3,
+                    "crypto/sha384" => 4,
+                    _ => 5,
+                };
+                let alg = self.b.iconst(alg);
+                let sym = "msrt_crypto_digest";
+                let sig = crate::rtcall::rt_sig(sym)
+                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+                self.at(e.pos);
+                self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
             }
             "io/stdout" => self.std_stream(e, false),
             "io/stderr" => self.std_stream(e, true),
@@ -597,27 +621,44 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: out, own: true })
     }
 
-    /// The lowercase name of the case `tag` selects, for cases `from..` of `names`.
-    fn case_text(&mut self, tag: Value, names: &[String], from: usize) -> Result<Val, Error> {
+    /// The runtime's format argument: the case index, or the lowercase case name.
+    fn format_argument(
+        &mut self,
+        m: &ct::MethodRef,
+        recv: Val,
+        as_text: bool,
+    ) -> Result<Val, Error> {
+        let tag_src = self.borrow(recv);
+        let tag = self.b.alt_tag(tag_src);
+        if as_text {
+            return Ok(Val { v: tag, own: false });
+        }
+        let names: Vec<String> = ct::cases(&m.receiver)
+            .iter()
+            .map(|c| c.name.as_str().to_lowercase())
+            .collect();
+        self.case_name(&names, tag, 0)
+    }
+
+    /// The owned name of case `tag`, counting from `names[from]`; the last name is the fallback.
+    fn case_name(&mut self, names: &[String], tag: Value, from: usize) -> Result<Val, Error> {
+        let text = |s: &mut Self, name: &str| {
+            let lit = s.lit(name).v;
+            Some(s.owned(Val { v: lit, own: false }))
+        };
         if from + 1 >= names.len() {
             let name = names.last().map_or("", String::as_str);
-            return Ok(self.lit(name));
+            return Ok(Val {
+                v: text(self, name).expect("copy"),
+                own: true,
+            });
         }
         let idx = self.b.iconst(from as i64);
         let hit = self.b.icmp(ms_mir::ir::Cc::Eq, tag, idx);
-        let out = self.two_ways(
-            hit,
-            MTy::STR,
-            &mut |s| {
-                let l = s.lit(&names[from]);
-                Ok(Some(s.owned(l)))
-            },
-            &mut |s| {
-                let v = s.case_text(tag, names, from + 1)?;
-                Ok(Some(s.owned(v)))
-            },
-        )?;
-        Ok(out)
+        let name = names[from].clone();
+        self.two_ways(hit, MTy::STR, &mut |s| Ok(text(s, &name)), &mut |s| {
+            s.case_name(names, tag, from + 1).map(|v| Some(v.v))
+        })
     }
 
     fn format_method(
@@ -628,22 +669,11 @@ impl<'a> FnLower<'a> {
         mut args: Vec<NArg>,
         (sym, param, as_text): (&str, &str, bool),
     ) -> Result<Val, Error> {
-        let tag_src = self.borrow(recv);
-        let tag = self.b.alt_tag(tag_src);
-        let val = if as_text {
-            tag
-        } else {
-            let names: Vec<String> = ct::cases(&m.receiver)
-                .iter()
-                .map(|c| c.name.as_str().to_lowercase())
-                .collect();
-            let t = self.case_text(tag, &names, 0)?;
-            self.borrow(t)
-        };
+        let val = self.format_argument(m, recv, as_text)?;
         let name = ct::Name::from(param);
         args.push(NArg {
             name,
-            val: Val { v: val, own: false },
+            val,
             wrapped: false,
         });
         let first =
@@ -675,6 +705,35 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
+        if let Some(sym) = match native {
+            "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
+            "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+            "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
+            "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+            _ => None,
+        } {
+            // The algorithm is the receiver's case index, the first runtime argument.
+            let result = self.emty(e)?;
+            let tag = self.borrow(recv);
+            let alg = self.b.alt_tag(tag);
+            let mut vals = vec![alg];
+            for a in &args {
+                vals.push(self.borrow(a.val));
+            }
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            let has_out = sig.params.last().is_some_and(|p| p.name == "out");
+            return self.finish_rt_call(sym, &sig, has_out, vals, result);
+        }
+        if let Some(decode) = match native {
+            "compress/format_compress_stream" => Some(false),
+            "compress/format_decompress_stream" => Some(true),
+            _ => None,
+        } {
+            let result = self.emty(e)?;
+            let name = self.format_argument(m, recv, false)?;
+            return self.codec_stream(name, &args, decode, result);
+        }
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS.iter().find(|(n, ..)| *n == native)
         {
             let result = self.emty(e)?;
@@ -1037,6 +1096,20 @@ impl<'a> FnLower<'a> {
                 None => Val { v: new, own: true },
             });
         }
+        if let (TyKind::List(elem), "take" | "drop") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            let sym = if name == "take" {
+                "msrt_list_take"
+            } else {
+                "msrt_list_drop_n"
+            };
+            let d = self.type_desc(elem);
+            let r = self.borrow(recv);
+            let n = self.borrow(args[0].val);
+            let out = self.call_runtime(sym, &[r, d, n], rty)?;
+            return Ok(Val { v: out, own: true });
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1057,6 +1130,14 @@ impl<'a> FnLower<'a> {
                 v: self.borrow(recv),
                 own: false,
             }));
+        }
+        if m.receiver.is_std("ClientResponse") && name == "metadata" {
+            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+                return Err(Error::new("ClientResponse is not a record"));
+            };
+            let r = self.borrow(recv);
+            let v = self.b.rec_get(rid, 0, r);
+            return Ok(Some(Val { v, own: false }));
         }
         let field = match name.as_str() {
             "unix_seconds" => 0,
@@ -1941,6 +2022,102 @@ impl<'a> FnLower<'a> {
                 })?;
                 let r = self.b.use_var(acc);
                 Ok(Val { v: r, own: true })
+            }
+            "flat_map" => {
+                let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("flat_map without list result"));
+                };
+                let zero = self.b.iconst(0);
+                let first = self.b.list_new(res_elem, zero);
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let r = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let rt = s.ty_of(r);
+                    let rv = s.fresh_var(rt);
+                    s.b.def_var(rv, r);
+                    s.each_element(rv, &mut |s, _, y| {
+                        let yo = s.owned(Val { v: y, own: false });
+                        let cur = s.b.use_var(acc);
+                        let next = s.b.list_push(cur, yo);
+                        s.b.def_var(acc, next);
+                        Ok(None)
+                    })?;
+                    let done = s.b.use_var(rv);
+                    s.drop_value(done);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
+            }
+            "group_by" => {
+                let TyKind::Obj(_, parts) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("group_by without a map result"));
+                };
+                let (key_ty, group_ty) = (parts[0], parts[1]);
+                let first = self.map_new(out)?;
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let k = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let (kd, vd) = s.map_descs(out)?;
+                    let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
+                    // The lookup lends a copy of the key, taken back afterwards.
+                    let probe = s.owned(Val { v: k, own: false });
+                    let kslot = s.put_slot(probe);
+                    let m = s.b.use_var(acc);
+                    let found =
+                        s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+                    if s.needs_drop(key_ty) {
+                        let back = s.take_slot(kslot, key_ty);
+                        s.drop_value(back);
+                    }
+                    let missing =
+                        s.b.emit(
+                            ms_mir::ir::Op::PtrIsNull,
+                            &[found],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::BOOL),
+                        )
+                        .expect("is_null");
+                    let TyKind::List(group_elem) = s.b.m.types.kind(group_ty).clone() else {
+                        return Err(Error::new("group_by without list groups"));
+                    };
+                    let group = s.two_ways(
+                        missing,
+                        group_ty,
+                        &mut |s| Ok(Some(s.b.list_lit(group_elem, &[]))),
+                        &mut |s| {
+                            let at =
+                                s.b.emit(
+                                    ms_mir::ir::Op::Load,
+                                    &[found],
+                                    ms_mir::ir::Imm::Ty(group_ty),
+                                    Some(group_ty),
+                                )
+                                .expect("load");
+                            Ok(Some(s.owned(Val { v: at, own: false })))
+                        },
+                    )?;
+                    let xo = s.owned(Val { v: x, own: false });
+                    let grown = s.b.list_push(group.v, xo);
+                    let cur = s.b.use_var(acc);
+                    let next = s.map_insert(cur, k, grown)?;
+                    s.b.def_var(acc, next);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
             }
             "count" => {
                 let acc = self.b.declare_var(MTy::INT, Mode::Borrow);

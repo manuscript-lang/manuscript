@@ -25,17 +25,17 @@ type Failure[T]:
 impl Error for Failure[T]:
     fn message() String: self.detail.to_string()
 
-fn record(events: Events, value: Int) Int:
+fn record(var events: Events, value: Int) Int:
     events.values.append(value)
     return value
 
 test "callback inference retains captures and contextual metadata":
-    let events = Events([])
+    var events = Events([])
     let offset = 7
     let values = [1, 2].map(
         fn(outer): [3, 4].map(
             fn(inner):
-                return record(events, value: outer + inner + offset)
+                return record(var events, value: outer + inner + offset)
         )
     )
     try expect_equal(values, [[11, 12], [12, 13]])

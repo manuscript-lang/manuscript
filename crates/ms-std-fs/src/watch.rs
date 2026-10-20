@@ -4,7 +4,9 @@
 use crate::err::{Fail, Res};
 use crate::path;
 use crate::sys::{self, CPath};
-use alloc::collections::{BTreeMap, VecDeque};
+use alloc::collections::BTreeMap;
+#[cfg(target_os = "linux")]
+use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use ms_std_rt::poll_cancel;
@@ -19,13 +21,8 @@ pub struct Event {
 
 type Stamp = (u32, i64, i64, i64);
 
-fn stamp(st: &libc::stat) -> Stamp {
-    (
-        st.st_mode as u32,
-        st.st_size as i64,
-        st.st_mtime as i64,
-        st.st_mtime_nsec as i64,
-    )
+fn stamp(st: &sys::Stat) -> Stamp {
+    (st.mode, st.size, st.modified.0, st.modified.1)
 }
 
 fn snapshot(root: &[u8], recursive: bool, max: i64) -> Res<BTreeMap<Vec<u8>, Stamp>> {
@@ -62,18 +59,13 @@ fn visit(
     Ok(())
 }
 
-fn wait_slice(fd: i32) {
-    let mut p = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
-    };
-    // SAFETY: one valid `pollfd`.
-    unsafe { libc::poll(&mut p, 1, SLICE_MS) };
+#[cfg(target_os = "linux")]
+fn wait_slice(fd: sys::Fd) {
+    sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
 }
 
 fn sleep_slice() {
-    wait_slice(-1);
+    sys::sleep_ms(SLICE_MS);
 }
 
 pub struct Poll {

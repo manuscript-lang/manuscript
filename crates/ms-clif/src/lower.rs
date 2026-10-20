@@ -19,12 +19,36 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
+/// Where a wide value (`Map`, `Set`: six words) also lives in memory, so calls take its
+/// address instead of spilling a copy. A home on a block parameter holds for the rest of the
+/// function; any other holds only within the block that created it (`blk`).
+#[derive(Clone, Copy)]
+struct Home {
+    addr: Value,
+    slot: Option<ir::StackSlot>,
+    blk: Option<usize>,
+}
+
 pub struct Lower<'a, 'm> {
     g: &'a mut Gen<'m>,
     b: FunctionBuilder<'a>,
     frefs: HashMap<FuncId, FuncRef>,
     grefs: HashMap<DataId, GlobalValue>,
     vals: Vec<Vs>,
+    /// Memory copies of `Map`/`Set` values (see [`Home`]), by MIR value index.
+    homes: Vec<Option<Home>>,
+    /// Stack slot behind each MIR value that holds a slot address.
+    slot_of: HashMap<usize, ir::StackSlot>,
+    /// Block that defined each MIR `slot` value.
+    slot_blk: HashMap<usize, usize>,
+    /// MIR values that an already lowered instruction used.
+    used: Vec<bool>,
+    /// Home slot of each wide block parameter, by `(block, parameter)`.
+    pslots: HashMap<(usize, usize), ir::StackSlot>,
+    /// Wide block parameters whose leaves are loaded from their home at each use.
+    lazy: Vec<bool>,
+    /// MIR block being lowered.
+    cur: usize,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
@@ -46,6 +70,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             frefs: HashMap::new(),
             grefs: HashMap::new(),
             vals: Vec::new(),
+            homes: Vec::new(),
+            slot_of: HashMap::new(),
+            slot_blk: HashMap::new(),
+            used: Vec::new(),
+            pslots: HashMap::new(),
+            lazy: Vec::new(),
+            cur: 0,
             blocks: Vec::new(),
             unsupported: None,
         }
@@ -213,7 +244,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             TyKind::Str | TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
-            TyKind::Opt(inner) if self.g.lay.opt_is_nullable(*inner) => {
+            TyKind::Opt(inner)
+                if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
+            {
                 let p = vs[0];
                 let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
                 self.if_then(nn, |s| s.release(p));
@@ -428,6 +461,19 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                 }
             }
+            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
+                // Payload lives in a heap block behind a nullable pointer.
+                let p = vs[0];
+                let leaves = self.g.lay.leaves(inner);
+                let nn = self.b.ins().icmp_imm_s(IntCC::NotEqual, p, 0);
+                self.if_then(nn, |s| {
+                    if m.needs_drop(inner) {
+                        let payload = s.load_leaves(p, 0, &leaves);
+                        s.drop_value(inner, &payload);
+                    }
+                    s.free(p);
+                });
+            }
             TyKind::Opt(inner) => {
                 // Non-nullable optional: [present, payload...].
                 let present = vs[0];
@@ -451,6 +497,10 @@ impl<'a, 'm> Lower<'a, 'm> {
     fn glue_drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Value]) {
         let fields = self.alt_fields(a);
         let boxed = matches!(self.g.lay.shape(ty).alt, Some(AltRepr::Boxed { .. }));
+        if boxed && self.has_tail(ty, &fields) {
+            self.drop_boxed_iter(ty, &fields, vs[0]);
+            return;
+        }
         let (leaves, base) = match self.g.lay.shape(ty).alt {
             Some(AltRepr::Boxed { block, .. }) => (block, Some(vs[0])),
             _ => (self.g.lay.leaves(ty), None),
@@ -501,6 +551,185 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// The field of `case` that holds the same boxed alternative again (the "tail" of a chain
+    /// such as `Cons(head, tail)`), as `(field index, leaf indices, optional)`. Drop and copy of a
+    /// boxed alternative loop over this field instead of recursing, so a long chain does not
+    /// overflow the stack. Other recursive fields (the left child of a tree) still recurse.
+    fn tail_field(&self, ty: Ty, case: &[(Ty, Vec<usize>)]) -> Option<(usize, Vec<usize>, bool)> {
+        let m = self.g.m;
+        case.iter().enumerate().rev().find_map(|(i, (fty, idx))| {
+            if *fty == ty && idx.len() == 1 {
+                return Some((i, idx.clone(), false));
+            }
+            match m.types.kind(*fty) {
+                TyKind::Opt(inner) if *inner == ty && idx.len() == 2 => {
+                    Some((i, idx.clone(), true))
+                }
+                _ => None,
+            }
+        })
+    }
+
+    fn has_tail(&self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>]) -> bool {
+        fields.iter().any(|c| self.tail_field(ty, c).is_some())
+    }
+
+    /// Frees a chain of boxed blocks: each iteration drops the non-tail fields of the block,
+    /// reads its tail pointer, frees it and moves on to the tail.
+    fn drop_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) {
+        let Some(AltRepr::Boxed { block, .. }) = self.g.lay.shape(ty).alt else {
+            return;
+        };
+        let lay = mem_layout(&block);
+        let head = self.b.create_block();
+        let exit = self.b.create_block();
+        self.b.append_block_param(head, types::I64);
+        self.b.ins().jump(head, &[BlockArg::Value(first)]);
+        self.b.switch_to_block(head);
+        let cur = self.b.block_params(head)[0];
+        let tag = self.b.ins().load(types::I64, flags(), cur, 0);
+        for (c, case) in fields.iter().enumerate() {
+            let tail = self.tail_field(ty, case);
+            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
+            if !droppable {
+                continue;
+            }
+            let this = self.b.create_block();
+            let next = self.b.create_block();
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
+            self.b.ins().brif(is, this, &[], next, &[]);
+            self.b.switch_to_block(this);
+            for (i, (fty, idx)) in case.iter().enumerate() {
+                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
+                    continue;
+                }
+                let fv: Vs = idx
+                    .iter()
+                    .map(|k| {
+                        self.b.ins().load(
+                            leaf_type(block[*k]),
+                            flags(),
+                            cur,
+                            lay.offsets[*k] as i32,
+                        )
+                    })
+                    .collect();
+                self.drop_value(*fty, &fv);
+            }
+            match tail {
+                Some((_, idx, optional)) => {
+                    let k = *idx.last().expect("tail leaf");
+                    let child = self
+                        .b
+                        .ins()
+                        .load(types::I64, flags(), cur, lay.offsets[k] as i32);
+                    let present = if optional {
+                        Some(self.b.ins().load(
+                            leaf_type(block[idx[0]]),
+                            flags(),
+                            cur,
+                            lay.offsets[idx[0]] as i32,
+                        ))
+                    } else {
+                        None
+                    };
+                    self.free(cur);
+                    match present {
+                        Some(p) => self
+                            .b
+                            .ins()
+                            .brif(p, head, &[BlockArg::Value(child)], exit, &[]),
+                        None => self.b.ins().jump(head, &[BlockArg::Value(child)]),
+                    };
+                }
+                None => {
+                    self.free(cur);
+                    self.b.ins().jump(exit, &[]);
+                }
+            }
+            self.b.switch_to_block(next);
+        }
+        // A case with nothing to drop: only the block is freed.
+        self.free(cur);
+        self.b.ins().jump(exit, &[]);
+        self.b.switch_to_block(exit);
+    }
+
+    /// Copies a chain of boxed blocks front to back: each iteration allocates the new block,
+    /// stores its address where the previous block's tail pointer lives, copies the non-tail
+    /// fields, and continues with the source's tail.
+    fn copy_boxed_iter(&mut self, ty: Ty, fields: &[Vec<(Ty, Vec<usize>)>], first: Value) -> Value {
+        let Some(AltRepr::Boxed { block, .. }) = self.g.lay.shape(ty).alt else {
+            return first;
+        };
+        let lay = mem_layout(&block);
+        let result =
+            self.b
+                .create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, 8, 3));
+        let result_addr = self.b.ins().stack_addr(types::I64, result, 0);
+        let head = self.b.create_block();
+        let exit = self.b.create_block();
+        self.b.append_block_param(head, types::I64);
+        self.b.append_block_param(head, types::I64);
+        self.b.ins().jump(
+            head,
+            &[BlockArg::Value(first), BlockArg::Value(result_addr)],
+        );
+        self.b.switch_to_block(head);
+        let (src, dst) = {
+            let ps = self.b.block_params(head);
+            (ps[0], ps[1])
+        };
+        let sv = self.load_leaves(src, 0, &block);
+        let tag = sv[0];
+        let blk = self.alloc(lay.size as i64);
+        self.b.ins().store(flags(), blk, dst, 0);
+        for (c, case) in fields.iter().enumerate() {
+            let tail = self.tail_field(ty, case);
+            let droppable = case.iter().any(|(t, _)| self.g.m.needs_drop(*t));
+            if !droppable {
+                continue;
+            }
+            let this = self.b.create_block();
+            let next = self.b.create_block();
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
+            self.b.ins().brif(is, this, &[], next, &[]);
+            self.b.switch_to_block(this);
+            let mut out = sv.clone();
+            for (i, (fty, idx)) in case.iter().enumerate() {
+                if !self.g.m.needs_drop(*fty) || tail.as_ref().is_some_and(|t| t.0 == i) {
+                    continue;
+                }
+                let fv: Vs = idx.iter().map(|k| sv[*k]).collect();
+                let cv = self.copy_value(*fty, &fv);
+                for (k, v) in idx.iter().zip(cv) {
+                    out[*k] = v;
+                }
+            }
+            self.store_leaves(blk, 0, &block, &out);
+            match tail {
+                Some((_, idx, optional)) => {
+                    let k = *idx.last().expect("tail leaf");
+                    let next_dst = self.b.ins().iadd_imm_s(blk, lay.offsets[k] as i64);
+                    let args = [BlockArg::Value(sv[k]), BlockArg::Value(next_dst)];
+                    if optional {
+                        self.b.ins().brif(sv[idx[0]], head, &args, exit, &[]);
+                    } else {
+                        self.b.ins().jump(head, &args);
+                    }
+                }
+                None => {
+                    self.b.ins().jump(exit, &[]);
+                }
+            }
+            self.b.switch_to_block(next);
+        }
+        self.store_leaves(blk, 0, &block, &sv);
+        self.b.ins().jump(exit, &[]);
+        self.b.switch_to_block(exit);
+        self.b.ins().load(types::I64, flags(), result_addr, 0)
+    }
+
     fn glue_copy(&mut self, ty: Ty, vs: &[Value]) -> Vs {
         let m = self.g.m;
         match m.types.kind(ty).clone() {
@@ -511,6 +740,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                     out.extend(self.copy_value(fty, &vs[at..at + w]));
                 }
                 out
+            }
+            TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
+                // Null stays null; otherwise copy the payload into a fresh block.
+                let p = vs[0];
+                let leaves = self.g.lay.leaves(inner);
+                let size = mem_layout(&leaves).size as i64;
+                let join = self.b.create_block();
+                self.b.append_block_param(join, types::I64);
+                let yes = self.b.create_block();
+                self.b.ins().brif(p, yes, &[], join, &[BlockArg::Value(p)]);
+                self.b.switch_to_block(yes);
+                let payload = self.load_leaves(p, 0, &leaves);
+                let c = self.copy_value(inner, &payload);
+                let q = self.alloc(size);
+                self.store_leaves(q, 0, &leaves, &c);
+                self.b.ins().jump(join, &[BlockArg::Value(q)]);
+                self.b.switch_to_block(join);
+                vec![self.b.block_params(join)[0]]
             }
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
@@ -622,6 +869,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let fields = self.alt_fields(a);
         let shape = self.g.lay.shape(ty);
         let boxed = matches!(shape.alt, Some(AltRepr::Boxed { .. }));
+        if boxed && self.has_tail(ty, &fields) {
+            return vec![self.copy_boxed_iter(ty, &fields, vs[0])];
+        }
         let (leaves, slots_total) = match &shape.alt {
             Some(AltRepr::Boxed { block, .. }) => (block.clone(), block.len()),
             _ => (shape.leaves.clone(), shape.leaves.len()),
@@ -694,6 +944,58 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.store_leaves(addr, 0, leaves, vs);
         addr
     }
+
+    /// Loads the leaves of lazy wide parameters among `vs` from their home slots.
+    fn refresh(&mut self, f: &Func, vs: impl Iterator<Item = ms_mir::ir::Value>) {
+        for v in vs {
+            if self.lazy[v.index()] {
+                let h = self.homes[v.index()].expect("lazy value has a home");
+                let leaves = self.g.lay.leaves(f.ty(v));
+                self.vals[v.index()] = self.load_leaves(h.addr, 0, &leaves);
+            }
+        }
+    }
+
+    fn is_wide(&self, ty: Ty) -> bool {
+        matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+    }
+
+    fn new_slot(&mut self, size: u32) -> ir::StackSlot {
+        self.b.create_sized_stack_slot(StackSlotData::new(
+            StackSlotKind::ExplicitSlot,
+            size.max(8),
+            3,
+        ))
+    }
+
+    /// The memory copy of MIR value `v`, when it has one that is valid here.
+    fn home_of(&self, v: ms_mir::ir::Value) -> Option<Home> {
+        self.homes[v.index()].filter(|h| h.blk.is_none_or(|b| b == self.cur))
+    }
+
+    /// Stores the wide arguments of an edge into the home slots of the target's parameters,
+    /// except those that already live there.
+    fn edge_stores(&self, t: &Target) -> Vec<(ir::StackSlot, Vs, Vec<Leaf>)> {
+        let mut out = Vec::new();
+        for (j, a) in t.args.iter().enumerate() {
+            let Some(slot) = self.pslots.get(&(t.block.index(), j)) else {
+                continue;
+            };
+            if self.home_of(*a).is_some_and(|h| h.slot == Some(*slot)) {
+                continue;
+            }
+            let leaves = (0..self.vals[a.index()].len()).map(|_| Leaf::I64).collect();
+            out.push((*slot, self.vals[a.index()].clone(), leaves));
+        }
+        out
+    }
+
+    fn emit_stores(&mut self, stores: Vec<(ir::StackSlot, Vs, Vec<Leaf>)>) {
+        for (slot, vs, leaves) in stores {
+            let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+            self.store_leaves(addr, 0, &leaves, &vs);
+        }
+    }
 }
 
 // ---- functions -------------------------------------------------------------
@@ -713,7 +1015,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let args: Vs = t
             .args
             .iter()
-            .flat_map(|a| self.vals[a.index()].clone())
+            .enumerate()
+            .filter(|(j, _)| !self.pslots.contains_key(&(t.block.index(), *j)))
+            .flat_map(|(_, a)| self.vals[a.index()].clone())
             .collect();
         (
             self.blocks[t.block.index()].expect("reachable block"),
@@ -734,13 +1038,25 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
+        self.homes = vec![None; f.values.len()];
+        self.used = vec![false; f.values.len()];
+        self.lazy = vec![false; f.values.len()];
+        self.slot_of.clear();
+        self.slot_blk.clear();
+        self.pslots.clear();
         for b in &rpo {
             let cb = self.b.create_block();
             self.blocks[b.index()] = Some(cb);
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
             } else {
-                for p in &f.blocks[b.index()].params {
+                for (j, p) in f.blocks[b.index()].params.iter().enumerate() {
+                    if self.is_wide(f.ty(p.value)) {
+                        let size = self.g.lay.mem(f.ty(p.value)).size;
+                        let slot = self.new_slot(size);
+                        self.pslots.insert((b.index(), j), slot);
+                        continue;
+                    }
                     for l in self.g.lay.leaves(f.ty(p.value)) {
                         self.b.append_block_param(cb, leaf_type(l));
                     }
@@ -751,18 +1067,50 @@ impl<'a, 'm> Lower<'a, 'm> {
             let cb = self.blocks[b.index()].expect("created");
             self.b.switch_to_block(cb);
             // Bind block parameters.
+            self.cur = b.index();
             let params = self.b.block_params(cb).to_vec();
             let mut at = 0;
-            for p in &f.blocks[b.index()].params {
-                let w = self.g.lay.width(f.ty(p.value));
+            for (j, p) in f.blocks[b.index()].params.iter().enumerate() {
+                let ty = f.ty(p.value);
+                if let Some(slot) = self.pslots.get(&(b.index(), j)).copied() {
+                    let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+                    self.lazy[p.value.index()] = true;
+                    self.homes[p.value.index()] = Some(Home {
+                        addr,
+                        slot: Some(slot),
+                        blk: None,
+                    });
+                    continue;
+                }
+                let w = self.g.lay.width(ty);
                 self.vals[p.value.index()] = params[at..at + w].to_vec();
                 at += w;
+                if b.index() == 0 && self.is_wide(ty) {
+                    let leaves = self.g.lay.leaves(ty);
+                    let size = self.g.lay.mem(ty).size;
+                    let slot = self.new_slot(size);
+                    let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+                    let vs = self.vals[p.value.index()].clone();
+                    self.store_leaves(addr, 0, &leaves, &vs);
+                    self.homes[p.value.index()] = Some(Home {
+                        addr,
+                        slot: Some(slot),
+                        blk: None,
+                    });
+                }
             }
             for inst in &f.blocks[b.index()].insts {
                 self.set_loc(inst.loc);
+                self.refresh(f, inst.args.iter().copied());
                 self.lower_inst(f, inst);
+                for a in &inst.args {
+                    self.used[a.index()] = true;
+                }
             }
             self.set_loc(f.blocks[b.index()].term_loc);
+            let mut uses = Vec::new();
+            f.blocks[b.index()].term.for_each_use(|v| uses.push(v));
+            self.refresh(f, uses.into_iter());
             self.lower_term(f, &f.blocks[b.index()].term);
         }
     }
@@ -792,13 +1140,27 @@ impl<'a, 'm> Lower<'a, 'm> {
         match t {
             Term::Br(tg) => {
                 let (b, args) = self.target(tg);
+                let stores = self.edge_stores(tg);
+                self.emit_stores(stores);
                 self.b.ins().jump(b, &args);
             }
             Term::CondBr { cond, then, els } => {
                 let c = self.vals[cond.index()][0];
                 let (tb, ta) = self.target(then);
                 let (eb, ea) = self.target(els);
-                self.b.ins().brif(c, tb, &ta, eb, &ea);
+                let (ts, es) = (self.edge_stores(then), self.edge_stores(els));
+                if ts.is_empty() && es.is_empty() {
+                    self.b.ins().brif(c, tb, &ta, eb, &ea);
+                } else {
+                    let (tt, te) = (self.b.create_block(), self.b.create_block());
+                    self.b.ins().brif(c, tt, &[], te, &[]);
+                    self.b.switch_to_block(tt);
+                    self.emit_stores(ts);
+                    self.b.ins().jump(tb, &ta);
+                    self.b.switch_to_block(te);
+                    self.emit_stores(es);
+                    self.b.ins().jump(eb, &ea);
+                }
             }
             Term::Switch {
                 value,
@@ -811,26 +1173,29 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let mut trampolines = Vec::new();
                 for (k, tg) in cases {
                     let (blk, args) = self.target(tg);
-                    let entry = if args.is_empty() {
+                    let stores = self.edge_stores(tg);
+                    let entry = if args.is_empty() && stores.is_empty() {
                         blk
                     } else {
                         let tramp = self.b.create_block();
-                        trampolines.push((tramp, blk, args));
+                        trampolines.push((tramp, blk, args, stores));
                         tramp
                     };
                     sw.set_entry(*k as u64 as u128, entry);
                 }
                 let (db, da) = self.target(default);
-                let dblock = if da.is_empty() {
+                let dstores = self.edge_stores(default);
+                let dblock = if da.is_empty() && dstores.is_empty() {
                     db
                 } else {
                     let tramp = self.b.create_block();
-                    trampolines.push((tramp, db, da));
+                    trampolines.push((tramp, db, da, dstores));
                     tramp
                 };
                 sw.emit(&mut self.b, v, dblock);
-                for (tramp, blk, args) in trampolines {
+                for (tramp, blk, args, stores) in trampolines {
                     self.b.switch_to_block(tramp);
+                    self.emit_stores(stores);
                     self.b.ins().jump(blk, &args);
                 }
             }
@@ -1182,7 +1547,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
-                if self.opt_nullable(ty) {
+                if self.opt_boxed(ty) {
+                    let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
+                        unreachable!()
+                    };
+                    let leaves = self.g.lay.leaves(inner);
+                    let p = self.alloc(mem_layout(&leaves).size as i64);
+                    self.store_leaves(p, 0, &leaves, &v);
+                    vec![p]
+                } else if self.opt_nullable(ty) {
                     v
                 } else {
                     let one = self.b.ins().iconst(types::I8, 1);
@@ -1213,7 +1586,23 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let none = self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0);
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
-                if nullable { v } else { v[1..].to_vec() }
+                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
+                    unreachable!()
+                };
+                let payload = if self.opt_boxed(ty) {
+                    let leaves = self.g.lay.leaves(inner);
+                    self.load_leaves(v[0], 0, &leaves)
+                } else if nullable {
+                    v
+                } else {
+                    v[1..].to_vec()
+                };
+                // `unwrap` returns an owned value; `get` borrows.
+                if inst.op == Op::OptUnwrap {
+                    self.copy_value(inner, &payload)
+                } else {
+                    payload
+                }
             }
             Op::StrLen => {
                 // Scalar count: cached in the object, else computed (and cached) by the runtime.
@@ -1330,6 +1719,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                     lay.size.max(8),
                     3,
                 ));
+                if let Some(r) = inst.res {
+                    self.slot_of.insert(r.index(), slot);
+                    self.slot_blk.insert(r.index(), self.cur);
+                }
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
             Op::ListAddr => {
@@ -1360,10 +1753,36 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
-                self.load_leaves(p, 0, &leaves)
+                let out = self.load_leaves(p, 0, &leaves);
+                if inst.op == Op::Take
+                    && self.is_wide(ty)
+                    && let Some(r) = inst.res
+                {
+                    self.homes[r.index()] = Some(Home {
+                        addr: p,
+                        slot: self.slot_of.get(&inst.args[0].index()).copied(),
+                        blk: Some(self.cur),
+                    });
+                }
+                out
             }
             Op::Store | Op::Put => {
                 let ty = f.ty(inst.args[1]);
+                let (dst, src) = (inst.args[0].index(), inst.args[1]);
+                // A wide value moving into a fresh slot just adopts the memory it already lives in.
+                if inst.op == Op::Put
+                    && self.is_wide(ty)
+                    && !self.used[dst]
+                    && self.slot_blk.get(&dst) == Some(&self.cur)
+                    && let Some(h) = self.home_of(src)
+                {
+                    self.vals[dst] = vec![h.addr];
+                    match h.slot {
+                        Some(s) => self.slot_of.insert(dst, s),
+                        None => self.slot_of.remove(&dst),
+                    };
+                    return;
+                }
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));
                 self.store_leaves(p, 0, &leaves, &v);
@@ -1453,6 +1872,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
         };
         self.set(inst, out);
+    }
+
+    fn opt_boxed(&self, opt: Ty) -> bool {
+        match self.g.m.types.kind(opt) {
+            TyKind::Opt(inner) => self.g.lay.opt_is_boxed(*inner),
+            _ => false,
+        }
     }
 
     fn opt_nullable(&self, opt: Ty) -> bool {
@@ -1759,6 +2185,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             let v = self.a(inst, i);
             if Self::passes_directly(&self.g.lay, p.ty) {
                 args.extend(v);
+            } else if let Some(h) = self.home_of(inst.args[i]) {
+                args.push(h.addr);
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
                 args.push(self.spill(&v, &leaves));
@@ -1779,6 +2207,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);
+            if self.is_wide(ret_ty)
+                && let Some(r) = inst.res
+            {
+                self.homes[r.index()] = Some(Home {
+                    addr: out,
+                    slot: Some(slot),
+                    blk: Some(self.cur),
+                });
+            }
             self.load_leaves(out, 0, &leaves)
         }
     }

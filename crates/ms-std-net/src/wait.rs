@@ -6,11 +6,9 @@
 //! cancellation path.
 
 use crate::rt;
-use rustix::event::{self, PollFd, PollFlags};
-use rustix::io;
-use rustix::time::Timespec;
+use crate::sys::{self, Borrowed, Wake};
 use std::cell::Cell;
-use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
+use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -81,7 +79,7 @@ pub fn use_tasks() {
 /// the next read or write reports them) or the deadline passes. With tasks enabled
 /// the task parks, so the server reactor and request handlers run meanwhile.
 /// Faults with the runtime's cancellation when a stop was requested.
-pub fn wait_fd(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
+pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     if TASKS.with(Cell::get) {
         wait_task(fd, interest, deadline)
     } else {
@@ -89,7 +87,7 @@ pub fn wait_fd(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wa
     }
 }
 
-fn wait_task(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
+fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     rt::check_cancel();
     crate::http::server::give_up_reactor_role();
     let events = match interest {
@@ -99,7 +97,7 @@ fn wait_task(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait
     let timeout = deadline
         .remaining()
         .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
-    let got = rt::wait_fd(fd.as_raw_fd(), events, timeout);
+    let got = rt::wait_fd(fd, events, timeout);
     if got & 16 != 0 {
         rt::cancelled();
     }
@@ -113,23 +111,12 @@ fn wait_task(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait
 /// Longest a polling wait sleeps before it re-checks the cancel flag.
 const SLICE: Duration = Duration::from_millis(50);
 
-fn wait_poll(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait {
-    let flags = match interest {
-        Interest::Read => PollFlags::IN,
-        Interest::Write => PollFlags::OUT,
-    };
+fn wait_poll(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     loop {
         rt::check_cancel();
         let slice = deadline.remaining().map_or(SLICE, |left| left.min(SLICE));
-        let timeout = Timespec {
-            tv_sec: slice.as_secs() as _,
-            tv_nsec: slice.subsec_nanos() as _,
-        };
-        let mut fds = [PollFd::new(&fd, flags)];
-        match event::poll(&mut fds, Some(&timeout)) {
-            Ok(_) if !fds[0].revents().is_empty() => return Wait::Ready,
-            Err(io::Errno::INTR) | Ok(_) => {}
-            Err(_) => return Wait::Ready,
+        if sys::poll_one(fd, interest == Interest::Write, slice) {
+            return Wait::Ready;
         }
         if deadline.expired() {
             return Wait::TimedOut;
@@ -140,56 +127,33 @@ fn wait_poll(fd: BorrowedFd<'_>, interest: Interest, deadline: Deadline) -> Wait
 /// Sleeps for `d` while serving handlers; faults on cancellation.
 pub fn sleep(d: Duration) {
     let deadline = Deadline::after(d);
-    let Some((idle, _keep)) = wake_pair() else {
+    // A wake-up nobody signals: the wait ends at the deadline.
+    let Some(idle) = Wake::new() else {
         std::thread::sleep(d);
         return;
     };
-    let _ = wait_fd(idle.as_fd(), Interest::Read, deadline);
-}
-
-/// A descriptor pair: the first becomes readable once a byte is written to the second
-/// (both nonblocking, close-on-exec). Dropping the second also makes the first
-/// readable, so the owner keeps both while it waits.
-pub fn wake_pair() -> Option<(OwnedFd, OwnedFd)> {
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    {
-        let fd = event::eventfd(
-            0,
-            event::EventfdFlags::CLOEXEC | event::EventfdFlags::NONBLOCK,
-        )
-        .ok()?;
-        let signal = fd.try_clone().ok()?;
-        Some((fd, signal))
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    {
-        let (read, write) = rustix::pipe::pipe().ok()?;
-        for fd in [&read, &write] {
-            rustix::io::fcntl_setfd(fd, rustix::io::FdFlags::CLOEXEC).ok()?;
-            rustix::fs::fcntl_setfl(fd, rustix::fs::OFlags::NONBLOCK).ok()?;
-        }
-        Some((read, write))
-    }
+    let _ = wait_fd(idle.sock(), Interest::Read, deadline);
 }
 
 /// A background computation whose completion wakes the ms thread.
 pub struct Task<T> {
     rx: mpsc::Receiver<T>,
-    wake: OwnedFd,
+    wake: Arc<Wake>,
 }
 
 /// Runs `f` on a helper thread. `f` must not call into the runtime.
 pub fn spawn_blocking<T: Send + 'static>(
     f: impl FnOnce() -> T + Send + 'static,
 ) -> Option<Task<T>> {
-    let (wake, signal) = wake_pair()?;
+    let wake = Arc::new(Wake::new()?);
+    let signal = wake.clone();
     let (tx, rx) = mpsc::channel();
     std::thread::Builder::new()
         .name("ms-net-blocking".into())
         .spawn(move || {
             let value = f();
             let _ = tx.send(value);
-            let _ = io::write(&signal, &1u64.to_ne_bytes());
+            signal.notify();
         })
         .ok()?;
     Some(Task { rx, wake })
@@ -202,7 +166,7 @@ impl<T> Task<T> {
             if let Ok(v) = self.rx.try_recv() {
                 return Some(v);
             }
-            if wait_fd(self.wake.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+            if wait_fd(self.wake.sock(), Interest::Read, deadline) == Wait::TimedOut {
                 return self.rx.try_recv().ok();
             }
         }

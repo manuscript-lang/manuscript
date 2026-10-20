@@ -13,7 +13,7 @@ type Pending:
 impl Error for Pending:
     fn message() String: "pending"
 
-fn counted(counter: Counter) Counter:
+fn counted(var counter: Counter) Counter:
     counter.calls = counter.calls + 1
     return counter
 
@@ -24,7 +24,10 @@ fn require_lazy[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:
     return value.ok_or_else[E](create)
 
 fn success_only[T, E: Error](value: Result[T, E]) Optional[T]:
-    return value.to_optional()
+    if let item = value:
+        return some(item)
+
+    return none
 
 fn reduce_map[K: Hashable, V, A](
     values: Map[K, V],
@@ -68,30 +71,33 @@ test "conversions and collection queries are callable":
     try expect_true((values.every(fn(n): n > 0)))
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
-    let counter = Counter(0)
+    var counter = Counter(0)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
-    (require_value(present, counted(counter)).get() != 0 or counter.calls != 1) | try expect_false
-    var cause = require_value(missing, counter).err()
+    (require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
+    var cause = require_value(missing, counter.clone()).err().clone()
     cause.calls = 2
-    counter.calls | try expect_equal(expected: 2)
-    let create = fn() Counter: counted(counter)
-    (require_lazy(present, create).get() != 0 or counter.calls != 2) | try expect_false
+    counter.calls | try expect_equal(expected: 1)
+    let create = fn() Counter: Counter(10)
+    (require_lazy(present, create).get() != 0 or counter.calls != 1) | try expect_false
     let error_result = require_lazy(missing, create)
-    counter.calls | try expect_equal(expected: 3)
-    error_result.err().calls = 4
-    counter.calls | try expect_equal(expected: 4)
+    error_result.err().calls | try expect_equal(expected: 10)
+    var lazy_cause = error_result.err().clone()
+    lazy_cause.calls = 4
+    error_result.err().calls | try expect_equal(expected: 10)
     let bound = missing.ok_or[Counter]
-    bound(cause: counter).err().calls = 5
-    counter.calls | try expect_equal(expected: 5)
+    var bound_cause = bound(cause: counter.clone()).err().clone()
+    bound_cause.calls = 5
+    counter.calls | try expect_equal(expected: 1)
     let bound_lazy = missing.ok_or_else[Counter]
-    bound_lazy(create).err().calls | try expect_equal(expected: 6)
+    bound_lazy(create).err().calls | try expect_equal(expected: 10)
     let failure: Result[Counter, Pending] = error(Pending([1, 2]))
     (success_only(failure).is_none()) | try expect_true
-    let success: Result[Counter, TextError] = ok(counter)
+    let success: Result[Counter, TextError] = ok(counter.clone())
     let extract = success.to_optional
-    extract().get().calls = 7
-    counter.calls | try expect_equal(expected: 7)
+    var extracted = extract().get().clone()
+    extracted.calls = 7
+    counter.calls | try expect_equal(expected: 1)
     let nested: Optional[Optional[Int]] = some(none)
     let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
@@ -108,27 +114,25 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
         ).to_optional().get().err().message() | try expect_equal(expected: "nested")
     )
 
-test "Map fold uses ordered snapshots and returns accumulator aliases":
+test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []
-    var later = Counter(3)
-    var values: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": later}
+    let values: Map[String, Counter] = {
+        "b": Counter(2),
+        "a": Counter(1),
+        "c": Counter(3)
+    }
     let initial: List[String] = []
     var visits = reduce_map(
-        values,
-        initial,
+        values.clone(),
+        initial.clone(),
         fn(acc, k, v):
-            if k == "b":
-                values.add("a", Counter(99))
-                values.remove("c")
-                values.add("d", Counter(4))
-                later.calls = 7
-
-            acc.append(k + v.calls.to_string())
-            return acc
+            var next = acc
+            next.append(k + v.calls.to_string())
+            return next
     )
-    (visits != ["b2", "a1", "c7"] or initial != visits) | try expect_false
-    visits.append("alias")
-    initial.length() | try expect_equal(expected: 4)
+    (visits != ["b2", "a1", "c3"] or not (initial.is_empty())) | try expect_false
+    visits.append("copy")
+    initial.length() | try expect_equal(expected: 0)
     let empty = Map[String, Counter]()
     let fold = empty.fold[List[String]]
     var untouched = fold(
@@ -137,10 +141,11 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
                 empty_calls.append(1)
                 return acc
         ),
-        initial: initial
+        initial: initial.clone()
     )
-    untouched.append("empty alias")
-    initial.length() | try expect_equal(expected: 5)
+    untouched.append("empty copy")
+    initial.length() | try expect_equal(expected: 0)
+    untouched | try expect_equal(expected: ["empty copy"])
     let success: Result[Int, Counter] = ok(2)
     var chain_1 = Map[String, Int]()
     chain_1.add("a", 3)
@@ -148,30 +153,32 @@ test "Map fold uses ordered snapshots and returns accumulator aliases":
     nested.get() | try expect_equal(expected: 5)
     empty_calls.is_empty() | try expect_true
 
-test "Map find returns fresh entry shells with original payload references":
+test "Map find returns fresh entry shells with copied payloads":
     var empty_calls: List[Int] = []
     let counter = Counter(2)
-    var values: Map[String, Counter] = {"b": counter, "a": Counter(1), "c": Counter(3)}
+    let values: Map[String, Counter] = {
+        "b": counter.clone(),
+        "a": Counter(1),
+        "c": Counter(3)
+    }
     var visits: List[String] = []
     let found = locate(
-        values,
+        values.clone(),
         fn(k, v):
             visits.append(k)
-            values.remove("a")
-            values.add("c", Counter(99))
-            values.add("new", Counter(9))
             return k == "a"
     ).get()
     (visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | try expect_false
     var source = Map[String, Counter]()
-    source.add("b", counter)
-    let find = source.find
-    var original = find(fn(k, v): true).get()
-    original.value.calls = 5
-    counter.calls | try expect_equal(expected: 5)
+    source.add("b", counter.clone())
+    let find = source.clone().find
+    var original = find(fn(k, v): true).get().clone()
+    var edited = original.value.clone()
+    edited.calls = 5
+    counter.calls | try expect_equal(expected: 2)
     original.key = "other"
     original.value = Counter(9)
-    (not (source.contains("b")) or source.get("b").get().calls != 5) | try expect_false
+    (not (source.contains("b")) or source.get("b").get().calls != 2) | try expect_false
     try expect_equal(source.find(fn(k, v): true).get().key, "b")
     try expect_true((source.find(fn(k, v): false).is_none()))
     let empty = Map[String, Counter]()
@@ -269,55 +276,49 @@ impl Equal for Key:
 impl Hashable for Key:
     fn hash() Int: 0
 
-test "Set fold and find preserve ordered snapshots and reference identity":
+test "Set fold and find preserve ordered snapshots and copied payloads":
     var empty_calls: List[Int] = []
     let a = Key(1, "a")
     let b = Key(2, "b")
-    var c = Key(3, "c")
-    var values = Set[Key]([b, a, c])
+    let c = Key(3, "c")
+    var values = Set[Key]([b.clone(), a.clone(), c.clone()])
     let initial: List[String] = []
     var visits = reduce_set(
-        values,
-        initial,
+        values.clone(),
+        initial.clone(),
         fn(acc, v):
-            if v.id == 2:
-                values.remove(a)
-                values.remove(c)
-                values.add(Key(4, "d"))
-                c.label = "shared"
-
-            acc.append(v.label)
-            return acc
+            var next = acc
+            next.append(v.label)
+            return next
     )
-    visits | try expect_equal(expected: ["b", "a", "shared"])
-    visits.append("alias")
-    initial.length() | try expect_equal(expected: 4)
+    visits | try expect_equal(expected: ["b", "a", "c"])
+    visits.append("copy")
+    initial.length() | try expect_equal(expected: 0)
     let bound_empty = Set[Key]().fold[List[String]]
-    bound_empty(
-        initial,
+    var empty_result = bound_empty(
+        initial.clone(),
         (
             fn(acc, v):
                 empty_calls.append(1)
                 return acc
         )
-    ).append("empty alias")
-    initial.length() | try expect_equal(expected: 5)
+    )
+    empty_result.append("empty copy")
+    initial.length() | try expect_equal(expected: 0)
     values.clear()
-    values.add(b)
-    values.add(a)
-    values.add(c)
+    values.add(b.clone())
+    values.add(a.clone())
+    values.add(c.clone())
     var seen: List[Int] = []
-    let find = values.find
+    let find = values.clone().find
     var found = find(
         fn(v):
             seen.append(v.id)
-            values.remove(a)
-            values.add(Key(4, "new"))
             return v.id == 1
-    ).get()
+    ).get().clone()
     seen | try expect_equal(expected: [2, 1])
     found.label = "found"
-    a.label | try expect_equal(expected: "found")
+    a.label | try expect_equal(expected: "a")
     values.clear()
     try expect_false(
         not (
@@ -494,7 +495,8 @@ test "ok_or without a cause records the calling file and line":
     find_port(some(8080)).get() | try expect_equal(expected: 8080)
     let named: Result[Int, TextError] = absent.ok_or(TextError("port"))
     named.err().message() | try expect_equal(expected: "port")
+    let missing_port = find_port(none)
 
-    match find_port(none).err():
+    match missing_port.err():
         MissingValue(found): unit
         _: return fail("default cause is not MissingValue")

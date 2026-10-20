@@ -4,7 +4,7 @@
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
 
 fn filled_sum() Int:
-    let values: List[Int] = []
+    var values: List[Int] = []
     var i = 0
 
     while i < 100:
@@ -17,7 +17,7 @@ fn filled_sum() Int:
     return sum
 
 fn conditional_length(flag: Bool) Int:
-    let values: List[Int] = []
+    var values: List[Int] = []
     var i = 0
 
     while i < 100:
@@ -28,7 +28,7 @@ fn conditional_length(flag: Bool) Int:
     return values.length()
 
 fn self_overflow() Int:
-    let values = [0]
+    var values = [0]
     var i = 0
 
     while i < 2:
@@ -38,8 +38,8 @@ fn self_overflow() Int:
     return values.get(-1)
 
 fn peer_overflow() Int:
-    let values = [0]
-    let peer = [9223372036854775807]
+    var values = [0]
+    var peer = [9223372036854775807]
     var i = 0
 
     while i < 2:
@@ -63,13 +63,13 @@ fn optional_overflow(default: Optional[Int]) Int:
         sum += values.get(0, default)
     return sum + 1
 
-fn effect(visits: List[Int], value: Int) Int:
+fn effect(var visits: List[Int], value: Int) Int:
     visits.append(value)
     return value
 
 fn mutated_alias() Int:
     let values = [0]
-    let alias = values
+    var alias = values
     alias.set(0, 9223372036854775807)
     var sum = 0
     for value in values:
@@ -89,12 +89,12 @@ test "closed list scalar summaries preserve sums and lengths":
 
 test "closed list reads preserve defaults and evaluation order":
     let values = [10, 20]
-    let visits: List[Int] = []
-    values.get(default: effect(visits, 7), index: effect(visits, 0)) | try expect_equal(
+    var visits: List[Int] = []
+    values.get(default: effect(var visits, 7), index: effect(var visits, 0)) | try expect_equal(
         expected: 10
     )
-    values.get(-1, effect(visits, 8)) | try expect_equal(expected: 20)
-    values.get(3, effect(visits, 9)) | try expect_equal(expected: 9)
+    values.get(-1, effect(var visits, 8)) | try expect_equal(expected: 20)
+    values.get(3, effect(var visits, 9)) | try expect_equal(expected: 9)
     visits | try expect_equal(expected: [7, 0, 8, 9])
 
 test "recursive appends keep overflow checks":
@@ -122,7 +122,7 @@ test "aliased mutation keeps overflow checks":
     )
 
 test "append during traversal retains initial-length semantics":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     var sum = 0
 
     for value in values:
@@ -140,7 +140,7 @@ fn reordered_default_overflow() Int:
     return sum + 1
 
 fn scalar_append_overflow() Int:
-    let values: List[Int] = []
+    var values: List[Int] = []
     var carry = 0
     var i = 0
 
@@ -155,7 +155,7 @@ fn scalar_append_overflow() Int:
     return sum + 1
 
 fn match_length() Int:
-    let values: List[Int] = []
+    var values: List[Int] = []
 
     let ignored = match some(1):
         some(n):

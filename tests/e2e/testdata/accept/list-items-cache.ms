@@ -1,6 +1,6 @@
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
 
-fn grow(values: List[Int]) Unit:
+fn grow(var values: List[Int]) Unit:
     values.append(values.length())
 
 test "indexed loops over a list read and write through the shared storage":
@@ -25,14 +25,14 @@ test "negative indexes inside a cached loop count from the end":
     try expect_equal(total, 60)
 
 test "a list that grows inside the loop is read through its current storage":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     var seen = 0
     var i = 0
 
     while i < 6:
         seen += values.get(i % values.length())
         if i < 3:
-            grow(values)
+            grow(var values)
         i += 1
 
     try expect_equal(values.length(), 6)

@@ -43,13 +43,22 @@ pub mod io;
 pub mod map;
 pub mod num;
 pub mod obj;
+pub mod poller;
 pub mod process;
 pub mod profile;
 pub mod queue;
 pub mod start;
 pub mod string;
+#[cfg(not(windows))]
+pub mod sys;
+#[cfg(windows)]
+#[path = "sys_windows.rs"]
 pub mod sys;
 pub mod task;
+#[cfg(not(windows))]
+pub mod trap;
+#[cfg(windows)]
+#[path = "trap_windows.rs"]
 pub mod trap;
 pub mod utf8;
 pub mod vec;

@@ -12,24 +12,66 @@ pub const STDERR: c_int = 2;
 pub const PROT_READ: c_int = 1;
 pub const PROT_WRITE: c_int = 2;
 pub const MAP_PRIVATE: c_int = 0x02;
+#[cfg(target_os = "macos")]
+pub const MAP_ANONYMOUS: c_int = 0x1000;
+#[cfg(target_os = "macos")]
+pub const MAP_NORESERVE: c_int = 0x40;
+#[cfg(not(target_os = "macos"))]
 pub const MAP_ANONYMOUS: c_int = 0x20;
+#[cfg(not(target_os = "macos"))]
 pub const MAP_NORESERVE: c_int = 0x4000;
 
 pub const SIGINT: c_int = 2;
 pub const SIGALRM: c_int = 14;
 pub const SIGTERM: c_int = 15;
 pub const SIGPROF: c_int = 27;
+#[cfg(target_os = "macos")]
+pub const SA_SIGINFO: c_int = 0x40;
+#[cfg(target_os = "macos")]
+pub const SA_RESTART: c_int = 0x2;
+#[cfg(not(target_os = "macos"))]
 pub const SA_SIGINFO: c_int = 4;
+#[cfg(not(target_os = "macos"))]
 pub const SA_RESTART: c_int = 0x1000_0000;
 pub const ITIMER_REAL: c_int = 0;
 pub const ITIMER_PROF: c_int = 2;
 
+/// glibc's `struct sigaction`.
+#[cfg(not(target_os = "macos"))]
 #[repr(C)]
 pub struct sigaction_t {
-    pub handler: usize,
-    pub mask: [u64; 16],
-    pub flags: c_int,
-    pub restorer: usize,
+    handler: usize,
+    mask: [u64; 16],
+    flags: c_int,
+    restorer: usize,
+}
+
+/// macOS's `struct sigaction`.
+#[cfg(target_os = "macos")]
+#[repr(C)]
+pub struct sigaction_t {
+    handler: usize,
+    mask: u32,
+    flags: c_int,
+}
+
+impl sigaction_t {
+    /// A disposition running `handler` with no signals blocked and the given `SA_*` flags.
+    pub fn new(handler: usize, flags: c_int) -> sigaction_t {
+        #[cfg(not(target_os = "macos"))]
+        return sigaction_t {
+            handler,
+            mask: [0; 16],
+            flags,
+            restorer: 0,
+        };
+        #[cfg(target_os = "macos")]
+        return sigaction_t {
+            handler,
+            mask: 0,
+            flags,
+        };
+    }
 }
 
 #[repr(C)]
@@ -54,7 +96,6 @@ unsafe extern "C" {
     pub fn calloc(n: size_t, size: size_t) -> *mut c_void;
     pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
     pub fn free(p: *mut c_void);
-    pub fn malloc_usable_size(p: *mut c_void) -> size_t;
     pub fn write(fd: c_int, buf: *const c_void, n: size_t) -> isize;
     pub fn read(fd: c_int, buf: *mut c_void, n: size_t) -> isize;
     pub fn _exit(code: c_int) -> !;
@@ -97,7 +138,13 @@ unsafe extern "C" {
 }
 
 pub const O_WRONLY: c_int = 1;
+#[cfg(target_os = "macos")]
+pub const O_CREAT: c_int = 0x200;
+#[cfg(target_os = "macos")]
+pub const O_TRUNC: c_int = 0x400;
+#[cfg(not(target_os = "macos"))]
 pub const O_CREAT: c_int = 0o100;
+#[cfg(not(target_os = "macos"))]
 pub const O_TRUNC: c_int = 0o1000;
 
 /// Writes all of `data` to `fd`, retrying on partial writes and EINTR.
@@ -117,12 +164,32 @@ pub fn write_all(fd: c_int, mut data: &[u8]) {
 }
 
 unsafe extern "C" {
-    fn __errno_location() -> *mut c_int;
+    #[cfg(target_os = "macos")]
+    #[link_name = "__error"]
+    fn errno_slot() -> *mut c_int;
+    #[cfg(not(target_os = "macos"))]
+    #[link_name = "__errno_location"]
+    fn errno_slot() -> *mut c_int;
+    #[cfg(target_os = "macos")]
+    #[link_name = "malloc_size"]
+    fn block_size(p: *const c_void) -> size_t;
+    #[cfg(not(target_os = "macos"))]
+    #[link_name = "malloc_usable_size"]
+    fn block_size(p: *mut c_void) -> size_t;
 }
 
 pub fn last_errno() -> c_int {
-    // SAFETY: `__errno_location` returns the calling thread's errno slot.
-    unsafe { *__errno_location() }
+    // SAFETY: the slot function returns the calling thread's errno.
+    unsafe { *errno_slot() }
+}
+
+/// Usable size of a block from `malloc`/`realloc`.
+///
+/// # Safety
+/// `p` must come from `malloc`, `calloc` or `realloc` and not be freed.
+pub unsafe fn malloc_usable_size(p: *mut c_void) -> size_t {
+    // SAFETY: forwarded; the caller guarantees a live allocation.
+    unsafe { block_size(p) }
 }
 
 /// Reads an environment variable as bytes (without the NUL), if set.
@@ -141,4 +208,74 @@ pub fn env_var(name: &[u8]) -> Option<&'static [u8]> {
         }
         Some(core::slice::from_raw_parts(p.cast(), n))
     }
+}
+
+/// Reserves `len` bytes of zeroed address space; [`commit`] makes ranges of it usable. Null on failure.
+pub fn map_anon(len: usize) -> *mut u8 {
+    // SAFETY: anonymous private mapping; failure is reported as MAP_FAILED.
+    let p = unsafe {
+        mmap(
+            core::ptr::null_mut(),
+            len,
+            PROT_READ | PROT_WRITE,
+            MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
+            -1,
+            0,
+        )
+    };
+    if p as isize == -1 {
+        core::ptr::null_mut()
+    } else {
+        p.cast()
+    }
+}
+
+/// Makes `len` bytes at `p` (inside a [`map_anon`] mapping) usable. Unix maps everything readable
+/// and writable up front and the kernel commits pages on first touch.
+pub fn commit(_p: *mut u8, _len: usize) -> bool {
+    true
+}
+
+/// Makes `len` bytes at `p` inaccessible (a stack guard).
+///
+/// # Safety
+/// The range lies inside a live mapping that nothing is using.
+pub unsafe fn guard(p: *mut u8, len: usize) {
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { mprotect(p.cast(), len, 0) };
+}
+
+/// Returns a [`map_anon`] mapping to the system.
+///
+/// # Safety
+/// The mapping is live and unused.
+pub unsafe fn unmap(p: *mut u8, len: usize) {
+    unsafe extern "C" {
+        fn munmap(addr: *mut c_void, len: size_t) -> c_int;
+    }
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { munmap(p.cast(), len) };
+}
+
+#[repr(C)]
+struct Timespec {
+    sec: i64,
+    nsec: i64,
+}
+
+unsafe extern "C" {
+    fn clock_gettime(clock: c_int, ts: *mut Timespec) -> c_int;
+}
+
+#[cfg(target_os = "macos")]
+const CLOCK_MONOTONIC: c_int = 6;
+#[cfg(not(target_os = "macos"))]
+const CLOCK_MONOTONIC: c_int = 1;
+
+/// Monotonic clock in nanoseconds.
+pub fn monotonic_ns() -> i64 {
+    let mut t = Timespec { sec: 0, nsec: 0 };
+    // SAFETY: valid out pointer.
+    unsafe { clock_gettime(CLOCK_MONOTONIC, &mut t) };
+    t.sec * 1_000_000_000 + t.nsec
 }

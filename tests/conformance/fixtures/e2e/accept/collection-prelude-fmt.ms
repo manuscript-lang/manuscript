@@ -16,9 +16,9 @@ fn roll(i: Int) Result[Int, TextError]: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 
-fn update[K: Hashable, V](values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
     values.add(key, value)
-    return values
+    return values.clone()
 
 test "issue 187 programs need no collection imports":
     let shapes = [Shape.Circle(1.0)]
@@ -38,29 +38,28 @@ test "issue 187 programs need no collection imports":
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
     try expect_equal(nested[1].get("a").get().length(), 0)
 
-test "map add returns receiver and retains aliases clone and insertion order":
+test "map add retains clones and insertion order":
     var values = {"a": 1, "b": 2}
-    var alias = values
     let copy = values.clone()
     values.add("a", 3)
-    var returned = values
-    returned.add("c", 4)
-    alias.add(value: 5, key: "b")
+    values.add("c", 4)
+    values.add(value: 5, key: "b")
     let bound = values.add
     bound("d", 6)
     bound(value: 7, key: "a")
     values.add("e", 8)
-    try expect_equal(alias.keys(), ["a", "b", "c", "d", "e"])
-    try expect_equal(alias.values(), [7, 5, 4, 6, 8])
+    try expect_equal(values.keys(), ["a", "b", "c", "d", "e"])
+    try expect_equal(values.values(), [7, 5, 4, 6, 8])
     try expect_false(copy.keys() != ["a", "b"] or copy.values() != [1, 2])
     values.remove("b")
     values.add("b", 9)
     try expect_equal(values.keys(), ["a", "c", "d", "e", "b"])
     var payload = [1]
     var nested = Map[Int, List[Int]]()
-    nested.add(1, payload)
+    nested.add(1, payload.clone())
     payload.append(2)
-    try expect_equal(nested.get(1).get(), [1, 2])
+    try expect_equal(nested.get(1).get(), [1])
+    try expect_equal(payload, [1, 2])
 
 test "map add retains optional wrapping and generic bound calls":
     var values = Map[Optional[Int], Optional[Int]]()
@@ -70,24 +69,23 @@ test "map add retains optional wrapping and generic bound calls":
     bound(4, 5)
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
-    var generic = update[Optional[Int], Optional[Int]](values, some(6), some(7))
+    var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))
     generic.add(8, 9)
-    try expect_false(values.get(6).get().get() != 7 or values.get(8).get().get() != 9)
+    try expect_false(generic.get(6).get().get() != 7 or generic.get(8).get().get() != 9)
 
 test "map add captures receivers and arguments in written order":
     var original = Map[Int, Int]()
-    var selected = original
-    let other = Map[Int, Int]()
-    selected.add(
+    var visits = 0
+    original.add(
         match some(1):
             some(_):
-                selected = other
+                visits = 1
                 1
             none: 0
         ,
         2
     )
-    try expect_false(original.get(1).get() != 2 or not other.is_empty())
+    try expect_false(original.get(1).get() != 2 or visits != 1)
     var key = 3
     original.add(
         key,

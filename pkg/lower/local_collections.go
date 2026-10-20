@@ -58,11 +58,11 @@ func (g *gen) proveLocalCollections(params []syntax.Parameter, body []*syntax.St
 		if s.Kind == syntax.KindCall {
 			roots[s.Value] = true
 		}
-		if s.Kind != syntax.KindBind || s.Mutable || s.Pattern.Kind != syntax.KindName || s.Value == nil {
+		if s.Kind != syntax.KindBind || s.Pattern.Kind != syntax.KindName || s.Value == nil {
 			return
 		}
 		b, info := g.program.PatternBinding(s.Pattern), g.info(s.Value)
-		if b == nil || b.Mutable || info == nil {
+		if b == nil || info == nil {
 			return
 		}
 		t := g.sub(b.Type)
@@ -97,7 +97,14 @@ func (g *gen) proveLocalCollections(params []syntax.Parameter, body []*syntax.St
 	}
 	operations := map[*syntax.Expression]operation{}
 	var stack []*syntax.Expression
-	syntax.Visitor{Expression: func(e *syntax.Expression) {
+	syntax.Visitor{Statement: func(s *syntax.Statement) {
+		// A `var` candidate rebound to another value is no longer a closed local.
+		if s.Kind == syntax.KindAssign && s.Target == nil {
+			if c := candidates[g.program.AssignedBinding(s.Value)]; c != nil {
+				c.valid = false
+			}
+		}
+	}, Expression: func(e *syntax.Expression) {
 		enter(e)
 		info := g.info(e)
 		if e.Kind == syntax.KindLambda && info != nil {

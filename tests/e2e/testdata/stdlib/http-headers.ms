@@ -134,31 +134,20 @@ test "streaming proxy uses the same byte-valued header type":
             )
         )
 
-test "lookup shares mutable membership and clone separates it":
+test "lookup returns membership and clone separates it":
     let fields = (try repeated_headers())
-    var values = fields.values("X-DUP").get()
     let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
+    let values = fields.values("X-DUP").get().clone()
     values.length() | try expect_equal(expected: 3)
-    let changed = values.set(0, "changed".to_bytes())
-    (
-        fields.values("x-dup").get().get(0) | try expect_equal(
-            expected: "changed".to_bytes()
-        )
-    )
     let copy = fields.clone()
-    var copied_values = copy.values("x-dup").get()
-    let copied_changed = copied_values.set(0, "copy".to_bytes())
-    (
-        fields.values("x-dup").get().get(0) | try expect_equal(
-            expected: "changed".to_bytes()
-        )
-    )
+    let copy_appended = (copy.append("x-dup", "copy".to_bytes()) | try expect_ok)
+    fields.values("x-dup").get().length() | try expect_equal(expected: 3)
     (fields.values("missing").is_none()) | try expect_true
     let k = (fields.append("K", "ASCII".to_bytes()) | try expect_ok)
     (fields.values("K").is_none()) | try expect_true
     let removed = fields.remove("X-DUP")
     let new_field = (fields.append("X-Dup", "new".to_bytes()) | try expect_ok)
-    (values.length() != 3 or fields.values("x-dup").get().length() != 1) | try expect_false
+    (fields.values("x-dup").get().length() != 1) | try expect_false
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()

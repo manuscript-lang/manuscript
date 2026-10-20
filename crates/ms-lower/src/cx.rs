@@ -35,6 +35,8 @@ pub enum JobKind {
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
+    /// An operation of a compression stream.
+    Codec(Rc<crate::codecstream::CodecJob>),
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -133,10 +135,12 @@ impl Cx {
 
     /// The module queries for `file`.
     pub fn module(&self, file: Name) -> Result<Rc<ModuleHir>, Error> {
-        self.mods
-            .get(&file)
-            .cloned()
-            .ok_or_else(|| Error::new(format!("unknown module {file}")))
+        self.mods.get(&file).cloned().ok_or_else(|| {
+            Error::new(format!(
+                "unknown module {file} (have {:?})",
+                self.mods.keys().map(|k| k.to_string()).collect::<Vec<_>>()
+            ))
+        })
     }
 
     /// Maps a concrete checker type to a MIR type.
@@ -324,8 +328,10 @@ impl Cx {
             return Ok(m.types.obj("BigInt", Vec::new()));
         }
         // Runtime handles are reference-counted objects.
-        if t.is_std("Regex") {
-            return Ok(m.types.obj("Regex", Vec::new()));
+        for name in ["Regex", "IpAddress", "Cidr", "HttpHeaders"] {
+            if t.is_std(name) {
+                return Ok(m.types.obj(name, Vec::new()));
+            }
         }
         Err(Error::new(format!("unsupported native type {t}")))
     }

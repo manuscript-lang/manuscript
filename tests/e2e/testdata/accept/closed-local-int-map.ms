@@ -1,6 +1,6 @@
 import {expect_contains, expect_equal, expect_false, expect_fault, expect_true} from "@std/testing.ms"
 
-fn effect(visits: List[Int], value: Int) Int:
+fn effect(var visits: List[Int], value: Int) Int:
     visits.append(value)
     return value
 
@@ -28,10 +28,10 @@ test "closed maps preserve lookup replacement and absence":
     values.get(0).get(99) | try expect_equal(expected: 99)
 
 test "closed map arguments retain written evaluation order":
-    let visits: List[Int] = []
+    var visits: List[Int] = []
     var values = Map[Int, Int]()
-    values.add(value: effect(visits, 20), key: effect(visits, 2))
-    values.add(key: effect(visits, 3), value: effect(visits, 30))
+    values.add(value: effect(var visits, 20), key: effect(var visits, 2))
+    values.add(key: effect(var visits, 3), value: effect(var visits, 30))
     visits | try expect_equal(expected: [20, 2, 3, 30])
     values.get(2).get() | try expect_equal(expected: 20)
     values.get(3).get() | try expect_equal(expected: 30)

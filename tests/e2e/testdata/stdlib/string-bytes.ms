@@ -54,7 +54,7 @@ test "bytes copy slice search and UTF8 validation":
 
 test "Bytes values direct bound and free calls return independent lists":
     var input = [0, 1, 255]
-    let data = Bytes(input)
+    let data = Bytes(input.clone())
     input.set(0, 42)
     let extract: fn() List[Int] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
@@ -66,7 +66,9 @@ test "Bytes values direct bound and free calls return independent lists":
     free.reverse_in_place()
     try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
     let empty: List[Int] = []
-    try expect_false(Bytes(empty).values() != empty or Bytes([255]).values() != [255])
+    try expect_false(
+        Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
+    )
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     let text = "aé🙂z"
@@ -85,11 +87,11 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal((try text.slice_scalars(4, 4)), "")
 
 test "string and bytes builders freeze idempotently":
-    let text = StringBuilder()
+    var text = StringBuilder()
     text.append("é")
     text.append("🙂")
     try expect_false(text.freeze() != "é🙂" or text.freeze() != "é🙂")
-    let bytes = BytesBuilder()
+    var bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
     try expect_false(

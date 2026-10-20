@@ -850,9 +850,11 @@ dependencies = [
  "jiff-core",
  "jiff-static",
  "jiff-tzdb",
+ "log",
  "portable-atomic",
  "portable-atomic-util",
  "serde_core",
+ "windows-link",
 ]
 
 [[package]]
@@ -1198,6 +1200,7 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-path",
  "ms-std-rt",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1259,6 +1262,7 @@ dependencies = [
  "rustls-native-certs",
  "rustls-pki-types",
  "socket2",
+ "windows-sys 0.61.2",
  "x509-parser",
 ]
 
@@ -1280,6 +1284,7 @@ dependencies = [
  "ms-std-fs",
  "ms-std-io",
  "ms-std-rt",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

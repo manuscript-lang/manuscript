@@ -33,7 +33,7 @@ impl Defaults for DefaultAdapter:
     var fn add_default_from(key: String, create: fn(key: String) Int) Unit:
         self.values.add_default_from(key, create)
 
-fn eager(counter: Counter) Int:
+fn eager(var counter: Counter) Int:
     counter.calls += 1
     return 99
 
@@ -41,7 +41,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     var values = Map[String, Int]()
     values.add("a", 1)
     var counter = Counter(0)
-    values.add_default("a", eager(counter))
+    values.add_default("a", eager(var counter))
     try expect_false(counter.calls != 1 or values.get("a") != some(1))
     values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
@@ -99,7 +99,7 @@ test "all builders keep Unit mutation function types":
     try expect_equal(set_result.values(), [2, 1])
     set_result.add(3)
     try expect_equal(set.freeze().values(), [2, 1, 3])
-    let bytes = BytesBuilder()
+    var bytes = BytesBuilder()
     let append_byte: fn(value: Int) Unit = bytes.append
     let concat_bytes: fn(values: Bytes) Unit = bytes.concat
     append_byte(65)
@@ -107,7 +107,7 @@ test "all builders keep Unit mutation function types":
     try expect_false(
         (bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes())
     )
-    let text = StringBuilder()
+    var text = StringBuilder()
     let append_text: fn(value: String) Unit = text.append
     append_text("ab")
     try expect_false(text.freeze() != "ab" or text.freeze() != "ab")

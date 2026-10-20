@@ -27,18 +27,18 @@ fn number() Result[Int, Failure]: ok(7)
 type Events:
     values: List[Int]
 
-fn record(events: Events, value: Int) Result[Int, Failure]:
+fn record(var events: Events, value: Int) Result[Int, Failure]:
     events.values.append(value)
     return ok(value)
 
-fn default_value(events: Events) Int:
+fn default_value(var events: Events) Int:
     events.values.append(3)
     return 3
 
 fn ordered[T](
     first: Result[T, Error],
     second: Result[T, Error],
-    events: Events,
+    var events: Events,
     last: Int = default_value(events)
 ) Result[T, Error]:
     events.values.append(4)
@@ -96,8 +96,12 @@ test "nested success preserves its domain and inferred errors remain exact":
         return fail("changed success case")
 
 test "inference and widening evaluate once in written order before defaults":
-    let events = Events([])
-    let result = ordered(second: record(events, 2), first: record(events, 1), events)
+    var events = Events([])
+    let result = ordered(
+        second: record(var events, 2),
+        first: record(var events, 1),
+        var events
+    )
     try expect_equal(events.values, [2, 1, 3, 4])
     let value = try result
     try expect_equal(value, 1)

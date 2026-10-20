@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "closed-record-int-bounds.ms::record aliases keep ordinary shared mutation",
+          "name": "closed-record-int-bounds.ms::field resets keep ordinary overflow checks",
           "status": "passed"
         },
         {
@@ -45,7 +45,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN closed-record-int-bounds.ms::closed cell updates preserve each operation\nPASS closed-record-int-bounds.ms::closed cell updates preserve each operation\nRUN closed-record-int-bounds.ms::closed cells retain prefix overflow\nPASS closed-record-int-bounds.ms::closed cells retain prefix overflow\nRUN closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nPASS closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nRUN closed-record-int-bounds.ms::record aliases keep ordinary shared mutation\nPASS closed-record-int-bounds.ms::record aliases keep ordinary shared mutation\nRUN closed-record-int-bounds.ms::record arguments execute exactly once before the update\nPASS closed-record-int-bounds.ms::record arguments execute exactly once before the update\n5 tests, 0 failed\n",
+      "stdout": "RUN closed-record-int-bounds.ms::closed cell updates preserve each operation\nPASS closed-record-int-bounds.ms::closed cell updates preserve each operation\nRUN closed-record-int-bounds.ms::closed cells retain prefix overflow\nPASS closed-record-int-bounds.ms::closed cells retain prefix overflow\nRUN closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nPASS closed-record-int-bounds.ms::peer cells and scalar carries are not initial invariants\nRUN closed-record-int-bounds.ms::field resets keep ordinary overflow checks\nPASS closed-record-int-bounds.ms::field resets keep ordinary overflow checks\nRUN closed-record-int-bounds.ms::record arguments execute exactly once before the update\nPASS closed-record-int-bounds.ms::record arguments execute exactly once before the update\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

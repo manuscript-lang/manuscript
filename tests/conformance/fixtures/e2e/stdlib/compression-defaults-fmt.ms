@@ -7,11 +7,11 @@ import Bytes from "@std/bytes.ms"
 
 fn forwarded[T](item: T) T: item
 
-fn supplied(log: List[String], data: Bytes) Bytes:
+fn supplied(var log: List[String], data: Bytes) Bytes:
     log.append("data")
     return data
 
-fn chosen(log: List[String], format: String) String:
+fn chosen(var log: List[String], format: String) String:
     log.append("format")
     return format
 
@@ -79,8 +79,8 @@ test "compression defaults retain invalid levels formats and output budgets":
     try expect_equal(compress(data, "gzip", max_bytes: 0), limited)
 
 test "compression default preparation retains supplied argument order":
-    let log: List[String] = []
+    var log: List[String] = []
     let data = "data".to_bytes()
-    let encoded = try compress(format: chosen(log, "gzip"), supplied(log, data))
+    let encoded = try compress(format: chosen(var log, "gzip"), supplied(var log, data))
     try expect_equal(log, ["format", "data"])
     try expect_equal((try decompress(encoded, "gzip")), data)

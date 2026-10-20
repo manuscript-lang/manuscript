@@ -42,7 +42,7 @@ impl HttpHeaders:
     # Transport operations additionally validate UTF-8, framing and field values.
     fn append(name: String, value: Bytes) Result[Unit, HttpError]:
 
-    # Returns shared mutable membership, or none for an absent name.
+    # Returns an owned copy of the membership, or none for an absent name.
     fn values(name: String) Optional[List[Bytes]]:
 
     # Decodes every value; invalid UTF-8 returns InvalidData without partial success.

@@ -3,13 +3,14 @@
 use crate::error::{IoErr, NetErr, TlsErr, describe_io_error};
 use crate::net::{Network, Resource, limit};
 use crate::rt;
+use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use socket2::Socket;
 use std::cell::{Cell, RefCell};
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, UdpSocket};
-use std::os::fd::{AsFd, BorrowedFd};
+
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -38,7 +39,7 @@ pub struct TlsDetails {
 
 /// A nonblocking byte stream (plain socket or TLS over one).
 pub trait Io {
-    fn fd(&self) -> BorrowedFd<'_>;
+    fn fd(&self) -> Borrowed<'_>;
     fn read(&self, buf: &mut [u8]) -> Step;
     fn write(&self, data: &[u8]) -> Step;
     /// Completes pending output (TLS records); `Ok(true)` when nothing is left.
@@ -73,8 +74,8 @@ fn would_block(e: &io::Error) -> bool {
 }
 
 impl Io for Plain {
-    fn fd(&self) -> BorrowedFd<'_> {
-        self.sock.as_fd()
+    fn fd(&self) -> Borrowed<'_> {
+        self.sock.as_sock()
     }
 
     fn read(&self, buf: &mut [u8]) -> Step {
@@ -125,6 +126,7 @@ pub fn socket_addr_text(addr: &socket2::SockAddr) -> String {
     if let Some(a) = addr.as_socket() {
         return a.to_string();
     }
+    #[cfg(unix)]
     if let Some(p) = addr.as_pathname() {
         return p.display().to_string();
     }
@@ -169,7 +171,7 @@ pub enum DriveError {
 pub struct SharedIo(pub Rc<dyn Io>);
 
 impl Io for SharedIo {
-    fn fd(&self) -> BorrowedFd<'_> {
+    fn fd(&self) -> Borrowed<'_> {
         self.0.fd()
     }
     fn read(&self, buf: &mut [u8]) -> Step {
@@ -488,7 +490,7 @@ impl Listener {
                     return Ok(conn);
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
                         rt::check_cancel();
                         return Err(if self.closed.get() {
                             NetErr::Closed
@@ -603,7 +605,7 @@ impl Datagrams {
                     });
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_fd(), Interest::Read, deadline) == Wait::TimedOut {
+                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                     if self.closed.get() {
@@ -647,7 +649,7 @@ impl Datagrams {
                 Ok(n) if n == data.len() => return Ok(()),
                 Ok(_) => return Err(NetErr::failed("partial datagram")),
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_fd(), Interest::Write, deadline) == Wait::TimedOut {
+                    if wait_fd(self.sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }
