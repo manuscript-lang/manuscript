@@ -7,6 +7,7 @@
 //! mutated nor released by its callee, and neither is anything projected out of one.
 
 use crate::ir::{Func, Inst, Mode, Module, Op, Value};
+use crate::types::TyKind;
 use crate::verify::arg_modes;
 
 /// Runs the pass; returns whether anything changed.
@@ -15,6 +16,7 @@ pub fn run(m: &mut Module) -> bool {
     for fi in 0..m.funcs.len() {
         changed |= run_func(m, fi);
         changed |= move_dead_sources(&mut m.funcs[fi]);
+        changed |= borrow_closure_copies(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
     }
@@ -78,6 +80,83 @@ fn move_dead_sources(f: &mut Func) -> bool {
                 *a = s;
             }
         });
+    }
+    true
+}
+
+/// Removes `c = copy v; ...; drop c` for a closure `v` that the instructions in between only
+/// borrow. Closures are immutable, so the copy only exists to hold a reference count; `v` is
+/// live across the whole span because nothing in it consumes `v`. This is the shape of calling a
+/// closure held in a variable, which would otherwise count a reference up and down per call.
+fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let mut uses = vec![0u32; f.values.len()];
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            if !matches!(m.types.kind(f.ty(v)), TyKind::Fn(..)) || alias[v.index()].is_some() {
+                continue;
+            }
+            let Some(j) = b.insts[i + 1..]
+                .iter()
+                .position(|n| n.op == Op::Drop && n.args[0] == c)
+                .map(|k| i + 1 + k)
+            else {
+                continue;
+            };
+            let span = &b.insts[i + 1..j];
+            let c_uses = span
+                .iter()
+                .map(|n| n.args.iter().filter(|a| **a == c).count() as u32)
+                .sum::<u32>();
+            if c_uses + 1 != uses[c.index()] {
+                continue;
+            }
+            let consumed = span.iter().any(|n| {
+                n.args
+                    .iter()
+                    .zip(arg_modes(m, n))
+                    .any(|(a, mode)| *a == v && mode == Mode::Own)
+            });
+            if consumed {
+                continue;
+            }
+            alias[c.index()] = Some(v);
+            dead.push((bi, i));
+            dead.push((bi, j));
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            let drop_it = dead.contains(&(bi, k));
+            k += 1;
+            !drop_it
+        });
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(s) = alias[a.index()] {
+                    *a = s;
+                }
+            }
+        }
     }
     true
 }
