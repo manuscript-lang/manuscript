@@ -1069,6 +1069,8 @@ dependencies = [
  "ms-std-regex",
  "ms-std-rt",
  "ms-std-semver",
+ "ms-std-system",
+ "ms-std-terminal",
  "ms-std-time",
  "ms-std-url",
 ]
@@ -1322,6 +1324,27 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
+]
+
+[[package]]
+name = "ms-std-system"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-process",
+ "ms-std-rt",
+]
+
+[[package]]
+name = "ms-std-terminal"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "ms-rt",
+ "ms-rt-abi",
+ "ms-std-rt",
 ]
 
 [[package]]

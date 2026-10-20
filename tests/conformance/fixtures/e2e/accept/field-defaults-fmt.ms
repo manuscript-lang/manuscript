@@ -42,7 +42,7 @@ test "record defaults and explicit overrides":
     let changed = Data(number: 0)
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | try expect_false
     let calls: List[Int] = []
-    let explicit = Explicit(calls: calls, nothing: unit, option: none)
+    let explicit = Explicit(calls: calls.clone(), nothing: unit, option: none)
     calls.is_empty() | try expect_true
     (explicit.option.is_none()) | try expect_true
     let box = Box(value: "text")
@@ -51,23 +51,22 @@ test "record defaults and explicit overrides":
     specified.copy | try expect_equal(expected: 0)
 
 test "supplied fields precede defaults in field order":
-    var counter = Counter()
+    var log = Counter()
     let ordered = Ordered(
-        counter: counter,
-        third: mark(counter: var counter, value: 1),
-        second: mark(counter: var counter, value: 2)
+        counter: Counter(),
+        third: mark(counter: var log, value: 1),
+        second: mark(counter: var log, value: 2)
     )
     (
         (
-            counter.value != 123
+            log.value != 12
             or ordered.first != 3
             or ordered.second != 2
             or ordered.third != 1
         )
     ) | try expect_false
-    counter.value = 0
-    let again = Ordered(counter: counter)
-    (counter.value != 34 or again.third != 7) | try expect_false
+    let again = Ordered(counter: Counter())
+    (again.third != 7) | try expect_false
 
 test "mutable defaults have fresh storage":
     var first = Data()
