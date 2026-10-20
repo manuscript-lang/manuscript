@@ -45,74 +45,159 @@ jobs:
           fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
 
-  # Format, lint, and test in one job: each separate job pays runner queueing, checkout,
-  # and cache restore again, and clippy leaves the test build warm. nextest runs each test
-  # in its own process, so tests that share process-global state (the runtime allocator,
-  # the environment) cannot interfere.
-  rust-test:
-    name: Rust format, clippy and tests
+  # One job per platform runs everything for that platform in sequence, so a pull request
+  # starts six Rust runners instead of dozens (the account runs 20 jobs at once). Tests
+  # parallelize inside the job: nextest and the corpus runner both use every core.
+  rust:
+    name: Rust ${{ matrix.os }}-${{ matrix.arch }}
     needs: changes
     if: needs.changes.outputs.rust == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: darwin, arch: amd64, runner: macos-15-intel }
+          - { os: darwin, arch: arm64, runner: macos-15 }
+          - { os: windows, arch: amd64, runner: windows-2025 }
+          - { os: windows, arch: arm64, runner: windows-11-arm }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - name: Install LLVM debug consumers
-        run: sudo apt-get update && sudo apt-get install -y llvm
+      - name: Keep native test artifacts in runner storage
+        run: |
+          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: rust
+          shared-key: rust-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo nextest run --workspace
-      - run: cargo test --workspace --doc
-
-  # The frozen conformance corpus replayed against the Rust `ms`; known differences are
-  # listed in tests/conformance/rust-expect-fail.txt.
-  rust-conform:
-    name: Rust corpus (shard ${{ matrix.shard }})
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1]
-    steps:
-      - uses: actions/checkout@v7
+      - name: Select native Windows Rust host and MSVC linker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $rustTarget = if ('${{ matrix.arch }}' -eq 'arm64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+          rustup set default-host $rustTarget
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+          $linkerKey = 'CARGO_TARGET_' + $rustTarget.ToUpper().Replace('-', '_') + '_LINKER'
+          "$linkerKey=$msvcLinker" >> $env:GITHUB_ENV
+          Write-Output "Rust linker: $msvcLinker"
+      - name: Record native host and compiler
+        run: |
+          rustc -Vv
+          cargo -V
+          host=$(rustc -vV | sed -n 's/^host: //p')
+          expected=x86_64
+          if [ '${{ matrix.arch }}' = arm64 ]; then expected=aarch64; fi
+          case "$host" in "$expected"-*) ;; *) echo "Wrong native Rust host: $host"; exit 1 ;; esac
+          if [ "$RUNNER_OS" = Windows ]; then
+            clang --version
+            echo 'CC=clang' >> "$GITHUB_ENV"
+            echo 'MS_LINKER=clang' >> "$GITHUB_ENV"
+          else
+            cc --version
+          fi
+      - name: Format and clippy
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets -- -D warnings
+      # nextest runs each test in its own process, so tests that share process-global
+      # state (the runtime allocator, the environment) cannot interfere.
+      - name: Tests
+        run: |
+          cargo nextest run --workspace --locked
+          cargo test --workspace --doc --locked
+      - name: Frozen corpus against the Rust ms
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: make conform-rust
+      - name: Install LLVM native debug consumers
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y llvm
+          elif [ "$RUNNER_OS" = macOS ]; then
+            brew install llvm
+            echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          elif [ "$RUNNER_OS" = Windows ] && [ '${{ matrix.arch }}' = arm64 ]; then
+            echo 'C:/Program Files/LLVM/bin' >> "$GITHUB_PATH"
+          fi
+      - name: Cache Windows x64 LLVM consumers
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
+        uses: actions/cache@v6
         with:
-          ref: ${{ github.sha }}
-      - uses: Swatinem/rust-cache@v2
+          path: ${{ runner.temp }}/llvm-debug-19.1.7
+          key: llvm-debug-windows-x64-19.1.7-b4557b4f
+      - name: Install Windows x64 LLVM consumers
+        if: runner.os == 'Windows' && matrix.arch == 'amd64'
+        run: |
+          temp_root=$(cygpath -u "$RUNNER_TEMP")
+          tools="$temp_root/llvm-debug-19.1.7"
+          if [ ! -x "$tools/llvm-dwarfdump.exe" ] || [ ! -x "$tools/llvm-symbolizer.exe" ]; then
+            archive="$temp_root/llvm-debug-19.1.7.tar.xz"
+            curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/clang%2Bllvm-19.1.7-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
+            echo "b4557b4f012161f56a2f5d9e877ab9635cafd7a08f7affe14829bd60c9d357f0  $archive" | sha256sum --check
+            mkdir -p "$tools"
+            tar -xJf - -C "$tools" --strip-components=2 \
+              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
+              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
+          fi
+          cygpath -w "$tools" >> "$GITHUB_PATH"
+      - name: Native codegen, fault positions and debug attribution
+        run: |
+          cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
+          cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
+          cargo test --locked -p ms-clif --test native fault_trace_on_real_runtime -- --nocapture
+          llvm-dwarfdump --version
+          llvm-symbolizer --version
+          cargo test --locked -p ms-clif --test dwarf -- --nocapture
+          cargo test --locked -p ms-driver --test debug_artifacts -- --nocapture
+          cargo test --locked -p ms-driver --lib -- --nocapture
+      - name: Package and run the distribution on a hello project
+        run: |
+          sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+          name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
+          mkdir -p "extracted distribution"
+          if [ '${{ matrix.os }}' = windows ]; then
+            7z x -bso0 -o"extracted distribution" "dist/$name.zip"
+            ms="extracted distribution/$name/ms.exe"
+          else
+            tar -xzf "dist/$name.tar.gz" -C "extracted distribution"
+            ms="extracted distribution/$name/ms"
+          fi
+          "$ms" --version
+          cd "extracted distribution/$name/examples/hello"
+          "../../$(basename "$ms")" run ms.toml
+      - name: Preserve test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          shared-key: rust-conform
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Rust ms replays the corpus
-        run: make conform-rust CONFORM_SHARD=${{ matrix.shard }}/2
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: conform-rust-${{ matrix.shard }}
-          path: .artifacts/conform-rust.md
-
-  rust-native:
-    name: Native codegen
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
-    uses: ./.github/workflows/codegen-platforms.yml
-    with:
-      dwarf: true
+          name: rust-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            .artifacts/conform-rust.md
+            ${{ runner.temp }}/ms-clif-tests-*
+            ${{ runner.temp }}/ms-dwarf-*
+            ${{ runner.temp }}/ms-driver-debug-*
+          if-no-files-found: ignore
 
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-test, rust-conform, rust-native]
+    needs: [changes, rust]
     if: always()
     runs-on: ubuntu-latest
     steps:

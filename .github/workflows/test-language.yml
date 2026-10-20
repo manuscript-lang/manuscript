@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2]
+        shard: [0, 1]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -41,7 +41,7 @@ jobs:
       - name: Prepare SDK payload
         run: make payload
       - name: Sharded Go tests (race, or coverage)
-        run: sh scripts/ci-test.sh ${{ matrix.shard }} 3
+        run: sh scripts/ci-test.sh ${{ matrix.shard }} 2
       - uses: actions/upload-artifact@v7
         with:
           name: language-coverage-${{ matrix.shard }}
@@ -100,8 +100,11 @@ jobs:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
 
-  # Linux host behavior is covered by the Go shards.
+  # Linux host behavior is covered by the Go shards. The Go host checks on macOS and
+  # Windows run on main, merge groups, and manual runs; pull requests exercise those
+  # platforms through the Rust jobs in cicd.yml.
   host-stdlib:
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -142,7 +145,12 @@ jobs:
       - name: Require all language checks
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
+          EVENT: ${{ github.event_name }}
         run: |
           case ",$RESULTS," in
-            *,failure,*|*,cancelled,*|*,skipped,*) exit 1 ;;
+            *,failure,*|*,cancelled,*) exit 1 ;;
           esac
+          # host-stdlib is skipped on pull requests by design.
+          if [ "$EVENT" != pull_request ]; then
+            case ",$RESULTS," in *,skipped,*) exit 1 ;; esac
+          fi
