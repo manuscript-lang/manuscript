@@ -6,13 +6,27 @@ use crate::error::{ENOTDIR, ProjectError};
 const SEP: u8 = b'/';
 
 pub fn is_abs(path: &str) -> bool {
-    path.starts_with('/')
+    path.starts_with('/') || (cfg!(windows) && windows_rooted(path))
+}
+
+/// A drive path (`C:\x`, `C:/x`) or a UNC / extended path (`\\host\share`, `\\?\C:\x`).
+fn windows_rooted(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    let drive = bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && matches!(bytes[2], b'\\' | b'/');
+    drive || path.starts_with("\\\\")
 }
 
 /// `filepath.Clean`.
 pub fn clean(path: &str) -> String {
     if path.is_empty() {
         return ".".to_string();
+    }
+    // Drive and UNC paths are not lexically cleaned: the Unix rules below do not apply to them.
+    if cfg!(windows) && windows_rooted(path) {
+        return path.to_string();
     }
     let rooted = is_abs(path);
     let mut out: Vec<&str> = Vec::new();

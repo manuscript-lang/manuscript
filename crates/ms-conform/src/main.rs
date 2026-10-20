@@ -204,7 +204,10 @@ fn cmd_run(args: &Args) -> Result<u8, String> {
     print_summary(&cases);
     let ms = ctx.ms.display().to_string();
     if let Some(p) = args.one("json") {
-        write_file(p, &report::to_json(&ms, &cases).pretty())?;
+        write_file(
+            p,
+            &report::to_json(&ms, &cases).pretty_line(ms_json::Escape::Plain),
+        )?;
     }
     let max = args.number::<usize>("max-failures")?.unwrap_or(100);
     if let Some(p) = args.one("markdown") {
@@ -277,7 +280,10 @@ fn cmd_diff(args: &Args) -> Result<u8, String> {
     print_summary(&cases);
     let label = format!("{} vs {}", a.ms.display(), b.ms.display());
     if let Some(p) = args.one("json") {
-        write_file(p, &report::to_json(&label, &cases).pretty())?;
+        write_file(
+            p,
+            &report::to_json(&label, &cases).pretty_line(ms_json::Escape::Plain),
+        )?;
     }
     if let Some(p) = args.one("markdown") {
         let max = args.number::<usize>("max-failures")?.unwrap_or(100);

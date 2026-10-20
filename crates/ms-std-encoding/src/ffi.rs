@@ -1,132 +1,67 @@
 //! C ABI shims for `@std/encoding.ms`. Symbols are `msrt_encoding_<function>`;
 //! fallible functions return a status byte and write the ok value through `out` only on success.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
-
+use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{
-    Fail, StrObj, VecVal, bytes_ref, new_string, opt, status_of, str_ref, write_bytes,
-};
+use ms_std_core::{Fail, native};
 
-unsafe fn bytes_result(r: Result<Vec<u8>, Fail>, out: *mut VecVal) -> u8 {
-    if let Ok(b) = &r {
-        // SAFETY: `out` is writable by the caller contract.
-        unsafe { write_bytes(out, b) };
+native! {
+    fn msrt_encoding_hex_encode(data: &[u8]) -> String {
+        crate::hex_encode(data)
     }
-    status_of(&r)
-}
 
-unsafe fn string_result(r: Result<alloc::string::String, Fail>, out: *mut *mut StrObj) -> u8 {
-    if let Ok(s) = &r {
-        // SAFETY: `out` is writable by the caller contract.
-        unsafe { out.write(new_string(s)) };
+    fn msrt_encoding_hex_decode(text: &str, has_max: bool, max: i64) -> Result<Vec<u8>, Fail> {
+        crate::hex_decode(text, has_max.then_some(max))
     }
-    status_of(&r)
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_hex_encode(data: *const VecVal) -> *mut StrObj {
-    // SAFETY: `data` is a live Bytes value.
-    new_string(&crate::hex_encode(unsafe { bytes_ref(data) }))
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_hex_decode(
-    text: *const StrObj,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe { bytes_result(crate::hex_decode(str_ref(text), opt(has_max, max)), out) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_base64_encode(
-    data: *const VecVal,
-    url_safe: u8,
-) -> *mut StrObj {
-    // SAFETY: `data` is a live Bytes value.
-    new_string(&crate::base64_encode(
-        unsafe { bytes_ref(data) },
-        url_safe != 0,
-    ))
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_base64_decode(
-    text: *const StrObj,
-    url_safe: u8,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        bytes_result(
-            crate::base64_decode(str_ref(text), url_safe != 0, opt(has_max, max)),
-            out,
-        )
+    fn msrt_encoding_base64_encode(data: &[u8], url_safe: bool) -> String {
+        crate::base64_encode(data, url_safe)
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_utf16_encode(
-    text: *const StrObj,
-    little_endian: u8,
-    out: *mut VecVal,
-) {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe { write_bytes(out, &crate::utf16_encode(str_ref(text), little_endian != 0)) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_utf16_decode(
-    data: *const VecVal,
-    little_endian: u8,
-    has_max: u8,
-    max: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `data` is a live Bytes value; `out` is writable.
-    unsafe {
-        string_result(
-            crate::utf16_decode(bytes_ref(data), little_endian != 0, opt(has_max, max)),
-            out,
-        )
+    fn msrt_encoding_base64_decode(
+        text: &str,
+        url_safe: bool,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<u8>, Fail> {
+        crate::base64_decode(text, url_safe, has_max.then_some(max))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_latin1_encode(text: *const StrObj, out: *mut VecVal) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe { bytes_result(crate::latin1_encode(str_ref(text)), out) }
-}
+    fn msrt_encoding_utf16_encode(text: &str, little_endian: bool) -> out Vec<u8> {
+        crate::utf16_encode(text, little_endian)
+    }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_latin1_decode(data: *const VecVal) -> *mut StrObj {
-    // SAFETY: `data` is a live Bytes value.
-    new_string(&crate::latin1_decode(unsafe { bytes_ref(data) }))
-}
+    fn msrt_encoding_utf16_decode(
+        data: &[u8],
+        little_endian: bool,
+        has_max: bool,
+        max: i64,
+    ) -> Result<String, Fail> {
+        crate::utf16_decode(data, little_endian, has_max.then_some(max))
+    }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_ascii_encode(text: *const StrObj, out: *mut VecVal) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe { bytes_result(crate::ascii_encode(str_ref(text)), out) }
-}
+    fn msrt_encoding_latin1_encode(text: &str) -> Result<Vec<u8>, Fail> {
+        crate::latin1_encode(text)
+    }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_encoding_ascii_decode(
-    data: *const VecVal,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `data` is a live Bytes value; `out` is writable.
-    unsafe { string_result(crate::ascii_decode(bytes_ref(data)), out) }
+    fn msrt_encoding_latin1_decode(data: &[u8]) -> String {
+        crate::latin1_decode(data)
+    }
+
+    fn msrt_encoding_ascii_encode(text: &str) -> Result<Vec<u8>, Fail> {
+        crate::ascii_encode(text)
+    }
+
+    fn msrt_encoding_ascii_decode(data: &[u8]) -> Result<String, Fail> {
+        crate::ascii_decode(data)
+    }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
+    use ms_std_core::{VecVal, bytes_ref, new_string, str_ref};
 
     #[test]
     fn abi_roundtrip() {

@@ -521,7 +521,7 @@ fn phis(m: &Module, f: &mut Func) -> bool {
                 drop_param[bi].push(pi);
                 continue;
             }
-            if droppable || inc[bi].is_empty() {
+            if inc[bi].is_empty() {
                 continue;
             }
             let mut single: Option<Value> = None;

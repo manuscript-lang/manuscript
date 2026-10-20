@@ -106,3 +106,23 @@ fn generated_keys_roundtrip() {
         assert_eq!(rsa_decrypt(&k, alg, &c).unwrap(), b"secret");
     }
 }
+
+/// Go reads the key from the scalar alone but still checks the algorithm identifiers: a key whose
+/// algorithm or curve OID is altered is rejected, as it is by `x509.ParsePKCS8PrivateKey`.
+#[test]
+fn rejects_altered_algorithm_identifiers() {
+    for i in 0..3 {
+        let key = ecdsa_generate(Curve::from_index(i).unwrap()).unwrap();
+        assert!(public_key_der(&key).is_ok());
+        // id-ecPublicKey is 1.2.840.10045.2.1 (06 07 2a 86 48 ce 3d 02 01); the next OID is the curve.
+        let alg = key
+            .windows(9)
+            .position(|w| w == [0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01])
+            .unwrap();
+        for at in [alg + 4, alg + 10, alg + 11] {
+            let mut bad = key.clone();
+            bad[at] ^= 1;
+            assert!(public_key_der(&bad).is_err(), "curve {i} byte {at}");
+        }
+    }
+}

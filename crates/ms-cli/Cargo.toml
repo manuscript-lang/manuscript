@@ -16,6 +16,7 @@ name = "ms"
 path = "src/main.rs"
 
 [dependencies]
+ms-json = { path = "../ms-json" }
 ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
 ms-syntax = { path = "../ms-syntax" }
