@@ -25,6 +25,7 @@ ring = "0.17"
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", default-features = false, features = ["std", "event", "net", "fs", "time", "pipe"] }
+mio = { version = "1", default-features = false, features = ["os-poll", "os-ext"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
