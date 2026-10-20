@@ -270,9 +270,9 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, AltNew, AltTag, AltGet, AltUnbox,
+    RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox,
     // Lists.
-    ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListPush,
+    ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush,
     // Optionals.
     OptSome, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
@@ -282,7 +282,7 @@ pub enum Op {
     // Closures and interface views.
     ClosureNew, ClosureCap, IfaceNew, IfaceData, IfaceIs,
     // Ownership.
-    Copy, Drop, DropIf,
+    Copy, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and records.
     Slot, Load, Take, Store, Put, ListAddr, ListAddrU, PtrField, PtrIsNull,
     // Calls.
@@ -388,13 +388,13 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
-        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListPush,
+        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush,
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
-        Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
+        Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
@@ -448,6 +448,7 @@ impl Op {
             Op::RecNew => ("rec.new", K::Rec, true, effects!()),
             Op::RecGet => ("rec.get", K::Field, true, effects!()),
             Op::RecSet => ("rec.set", K::Field, true, effects!(rc)),
+            Op::RecFill => ("rec.fill", K::Field, true, effects!()),
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
@@ -461,6 +462,7 @@ impl Op {
             Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, rc)),
             Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, rc)),
+            Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
@@ -479,6 +481,7 @@ impl Op {
             Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
             Op::Copy => ("copy", K::None, true, effects!(reads, alloc, rc)),
             Op::Drop => ("drop", K::None, false, effects!(writes, rc)),
+            Op::MoveOut => ("move.out", K::None, true, effects!(writes)),
             Op::DropIf => ("drop.if", K::None, false, effects!(writes, rc)),
             Op::Slot => ("slot", K::Ty, true, effects!()),
             Op::Load => ("load", K::Ty, true, effects!(reads)),

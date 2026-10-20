@@ -145,7 +145,13 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     };
     match inst.op {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
-        Op::RecSet | Op::ListPush | Op::ListSet | Op::ListSetNn | Op::ListSetU => all(Mode::Own),
+        Op::RecSet
+        | Op::RecFill
+        | Op::ListPush
+        | Op::ListSet
+        | Op::ListSetNn
+        | Op::ListSetU
+        | Op::ListFill => all(Mode::Own),
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
@@ -611,7 +617,7 @@ impl Verifier<'_> {
                     "rec.new yields the record type",
                 )
             }
-            Op::RecGet | Op::RecSet => {
+            Op::RecGet | Op::RecSet | Op::RecFill => {
                 let Imm::Field(r, i) = inst.imm else {
                     return Err("missing field".into());
                 };
@@ -710,7 +716,7 @@ impl Verifier<'_> {
                     "index must be int; result is the element type",
                 )
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 arity(3)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(
@@ -952,6 +958,13 @@ impl Verifier<'_> {
                 want(
                     res == Some(t(0)) && m.needs_drop(t(0)),
                     "copy duplicates a droppable value",
+                )
+            }
+            Op::MoveOut => {
+                arity(1)?;
+                want(
+                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    "move.out takes ownership of a droppable value",
                 )
             }
             Op::Drop => {

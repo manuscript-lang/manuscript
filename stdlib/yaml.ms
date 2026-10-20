@@ -700,17 +700,28 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
 
         context.index += 1
 
+    # A flow value needs only the limits, counters and anchors, so it gets a context without
+    # the document lines (copying them for every value made parsing quadratic).
     var flow = Flow(
         chars: joined.split(""),
         pos: 0,
         line: line,
-        context: context,
+        context: Context(
+            lines: [],
+            final_break: context.final_break,
+            index: context.index,
+            limits: context.limits,
+            values: context.values,
+            anchors: context.anchors
+        ),
         delimited: false
     )
     let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
     if peek(flow) != "": return error(flow_invalid(flow, "unexpected trailing text"))
 
+    context.values = flow.context.values
+    context.anchors = flow.context.anchors
     return ok(result)
 
 fn block_string(var context: Context, header: String, base: Int) Result[
