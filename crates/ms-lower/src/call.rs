@@ -26,9 +26,13 @@ impl<'a> FnLower<'a> {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
-                let names = self.param_names(&c);
-                let args = self.eval_args(&view, &names, &c, &subst, None)?;
-                self.call_callable(&c, &subst, args, e)?
+                if let Some(v) = self.try_default_call(&view, &c, &subst, e)? {
+                    v
+                } else {
+                    let names = self.param_names(&c);
+                    let args = self.eval_args(&view, &names, &c, &subst, None)?;
+                    self.call_callable(&c, &subst, args, e)?
+                }
             }
             Resolution::Constant(sym) => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;

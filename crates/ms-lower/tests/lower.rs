@@ -170,3 +170,12 @@ fn lambdas_and_function_values_fill_omitted_defaults() {
     );
     assert!(mir.contains("opt.is_some"));
 }
+
+#[test]
+fn direct_call_with_try_default_runs_it_in_the_callee_frame() {
+    let mir = lower(
+        "trydefault",
+        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/errors.ms\"\n\nfn fail() Result[Int, TextError]: return error(TextError(\"no\"))\n\nfn get(value: Int = try fail()) Result[Int, TextError]: return ok(value)\n\nexport fn main() Int:\n    let r = stdout().write(\"{get(2).is_ok()} {get().is_ok()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("call.ind"));
+}

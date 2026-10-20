@@ -135,8 +135,26 @@ impl FnLower<'_> {
             return Ok(None);
         }
         let key = format!("default-thunk:{}:{}", fid.index(), fty.0);
+        Ok(Some(self.queue_default_thunk(
+            key, fid, &ptys, ret, callee, subst, recv,
+        )))
+    }
+
+    /// Queues (once per key) the thunk of `callee` taking `ptys`, with optionals for the
+    /// parameters whose defaults it fills in its own frame.
+    #[allow(clippy::too_many_arguments)]
+    fn queue_default_thunk(
+        &mut self,
+        key: String,
+        fid: FuncId,
+        ptys: &[MTy],
+        ret: MTy,
+        callee: &Rc<ms_check::hir::Callable>,
+        subst: &ct::Subst,
+        recv: Option<MTy>,
+    ) -> FuncId {
         if let Some(t) = self.cx.helpers.get(&key) {
-            return Ok(Some(*t));
+            return *t;
         }
         let mut ps = vec![Param {
             ty: MTy::PTR,
@@ -160,7 +178,88 @@ impl FnLower<'_> {
             })),
         });
         self.cx.helpers.insert(key, id);
-        Ok(Some(id))
+        id
+    }
+
+    /// A direct call omitting a default that contains `try`: the default runs in the callee's
+    /// frame, so the call goes through the default thunk. `None` for any other call.
+    pub(crate) fn try_default_call(
+        &mut self,
+        view: &ms_check::hir::CallView<'_>,
+        c: &Rc<ms_check::hir::Callable>,
+        subst: &ct::Subst,
+        e: &Expr,
+    ) -> Result<Option<Val>, Error> {
+        let Some(func) = c.func.func() else {
+            return Ok(None);
+        };
+        let omits = |i: usize| {
+            let name = c.parameters[i].name;
+            !view.arguments.iter().any(|a| a.slot.name == name)
+        };
+        let needs = (0..c.parameters.len()).any(|i| {
+            omits(i)
+                && func
+                    .params
+                    .get(i)
+                    .and_then(|p| p.default.as_ref())
+                    .is_some_and(crate::mutation::has_try)
+        });
+        if !needs || !self.cx.var_positions(c).is_empty() || c.self_binding.is_some() {
+            return Ok(None);
+        }
+        let fid = self.cx.function_for(self.b.m, c, subst)?;
+        let ret = self.b.m.funcs[fid.index()].ret;
+        let mut ptys = Vec::new();
+        for (i, p) in c.parameters.iter().enumerate() {
+            let t = self.mty(&ct::sub(&p.ty, subst))?;
+            let has_default = func.params.get(i).is_some_and(|q| q.default.is_some());
+            ptys.push(if has_default {
+                self.b.m.types.opt(t)
+            } else {
+                t
+            });
+        }
+        let key = format!("direct-default:{}", fid.index());
+        let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None);
+        let fty = self.b.m.types.func(ptys.clone(), ret);
+        let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
+        for a in view.arguments.iter() {
+            let x = self.expr(a.expr)?;
+            if self.dead {
+                return Ok(Some(x));
+            }
+            let x = match &a.wrap_optional {
+                Some(_) => {
+                    let o = self.owned(x);
+                    let v = self.b.opt_some(o);
+                    Val { v, own: true }
+                }
+                None => x,
+            };
+            let at = c
+                .parameters
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+            let x = self.lift_argument(x, ptys[at]);
+            slots[at] = Some(self.borrow(x));
+        }
+        let mut args = Vec::new();
+        for (i, s) in slots.into_iter().enumerate() {
+            args.push(match s {
+                Some(v) => v,
+                None => self.b.opt_none(ptys[i]),
+            });
+        }
+        let fv = self
+            .b
+            .emit(Op::ClosureNew, &[], Imm::Func(thunk), Some(fty))
+            .expect("closure");
+        self.at(e.pos);
+        let v = self.b.call_ind(fv, &args);
+        self.drop_value(fv);
+        Ok(Some(self.val(v, true)))
     }
 
     /// A method used as a value (`view.read`): a closure holding a copy of the receiver.
