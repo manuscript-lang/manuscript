@@ -1343,10 +1343,10 @@ dependencies = [
 name = "ms-std-terminal"
 version = "0.1.0"
 dependencies = [
- "libc",
  "ms-rt",
  "ms-rt-abi",
  "ms-std-rt",
+ "rustix",
 ]
 
 [[package]]
