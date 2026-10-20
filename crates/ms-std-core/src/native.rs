@@ -92,7 +92,7 @@ macro_rules! scalar {
         }
     )*};
 }
-scalar!(i64, f64, u8, u32, u64);
+scalar!(i64, f64, u8, u32, u64, usize);
 
 impl AbiType for bool {
     type Raw = u8;
@@ -797,6 +797,49 @@ impl IntoAbi for Vec<String> {
         unsafe {
             crate::write_string_list(v.as_mut_ptr(), &self);
             v.assume_init()
+        }
+    }
+}
+
+/// The nullable `err: *mut *mut StrObj` slot where a fallible native stores a `Failed` message.
+pub struct ErrOut(*mut *mut StrObj);
+
+impl ErrOut {
+    /// Stores `msg` as a fresh string, unless the caller passed no slot.
+    pub fn set(&self, msg: &str) {
+        if !self.0.is_null() {
+            // SAFETY: a non-null `ErrOut` is a writable slot (`from_raw` contract).
+            unsafe { self.0.write(new_string(msg)) }
+        }
+    }
+}
+impl AbiType for ErrOut {
+    type Raw = *mut *mut StrObj;
+}
+// SAFETY: the caller passes null or writable memory for one string pointer.
+unsafe impl FromAbi<'_> for ErrOut {
+    unsafe fn from_raw(raw: *mut *mut StrObj) -> ErrOut {
+        ErrOut(raw)
+    }
+}
+
+/// Records handed out as a pointer to a runtime-allocated array (null when empty); the length
+/// travels in a separate `usize` out.
+pub struct RecArray<R: AbiRecord>(pub Vec<R>);
+
+impl<R: AbiRecord> IntoAbi for RecArray<R> {
+    type Raw = *mut R;
+    fn into_raw(self) -> *mut R {
+        if self.0.is_empty() {
+            return core::ptr::null_mut();
+        }
+        // SAFETY: the block holds `len` records, each written once; ownership moves to the caller.
+        unsafe {
+            let p = msrt_alloc(self.0.len() * core::mem::size_of::<R>()).cast::<R>();
+            for (i, r) in self.0.into_iter().enumerate() {
+                p.add(i).write(r);
+            }
+            p
         }
     }
 }

@@ -94,6 +94,47 @@ pub unsafe fn finish<T, E: Status>(
     }
 }
 
+/// Records the `Failed` message of `r`'s error and turns it into its status byte.
+pub fn report<T, E: Status>(
+    r: Result<T, E>,
+    err: &ms_std_core::ErrOut,
+) -> Result<T, ms_std_core::StatusCode> {
+    r.map_err(|e| {
+        if let Some(m) = e.failed_message() {
+            err.set(m);
+        }
+        ms_std_core::StatusCode(e.code())
+    })
+}
+
+macro_rules! handle_newtype {
+    ($($(#[$m:meta])* $name:ident($t:ty);)*) => {$(
+        $(#[$m])*
+        #[repr(transparent)]
+        pub struct $name(pub $t);
+        ms_std_core::abi_handle!($name);
+        impl std::ops::Deref for $name {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+    )*};
+}
+
+handle_newtype! {
+    /// A `Network` handle.
+    NetH(std::rc::Rc<crate::net::Network>);
+    /// A `Connection` handle.
+    ConnH(std::rc::Rc<crate::conn::Connection>);
+    /// A `Listener` handle.
+    ListenerH(std::rc::Rc<crate::conn::Listener>);
+    /// A `DatagramSocket` handle.
+    DgramH(std::rc::Rc<crate::conn::Datagrams>);
+    /// An `IpAddress` handle.
+    IpH(std::net::IpAddr);
+}
+
 /// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
 pub fn opt(has: u8, v: i64) -> Option<i64> {
     ms_std_core::opt(has, v)
