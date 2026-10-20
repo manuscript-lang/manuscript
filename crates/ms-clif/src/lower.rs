@@ -1992,26 +1992,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::DepthEnter => {
-                let d = self.g.rt_data("msrt_call_depth");
+                let d = self.g.rt_data("msrt_stack_limit");
                 let addr = self.data_addr(d);
-                let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm_s(n, 1);
-                self.b.ins().store(flags(), n1, addr, 0);
-                let over = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::SignedGreaterThan, n1, 200_000);
+                let limit = self.b.ins().load(types::I64, flags(), addr, 0);
+                let sp = self.b.ins().get_stack_pointer(types::I64);
+                let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
                 self.fault_if(over, "msrt_fault_depth", vec![]);
                 vec![]
             }
-            Op::DepthLeave => {
-                let d = self.g.rt_data("msrt_call_depth");
-                let addr = self.data_addr(d);
-                let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm_s(n, -1);
-                self.b.ins().store(flags(), n1, addr, 0);
-                vec![]
-            }
+            Op::DepthLeave => vec![],
             Op::CleanupPush => {
                 let Imm::Func(c) = inst.imm else {
                     unreachable!()

@@ -30,7 +30,7 @@ grep -q 'main exit code must be between 0 and 125' "$work/err" || fail "badexit:
 "$work/h" deep >/dev/null 2>&1 || fail "deep: 199990 nested calls must work"
 "$work/h" toodeep >/dev/null 2>"$work/err" && st=0 || st=$?
 [ "$st" = 70 ] || fail "toodeep: exit $st"
-grep -q 'call depth limit exceeded (200000 nested calls); check the recursion' "$work/err" || fail "toodeep: message"
+grep -q 'call depth limit exceeded' "$work/err" || fail "toodeep: message"
 
 "$work/h" tasks >"$work/tout" 2>"$work/terr" && st=0 || st=$?
 [ "$st" = 0 ] || fail "tasks: exit $st: $(cat "$work/tout" "$work/terr")"

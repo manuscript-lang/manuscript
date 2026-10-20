@@ -358,10 +358,10 @@ unsafe impl Sync for Tables {}
 
 /// Names of the data symbols generated code reads or writes directly.
 pub mod symbols {
-    /// `i64`: current depth of recursive calls. Inline protocol: increment, compare
-    /// against [`MAX_CALL_DEPTH`](super::MAX_CALL_DEPTH), call `msrt_fault_depth` when greater;
-    /// decrement on every return path.
-    pub const CALL_DEPTH: &str = "msrt_call_depth";
+    /// `usize`: lowest stack address recursive calls may reach (0 = no limit). Inline protocol:
+    /// on entry to a recursive function compare the stack pointer against it and call
+    /// `msrt_fault_depth` when below.
+    pub const STACK_LIMIT: &str = "msrt_stack_limit";
     /// `u8`: non-zero when a stop request (SIGINT, SIGTERM) is pending and not shielded.
     pub const CANCEL_FLAG: &str = "msrt_cancel_flag";
     pub const DESC_INT: &str = "msrt_desc_int";

@@ -1,7 +1,7 @@
 import {expect_contains, expect_fault} from "@std/testing.ms"
 
 # Every call keeps 1500 locals live across the recursive call, so the frame is large enough
-# that the 1 GiB main stack runs out well before the 200,000-call depth limit.
+# that the 1 GiB main stack runs out after only a few hundred thousand calls.
 fn fat(n: Int) Int:
     let a0 = n + 0
     let a1 = n + 1

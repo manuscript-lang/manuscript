@@ -629,8 +629,7 @@ extern "C" fn task_main() -> ! {
         #[cfg(windows)]
         {
             let (lo, hi) = sys::stack_limits();
-            *fault::STACK_LO.ptr() = lo;
-            *fault::STACK_HI.ptr() = hi;
+            fault::set_stack_bounds(lo, hi);
         }
         after_switch();
         let mut s = sched();
