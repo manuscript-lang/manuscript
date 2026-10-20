@@ -25,6 +25,96 @@ type Fail struct{ code int }
 
 func (Fail) Error() string { return "fail" }
 
+type P struct{ x, y, vx, vy int }
+
+func grid2d(n int) int {
+	g := make([][]int, 0)
+	for i := 0; i < n; i++ {
+		row := make([]int, 0)
+		for j := 0; j < n; j++ {
+			row = append(row, i*j%10)
+		}
+		g = append(g, row)
+	}
+	t := 0
+	for r := 0; r < 20; r++ {
+		for a := 1; a < n-1; a++ {
+			for b := 1; b < n-1; b++ {
+				t += g[a][b] + g[a-1][b] + g[a+1][b]
+			}
+		}
+	}
+	return t
+}
+
+func bump(p P) P { return P{p.x + p.vx, p.y + p.vy, p.vx, p.vy} }
+func structs(n int) int {
+	p := P{0, 0, 1, 2}
+	for i := 0; i < n; i++ {
+		p = bump(p)
+	}
+	return p.x + p.y
+}
+
+func stackOps(n int) int {
+	s := make([]int, 0)
+	t := 0
+	for i := 0; i < n; i++ {
+		s = append(s, i)
+		if i%3 == 2 {
+			t += s[len(s)-1]
+			s = s[:len(s)-1]
+			t += s[len(s)-1]
+			s = s[:len(s)-1]
+		}
+	}
+	return t + len(s)
+}
+
+func optionals(n int) int {
+	t := 0
+	for i := 0; i < n; i++ {
+		var o *int
+		if i%5 != 0 {
+			v := i
+			o = &v
+		}
+		if o != nil {
+			t += *o
+		} else {
+			t += 1
+		}
+	}
+	return t
+}
+
+func sets(n int) int {
+	s := map[int]struct{}{}
+	for i := 0; i < n; i++ {
+		s[i*7919%100003] = struct{}{}
+	}
+	h := 0
+	for j := 0; j < n; j++ {
+		if _, ok := s[j]; ok {
+			h++
+		}
+	}
+	return h + len(s)
+}
+
+func chars(n int) int {
+	text := "the quick brown fox jumps over the lazy dog "
+	t := 0
+	for r := 0; r < n; r++ {
+		for _, c := range strings.Split(text, "") {
+			if c == "o" {
+				t++
+			}
+		}
+	}
+	return t
+}
+
 func fib(n int) int {
 	if n < 2 {
 		return n
@@ -150,4 +240,10 @@ func main() {
 	timed("strmap_10M", func() int { return wordMap(10000000) })
 	timed("errors_50M", func() int { return errors(50000000) })
 	timed("records_1M_x20", func() int { return records(1000000) })
+	timed("grid2d_500x20", func() int { return grid2d(500) })
+	timed("struct_100M", func() int { return structs(100000000) })
+	timed("stack_20M", func() int { return stackOps(20000000) })
+	timed("optional_100M", func() int { return optionals(100000000) })
+	timed("set_2M", func() int { return sets(2000000) })
+	timed("chars_1M", func() int { return chars(1000000) })
 }
