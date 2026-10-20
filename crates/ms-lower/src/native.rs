@@ -1009,6 +1009,20 @@ impl<'a> FnLower<'a> {
                 None => Val { v: new, own: true },
             });
         }
+        if let (TyKind::List(elem), "take" | "drop") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            let sym = if name == "take" {
+                "msrt_list_take"
+            } else {
+                "msrt_list_drop_n"
+            };
+            let d = self.type_desc(elem);
+            let r = self.borrow(recv);
+            let n = self.borrow(args[0].val);
+            let out = self.call_runtime(sym, &[r, d, n], rty)?;
+            return Ok(Val { v: out, own: true });
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
