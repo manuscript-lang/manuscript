@@ -84,7 +84,7 @@ The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scs
 
 The Rust jobs (one job for fmt, clippy, cargo-nextest, and doc tests, plus the conformance corpus in two shards) share `Swatinem/rust-cache`, saved only from `main`. Documentation-only pull requests skip them. The **Rust checks** aggregate fails if any Rust job fails, is cancelled, or is skipped when Rust-relevant files changed.
 
-The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) packages and verifies linux-amd64 on pull requests and all six targets on merge groups and tags, with no path filters. Likewise native codegen, `rust-dist.yml`, and the macOS and Windows host checks run every platform only on `main`, merge groups, and tags, so pull requests do not queue on scarce macOS and Windows runners. Manual runs produce artifacts; matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, **Rust checks**, and **Distribution checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails, is skipped, or is cancelled.
+The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) packages and verifies all six targets on every PR and merge group, with no path filters. Manual runs produce artifacts; matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, **Rust checks**, and **Distribution checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails, is skipped, or is cancelled.
 
 
 ## Generate the standard library reference

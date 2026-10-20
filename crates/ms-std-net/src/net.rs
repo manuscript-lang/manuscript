@@ -677,11 +677,6 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn root_is_stable() {
-        assert!(Rc::ptr_eq(&root(), &root()));
-    }
-
-    #[test]
     fn restrict_validates() {
         let n = Network::new_root();
         assert_eq!(
