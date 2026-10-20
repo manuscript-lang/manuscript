@@ -7,13 +7,12 @@ description = "The static library compiled Manuscript programs link: ms-rt plus 
 
 [lib]
 crate-type = ["staticlib"]
-# Its panic handler is the runtime's, which a test harness would duplicate.
+# A test harness would define its own entry points.
 test = false
 doctest = false
 
 [dependencies]
-# `std`: ms-std-net needs the standard library, which then supplies the panic handler.
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 ms-std-archive = { path = "../ms-std-archive" }
 ms-std-bigint = { path = "../ms-std-bigint" }
 ms-std-compress = { path = "../ms-std-compress" }
