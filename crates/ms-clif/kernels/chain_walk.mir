@@ -1,0 +1,51 @@
+module "chain_walk"
+alt Chain { End, Link(v: int, next: Chain) }
+extern @msrt_print_int(int)
+entry @main
+fn @build(%n: int) -> Chain inline(never) {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %e: Chain = alt.new Chain.End
+  br loop(%zero, %e)
+loop(%i: int, %c: own Chain):
+  %go: bool = icmp.lt %i, %n
+  br_if %go, body(), done()
+body:
+  %l: Chain = alt.new Chain.Link %i, %c
+  %j: int = iadd %i, %one
+  br loop(%j, %l)
+done:
+  ret %c
+}
+fn @len(%c: Chain) -> int inline(never) {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %start: Chain = copy %c
+  br walk(%start, %zero)
+walk(%cur: own Chain, %n: int):
+  %t: int = alt.tag %cur
+  switch %t [0: stop(), 1: step()] default bad()
+stop:
+  drop %cur
+  ret %n
+step:
+  %next: Chain = alt.get Chain.Link.next %cur
+  %own: Chain = copy %next
+  %m: int = iadd %n, %one
+  drop %cur
+  br walk(%own, %m)
+bad:
+  unreachable
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 30000
+  %c: Chain = call @build (%n)
+  %r: int = call @len (%c)
+  %p: unit = call.rt @msrt_print_int (%r)
+  drop %c
+  %z: int = iconst 0
+  ret %z
+}

@@ -989,6 +989,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
+ "gimli",
  "ms-mir",
  "ms-rt-abi",
  "target-lexicon",
