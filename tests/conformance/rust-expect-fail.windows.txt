@@ -12,3 +12,13 @@ e2e/projects/result-argument-scope-conformance-test
 e2e/projects/result-argument-scope-first
 e2e/projects/result-argument-scope-second
 e2e/projects/same-type-names-conformance-test
+# check: same absolute-path message difference for imports of a missing file (the dir walk reports the full path, not the missing parent).
+e2e/stdlib/http-paths
+e2e/stdlib/http-websocket
+e2e/stdlib/io
+e2e/stdlib/tls
+go-tests/internal-cli-testanalysislintaggregatessourceandhygiene-1
+go-tests/internal-cli-testprojectcheckdiscoveryandreporting-1
+go-tests/internal-cli-testprojectlintchecksimportedsource-1
+go-tests/internal-cli-testsearchsymbolfindsdefinitionanduses-2
+go-tests/pkg-build-testrejectedmoduleboundaries-3
