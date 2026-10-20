@@ -141,6 +141,97 @@ impl<const N: usize> IntoAbi for [String; N] {
     }
 }
 
+/// An owned runtime string stored inside a record (`String` field), for [`abi_record!`].
+/// Dropping it does not free the string: the record's owner does that.
+#[repr(transparent)]
+pub struct Str(*mut StrObj);
+
+impl Str {
+    pub fn new(s: &str) -> Str {
+        Str(new_string(s))
+    }
+
+    pub fn as_str(&self) -> &str {
+        // SAFETY: a `Str` is only created by `new` or by the runtime inside a live record.
+        unsafe { str_ref(self.0) }
+    }
+}
+
+/// An owned `List[String]` stored inside a record, for [`abi_record!`].
+#[repr(transparent)]
+pub struct StringList(VecVal);
+
+impl StringList {
+    pub fn new<S: AsRef<str>>(items: impl IntoIterator<Item = S>) -> StringList {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_list` initializes `v`.
+        unsafe {
+            crate::write_string_list(v.as_mut_ptr(), items);
+            StringList(v.assume_init())
+        }
+    }
+
+    pub fn to_vec(&self) -> Vec<&str> {
+        // SAFETY: a `StringList` is only created by `new` or by the runtime inside a live record.
+        unsafe { read_string_list(&raw const self.0) }
+    }
+}
+
+/// A type that may be a field of an [`abi_record!`].
+pub trait AbiSlot {}
+impl AbiSlot for i64 {}
+impl AbiSlot for f64 {}
+impl AbiSlot for u8 {}
+impl AbiSlot for Str {}
+impl AbiSlot for StringList {}
+
+/// A `repr(C)` record whose fields are all [`AbiSlot`]s; declare it with [`abi_record!`].
+///
+/// # Safety
+/// The type is `repr(C)` with the layout of the Manuscript record and every field is an
+/// [`AbiSlot`]. Only [`abi_record!`] implements it.
+pub unsafe trait AbiRecord: Sized {}
+
+impl<R: AbiRecord> AbiType for &R {
+    type Raw = *const R;
+}
+// SAFETY: record arguments are live records that outlive the call.
+unsafe impl<'a, R: AbiRecord> FromAbi<'a> for &'a R {
+    unsafe fn from_raw(raw: *const R) -> &'a R {
+        // SAFETY: caller contract.
+        unsafe { &*raw }
+    }
+}
+impl<R: AbiRecord> IntoAbi for R {
+    type Raw = R;
+    fn into_raw(self) -> R {
+        self
+    }
+}
+
+/// Declares a record type shared with generated code: a `repr(C)` struct whose fields are all
+/// [`AbiSlot`](crate::AbiSlot)s, usable as `&Rec` arguments and `-> Rec` / `-> out Rec` results of
+/// [`native!`](crate::native).
+#[macro_export]
+macro_rules! abi_record {
+    (
+        $(#[$m:meta])*
+        $vis:vis struct $name:ident { $($fvis:vis $f:ident: $t:ty),* $(,)? }
+    ) => {
+        $(#[$m])*
+        #[repr(C)]
+        $vis struct $name { $($fvis $f: $t),* }
+        #[allow(unsafe_code)]
+        // SAFETY: `repr(C)` above; the const below proves every field is an `AbiSlot`.
+        unsafe impl $crate::AbiRecord for $name {}
+        const _: () = {
+            fn assert_slot<T: $crate::AbiSlot>() {}
+            #[allow(dead_code)]
+            fn fields() { $(assert_slot::<$t>();)* }
+        };
+    };
+}
+
 /// Defines native entry points from safe signatures.
 ///
 /// ```ignore
@@ -151,14 +242,29 @@ impl<const N: usize> IntoAbi for [String; N] {
 /// }
 /// ```
 ///
-/// Each item becomes `#[no_mangle] pub unsafe extern "C" fn`: arguments convert with
+/// Each item becomes `#[no_mangle] pub unsafe extern "C" fn` (`safe fn` drops the `unsafe` for
+/// scalar-only signatures): arguments convert with
 /// [`FromAbi`], the body is an ordinary safe function, and the result converts with
 /// [`IntoAbi`]. `Result<T, E>` appends `out: *mut T::Raw` and returns `E`'s [`Status`] byte
 /// (`STATUS_OK` on success). `-> out T` appends `out: *mut T::Raw` and returns nothing.
 #[macro_export]
 macro_rules! native {
     () => {};
+    // `safe fn`: every parameter and the result are scalars, so the shim itself is safe to call.
     (
+        $(#[$m:meta])*
+        safe fn $name:ident($($p:ident: $t:ty),* $(,)?) -> $($tail:tt)*
+    ) => {
+        $crate::native! { @item [] $(#[$m])* fn $name($($p: $t),*) -> $($tail)* }
+    };
+    (
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> $($tail:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> $($tail)* }
+    };
+    (
+        @item [$($q:tt)*]
         $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<$ok:ty, $err:ty> $body:block
         $($rest:tt)*
@@ -166,7 +272,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc)]
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
+        pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$ok as $crate::IntoAbi>::Raw,
         ) -> u8 {
@@ -185,6 +291,7 @@ macro_rules! native {
         $crate::native! { $($rest)* }
     };
     (
+        @item [$($q:tt)*]
         $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> out $res:ty $body:block
         $($rest:tt)*
@@ -192,7 +299,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc)]
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
+        pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$res as $crate::IntoAbi>::Raw,
         ) {
@@ -205,6 +312,7 @@ macro_rules! native {
         $crate::native! { $($rest)* }
     };
     (
+        @item [$($q:tt)*]
         $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> $ret:ty $body:block
         $($rest:tt)*
@@ -212,7 +320,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc)]
         #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
+        pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*
         ) -> <$ret as $crate::IntoAbi>::Raw {
             fn body($($p: $t),*) -> $ret $body
