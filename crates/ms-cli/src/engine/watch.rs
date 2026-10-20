@@ -79,7 +79,7 @@ struct Running {
 impl Running {
     /// Interrupt the program and wait for its cleanup, killing it after the grace period.
     fn stop(mut self) {
-        interrupt(&self.child);
+        interrupt(&mut self.child);
         let deadline = Instant::now() + GRACE;
         while matches!(self.child.try_wait(), Ok(None)) {
             if Instant::now() >= deadline {

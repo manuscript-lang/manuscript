@@ -188,10 +188,10 @@ pub fn to_json(modules: &[ApiModule]) -> String {
         })
         .collect();
     let value = Json::Obj(vec![
-        ("format".to_string(), Json::Int(1)),
+        ("format".to_string(), Json::int(1)),
         ("modules".to_string(), Json::Arr(modules)),
     ]);
-    value.pretty() + "\n"
+    value.pretty_line(ms_json::Escape::GoHtml)
 }
 
 /// Includes every rendered declaration and member, including prelude aliases.
@@ -264,9 +264,9 @@ impl DocumentationInventory {
                 Json::Obj(fields)
             })
             .collect();
-        let count = |n: usize| Json::Int(n as i64);
+        let count = |n: usize| Json::int(n as i64);
         let value = Json::Obj(vec![
-            ("format".to_string(), Json::Int(self.format)),
+            ("format".to_string(), Json::int(self.format)),
             (
                 "includes_prelude_aliases".to_string(),
                 Json::Bool(self.includes_prelude_aliases),
@@ -291,7 +291,7 @@ impl DocumentationInventory {
             ),
             ("entries".to_string(), Json::Arr(entries)),
         ]);
-        value.pretty() + "\n"
+        value.pretty_line(ms_json::Escape::GoHtml)
     }
 }
 
@@ -374,7 +374,9 @@ fn parse_policy(text: &str) -> Result<DescriptionPolicy, String> {
     let mut policy = DescriptionPolicy::default();
     for (key, value) in fields {
         match (key.as_str(), value) {
-            ("format", Json::Int(n)) => policy.format = n,
+            ("format", n @ Json::Num(_)) => {
+                policy.format = n.as_i64().ok_or("format must be an integer")?
+            }
             ("backlog", Json::Arr(items)) => {
                 for item in items {
                     let Json::Str(s) = item else {

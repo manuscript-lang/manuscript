@@ -8,7 +8,6 @@
 //! line of the report. Unlike the forked child on Unix, the operation's side effects (memory,
 //! open files) stay in this process.
 
-use crate::buf::ByteBuf;
 use crate::fault;
 use crate::global::Global;
 use crate::string;
@@ -19,7 +18,7 @@ use ms_rt_abi::StrObj;
 static BUF: Global<[usize; 32]> = Global::new([0; 32]);
 /// Whether the operation faulted, and the report it produced.
 static FAULTED: Global<bool> = Global::new(false);
-static REPORT: Global<ByteBuf> = Global::new(ByteBuf::new());
+static REPORT: Global<Vec<u8>> = Global::new(Vec::new());
 
 extern "C" fn prepare() {
     crate::io::flush_stdout();
@@ -152,7 +151,7 @@ pub(crate) unsafe fn leave(buf: *mut usize, faulted: bool, message: &[u8]) -> ! 
     unsafe {
         *FAULTED.ptr() = faulted;
         if faulted {
-            (*REPORT.ptr()).extend(message);
+            (*REPORT.ptr()).extend_from_slice(message);
         }
         msrt_trap_restore(buf, 1)
     }

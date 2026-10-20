@@ -16,7 +16,6 @@ go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 e2e/accept/comparable
 e2e/accept/host-accessors
 e2e/accept/result-argument-inference
-e2e/accept/services
 e2e/accept/stdlib-revamp
 go-tests/tests-e2e-testdirectmethodfaultframe-1
 go-tests/tests-e2e-testdurationunitpropertysourceframes-1

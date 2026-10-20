@@ -5,7 +5,7 @@ description: Write Manuscript tutorials, canonical rules, generated API referenc
 
 # Documentation
 
-Use for `README.md`, `documentation/`, `pkg/tooling/docgen/`, `scripts/docgen/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../.experts/tooling-and-docs.md).
+Use for `README.md`, `documentation/`, `pkg/tooling/docgen/`, `crates/ms-guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../.experts/tooling-and-docs.md).
 
 For a broad refresh, marketing homepage, or reader-journey redesign, start with
 [improve-documentation](../improve-documentation/SKILL.md); this skill owns the

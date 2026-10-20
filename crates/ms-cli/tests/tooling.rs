@@ -32,14 +32,14 @@ fn run(program: &Path, dir: &Path, args: &[&str]) -> (i32, String, String) {
 
 /// The Go inspector lists the lowering's local names; the Rust pipeline has none.
 fn without_go_locals(text: &str) -> String {
-    match parse(text) {
+    match parse(text).ok() {
         Some(Json::Obj(fields)) => Json::Obj(
             fields
                 .into_iter()
                 .filter(|(k, _)| k != "go_locals")
                 .collect(),
         )
-        .encode(),
+        .pretty_line(ms_json::Escape::GoHtml),
         _ => text.to_string(),
     }
 }

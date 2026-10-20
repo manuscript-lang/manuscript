@@ -1,4 +1,4 @@
-// maintenance updates pinned inputs and the reproducible dependency license inventory.
+// maintenance updates pinned inputs and the reproducible dependency license inventory (Cargo crates and bundled notices).
 package main
 
 import (
@@ -21,6 +21,17 @@ import (
 )
 
 const inventoryPath = "documentation/contributing/dependency-licenses.json"
+
+type inventory struct {
+	Crates  []crate  `json:"crates"`
+	Notices []notice `json:"notices"`
+}
+
+type crate struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	License string `json:"license"`
+}
 
 type notice struct {
 	Path   string `json:"path"`
@@ -85,8 +96,13 @@ func command(dir, name string, args ...string) error {
 	return cmd.Run()
 }
 func licenses(check bool) error {
-	var notices []notice
-	for _, root := range []string{"vendor", "website/themes/hugo-book", "skills"} {
+	var inv inventory
+	crates, err := cargoCrates()
+	if err != nil {
+		return err
+	}
+	inv.Crates = crates
+	for _, root := range []string{"website/themes/hugo-book", "skills"} {
 		err := filepath.WalkDir(root, func(path string, e fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -103,15 +119,15 @@ func licenses(check bool) error {
 				return err
 			}
 			sum := sha256.Sum256(data)
-			notices = append(notices, notice{filepath.ToSlash(path), hex.EncodeToString(sum[:])})
+			inv.Notices = append(inv.Notices, notice{filepath.ToSlash(path), hex.EncodeToString(sum[:])})
 			return nil
 		})
 		if err != nil {
 			return err
 		}
 	}
-	sort.Slice(notices, func(i, j int) bool { return notices[i].Path < notices[j].Path })
-	data, err := json.MarshalIndent(notices, "", "  ")
+	sort.Slice(inv.Notices, func(i, j int) bool { return inv.Notices[i].Path < inv.Notices[j].Path })
+	data, err := json.MarshalIndent(inv, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -127,6 +143,43 @@ func licenses(check bool) error {
 		return nil
 	}
 	return os.WriteFile(inventoryPath, data, 0644)
+}
+
+// cargoCrates lists every registry or git crate in the locked Cargo graph with its declared SPDX license.
+func cargoCrates() ([]crate, error) {
+	cmd := exec.Command("cargo", "metadata", "--locked", "--format-version", "1")
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("cargo metadata: %w", err)
+	}
+	var meta struct {
+		Packages []struct {
+			Name, Version, License string
+			Source                 *string
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal(out, &meta); err != nil {
+		return nil, err
+	}
+	var crates []crate
+	for _, p := range meta.Packages {
+		if p.Source == nil {
+			continue
+		}
+		license := p.License
+		if license == "" {
+			license = "UNKNOWN"
+		}
+		crates = append(crates, crate{p.Name, p.Version, license})
+	}
+	sort.Slice(crates, func(i, j int) bool {
+		if crates[i].Name != crates[j].Name {
+			return crates[i].Name < crates[j].Name
+		}
+		return crates[i].Version < crates[j].Version
+	})
+	return crates, nil
 }
 
 type release struct {
