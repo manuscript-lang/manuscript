@@ -288,7 +288,7 @@ pub fn describe_io_error(err: &io::Error) -> String {
     }
 }
 
-/// Go reports lower-case OS texts (`no such file or directory`); Rust appends
+/// OS texts are lower-case (`no such file or directory`); Rust appends
 /// ` (os error N)`, which is dropped.
 fn lowercase_os_text(err: &io::Error) -> String {
     let text = err.to_string();
@@ -308,7 +308,7 @@ pub fn cannot_resolve(name: &str) -> String {
     format!("cannot resolve host {}", go_quote(name))
 }
 
-/// `strconv.Quote` for the characters host names can hold.
+/// Quotes the characters host names can hold.
 pub fn go_quote(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');

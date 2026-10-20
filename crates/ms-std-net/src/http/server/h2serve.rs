@@ -958,7 +958,7 @@ impl Exchange {
         Ok(())
     }
 
-    /// An upgrade is HTTP/1 only: report what gorilla reports for a request
+    /// An upgrade is HTTP/1 only: report what a plain upgrade refusal reports for a request
     /// that is not a WebSocket handshake.
     pub(in crate::http) fn upgrade_h2(
         &self,

@@ -1,6 +1,6 @@
-//! TLS over rustls with Go-compatible trust decisions.
+//! TLS over rustls.
 //!
-//! Chain building, name matching and PEM parsing follow Go's `crypto/x509`
+//! Chain building, name matching and PEM parsing follow `crypto/x509` semantics
 //! so that the same inputs are accepted and rejected. Roots always come from
 //! the supplied PEM, or from the system store when none is supplied.
 
@@ -34,7 +34,7 @@ const LENIENT: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(DecodePaddingMode::RequireCanonical),
 );
 
-/// Decodes one block at the start of `text` the way Go's `pem.Decode` does,
+/// Decodes one block at the start of `text` as PEM requires,
 /// returning its label, bytes and the remaining text. Blocks with headers are
 /// rejected by returning `None` for the whole decode.
 fn decode_block(text: &str, skip_junk: bool) -> Option<(String, Vec<u8>, &str)> {
@@ -282,7 +282,7 @@ impl Roots {
     }
 }
 
-/// Why a chain was rejected, with Go's wording for diagnostics.
+/// Why a chain was rejected, for diagnostics.
 #[derive(Debug)]
 pub enum Reject {
     Parse,
@@ -430,7 +430,7 @@ pub fn verify_chain(
         .collect::<Result<_, _>>()?;
     let leaf = parsed.first().ok_or(Reject::Parse)?;
     if let Some(name) = name {
-        // Go checks validity and trust before the name.
+        // Validity and trust are checked before the name.
         let _ = name;
     }
     let root_certs: Vec<X509Certificate<'_>> = roots
@@ -1077,7 +1077,7 @@ mod tests {
     #[test]
     fn names_follow_go_formatting() {
         let infos = parse_certificates(NAMES, None).unwrap();
-        // Recorded from Go's pkix.Name.String.
+        // Recorded vectors.
         assert_eq!(
             infos[0].subject,
             r"SERIALNUMBER=77,CN=a\,b,OU=OU,O=O1+O=O2,POSTALCODE=9,STREET=S,L=\ L#,ST=CA,C=US,1.2.3.4=#130178,0.9.2342.19200300.100.1.25=#13076578616d706c65"

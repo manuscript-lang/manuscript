@@ -526,7 +526,7 @@ impl Network {
             .map_err(|e| self.io_failure(&e))?;
         sys::prepare_listener(&sock).map_err(|e| self.io_failure(&e))?;
         if addr.ip().is_unspecified() && addr.is_ipv6() {
-            // A wildcard listener serves both families, as in Go (Windows defaults to v6 only).
+            // A wildcard listener serves both families (Windows defaults to v6 only).
             sock.set_only_v6(false).map_err(|e| self.io_failure(&e))?;
         }
         sock.bind(&addr.into()).map_err(|e| self.io_failure(&e))?;
@@ -606,7 +606,7 @@ impl Network {
     }
 }
 
-/// A bound UDP socket; a wildcard IPv6 address serves both families, as in Go.
+/// A bound UDP socket; a wildcard IPv6 address serves both families.
 fn bind_udp_socket(addr: SocketAddr) -> io::Result<std::net::UdpSocket> {
     let sock = Socket::new(Domain::for_address(addr), Type::DGRAM, Some(Protocol::UDP))?;
     if addr.ip().is_unspecified() && addr.is_ipv6() {

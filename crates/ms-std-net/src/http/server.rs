@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 const UNLIMITED: usize = usize::MAX;
 /// Per-connection input kept while a request waits for the handler.
 const INPUT_HOLD: usize = 256 * 1024;
-/// Request bodies the server skips to reuse a connection (net/http's value).
+/// Request bodies the server skips to reuse a connection.
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 
 /// How long accepting pauses after the process runs out of descriptors or memory.
@@ -1563,7 +1563,7 @@ pub(super) fn error_bytes(
     false
 }
 
-/// Bodies up to this size get a `Content-Length`; larger ones are chunked, as in net/http.
+/// Bodies up to this size get a `Content-Length`; larger ones are chunked.
 const CONTENT_LENGTH_LIMIT: usize = 2048;
 
 /// Whether a response to `status` may carry a body.
@@ -1589,7 +1589,7 @@ pub(super) fn check_response_headers(headers: &Headers) -> Result<(), &'static s
     Ok(())
 }
 
-/// Appends handler headers with canonical names, sorted as net/http writes them.
+/// Appends handler headers with canonical names, sorted.
 pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (bool, bool) {
     let mut sorted: Vec<(String, &Vec<Vec<u8>>)> = headers
         .entries()

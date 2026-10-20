@@ -1265,7 +1265,7 @@ const CONNECTION_SPECIFIC: [&[u8]; 5] = [
     b"upgrade",
 ];
 
-/// Validate a header block the way Go's `net/http2` does: lowercase names,
+/// Validate a header block as HTTP/2 requires: lowercase names,
 /// pseudo-headers first and unique, no connection-specific headers, the
 /// required pseudo-headers for the block kind, and no pseudo-headers in
 /// trailers.
