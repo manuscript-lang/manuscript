@@ -11,7 +11,7 @@ use core::ptr::null_mut;
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-const ARENA_SIZE: usize = 16 << 30;
+const ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 16 << 30 };
 /// Arena growth step where memory is committed explicitly.
 const COMMIT_STEP: usize = 4 << 20;
 const NUM_CLASSES: usize = 24;

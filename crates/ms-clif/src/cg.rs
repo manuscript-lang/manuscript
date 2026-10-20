@@ -148,6 +148,8 @@ pub struct FuncDbg {
     pub size: u32,
     /// `(code offset, file, line, scope)` ranges, sorted by offset.
     pub ranges: Vec<(u32, u32, u32, u32)>,
+    /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
+    pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
 }
 
 impl<'m> Gen<'m> {
@@ -555,10 +557,12 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         None
     };
     emit_main(&mut g, &mut ctx, &mut fctx)?;
+    let endian = g.module.isa().endianness();
     let mut product = g.module.finish();
     if let Some(t) = tables {
         relocate_tables(&mut product, &g.dbg, &t);
     }
+    crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
     product.emit().map_err(|e| Error(e.to_string()))
 }
 
@@ -748,11 +752,15 @@ fn define_with(
     if let Some(f) = source {
         let cc = ctx.compiled_code().expect("function compiled");
         let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();
+        let mut dwarf_ranges = Vec::new();
         for r in cc.buffer.get_srclocs_sorted() {
             let bits = r.loc.bits();
             let Some((file, line, scope)) = g.locs.get(bits as usize).copied() else {
                 continue;
             };
+            if r.start < r.end {
+                dwarf_ranges.push((r.start, r.end, file, line));
+            }
             if ranges
                 .last()
                 .is_none_or(|l| (l.1, l.2, l.3) != (file, line, scope))
@@ -775,6 +783,7 @@ fn define_with(
             line,
             size: cc.code_buffer().len() as u32,
             ranges,
+            dwarf_ranges,
         });
     }
     g.module.clear_context(ctx);

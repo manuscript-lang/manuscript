@@ -4,26 +4,20 @@
 //! The generic `max`, `min`, `max_of` and `min_of` are not natives: they are lowered by the
 //! compiler through the element comparison.
 #![no_std]
-// The exports below are the C ABI compiled code links against.
-#![allow(unsafe_code)]
 
 mod libm;
 
-unsafe extern "C-unwind" {
-    fn msrt_fault_int_overflow() -> !;
-}
+use ms_std_core::native;
 
 macro_rules! unary {
     ($($sym:ident => $f:path),* $(,)?) => {$(
-        #[unsafe(no_mangle)]
-        pub extern "C" fn $sym(v: f64) -> f64 { $f(v) }
+        native! { safe fn $sym(v: f64) -> f64 { $f(v) } }
     )*};
 }
 
 macro_rules! constant {
     ($($sym:ident: $t:ty = $v:expr),* $(,)?) => {$(
-        #[unsafe(no_mangle)]
-        pub extern "C" fn $sym() -> $t { $v }
+        native! { safe fn $sym() -> $t { $v } }
     )*};
 }
 
@@ -61,50 +55,43 @@ fn to_float32(v: f64) -> f64 {
     v as f32 as f64
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_atan2(y: f64, x: f64) -> f64 {
-    libm::atan2_(y, x)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_hypot(left: f64, right: f64) -> f64 {
-    libm::hypot_(left, right)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_pow(base: f64, exponent: f64) -> f64 {
-    libm::pow_(base, exponent)
-}
-
-/// `Math.remainder` is C `fmod`, not the IEEE remainder.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_remainder(left: f64, right: f64) -> f64 {
-    libm::fmod_(left, right)
-}
-
-/// Faults on the one value whose magnitude does not fit.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_abs_int(n: i64) -> i64 {
-    match n.checked_abs() {
-        Some(v) => v,
-        // SAFETY: provided by `ms-rt`; never returns.
-        None => unsafe { msrt_fault_int_overflow() },
+native! {
+    safe fn msstd_math_atan2(y: f64, x: f64) -> f64 {
+        libm::atan2_(y, x)
     }
-}
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_sign_int(n: i64) -> i64 {
-    n.signum()
-}
+    safe fn msstd_math_hypot(left: f64, right: f64) -> f64 {
+        libm::hypot_(left, right)
+    }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_is_integer(v: f64) -> u8 {
-    libm::is_integer(v) as u8
-}
+    safe fn msstd_math_pow(base: f64, exponent: f64) -> f64 {
+        libm::pow_(base, exponent)
+    }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_math_is_safe_integer(v: f64) -> u8 {
-    (libm::is_integer(v) && v.abs() <= MAX_SAFE_INTEGER as f64) as u8
+    /// `Math.remainder` is C `fmod`, not the IEEE remainder.
+    safe fn msstd_math_remainder(left: f64, right: f64) -> f64 {
+        libm::fmod_(left, right)
+    }
+
+    /// Faults on the one value whose magnitude does not fit.
+    safe fn msstd_math_abs_int(n: i64) -> i64 {
+        match n.checked_abs() {
+            Some(v) => v,
+            None => ms_std_core::int_overflow(),
+        }
+    }
+
+    safe fn msstd_math_sign_int(n: i64) -> i64 {
+        n.signum()
+    }
+
+    safe fn msstd_math_is_integer(v: f64) -> bool {
+        libm::is_integer(v)
+    }
+
+    safe fn msstd_math_is_safe_integer(v: f64) -> bool {
+        libm::is_integer(v) && v.abs() <= MAX_SAFE_INTEGER as f64
+    }
 }
 
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;

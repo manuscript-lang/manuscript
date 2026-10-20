@@ -1,5 +1,7 @@
 //! The C math library routines behind `@std/math`. Results follow the host libm and can differ
 //! from other implementations in the last bit.
+// Calls into the host libm: the one FFI edge of this crate.
+#![allow(unsafe_code)]
 
 unsafe extern "C" {
     fn acos(x: f64) -> f64;

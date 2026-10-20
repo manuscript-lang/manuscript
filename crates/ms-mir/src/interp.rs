@@ -676,6 +676,20 @@ impl<'m> Interp<'m> {
                 }
                 set!(p[i as usize].clone());
             }
+            Op::AltUnbox => {
+                let Imm::AltField(_, c, i) = inst.imm else {
+                    return Err(Raw::internal("alt.unbox without field"));
+                };
+                let Val::Alt(t, p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("alt.unbox on a non-alternative"));
+                };
+                if *t != c {
+                    return Err(Raw::internal(format!("alt.unbox of case {c} on case {t}")));
+                }
+                let field = p[i as usize].clone();
+                arg(f, regs, a[0], true, m);
+                set!(field);
+            }
             Op::ListNew => {
                 let cap = int!(0).clamp(0, 1 << 16) as usize;
                 set!(Val::List(Rc::new(Vec::with_capacity(cap))));
