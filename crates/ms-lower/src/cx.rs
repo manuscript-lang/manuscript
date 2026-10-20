@@ -267,6 +267,8 @@ impl Cx {
             let items = if kind == "ListBuilder" {
                 let e = self.lower_ty(m, &t.args[0])?;
                 m.types.list(e)
+            } else if kind == "StringBuilder" || kind == "BytesBuilder" {
+                MTy::BYTES
             } else {
                 let mut args = Vec::new();
                 for a in &t.args {
@@ -284,8 +286,8 @@ impl Cx {
             }
             return Ok(m.types.obj(name, args));
         }
-        // Builders are growable byte buffers.
-        if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
+        // Bytes is a growable byte buffer; the text and byte builders are handles over one.
+        if t.is_std("Bytes") {
             return Ok(MTy::BYTES);
         }
         // A queue is a refcounted runtime object shared by its copies.

@@ -1,4 +1,5 @@
-//! `ListBuilder`, `MapBuilder` and `SetBuilder`: shared handles that accumulate a collection.
+//! The collection and text builders (`ListBuilder`, `MapBuilder`, `SetBuilder`, `StringBuilder`,
+//! `BytesBuilder`): shared handles that accumulate a value.
 //!
 //! A builder is a `Shared` cell holding `{sealed, items}`. Copies of the handle see every
 //! append or add, and `freeze` seals the cell so later changes fault with "builder is sealed".
@@ -12,9 +13,15 @@ use ms_mir::types::{RecId, Ty as MTy, TyKind};
 
 /// The std builder type `t` is, if any.
 pub(crate) fn builder_kind(t: &ct::Ty) -> Option<&'static str> {
-    ["ListBuilder", "MapBuilder", "SetBuilder"]
-        .into_iter()
-        .find(|n| t.is_std(n))
+    [
+        "ListBuilder",
+        "MapBuilder",
+        "SetBuilder",
+        "StringBuilder",
+        "BytesBuilder",
+    ]
+    .into_iter()
+    .find(|n| t.is_std(n))
 }
 
 /// The handle type of a builder over the collection type `items`.
@@ -51,6 +58,8 @@ impl<'a> FnLower<'a> {
         let items_ty = self.b.m.records[rec.index()].fields[1].1;
         let items = match self.b.m.types.kind(items_ty).clone() {
             TyKind::List(elem) => self.b.list_lit(elem, &[]),
+            // A text or byte builder accumulates an empty byte buffer.
+            TyKind::Bytes => self.call_runtime("msrt_list_new", &[], items_ty)?,
             _ => self.map_new(items_ty)?,
         };
         let sealed = self.b.bconst(false);
@@ -96,6 +105,7 @@ impl<'a> FnLower<'a> {
         handle: Value,
         decl: &[ct::Param],
         args: &[NArg],
+        result: MTy,
     ) -> Result<Val, Error> {
         let rec = self.builder_rec(self.ty_of(handle))?;
         let items_ty = self.b.m.records[rec.index()].fields[1].1;
@@ -117,8 +127,14 @@ impl<'a> FnLower<'a> {
                 .b
                 .emit(Op::Load, &[items], Imm::Ty(items_ty), Some(items_ty))
                 .expect("load");
-            let v = self.owned(Val { v: cur, own: false });
-            return Ok(Val { v, own: true });
+            let copy = self.owned(Val { v: cur, own: false });
+            if result == MTy::STR {
+                // The runtime consumes the buffer it freezes into text.
+                let slot = self.put_slot(copy);
+                let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
+                return Ok(Val { v: text, own: true });
+            }
+            return Ok(Val { v: copy, own: true });
         }
         self.fault_if_sealed(sealed);
         let old = self.take_slot(items, items_ty);
@@ -147,6 +163,7 @@ impl<'a> FnLower<'a> {
         }
         let handle = self.borrow(recv);
         self.at(e.pos);
-        self.builder_call(name, handle, &m.ty.params, &args)
+        let result = self.emty(e)?;
+        self.builder_call(name, handle, &m.ty.params, &args, result)
     }
 }

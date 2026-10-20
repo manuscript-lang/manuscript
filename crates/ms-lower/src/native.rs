@@ -1094,7 +1094,7 @@ impl<'a> FnLower<'a> {
         }
         if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
             let handle = self.borrow(recv);
-            return self.builder_call(&name, handle, &m.ty.params, args);
+            return self.builder_call(&name, handle, &m.ty.params, args, result);
         }
         if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
