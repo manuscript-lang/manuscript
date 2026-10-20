@@ -2085,10 +2085,7 @@ impl<'a> FnLower<'a> {
                 self.drop_value(placeholder);
                 self.b.def_var(res, some);
                 let rest = if from_front {
-                    let d2 = self.type_desc(elem);
-                    let rest = self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?;
-                    self.drop_value(cur);
-                    rest
+                    self.b.list_drop_first(cur)
                 } else {
                     self.b.list_drop_last(cur)
                 };
