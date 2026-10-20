@@ -13,7 +13,7 @@ import tempfile
 
 SENTINEL = "PAYLOAD-SENTINEL"
 types = []
-for path in sorted(glob.glob("pkg/stdlib/*.ms")):
+for path in sorted(glob.glob("stdlib/*.ms")):
     src = open(path).read()
     module = os.path.basename(path)
     for m in re.finditer(r"^impl Error for (\w+):\n(?:    #[^\n]*\n)*    fn message\(\) String:\s*\n(?!        )", src, re.M):

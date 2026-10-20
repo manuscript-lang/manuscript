@@ -39,7 +39,7 @@ The exact layouts and symbol names are documented and tested in `crates/ms-rt/AB
 
 ## Runtime ABI rules
 
-- `extern "C"` functions named `msrt_<module>_<name>`; native stdlib identities come from `pkg/stdlib/bindings.json` and the `.ms` declarations, which the Rust implementation embeds unchanged (they remain the signature authority).
+- `extern "C"` functions named `msrt_<module>_<name>`; native stdlib identities come from `stdlib/bindings.json` and the `.ms` declarations, which the Rust implementation embeds unchanged (they remain the signature authority).
 - Fallible natives return a `Result` layout by out-pointer; faults call `msrt_fault(message_ptr, len)` which never returns.
 - Reference-count rules at the boundary: arguments are borrowed unless the signature is documented as consuming; returned objects are owned (+1).
 

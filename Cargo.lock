@@ -971,6 +971,7 @@ dependencies = [
  "libc",
  "ms-check",
  "ms-driver",
+ "ms-guide",
  "ms-lsp",
  "ms-mir",
  "ms-project",
@@ -988,6 +989,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
+ "gimli",
  "ms-mir",
  "ms-rt-abi",
  "target-lexicon",
@@ -1245,6 +1247,9 @@ dependencies = [
 [[package]]
 name = "ms-std-math"
 version = "0.1.0"
+dependencies = [
+ "ms-std-core",
+]
 
 [[package]]
 name = "ms-std-net"

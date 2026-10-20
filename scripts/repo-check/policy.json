@@ -9,7 +9,7 @@
       "pkg/lexer"
     ],
     "pkg/project": [],
-    "pkg/stdlib": [],
+    "stdlib": [],
     "internal/decimal": [],
     "internal/nativeabi": [],
     "internal/hostos": [],
@@ -17,7 +17,7 @@
       "pkg/syntax",
       "pkg/lexer",
       "pkg/parser",
-      "pkg/stdlib",
+      "stdlib",
       "internal/decimal",
       "internal/nativeabi"
     ],
@@ -46,7 +46,7 @@
     ],
     "pkg/tooling/docgen": [
       "pkg/checker",
-      "pkg/stdlib"
+      "stdlib"
     ],
     "pkg/tooling/lsp": [
       "pkg/syntax",
@@ -73,7 +73,7 @@
       "pkg/tooling/guide",
       "pkg/tooling/docgen",
       "pkg/checker",
-      "pkg/stdlib",
+      "stdlib",
       ".",
       "internal/debugger",
       "pkg/build"
@@ -98,7 +98,7 @@
       "pkg/parser",
       "pkg/checker",
       "pkg/project",
-      "pkg/stdlib",
+      "stdlib",
       "pkg/runtime",
       "pkg/frontend",
       "pkg/compiler",
@@ -117,7 +117,7 @@
     "pkg/lower",
     "pkg/build",
     "pkg/runtime",
-    "pkg/stdlib"
+    "stdlib"
   ],
   "bundled": [
     "internal/decimal",
