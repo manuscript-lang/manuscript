@@ -836,7 +836,7 @@ test "YAML parse without limits stops alias bombs and deep nesting":
         "alias expansion over the default value budget was accepted"
     )
 
-    let deep = "[".repeat(2000).get() + "]".repeat(2000).get()
+    let deep = "[".repeat(20000).get() + "]".repeat(20000).get()
     let nested = parse(deep)
     if nested.is_ok(): return fail("nesting over the default depth was accepted")
 

@@ -58,7 +58,7 @@ export type TomlError:
     case LimitExceeded
 
 # Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
-# Fields left none add no budget. Calling `parse` without any limits applies depth 1024 and 1,000,000 values; pass a `TomlLimits` to change that.
+# Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
 export type TomlLimits:
     # Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
     max_bytes: Optional[Int] = none
@@ -164,7 +164,7 @@ fn space(var reader: Reader, multiline: Bool) Unit:
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
 fn default_limits() TomlLimits:
-    return TomlLimits(max_depth: some(1024), max_values: some(1000000))
+    return TomlLimits(max_depth: some(10000), max_values: some(1000000))
 
 fn within(value: Int, limit: Optional[Int]) Bool:
     if let maximum = limit:

@@ -56,7 +56,7 @@ export type YamlError:
     case LimitExceeded
 
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
-# Fields left none add no budget. Calling `parse` without any limits applies depth 1024 and 1,000,000 values; pass a `YamlLimits` to change that.
+# Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
     max_bytes: Optional[Int] = none
@@ -93,7 +93,7 @@ type Flow:
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
 fn default_limits() YamlLimits:
-    return YamlLimits(max_depth: some(1024), max_values: some(1000000))
+    return YamlLimits(max_depth: some(10000), max_values: some(1000000))
 
 fn within(value: Int, limit: Optional[Int]) Bool:
     if let maximum = limit:

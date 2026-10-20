@@ -30,7 +30,7 @@ impl Limits {
     /// Applied when the caller supplies no limits record.
     pub const DEFAULT: Limits = Limits {
         max_bytes: None,
-        max_depth: Some(1024),
+        max_depth: Some(10000),
         max_nodes: Some(1_000_000),
     };
 }
