@@ -454,6 +454,7 @@ unsafe fn wake(t: *mut Task, result: u32) {
             return;
         }
         if (*t).wait_fd >= 0 {
+            crate::poller::unwatch((*t).wait_fd);
             s.fd_waiters[(*t).wait_fd as usize] = 0;
             s.fd_waiting -= 1;
             (*t).wait_fd = -1;
