@@ -380,6 +380,8 @@ fn seal(var reader: Reader, value: Node) Unit:
     match value:
         TableNode(id):
             var state = flags(reader, id)
+            if state.sealed: return unit
+
             state.sealed = true
             store_flags(var reader, id, state)
             for entry in reader.entries.get(id): seal(var reader, entry.value)
