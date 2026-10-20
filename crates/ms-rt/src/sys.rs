@@ -22,9 +22,26 @@ pub const MAP_ANONYMOUS: c_int = 0x20;
 pub const MAP_NORESERVE: c_int = 0x4000;
 
 pub const SIGINT: c_int = 2;
+pub const SIGPIPE: c_int = 13;
+/// `SIG_IGN` as a `sigaction` handler value.
+pub const SIG_IGN: usize = 1;
 pub const SIGALRM: c_int = 14;
 pub const SIGTERM: c_int = 15;
 pub const SIGPROF: c_int = 27;
+pub const SIGSEGV: c_int = 11;
+#[cfg(target_os = "macos")]
+pub const SIGBUS: c_int = 10;
+#[cfg(not(target_os = "macos"))]
+pub const SIGBUS: c_int = 7;
+#[cfg(target_os = "macos")]
+pub const SA_ONSTACK: c_int = 0x1;
+#[cfg(not(target_os = "macos"))]
+pub const SA_ONSTACK: c_int = 0x0800_0000;
+/// Offset of `si_addr` in `siginfo_t`.
+#[cfg(target_os = "macos")]
+pub const SI_ADDR_OFFSET: usize = 24;
+#[cfg(not(target_os = "macos"))]
+pub const SI_ADDR_OFFSET: usize = 16;
 #[cfg(target_os = "macos")]
 pub const SA_SIGINFO: c_int = 0x40;
 #[cfg(target_os = "macos")]
@@ -53,6 +70,24 @@ pub struct sigaction_t {
     handler: usize,
     mask: u32,
     flags: c_int,
+}
+
+/// `stack_t`: an alternate signal stack.
+#[cfg(not(target_os = "macos"))]
+#[repr(C)]
+pub struct stack_t {
+    pub ss_sp: *mut c_void,
+    pub ss_flags: c_int,
+    pub ss_size: size_t,
+}
+
+/// `stack_t`: an alternate signal stack.
+#[cfg(target_os = "macos")]
+#[repr(C)]
+pub struct stack_t {
+    pub ss_sp: *mut c_void,
+    pub ss_size: size_t,
+    pub ss_flags: c_int,
 }
 
 impl sigaction_t {
@@ -111,6 +146,7 @@ unsafe extern "C" {
     pub fn isatty(fd: c_int) -> c_int;
     pub fn getpid() -> c_int;
     pub fn sigaction(sig: c_int, act: *const sigaction_t, old: *mut sigaction_t) -> c_int;
+    pub fn sigaltstack(new: *const stack_t, old: *mut stack_t) -> c_int;
     pub fn setitimer(which: c_int, new: *const itimerval, old: *mut itimerval) -> c_int;
     pub fn pthread_attr_init(attr: *mut pthread_attr_buf) -> c_int;
     pub fn pthread_attr_setstacksize(attr: *mut pthread_attr_buf, size: size_t) -> c_int;

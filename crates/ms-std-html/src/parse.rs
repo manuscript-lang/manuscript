@@ -110,6 +110,11 @@ pub struct Parser {
     original_im: Option<Im>,
     foster_parenting: bool,
     quirks: bool,
+    /// Stops parsing once this many elements are open; tree depth trails it only by
+    /// adoption-agency moves. Scope searches walk the open stack, so unbounded nesting is
+    /// quadratic.
+    pub max_open: usize,
+    pub exceeded: bool,
 }
 
 fn is_special_name(name: &str) -> bool {
@@ -239,6 +244,8 @@ impl Parser {
             original_im: None,
             foster_parenting: false,
             quirks: false,
+            max_open: usize::MAX,
+            exceeded: false,
         }
     }
 
@@ -2363,6 +2370,10 @@ impl Parser {
             self.tok = self.tokenizer.token();
             let eof = self.tok.ty == TokenType::Error;
             self.parse_current_token();
+            if self.oe.len() > self.max_open {
+                self.exceeded = true;
+                break;
+            }
             if eof {
                 break;
             }

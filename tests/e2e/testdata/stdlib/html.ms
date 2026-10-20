@@ -1,4 +1,5 @@
 import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
+import clock from "@std/time.ms"
 import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
@@ -139,3 +140,12 @@ test "HTML honors optional byte depth and node limits":
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
     try expect_not_equal(HtmlError.InvalidData.message(), "")
+
+test "HTML depth limit stops deeply nested input without quadratic work":
+    # 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
+    let nested = "<div>".repeat(60000).get()
+    let started = clock().now()
+    let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
+    try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
+    let elapsed = clock().now().difference(started).to_milliseconds()
+    if elapsed > 5000: return fail("depth limit took {elapsed} ms")

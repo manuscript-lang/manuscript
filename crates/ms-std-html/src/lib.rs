@@ -51,7 +51,12 @@ pub fn parse(text: &str, limits: Limits) -> Result<Tree, Fail> {
         return Err(Fail::LimitExceeded);
     }
     let mut p = parse::Parser::new(text.as_bytes());
+    // Twice the depth budget plus slack for elements the tree places shallower than the stack.
+    p.max_open = max_depth.saturating_mul(2).saturating_add(64);
     p.parse();
+    if p.exceeded {
+        return Err(Fail::LimitExceeded);
+    }
     let tree = Tree {
         root: p.doc,
         nodes: p.nodes,

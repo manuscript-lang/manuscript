@@ -32,6 +32,9 @@ fn opt(has: bool, v: i64) -> Option<i64> {
     has.then_some(v)
 }
 
+/// Request header block cap for `Network.serve`, which has no option for it (net/http's value).
+const SERVE_MAX_HEADER_BYTES: i64 = 1 << 20;
+
 fn server_limits(
     admission: Option<i64>,
     body: Option<i64>,
@@ -86,7 +89,7 @@ native! {
             opt(has_max_requests, max_requests),
             opt(has_max_body, max_body),
             opt(has_max_response, max_response),
-            None,
+            Some(SERVE_MAX_HEADER_BYTES),
             opt(has_timeout, timeout),
             opt(has_grace, grace),
         );
