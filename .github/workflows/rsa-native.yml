@@ -68,6 +68,9 @@ jobs:
           rustc -vV > .artifacts/rsa-native/host.txt
       - name: Build the native CLI and embedded runtime
         run: cargo build --locked -p ms-cli 2>&1 | tee .artifacts/rsa-native/build.log
+      - name: Test native Windows project paths
+        if: matrix.os == 'windows'
+        run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee .artifacts/rsa-native/windows-paths.log
       - name: Run source RSA tests in Release and Debug
         run: |
           set -euo pipefail
