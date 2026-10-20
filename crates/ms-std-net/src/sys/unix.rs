@@ -1,13 +1,15 @@
-//! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and `epoll` (`kqueue` off Linux).
+//! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and a mio readiness set.
 
 use super::Ev;
 use crate::rt;
-use rustix::event::{self, PollFd, PollFlags};
+use mio::unix::SourceFd;
 #[cfg(any(target_os = "linux", target_os = "android"))]
-use rustix::event::{EventfdFlags, epoll};
+use rustix::event::EventfdFlags;
+use rustix::event::{self, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::time::Duration;
 
@@ -103,187 +105,144 @@ impl Default for Poller {
     }
 }
 
-/// The server's set of watched sockets.
-#[cfg(any(target_os = "linux", target_os = "android"))]
+/// The server's set of watched sockets, on mio.
+///
+/// mio reports edges, the server reads and writes as if readiness were level-triggered, so
+/// a socket is re-registered each time it is reported: the kernel then reports it again
+/// while it is still ready. A socket with no interest is kept registered, for hang-up and
+/// error only; its reads and writes are dropped without re-arming.
 pub struct Poller {
-    epoll: OwnedFd,
-    buf: RefCell<Vec<epoll::Event>>,
+    poll: RefCell<mio::Poll>,
+    registry: mio::Registry,
+    events: RefCell<mio::Events>,
+    sockets: RefCell<Sockets>,
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn to_flags(ev: Ev) -> epoll::EventFlags {
-    let mut flags = epoll::EventFlags::empty();
-    if ev.contains(Ev::IN) {
-        flags |= epoll::EventFlags::IN;
-    }
-    if ev.contains(Ev::OUT) {
-        flags |= epoll::EventFlags::OUT;
-    }
-    flags
+/// The registered sockets, found by descriptor (to update or delete) and by token (to
+/// resolve an event).
+#[derive(Default)]
+struct Sockets {
+    by_fd: HashMap<Raw, (u64, Ev)>,
+    by_token: HashMap<u64, Raw>,
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn from_flags(flags: epoll::EventFlags) -> Ev {
-    let mut ev = Ev::NONE;
-    if flags.contains(epoll::EventFlags::IN) {
-        ev = ev | Ev::IN;
+impl Sockets {
+    fn set(&mut self, fd: Raw, token: u64, ev: Ev) {
+        self.by_fd.insert(fd, (token, ev));
+        self.by_token.insert(token, fd);
     }
-    if flags.contains(epoll::EventFlags::OUT) {
-        ev = ev | Ev::OUT;
+
+    fn remove(&mut self, fd: Raw) {
+        if let Some((token, _)) = self.by_fd.remove(&fd) {
+            self.by_token.remove(&token);
+        }
     }
-    if flags.intersects(epoll::EventFlags::HUP | epoll::EventFlags::ERR | epoll::EventFlags::RDHUP)
-    {
-        ev = ev | Ev::HUP;
-    }
-    ev
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+const MAX_EVENTS: usize = 64;
+
+fn interest(ev: Ev) -> mio::Interest {
+    match (ev.contains(Ev::IN), ev.contains(Ev::OUT)) {
+        (_, false) => mio::Interest::READABLE,
+        (false, true) => mio::Interest::WRITABLE,
+        (true, true) => mio::Interest::READABLE | mio::Interest::WRITABLE,
+    }
+}
+
 impl Poller {
     pub fn new() -> Poller {
+        let poll = mio::Poll::new().expect("poller");
+        let registry = poll.registry().try_clone().expect("poller registry");
         Poller {
-            epoll: epoll::create(epoll::CreateFlags::CLOEXEC).expect("epoll"),
-            buf: RefCell::new(Vec::new()),
+            poll: RefCell::new(poll),
+            registry,
+            events: RefCell::new(mio::Events::with_capacity(MAX_EVENTS)),
+            sockets: RefCell::new(Sockets::default()),
         }
     }
 
-    pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
-        epoll::add(
-            &self.epoll,
-            sock,
-            epoll::EventData::new_u64(token),
-            to_flags(ev),
-        )
-        .is_ok()
-    }
-
-    pub fn modify(&self, sock: Borrowed<'_>, token: u64, ev: Ev) {
-        let _ = epoll::modify(
-            &self.epoll,
-            sock,
-            epoll::EventData::new_u64(token),
-            to_flags(ev),
-        );
-    }
-
-    pub fn delete(&self, sock: Borrowed<'_>) {
-        let _ = epoll::delete(&self.epoll, sock);
-    }
-
-    /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
-    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
-        out.clear();
-        let mut buf = self.buf.borrow_mut();
-        buf.resize(
-            max,
-            epoll::Event {
-                flags: epoll::EventFlags::empty(),
-                data: epoll::EventData::new_u64(0),
-            },
-        );
-        let timeout = Timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        let n = epoll::wait(&self.epoll, &mut buf[..], Some(&timeout)).unwrap_or_default();
-        out.extend(buf[..n].iter().map(|e| (e.data.u64(), from_flags(e.flags))));
-    }
-
-    /// Parks the running task until something may be ready (or 50 ms pass); returns
-    /// the runtime's ready bits.
-    pub fn park(&self) -> u32 {
-        rt::wait_fd(self.epoll.as_fd(), 1, 50_000_000)
-    }
-}
-
-/// The server's set of watched sockets.
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub struct Poller {
-    queue: OwnedFd,
-    events: RefCell<Vec<rustix::event::kqueue::Event>>,
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-impl Poller {
-    pub fn new() -> Poller {
-        Poller {
-            queue: rustix::event::kqueue::kqueue().expect("kqueue"),
-            events: RefCell::new(Vec::new()),
-        }
-    }
-
-    /// Applies the changes for one descriptor: each direction is enabled when wanted and
-    /// removed otherwise.
-    fn apply(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
-        use rustix::event::kqueue::{self, Event, EventFilter};
-        let raw = sock.as_raw_fd();
-        let udata = token as usize as *mut std::ffi::c_void;
-        let mut ok = true;
-        for (filter, wanted) in [
-            (EventFilter::Read(raw), ev.contains(Ev::IN)),
-            (EventFilter::Write(raw), ev.contains(Ev::OUT)),
-        ] {
-            let flags = if wanted {
-                kqueue::EventFlags::ADD | kqueue::EventFlags::ENABLE
-            } else {
-                kqueue::EventFlags::DELETE
-            };
-            let change = [Event::new(filter, flags, udata)];
-            // SAFETY: `sock` stays open while it is registered; callers delete it before
-            // closing it (closing also drops the registration).
-            let sent =
-                unsafe { kqueue::kevent(&self.queue, &change, &mut Vec::<Event>::new(), None) };
-            // Deleting a direction that was never added is not a failure.
-            if sent.is_err() && wanted {
-                ok = false;
+    /// Registers `fd` for `ev`, or updates an earlier registration.
+    fn arm(&self, fd: Raw, token: u64, ev: Ev) -> std::io::Result<()> {
+        let (mut source, token) = (SourceFd(&fd), mio::Token(token as usize));
+        match self.registry.reregister(&mut source, token, interest(ev)) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                self.registry.register(&mut source, token, interest(ev))
             }
+            r => r,
         }
-        ok
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
-        self.apply(sock, token, ev)
+        let fd = sock.as_raw_fd();
+        let armed = self.arm(fd, token, ev).is_ok();
+        if armed {
+            self.sockets.borrow_mut().set(fd, token, ev);
+        }
+        armed
     }
 
     pub fn modify(&self, sock: Borrowed<'_>, token: u64, ev: Ev) {
-        self.apply(sock, token, ev);
+        let fd = sock.as_raw_fd();
+        if self.arm(fd, token, ev).is_ok() {
+            self.sockets.borrow_mut().set(fd, token, ev);
+        }
     }
 
     pub fn delete(&self, sock: Borrowed<'_>) {
-        self.apply(sock, 0, Ev::NONE);
+        let fd = sock.as_raw_fd();
+        let _ = self.registry.deregister(&mut SourceFd(&fd));
+        self.sockets.borrow_mut().remove(fd);
     }
 
     /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
     pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
-        use rustix::event::kqueue::{self, EventFilter};
         out.clear();
         let mut events = self.events.borrow_mut();
-        events.clear();
-        events.reserve(max);
-        // SAFETY: no change list is passed, so no descriptor is referenced.
-        let got = unsafe { kqueue::kevent(&self.queue, &[], &mut *events, Some(Duration::ZERO)) };
-        if got.is_err() {
+        if self
+            .poll
+            .borrow_mut()
+            .poll(&mut events, Some(Duration::ZERO))
+            .is_err()
+        {
             return;
         }
-        for e in events.iter() {
-            let mut ev = match e.filter() {
-                EventFilter::Read(_) => Ev::IN,
-                EventFilter::Write(_) => Ev::OUT,
-                _ => Ev::NONE,
+        let sockets = self.sockets.borrow();
+        for e in events.iter().take(max) {
+            let token = e.token().0 as u64;
+            let Some(&fd) = sockets.by_token.get(&token) else {
+                continue;
             };
-            if e.flags()
-                .intersects(kqueue::EventFlags::EOF | kqueue::EventFlags::ERROR)
-            {
+            let Some(&(_, interest)) = sockets.by_fd.get(&fd) else {
+                continue;
+            };
+            let mut ev = Ev::NONE;
+            if e.is_readable() && interest.contains(Ev::IN) {
+                ev = ev | Ev::IN;
+            }
+            if e.is_writable() && interest.contains(Ev::OUT) {
+                ev = ev | Ev::OUT;
+            }
+            let reads_and_writes = ev;
+            if e.is_error() || e.is_read_closed() || e.is_write_closed() {
                 ev = ev | Ev::HUP;
             }
-            out.push((e.udata() as usize as u64, ev));
+            if ev == Ev::NONE {
+                continue;
+            }
+            if reads_and_writes != Ev::NONE {
+                // Report it again next time while it stays ready.
+                let _ = self.arm(fd, token, interest);
+            }
+            out.push((token, ev));
         }
     }
 
     /// Parks the running task until something may be ready (or 50 ms pass); returns
     /// the runtime's ready bits.
     pub fn park(&self) -> u32 {
-        rt::wait_fd(self.queue.as_fd(), 1, 50_000_000)
+        let fd = self.poll.borrow().as_raw_fd();
+        // SAFETY: the descriptor belongs to `self.poll`, which outlives the call.
+        rt::wait_fd(unsafe { BorrowedFd::borrow_raw(fd) }, 1, 50_000_000)
     }
 }
 

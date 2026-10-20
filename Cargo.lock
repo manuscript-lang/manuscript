@@ -1280,6 +1280,7 @@ dependencies = [
  "base64",
  "flate2",
  "httparse",
+ "mio",
  "ms-rt",
  "ms-rt-abi",
  "ms-std-core",

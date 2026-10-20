@@ -1787,6 +1787,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let leaves = self.g.lay.leaves(res_ty.expect("result"));
                 self.load_leaves(obj, SHARED_VALUE, &leaves)
             }
+            Op::SharedAddr => {
+                let obj = self.a(inst, 0)[0];
+                vec![self.add_imm(obj, SHARED_VALUE)]
+            }
             Op::ClosureNew => self.closure_new(inst, res_ty.expect("closure result")),
             Op::ClosureCap => {
                 let Imm::Idx(i) = inst.imm else {

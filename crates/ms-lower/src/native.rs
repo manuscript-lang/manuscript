@@ -1092,6 +1092,10 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
+        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
+            let handle = self.borrow(recv);
+            return self.builder_call(&name, handle, &m.ty.params, args, result);
+        }
         if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
@@ -1780,14 +1784,14 @@ impl<'a> FnLower<'a> {
     /// A variable or a field chain from one.
     pub fn is_place(&self, e: &Expr) -> bool {
         let mut cur = e;
-        while let ExprKind::Member { left, .. } = &cur.kind {
+        while let ExprKind::Member { left, .. } | ExprKind::Index { left, .. } = &cur.kind {
             cur = left;
         }
         matches!(&cur.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(cur), Resolution::Local(_))
     }
 
-    fn mutate_any(
+    pub(crate) fn mutate_any(
         &mut self,
         name: &str,
         old: Value,
@@ -2347,6 +2351,24 @@ impl<'a> FnLower<'a> {
         for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
             arg.val = self.refresh(expr, arg.val, at)?;
         }
+        // Written order decides evaluation; callers index by declared parameter position, so
+        // `set(value: 8, 0)` must hand them the index before the value.
+        let declared: Vec<ct::Name> = match &view.target {
+            Resolution::Method(m) => m.ty.params.iter().map(|p| p.name).collect(),
+            Resolution::Function(sym) => sym
+                .ty
+                .borrow()
+                .as_ref()
+                .map(|t| t.params.iter().map(|p| p.name).collect())
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        };
+        out.sort_by_key(|a| {
+            declared
+                .iter()
+                .position(|n| *n == a.name)
+                .unwrap_or(usize::MAX)
+        });
         Ok(out)
     }
 
