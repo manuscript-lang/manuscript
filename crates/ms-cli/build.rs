@@ -75,7 +75,13 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .env_remove("RUSTFLAGS");
     let status = command.status().expect("run cargo to build ms-native");
     assert!(status.success(), "building ms-native failed");
-    target.join("release/libms_native.a")
+    // MSVC targets name a static library `ms_native.lib`; every other target uses `libms_native.a`.
+    let msvc = std::env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|env| env == "msvc");
+    target.join(if msvc {
+        "release/ms_native.lib"
+    } else {
+        "release/libms_native.a"
+    })
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {
