@@ -146,7 +146,18 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 "[project]" => "project",
                 "[aliases]" => "aliases",
                 _ => {
-                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project] and [aliases]")));
+                    let advice = if !line.ends_with(']') {
+                        "close the header with ']'"
+                    } else if line.starts_with("[[") {
+                        "array tables are not supported"
+                    } else if line == "[package]" {
+                        "rename it to [project] with name, source, and entry"
+                    } else if line == "[dependencies]" {
+                        "there are no dependency tables, so copy the sources into the project and map them with [aliases]"
+                    } else {
+                        "ms.toml has no other tables"
+                    };
+                    return Err(fail.at(&location, format!("unsupported manifest table {line}; ms.toml supports only [project] and [aliases]: {advice}")));
                 }
             };
             if !tables.insert(table) {
@@ -184,10 +195,12 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             }
         }
         if !ok || section.is_empty() {
-            return Err(fail.at(
-                &location,
-                "invalid manifest assignment; write key = \"value\" inside [project] or [aliases], after the table header",
-            ));
+            let advice = if section.is_empty() {
+                "this line is before any table header, so start the file with [project] and put name = \"app\" and source = \"src\" under it"
+            } else {
+                "this line has no '=', so write key = \"value\" (values are double-quoted strings)"
+            };
+            return Err(fail.at(&location, format!("invalid manifest assignment; {advice}")));
         }
         let key_location = location.clone();
         let value = value.trim();
@@ -248,7 +261,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             if !valid_alias(&key) || key == "@std" {
                 return Err(fail.at(
                     &key_location,
-                    format!("invalid or reserved alias {key}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias"),
+                    format!("invalid or reserved alias {key}{}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", if valid_alias(&format!("@{key}")) { format!(" (did you mean @{key}?)") } else { String::new() }),
                 ));
             }
             if value.starts_with('@') {

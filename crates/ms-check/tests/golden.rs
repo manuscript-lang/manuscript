@@ -42,11 +42,14 @@ fn matches_go_oracle() {
             let golden = include_str!("golden.txt");
             let mut failures: Vec<String> = Vec::new();
             let mut total = 0;
+            let mut rewritten: Vec<String> = Vec::new();
             for record in golden.split('\u{1e}') {
                 let (source, expected) = record.split_once('\u{1f}').expect("record");
                 let expected: Vec<&str> = expected.lines().collect();
                 total += 1;
                 let actual = diagnostics(source);
+                let lines = actual.join("\n");
+                rewritten.push(format!("{source}\u{1f}{lines}"));
                 if actual != expected {
                     failures.push(format!(
                         "--- source:\n{source}\n--- expected:\n{}\n--- actual:\n{}",
@@ -54,6 +57,13 @@ fn matches_go_oracle() {
                         actual.join("\n")
                     ));
                 }
+            }
+            // `UPDATE_GOLDEN=1 cargo test -p ms-check --test golden` rewrites
+            // golden.txt after a deliberate message change.
+            if std::env::var_os("UPDATE_GOLDEN").is_some() {
+                let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden.txt");
+                std::fs::write(path, rewritten.join("\u{1e}")).expect("write golden");
+                return;
             }
             assert!(
                 failures.is_empty(),

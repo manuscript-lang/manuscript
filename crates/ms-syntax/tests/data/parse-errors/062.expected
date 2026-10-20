@@ -1,0 +1,1 @@
+error parse 2:15:29 "the 'while' block header on line 2 does not end with ':'; add ':' at the end of that line so the indented lines below become its body"

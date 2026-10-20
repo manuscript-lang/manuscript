@@ -1,7 +1,7 @@
 //! Lexer with layout: scans UTF-8 source and enforces the indentation rules,
 //! emitting `Newline`/`Indent`/`Dedent` tokens.
 
-use crate::diag::Diagnostic;
+use crate::diag::{Diagnostic, DiagnosticFix};
 use crate::pos::Pos;
 use crate::token::{Tok, Token};
 use std::borrow::Cow;
@@ -165,6 +165,26 @@ impl Scanner<'_> {
     fn fail_at<T>(&self, pos: Pos, message: impl Into<String>) -> PResult<T> {
         Err(self.err(pos, message))
     }
+    /// Fails on the single ASCII character at the cursor, with its range and,
+    /// when one exists, the replacement that fixes it.
+    fn fail_char<T>(&self, message: String, replacement: Option<&str>) -> PResult<T> {
+        let pos = self.pos();
+        let end = Pos::new(pos.offset + 1, pos.line, pos.column + 1);
+        let mut d = self.err(pos, message);
+        d.end = Some(end);
+        d.fix = replacement.map(|r| DiagnosticFix {
+            pos,
+            end,
+            replacement: r.to_string(),
+        });
+        Err(d)
+    }
+    /// Fails on the source range `[start, cursor)`.
+    fn fail_range<T>(&self, start: Pos, message: String) -> PResult<T> {
+        let mut d = self.err(start, message);
+        d.end = Some(self.pos());
+        Err(d)
+    }
     fn emit(&mut self, kind: Tok, lo: usize, hi: usize, pos: Pos) {
         let end = self.pos();
         self.tokens.push(Token {
@@ -292,6 +312,9 @@ impl Scanner<'_> {
                     let (top_indent, top_depth) = (top.indent, top.depth);
                     if self.delimiters.len() == top_depth && leading != top_indent {
                         if leading > top_indent {
+                            if let Some(d) = self.missing_colon() {
+                                return Err(d);
+                            }
                             let hint = self.continuation_hint();
                             return self.fail(format!(
                                 "unexpected indentation, {} spaces where {} are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it{}",
@@ -402,11 +425,18 @@ impl Scanner<'_> {
                                 quote_rune(c)
                             ));
                         }
-                        return self.fail(format!(
-                            "unexpected source character {}{}",
-                            quote_rune(b as char),
-                            character_hint(b)
-                        ));
+                        return self.fail_char(
+                            format!(
+                                "unexpected source character {}{}",
+                                quote_rune(b as char),
+                                character_hint(b)
+                            ),
+                            match b {
+                                b';' => Some(""),
+                                b'!' => Some("not "),
+                                _ => None,
+                            },
+                        );
                     }
                 };
                 if matches!(b, b'(' | b'[' | b'{') {
@@ -590,7 +620,27 @@ impl Scanner<'_> {
             self.advance();
         }
         if self.offset < n && letter(self.src[self.offset]) {
-            return self.fail("invalid numeric suffix; the only suffix is d for Decimal (1.5d), so put a space or operator after the number");
+            while self.offset < n && (letter(self.src[self.offset]) || digit(self.src[self.offset]))
+            {
+                self.advance();
+            }
+            let word = &self.text[start..self.offset];
+            let message = if word.len() > 1
+                && matches!(&word[..2], "0x" | "0X" | "0b" | "0B" | "0o" | "0O")
+            {
+                format!(
+                    "invalid number {word}; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFF"
+                )
+            } else if word.contains('_') {
+                format!(
+                    "invalid number {word}; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000"
+                )
+            } else {
+                format!(
+                    "invalid number {word}; the only numeric suffix is d for Decimal (1.5d), so put a space or operator after the number"
+                )
+            };
+            return self.fail_range(p, message);
         }
         self.emit(Tok::Number, start, self.offset, p);
         Ok(())
@@ -724,6 +774,56 @@ impl Scanner<'_> {
                 BRACE_HINT
             ),
         )
+    }
+
+    /// A block header on the previous line that lacks its closing ':' when an
+    /// indented line follows it, with the fix that inserts the ':'.
+    fn missing_colon(&self) -> Option<Box<Diagnostic>> {
+        let real = |t: &&Token| !matches!(t.kind, Tok::Newline | Tok::Comment);
+        let last = self.tokens.iter().rev().find(real)?;
+        if last.kind == Tok::Colon || matches!(last.kind, Tok::Indent | Tok::Dedent) {
+            return None;
+        }
+        let first = self
+            .tokens
+            .iter()
+            .rev()
+            .skip_while(|t| t.kind == Tok::Newline)
+            .take_while(|t| !matches!(t.kind, Tok::Newline | Tok::Indent | Tok::Dedent))
+            .last()?;
+        if first.pos.line != last.end.line
+            || !matches!(
+                first.kind,
+                Tok::Fn
+                    | Tok::If
+                    | Tok::Else
+                    | Tok::For
+                    | Tok::While
+                    | Tok::Match
+                    | Tok::With
+                    | Tok::Type
+                    | Tok::Impl
+                    | Tok::Test
+                    | Tok::Interface
+            )
+        {
+            return None;
+        }
+        let mut d = self.err(
+            last.end,
+            format!(
+                "the '{}' block header on line {} does not end with ':'; add ':' at the end of that line so the indented lines below become its body",
+                first.kind.as_str(),
+                first.pos.line
+            ),
+        );
+        d.end = Some(last.end);
+        d.fix = Some(DiagnosticFix {
+            pos: last.end,
+            end: last.end,
+            replacement: ":".into(),
+        });
+        Some(d)
     }
 
     /// Explains the usual cause of an over-indented line that starts with a
