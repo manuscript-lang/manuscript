@@ -165,6 +165,9 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     }
     if selection.collection {
         diagnostics = ordered(diagnostics);
+    } else if diagnostics.iter().all(|d| d.phase == "parse") {
+        // One file's recovered syntax errors, in source order.
+        diagnostics.sort_by_key(|d| (d.position.file.clone(), d.position.line, d.position.column));
     }
     let status = i32::from(!diagnostics.is_empty());
     if request.json {
