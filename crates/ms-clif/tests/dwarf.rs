@@ -41,7 +41,10 @@ fn output(program: &str, args: &[&str], path: &Path) -> String {
         .expect(program);
     assert!(
         o.status.success(),
-        "{program}: {}",
+        "{program} {args:?} {} failed ({}):\nstdout:\n{}\nstderr:\n{}",
+        path.display(),
+        o.status,
+        String::from_utf8_lossy(&o.stdout),
         String::from_utf8_lossy(&o.stderr)
     );
     assert!(
