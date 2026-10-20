@@ -1370,6 +1370,7 @@ dependencies = [
  "libc",
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-process",
  "ms-std-rt",
  "rustix",

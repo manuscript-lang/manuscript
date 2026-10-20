@@ -3,13 +3,16 @@
 //! Each call takes a snapshot; the exports in `lib.rs` hand its parts out one field at a time.
 //! Network interfaces work on every unix host; CPU and memory figures come from `/proc`, so
 //! `cpus` and `metrics` answer `Unsupported` off Linux.
+#![allow(unsafe_code)] // libc `getifaddrs` and friends
 
 use alloc::vec::Vec;
+use core::cell::RefCell;
 #[cfg(unix)]
 use ms_rt_abi::STATUS_FAILED;
 use ms_rt_abi::STATUS_UNSUPPORTED;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
+use ms_std_core::Global;
 
 /// One address of one network interface.
 #[derive(Default)]
@@ -46,24 +49,20 @@ pub struct Metrics {
 }
 
 /// Process-wide holder of the last snapshot; the runtime calls natives from one thread at a time.
-pub struct Slot<T>(core::cell::UnsafeCell<Option<T>>);
-
-// SAFETY: natives never run concurrently, so the cell is never accessed from two threads.
-unsafe impl<T> Sync for Slot<T> {}
+pub struct Slot<T>(Global<RefCell<Option<T>>>);
 
 impl<T> Slot<T> {
     pub const fn new() -> Self {
-        Self(core::cell::UnsafeCell::new(None))
+        Self(Global::new(RefCell::new(None)))
     }
 
     pub fn set(&self, value: T) {
-        // SAFETY: single-threaded access, and no reference from `get` outlives a native call.
-        unsafe { *self.0.get() = Some(value) };
+        *self.0.get().borrow_mut() = Some(value);
     }
 
-    pub fn get(&self) -> Option<&T> {
-        // SAFETY: as in `set`.
-        unsafe { (*self.0.get()).as_ref() }
+    /// Reads the snapshot (`None` before the first one).
+    pub fn with<R>(&self, read: impl FnOnce(Option<&T>) -> R) -> R {
+        read(self.0.get().borrow().as_ref())
     }
 }
 

@@ -6,9 +6,6 @@
 //! without sharing a layout. `os` and `architecture` report the target names `@std/process`
 //! uses (`linux`, `darwin`, `windows`; `amd64`, `arm64`).
 #![no_std]
-// The exports below are the C ABI compiled code links against.
-#![allow(unsafe_code)]
-#![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
 #[cfg(unix)]
@@ -18,174 +15,17 @@ mod inventory;
 
 use alloc::vec::Vec;
 use inventory::{Cpu, Interface, Metrics, Slot};
-use ms_rt_abi::{MapVal, STATUS_OK, STATUS_UNSUPPORTED, StrObj};
+use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrObj};
+use ms_std_core::{IntMap, StatusCode, Text, native};
 use ms_std_process::control;
-use ms_std_rt::{MapValue, new_string, write_string_map};
 
-/// The text of the last `FAILED` result.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_failure_message() -> *mut StrObj {
-    ms_std_rt::failure_message()
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_endianness() -> *mut StrObj {
-    new_string(if cfg!(target_endian = "little") {
-        b"LE"
-    } else {
-        b"BE"
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_end_of_line() -> *mut StrObj {
-    new_string(if cfg!(windows) { b"\r\n" } else { b"\n" })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_dev_null() -> *mut StrObj {
-    new_string(if cfg!(windows) {
-        b"\\\\.\\nul"
-    } else {
-        b"/dev/null"
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_os_type() -> *mut StrObj {
-    new_string(if cfg!(target_os = "macos") {
-        b"Darwin"
-    } else if cfg!(windows) {
-        b"Windows_NT"
-    } else {
-        b"Linux"
-    })
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_info_os() -> *mut StrObj {
-    new_string(control::OS.as_bytes())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_info_architecture() -> *mut StrObj {
-    new_string(control::ARCH.as_bytes())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_info_cpu_count() -> i64 {
-    imp::cpu_count()
-}
-
-/// The live working directory; a host failure yields an empty string.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_working_directory() -> *mut StrObj {
-    new_string(&control::working_directory().unwrap_or_default())
-}
-
-fn finish(r: Result<Vec<u8>, u8>, out: *mut *mut StrObj) -> u8 {
-    match r {
-        Ok(text) => {
-            // SAFETY: `out` is writable.
-            unsafe { out.write(new_string(&text)) };
-            STATUS_OK
-        }
-        Err(status) => status,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_hostname(out: *mut *mut StrObj) -> u8 {
-    finish(imp::hostname(), out)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_home_directory(out: *mut *mut StrObj) -> u8 {
-    finish(imp::home_directory(), out)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_os_release(out: *mut *mut StrObj) -> u8 {
-    finish(imp::uname(imp::Field::Release), out)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_os_version(out: *mut *mut StrObj) -> u8 {
-    finish(imp::uname(imp::Field::Version), out)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_machine(out: *mut *mut StrObj) -> u8 {
-    finish(imp::uname(imp::Field::Machine), out)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_get_priority(pid: i64, out: *mut i64) -> u8 {
-    match imp::get_priority(pid) {
-        Ok(p) => {
-            // SAFETY: `out` is writable.
-            unsafe { out.write(p) };
-            STATUS_OK
-        }
-        Err(status) => status,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_set_priority(pid: i64, priority: i64) -> u8 {
-    imp::set_priority(pid, priority).err().unwrap_or(STATUS_OK)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_system_constants(out: *mut MapVal) {
-    // SAFETY: `out` is writable.
-    unsafe {
-        write_string_map(
-            imp::CONSTANTS
-                .iter()
-                .map(|&(name, value)| (name.as_bytes(), MapValue::Int(value))),
-            true,
-            out,
-        );
-    }
-}
-
-// `user_info()` crosses as a status plus one getter per field.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_status() -> u8 {
-    imp::user().err().unwrap_or(STATUS_OK)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_username() -> *mut StrObj {
-    new_string(&imp::user().map(|u| u.name).unwrap_or_default())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_uid() -> i64 {
-    imp::user().map(|u| u.uid).unwrap_or(-1)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_gid() -> i64 {
-    imp::user().map(|u| u.gid).unwrap_or(-1)
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_home() -> *mut StrObj {
-    new_string(&imp::user().map(|u| u.home).unwrap_or_default())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_user_info_shell() -> *mut StrObj {
-    new_string(&imp::user().map(|u| u.shell).unwrap_or_default())
-}
-
-// Lists and the metrics record cross as a status call that takes a snapshot, then getters
-// (indexed for lists): `msstd_system_<call>_status`, `_count`, `_<field>`.
 static INTERFACES: Slot<Vec<Interface>> = Slot::new();
 static CPUS: Slot<Vec<Cpu>> = Slot::new();
 static METRICS: Slot<Metrics> = Slot::new();
+
+fn text(r: Result<Vec<u8>, u8>) -> Result<Text, StatusCode> {
+    r.map(Text).map_err(StatusCode)
+}
 
 fn snapshot<T>(slot: &Slot<T>, taken: Result<T, u8>) -> u8 {
     match taken {
@@ -197,124 +37,228 @@ fn snapshot<T>(slot: &Slot<T>, taken: Result<T, u8>) -> u8 {
     }
 }
 
-fn item<T>(slot: &Slot<Vec<T>>, i: i64) -> Option<&T> {
-    slot.get()?.get(usize::try_from(i).ok()?)
-}
-
-/// Exports `$name(i)` reading the text field `$field` of item `i`.
-macro_rules! text_getter {
-    ($name:ident, $slot:ident, $field:ident) => {
-        #[unsafe(no_mangle)]
-        pub extern "C" fn $name(i: i64) -> *mut StrObj {
-            new_string(item(&$slot, i).map_or(&[][..], |x| &x.$field))
-        }
-    };
-}
-
-/// Exports `$name(i)` reading the integer field `$field` of item `i`.
-macro_rules! int_getter {
-    ($name:ident, $slot:ident, $field:ident) => {
-        #[unsafe(no_mangle)]
-        pub extern "C" fn $name(i: i64) -> i64 {
-            item(&$slot, i).map_or(0, |x| x.$field)
-        }
-    };
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_network_interfaces_status() -> u8 {
-    snapshot(&INTERFACES, inventory::interfaces())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_network_interfaces_count() -> i64 {
-    INTERFACES.get().map_or(0, |v| v.len() as i64)
-}
-
-text_getter!(msstd_system_network_interfaces_name, INTERFACES, name);
-text_getter!(msstd_system_network_interfaces_address, INTERFACES, address);
-text_getter!(msstd_system_network_interfaces_netmask, INTERFACES, netmask);
-text_getter!(msstd_system_network_interfaces_mac, INTERFACES, mac);
-int_getter!(
-    msstd_system_network_interfaces_scope_id,
-    INTERFACES,
-    scope_id
-);
-
-/// The family's `IpFamily` case index: `0` is IPv4, `1` is IPv6.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_network_interfaces_family(i: i64) -> i64 {
-    item(&INTERFACES, i).map_or(0, |x| i64::from(x.v6))
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_network_interfaces_internal(i: i64) -> u8 {
-    item(&INTERFACES, i).map_or(0, |x| u8::from(x.internal))
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_cpus_status() -> u8 {
-    snapshot(&CPUS, inventory::cpus())
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_cpus_count() -> i64 {
-    CPUS.get().map_or(0, |v| v.len() as i64)
-}
-
-text_getter!(msstd_system_cpus_model, CPUS, model);
-int_getter!(msstd_system_cpus_speed_mhz, CPUS, speed_mhz);
-int_getter!(msstd_system_cpus_user, CPUS, user);
-int_getter!(msstd_system_cpus_nice, CPUS, nice);
-int_getter!(msstd_system_cpus_system, CPUS, system);
-int_getter!(msstd_system_cpus_idle, CPUS, idle);
-int_getter!(msstd_system_cpus_irq, CPUS, irq);
-
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_status() -> u8 {
-    snapshot(&METRICS, inventory::metrics())
+/// Reads field `read` of list element `i` (`None` when out of range).
+fn item<T, R>(slot: &Slot<Vec<T>>, i: i64, read: impl FnOnce(&T) -> R) -> Option<R> {
+    slot.with(|v| v?.get(usize::try_from(i).ok()?).map(read))
 }
 
 fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
-    METRICS.get().map(read).unwrap_or_default()
+    METRICS.with(|m| m.map(read)).unwrap_or_default()
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_total_memory() -> i64 {
-    metric(|m| m.total_memory)
-}
+native! {
+    safe fn msstd_system_failure_message() -> *mut StrObj {
+        ms_std_rt::failure_message()
+    }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_free_memory() -> i64 {
-    metric(|m| m.free_memory)
-}
+    safe fn msstd_system_endianness() -> &'static str {
+        if cfg!(target_endian = "little") { "LE" } else { "BE" }
+    }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_available_memory() -> i64 {
-    metric(|m| m.available_memory)
-}
+    safe fn msstd_system_end_of_line() -> &'static str {
+        if cfg!(windows) { "\r\n" } else { "\n" }
+    }
 
-/// Host uptime in nanoseconds, the representation of a `Duration`.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_uptime() -> i64 {
-    metric(|m| m.uptime_ns)
-}
+    safe fn msstd_system_dev_null() -> &'static str {
+        if cfg!(windows) { "\\\\.\\nul" } else { "/dev/null" }
+    }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_available_parallelism() -> i64 {
-    metric(|m| m.parallelism)
-}
+    safe fn msstd_system_os_type() -> &'static str {
+        if cfg!(target_os = "macos") {
+            "Darwin"
+        } else if cfg!(windows) {
+            "Windows_NT"
+        } else {
+            "Linux"
+        }
+    }
 
-/// The 1, 5 and 15 minute load average for `window` 0, 1 and 2.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_system_metrics_load_average(window: i64) -> f64 {
-    metric(|m| {
-        let slot = usize::try_from(window).unwrap_or(usize::MAX);
-        m.load.get(slot).copied().unwrap_or(0.0)
-    })
+    safe fn msstd_system_info_os() -> &'static str {
+        control::OS
+    }
+
+    safe fn msstd_system_info_architecture() -> &'static str {
+        control::ARCH
+    }
+
+    safe fn msstd_system_info_cpu_count() -> i64 {
+        imp::cpu_count()
+    }
+
+    safe fn msstd_system_working_directory() -> Text {
+        Text(control::working_directory().unwrap_or_default())
+    }
+
+    fn msstd_system_hostname() -> Result<Text, StatusCode> {
+        text(imp::hostname())
+    }
+
+    fn msstd_system_home_directory() -> Result<Text, StatusCode> {
+        text(imp::home_directory())
+    }
+
+    fn msstd_system_os_release() -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Release))
+    }
+
+    fn msstd_system_os_version() -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Version))
+    }
+
+    fn msstd_system_machine() -> Result<Text, StatusCode> {
+        text(imp::uname(imp::Field::Machine))
+    }
+
+    fn msstd_system_get_priority(pid: i64) -> Result<i64, StatusCode> {
+        imp::get_priority(pid).map_err(StatusCode)
+    }
+
+    safe fn msstd_system_set_priority(pid: i64, priority: i64) -> u8 {
+        imp::set_priority(pid, priority).err().unwrap_or(STATUS_OK)
+    }
+
+    fn msstd_system_constants() -> out IntMap {
+        IntMap(
+            imp::CONSTANTS
+                .iter()
+                .map(|&(name, value)| (name.as_bytes().to_vec(), value))
+                .collect(),
+        )
+    }
+
+    // `user_info()` crosses as a status plus one getter per field.
+    safe fn msstd_system_user_info_status() -> u8 {
+        imp::user().err().unwrap_or(STATUS_OK)
+    }
+
+    safe fn msstd_system_user_info_username() -> Text {
+        Text(imp::user().map(|u| u.name).unwrap_or_default())
+    }
+
+    safe fn msstd_system_user_info_uid() -> i64 {
+        imp::user().map(|u| u.uid).unwrap_or(-1)
+    }
+
+    safe fn msstd_system_user_info_gid() -> i64 {
+        imp::user().map(|u| u.gid).unwrap_or(-1)
+    }
+
+    safe fn msstd_system_user_info_home() -> Text {
+        Text(imp::user().map(|u| u.home).unwrap_or_default())
+    }
+
+    safe fn msstd_system_user_info_shell() -> Text {
+        Text(imp::user().map(|u| u.shell).unwrap_or_default())
+    }
+
+    // Lists and the metrics record cross as a status call that takes a snapshot, then getters
+    // (indexed for lists): `msstd_system_<call>_status`, `_count`, `_<field>`.
+    safe fn msstd_system_network_interfaces_status() -> u8 {
+        snapshot(&INTERFACES, inventory::interfaces())
+    }
+
+    safe fn msstd_system_network_interfaces_count() -> i64 {
+        INTERFACES.with(|v| v.map_or(0, |v| v.len() as i64))
+    }
+
+    safe fn msstd_system_network_interfaces_name(i: i64) -> Text {
+        Text(item(&INTERFACES, i, |x| x.name.clone()).unwrap_or_default())
+    }
+
+    safe fn msstd_system_network_interfaces_address(i: i64) -> Text {
+        Text(item(&INTERFACES, i, |x| x.address.clone()).unwrap_or_default())
+    }
+
+    safe fn msstd_system_network_interfaces_netmask(i: i64) -> Text {
+        Text(item(&INTERFACES, i, |x| x.netmask.clone()).unwrap_or_default())
+    }
+
+    safe fn msstd_system_network_interfaces_mac(i: i64) -> Text {
+        Text(item(&INTERFACES, i, |x| x.mac.clone()).unwrap_or_default())
+    }
+
+    safe fn msstd_system_network_interfaces_scope_id(i: i64) -> i64 {
+        item(&INTERFACES, i, |x| x.scope_id).unwrap_or(0)
+    }
+
+    safe fn msstd_system_network_interfaces_family(i: i64) -> i64 {
+        item(&INTERFACES, i, |x| i64::from(x.v6)).unwrap_or(0)
+    }
+
+    safe fn msstd_system_network_interfaces_internal(i: i64) -> bool {
+        item(&INTERFACES, i, |x| x.internal).unwrap_or(false)
+    }
+
+    safe fn msstd_system_cpus_status() -> u8 {
+        snapshot(&CPUS, inventory::cpus())
+    }
+
+    safe fn msstd_system_cpus_count() -> i64 {
+        CPUS.with(|v| v.map_or(0, |v| v.len() as i64))
+    }
+
+    safe fn msstd_system_cpus_model(i: i64) -> Text {
+        Text(item(&CPUS, i, |x| x.model.clone()).unwrap_or_default())
+    }
+
+    safe fn msstd_system_cpus_speed_mhz(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.speed_mhz).unwrap_or(0)
+    }
+
+    safe fn msstd_system_cpus_user(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.user).unwrap_or(0)
+    }
+
+    safe fn msstd_system_cpus_nice(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.nice).unwrap_or(0)
+    }
+
+    safe fn msstd_system_cpus_system(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.system).unwrap_or(0)
+    }
+
+    safe fn msstd_system_cpus_idle(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.idle).unwrap_or(0)
+    }
+
+    safe fn msstd_system_cpus_irq(i: i64) -> i64 {
+        item(&CPUS, i, |x| x.irq).unwrap_or(0)
+    }
+
+    safe fn msstd_system_metrics_status() -> u8 {
+        snapshot(&METRICS, inventory::metrics())
+    }
+
+    safe fn msstd_system_metrics_total_memory() -> i64 {
+        metric(|m| m.total_memory)
+    }
+
+    safe fn msstd_system_metrics_free_memory() -> i64 {
+        metric(|m| m.free_memory)
+    }
+
+    safe fn msstd_system_metrics_available_memory() -> i64 {
+        metric(|m| m.available_memory)
+    }
+
+    safe fn msstd_system_metrics_uptime() -> i64 {
+        metric(|m| m.uptime_ns)
+    }
+
+    safe fn msstd_system_metrics_available_parallelism() -> i64 {
+        metric(|m| m.parallelism)
+    }
+
+    safe fn msstd_system_metrics_load_average(window: i64) -> f64 {
+        metric(|m| {
+            let slot = usize::try_from(window).unwrap_or(usize::MAX);
+            m.load.get(slot).copied().unwrap_or(0.0)
+        })
+    }
 }
 
 #[cfg(unix)]
+#[allow(unsafe_code)] // libc `sysconf` and `getpwuid_r`
 mod imp {
     use super::*;
     use alloc::vec;
@@ -520,6 +464,7 @@ mod imp {
 }
 
 #[cfg(all(test, unix))]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
