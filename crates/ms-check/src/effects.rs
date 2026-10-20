@@ -9,37 +9,24 @@ use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-/// Whether a standard collection method mutates its receiver.
-pub fn collection_mutation(receiver: &Ty, name: &str) -> bool {
-    if receiver.is_std("List") {
-        return matches!(
-            name,
-            "append"
-                | "prepend"
-                | "insert"
-                | "pop"
-                | "shift"
-                | "set"
-                | "remove"
-                | "splice"
-                | "fill"
-                | "copy_within"
-                | "reverse_in_place"
-        );
-    }
-    if receiver.is_std("Map") {
-        return matches!(
-            name,
-            "add" | "remove" | "add_default" | "add_default_from" | "merge" | "clear"
-        );
-    }
+/// Whether a standard collection method mutates its receiver: `List`, `Map` and `Set`
+/// methods say so with `var fn` in their `@std` declaration. The builders are shared
+/// handles declared with plain `fn`, so their mutating methods are listed here.
+pub fn collection_mutation(method: &Method) -> bool {
+    let receiver = &method.receiver;
+    let name = method.name().map(|n| n.as_str()).unwrap_or_default();
     if receiver.is_std("StringBuilder") {
         return matches!(name, "append" | "freeze");
     }
     if receiver.is_std("BytesBuilder") {
         return matches!(name, "append" | "concat" | "freeze");
     }
-    receiver.is_std("Set") && matches!(name, "add" | "remove" | "clear")
+    (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
+        && method
+            .decl
+            .as_ref()
+            .and_then(|d| d.method())
+            .is_some_and(|m| m.mutating)
 }
 
 enum Target {
@@ -149,7 +136,7 @@ impl Scan<'_> {
             }
             "@std/List" | "@std/Map" | "@std/Set" => {
                 add(&mut self.effects, &["read"]);
-                if collection_mutation(&receiver, name) {
+                if collection_mutation(method) {
                     add(&mut self.effects, &["write"]);
                 }
                 if method.ty.params.iter().any(|p| p.ty.kind == Kind::Function) {

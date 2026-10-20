@@ -986,7 +986,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::effects::collection_mutation(&m.receiver, &name) {
+        if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned(Val { v: b, own: false });
