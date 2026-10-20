@@ -23,7 +23,12 @@ mod plat;
 
 pub use crate::spawn::{Child, start};
 pub use plat::{now_ns, pipe};
-use plat::{set_nonblocking, sleep_ms, wait_io, would_block};
+use plat::{set_nonblocking, wait_io, would_block};
+
+/// Sleeps `ms` milliseconds.
+fn sleep_ms(ms: i64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms.max(0) as u64));
+}
 
 /// A descriptor closed on drop.
 pub struct Fd(pub sys::Fd);

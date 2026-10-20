@@ -62,11 +62,6 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
     ]
 }
 
-/// Sleeps `ms` milliseconds.
-pub fn sleep_ms(ms: i64) {
-    sys::sleep_ms(ms as i32);
-}
-
 /// Whether a read or write would only have blocked (`EAGAIN`).
 pub fn would_block(e: i32) -> bool {
     e == libc::EAGAIN

@@ -67,11 +67,6 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
     }
 }
 
-/// Sleeps `ms` milliseconds.
-pub fn sleep_ms(ms: i64) {
-    sys::sleep_ms(ms as i32);
-}
-
 /// Whether a failed read or write only means "try later". A full non-blocking pipe reports
 /// success with zero bytes instead, so no error qualifies.
 pub fn would_block(_: i32) -> bool {
