@@ -156,6 +156,61 @@ pub unsafe fn write_string_list(items: &[*mut StrObj], out: *mut ms_rt_abi::VecV
     }
 }
 
+unsafe extern "C-unwind" {
+    fn msrt_map_new(out: *mut ms_rt_abi::MapVal);
+    fn msrt_map_add(
+        m: *mut ms_rt_abi::MapVal,
+        kd: *const ms_rt_abi::TypeDesc,
+        vd: *const ms_rt_abi::TypeDesc,
+        key: *mut u8,
+        val: *mut u8,
+    );
+    static msrt_desc_string: ms_rt_abi::TypeDesc;
+    static msrt_desc_int: ms_rt_abi::TypeDesc;
+}
+
+/// A value of a `Map[String, _]` built by [`write_string_map`].
+pub enum MapValue<'a> {
+    /// A `String` value.
+    Str(&'a [u8]),
+    /// An `Int` value.
+    Int(i64),
+}
+
+/// Initialises `*out` with a `Map[String, String]` (`ints` false) or `Map[String, Int]` (`ints`
+/// true) holding `pairs`; the value kind must match `ints`.
+///
+/// # Safety
+/// `out` must be writable.
+pub unsafe fn write_string_map<'a>(
+    pairs: impl IntoIterator<Item = (&'a [u8], MapValue<'a>)>,
+    ints: bool,
+    out: *mut ms_rt_abi::MapVal,
+) {
+    // SAFETY: `out` is writable; each slot holds one owned element for the runtime to take.
+    unsafe {
+        msrt_map_new(out);
+        let vd: *const ms_rt_abi::TypeDesc = if ints {
+            &raw const msrt_desc_int
+        } else {
+            &raw const msrt_desc_string
+        };
+        for (k, v) in pairs {
+            let mut key = new_string(k);
+            let kd = &raw const msrt_desc_string;
+            match v {
+                MapValue::Str(b) => {
+                    let mut val = new_string(b);
+                    msrt_map_add(out, kd, vd, (&raw mut key).cast(), (&raw mut val).cast());
+                }
+                MapValue::Int(mut i) => {
+                    msrt_map_add(out, kd, vd, (&raw mut key).cast(), (&raw mut i).cast());
+                }
+            }
+        }
+    }
+}
+
 /// A refcounted runtime object (`Obj` header) wrapping a Rust value; used for handles such as open files.
 #[repr(C)]
 pub struct Handle<T> {

@@ -114,6 +114,7 @@ msrt_priority_queue_is_empty(q: *const PriorityQueueObj) -> u8
 msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
 msrt_argv(out: *mut VecVal)
+msrt_args_consume()
 msrt_args(out: *mut VecVal)
 msrt_string_empty() -> *mut StrObj
 msrt_string_hash(s: *const StrObj) -> i64
@@ -624,6 +625,18 @@ msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns:
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
 msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
+msstd_process_elapsed(out: *mut i64) -> u8
+msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8
+msstd_process_info_pid() -> i64
+msstd_process_info_parent_pid() -> i64
+msstd_process_info_executable() -> *mut StrObj
+msstd_process_info_arguments(out: *mut VecVal)
+msstd_process_info_os() -> *mut StrObj
+msstd_process_info_architecture() -> *mut StrObj
+msstd_process_info_uid() -> i64
+msstd_process_info_gid() -> i64
+msstd_process_info_effective_uid() -> i64
+msstd_process_info_effective_gid() -> i64
 msrt_cancel_flag (data)
 msrt_cancelled() -> !
 msrt_io_flush()
@@ -638,6 +651,40 @@ msrt_regex_replace_all( re: *const RegexObj, text: *const StrObj, replacement: *
 msrt_semver_parse(text: *const StrObj, out: *mut VersionRec) -> u8
 msrt_semver_format(v: *const VersionRec) -> *mut StrObj
 msrt_semver_compare(l: *const VersionRec, r: *const VersionRec) -> i64
+msstd_system_failure_message() -> *mut StrObj
+msstd_system_endianness() -> *mut StrObj
+msstd_system_end_of_line() -> *mut StrObj
+msstd_system_dev_null() -> *mut StrObj
+msstd_system_os_type() -> *mut StrObj
+msstd_system_info_os() -> *mut StrObj
+msstd_system_info_architecture() -> *mut StrObj
+msstd_system_info_cpu_count() -> i64
+msstd_system_working_directory() -> *mut StrObj
+msstd_system_hostname(out: *mut *mut StrObj) -> u8
+msstd_system_home_directory(out: *mut *mut StrObj) -> u8
+msstd_system_os_release(out: *mut *mut StrObj) -> u8
+msstd_system_os_version(out: *mut *mut StrObj) -> u8
+msstd_system_machine(out: *mut *mut StrObj) -> u8
+msstd_system_get_priority(pid: i64, out: *mut i64) -> u8
+msstd_system_set_priority(pid: i64, priority: i64) -> u8
+msstd_system_constants(out: *mut MapVal)
+msstd_system_user_info_status() -> u8
+msstd_system_user_info_username() -> *mut StrObj
+msstd_system_user_info_uid() -> i64
+msstd_system_user_info_gid() -> i64
+msstd_system_user_info_home() -> *mut StrObj
+msstd_system_user_info_shell() -> *mut StrObj
+msstd_terminal_failure_message() -> *mut StrObj
+msstd_terminal_capabilities_input_is_terminal() -> u8
+msstd_terminal_capabilities_output_is_terminal() -> u8
+msstd_terminal_capabilities_error_is_terminal() -> u8
+msstd_terminal_capabilities_raw_mode() -> u8
+msstd_terminal_capabilities_resize_events() -> u8
+msstd_terminal_capabilities_colors() -> i64
+msstd_terminal_size_status() -> u8
+msstd_terminal_size_columns() -> i64
+msstd_terminal_size_rows() -> i64
+msstd_terminal_raw_mode( _alternate_screen: u8, out: *mut *mut ms_std_rt::Handle<()>, ) -> u8
 msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64

@@ -1,0 +1,23 @@
+[package]
+name = "ms-std-system"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Manuscript standard-library natives for @std/system (host details and priorities over libc)"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-process = { path = "../ms-std-process" }
+ms-std-rt = { path = "../ms-std-rt" }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", default-features = false }
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt", features = ["std"] }
+
+[lints]
+workspace = true
