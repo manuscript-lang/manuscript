@@ -45,14 +45,17 @@ jobs:
         with:
           shared-key: native-codegen-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Select native Windows Rust host
+      - name: Select native Windows Rust host and MSVC linker
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [ '${{ matrix.arch }}' = arm64 ]; then
-            rustup set default-host aarch64-pc-windows-msvc
-          else
-            rustup set default-host x86_64-pc-windows-msvc
-          fi
+          $rustTarget = if ('${{ matrix.arch }}' -eq 'arm64') { 'aarch64-pc-windows-msvc' } else { 'x86_64-pc-windows-msvc' }
+          rustup set default-host $rustTarget
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+          $linkerKey = 'CARGO_TARGET_' + $rustTarget.ToUpper().Replace('-', '_') + '_LINKER'
+          "$linkerKey=$msvcLinker" >> $env:GITHUB_ENV
+          Write-Output "Rust linker: $msvcLinker"
       - name: Record native host and compiler
         run: |
           rustc -Vv
