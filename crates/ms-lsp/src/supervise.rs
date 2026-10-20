@@ -150,7 +150,8 @@ impl<W: Write> Supervisor<'_, W> {
             let method = message.get("method").and_then(|m| m.as_str()).unwrap_or("");
             let params = message.get("params");
             if let Some(id) = message.get("id").filter(|_| !method.is_empty()) {
-                self.inflight.insert(id.encode(), id.clone());
+                self.inflight
+                    .insert(id.compact(ms_json::Escape::Plain), id.clone());
             }
             match method {
                 "initialize" => self.initialize = Some(message.clone()),
@@ -238,7 +239,7 @@ impl<W: Write> Supervisor<'_, W> {
                 if id.as_str() == Some(REPLAY_ID) {
                     return Ok(());
                 }
-                self.inflight.remove(&id.encode());
+                self.inflight.remove(&id.compact(ms_json::Escape::Plain));
             }
         }
         self.send_client(&String::from_utf8_lossy(frame))
@@ -273,7 +274,7 @@ impl<W: Write> Supervisor<'_, W> {
                     ]),
                 ),
             ]);
-            self.send_client(&failure.encode())?;
+            self.send_client(&failure.compact(ms_json::Escape::Plain))?;
         }
         if self.restarts.len() > RESTART_LIMIT {
             return Err("language server keeps crashing".to_string());
@@ -281,14 +282,14 @@ impl<W: Write> Supervisor<'_, W> {
         self.start()?;
         if let Some(mut initialize) = self.initialize.clone() {
             initialize.set("id", REPLAY_ID.into());
-            self.send_worker(initialize.encode().as_bytes());
+            self.send_worker(initialize.compact(ms_json::Escape::Plain).as_bytes());
             if self.initialized {
                 let notice = obj([
                     ("jsonrpc", "2.0".into()),
                     ("method", "initialized".into()),
                     ("params", obj([])),
                 ]);
-                self.send_worker(notice.encode().as_bytes());
+                self.send_worker(notice.compact(ms_json::Escape::Plain).as_bytes());
             }
             let docs: Vec<Document> = self.docs.values().cloned().collect();
             for d in docs {
@@ -308,7 +309,7 @@ impl<W: Write> Supervisor<'_, W> {
                         )]),
                     ),
                 ]);
-                self.send_worker(open.encode().as_bytes());
+                self.send_worker(open.compact(ms_json::Escape::Plain).as_bytes());
             }
         }
         Ok(())

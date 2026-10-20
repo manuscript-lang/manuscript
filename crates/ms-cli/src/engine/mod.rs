@@ -13,6 +13,7 @@
 mod build;
 mod run;
 mod runtime;
+mod search;
 pub mod testing;
 mod tooling;
 mod watch;
@@ -26,7 +27,8 @@ use ms_driver::{
 
 use crate::backend::{
     AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest, BuildType, DiagramRequest,
-    FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, TestRequest,
+    FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, SearchSymbolRequest,
+    TestRequest,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -111,6 +113,19 @@ impl<L: Lower> Backend for RustBackend<L> {
 
     fn review(&self, request: &ReviewRequest, io: &mut Io) -> BackendResult {
         tooling::review(request, io)
+    }
+
+    fn format_source(&self, file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+        tooling::format_source(file, source)
+    }
+
+    fn search_symbol(&self, request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
+        search::search_symbol(request, io)
+    }
+
+    fn guide(&self, io: &mut Io) -> BackendResult {
+        let _ = write!(io.stdout, "{}", ms_guide::cheatsheet());
+        Ok(0)
     }
 
     fn drop_redundant_labels(

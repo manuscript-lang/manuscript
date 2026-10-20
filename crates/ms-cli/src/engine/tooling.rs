@@ -280,7 +280,7 @@ fn ordered(diagnostics: Vec<CommandDiagnostic>) -> Vec<CommandDiagnostic> {
     let mut seen = BTreeSet::new();
     let mut unique: Vec<CommandDiagnostic> = diagnostics
         .into_iter()
-        .filter(|d| seen.insert(d.to_json().encode()))
+        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::GoHtml)))
         .collect();
     unique.sort_by(|a, b| {
         let key = |d: &CommandDiagnostic| {
@@ -326,7 +326,9 @@ pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendRe
         Err(done) => return done,
     };
     let program = checked.program.as_ref().expect("accepted program");
-    let mut text = inspect(program).to_json().encode();
+    let mut text = inspect(program)
+        .to_json()
+        .pretty_line(ms_json::Escape::GoHtml);
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
@@ -590,4 +592,11 @@ pub(super) fn drop_redundant_labels(
         )));
     };
     Ok(ms_tooling::labels::drop_redundant_labels(program, source).0)
+}
+
+/// `ms fmt`: the formatter in `ms-syntax`; source that does not parse is reported, never rewritten.
+pub(super) fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+    let name: std::sync::Arc<str> = file.display.as_str().into();
+    ms_syntax::format::format(&name, source)
+        .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
 }

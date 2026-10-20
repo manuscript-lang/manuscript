@@ -32,6 +32,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - name: Keep native test artifacts in runner storage
+        run: |
+          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
         with:
@@ -66,12 +69,53 @@ jobs:
           else
             cc --version
           fi
+      - name: Install LLVM native debug consumers
+        if: inputs.dwarf
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y llvm
+          elif [ "$RUNNER_OS" = macOS ]; then
+            brew install llvm
+            echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          elif [ "$RUNNER_OS" = Windows ] && [ '${{ matrix.arch }}' = arm64 ]; then
+            echo 'C:/Program Files/LLVM/bin' >> "$GITHUB_PATH"
+          fi
+      - name: Cache Windows x64 LLVM consumers
+        if: inputs.dwarf && runner.os == 'Windows' && matrix.arch == 'amd64'
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/llvm-debug-19.1.7
+          key: llvm-debug-windows-x64-19.1.7-b4557b4f
+      - name: Install Windows x64 LLVM consumers
+        if: inputs.dwarf && runner.os == 'Windows' && matrix.arch == 'amd64'
+        run: |
+          temp_root=$(cygpath -u "$RUNNER_TEMP")
+          tools="$temp_root/llvm-debug-19.1.7"
+          if [ ! -x "$tools/llvm-dwarfdump.exe" ] || [ ! -x "$tools/llvm-symbolizer.exe" ]; then
+            archive="$temp_root/llvm-debug-19.1.7.tar.xz"
+            curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/clang%2Bllvm-19.1.7-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
+            echo "b4557b4f012161f56a2f5d9e877ab9635cafd7a08f7affe14829bd60c9d357f0  $archive" | sha256sum --check
+            mkdir -p "$tools"
+            tar -xJf - -C "$tools" --strip-components=2 \
+              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
+              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
+          fi
+          cygpath -w "$tools" >> "$GITHUB_PATH"
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Native overflow, fault positions, cleanup and inline frames
         run: |
           cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
           cargo test --locked -p ms-clif --test native fault_trace_on_real_runtime -- --nocapture
+      - name: Native object and linked source attribution
+        if: inputs.dwarf
+        run: |
+          llvm-dwarfdump --version
+          llvm-symbolizer --version
+          cargo test --locked -p ms-clif --test dwarf -- --nocapture
+          cargo test --locked -p ms-driver --test debug_artifacts -- --nocapture
+          cargo test --locked -p ms-driver --lib -- --nocapture
       - name: Preserve native test artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -80,4 +124,5 @@ jobs:
           path: |
             ${{ runner.temp }}/ms-clif-tests-*
             ${{ runner.temp }}/ms-dwarf-*
+            ${{ runner.temp }}/ms-driver-debug-*
           if-no-files-found: warn

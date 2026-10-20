@@ -1635,6 +1635,47 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
             }
+            Op::AltUnbox => {
+                let Imm::AltField(a, c, i) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let case = self.alt_fields(a)[c as usize].clone();
+                let v = self.a(inst, 0);
+                let boxed = match self.g.lay.shape(ty).alt {
+                    Some(AltRepr::Boxed { block, .. }) => Some(block),
+                    _ => None,
+                };
+                // Read every payload leaf of the case, drop all fields but `i`, free the block.
+                let fields: Vec<Vs> = case
+                    .iter()
+                    .map(|(_, idx)| match &boxed {
+                        Some(block) => {
+                            let lay = mem_layout(block);
+                            idx.iter()
+                                .map(|k| {
+                                    self.b.ins().load(
+                                        leaf_type(block[*k]),
+                                        flags(),
+                                        v[0],
+                                        lay.offsets[*k] as i32,
+                                    )
+                                })
+                                .collect()
+                        }
+                        None => idx.iter().map(|k| v[*k]).collect(),
+                    })
+                    .collect();
+                for (k, ((fty, _), fv)) in case.iter().zip(&fields).enumerate() {
+                    if k != i as usize {
+                        self.drop_value(*fty, fv);
+                    }
+                }
+                if boxed.is_some() {
+                    self.free(v[0]);
+                }
+                fields[i as usize].clone()
+            }
             Op::ListNew
             | Op::ListLit
             | Op::ListLen

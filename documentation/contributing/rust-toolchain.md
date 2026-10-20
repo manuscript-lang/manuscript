@@ -16,7 +16,7 @@ cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
 
-`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively; on pull requests the darwin and windows legs are experimental and may fail without turning the check red, while a release tag requires all six.
+`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively, and every leg gates the check.
 
 `.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them. On Windows, fault reporting uses native unwind records to reach the first generated source frame, then follows contiguous generated callers. Attribution stops at a native callback or generated glue boundary; complete mixed native/generated stack unwinding is not supported.
 
@@ -64,15 +64,15 @@ The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/cr
 The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these differences.
 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
-- **No debugger.** `ms debug` and the debugger adapter are not part of the Rust `ms`; use `ms profile` (folded stacks, pprof, top report) or `perf` on any `ms build` output, which keeps frame pointers, DWARF line tables, and a perf map.
+- **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
 - **`ms emit` is not implemented.** It reports that the Go `ms` is needed. The Rust backend produces object code, not Go source.
-- **Linking uses the system `cc`.** A bundled linker is planned.
+- **Linking uses host tools.** Unix builds use `cc`; macOS also needs `dsymutil` (override with `MS_DSYMUTIL`) and writes `<output>.dSYM` beside the executable. Keep that bundle with the executable for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections. `MS_LINKER` overrides the compiler driver. A bundled linker is planned.
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
 - **No concurrency runtime.** Tasks are cooperative and single-threaded; cancellation exists for signals and shutdown only.
 - **Exit codes.** A fault exits 70, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
 - **Math.** `@std/math` calls the host libm; results can differ from Go in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
 - **`ms test --shuffle`** uses its own random generator, so orders differ from the Go `ms`; fixtures run once per test, not once per module.
 - **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ from Go where the corpus does not pin them.
-- **Windows.** The standard crates follow Go's Windows behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds are experimental until their runtime ports land.
+- **Windows.** The standard crates follow Go's Windows behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds gate CI like Linux.
 
 Anything the Rust `ms` does only to match the Go output is recorded and tracked for removal after cutover. Do not add code solely to reproduce Go output where Rust std covers the concept.

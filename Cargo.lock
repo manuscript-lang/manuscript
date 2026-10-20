@@ -958,6 +958,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mio"
+version = "1.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1788edb87fdc09c7e26304471e2f5be8cdefb1b6930d6e3985fc02ff53bf86ee"
+dependencies = [
+ "libc",
+ "wasi",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ms-check"
 version = "0.0.0"
 dependencies = [
@@ -971,6 +982,8 @@ dependencies = [
  "libc",
  "ms-check",
  "ms-driver",
+ "ms-guide",
+ "ms-json",
  "ms-lower",
  "ms-lsp",
  "ms-mir",
@@ -989,6 +1002,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
+ "gimli",
  "ms-mir",
  "ms-rt-abi",
  "target-lexicon",
@@ -997,6 +1011,9 @@ dependencies = [
 [[package]]
 name = "ms-conform"
 version = "0.1.0"
+dependencies = [
+ "ms-json",
+]
 
 [[package]]
 name = "ms-driver"
@@ -1015,8 +1032,13 @@ name = "ms-guide"
 version = "0.1.0"
 dependencies = [
  "ms-check",
+ "ms-json",
  "ms-syntax",
 ]
+
+[[package]]
+name = "ms-json"
+version = "0.1.0"
 
 [[package]]
 name = "ms-lower"
@@ -1035,6 +1057,7 @@ version = "0.0.0"
 dependencies = [
  "ms-check",
  "ms-driver",
+ "ms-json",
  "ms-project",
  "ms-syntax",
  "ms-tooling",
@@ -1084,6 +1107,7 @@ version = "0.1.0"
 name = "ms-rt"
 version = "0.1.0"
 dependencies = [
+ "mio",
  "ms-rt-abi",
  "ms-std-fs",
  "ms-std-io",
@@ -1247,6 +1271,9 @@ dependencies = [
 [[package]]
 name = "ms-std-math"
 version = "0.1.0"
+dependencies = [
+ "ms-std-core",
+]
 
 [[package]]
 name = "ms-std-net"
@@ -1376,7 +1403,7 @@ name = "ms-tooling"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-cli",
+ "ms-json",
  "ms-syntax",
 ]
 
