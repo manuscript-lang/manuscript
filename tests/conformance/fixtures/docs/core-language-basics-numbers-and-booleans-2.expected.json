@@ -20,7 +20,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Float, found Int; Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value",
+        "message": "expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value",
         "position": {
           "file": "core-language-basics-numbers-and-booleans-2.ms",
           "line": 9,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:9:27: type: expected Float, found Int; Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:9:27: type: expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

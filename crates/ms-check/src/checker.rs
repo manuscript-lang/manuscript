@@ -164,6 +164,8 @@ impl ImportMap {
 
 /// The checker.
 pub struct Checker {
+    /// Where the next checked expression is used, e.g. "argument 'a' of f".
+    pub(crate) mismatch_context: Option<String>,
     pub(crate) scope_marker: Option<String>,
     pub(crate) standard_declarations: bool,
     pub(crate) deferred_default_bounds: Vec<DeferredBound>,
@@ -200,6 +202,7 @@ impl Checker {
     /// A fresh checker.
     pub fn new(options: &CheckOptions) -> Checker {
         Checker {
+            mismatch_context: None,
             scope_marker: options.scope_marker.clone(),
             standard_declarations: false,
             deferred_default_bounds: Vec::new(),

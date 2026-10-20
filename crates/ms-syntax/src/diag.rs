@@ -81,8 +81,14 @@ impl Diagnostic {
 
     /// Stable rule family code (`MS1000`, ...).
     pub fn code(&self) -> &'static str {
-        // Messages read "<cause>; <fix>". Only the cause identifies the rule.
-        let message = self.message.split("; ").next().unwrap_or("");
+        // Messages read "<cause>; <fix>". Only the cause identifies the rule, not a
+        // trailing " (in <use site>)" context.
+        let message = self
+            .message
+            .split("; ")
+            .next()
+            .and_then(|cause| cause.split(" (in ").next())
+            .unwrap_or("");
         match self.phase {
             Phase::Parse => {
                 if message.starts_with("string-literal match patterns") {

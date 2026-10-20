@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Bool, found Int",
+        "message": "expected Bool, found Int (in an if condition)",
         "position": {
           "file": "seed-0094.ms",
           "line": 20,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0094.ms:20:8: type: expected Bool, found Int\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0094.ms:20:8: type: expected Bool, found Int (in an if condition)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
