@@ -17,6 +17,8 @@ if [ "$host" = windows ]; then exe=.exe; fi
 
 cargo build --locked -q -p ms-cli -p ms-conform
 
+"target/release/ms-conform$exe" lint
+
 mkdir -p .artifacts
 allow=.artifacts/conform-rust-expect-fail.txt
 cp tests/conformance/rust-expect-fail.txt "$allow"
