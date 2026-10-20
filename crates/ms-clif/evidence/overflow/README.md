@@ -81,7 +81,7 @@ This commit is independent of the subsequent DWARF line-table commit.
 
 The delivery branch integrates main `a664e0d1`, including Map/Set memory homes;
 its new `overflow_result` is retained alongside the new home state. The six native
-runner jobs in `codegen-platforms.yml` run MIR boundary tests and the compiled
+`Rust <os>-<arch>` jobs in `cicd.yml` run MIR boundary tests and the compiled
 fault/cleanup/inline-frame regressions on Linux, macOS, and Windows, each x64 and
 arm64. They are dependencies of the required Rust aggregate, without allowed
 failures. Pending CI results are not evidence of platform support. The older
