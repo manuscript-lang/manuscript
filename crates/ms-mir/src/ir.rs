@@ -278,7 +278,7 @@ pub enum Op {
     // Strings.
     StrLen,
     // Shared[T].
-    SharedNew, SharedGet,
+    SharedNew, SharedGet, SharedAddr,
     // Closures and interface views.
     ClosureNew, ClosureCap, IfaceNew, IfaceData, IfaceIs,
     // Ownership.
@@ -392,7 +392,7 @@ impl Op {
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListPush,
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
-        Op::StrLen, Op::SharedNew, Op::SharedGet,
+        Op::StrLen, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
@@ -470,6 +470,7 @@ impl Op {
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
             Op::SharedNew => ("shared.new", K::None, true, effects!(alloc)),
             Op::SharedGet => ("shared.get", K::None, true, effects!(reads)),
+            Op::SharedAddr => ("shared.addr", K::None, true, effects!(reads)),
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
