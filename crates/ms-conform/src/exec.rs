@@ -1,6 +1,7 @@
 //! Run a child process with captured output, optional stdin and a hard timeout.
 
 use std::io::{Read, Write};
+#[cfg(unix)]
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -46,8 +47,9 @@ pub fn run(
         .current_dir(cwd)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .process_group(0);
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    command.process_group(0);
     for (k, v) in env {
         command.env(k, v);
     }
@@ -114,7 +116,7 @@ pub fn run(
     let stdout = out_thread.join().unwrap_or_default();
     let stderr = err_thread.join().unwrap_or_default();
     let code = match status {
-        Some(s) => s.code().unwrap_or_else(|| 128 + s.signal().unwrap_or(0)),
+        Some(s) => exit_code(s),
         None => 127,
     };
     Output {
@@ -127,6 +129,19 @@ pub fn run(
     }
 }
 
+#[cfg(unix)]
+fn exit_code(status: std::process::ExitStatus) -> i32 {
+    status
+        .code()
+        .unwrap_or_else(|| 128 + status.signal().unwrap_or(0))
+}
+
+#[cfg(not(unix))]
+fn exit_code(status: std::process::ExitStatus) -> i32 {
+    status.code().unwrap_or(127)
+}
+
+#[cfg(unix)]
 fn kill_group(pid: u32) {
     let _ = Command::new("kill")
         .args(["-KILL", "--", &format!("-{pid}")])
@@ -135,7 +150,17 @@ fn kill_group(pid: u32) {
         .status();
 }
 
-#[cfg(test)]
+/// `taskkill /T` ends the process tree rooted at `pid`.
+#[cfg(not(unix))]
+fn kill_group(pid: u32) {
+    let _ = Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
+
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

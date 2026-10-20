@@ -680,7 +680,13 @@ impl Scanner<'_> {
                     }
                     self.advance();
                 } else if !b"\"\\nrt{}".contains(&c) {
-                    return self.fail_at(backslash, format!("unknown text escape \\{}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}", char::from(c)));
+                    let escape = if c.is_ascii_graphic() {
+                        format!(" \\{}", char::from(c))
+                    } else {
+                        let full = self.text[self.offset - 1..].chars().next().unwrap();
+                        format!(": a backslash followed by {}", quote_rune(full))
+                    };
+                    return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
                 }
             } else if b == b'{' {
                 self.scan_interpolation()?;

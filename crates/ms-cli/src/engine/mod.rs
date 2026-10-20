@@ -103,6 +103,19 @@ impl<L: Lower> Backend for RustBackend<L> {
         tooling::analysis(request, io)
     }
 
+    fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
+        let compiled = match compile(self, &request.filename, BuildType::Release, false) {
+            Ok(compiled) => compiled,
+            Err(failure) => return Ok(failure.report(io)),
+        };
+        let text = ms_mir::print::print_module(&compiled.module);
+        Ok(crate::util::write_output(
+            io,
+            &request.output,
+            text.as_bytes(),
+        ))
+    }
+
     fn inspect(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
         tooling::inspect_command(request, io)
     }
@@ -258,13 +271,7 @@ pub(crate) fn compile<L: Lower>(
         debug: kind == BuildType::Debug,
     };
     let lowered = if tests {
-        backend
-            .lowering
-            .lower_tests(program, &entry, &options)
-            .map(|(module, names)| {
-                let names = names.into_iter().map(|n| format!("{entry}::{n}")).collect();
-                (module, names)
-            })
+        backend.lowering.lower_tests(program, &entry, &options)
     } else {
         backend
             .lowering

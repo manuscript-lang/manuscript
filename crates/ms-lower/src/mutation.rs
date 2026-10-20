@@ -31,12 +31,43 @@ struct Edge {
     target: Target,
 }
 
-/// Finds the root local of a place expression (`a`, `a.b.c`).
-pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
-    let mut cur = e;
-    while let ExprKind::Member { left, .. } = &cur.kind {
-        cur = left;
+/// The base and index of an element read `xs[i]`. The parser reads `xs[name]` as an `Apply`
+/// node that the checker resolves to an index, so both spellings count.
+pub(crate) fn index_parts<'e>(hir: &ModuleHir, e: &'e Expr) -> Option<(&'e Expr, &'e Expr)> {
+    match &e.kind {
+        ExprKind::Index { left, index } => Some((left, index)),
+        ExprKind::Apply {
+            left,
+            value: Some(index),
+            ..
+        } if is_index_apply(hir, e) => Some((left, index)),
+        _ => None,
     }
+}
+
+/// Whether an `Apply` node is really an index read (`xs[i]`).
+pub(crate) fn is_index_apply(hir: &ModuleHir, e: &Expr) -> bool {
+    hir.info(e).native_str() == "index"
+        || matches!(hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
+}
+
+/// Peels field selections and element reads off a place expression down to its base.
+pub(crate) fn place_base<'e>(hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
+    let mut cur = e;
+    loop {
+        if let ExprKind::Member { left, .. } = &cur.kind {
+            cur = left;
+        } else if let Some((left, _)) = index_parts(hir, cur) {
+            cur = left;
+        } else {
+            return cur;
+        }
+    }
+}
+
+/// Finds the root local of a place expression (`a`, `a.b.c`, `a[i].c`).
+pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
+    let cur = place_base(hir, e);
     match hir.resolution(cur) {
         Resolution::Local(b) => Some(b.uid),
         _ => None,
@@ -81,6 +112,42 @@ pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
     let mut v = Uses { hir, uid, count: 0 };
     ms_syntax::visit::walk_expr(&mut v, e);
     v.count
+}
+
+/// Whether the statements read, name, or change the local `uid` anywhere, closures included.
+pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool {
+    struct Mentions<'h> {
+        hir: &'h ModuleHir,
+        uid: usize,
+        found: bool,
+    }
+    impl Visitor for Mentions<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if let Resolution::Local(b) = self.hir.resolution(e)
+                && b.uid == self.uid
+            {
+                self.found = true;
+            }
+        }
+        fn stmt(&mut self, s: &Stmt) {
+            if let StmtKind::Assign {
+                target: AssignTarget::Name(_),
+                value,
+                ..
+            } = &s.kind
+                && self.hir.assigned(value).is_some_and(|b| b.uid == self.uid)
+            {
+                self.found = true;
+            }
+        }
+    }
+    let mut v = Mentions {
+        hir,
+        uid,
+        found: false,
+    };
+    ms_syntax::visit::walk_block(&mut v, body);
+    v.found
 }
 
 /// The locals a body assigns to or mutates in place, and the source calls they feed.

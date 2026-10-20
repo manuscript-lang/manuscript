@@ -11,7 +11,7 @@ Each diagnostic has a stable rule code, a message, and a source position, plus a
 
 Messages read `<cause>; <fix>`. The cause has stable wording naming the offending name, type, or count.
 
-The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/faults.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported. New messages extend the matching test in `pkg/checker/hints_test.go`, `pkg/parser/hints_test.go`, or `internal/cli/cli_test.go`.
+The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/faults.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported. New messages extend the matching tests in `crates/ms-check/tests`, `crates/ms-syntax/tests`, or `crates/ms-cli/tests`.
 
 ## Explaining a violated rule
 

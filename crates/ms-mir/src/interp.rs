@@ -826,7 +826,7 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Bool(*p == 0));
             }
-            Op::ListAddr | Op::PtrField | Op::SharedAddr => {
+            Op::ListAddr | Op::ListAddrU | Op::PtrField | Op::SharedAddr => {
                 return Err(Raw::internal(
                     "interior pointers are not supported by the interpreter",
                 ));

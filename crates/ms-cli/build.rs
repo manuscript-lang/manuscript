@@ -38,7 +38,7 @@ fn embed_native(crates: &Path) {
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
     let archive = match std::env::var_os("MS_NATIVE_LIB") {
         Some(prebuilt) => PathBuf::from(prebuilt),
-        None => build_native(&out, crates),
+        None => strip_debug(&out, build_native(&out, crates)),
     };
     let bytes =
         std::fs::read(&archive).unwrap_or_else(|e| panic!("read {}: {e}", archive.display()));
@@ -82,6 +82,44 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
     } else {
         "release/libms_native.a"
     })
+}
+
+/// Drops the debug sections the toolchain's precompiled std, core and alloc objects carry (about 4 MB
+/// of every linked program). A copy is stripped, so the shared `ms-native` build stays intact. Without
+/// a strip tool the archive is used as built.
+fn strip_debug(out: &Path, archive: PathBuf) -> PathBuf {
+    let stripped = out.join("libms_native.stripped");
+    if std::fs::copy(&archive, &stripped).is_err() {
+        return archive;
+    }
+    let flag = if cfg!(target_os = "macos") {
+        "-S"
+    } else {
+        "--strip-debug"
+    };
+    // GNU `strip` first on Linux: `llvm-strip --strip-debug` rewrites the GCC-built objects of `ring`
+    // (`.group` sections) into files GNU ld refuses ("file format not recognized"), so every program
+    // that linked TLS or crypto failed wherever LLVM binutils were installed.
+    let tools = if cfg!(target_os = "linux") {
+        ["strip", "llvm-strip"]
+    } else {
+        ["llvm-strip", "strip"]
+    };
+    for tool in tools {
+        if Command::new(tool)
+            .arg(flag)
+            .arg(&stripped)
+            .status()
+            .is_ok_and(|status| status.success())
+        {
+            return stripped;
+        }
+        // A failed tool may have left a partial file: start the next one from the original.
+        if std::fs::copy(&archive, &stripped).is_err() {
+            return archive;
+        }
+    }
+    archive
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {

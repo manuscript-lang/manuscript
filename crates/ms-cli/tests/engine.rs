@@ -251,6 +251,62 @@ fn native_tests_run_one_process_each() {
     assert!(json.contains("\"passed\": 1"), "{json}");
 }
 
+/// `ms test ms.toml` runs the project's `test.ms` and `*_test.ms`, not only the entry module.
+#[test]
+fn project_test_runs_test_files() {
+    let dir = scratch("project-test");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"p\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+    );
+    write(&dir, "src/main.ms", MAIN);
+    write(
+        &dir,
+        "test.ms",
+        "test \"top\":\n    if 1 + 1 != 2:\n        return\n",
+    );
+    write(
+        &dir,
+        "extra_test.ms",
+        "test \"more\":\n    if 1 + 1 != 2:\n        return\n",
+    );
+    let backend = RustBackend::new(Native);
+    let manifest = dir.join("ms.toml").to_string_lossy().into_owned();
+    let (status, stdout, err) = ms(&backend, &["test", &manifest]);
+    assert_eq!(status, 0, "{stdout}{err}");
+    for line in ["test.ms::top", "extra_test.ms::more", "2 tests, 0 failed"] {
+        assert!(stdout.contains(line), "{line} missing in {stdout}");
+    }
+}
+
+/// `ms build -o` creates the output's missing parent directories.
+#[test]
+fn build_creates_missing_output_directories() {
+    let dir = scratch("build-parents");
+    let source = write(&dir, "main.ms", MAIN);
+    let output = dir.join("out/nested/app");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(
+        &backend,
+        &["build", &source, "-o", &output.to_string_lossy()],
+    );
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(output.is_file());
+}
+
+/// `ms emit` prints the lowered intermediate code.
+#[test]
+fn emit_prints_the_lowered_program() {
+    let dir = scratch("emit");
+    let source = write(&dir, "main.ms", MAIN);
+    let backend = RustBackend::new(Native);
+    let (status, stdout, err) = ms(&backend, &["emit", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(stdout.contains("fn @main"), "{stdout}");
+}
+
 /// Drop and copy of a long chain of a recursive alternative loop over its tail; the copy keeps
 /// every payload (`Tag(n, ..)`) and the original stays intact.
 #[test]
@@ -403,4 +459,21 @@ fn native_stdout_flush_reaches_a_pipe_immediately() {
     child.wait().unwrap();
     assert_eq!(line, "first\n");
     assert!(took < Duration::from_secs(2), "{took:?}");
+}
+
+/// The TLS stack's C objects survive the debug strip of the embedded archive: a program that
+/// serves HTTP links. `llvm-strip --strip-debug` once corrupted `ring`'s objects for GNU ld.
+#[test]
+fn native_programs_using_tls_and_http_link() {
+    let dir = scratch("native-link-net");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            return 0\n    return 1\n",
+    );
+    let exe = dir.join("net");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert_eq!(Command::new(&exe).status().unwrap().code(), Some(0));
 }

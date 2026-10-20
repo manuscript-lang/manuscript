@@ -1,47 +1,27 @@
-//! The two OS clock calls behind `time.clock()`, and `time.wall_clock()`.
-#![allow(unsafe_code)]
+//! Portable clocks behind the native time wrappers.
 
-use core::sync::atomic::{AtomicI64, Ordering};
-
-#[repr(C)]
-struct Timespec {
-    tv_sec: i64,
-    tv_nsec: i64,
-}
-
-unsafe extern "C" {
-    fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
-}
-
-const CLOCK_REALTIME: i32 = 0;
-#[cfg(target_os = "macos")]
-const CLOCK_MONOTONIC: i32 = 6;
-#[cfg(not(target_os = "macos"))]
-const CLOCK_MONOTONIC: i32 = 1;
-
-fn read_clock(clock: i32) -> (i64, i64) {
-    let mut t = Timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: `t` is writable.
-    unsafe { clock_gettime(clock, &mut t) };
-    (t.tv_sec, t.tv_nsec)
-}
-
-/// Wall-clock seconds and nanoseconds since the Unix epoch.
+/// Seconds and nanoseconds since the Unix epoch; the nanoseconds stay in `0..1e9` before it too.
 pub fn realtime() -> (i64, i64) {
-    read_clock(CLOCK_REALTIME)
+    use std::time::{SystemTime, UNIX_EPOCH};
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => (d.as_secs() as i64, i64::from(d.subsec_nanos())),
+        Err(e) => {
+            let d = e.duration();
+            let nanos = i64::from(d.subsec_nanos());
+            if nanos == 0 {
+                (-(d.as_secs() as i64), 0)
+            } else {
+                (-(d.as_secs() as i64) - 1, 1_000_000_000 - nanos)
+            }
+        }
+    }
 }
 
 /// Nanoseconds since the first reading in this process.
 pub fn monotonic_since_start() -> i64 {
-    static START: AtomicI64 = AtomicI64::new(i64::MIN);
-    let (s, n) = read_clock(CLOCK_MONOTONIC);
-    let now = s * 1_000_000_000 + n;
-    let start = match START.compare_exchange(i64::MIN, now, Ordering::Relaxed, Ordering::Relaxed) {
-        Ok(_) => now,
-        Err(start) => start,
-    };
-    now - start
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos() as i64
 }

@@ -108,10 +108,7 @@ and anchors; update incoming links and add redirects when a move needs them.
 
 ## 5. Verify the experience
 
-- Register complete examples with `manuscript-example` expectations in the
-  existing [example harness](../../tests/examples/examples_test.go). Confirm
-  discovery, including homepage shortcodes and filename-attributed fences;
-  an annotation alone does not register a new source. Run the published examples
+- Check complete examples with `make docs-check` and run the published examples
   natively and exercise the actual displayed commands in disposable directories.
   Follow the complete first-run sequence, including downloads, paths, edits,
   arguments, and executable output. Use isolated files, stdin, and loopback

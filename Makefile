@@ -49,9 +49,7 @@ build:
 # answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
 # CONFORM_SHARD=i/n splits the run.
 conform-rust:
-	cargo build -q -p ms-cli -p ms-conform
-	target/debug/ms-conform lint
-	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-rust.md
+	sh scripts/conform-rust.sh
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:

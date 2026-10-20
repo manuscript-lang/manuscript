@@ -221,7 +221,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let ExprKind::Index { left, index } = &cur.kind {
+        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
@@ -271,7 +271,7 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
-        if let ExprKind::Index { left, index } = &cur.kind {
+        if let Some((left, index)) = crate::mutation::index_parts(&self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
             let i = self.expr(index)?;
             if self.dead {
@@ -555,6 +555,16 @@ impl<'a> FnLower<'a> {
         Ok(Some((a.v, b.v)))
     }
 
+    /// Whether `iter` is a plain local that `body` never mentions.
+    fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
+        matches!(&iter.kind, ExprKind::Name(_))
+            && matches!(
+                self.hir.resolution(iter),
+                ms_check::hir::Resolution::Local(b)
+                    if !crate::mutation::block_mentions(&self.hir, body, b.uid)
+            )
+    }
+
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let loop_var = self
             .hir
@@ -590,7 +600,16 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let var = self.bind_hidden(it);
+                let var = if self.iterates_untouched_local(iter, body) && !it.own {
+                    // The body never names the list, so it cannot change or release it:
+                    // walk the local in place instead of copying it.
+                    let ty = self.ty_of(it.v);
+                    let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
+                    self.b.def_var(var, it.v);
+                    var
+                } else {
+                    self.bind_hidden(it)
+                };
                 list_var = Some(var);
                 let list = self.b.use_var(var);
                 (self.b.iconst(0), self.b.list_len(list))

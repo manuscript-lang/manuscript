@@ -196,26 +196,31 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
     Ok(m)
 }
 
-/// Lowers the tests of `options.entry` with a runner as the entry; returns the test names.
+/// Lowers the tests of every project module (not the bundled standard library) with a runner
+/// as the entry; returns each test's `module::name` identity.
 pub(crate) fn lower_tests(
     program: &Program,
-    options: &Options,
+    _options: &Options,
 ) -> Result<(Module, Vec<String>), Error> {
     let mut cx = Cx::new(program);
     let mut m = Module::new("main");
-    let entry_file = ct::n(&options.entry);
-    let tests: Vec<Rc<Callable>> = cx
-        .module(entry_file)?
-        .callables()
-        .into_iter()
-        .filter(|c| c.kind == CallableKind::Test)
-        .map(|c| cx.callables[&(entry_file, c.id())].clone())
-        .collect();
+    let mut tests: Vec<(ct::Name, Rc<Callable>)> = Vec::new();
+    for module in &program.modules {
+        let file = module.file;
+        if file.as_str().starts_with("@std/") {
+            continue;
+        }
+        for c in cx.module(file)?.callables() {
+            if c.kind == CallableKind::Test {
+                tests.push((file, cx.callables[&(file, c.id())].clone()));
+            }
+        }
+    }
     let mut ids = Vec::new();
     let mut names = Vec::new();
-    for c in &tests {
+    for (file, c) in &tests {
         if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
-            names.push(t.name.to_string());
+            names.push(format!("{file}::{}", t.name));
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }

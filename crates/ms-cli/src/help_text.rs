@@ -10,7 +10,7 @@ Commands:
   check          Parse and type-check without executing
   lint           Check source hygiene and semantic lint rules
   build          Build a native executable
-  emit           Emit standalone Go source with the runtime
+  emit           Emit the lowered intermediate code as text
   run            Build and run an application
   test           Execute test blocks, including imported modules
   fmt            Format source files or a project
@@ -113,7 +113,7 @@ Options:
 
 Examples:
   ms emit main.ms
-  ms emit ms.toml -o main.go
+  ms emit ms.toml -o main.mir
 "#;
 
 pub const HELP_RUN: &str = r#"Usage: ms run <file.ms|ms.toml> [options] [-- program arguments]
