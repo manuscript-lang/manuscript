@@ -377,7 +377,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
     let me = rt::current_task();
     reactor.role.set(me);
+    let mut drain = DrainShield::default();
     loop {
+        drain.set(reactor.drains());
         PARKING.with(|p| p.set(true));
         let got = reactor.poller.park();
         PARKING.with(|p| p.set(false));
@@ -394,6 +396,31 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             reactor.task_started.set(false);
             return;
         }
+    }
+}
+
+/// Shields the reactor task (and the handlers it runs) from SIGINT/SIGTERM while a server with a
+/// nonzero `grace` is open, so in-flight requests finish within the grace period.
+#[derive(Default)]
+struct DrainShield(bool);
+
+impl DrainShield {
+    fn set(&mut self, want: bool) {
+        if want == self.0 {
+            return;
+        }
+        self.0 = want;
+        if want {
+            rt::shield();
+        } else {
+            rt::unshield();
+        }
+    }
+}
+
+impl Drop for DrainShield {
+    fn drop(&mut self) {
+        self.set(false);
     }
 }
 
@@ -414,6 +441,20 @@ pub(crate) fn give_up_reactor_role() {
 }
 
 impl Reactor {
+    /// Whether any open server or connection asked to drain in-flight requests on a stop.
+    fn drains(&self) -> bool {
+        self.targets.borrow().values().any(|t| {
+            let limits = match t {
+                Target::Listener(s) => s.upgrade().map(|s| s.limits.grace),
+                Target::Conn(c) => c
+                    .upgrade()
+                    .and_then(|c| c.server.upgrade())
+                    .map(|s| s.limits.grace),
+            };
+            limits.flatten().is_some_and(|g| !g.is_zero())
+        })
+    }
+
     /// Handles whatever is ready without blocking.
     fn service(&self) {
         let mut events = Vec::new();

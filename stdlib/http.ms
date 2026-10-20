@@ -235,6 +235,7 @@ export interface HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String
     # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
+    # SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
     fn close() Unit
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
