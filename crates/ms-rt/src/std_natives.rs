@@ -193,7 +193,7 @@ mod fs_io {
             assert_eq!(contents(&out), b"hellohello");
             assert_eq!(msstd_fs_stat(file, 1, info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((i.size, text(i.name).as_str()), (10, "a.txt"));
+            assert_eq!((i.size, text(i.name.as_ptr()).as_str()), (10, "a.txt"));
             let mut listed = VecVal {
                 ptr: core::ptr::null_mut(),
                 len: 0,
@@ -248,7 +248,8 @@ mod fs_io {
             st(&std::format!("{root}/sub/deep")),
             st(&std::format!("{root}-out")),
         );
-        let mut handle: *mut ms_std_rt::Handle<ms_std_fs::stream::Stream> = core::ptr::null_mut();
+        let mut handle: *mut ms_std_core::ObjCell<ms_std_fs::stream::Stream> =
+            core::ptr::null_mut();
         let mut out = empty();
         let mut size = 0i64;
         let data = vec_of(b"abcdef");
@@ -273,17 +274,14 @@ mod fs_io {
             assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
             ms_std_rt::release(handle.cast());
 
-            let mut cursor: *mut ms_std_rt::Handle<ms_std_fs::dir::Directory> =
+            let mut cursor: *mut ms_std_core::ObjCell<ms_std_fs::dir::Directory> =
                 core::ptr::null_mut();
             assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
-            let mut entry = ms_std_fs::EntryOut {
-                name: core::ptr::null_mut(),
-                directory: 0,
-                symlink: 0,
-            };
+            let mut entry = std::mem::MaybeUninit::<ms_std_fs::EntryOut>::uninit();
             let mut seen = Vec::new();
-            while msstd_fs_directory_read(cursor, &mut entry) == STATUS_OK {
-                seen.push((text(entry.name), entry.directory));
+            while msstd_fs_directory_read(cursor, entry.as_mut_ptr()) == STATUS_OK {
+                let e = entry.assume_init_read();
+                seen.push((text(e.name.as_ptr()), e.directory));
             }
             seen.sort();
             assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
@@ -340,7 +338,7 @@ mod fs_io {
         let root = std::format!("/tmp/msrt-watch-{}", std::process::id());
         let r = st(&root);
         let overflow = st("error");
-        let mut h: *mut ms_std_rt::Handle<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
         let (mut paths, mut kinds) = (empty(), empty());
         // SAFETY: valid runtime strings, live handles and writable outputs throughout.
         unsafe {
