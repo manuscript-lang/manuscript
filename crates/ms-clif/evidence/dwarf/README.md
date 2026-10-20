@@ -3,8 +3,10 @@
 The backend now emits DWARF4 `.debug_line`, `.debug_info`, `.debug_abbrev`, and
 `.debug_ranges` from Cranelift's final source spans. CU statement-list/range
 metadata lets native address consumers locate each function's line program.
-Addresses relocate against function symbols; offsets into debug sections relocate
-against their section symbols. Runtime `ms.tables` contents and fault-frame
+ELF/COFF addresses relocate against function symbols; Mach-O uses local text-section
+relocations with each function's offset in the stored addend, matching LLVM's
+assembler and allowing object consumers to distinguish functions before linking.
+Offsets into debug sections relocate against their section symbols. Runtime `ms.tables` contents and fault-frame
 behavior remain independent.
 
 Known spans end at their actual code end. An unknown location, invalid file, or
@@ -65,6 +67,13 @@ exercise native clang/lld linking with `/debug:dwarf`. These are test requiremen
 not claims that those targets have passed. Consumer output and generated artifacts
 are uploaded per native target. LLVM tools are required; a missing consumer fails
 the tests. No full debugger support follows from line-table validation.
+
+A supplemental Linux-hosted x86_64 object probe selected ELF, COFF, and Mach-O ISAs
+in a scratch copy of the backend. LLVM 19 verified all three formats. It exposed
+overlapping zero-address Mach-O function ranges with external debug relocations;
+local section relocations plus stored function offsets fix the verifier and let
+LLVM symbolize both functions' distinct source lines. This probe does not link or
+execute on macOS/Windows and does not establish native target coverage.
 
 ## Checks and review
 

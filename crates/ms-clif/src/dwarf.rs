@@ -182,8 +182,26 @@ pub fn emit(
             return Ok(());
         };
         for r in &s.relocations {
-            let (symbol, kind) = match r.target {
-                RelocationTarget::Symbol(i) => (symbols[i], RelocationKind::Absolute),
+            let (symbol, kind, addend) = match r.target {
+                RelocationTarget::Symbol(i) if product.object.format() == BinaryFormat::MachO => {
+                    // Mach-O DWARF consumers read section-relative addresses
+                    // from the object before linking. Use the same local
+                    // section relocation and baked function offset as llvm-mc.
+                    let function = product.object.symbol(symbols[i]);
+                    let section = function.section.id().ok_or_else(|| {
+                        Error("DWARF function is not defined in a section".into())
+                    })?;
+                    let offset = i64::try_from(function.value)
+                        .ok()
+                        .and_then(|v| v.checked_add(r.addend))
+                        .ok_or_else(|| Error("DWARF function offset is too large".into()))?;
+                    (
+                        product.object.section_symbol(section),
+                        RelocationKind::Absolute,
+                        offset,
+                    )
+                }
+                RelocationTarget::Symbol(i) => (symbols[i], RelocationKind::Absolute, r.addend),
                 RelocationTarget::Section(id) => {
                     let target = ids
                         .get(&id)
@@ -193,7 +211,7 @@ pub fn emit(
                     } else {
                         RelocationKind::Absolute
                     };
-                    (product.object.section_symbol(*target), kind)
+                    (product.object.section_symbol(*target), kind, r.addend)
                 }
             };
             product
@@ -203,7 +221,7 @@ pub fn emit(
                     Relocation {
                         offset: r.offset as u64,
                         symbol,
-                        addend: r.addend,
+                        addend,
                         flags: RelocationFlags::Generic {
                             kind,
                             encoding: RelocationEncoding::Generic,
