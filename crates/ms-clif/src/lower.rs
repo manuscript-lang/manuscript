@@ -49,6 +49,9 @@ pub struct Lower<'a, 'm> {
     lazy: Vec<bool>,
     /// MIR block being lowered.
     cur: usize,
+    /// Result paired with the preceding overflow flag. Reuse only on the very
+    /// next instruction, so the defining instruction always dominates the use.
+    overflow_result: Option<(Op, Value, Value, Value)>,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
@@ -77,6 +80,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             pslots: HashMap::new(),
             lazy: Vec::new(),
             cur: 0,
+            overflow_result: None,
             blocks: Vec::new(),
             unsupported: None,
         }
@@ -1099,6 +1103,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     });
                 }
             }
+            self.overflow_result = None;
             for inst in &f.blocks[b.index()].insts {
                 self.set_loc(inst.loc);
                 self.refresh(f, inst.args.iter().copied());
@@ -1281,6 +1286,7 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     fn lower_inst(&mut self, f: &Func, inst: &Inst) {
         let checks = self.g.opts.checks;
+        let previous_overflow = self.overflow_result.take();
         let m = self.g.m;
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
@@ -1307,7 +1313,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().iadd(x, y)
+                if let Some((Op::IAdd, _, _, v)) =
+                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
+                {
+                    v
+                } else {
+                    self.b.ins().iadd(x, y)
+                }
             }],
             Op::ISub => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1315,12 +1327,43 @@ impl<'a, 'm> Lower<'a, 'm> {
             }],
             Op::IMul => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().imul(x, y)
+                if let Some((Op::IMul, _, _, v)) =
+                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
+                {
+                    v
+                } else {
+                    self.b.ins().imul(x, y)
+                }
             }],
             Op::INeg => vec![{
                 let x = self.a(inst, 0)[0];
                 self.b.ins().ineg(x)
             }],
+            Op::IAddOverflow | Op::IMulOverflow => {
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let (v, of) = if inst.op == Op::IAddOverflow {
+                    self.b.ins().sadd_overflow(x, y)
+                } else {
+                    self.b.ins().smul_overflow(x, y)
+                };
+                self.overflow_result = Some((
+                    if inst.op == Op::IAddOverflow {
+                        Op::IAdd
+                    } else {
+                        Op::IMul
+                    },
+                    x,
+                    y,
+                    v,
+                ));
+                vec![of]
+            }
+            Op::IntOverflowIf => {
+                if checks {
+                    self.fault_if(self.a(inst, 0)[0], "msrt_fault_int_overflow", vec![]);
+                }
+                vec![]
+            }
             Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if !checks {

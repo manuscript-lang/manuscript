@@ -122,7 +122,15 @@ fn mk_const(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, v: i64, loc: Loc) 
 
 fn commutative(op: Op, imm: Imm) -> bool {
     match op {
-        Op::IAdd | Op::IMul | Op::IAddChk | Op::IMulChk | Op::And | Op::Or | Op::Xor => true,
+        Op::IAdd
+        | Op::IMul
+        | Op::IAddChk
+        | Op::IMulChk
+        | Op::IAddOverflow
+        | Op::IMulOverflow
+        | Op::And
+        | Op::Or
+        | Op::Xor => true,
         Op::ICmp => matches!(imm, Imm::Cc(Cc::Eq | Cc::Ne)),
         _ => false,
     }

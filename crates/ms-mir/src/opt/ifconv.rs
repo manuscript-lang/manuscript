@@ -8,11 +8,14 @@
 //!
 //! Branchy loops with unpredictable conditions (`if x % 2 == 0 { x / 2 } else { 3 * x + 1 }`)
 //! pay a misprediction per iteration; the backend lowers `select` to a conditional move.
-//! Only arms with at most [`MAX_ARM`] pure instructions and scalar join arguments are
-//! converted, so the work added on the not-taken side stays below a misprediction.
+//! Arms hold at most [`MAX_ARM`] total scalar instructions, including checked
+//! add/mul. Those checks become pure overflow flags and wrapping results with
+//! ordered, predicated fault guards at each original source position. This bounds
+//! expanded work to seventeen instructions per arm; profitability is workload-specific.
 
 use crate::ir::*;
-use crate::types::TyKind;
+use crate::types::{Ty, TyKind};
+use std::collections::HashSet;
 
 /// Most instructions hoisted from one arm.
 const MAX_ARM: usize = 4;
@@ -22,8 +25,15 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for i in 0..m.funcs.len() {
         let mut f = m.funcs[i].clone();
+        let positive: HashSet<Value> = f
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter(|i| i.op == Op::IConst && matches!(i.imm, Imm::Int(n) if n > 0))
+            .filter_map(|i| i.res)
+            .collect();
         let mut any = false;
-        while convert_one(m, &mut f) {
+        while convert_one(m, &mut f, &positive) {
             any = true;
         }
         if any {
@@ -48,6 +58,7 @@ fn arm(
     head: usize,
     t: &Target,
     join: Option<usize>,
+    positive: &HashSet<Value>,
 ) -> Option<(Arm, usize)> {
     let b = t.block.index();
     if Some(b) == join {
@@ -63,15 +74,11 @@ fn arm(
     if b == head || edges[b] != 1 || !bd.params.is_empty() || !t.args.is_empty() {
         return None;
     }
-    if bd.insts.len() > MAX_ARM
-        || !bd
-            .insts
-            .iter()
-            .all(|i| i.op.info().effects.is_pure() && i.res.is_some())
-    {
+    // Effect-free is not enough: unchecked division can still trap, and a pure
+    // aggregate projection may borrow memory. Only total scalar operations move.
+    if bd.insts.len() > MAX_ARM || !bd.insts.iter().all(|i| speculatable(m, f, i, positive)) {
         return None;
     }
-    let _ = m;
     let Term::Br(j) = &bd.term else { return None };
     Some((
         Arm {
@@ -82,6 +89,114 @@ fn arm(
     ))
 }
 
+/// Total scalar operations, plus the two checks expanded to predicated guards.
+fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bool {
+    if !i.res.is_some_and(|v| scalar(m, f, v)) {
+        return false;
+    }
+    match i.op {
+        Op::IConst
+        | Op::FConst
+        | Op::BConst
+        | Op::IAdd
+        | Op::ISub
+        | Op::IMul
+        | Op::INeg
+        | Op::IAddChk
+        | Op::IMulChk
+        | Op::IAddOverflow
+        | Op::IMulOverflow
+        | Op::And
+        | Op::Or
+        | Op::Xor
+        | Op::Shl
+        | Op::Sshr
+        | Op::Not
+        | Op::ICmp
+        | Op::FCmp
+        | Op::FAdd
+        | Op::FSub
+        | Op::FMul
+        | Op::FDiv
+        | Op::FNeg
+        | Op::FSqrt
+        | Op::FAbs
+        | Op::I2F
+        | Op::B2I
+        | Op::Select => true,
+        // Positive literals exclude both zero and MIN / -1.
+        Op::SDiv | Op::SRem => positive.contains(&i.args[1]),
+        _ => false,
+    }
+}
+
+/// Move an arm, replacing each faulting operation with a flag and wrapping
+/// result. Guards keep the original location (including inline scope), are
+/// masked by the arm condition, and retain their order within that arm.
+fn hoist(f: &mut Func, arm: &Arm, cond: Value, inverted: bool, out: &mut Vec<Inst>) {
+    let Some(blk) = arm.block else {
+        return;
+    };
+    let original = std::mem::take(&mut f.blocks[blk].insts);
+    let mut guards = Vec::new();
+    let mut active = cond;
+    if inverted
+        && original
+            .iter()
+            .any(|i| matches!(i.op, Op::IAddChk | Op::IMulChk))
+    {
+        active = f.new_value(Ty::BOOL);
+        out.push(Inst {
+            op: Op::Not,
+            args: vec![cond],
+            imm: Imm::None,
+            res: Some(active),
+            loc: f.blocks[blk].term_loc,
+        });
+    }
+    for mut i in original {
+        if matches!(i.op, Op::IAddChk | Op::IMulChk) {
+            let flag = f.new_value(Ty::BOOL);
+            let masked = f.new_value(Ty::BOOL);
+            out.push(Inst {
+                op: if i.op == Op::IAddChk {
+                    Op::IAddOverflow
+                } else {
+                    Op::IMulOverflow
+                },
+                args: i.args.clone(),
+                imm: Imm::None,
+                res: Some(flag),
+                loc: i.loc,
+            });
+            i.op = if i.op == Op::IAddChk {
+                Op::IAdd
+            } else {
+                Op::IMul
+            };
+            out.push(i.clone());
+            out.push(Inst {
+                op: Op::And,
+                args: vec![active, flag],
+                imm: Imm::None,
+                res: Some(masked),
+                loc: i.loc,
+            });
+            guards.push(Inst {
+                op: Op::IntOverflowIf,
+                args: vec![masked],
+                imm: Imm::None,
+                res: None,
+                loc: i.loc,
+            });
+        } else {
+            out.push(i);
+        }
+    }
+    out.append(&mut guards);
+    f.blocks[blk].term = Term::Unreachable;
+}
+
 fn scalar(m: &Module, f: &Func, v: Value) -> bool {
     matches!(
         m.types.kind(f.values[v.index()]),
@@ -89,7 +204,7 @@ fn scalar(m: &Module, f: &Func, v: Value) -> bool {
     )
 }
 
-fn convert_one(m: &Module, f: &mut Func) -> bool {
+fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
     let mut edges = vec![0usize; f.blocks.len()];
     for b in &f.blocks {
         b.term.for_each_target(|t| edges[t.block.index()] += 1);
@@ -113,10 +228,10 @@ fn convert_one(m: &Module, f: &mut Func) -> bool {
             if j == a || j == 0 {
                 continue;
             }
-            let Some((ta, jt)) = arm(m, f, &edges, a, &then, Some(j)) else {
+            let Some((ta, jt)) = arm(m, f, &edges, a, &then, Some(j), positive) else {
                 continue;
             };
-            let Some((ea, je)) = arm(m, f, &edges, a, &els, Some(j)) else {
+            let Some((ea, je)) = arm(m, f, &edges, a, &els, Some(j), positive) else {
                 continue;
             };
             if jt != j || je != j || (ta.block.is_none() && ea.block.is_none()) {
@@ -131,10 +246,8 @@ fn convert_one(m: &Module, f: &mut Func) -> bool {
             }
             let loc = f.blocks[a].term_loc;
             let mut insts = Vec::new();
-            for blk in [ta.block, ea.block].into_iter().flatten() {
-                insts.append(&mut f.blocks[blk].insts);
-                f.blocks[blk].term = Term::Unreachable;
-            }
+            hoist(f, &ta, cond, false, &mut insts);
+            hoist(f, &ea, cond, true, &mut insts);
             let mut args = Vec::new();
             for (x, y) in ta.args.iter().zip(&ea.args) {
                 if x == y {
