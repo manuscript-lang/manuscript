@@ -1746,6 +1746,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                     payload
                 }
             }
+            Op::OptUnbox => {
+                // Moves the payload out of a some: the box (if any) is freed, the payload lives on.
+                let ty = f.ty(inst.args[0]);
+                let v = self.a(inst, 0);
+                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
+                    unreachable!()
+                };
+                if self.opt_boxed(ty) {
+                    let leaves = self.g.lay.leaves(inner);
+                    let payload = self.load_leaves(v[0], 0, &leaves);
+                    self.free(v[0]);
+                    payload
+                } else if self.opt_nullable(ty) {
+                    v
+                } else {
+                    v[1..].to_vec()
+                }
+            }
             Op::StrLen => {
                 // Scalar count: cached in the object, else computed (and cached) by the runtime.
                 let p = self.a(inst, 0)[0];

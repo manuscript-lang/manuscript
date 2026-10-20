@@ -146,9 +146,13 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     match inst.op {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
         Op::RecSet | Op::ListPush | Op::ListSet | Op::ListSetNn | Op::ListSetU => all(Mode::Own),
-        Op::OptSome | Op::IfaceNew | Op::Drop | Op::GlobalSet | Op::SharedNew | Op::AltUnbox => {
-            one(0)
-        }
+        Op::OptSome
+        | Op::IfaceNew
+        | Op::Drop
+        | Op::GlobalSet
+        | Op::SharedNew
+        | Op::AltUnbox
+        | Op::OptUnbox => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
         Op::Call => match inst.imm {
@@ -743,7 +747,7 @@ impl Verifier<'_> {
                     "opt.is_some takes an optional and yields bool",
                 )
             }
-            Op::OptGet | Op::OptUnwrap => {
+            Op::OptGet | Op::OptUnwrap | Op::OptUnbox => {
                 arity(1)?;
                 want(
                     m.opt_inner(t(0)).is_some() && res == m.opt_inner(t(0)),

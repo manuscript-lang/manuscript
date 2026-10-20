@@ -294,3 +294,25 @@ fn native_method_labels_bind_by_name() {
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
+
+/// Decoding a deeply nested JSON document moves each subtree out of its `Optional` result
+/// instead of deep-copying it, so the cost is linear in depth (it was quadratic: 20 000 levels
+/// took 16 seconds).
+#[test]
+fn native_json_parse_of_deep_nesting_is_linear() {
+    let dir = scratch("native-json-deep");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {parse, JsonValue, JsonError} from \"@std/json.ms\"\n\nexport fn main() Int:\n    let n = 50000\n    let text = \"{\"[\".repeat(n).get()}1{\"]\".repeat(n).get()}\"\n    let r: Result[JsonValue, JsonError] = parse(text)\n    if r.is_error():\n        return 1\n    return 0\n",
+    );
+    let backend = RustBackend::new(Native);
+    let started = std::time::Instant::now();
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(30),
+        "{:?}",
+        started.elapsed()
+    );
+}
