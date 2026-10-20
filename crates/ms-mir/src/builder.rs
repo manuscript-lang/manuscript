@@ -85,6 +85,11 @@ impl<'m> FuncBuilder<'m> {
         self.loc = loc;
     }
 
+    /// The source location attached to emitted instructions.
+    pub fn loc(&self) -> Loc {
+        self.loc
+    }
+
     /// The current block.
     pub fn current(&self) -> Block {
         self.cur

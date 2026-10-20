@@ -304,6 +304,16 @@ unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool
     unsafe { walk_frames(fp, f) }
 }
 
+/// Notes frames omitted because they repeat the line above, then resets the count.
+fn push_repeats(out: &mut Vec<u8>, repeated: &mut usize) {
+    if *repeated > 0 {
+        out.extend_from_slice(b"\n  ... previous frame repeated ");
+        crate::num::push_i64(out, *repeated as i64);
+        out.extend_from_slice(b" more times");
+        *repeated = 0;
+    }
+}
+
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: tables pointer is set once at start.
@@ -315,16 +325,15 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     let t = unsafe { &*t };
     let mut shown = 0;
     let mut truncated = false;
+    // Identical consecutive frames (deep recursion) collapse into one line and a count.
+    let mut last = (u32::MAX, 0u32, u32::MAX);
+    let mut repeated = 0usize;
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
     unsafe {
         walk_fault_frames(fp, t, |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
-            if shown == MAX_FAULT_FRAMES {
-                truncated = true;
-                return false;
-            }
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
@@ -340,13 +349,23 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
                         file = sc.file_off;
                     }
                 }
-                out.extend_from_slice(b"\n  at ");
-                out.extend_from_slice(cstr(t, file));
-                out.push(b':');
-                crate::num::push_i64(out, line as i64);
-                out.extend_from_slice(b" in ");
-                out.extend_from_slice(cstr(t, name));
-                shown += 1;
+                if (file, line, name) == last {
+                    repeated += 1;
+                } else {
+                    if shown == MAX_FAULT_FRAMES {
+                        truncated = true;
+                        return false;
+                    }
+                    push_repeats(out, &mut repeated);
+                    out.extend_from_slice(b"\n  at ");
+                    out.extend_from_slice(cstr(t, file));
+                    out.push(b':');
+                    crate::num::push_i64(out, line as i64);
+                    out.extend_from_slice(b" in ");
+                    out.extend_from_slice(cstr(t, name));
+                    last = (file, line, name);
+                    shown += 1;
+                }
                 let Some(sc) = next else { break };
                 line = sc.call_line;
                 scope = sc.parent;
@@ -356,14 +375,11 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
                 }
                 name = func.name_off;
                 file = func.file_off;
-                if shown == MAX_FAULT_FRAMES {
-                    truncated = true;
-                    return false;
-                }
             }
             true
         });
     }
+    push_repeats(out, &mut repeated);
     if truncated {
         out.extend_from_slice(b"\n  ... outer frames omitted");
     }

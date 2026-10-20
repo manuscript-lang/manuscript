@@ -2,6 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::text::runtime_fn;
 use ms_check::hir::CallView;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};
@@ -32,6 +33,18 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(a, ok, &[payload]))
     }
 
+    /// Remembers the source position that built a failure so the test report can name it.
+    fn record_failure_site(&mut self, message: Value) {
+        let loc = self.b.loc();
+        let Some(file) = self.b.m.files.get(loc.file as usize) else {
+            return;
+        };
+        let site = format!("{file}:{}:{}", loc.line, loc.col);
+        let site = self.b.str_lit(&site);
+        let ext = runtime_fn(self.b.m, "msrt_test_site", &[MTy::STR, MTy::STR], MTy::UNIT);
+        self.b.call_rt(ext, &[message, site]);
+    }
+
     /// `error(Error)` carrying `message` (owned).
     fn testing_fail(&mut self, rty: MTy, message: Value) -> Result<Value, Error> {
         let (a, _, err) = self.result_cases(rty)?;
@@ -40,6 +53,7 @@ impl FnLower<'_> {
             return Err(Error::new("testing failures need an Error interface"));
         };
         let vt = self.cx.message_vtable(self.b.m, iface);
+        self.record_failure_site(message);
         let v = self
             .b
             .emit(Op::IfaceNew, &[message], Imm::Vtable(vt), Some(it))
