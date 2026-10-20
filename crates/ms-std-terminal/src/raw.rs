@@ -12,6 +12,14 @@ use core::cell::{Cell, RefCell};
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK,
 };
+use rustix::event::{PollFd, PollFlags, poll};
+use rustix::fd::BorrowedFd;
+use rustix::io::{Errno, read, write};
+use rustix::termios::{
+    ControlModes, InputModes, LocalModes, OptionalActions, SpecialCodeIndex, Termios, isatty,
+    tcgetattr, tcgetwinsize, tcsetattr,
+};
+use rustix::time::{ClockId, Timespec, clock_gettime};
 
 unsafe extern "C-unwind" {
     fn msrt_io_flush();
@@ -34,9 +42,9 @@ const ESCAPE_NS: i64 = 40 * NS_PER_MS;
 const MAX_POSITION: i64 = 65534;
 
 pub struct Raw {
-    input: i32,
-    output: i32,
-    saved: libc::termios,
+    input: BorrowedFd<'static>,
+    output: BorrowedFd<'static>,
+    saved: Termios,
     alternate: bool,
     hidden: Cell<bool>,
     closed: Cell<bool>,
@@ -71,22 +79,17 @@ extern "C" fn restore_at_exit() {
     }
 }
 
-#[allow(clippy::useless_conversion)] // `time_t` is narrower than `i64` on 32-bit hosts
 fn now_ns() -> i64 {
-    // SAFETY: `timespec` is plain data that the call fills.
-    let mut ts: libc::timespec = unsafe { core::mem::zeroed() };
-    // SAFETY: `ts` is writable.
-    unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
-    i64::from(ts.tv_sec) * 1_000_000_000 + i64::from(ts.tv_nsec)
+    let ts = clock_gettime(ClockId::Monotonic);
+    ts.tv_sec
+        .saturating_mul(1_000_000_000)
+        .saturating_add(ts.tv_nsec as i64)
 }
 
 /// `(columns, rows)` of the terminal open on `fd`.
-pub fn tty_size(fd: i32) -> Option<(i64, i64)> {
-    // SAFETY: `winsize` is plain data that the ioctl fills.
-    let mut w: libc::winsize = unsafe { core::mem::zeroed() };
-    // SAFETY: `w` is writable.
-    let rc = unsafe { libc::ioctl(fd, libc::TIOCGWINSZ, &mut w) };
-    (rc == 0).then_some((i64::from(w.ws_col), i64::from(w.ws_row)))
+pub fn tty_size(fd: BorrowedFd<'_>) -> Option<(i64, i64)> {
+    let w = tcgetwinsize(fd).ok()?;
+    Some((i64::from(w.ws_col), i64::from(w.ws_row)))
 }
 
 fn failed(text: &[u8]) -> u8 {
@@ -108,19 +111,23 @@ fn number(out: &mut Vec<u8>, n: i64) {
     out.extend_from_slice(&digits[at..]);
 }
 
-/// Whether `fd` has input (or a hangup) ready now.
-fn readable_now(fd: i32) -> bool {
-    let mut p = libc::pollfd {
-        fd,
-        events: libc::POLLIN,
-        revents: 0,
+/// Polls `fd` for input for up to `timeout_ns`; a hangup counts as ready.
+fn poll_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
+    let timeout = Timespec {
+        tv_sec: timeout_ns / 1_000_000_000,
+        tv_nsec: (timeout_ns % 1_000_000_000) as _,
     };
-    // SAFETY: `p` is one valid pollfd.
-    unsafe { libc::poll(&mut p, 1, 0) > 0 }
+    let mut fds = [PollFd::new(&fd, PollFlags::IN)];
+    poll(&mut fds, Some(&timeout)).is_ok_and(|n| n > 0)
+}
+
+/// Whether `fd` has input (or a hangup) ready now.
+fn readable_now(fd: BorrowedFd<'_>) -> bool {
+    poll_readable(fd, 0)
 }
 
 /// Blocks the task until `fd` is readable or `timeout_ns` passes; a stop request unwinds.
-fn wait_readable(fd: i32, timeout_ns: i64) -> bool {
+fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
     if readable_now(fd) {
         return true;
     }
@@ -130,7 +137,13 @@ fn wait_readable(fd: i32, timeout_ns: i64) -> bool {
     #[cfg(not(test))]
     {
         // SAFETY: provided by `ms-rt`; parks the running task.
-        let woke = unsafe { msrt_task_wait_fd(fd, WAIT_READ, timeout_ns.max(0)) };
+        let woke = unsafe {
+            msrt_task_wait_fd(
+                rustix::fd::AsRawFd::as_raw_fd(&fd),
+                WAIT_READ,
+                timeout_ns.max(0),
+            )
+        };
         if woke & WAIT_CANCELLED != 0 {
             ms_std_rt::cancelled();
         }
@@ -139,14 +152,7 @@ fn wait_readable(fd: i32, timeout_ns: i64) -> bool {
     }
     #[cfg(test)]
     {
-        let mut p = libc::pollfd {
-            fd,
-            events: libc::POLLIN,
-            revents: 0,
-        };
-        // SAFETY: `p` is one valid pollfd.
-        let n = unsafe { libc::poll(&mut p, 1, (timeout_ns.max(0) / NS_PER_MS) as i32) };
-        n > 0
+        poll_readable(fd, timeout_ns)
     }
 }
 
@@ -163,10 +169,7 @@ fn pause(ns: i64) {
         }
     }
     #[cfg(test)]
-    // SAFETY: plain system call.
-    unsafe {
-        libc::usleep((ns / 1000) as u32);
-    }
+    std::thread::sleep(core::time::Duration::from_nanos(ns.max(0) as u64));
 }
 
 /// Clears the reading flag when `next_event` leaves, by any path.
@@ -181,40 +184,43 @@ impl Drop for Reading<'_> {
 impl Raw {
     /// Puts `input` into raw mode and (optionally) switches `output` to the alternate screen.
     pub fn open(
-        input: i32,
-        output: i32,
+        input: BorrowedFd<'static>,
+        output: BorrowedFd<'static>,
         alternate: bool,
     ) -> Result<*mut ms_std_rt::Handle<Raw>, u8> {
-        // SAFETY: plain system calls.
-        let terminals = unsafe { libc::isatty(input) == 1 && libc::isatty(output) == 1 };
-        if !terminals {
+        if !(isatty(input) && isatty(output)) {
             return Err(STATUS_NOT_TERMINAL);
         }
         if !ACTIVE.0.get().is_null() {
             return Err(ms_rt_abi::STATUS_BUSY);
         }
-        // SAFETY: `termios` is plain data that `tcgetattr` fills.
-        let mut saved: libc::termios = unsafe { core::mem::zeroed() };
-        // SAFETY: `saved` is writable.
-        if unsafe { libc::tcgetattr(input, &mut saved) } != 0 {
+        let Ok(saved) = tcgetattr(input) else {
             return Err(failed(b"cannot read terminal settings"));
-        }
-        let mut raw = saved;
-        raw.c_iflag &= !(libc::IGNBRK
-            | libc::BRKINT
-            | libc::PARMRK
-            | libc::ISTRIP
-            | libc::INLCR
-            | libc::IGNCR
-            | libc::ICRNL
-            | libc::IXON);
-        raw.c_lflag &= !(libc::ECHO | libc::ECHONL | libc::ICANON | libc::ISIG | libc::IEXTEN);
-        raw.c_cflag &= !(libc::CSIZE | libc::PARENB);
-        raw.c_cflag |= libc::CS8;
-        raw.c_cc[libc::VMIN] = 1;
-        raw.c_cc[libc::VTIME] = 0;
-        // SAFETY: `raw` is a valid settings block.
-        if unsafe { libc::tcsetattr(input, libc::TCSANOW, &raw) } != 0 {
+        };
+        let mut raw = saved.clone();
+        raw.input_modes.remove(
+            InputModes::IGNBRK
+                | InputModes::BRKINT
+                | InputModes::PARMRK
+                | InputModes::ISTRIP
+                | InputModes::INLCR
+                | InputModes::IGNCR
+                | InputModes::ICRNL
+                | InputModes::IXON,
+        );
+        raw.local_modes.remove(
+            LocalModes::ECHO
+                | LocalModes::ECHONL
+                | LocalModes::ICANON
+                | LocalModes::ISIG
+                | LocalModes::IEXTEN,
+        );
+        raw.control_modes
+            .remove(ControlModes::CSIZE | ControlModes::PARENB);
+        raw.control_modes.insert(ControlModes::CS8);
+        raw.special_codes[SpecialCodeIndex::VMIN] = 1;
+        raw.special_codes[SpecialCodeIndex::VTIME] = 0;
+        if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
             return Err(failed(b"cannot enter raw mode"));
         }
         let terminal = Raw {
@@ -258,8 +264,8 @@ impl Raw {
         if self.alternate {
             let _ = self.write(b"\x1b[?1049l");
         }
-        // SAFETY: `saved` came from `tcgetattr` on this descriptor.
-        unsafe { libc::tcsetattr(self.input, libc::TCSANOW, &self.saved) };
+        // Nothing to report if the terminal vanished already.
+        let _ = tcsetattr(self.input, OptionalActions::Now, &self.saved);
         if core::ptr::eq(ACTIVE.0.get(), self) {
             ACTIVE.0.set(core::ptr::null());
         }
@@ -271,20 +277,12 @@ impl Raw {
         unsafe { msrt_io_flush() };
         let mut rest = bytes;
         while !rest.is_empty() {
-            // SAFETY: `rest` is readable for its length.
-            let n = unsafe { libc::write(self.output, rest.as_ptr().cast(), rest.len()) };
-            if n < 0 {
-                // SAFETY: reads this thread's errno.
-                match unsafe { *errno() } {
-                    libc::EINTR => continue,
-                    libc::EAGAIN => {
-                        pause(NS_PER_MS);
-                        continue;
-                    }
-                    _ => return Err(failed(b"cannot write to the terminal")),
-                }
+            match write(self.output, rest) {
+                Ok(n) => rest = &rest[n..],
+                Err(Errno::INTR) => {}
+                Err(Errno::AGAIN) => pause(NS_PER_MS),
+                Err(_) => return Err(failed(b"cannot write to the terminal")),
             }
-            rest = &rest[n as usize..];
         }
         Ok(())
     }
@@ -396,41 +394,22 @@ impl Raw {
     /// Reads what the terminal has ready into the event queue.
     fn fill(&self) -> Result<(), u8> {
         let mut buf = [0u8; 4096];
-        // SAFETY: `buf` is writable for its length.
-        let n = unsafe { libc::read(self.input, buf.as_mut_ptr().cast(), buf.len()) };
-        if n < 0 {
-            // SAFETY: reads this thread's errno.
-            return match unsafe { *errno() } {
-                libc::EINTR | libc::EAGAIN => Ok(()),
-                _ => Err(STATUS_CLOSED),
-            };
+        match read(self.input, &mut buf[..]) {
+            Ok(0) => Err(STATUS_CLOSED), // input ended: hangup
+            Ok(n) => {
+                let events = self.decoder.borrow_mut().feed(&buf[..n]);
+                self.queue.borrow_mut().extend(events);
+                Ok(())
+            }
+            Err(Errno::INTR | Errno::AGAIN) => Ok(()),
+            Err(_) => Err(STATUS_CLOSED),
         }
-        if n == 0 {
-            // Input ended: hangup.
-            return Err(STATUS_CLOSED);
-        }
-        let events = self.decoder.borrow_mut().feed(&buf[..n as usize]);
-        self.queue.borrow_mut().extend(events);
-        Ok(())
     }
 }
 
 impl Drop for Raw {
     fn drop(&mut self) {
         self.close();
-    }
-}
-
-fn errno() -> *mut i32 {
-    // SAFETY: the libc accessor returns the calling thread's slot.
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe {
-        libc::__errno_location()
-    }
-    // SAFETY: the libc accessor returns the calling thread's slot.
-    #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    unsafe {
-        libc::__error()
     }
 }
 

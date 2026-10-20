@@ -4,81 +4,79 @@ extern crate std;
 
 use super::*;
 use ms_rt as _; // links the msrt_* runtime symbols
+use rustix::fd::{AsFd, OwnedFd};
+use rustix::fs::{Mode, OFlags};
+use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
+use rustix::termios::{LocalModes, Winsize, tcsetwinsize};
+use std::boxed::Box;
 use std::sync::Mutex;
+use std::vec::Vec;
 
 /// One raw terminal may be open at a time, so the tests take turns.
 static TURN: Mutex<()> = Mutex::new(());
 
 struct Pty {
-    master: i32,
-    slave: i32,
+    master: OwnedFd,
+    /// Leaked so the raw terminal can borrow it for `'static`; tests are short-lived.
+    slave: &'static OwnedFd,
 }
 
 impl Pty {
     fn new() -> Pty {
-        // SAFETY: plain system calls on descriptors owned here.
-        unsafe {
-            let master = libc::posix_openpt(libc::O_RDWR | libc::O_NOCTTY);
-            assert!(master >= 0);
-            assert_eq!(libc::grantpt(master), 0);
-            assert_eq!(libc::unlockpt(master), 0);
-            let mut name = [0 as libc::c_char; 128];
-            assert_eq!(libc::ptsname_r(master, name.as_mut_ptr(), name.len()), 0);
-            let slave = libc::open(name.as_ptr(), libc::O_RDWR | libc::O_NOCTTY);
-            assert!(slave >= 0);
-            let size = libc::winsize {
-                ws_row: 24,
-                ws_col: 80,
-                ws_xpixel: 0,
-                ws_ypixel: 0,
-            };
-            assert_eq!(libc::ioctl(master, libc::TIOCSWINSZ, &size), 0);
-            Pty { master, slave }
+        let master = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY).expect("openpt");
+        grantpt(&master).expect("grantpt");
+        unlockpt(&master).expect("unlockpt");
+        let name = ptsname(&master, Vec::new()).expect("ptsname");
+        let slave = rustix::fs::open(
+            name.as_c_str(),
+            OFlags::RDWR | OFlags::NOCTTY,
+            Mode::empty(),
+        )
+        .expect("open slave");
+        tcsetwinsize(&master, window(24, 80)).expect("set size");
+        Pty {
+            master,
+            slave: Box::leak(Box::new(slave)),
         }
     }
 
+    fn fd(&self) -> BorrowedFd<'static> {
+        self.slave.as_fd()
+    }
+
     fn type_text(&self, bytes: &[u8]) {
-        // SAFETY: `bytes` is readable for its length.
-        let n = unsafe { libc::write(self.master, bytes.as_ptr().cast(), bytes.len()) };
-        assert_eq!(n as usize, bytes.len());
+        assert_eq!(write(&self.master, bytes), Ok(bytes.len()));
     }
 
     /// Everything the program has written so far.
-    fn output(&self) -> std::vec::Vec<u8> {
-        let mut out = std::vec::Vec::new();
+    fn output(&self) -> Vec<u8> {
+        let mut out = Vec::new();
         let mut buf = [0u8; 256];
-        while readable_now(self.master) {
-            // SAFETY: `buf` is writable for its length.
-            let n = unsafe { libc::read(self.master, buf.as_mut_ptr().cast(), buf.len()) };
-            if n <= 0 {
-                break;
+        while readable_now(self.master.as_fd()) {
+            match read(&self.master, &mut buf[..]) {
+                Ok(n) if n > 0 => out.extend_from_slice(&buf[..n]),
+                _ => break,
             }
-            out.extend_from_slice(&buf[..n as usize]);
         }
         out
     }
 
-    fn lflag(&self) -> libc::tcflag_t {
-        // SAFETY: `termios` is plain data that `tcgetattr` fills.
-        let mut t: libc::termios = unsafe { core::mem::zeroed() };
-        // SAFETY: `t` is writable.
-        assert_eq!(unsafe { libc::tcgetattr(self.slave, &mut t) }, 0);
-        t.c_lflag
+    fn local_modes(&self) -> LocalModes {
+        tcgetattr(self.slave).expect("tcgetattr").local_modes
     }
 }
 
-impl Drop for Pty {
-    fn drop(&mut self) {
-        // SAFETY: both descriptors are open and owned here.
-        unsafe {
-            libc::close(self.slave);
-            libc::close(self.master);
-        }
+fn window(rows: u16, columns: u16) -> Winsize {
+    Winsize {
+        ws_row: rows,
+        ws_col: columns,
+        ws_xpixel: 0,
+        ws_ypixel: 0,
     }
 }
 
 fn open(pty: &Pty, alternate: bool) -> *mut ms_std_rt::Handle<Raw> {
-    Raw::open(pty.slave, pty.slave, alternate).expect("raw terminal")
+    Raw::open(pty.fd(), pty.fd(), alternate).expect("raw terminal")
 }
 
 fn next(raw: &Raw, timeout_ms: Option<i64>) -> (u8, Option<Event>) {
@@ -105,12 +103,15 @@ fn key(name: &str) -> Event {
 fn raw_mode_decodes_input_and_restores_settings() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
-    let before = pty.lflag();
-    assert_ne!(before & libc::ICANON, 0);
+    let before = pty.local_modes();
+    assert!(before.contains(LocalModes::ICANON));
     let h = open(&pty, false);
     // SAFETY: `h` is live until released below.
     let raw = unsafe { &(*h).value };
-    assert_eq!(pty.lflag() & (libc::ICANON | libc::ECHO | libc::ISIG), 0);
+    assert!(
+        !pty.local_modes()
+            .intersects(LocalModes::ICANON | LocalModes::ECHO | LocalModes::ISIG)
+    );
     pty.type_text(b"hi\x1b[A");
     assert_eq!(
         next(raw, Some(500)),
@@ -121,7 +122,7 @@ fn raw_mode_decodes_input_and_restores_settings() {
     assert_eq!(next(raw, Some(20)).0, STATUS_NONE);
     raw.close();
     raw.close();
-    assert_eq!(pty.lflag(), before);
+    assert_eq!(pty.local_modes(), before);
     assert_eq!(next(raw, None).0, STATUS_CLOSED);
     assert_eq!(raw.size(), Err(STATUS_CLOSED));
     assert_eq!(raw.move_cursor(0, 0), STATUS_CLOSED);
@@ -170,20 +171,12 @@ fn one_raw_terminal_at_a_time_and_resize_events() {
     let pty = Pty::new();
     let h = open(&pty, false);
     assert_eq!(
-        Raw::open(pty.slave, pty.slave, false).err(),
+        Raw::open(pty.fd(), pty.fd(), false).err(),
         Some(ms_rt_abi::STATUS_BUSY)
     );
     // SAFETY: `h` is live until released below.
     let raw = unsafe { &(*h).value };
-    let size = libc::winsize {
-        ws_row: 30,
-        ws_col: 100,
-        ws_xpixel: 0,
-        ws_ypixel: 0,
-    };
-    // SAFETY: `size` is readable.
-    let rc = unsafe { libc::ioctl(pty.master, libc::TIOCSWINSZ, &size) };
-    assert_eq!(rc, 0);
+    tcsetwinsize(&pty.master, window(30, 100)).expect("set size");
     let resize = Event::Resize {
         columns: 100,
         rows: 30,
@@ -196,5 +189,13 @@ fn one_raw_terminal_at_a_time_and_resize_events() {
 #[test]
 fn redirected_streams_are_not_terminals() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
-    assert_eq!(Raw::open(-1, -1, false).err(), Some(STATUS_NOT_TERMINAL));
+    let (read_end, write_end) = rustix::pipe::pipe().expect("pipe");
+    let (read_end, write_end): (&'static OwnedFd, &'static OwnedFd) = (
+        Box::leak(Box::new(read_end)),
+        Box::leak(Box::new(write_end)),
+    );
+    assert_eq!(
+        Raw::open(read_end.as_fd(), write_end.as_fd(), false).err(),
+        Some(STATUS_NOT_TERMINAL)
+    );
 }
