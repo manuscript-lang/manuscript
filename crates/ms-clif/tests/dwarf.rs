@@ -59,9 +59,6 @@ fn location(path: &Path, address: &str) -> String {
         "--output-style=GNU",
         "--no-inlines",
     ]);
-    if let Some(bundle) = ms_clif::link::debug_companion_path(path).filter(|p| p.exists()) {
-        command.arg(format!("--dsym-hint={}", bundle.display()));
-    }
     let o = command.arg(address).output().unwrap();
     assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
     assert!(

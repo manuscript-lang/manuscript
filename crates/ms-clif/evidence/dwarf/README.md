@@ -53,6 +53,9 @@ linked executables, including unknown intervals and actual source-file paths.
 `final_build_keeps_source_lines_after_staging_and_object_cleanup` also passes
 Debug and Release through `ms_driver::build_executable`, replaces an existing
 output, and queries the final executable after its staged object is deleted.
+Consumer tests use ordinary adjacent dSYM discovery without a hint. Publication
+normalizes the inner DWARF filename to the final executable's basename, as required
+by [LLVM's lookup](https://github.com/llvm/llvm-project/blob/main/llvm/lib/DebugInfo/Symbolize/Symbolize.cpp).
 
 The strict native CI matrix covers Linux, macOS, and Windows on amd64 and arm64.
 All six jobs must pass before merge; their results are pending at publication.

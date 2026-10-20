@@ -108,6 +108,29 @@ fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
     };
     let companion = ms_clif::link::debug_companion_path(staged).expect("same native platform");
     let has_new = companion.exists();
+    if has_new {
+        // Adjacent dSYM lookup opens the final executable's basename before
+        // checking UUIDs. dsymutil named this resource after the staged file.
+        let resources = companion.join("Contents/Resources/DWARF");
+        let resource = resources.join(staged.file_name().expect("staged filename"));
+        let name = output.file_name().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "executable needs a filename",
+            )
+        })?;
+        let final_resource = resources.join(name);
+        // A previous failed publication may already have normalized this file.
+        if resource != final_resource && resource.exists() {
+            std::fs::rename(resource, &final_resource)?;
+        }
+        if !final_resource.is_file() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("missing DWARF resource {}", final_resource.display()),
+            ));
+        }
+    }
     let backup = companion.with_extension("previous.dSYM");
     let previous = destination.exists();
     if previous {
@@ -185,14 +208,27 @@ mod tests {
         std::fs::create_dir_all(&output).unwrap(); // file rename must fail
         let new = ms_clif::link::debug_companion_path(&staged).unwrap();
         let old = ms_clif::link::debug_companion_path(&output).unwrap();
-        std::fs::create_dir_all(&new).unwrap();
+        let resources = new.join("Contents/Resources/DWARF");
+        std::fs::create_dir_all(&resources).unwrap();
         std::fs::create_dir_all(&old).unwrap();
-        std::fs::write(new.join("data"), "new").unwrap();
+        std::fs::write(resources.join("stage"), "new").unwrap();
         std::fs::write(old.join("data"), "old").unwrap();
         assert!(super::publish(&staged, &output).is_err());
         assert_eq!(std::fs::read_to_string(old.join("data")).unwrap(), "old");
-        assert_eq!(std::fs::read_to_string(new.join("data")).unwrap(), "new");
+        assert_eq!(
+            std::fs::read_to_string(resources.join("output")).unwrap(),
+            "new"
+        );
         assert!(staged.exists());
+        // Recovery leaves a staged companion that can be published again.
+        std::fs::remove_dir(&output).unwrap();
+        super::publish(&staged, &output).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(old.join("Contents/Resources/DWARF/output")).unwrap(),
+            "new"
+        );
+        assert!(!staged.exists());
+        assert_eq!(std::fs::read_to_string(&output).unwrap(), "new executable");
         std::fs::remove_dir_all(root).unwrap();
     }
 }

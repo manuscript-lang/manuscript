@@ -73,6 +73,7 @@ b0:
                 .map(|e| e.unwrap().path())
                 .collect();
             assert_eq!(files.len(), 1);
+            assert_eq!(files[0].file_name(), output.file_name());
             files[0].clone()
         } else {
             output.clone()
@@ -104,9 +105,6 @@ b0:
         symbolizer
             .arg(format!("--obj={}", output.display()))
             .args(["--functions=none", "--output-style=GNU"]);
-        if let Some(bundle) = companion {
-            symbolizer.arg(format!("--dsym-hint={}", bundle.display()));
-        }
         let got = symbolizer.arg(address).output().unwrap();
         assert!(
             got.status.success(),
