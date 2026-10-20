@@ -7,9 +7,10 @@ use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 use std::io::Write as _;
 
-/// Current depth of recursive calls (generated code updates it inline).
+/// Lowest stack address recursive calls may reach before they fault (0 = no limit); generated
+/// code compares the stack pointer against it on entry to a recursive function.
 #[unsafe(no_mangle)]
-pub static mut msrt_call_depth: i64 = 0;
+pub static mut msrt_stack_limit: usize = 0;
 /// Non-zero (the signal number) once a stop was requested and not shielded.
 #[unsafe(no_mangle)]
 pub static msrt_cancel_flag: AtomicU8 = AtomicU8::new(0);
@@ -18,6 +19,48 @@ pub static TABLES: Global<*const Tables> = Global::new(core::ptr::null());
 /// Lowest and highest valid stack addresses for frame walking (0 = unknown).
 pub static STACK_LO: Global<usize> = Global::new(0);
 pub static STACK_HI: Global<usize> = Global::new(0);
+
+/// Stack kept free below the limit for fault reporting and cleanups.
+const STACK_RESERVE_MAX: usize = 1 << 20;
+const STACK_RESERVE_MIN: usize = 64 << 10;
+/// Stack left to cleanups that run after a depth fault.
+const STACK_CLEANUP_RESERVE: usize = 16 << 10;
+
+/// Deepest stack recursion may use: a runaway recursion touches this much memory before it faults.
+const STACK_RECURSION_MAX: usize = 256 << 20;
+
+/// The recursion limit for a stack spanning `lo..hi`: recursion may use the top 256 MiB, minus
+/// a reserve of an eighth (64 KiB..1 MiB) for fault reporting. 0 when the bounds are unknown.
+pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
+    if lo == 0 || hi <= lo {
+        return 0;
+    }
+    let mut start = lo;
+    if hi - lo > STACK_RECURSION_MAX {
+        start = hi - STACK_RECURSION_MAX;
+    }
+    let mut reserve = (hi - start) / 8;
+    if reserve < STACK_RESERVE_MIN {
+        reserve = STACK_RESERVE_MIN;
+    }
+    if reserve > STACK_RESERVE_MAX {
+        reserve = STACK_RESERVE_MAX;
+    }
+    start + reserve
+}
+
+/// Records the bounds of the running stack and the recursion limit derived from them.
+///
+/// # Safety
+/// Single threaded runtime state.
+pub(crate) unsafe fn set_stack_bounds(lo: usize, hi: usize) {
+    // SAFETY: single threaded access to the runtime globals.
+    unsafe {
+        *STACK_LO.ptr() = lo;
+        *STACK_HI.ptr() = hi;
+        msrt_stack_limit = stack_limit(lo, hi);
+    }
+}
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 static CLEANUPS: Global<Vec<(usize, usize)>> = Global::new(Vec::new());
@@ -56,7 +99,7 @@ pub(crate) struct Ctx {
     primary: Option<Vec<u8>>,
     shield: u32,
     faulting: bool,
-    depth: i64,
+    limit: usize,
     cancel: u8,
     stack_lo: usize,
     stack_hi: usize,
@@ -73,7 +116,7 @@ impl Ctx {
             primary: None,
             shield: 0,
             faulting: false,
-            depth: 0,
+            limit: stack_limit(stack_lo, stack_hi),
             cancel: 0,
             stack_lo,
             stack_hi,
@@ -110,7 +153,7 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         core::ptr::swap(PRIMARY.ptr(), &mut c.primary);
         core::ptr::swap(SHIELD.ptr(), &mut c.shield);
         core::ptr::swap(FAULTING.ptr(), &mut c.faulting);
-        core::ptr::swap(core::ptr::addr_of_mut!(msrt_call_depth), &mut c.depth);
+        core::ptr::swap(core::ptr::addr_of_mut!(msrt_stack_limit), &mut c.limit);
         core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
         core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
@@ -567,12 +610,18 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *mut ms_rt_abi::StrObj) -> 
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
-    // SAFETY: single threaded counter reset so cleanups can run calls.
-    unsafe { msrt_call_depth = 0 };
-    fault_fmt(format_args!(
-        "call depth limit exceeded ({} nested calls); check the recursion for a missing base case, or iterate instead",
-        ms_rt_abi::MAX_CALL_DEPTH
-    ))
+    // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
+    unsafe {
+        let lo = *STACK_LO.ptr();
+        msrt_stack_limit = if lo == 0 {
+            0
+        } else {
+            lo + STACK_CLEANUP_RESERVE
+        };
+    }
+    fault(
+        b"stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead",
+    )
 }
 
 #[unsafe(no_mangle)]
@@ -715,7 +764,7 @@ struct GuardFrame {
     /// Address of the register save slot owned by the `msrt_guard_call` frame.
     jmp: usize,
     cleanups: usize,
-    depth: i64,
+    limit: usize,
     shield: u32,
     eq_pairs: usize,
     /// `jmp` is the register buffer of `expect_fault` (Windows) rather than a guard slot.
@@ -754,7 +803,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             .pop()
             .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
-        msrt_call_depth = f.depth;
+        msrt_stack_limit = f.limit;
         *SHIELD.ptr() = f.shield;
         msrt_cancel_flag.store(
             if f.shield == 0 {
@@ -790,7 +839,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
         (*GUARDS.ptr()).push(GuardFrame {
             jmp: buf as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
-            depth: msrt_call_depth,
+            limit: msrt_stack_limit,
             shield: *SHIELD.ptr(),
             eq_pairs: crate::desc::eq_len(),
             trap: true,
@@ -980,7 +1029,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         (*GUARDS.ptr()).push(GuardFrame {
             jmp: core::ptr::addr_of_mut!(slot) as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
-            depth: msrt_call_depth,
+            limit: msrt_stack_limit,
             shield: *SHIELD.ptr(),
             eq_pairs: crate::desc::eq_len(),
             trap: false,
@@ -1002,7 +1051,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         }
         #[cfg(test)]
         {
-            let depth = msrt_call_depth;
+            let limit = msrt_stack_limit;
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
             (*GUARDS.ptr()).pop();
             match r {
@@ -1012,7 +1061,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                         fatal(b"unexpected panic in guard")
                     };
                     *FAULTING.ptr() = false;
-                    msrt_call_depth = depth;
+                    msrt_stack_limit = limit;
                     if p.0.starts_with("cancelled ") {
                         return GUARD_CANCELLED;
                     }
@@ -1216,7 +1265,7 @@ mod tests {
         );
         assert_eq!(
             fault_of(|| msrt_fault_depth()).unwrap(),
-            "call depth limit exceeded (200000 nested calls); check the recursion for a missing base case, or iterate instead"
+            "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead"
         );
     }
 }
