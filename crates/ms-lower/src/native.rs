@@ -182,6 +182,19 @@ impl<'a> FnLower<'a> {
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
             }
+            "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
+            | "random/choice" => self.random_native(e, view, native),
+            "html/parse" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                let rty = self.emty(e)?;
+                self.html_parse(e, rty, &args)
+            }
             "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
                 // The digest of the `HashAlgorithm` case of that name.
                 let args = self.native_args(view)?;
@@ -268,6 +281,29 @@ impl<'a> FnLower<'a> {
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 let result = self.emty(e)?;
                 self.at(e.pos);
+                if other.starts_with("path/") {
+                    // The host-rule functions share the interface's entry points; the leading
+                    // `windows` flag selects the host's rules.
+                    let name = ct::n("windows");
+                    let v = self.b.bconst(cfg!(windows));
+                    args.insert(
+                        0,
+                        NArg {
+                            name,
+                            val: Val { v, own: false },
+                            wrapped: false,
+                        },
+                    );
+                    let mut decl = params.to_vec();
+                    decl.insert(
+                        0,
+                        ct::Param {
+                            name,
+                            ty: ct::bool_(),
+                        },
+                    );
+                    return self.native_call(other, &decl, &args, result);
+                }
                 self.native_call(other, params, &args, result)
             }
         }

@@ -1298,6 +1298,7 @@ dependencies = [
  "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
+ "ms-std-rt",
 ]
 
 [[package]]

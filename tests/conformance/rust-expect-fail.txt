@@ -11,9 +11,6 @@ examples/hello
 examples/tooling-demo
 go-tests/pkg-tooling-lsp-testnativegenericmethodnavigation-1
 # test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
-e2e/stdlib/html
-e2e/stdlib/path
-e2e/stdlib/random
 go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
 e2e/accept/comparable
