@@ -278,6 +278,49 @@ impl FnLower<'_> {
                 .iter()
                 .position(|s| s.name == name)
                 .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
+            // A function type that takes optionals the interface method takes plainly.
+            if self.b.m.ifaces[iface.index()].methods[k].params != params {
+                let key = format!("iface-thunk:{}:{k}:{}", iface.0, fty.0);
+                let thunk = match self.cx.helpers.get(&key) {
+                    Some(t) => *t,
+                    None => {
+                        let mut ps = vec![Param {
+                            ty: MTy::PTR,
+                            mode: Mode::Borrow,
+                        }];
+                        ps.extend(params.iter().map(|t| Param {
+                            ty: *t,
+                            mode: Mode::Borrow,
+                        }));
+                        let mut f = ms_mir::ir::Func::new(&format!("<{name}>"), ps, ret);
+                        f.kind = FuncKind::Closure {
+                            captures: vec![recv_mty],
+                        };
+                        let id = self.b.m.add_func(f);
+                        self.cx.queue.push(Job {
+                            func: id,
+                            kind: JobKind::IfaceThunk(Rc::new(crate::cx::IfaceThunkJob {
+                                iface,
+                                index: k as u32,
+                                method: m.clone(),
+                                hir: self.hir.clone(),
+                            })),
+                        });
+                        self.cx.helpers.insert(key, id);
+                        id
+                    }
+                };
+                let recv = self.expr(left)?;
+                if self.dead {
+                    return Ok(recv);
+                }
+                let held = self.owned(recv);
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
             (
                 format!("bound:iface{}:{k}", iface.0),
                 Err((iface, k as u32)),
@@ -732,7 +775,8 @@ fn lower_default_thunk(
         } else {
             let earlier = slots.clone();
             fl.unlift_param(v, &mut |s| {
-                s.default_argument(&callee, i, &job.subst, &earlier, recv)
+                let mut earlier = earlier.clone();
+                s.default_argument(&callee, i, &job.subst, &mut earlier, recv)
             })?
         });
     }
@@ -742,6 +786,48 @@ fn lower_default_thunk(
         vals.push(fl.borrow(s));
     }
     let r = fl.b.call(fid, &vals);
+    let out = fl.val(r, true);
+    fl.emit_return(Some(out));
+    Ok(())
+}
+
+/// Lowers the body of a queued interface method value.
+pub(crate) fn build_iface_thunk(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &crate::cx::IfaceThunkJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let FuncKind::Closure { captures } = proto.kind.clone() else {
+        return Err(Error::new("interface method value without closure kind"));
+    };
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let result = lower_iface_thunk(&mut fl, job, captures[0]);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_iface_thunk(
+    fl: &mut FnLower<'_>,
+    job: &crate::cx::IfaceThunkJob,
+    recv_ty: MTy,
+) -> Result<(), Error> {
+    let params = fl.b.params();
+    let this =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(recv_ty))
+            .expect("capture");
+    let func = job.method.decl.as_ref().and_then(|d| d.func());
+    let args =
+        fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    let vals: Vec<Value> = args.iter().map(|a| fl.borrow(a.val)).collect();
+    let r = fl.b.call_method(job.iface, job.index, this, &vals);
     let out = fl.val(r, true);
     fl.emit_return(Some(out));
     Ok(())

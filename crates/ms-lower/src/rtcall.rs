@@ -533,13 +533,22 @@ impl FnLower<'_> {
                         vals.push(slot);
                     } else {
                         let v = self.borrow(x);
-                        // An enum crosses as its case index.
-                        let v = if p.ty == "i64"
-                            && matches!(self.b.m.types.kind(self.ty_of(v)), TyKind::Alt(_))
-                        {
-                            self.b.alt_tag(v)
-                        } else {
-                            v
+                        let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
+                            // An enum crosses as its case index.
+                            TyKind::Alt(_) if p.ty == "i64" => self.b.alt_tag(v),
+                            // A budget that may be absent crosses as `i64::MAX` when it is.
+                            TyKind::Opt(t) if p.ty == "i64" && t == MTy::INT => {
+                                let has = self.b.opt_is_some(v);
+                                let unlimited = self.b.iconst(i64::MAX);
+                                let given = self.two_ways(
+                                    has,
+                                    MTy::INT,
+                                    &mut |s| Ok(Some(s.b.opt_get(v))),
+                                    &mut |_| Ok(Some(unlimited)),
+                                )?;
+                                given.v
+                            }
+                            _ => v,
                         };
                         vals.push(v);
                     }

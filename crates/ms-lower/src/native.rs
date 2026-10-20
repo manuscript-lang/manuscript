@@ -637,6 +637,25 @@ impl<'a> FnLower<'a> {
         self.rt_function(sym, &decl, &args, result)
     }
 
+    /// Whether an argument of the call assigns the variable at the root of the receiver place.
+    fn argument_reassigns(&self, recv_expr: &Expr, view: &CallView<'_>) -> bool {
+        if !self.is_place(recv_expr) {
+            return false;
+        }
+        let Some(uid) = crate::mutation::place_root(&self.hir, recv_expr) else {
+            return false;
+        };
+        view.arguments.iter().any(|a| {
+            crate::mutation::mutated_locals(
+                &self.hir,
+                ms_check::hir::Body::Expr(a.expr),
+                &self.cx.callables,
+                &self.cx.mutated,
+            )
+            .contains(&uid)
+        })
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -647,11 +666,24 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
         let at = self.b.current();
+        // Go evaluates the receiver first: an argument that reassigns its variable must not
+        // change what the call reads.
+        let snapshot = self.argument_reassigns(recv_expr, view);
+        let recv = if snapshot {
+            let v = self.owned(recv);
+            self.hold_temp(Val { v, own: true })
+        } else {
+            recv
+        };
         let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
-        let recv = self.refresh(recv_expr, recv, at)?;
+        let recv = if snapshot {
+            recv
+        } else {
+            self.refresh(recv_expr, recv, at)?
+        };
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);

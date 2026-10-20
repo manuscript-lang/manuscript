@@ -148,13 +148,22 @@ impl<'a> FnLower<'a> {
             read_at.push((idx, a.expr, at));
         }
         for (idx, expr, at) in read_at {
-            if let Some(x) = slots[idx] {
-                slots[idx] = Some(self.refresh(expr, x, at)?);
-            }
+            let Some(x) = slots[idx] else {
+                continue;
+            };
+            // A `var` argument is the variable itself: it sees what its siblings changed.
+            slots[idx] = Some(
+                if vars.contains(&(idx + offset)) && !x.own && self.is_place(expr) {
+                    self.expr(expr)?
+                } else {
+                    self.refresh(expr, x, at)?
+                },
+            );
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                slots[i] = Some(self.default_argument(callee, i, subst, &slots, recv)?);
+                let d = self.default_argument(callee, i, subst, &mut slots, recv)?;
+                slots[i] = Some(d);
             }
         }
         Ok(Args { slots, places })
@@ -203,7 +212,7 @@ impl<'a> FnLower<'a> {
         callee: &Callable,
         i: usize,
         subst: &Subst,
-        earlier: &[Option<Val>],
+        earlier: &mut [Option<Val>],
         recv: Option<Val>,
     ) -> Result<Val, Error> {
         let params = callee
@@ -235,14 +244,37 @@ impl<'a> FnLower<'a> {
         if let (Some(b), Some(r)) = (&callee.self_binding, recv) {
             self.bind_borrowed(b, r.v);
         }
-        for (j, v) in earlier.iter().enumerate().take(i) {
-            if let Some(v) = v {
-                self.bind_borrowed(&callee.parameters[j].clone(), v.v);
+        // A `var` parameter is a copy the default may change; the changed value is what the
+        // call passes on.
+        let offset = usize::from(callee.self_binding.is_some());
+        let vars = self.cx.var_positions(callee);
+        let mut changed = Vec::new();
+        for (j, slot) in earlier.iter().enumerate().take(i) {
+            let Some(v) = *slot else {
+                continue;
+            };
+            let binding = callee.parameters[j].clone();
+            if vars.contains(&(j + offset)) {
+                let ty = self.ty_of(v.v);
+                let o = self.owned(v);
+                let var = self.b.declare_var(ty, Mode::Own);
+                self.b.def_var(var, o);
+                self.locals
+                    .insert(binding.uid, crate::func::Local { var, ty });
+                changed.push((j, var));
+            } else {
+                self.bind_borrowed(&binding, v.v);
             }
         }
         // A default reports its own position, not the caller statement\'s.
         let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
+        for (j, var) in changed {
+            if !self.dead {
+                let v = self.b.use_var(var);
+                earlier[j] = Some(Val { v, own: true });
+            }
+        }
         self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;

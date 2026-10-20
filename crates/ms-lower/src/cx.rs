@@ -31,6 +31,8 @@ pub enum JobKind {
     BoundNative(Rc<BoundNativeJob>),
     /// A source callable used as a value whose omittable parameters are optionals.
     DefaultThunk(Rc<DefaultThunkJob>),
+    /// An interface method used as a value whose function type takes optionals.
+    IfaceThunk(Rc<IfaceThunkJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
     /// The conversion of a parsed HTML tree node.
@@ -39,6 +41,17 @@ pub enum JobKind {
     HandleMethod(Rc<crate::natiface::MethodJob>),
     /// An operation of a compression stream.
     Codec(Rc<crate::codecstream::CodecJob>),
+}
+
+/// An interface method value waiting to be lowered; the closure holds the interface value.
+pub struct IfaceThunkJob {
+    /// The interface and the method's vtable index.
+    pub iface: ms_mir::types::IfaceId,
+    pub index: u32,
+    /// The method as declared.
+    pub method: ct::MethodRef,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
