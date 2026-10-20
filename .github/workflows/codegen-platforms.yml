@@ -34,9 +34,7 @@ jobs:
           ref: ${{ github.sha }}
       - name: Keep native test artifacts in runner storage
         run: |
-          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
-          echo "TMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
-          echo "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
         with:
