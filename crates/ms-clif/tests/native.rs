@@ -299,6 +299,10 @@ fn kernels_on_real_runtime() {
         ("nbody", "1199426"),
         ("map_count", "5003"),
         ("map_homes", "1415"),
+        (
+            "mul_const",
+            "9223372036854775806\n-9223372036854775808\n-9223372036854775805\n35",
+        ),
     ] {
         for opt in [false, true] {
             let o = run_real(&kernel_src(name), opt, &format!("real_{name}_{opt}"));
