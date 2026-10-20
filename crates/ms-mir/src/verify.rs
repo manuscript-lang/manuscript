@@ -148,6 +148,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         Op::RecSet
         | Op::RecFill
         | Op::ListPush
+        | Op::ListDropLast
         | Op::ListSet
         | Op::ListSetNn
         | Op::ListSetU
@@ -731,6 +732,11 @@ impl Verifier<'_> {
                     t(1) == elem && res == Some(t(0)),
                     "value must be the element type; yields the updated list",
                 )
+            }
+            Op::ListDropLast => {
+                arity(1)?;
+                m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
+                want(res == Some(t(0)), "yields the shortened list")
             }
             Op::OptSome => {
                 arity(1)?;

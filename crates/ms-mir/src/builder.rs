@@ -273,6 +273,12 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListPush, &[l, v], Imm::None, t)
     }
 
+    /// `list.droplast`: the list without its last element, which is dropped. The list must not be empty.
+    pub fn list_drop_last(&mut self, l: Value) -> Value {
+        let t = self.ty(l);
+        self.val(Op::ListDropLast, &[l], Imm::None, t)
+    }
+
     // Optionals.
 
     /// `opt.some`.

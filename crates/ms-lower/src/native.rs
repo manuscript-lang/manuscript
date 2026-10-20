@@ -2082,13 +2082,14 @@ impl<'a> FnLower<'a> {
                 let placeholder = self.b.use_var(res);
                 self.drop_value(placeholder);
                 self.b.def_var(res, some);
-                let d2 = self.type_desc(elem);
                 let rest = if from_front {
-                    self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?
+                    let d2 = self.type_desc(elem);
+                    let rest = self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?;
+                    self.drop_value(cur);
+                    rest
                 } else {
-                    self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?
+                    self.b.list_drop_last(cur)
                 };
-                self.drop_value(cur);
                 self.b.def_var(acc, rest);
                 self.b.br(join, &[]);
                 self.b.seal_block(join);
