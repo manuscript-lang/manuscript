@@ -19,7 +19,8 @@ pub fn run_help(args: &[String], io: &mut Io) -> i32 {
                 let _ = write!(io.stdout, "{usage}");
                 return 0;
             }
-            help_usage(io)
+            crate::unknown_command(io, command);
+            2
         }
         _ => help_usage(io),
     }

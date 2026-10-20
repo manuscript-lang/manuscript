@@ -17,11 +17,17 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
     command.args(driver_options(&program));
     let o = command
         .output()
-        .map_err(|e| Error(format!("cannot run {program}: {e}")))?;
+        .map_err(|e| Error(format!("cannot run the linker '{program}': {e}; install a C compiler driver (cc, gcc, or clang) or set MS_LINKER to its path")))?;
     if !o.status.success() {
+        let stderr = String::from_utf8_lossy(&o.stderr);
+        let detail = if stderr.trim().is_empty() {
+            "the linker printed nothing".to_string()
+        } else {
+            stderr.trim_end().to_string()
+        };
         return Err(Error(format!(
-            "link failed: {}",
-            String::from_utf8_lossy(&o.stderr)
+            "linking with '{program}' failed ({}); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:\n{detail}",
+            o.status
         )));
     }
     place_executable(out)?;
