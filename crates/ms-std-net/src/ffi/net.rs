@@ -5,7 +5,7 @@ use crate::conn::{Connection, Datagrams, Listener};
 use crate::error::{NetErr, Status};
 use crate::ip::{Cidr, ip_text, normalize, parse_ip};
 use crate::net::{DnsKind, Network, root};
-use ms_rt_abi::{Obj, StrObj, VecVal};
+use ms_rt_abi::{Obj, STATUS_NONE, StrObj, VecVal};
 use ms_std_core::{
     bytes_ref, new_string, read_string_list, str_ref, write_bytes, write_string_list,
 };
@@ -437,10 +437,11 @@ pub unsafe extern "C" fn msrt_net_connection_peer_address(c: *const Obj) -> *mut
     new_string(unsafe { connection(c) }.peer_address())
 }
 
-/// `Connection.read(max_bytes, timeout) -> Result[Optional[Bytes], IoError]`. `present` is 0 at end of stream.
+/// `Connection.read(max_bytes, timeout) -> Result[Optional[Bytes], IoError]`. The status is
+/// `STATUS_NONE` (16) at end of stream.
 ///
 /// # Safety
-/// `out` is writable memory for a `VecVal`; `present` is writable.
+/// `out` is writable memory for a `VecVal`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_connection_read(
     c: *const Obj,
@@ -449,19 +450,18 @@ pub unsafe extern "C" fn msrt_net_connection_read(
     has_timeout: u8,
     timeout: i64,
     out: *mut VecVal,
-    present: *mut u8,
     err: *mut *mut StrObj,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = connection(c).read(opt(has_max, max), opt(has_timeout, timeout));
-        finish(r, err, |chunk| match chunk {
-            Some(bytes) => {
-                write_bytes(out, &bytes);
-                *present = 1;
-            }
-            None => *present = 0,
-        })
+        match connection(c).read(opt(has_max, max), opt(has_timeout, timeout)) {
+            Ok(None) => STATUS_NONE,
+            r => finish(r, err, |chunk| {
+                if let Some(bytes) = chunk {
+                    write_bytes(out, &bytes);
+                }
+            }),
+        }
     }
 }
 
@@ -575,9 +575,9 @@ unsafe fn datagrams<'a>(o: *const Obj) -> &'a Rc<Datagrams> {
 /// # Safety
 /// `d` is a DatagramSocket handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_net_datagram_address(d: *const Obj) -> *mut StrObj {
+pub unsafe extern "C" fn msrt_net_datagram_address(sock: *const Obj) -> *mut StrObj {
     // SAFETY: caller contract.
-    new_string(unsafe { datagrams(d) }.address())
+    new_string(unsafe { datagrams(sock) }.address())
 }
 
 /// `DatagramSocket.close()`.
@@ -585,32 +585,38 @@ pub unsafe extern "C" fn msrt_net_datagram_address(d: *const Obj) -> *mut StrObj
 /// # Safety
 /// `d` is a DatagramSocket handle.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_net_datagram_close(d: *const Obj) {
+pub unsafe extern "C" fn msrt_net_datagram_close(sock: *const Obj) {
     // SAFETY: caller contract.
-    unsafe { datagrams(d) }.close();
+    unsafe { datagrams(sock) }.close();
 }
 
-/// `DatagramSocket.receive(max_bytes, timeout)`: the datagram's `data` and `sender`.
+/// A `Datagram` record as the compiler lays it out.
+#[repr(C)]
+pub struct DatagramWire {
+    pub data: VecVal,
+    pub sender: *mut StrObj,
+}
+
+/// `DatagramSocket.receive(max_bytes, timeout)`: the `Datagram` record.
 ///
 /// # Safety
-/// `data` is writable memory for a `VecVal`; `sender` is writable.
+/// `out` is writable memory for a `DatagramWire`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_receive(
-    d: *const Obj,
+    sock: *const Obj,
     has_max: u8,
     max: i64,
     has_timeout: u8,
     timeout: i64,
-    data: *mut VecVal,
-    sender: *mut *mut StrObj,
+    out: *mut DatagramWire,
     err: *mut *mut StrObj,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).receive(opt(has_max, max), opt(has_timeout, timeout));
+        let r = datagrams(sock).receive(opt(has_max, max), opt(has_timeout, timeout));
         finish(r, err, |dg| {
-            write_bytes(data, &dg.data);
-            *sender = new_string(&dg.sender);
+            write_bytes(&raw mut (*out).data, &dg.data);
+            (*out).sender = new_string(&dg.sender);
         })
     }
 }
@@ -621,7 +627,7 @@ pub unsafe extern "C" fn msrt_net_datagram_receive(
 /// `data` and `address` are live strings.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_send(
-    d: *const Obj,
+    sock: *const Obj,
     data: *const StrObj,
     address: *const StrObj,
     has_timeout: u8,
@@ -630,7 +636,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).send(
+        let r = datagrams(sock).send(
             str_ref(data).as_bytes(),
             str_ref(address),
             opt(has_timeout, timeout),
@@ -645,7 +651,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send(
 /// `data` is a live `Bytes` value; `address` a live string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_net_datagram_send_bytes(
-    d: *const Obj,
+    sock: *const Obj,
     data: *const VecVal,
     address: *const StrObj,
     has_timeout: u8,
@@ -654,7 +660,7 @@ pub unsafe extern "C" fn msrt_net_datagram_send_bytes(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let r = datagrams(d).send(bytes_ref(data), str_ref(address), opt(has_timeout, timeout));
+        let r = datagrams(sock).send(bytes_ref(data), str_ref(address), opt(has_timeout, timeout));
         finish(r, err, |()| {})
     }
 }
@@ -737,7 +743,6 @@ mod tests {
                 0
             );
             let mut out = MaybeUninit::<VecVal>::uninit();
-            let mut present = 0u8;
             assert_eq!(
                 msrt_net_connection_read(
                     server,
@@ -746,12 +751,11 @@ mod tests {
                     1,
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut present,
                     &mut err
                 ),
                 0
             );
-            assert_eq!((present, bytes_ref(out.as_ptr())), (1, &b"hello"[..]));
+            assert_eq!(bytes_ref(out.as_ptr()), &b"hello"[..]);
             assert_eq!(msrt_net_connection_shutdown_write(client, &mut err), 0);
             assert_eq!(
                 msrt_net_connection_read(
@@ -761,24 +765,13 @@ mod tests {
                     1,
                     2_000_000_000,
                     out.as_mut_ptr(),
-                    &mut present,
                     &mut err
                 ),
-                0
+                STATUS_NONE
             );
-            assert_eq!(present, 0);
             // A timeout reports `Failed("operation timed out")` (IoError case 6).
             assert_eq!(
-                msrt_net_connection_read(
-                    client,
-                    0,
-                    0,
-                    1,
-                    20_000_000,
-                    out.as_mut_ptr(),
-                    &mut present,
-                    &mut err
-                ),
+                msrt_net_connection_read(client, 0, 0, 1, 20_000_000, out.as_mut_ptr(), &mut err),
                 6
             );
             assert_eq!(take(err), "operation timed out");
