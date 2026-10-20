@@ -241,10 +241,6 @@ fn real_runtime() -> &'static PathBuf {
         command
             .current_dir(&root)
             .args(["build", "--release", "-p", "ms-rt"]);
-        if cfg!(windows) {
-            // Windows runtime dependencies use std; match the ms-native feature.
-            command.args(["--features", "std"]);
-        }
         let st = command
             .arg("--target-dir")
             .arg(&target)
