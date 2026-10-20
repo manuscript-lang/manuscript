@@ -1,6 +1,7 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
+mod licenses;
 mod nested;
 mod release;
 mod unsafe_boundary;
@@ -20,6 +21,23 @@ fn main() -> ExitCode {
 }
 
 fn run() -> ExitCode {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    match arguments.iter().map(String::as_str).collect::<Vec<_>>()[..] {
+        [] => {}
+        ["licenses"] | ["licenses", "-check"] => {
+            return match licenses::run(arguments.len() == 2) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(error) => {
+                    eprintln!("{error}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+        _ => {
+            eprintln!("usage: repo-check [licenses [-check]]");
+            return ExitCode::from(2);
+        }
+    }
     let files = match tracked_files() {
         Ok(files) => files,
         Err(error) => {
