@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "list-parity.ms::List insert mutates in place and returns the same list",
+          "name": "list-parity.ms::List insert mutates in place",
           "status": "passed"
         },
         {
@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "list-parity.ms::List pop and distinct retain payload references",
+          "name": "list-parity.ms::List pop and distinct copy payloads",
           "status": "passed"
         },
         {
@@ -55,7 +55,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN list-parity.ms::List count calls the predicate once per element\nPASS list-parity.ms::List count calls the predicate once per element\nRUN list-parity.ms::List insert mutates in place and returns the same list\nPASS list-parity.ms::List insert mutates in place and returns the same list\nRUN list-parity.ms::List pop removes and returns the last element\nPASS list-parity.ms::List pop removes and returns the last element\nRUN list-parity.ms::List pop and distinct retain payload references\nPASS list-parity.ms::List pop and distinct retain payload references\nRUN list-parity.ms::List distinct keeps the first equal element in order\nPASS list-parity.ms::List distinct keeps the first equal element in order\nRUN list-parity.ms::List parity operations support generic and bound use\nPASS list-parity.ms::List parity operations support generic and bound use\nRUN list-parity.ms::List distinct handles large Int and String lists\nPASS list-parity.ms::List distinct handles large Int and String lists\n7 tests, 0 failed\n",
+      "stdout": "RUN list-parity.ms::List count calls the predicate once per element\nPASS list-parity.ms::List count calls the predicate once per element\nRUN list-parity.ms::List insert mutates in place\nPASS list-parity.ms::List insert mutates in place\nRUN list-parity.ms::List pop removes and returns the last element\nPASS list-parity.ms::List pop removes and returns the last element\nRUN list-parity.ms::List pop and distinct copy payloads\nPASS list-parity.ms::List pop and distinct copy payloads\nRUN list-parity.ms::List distinct keeps the first equal element in order\nPASS list-parity.ms::List distinct keeps the first equal element in order\nRUN list-parity.ms::List parity operations support generic and bound use\nPASS list-parity.ms::List parity operations support generic and bound use\nRUN list-parity.ms::List distinct handles large Int and String lists\nPASS list-parity.ms::List distinct handles large Int and String lists\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

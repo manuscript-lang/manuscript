@@ -64,7 +64,8 @@ conform-oracle: build
 	cargo run -q -p ms-conform -- lint
 	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
 
-# The corpus against the Rust ms, minus known failures (tests/conformance/rust/).
+# The run, check and test phases of the corpus against the Rust `ms`, excluding fixtures whose answer depends on
+# aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt (plus rust/expect-fail.<os>.txt).
 conform-rust:
 	sh scripts/conform-rust.sh
 

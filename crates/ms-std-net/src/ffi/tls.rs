@@ -20,8 +20,8 @@ pub struct TlsOptionsWire {
     pub roots_pem: *const StrObj,
     pub certificate_pem: *const StrObj,
     pub private_key_pem: *const StrObj,
-    /// `List[String]`.
-    pub alpn: *const VecVal,
+    /// `List[String]`, inline as the compiler lays a list out.
+    pub alpn: VecVal,
     pub require_client_certificate: u8,
 }
 
@@ -36,7 +36,7 @@ unsafe fn options(w: *const TlsOptionsWire) -> TlsOptions {
             roots_pem: str_ref(w.roots_pem).to_string(),
             certificate_pem: str_ref(w.certificate_pem).to_string(),
             private_key_pem: str_ref(w.private_key_pem).to_string(),
-            alpn: read_string_list(w.alpn)
+            alpn: read_string_list(&w.alpn)
                 .into_iter()
                 .map(str::to_string)
                 .collect(),

@@ -108,6 +108,18 @@ unsafe extern "system" {
     fn SuspendThread(h: HANDLE) -> DWORD;
     fn ResumeThread(h: HANDLE) -> DWORD;
     fn GetThreadContext(h: HANDLE, ctx: *mut c_void) -> BOOL;
+    fn RtlCaptureContext(ctx: *mut c_void);
+    fn RtlLookupFunctionEntry(pc: usize, image: *mut usize, history: *mut c_void) -> *mut c_void;
+    fn RtlVirtualUnwind(
+        kind: u32,
+        image: usize,
+        pc: usize,
+        entry: *mut c_void,
+        ctx: *mut c_void,
+        handler_data: *mut *mut c_void,
+        establisher: *mut usize,
+        pointers: *mut c_void,
+    ) -> *mut c_void;
 }
 
 unsafe extern "C" {
@@ -432,6 +444,7 @@ mod ctx {
     pub const FLAGS: u32 = 0x10_0003;
     pub const PC: usize = 0xF8;
     pub const FP: usize = 0xA0;
+    pub const SP: usize = 0x98;
 }
 #[cfg(target_arch = "aarch64")]
 mod ctx {
@@ -441,10 +454,57 @@ mod ctx {
     pub const FLAGS: u32 = 0x40_0003;
     pub const PC: usize = 0x108;
     pub const FP: usize = 0xF0;
+    pub const SP: usize = 0x100;
 }
 
 #[repr(C, align(16))]
 struct Context([u8; ctx::SIZE]);
+
+/// Recovers the first generated source frame through the native fault-reporting
+/// prefix. Missing native unwind metadata ends the search: generated glue also
+/// lacks it, and must never be mistaken for a native leaf function.
+pub fn source_frame(mut is_source: impl FnMut(usize) -> bool) -> Option<(usize, usize)> {
+    let mut c = Context([0; ctx::SIZE]);
+    let (lo, hi) = stack_limits();
+    // SAFETY: aligned, correctly sized architecture-specific CONTEXT. Native
+    // unwind records restore all nonvolatile registers; no handlers are invoked.
+    unsafe {
+        RtlCaptureContext(c.0.as_mut_ptr().cast());
+        for _ in 0..256 {
+            let word = |off: usize| c.0.as_ptr().add(off).cast::<usize>().read_unaligned();
+            let (pc, sp, fp) = (word(ctx::PC), word(ctx::SP), word(ctx::FP));
+            if pc == 0 || sp < lo || sp >= hi || !sp.is_multiple_of(8) {
+                return None;
+            }
+            if is_source(pc) {
+                return Some((pc, fp));
+            }
+            let mut image = 0;
+            let entry = RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut());
+            if entry.is_null() {
+                return None;
+            }
+            let mut handler = core::ptr::null_mut();
+            let mut establisher = 0;
+            RtlVirtualUnwind(
+                0,
+                image,
+                pc,
+                entry,
+                c.0.as_mut_ptr().cast(),
+                &mut handler,
+                &mut establisher,
+                core::ptr::null_mut(),
+            );
+            let next_sp = c.0.as_ptr().add(ctx::SP).cast::<usize>().read_unaligned();
+            let next_pc = c.0.as_ptr().add(ctx::PC).cast::<usize>().read_unaligned();
+            if next_sp < sp || (next_sp == sp && next_pc == pc) {
+                return None;
+            }
+        }
+    }
+    None
+}
 
 /// A handle that lets one thread read another's registers.
 pub fn current_thread_for_sampling() -> *mut c_void {

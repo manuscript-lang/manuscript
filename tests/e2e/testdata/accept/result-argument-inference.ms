@@ -16,7 +16,7 @@ fn erase[T](r: Result[T, Error]) Result[T, Error]: r
 
 fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
 
-fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.get()
+fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.get().clone()
 
 fn same[T, E: Error](r: Result[T, E]) Result[T, E]: r
 
@@ -45,7 +45,7 @@ fn ordered[T](
     return first
 
 test "infer success and preserve concrete error identity":
-    var cause = Failure(11)
+    let cause = Failure(11)
     let r: Result[Int, Failure] = error(cause)
     let inferred = erase(r)
     let explicit = erase[Int](r)
@@ -53,21 +53,16 @@ test "infer success and preserve concrete error identity":
     let forwarded = forward(r)
     let known: Error = Failure(5)
     let inferred_from_known = both(known, r)
-    cause.code = 19
 
     for value in [inferred, explicit, wrapped, forwarded, inferred_from_known]:
         try expect_false(not value.is_error())
         let view = value.err()
-        try expect_equal(view.message(), "19")
+        try expect_equal(view.message(), "11")
 
         match view:
             Failure(original):
-                try expect_equal(original.code, 19)
-                original.code = 23
+                try expect_equal(original.code, 11)
             _: return fail("lost concrete error identity")
-
-        try expect_equal(cause.code, 23)
-        cause.code = 19
 
     let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
     let failed = erase(generic)

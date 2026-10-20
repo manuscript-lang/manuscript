@@ -3,7 +3,7 @@ name = "ms-std-math"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript standard-library natives for @std/math (Go-identical floating-point results)"
+description = "Manuscript standard-library natives for @std/math"
 
 [lib]
 crate-type = ["rlib"]

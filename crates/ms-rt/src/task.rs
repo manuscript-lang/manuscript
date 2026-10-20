@@ -993,4 +993,101 @@ mod tests {
         }
         reset_for_tests();
     }
+
+    #[cfg(unix)]
+    mod fd_waits {
+        use super::*;
+
+        static RESULT: Global<u32> = Global::new(0);
+
+        fn pipe() -> [i32; 2] {
+            let mut fds = [0i32; 2];
+            // SAFETY: `fds` has room for the two descriptors.
+            assert_eq!(unsafe { sys::pipe(fds.as_mut_ptr()) }, 0);
+            fds
+        }
+
+        fn put(fd: i32) {
+            // SAFETY: writes one byte from a live buffer.
+            assert_eq!(unsafe { sys::write(fd, b"x".as_ptr().cast(), 1) }, 1);
+        }
+
+        unsafe extern "C-unwind" fn reader(arg: *mut u8) {
+            // SAFETY: called from a running task; `arg` is a pipe read end.
+            let r = unsafe { msrt_task_wait_fd(arg as usize as i32, WAIT_READ, 2_000_000_000) };
+            // SAFETY: tests hold the lock.
+            unsafe { *RESULT.ptr() = r };
+        }
+
+        unsafe extern "C-unwind" fn writer(arg: *mut u8) {
+            // SAFETY: called from a running task.
+            unsafe { msrt_task_sleep(5_000_000) };
+            put(arg as usize as i32);
+        }
+
+        fn close_all(fds: [i32; 2]) {
+            // SAFETY: both descriptors are open and owned by the test.
+            unsafe {
+                sys::close(fds[0]);
+                sys::close(fds[1]);
+            }
+        }
+
+        #[test]
+        fn wakes_on_readable_then_stays_ready() {
+            let _g = lock();
+            reset_for_tests();
+            let fds = pipe();
+            // SAFETY: tests hold the global lock; every handle is joined once.
+            unsafe {
+                *RESULT.ptr() = 0;
+                let r = msrt_task_spawn(
+                    reader,
+                    core::ptr::without_provenance_mut(fds[0] as usize),
+                    0,
+                    0,
+                );
+                let w = msrt_task_spawn(
+                    writer,
+                    core::ptr::without_provenance_mut(fds[1] as usize),
+                    0,
+                    0,
+                );
+                assert_eq!(msrt_task_join(r, null_mut()), 0);
+                assert_eq!(msrt_task_join(w, null_mut()), 0);
+                assert_eq!(*RESULT.ptr() & WAIT_READ, WAIT_READ);
+                // Level triggered: the byte is still unread, so a new wait returns at once.
+                assert_eq!(
+                    msrt_task_wait_fd(fds[0], WAIT_READ, 1_000_000_000) & WAIT_READ,
+                    WAIT_READ
+                );
+            }
+            close_all(fds);
+            reset_for_tests();
+        }
+
+        #[test]
+        fn times_out_when_nothing_arrives() {
+            let _g = lock();
+            reset_for_tests();
+            let fds = pipe();
+            // SAFETY: tests hold the global lock.
+            let got = unsafe { msrt_task_wait_fd(fds[0], WAIT_READ, 10_000_000) };
+            assert_eq!(got, WAIT_TIMEOUT);
+            close_all(fds);
+            reset_for_tests();
+        }
+
+        #[test]
+        fn writable_end_is_ready() {
+            let _g = lock();
+            reset_for_tests();
+            let fds = pipe();
+            // SAFETY: tests hold the global lock.
+            let got = unsafe { msrt_task_wait_fd(fds[1], WAIT_WRITE, 1_000_000_000) };
+            assert_eq!(got & WAIT_WRITE, WAIT_WRITE);
+            close_all(fds);
+            reset_for_tests();
+        }
+    }
 }

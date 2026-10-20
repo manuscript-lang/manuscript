@@ -202,14 +202,3 @@ func Collections_Flatten[T any](ctx *Execution, lists *List[*List[T]]) *List[T] 
 	}
 	return NewList(out...)
 }
-
-// Collections_Shift removes and returns the first item, or none when empty.
-func Collections_Shift[T any](ctx *Execution, values *List[T]) Option[T] {
-	CheckCancelled(ctx)
-	if len(values.Items) == 0 {
-		return None[T]()
-	}
-	first := values.Items[0]
-	values.Items = values.Items[1:]
-	return Some(first)
-}

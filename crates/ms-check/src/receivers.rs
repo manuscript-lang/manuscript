@@ -139,6 +139,7 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("prepend", "collections/prepend"),
             ("insert", "collections/insert"),
             ("pop", "collections/pop"),
+            ("shift", "collections/shift"),
             ("set", "collections/set"),
             ("remove", "collections/remove"),
             ("slice", "collections/slice"),

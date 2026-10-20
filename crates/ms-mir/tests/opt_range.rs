@@ -187,3 +187,17 @@ fn kernels_verify_after_range() {
         }
     }
 }
+
+#[test]
+fn ifconv_turns_a_pure_diamond_into_select() {
+    let src =
+        std::fs::read_to_string(dir("fixtures-opt").join("ifconv_collatz.mir")).expect("fixture");
+    let before = parse(&src);
+    let mut after = before.clone();
+    assert!(ms_mir::opt::ifconv::run(&mut after));
+    verify_module(&after).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(count(&after, "select"), 1);
+    assert_eq!(count(&after, "br_if"), 1);
+    assert_eq!(exec(&before), exec(&after));
+    assert_eq!(exec(&after).0, Ok(111));
+}

@@ -213,7 +213,7 @@ impl Stream {
                     });
                 }
                 Ok(k) => data = &data[k..],
-                Err(sys::EAGAIN) => continue,
+                Err(e) if sys::would_block(e) => continue,
                 Err(e) => return Err(IoFail::os("write", &self.name, e)),
             }
         }

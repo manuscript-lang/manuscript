@@ -424,6 +424,16 @@ impl<'a> FnLower<'a> {
             let (a, b) = (self.borrow(l), self.borrow(r));
             return self.call_runtime(sym, &[a, b], t);
         }
+        if self.is_instant(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            // `instant - instant` is the elapsed duration; a duration moves the instant.
+            let (sym, out) = match (op, self.ty_of(b) == t) {
+                (BinaryOp::Sub, true) => ("msstd_time_instant_difference", MTy::INT),
+                (BinaryOp::Sub, false) => ("msstd_time_instant_unshift", t),
+                _ => ("msstd_time_instant_shift", t),
+            };
+            return self.call_runtime(sym, &[a, b], out);
+        }
         Err(Error::new(format!(
             "arithmetic on {} is not supported yet",
             crate::text::ty_name(self.b.m, t)
@@ -465,6 +475,11 @@ impl<'a> FnLower<'a> {
             "Decimal" => Some("msstd_decimal_compare"),
             _ => None,
         }
+    }
+
+    /// Whether `t` is the `Instant` record.
+    fn is_instant(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Instant")
     }
 
     /// Whether `t` is the `Decimal` record.

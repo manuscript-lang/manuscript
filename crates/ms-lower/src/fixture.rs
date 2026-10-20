@@ -7,6 +7,8 @@ use crate::Error;
 use crate::func::FnLower;
 use ms_check::hir::Callable;
 use ms_check::types::{self as ct, BindingRef, Subst};
+use ms_mir::ir::{Imm, Op};
+use ms_mir::types::Ty as MTy;
 use std::rc::Rc;
 
 /// Hook callables of the fixture type, and the local that holds the fixture.
@@ -80,21 +82,23 @@ impl FnLower<'_> {
     fn run_hook(&mut self, hook: &Rc<Callable>, binding: &BindingRef) -> Result<(), Error> {
         let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
         let recv = self.read_local(binding)?;
-        let v = self.b.call(fid, &[recv.v]);
-        let vars = self.cx.var_positions(hook);
-        if vars.is_empty() {
+        if self.cx.var_positions(hook).is_empty() {
+            let v = self.b.call(fid, &[recv.v]);
             self.drop_if_owned(v);
             return Ok(());
         }
-        let ms_mir::types::TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(v)).clone() else {
-            return Err(Error::new("a hook that changes self must return a record"));
-        };
-        let updated = self.b.rec_get(rid, 1, v);
-        let updated = self.owned(crate::func::Val {
-            v: updated,
-            own: false,
-        });
-        self.drop_value(v);
+        // A hook that changes `self` takes the address of a slot holding a copy of the fixture
+        // and puts the final value back into it.
+        let ty = self.ty_of(recv.v);
+        let copy = self.owned(recv);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+            .expect("slot");
+        self.move_into(slot, copy);
+        let v = self.b.call(fid, &[slot]);
+        self.drop_if_owned(v);
+        let updated = self.move_out(slot, ty);
         let var = self.local(binding)?.var;
         let old = self.b.use_var(var);
         self.drop_value(old);

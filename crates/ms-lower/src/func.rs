@@ -72,6 +72,8 @@ pub(crate) struct FnLower<'a> {
     pub discard: Option<usize>,
     /// The fixture hooks a test runs after its body, on every exit.
     pub fixture: Option<crate::fixture::Hooks>,
+    /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
+    pub err_slot: Option<Value>,
 }
 
 impl Cx {
@@ -238,6 +240,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
         JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
+        JobKind::Html(j) => return crate::html::build_html(cx, m, job.func, j),
     };
     let hir = cx.module(c.module.file)?;
     let file = m.add_file(c.module.file.as_str());
@@ -278,6 +281,7 @@ impl<'a> FnLower<'a> {
             var_slots: Vec::new(),
             discard: None,
             fixture: None,
+            err_slot: None,
         }
     }
 

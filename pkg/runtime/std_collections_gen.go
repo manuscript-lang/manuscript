@@ -26,9 +26,6 @@ func check_Collections_MapFromEntries[K comparable, V any]() {
 func check_Collections_Flatten[T any]() {
 	var _ func(*Execution, *List[*List[T]]) *List[T] = Collections_Flatten[T]
 }
-func check_Collections_Shift[T any]() {
-	var _ func(*Execution, *List[T]) Option[T] = Collections_Shift[T]
-}
 func check_List_Clone[T any]() {
 	var _ func(*Execution, *List[T]) *List[T] = List_Clone[T]
 }
@@ -61,6 +58,9 @@ func check_List_Insert[T any]() {
 }
 func check_List_Pop[T any]() {
 	var _ func(*Execution, *List[T]) Option[T] = List_Pop[T]
+}
+func check_List_Shift[T any]() {
+	var _ func(*Execution, *List[T]) Option[T] = List_Shift[T]
 }
 func check_List_Set[T any]() {
 	var _ func(*Execution, *List[T], int, T) Unit = List_Set[T]

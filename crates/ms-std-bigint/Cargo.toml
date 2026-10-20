@@ -12,7 +12,7 @@ num-bigint = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

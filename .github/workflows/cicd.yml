@@ -129,7 +129,7 @@ jobs:
           path: .artifacts/conform-oracle.md
 
   # The corpus against the Rust ms on the platforms it ships for beyond Linux. Failures that
-  # also occur on Linux are listed in tests/conformance/rust/expect-fail.txt; failures specific
+  # also occur on Linux are listed in tests/conformance/rust-expect-fail.txt; failures specific
   # to one platform go in expect-fail.<os>.txt with a reason.
   rust-conform-os:
     name: Rust corpus (${{ matrix.os }})
@@ -163,10 +163,16 @@ jobs:
           path: .artifacts/conform-rust.md
           if-no-files-found: ignore
 
+  rust-native:
+    name: Native codegen
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    uses: ./.github/workflows/codegen-platforms.yml
+
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-lint, rust-test, rust-conform, rust-conform-os]
+    needs: [changes, rust-lint, rust-test, rust-conform, rust-conform-os, rust-native]
     if: always()
     runs-on: ubuntu-latest
     steps:

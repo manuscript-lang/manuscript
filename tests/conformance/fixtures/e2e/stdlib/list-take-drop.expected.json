@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "list-take-drop.ms::List take and drop retain shallow payload references",
+          "name": "list-take-drop.ms::List take and drop copy payloads before changing them",
           "status": "passed"
         },
         {
@@ -36,7 +36,7 @@
         },
         {
           "index": 5,
-          "name": "list-take-drop.ms::List take and drop bound methods read the retained receiver at call time",
+          "name": "list-take-drop.ms::List take and drop bound methods read the retained receiver",
           "status": "passed"
         }
       ],
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN list-take-drop.ms::List take and drop copy prefix and remainder\nPASS list-take-drop.ms::List take and drop copy prefix and remainder\nRUN list-take-drop.ms::List take and drop clamp positive counts and preserve empty boundaries\nPASS list-take-drop.ms::List take and drop clamp positive counts and preserve empty boundaries\nRUN list-take-drop.ms::List take and drop allocate independent outer storage\nPASS list-take-drop.ms::List take and drop allocate independent outer storage\nRUN list-take-drop.ms::List take and drop retain shallow payload references\nPASS list-take-drop.ms::List take and drop retain shallow payload references\nRUN list-take-drop.ms::List take and drop support generic and nested values\nPASS list-take-drop.ms::List take and drop support generic and nested values\nRUN list-take-drop.ms::List take and drop bound methods read the retained receiver at call time\nPASS list-take-drop.ms::List take and drop bound methods read the retained receiver at call time\n6 tests, 0 failed\n",
+      "stdout": "RUN list-take-drop.ms::List take and drop copy prefix and remainder\nPASS list-take-drop.ms::List take and drop copy prefix and remainder\nRUN list-take-drop.ms::List take and drop clamp positive counts and preserve empty boundaries\nPASS list-take-drop.ms::List take and drop clamp positive counts and preserve empty boundaries\nRUN list-take-drop.ms::List take and drop allocate independent outer storage\nPASS list-take-drop.ms::List take and drop allocate independent outer storage\nRUN list-take-drop.ms::List take and drop copy payloads before changing them\nPASS list-take-drop.ms::List take and drop copy payloads before changing them\nRUN list-take-drop.ms::List take and drop support generic and nested values\nPASS list-take-drop.ms::List take and drop support generic and nested values\nRUN list-take-drop.ms::List take and drop bound methods read the retained receiver\nPASS list-take-drop.ms::List take and drop bound methods read the retained receiver\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
