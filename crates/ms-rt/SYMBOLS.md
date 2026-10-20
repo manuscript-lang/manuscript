@@ -53,6 +53,8 @@ msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
 msrt_io_write_stderr(s: *mut StrObj)
+msrt_test_site(message: *mut StrObj, site: *mut StrObj)
+msrt_test_site_report(message: *mut StrObj)
 msrt_io_write_bytes_stdout(v: *const VecVal)
 msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
