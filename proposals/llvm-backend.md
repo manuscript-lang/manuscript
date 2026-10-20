@@ -1,21 +1,21 @@
 # Proposal: LLVM release backend (P4)
 
-Status: proposal for the gate in [rust-cranelift-backend.md](rust-cranelift-backend.md) (P4: "a measured gap on real programs justifies LLVM or C emission from the same MIR"). Cranelift stays the default.
+Status: **deferred.** The spike gate failed on `collatz`: hand-written LLVM IR (checked ops, atomic poll, `clang -O3`) ran in 355k us against 359k us for Cranelift, 1.0x. `nbody` (1.6x vs C) is the one candidate left; revisit if float-kernel performance becomes a priority. Proposal for the gate in [rust-cranelift-backend.md](rust-cranelift-backend.md) (P4: "a measured gap on real programs justifies LLVM or C emission from the same MIR"). Cranelift stays the default.
 
 ## Problem
 
-Cranelift output trails what a mid-end optimizer produces on loop-heavy code. Same machine, same run, wall time in microseconds, `ms-clif/kernels/*.mir` compiled by `mirc` (Cranelift, `speed`) against `bench/c-backend-estimate.c` built with `clang -O3` (checked arithmetic, polls, bounds checks, same loop structure):
+Cranelift output trails clang -O3 on float-heavy code and is level on integer loops. Same machine, same run, wall time in microseconds, `ms-clif/kernels/*.mir` compiled by `mirc` (Cranelift, `speed`) against `bench/c-backend-estimate.c` built with `clang -O3` (checked arithmetic, polls, bounds checks, same loop structure):
 
-| kernel | Cranelift | C (clang -O3) | ratio |
+| kernel | Cranelift (min of 7) | C (clang -O3, in-kernel) | ratio |
 |---|---:|---:|---:|
-| collatz 1M | 522k | 345k | 1.5x |
-| sieve 5M | 51k | 44k | 1.2x |
-| life 128x128x50 | 48k | 34k | 1.4x |
-| matmul 200 | 31k | 18k | 1.7x |
-| nbody 200k | 32k | 14k | 2.4x |
-| trees d16 x20 | 149k | 55k | 2.7x* |
+| collatz 1M | 359k | 357k | 1.0x |
+| sieve 5M | 45k | 40k | 1.1x |
+| life 128x128x50 | 38k | 34k | 1.1x |
+| matmul 200 | 20k | 15k | 1.3x |
+| nbody 200k | 21k | 13k | 1.6x |
+| trees d16 x20 | 81k | 56k | 1.4x* |
 
-Geometric mean about 1.7x. Caveats: Cranelift times are whole-process wall times (include startup and allocation); the C estimate has no reference counting or drops (`*` trees is optimistic for C); the C file is hand-written, not emitted from MIR. The real gap is therefore smaller than the table and is not yet measured on MIR-to-LLVM output.
+Geometric mean about 1.2x. An earlier single-run table showed 1.7x; it was noise in the Cranelift runs. Caveats: Cranelift times are whole-process wall times (include startup and allocation); the C estimate has no reference counting or drops (`*` trees is optimistic for C); the C file is hand-written, not emitted from MIR. The real gap is therefore smaller than the table and is not yet measured on MIR-to-LLVM output.
 
 The perf gaps on `bench/results.md` today (`for_list` 7x, `read_line` 10x vs Go) are runtime and MIR issues, not codegen quality, and belong to the perf thread. This proposal does not claim to fix them.
 
