@@ -330,8 +330,15 @@ test "TOML deeply nested inline tables parse in linear time":
     let n = 6000
     let text = "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
     let started = clock().now()
-    let parsed = parse(text)
+    let parsed = parse(text, some(TomlLimits()))
     let elapsed = clock().now().difference(started).to_milliseconds()
     let value = try parsed
     try expect_true(entries(value).is_ok())
     if elapsed > 3000: return fail("nested inline tables took {elapsed} ms")
+
+test "TOML parse without limits stops deep nesting and an empty limits record lifts it":
+    let deep = "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
+    if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
+
+    let lifted = parse(deep, some(TomlLimits()))
+    try expect_true(lifted.is_ok())

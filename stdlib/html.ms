@@ -8,6 +8,7 @@ export type HtmlError:
     case LimitExceeded
 
 # Optional bounds for HTML input bytes, tree depth, and node count.
+# Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 nodes; pass an `HtmlLimits` to change that.
 export type HtmlLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
     max_bytes: Optional[Int] = none

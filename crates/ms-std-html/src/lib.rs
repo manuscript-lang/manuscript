@@ -26,6 +26,15 @@ pub struct Limits {
     pub max_nodes: Option<i64>,
 }
 
+impl Limits {
+    /// Applied when the caller supplies no limits record.
+    pub const DEFAULT: Limits = Limits {
+        max_bytes: None,
+        max_depth: Some(10000),
+        max_nodes: Some(1_000_000),
+    };
+}
+
 /// A parsed document; node ids index [`Tree::nodes`].
 pub struct Tree {
     pub nodes: Vec<Node>,
