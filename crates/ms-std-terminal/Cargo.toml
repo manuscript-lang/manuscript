@@ -16,7 +16,7 @@ ms-std-rt = { path = "../ms-std-rt" }
 libc = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
