@@ -2365,13 +2365,14 @@ fn build_stream_method(
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;
     let args = b.params();
-    if name == "write" {
-        let sym = if stderr {
-            "msrt_io_write_stderr"
-        } else {
-            "msrt_io_write_stdout"
+    if name == "write" || name == "write_bytes" {
+        let (sym, arg) = match (name == "write", stderr) {
+            (true, true) => ("msrt_io_write_stderr", MTy::STR),
+            (true, false) => ("msrt_io_write_stdout", MTy::STR),
+            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
+            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
         };
-        let ext = runtime_fn(b.m, sym, &[MTy::STR], MTy::UNIT);
+        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
         b.call_rt(ext, &[args[1]]);
     }
     match b.m.types.kind(ret).clone() {
