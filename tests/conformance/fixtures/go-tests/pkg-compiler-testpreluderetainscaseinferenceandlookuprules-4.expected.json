@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Error, found String; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)",
+        "message": "expected Error, found String (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)",
         "position": {
           "file": "pkg-compiler-testpreluderetainscaseinferenceandlookuprules-4.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-4.ms:5:12: type: expected Error, found String; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-4.ms:5:12: type: expected Error, found String (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

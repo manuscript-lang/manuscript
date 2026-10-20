@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected HashAlgorithm, found String",
+        "message": "expected HashAlgorithm, found String (in argument 'algorithm' of choose)",
         "position": {
           "file": "pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-6.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-6.ms:8:12: type: expected HashAlgorithm, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-6.ms:8:12: type: expected HashAlgorithm, found String (in argument 'algorithm' of choose)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

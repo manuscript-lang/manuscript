@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected NormalizationForm, found String",
+        "message": "expected NormalizationForm, found String (in argument 'form' of choose)",
         "position": {
           "file": "pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-2.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-2.ms:8:12: type: expected NormalizationForm, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-2.ms:8:12: type: expected NormalizationForm, found String (in argument 'form' of choose)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

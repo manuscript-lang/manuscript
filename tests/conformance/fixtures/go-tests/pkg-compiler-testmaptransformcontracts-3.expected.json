@@ -20,7 +20,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int; the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)",
+        "message": "expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int (in argument 'transform' of values.map); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)",
         "position": {
           "file": "pkg-compiler-testmaptransformcontracts-3.ms",
           "line": 5,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:5:65: type: callback mismatch: the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)\n<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:5:65: type: expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int; the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:5:65: type: callback mismatch: the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)\n<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:5:65: type: expected fn(key: String, value: Int) Int, found fn(value: Int, key: String) Int (in argument 'transform' of values.map); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

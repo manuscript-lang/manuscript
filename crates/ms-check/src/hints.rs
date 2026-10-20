@@ -103,6 +103,24 @@ pub fn missing_cases(cases: &[Case], seen: &HashSet<Name>) -> Vec<String> {
         .collect()
 }
 
+/// The arm heads a match still needs, e.g. `B(x):`, binding payload fields by name.
+pub fn missing_arms(cases: &[Case], seen: &HashSet<Name>) -> String {
+    let arms: Vec<String> = cases
+        .iter()
+        .filter(|c| !seen.contains(&c.name))
+        .map(|c| {
+            if c.fields.is_empty() {
+                format!("'{}:'", c.name)
+            } else {
+                format!("'{}({}):'", c.name, names_of(&c.fields).join(", "))
+            }
+        })
+        .collect();
+    let shown = arms.len().min(12);
+    let more = if arms.len() > shown { ", ..." } else { "" };
+    format!("{}{more}", arms[..shown].join(", "))
+}
+
 /// `Name[T1, T2]` for an arity.
 pub fn type_sketch(name: &str, arity: usize) -> String {
     if arity == 0 {
@@ -222,8 +240,19 @@ pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
     match (actual.id.as_str(), expected.id.as_str()) {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
         ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
+        ("Int" | "Float" | "Bool", "String") => format!(
+            "{actual} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
+        ),
         _ => String::new(),
     }
+}
+
+/// A plain value where a Result is required: wrap it in `ok(...)`.
+pub fn ok_wrap_hint(actual: &Ty, expected: &Ty) -> String {
+    if !expected.is_std("Result") || expected.args.is_empty() || !same(&expected.args[0], actual) {
+        return String::new();
+    }
+    "wrap the value in ok(...), e.g. return ok(value)".to_string()
 }
 
 /// A no-argument operation named without parentheses.
@@ -467,6 +496,9 @@ impl Checker {
         }
         let hint = did_you_mean(name.as_str(), &available);
         if !hint.is_empty() {
+            if available.len() <= 40 {
+                return format!("{message}{hint}; available: {}", available.join(", "));
+            }
             return format!("{message}{hint}");
         }
         if !available.is_empty() {
@@ -570,6 +602,7 @@ impl Checker {
             label_mismatch_hint(actual, expected),
             optional_use_hint(actual, expected),
             number_conversion_hint(actual, expected),
+            ok_wrap_hint(actual, expected),
             uncalled_function_hint(actual, expected),
         ] {
             if !hint.is_empty() {
