@@ -320,19 +320,15 @@ pub unsafe extern "C-unwind" fn msrt_list_index_of(
 
 /// Index of the first `target` in `items`; 8 elements are compared per step so the scan vectorizes.
 fn find_int(items: &[i64], target: i64) -> Option<usize> {
-    let mut chunks = items.chunks_exact(8);
+    let (chunks, rest) = items.as_chunks::<8>();
     let mut base = 0;
-    for chunk in &mut chunks {
+    for chunk in chunks {
         if chunk.iter().fold(false, |hit, &x| hit | (x == target)) {
             return chunk.iter().position(|&x| x == target).map(|j| base + j);
         }
         base += 8;
     }
-    chunks
-        .remainder()
-        .iter()
-        .position(|&x| x == target)
-        .map(|j| base + j)
+    rest.iter().position(|&x| x == target).map(|j| base + j)
 }
 
 #[unsafe(no_mangle)]
