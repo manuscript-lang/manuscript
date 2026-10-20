@@ -11,6 +11,7 @@ pub mod layout;
 pub mod link;
 
 mod cg;
+mod dwarf;
 mod lower;
 
 use ms_mir::ir::Module;

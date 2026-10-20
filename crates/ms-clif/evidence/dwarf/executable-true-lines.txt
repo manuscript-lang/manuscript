@@ -1,0 +1,27 @@
+Contents of the .debug_line section:
+
+CU: /tmp/ms-dwarf-17503/source directory/first.ms:
+File name                            Line number    Starting address    View    Stmt
+
+./inline/origin.ms:[++]
+inline/origin.ms                          70              0x1215               x
+
+.//tmp/ms-dwarf-17503/source directory/first.ms:[++]
+/tmp/ms-dwarf-17503/source directory/first.ms           12              0x1219               x
+/tmp/ms-dwarf-17503/source directory/first.ms            -              0x1225
+
+
+./relative/nested/first.ms:[++]
+relative/nested/first.ms                  40              0x123f               x
+relative/nested/first.ms                   -              0x124f
+
+
+./relative/nested/first.ms:[++]
+relative/nested/first.ms                  30              0x1260               x
+relative/nested/first.ms                  31              0x1265               x
+relative/nested/first.ms                   -              0x1268
+
+
+./relative/nested/first.ms:[++]
+relative/nested/first.ms                  90              0x1276               x
+relative/nested/first.ms                   -              0x127b

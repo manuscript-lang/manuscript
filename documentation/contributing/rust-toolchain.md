@@ -64,9 +64,9 @@ The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/cr
 The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these differences.
 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
-- **No debugger.** `ms debug` and the debugger adapter are not part of the Rust `ms`; use `ms profile` (folded stacks, pprof, top report) or `perf` on any `ms build` output, which keeps frame pointers, DWARF line tables, and a perf map.
+- **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
 - **`ms emit` is not implemented.** It reports that the Go `ms` is needed. The Rust backend produces object code, not Go source.
-- **Linking uses the system `cc`.** A bundled linker is planned.
+- **Linking uses host tools.** Unix builds use `cc`; macOS also needs `dsymutil` (override with `MS_DSYMUTIL`) and writes `<output>.dSYM` beside the executable. Keep that bundle with the executable for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections. `MS_LINKER` overrides the compiler driver. A bundled linker is planned.
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
 - **No concurrency runtime.** Tasks are cooperative and single-threaded; cancellation exists for signals and shutdown only.
 - **Exit codes.** A fault exits 70, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
