@@ -10,8 +10,8 @@ permissions:
 # Rust format, clippy, tests and the conformance corpus run in cicd.yml. This workflow holds the
 # checks that need the pinned linters and the editor toolchain.
 jobs:
-  dist:
-    name: Static, CLI, fuzz, and editor
+  # The job is named `test` so its check is the stable required "Language checks / test".
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -34,11 +34,6 @@ jobs:
         run: make setup
       - name: Workflow and shell lint, repo rules, licenses
         run: make lint repo-check licenses-check
-      - name: Build CLI and run hello
-        run: |
-          make build
-          target/release/ms check examples/hello/ms.toml
-          target/release/ms run examples/hello/ms.toml -- first second
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |
@@ -48,17 +43,3 @@ jobs:
         with:
           name: manuscript-vscode
           path: extensions/vscode/*.vsix
-
-  # Keep one stable required check; every job must pass before merging.
-  test:
-    needs: [dist]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Require all language checks
-        env:
-          RESULTS: ${{ join(needs.*.result, ',') }}
-        run: |
-          case ",$RESULTS," in
-            *,failure,*|*,cancelled,*|*,skipped,*) exit 1 ;;
-          esac

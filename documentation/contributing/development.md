@@ -77,14 +77,11 @@ The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scs
 
 ## Continuous integration
 
-[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs, merge groups, and pushes to `main`. Superseded PR runs are cancelled; merge-group runs are not. Checkouts use the event's `github.sha`. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) run in parallel, each unit once:
+[CI/CD](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs on PRs, merge groups, and pushes to `main`. Superseded PR runs are cancelled; merge-group runs are not. Checkouts use the event's `github.sha`. [Language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/test-language.yml) run the pinned linters, repository rules, license check, and the VS Code extension package in one job.
 
-- The Go suite in three shards via `scripts/ci-test.sh`: in-process packages under race, the rest with coverage.
-- Static checks, the bundled CLI, fuzzing, extension/debugger integration, and macOS/Windows host checks.
+The account runs 20 jobs at once, so a pull request starts few jobs: one **Rust** job per platform (linux, darwin and windows on amd64 and arm64), the language job, the book, and two aggregates. Each Rust job runs everything for its platform in sequence: native codegen, debug-attribution and source conformance tests, the frozen corpus (linux-amd64, darwin-arm64, windows-amd64), and the packaged `ms` on a hello project. linux-amd64 also runs fmt, clippy, cargo-nextest, and doc tests; nextest and the corpus runner use every core. The jobs share `Swatinem/rust-cache`, saved only from `main`. Documentation-only pull requests skip them. The **Rust checks** aggregate fails if any Rust job fails, is cancelled, or is skipped when Rust-relevant files changed.
 
-The Rust jobs (fmt and clippy, cargo-nextest in two partitions plus doc tests, and the conformance corpus in four shards) share `Swatinem/rust-cache`, saved only from `main`. Documentation-only pull requests skip them. The **Rust checks** aggregate fails if any Rust job fails, is cancelled, or is skipped when Rust-relevant files changed.
-
-The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/release.yml) packages and verifies all six targets on every PR and merge group, with no path filters. Manual runs produce artifacts; matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, **Rust checks**, and **Distribution checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails, is skipped, or is cancelled.
+Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml), called from `release.yml`; every target gates there, and matching `v*` tags publish archives. Require **Build design book**, **Language checks / test**, and **Rust checks** for PRs and merge groups (queue checks use `merge_group: checks_requested`); the aggregates fail if any dependency fails or is cancelled.
 
 
 ## Generate the standard library reference
