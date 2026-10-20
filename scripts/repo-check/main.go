@@ -45,7 +45,7 @@ func check() error {
 	if len(os.Args) > 2 || len(os.Args) == 2 && os.Args[1] != "-format" {
 		return fmt.Errorf("usage: repo-check [-format]")
 	}
-	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
+	if err := checkStandardSyntax(os.DirFS("stdlib"), "stdlib"); err != nil {
 		return err
 	}
 	if err := checkNestedMatches(); err != nil {
@@ -112,7 +112,7 @@ func check() error {
 		if !hashed[name] {
 			issues = append(issues, "implementation hash omits "+name)
 		}
-		if name == "pkg/stdlib" {
+		if name == "stdlib" {
 			continue
 		} // Only the authoritative .ms and binding data enter native identity.
 		p := packages[name]

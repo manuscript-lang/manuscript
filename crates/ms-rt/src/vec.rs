@@ -1521,6 +1521,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "too slow to interpret")]
     fn stable_sort_large_and_distinct() {
         let _g = testutil::lock();
         unsafe {

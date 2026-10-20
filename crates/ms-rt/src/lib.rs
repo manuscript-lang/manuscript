@@ -62,7 +62,11 @@ pub mod utf8;
 pub mod vec;
 
 #[cfg(test)]
-mod testutil;
+mod model_tests;
 
 #[cfg(test)]
+mod testutil;
+
+// Drives files, processes and signals through the ABI, which Miri cannot model.
+#[cfg(all(test, not(miri)))]
 mod std_natives;

@@ -1,4 +1,4 @@
-//! Embeds `pkg/stdlib/*.ms` and `bindings.json` unchanged.
+//! Embeds `stdlib/*.ms` and `bindings.json` unchanged.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -6,9 +6,9 @@ use std::path::PathBuf;
 fn main() {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let dir = manifest
-        .join("../../pkg/stdlib")
+        .join("../../stdlib")
         .canonicalize()
-        .expect("pkg/stdlib");
+        .expect("stdlib");
     println!("cargo:rerun-if-changed={}", dir.display());
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .expect("read stdlib")

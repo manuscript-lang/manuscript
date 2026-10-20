@@ -74,7 +74,9 @@ fn named(name: &str) -> Option<Zone> {
     if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
         return None;
     }
-    TimeZone::get(name).ok().map(Zone::Named)
+    // The bundled database matches names case-insensitively; Go reads zoneinfo files by exact name.
+    let tz = TimeZone::get(name).ok()?;
+    (tz.iana_name() == Some(name)).then_some(Zone::Named(tz))
 }
 
 /// The host's local zone as jiff reads it: `TZ`, then `/etc/localtime` on Unix and the system

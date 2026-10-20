@@ -347,7 +347,7 @@ Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is avai
 `eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`...)
 use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
 `msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
-items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `pkg/stdlib/*.ms`
+items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `stdlib/*.ms`
 (`String.split` -> `msrt_string_split`). Argument order: receiver pointer(s), descriptors,
 declared parameters, flattened optionals, `out` last.
 

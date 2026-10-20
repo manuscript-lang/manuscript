@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/manuscript-lang/manuscript/pkg/checker"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
+	"github.com/manuscript-lang/manuscript/stdlib"
 )
 
 func TestExportedStandardLibraryIsValidVisibleSource(t *testing.T) {
