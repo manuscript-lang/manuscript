@@ -134,6 +134,8 @@ pub(super) struct ConnSt {
     pub flush_pending: bool,
     pub eof: bool,
     pub deadline: Option<Instant>,
+    /// The deadline bounds an idle wait for the next request, not a request in progress.
+    pub idle_deadline: bool,
     pub interest: Ev,
     pub registered: bool,
     pub h2: Option<Box<h2serve::H2Conn>>,
@@ -724,6 +726,7 @@ impl Server {
                 flush_pending: false,
                 eof: false,
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
+                idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
                 h2: None,
@@ -731,10 +734,10 @@ impl Server {
         });
         {
             let mut st = conn.st.borrow_mut();
-            // A silent connection is bounded by the timeout only while it holds a
-            // half-read request; a fresh plain connection may idle.
+            // A fresh plain connection is idle until its first byte; the timeout bounds that
+            // wait too, so silent connections cannot pin file descriptors.
             if self.tls.is_none() {
-                st.deadline = None;
+                st.idle_deadline = st.deadline.is_some();
             }
             if !reactor.add(st.fd(), token, Ev::IN) {
                 return;
@@ -950,6 +953,13 @@ impl Server {
         if closed {
             return;
         }
+        if idle_head && !eof {
+            let mut st = conn.st.borrow_mut();
+            if st.deadline.is_none() {
+                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                st.idle_deadline = st.deadline.is_some();
+            }
+        }
         if eof {
             // The peer is gone: finish a pending response, otherwise close.
             let phase_writing = matches!(conn.st.borrow().phase, Phase::Writing);
@@ -1022,14 +1032,16 @@ impl Server {
             }
             match h1::parse_request(st.unread(), self.limits.header.min(1 << 30)) {
                 Parsed::Partial => {
-                    if st.deadline.is_none() {
+                    if st.deadline.is_none() || st.idle_deadline {
                         st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                        st.idle_deadline = false;
                     }
                     return false;
                 }
                 Parsed::Complete(head) => {
                     st.consume(head.length);
                     st.deadline = None;
+                    st.idle_deadline = false;
                     Ok(head)
                 }
                 Parsed::Bad(bad) => Err(bad),

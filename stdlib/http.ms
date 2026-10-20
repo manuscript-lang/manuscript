@@ -251,7 +251,7 @@ export type HttpServerOptions:
     max_response_bytes: Optional[Int] = none
     # Largest accepted request header block and largest response header block, in bytes. Must be positive; none sets no cap.
     max_header_bytes: Optional[Int] = none
-    # Per-request time budget covering reading the request, running the handler, and writing the response. none sets no deadline.
+    # Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. none sets no deadline.
     timeout: Optional[Duration] = none
     # How long `close` waits for in-flight requests to finish before cancelling them. none waits without limit and 0 cancels immediately.
     grace: Optional[Duration] = none
