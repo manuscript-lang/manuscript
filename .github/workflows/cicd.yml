@@ -121,6 +121,64 @@ jobs:
           name: conform-rust-${{ matrix.shard }}
           path: .artifacts/conform-rust.md
 
+  # The corpus against the Rust ms on the other platforms it ships for. Failures shared with
+  # Linux are in tests/conformance/rust-expect-fail.txt; platform-only ones go in
+  # tests/conformance/rust-expect-fail.<os>.txt with a reason.
+  rust-conform-os:
+    name: Rust corpus (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, runner: windows-2025 }
+          - { os: macos, runner: macos-15 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-conform-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Git Bash puts usr/bin/link.exe (GNU link) ahead of MSVC's; name the MSVC linker for cargo.
+      - name: Select the MSVC linker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvcLinker" >> $env:GITHUB_ENV
+      - name: Use clang as the linker driver
+        if: runner.os == 'Windows'
+        run: |
+          echo 'CC=clang' >> "$GITHUB_ENV"
+          echo 'MS_LINKER=clang' >> "$GITHUB_ENV"
+      - name: Rust ms replays the corpus
+        run: sh scripts/conform-rust.sh
+      - name: Show why a failing test-phase fixture does not run
+        if: failure()
+        run: |
+          for f in time fs terminal net http-upload sse-http; do
+            echo "::group::ms test e2e/stdlib/$f"
+            target/debug/ms test "tests/conformance/fixtures/e2e/stdlib/$f.ms" 2>&1 | head -40 || true
+            echo "::endgroup::"
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: conform-rust-${{ matrix.os }}
+          path: .artifacts/conform-rust.md
+          if-no-files-found: ignore
+
   rust-native:
     name: Native codegen
     needs: changes
@@ -132,7 +190,7 @@ jobs:
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
     name: Rust checks
-    needs: [changes, rust-lint, rust-test, rust-conform, rust-native]
+    needs: [changes, rust-lint, rust-test, rust-conform, rust-conform-os, rust-native]
     if: always()
     runs-on: ubuntu-latest
     steps:

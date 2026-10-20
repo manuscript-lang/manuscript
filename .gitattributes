@@ -1,0 +1,5 @@
+# Source and conformance fixtures are byte-exact: diagnostic offsets and recorded output
+# assume LF, so Windows checkouts must not convert them.
+*.ms text eol=lf
+*.toml text eol=lf
+tests/conformance/** text eol=lf

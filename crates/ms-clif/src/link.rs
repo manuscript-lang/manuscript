@@ -138,7 +138,21 @@ fn driver_options(_program: &str) -> &'static [&'static str] {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn system_libraries() -> &'static [&'static str] {
+    // TLS reaches the system trust store through Security.framework.
+    &[
+        "-lm",
+        "-lpthread",
+        "-ldl",
+        "-framework",
+        "Security",
+        "-framework",
+        "CoreFoundation",
+    ]
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn system_libraries() -> &'static [&'static str] {
     &["-lm", "-lpthread", "-ldl"]
 }

@@ -61,11 +61,13 @@ impl ProjectError {
         })
     }
 
-    /// True for `ENOENT` only, like Go's `os.IsNotExist`.
+    /// True for `ENOENT` only, like Go's `os.IsNotExist` (which on Windows also takes
+    /// `ERROR_PATH_NOT_FOUND`, a missing directory on the way).
     pub fn is_not_exist(&self) -> bool {
+        let missing = |errno: i32| errno == ENOENT || (cfg!(windows) && errno == 3);
         match self {
-            ProjectError::Path(error) => error.errno == ENOENT,
-            ProjectError::Errno(errno) => *errno == ENOENT,
+            ProjectError::Path(error) => missing(error.errno),
+            ProjectError::Errno(errno) => missing(*errno),
             ProjectError::Manifest(error) => error.cause.is_not_exist(),
             ProjectError::Message(_) => false,
         }
