@@ -488,6 +488,66 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     assert!(total < Duration::from_millis(1500), "{total:?}");
 }
 
+/// A handler that faults used to leak its request and the fault report on every request
+/// (about 1.2 KiB each), so a server answering faults slowly ate its memory.
+#[cfg(target_os = "linux")]
+#[test]
+fn native_http_handler_faults_do_not_leak_per_request() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpStream;
+    use std::process::Stdio;
+
+    let dir = scratch("native-http-fault-leak");
+    let source = write(
+        &dir,
+        "main.ms",
+        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), \"{xs[i]}\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+    );
+    let exe = dir.join("server");
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
+    assert_eq!(status, 0, "{err}");
+    let mut child = Command::new(&exe)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(child.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let address = line.trim().to_string();
+    let rss_kib = |pid: u32| -> u64 {
+        let status = std::fs::read_to_string(format!("/proc/{pid}/status")).unwrap();
+        let field = status.lines().find(|l| l.starts_with("VmRSS:")).unwrap();
+        field.split_whitespace().nth(1).unwrap().parse().unwrap()
+    };
+    let faults = |count: usize| {
+        for _ in 0..count {
+            let mut stream = TcpStream::connect(&address).unwrap();
+            write!(
+                stream,
+                "GET /fault HTTP/1.1\r\nHost: a\r\nConnection: close\r\n\r\n"
+            )
+            .unwrap();
+            let mut reply = String::new();
+            stream.read_to_string(&mut reply).unwrap();
+            assert!(reply.starts_with("HTTP/1.1 500"), "{reply}");
+        }
+    };
+    faults(500);
+    let before = rss_kib(child.id());
+    faults(4000);
+    let grown = rss_kib(child.id()).saturating_sub(before);
+    child.kill().unwrap();
+    child.wait().unwrap();
+    // The leak was ~4.6 MiB over 4000 requests; what remains is well under a quarter of that.
+    assert!(
+        grown < 1024,
+        "{grown} KiB gained over 4000 faulting requests"
+    );
+}
+
 /// `stdout().flush()` writes the buffered output at once rather than at exit.
 #[test]
 fn native_stdout_flush_reaches_a_pipe_immediately() {

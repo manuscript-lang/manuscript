@@ -22,6 +22,30 @@ fn pointer(mode: Mode) -> Param {
 }
 
 impl FnLower<'_> {
+    /// The function the cleanup stack calls to release `ty` when a fault abandons the frame
+    /// that owns it.
+    fn drop_thunk(&mut self, ty: MTy) -> ms_mir::ir::FuncId {
+        let key = format!("drop:{}", ty.index());
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let ps = vec![Param {
+            ty,
+            mode: Mode::Own,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "drop", ps, MTy::UNIT);
+        b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        let v = b.params()[0];
+        b.emit(Op::Drop, &[v], Imm::None, None);
+        let u = b.unit();
+        b.ret(Some(u));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
     /// The token text of an `HttpMethod` value.
     pub(crate) fn method_text(&mut self, method: Val) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(method.v)).clone() else {
@@ -208,7 +232,14 @@ impl FnLower<'_> {
         }
         let req = fl.b.rec_new(rid, &values);
         fl.drop_value(loaded);
+        // A fault in the handler abandons this frame; the cleanup stack releases the request.
+        let rec_ty = fl.ty_of(req);
+        let thunk = fl.drop_thunk(rec_ty);
+        let handle =
+            fl.b.emit(Op::CleanupPush, &[req], Imm::Func(thunk), Some(MTy::INT))
+                .expect("handle");
         let response = fl.b.call_ind(handler, &[req]);
+        let _ = fl.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
         fl.drop_value(req);
         fl.b.emit(Op::Put, &[p[2], response], Imm::None, None);
         let unit = fl.b.unit();

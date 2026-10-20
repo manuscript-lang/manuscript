@@ -290,7 +290,8 @@ plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_
 `*msg_out = null`; `msrt_cancel_flag` stays set so the caller should stop soon after.
 Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
 are untouched. Not unwound: values owned by the abandoned frames are only released
-through cleanup actions, so a fault leaks anything not under `with`. Faults still exit
+through cleanup actions, so a fault leaks anything not under `with`; the HTTP server's handler thunk registers its request
+with the cleanup stack for this reason. Faults still exit
 70 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
 and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
 generated code needs no landing pads). Single threaded like the rest of the runtime.
