@@ -580,13 +580,11 @@ impl<'a> Parser<'a> {
         // starts at the first token of the initializer for source tooling.
         let init_pos = self.peek().pos;
         let value = self.expression(0)?;
-        let return_id = self.id();
         Ok(ConstDecl {
             name: self.sym(name),
             ty,
             value,
             init_pos,
-            return_id,
             group,
         })
     }

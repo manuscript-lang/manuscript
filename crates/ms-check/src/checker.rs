@@ -1031,10 +1031,7 @@ impl Checker {
         let fall;
         if let Some(c) = d.decl.constant().filter(|_| d.index.is_none()) {
             self.check_parameters(d, &[], &t.params);
-            // The synthetic `return value` of a constant.
-            let i = self.expression(&c.value, self.result.clone().as_ref());
-            let _ = i;
-            self.set_flow(c.return_id, false);
+            self.expression(&c.value, self.result.clone().as_ref());
             fall = false;
         } else {
             let params: &[ms_syntax::ast::Param] = match d.func() {
