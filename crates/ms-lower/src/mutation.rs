@@ -31,26 +31,28 @@ struct Edge {
     target: Target,
 }
 
-/// The receiver and index of an index read. `xs[i]` with a name or call as the bracket parses as
-/// `Apply` (a type application) until resolution shows it is an index.
+/// The base and index of an element read `xs[i]`. The parser reads `xs[name]` as an `Apply`
+/// node that the checker resolves to an index, so both spellings count.
 pub(crate) fn index_parts<'e>(hir: &ModuleHir, e: &'e Expr) -> Option<(&'e Expr, &'e Expr)> {
     match &e.kind {
         ExprKind::Index { left, index } => Some((left, index)),
         ExprKind::Apply {
             left,
-            value: Some(value),
+            value: Some(index),
             ..
-        } if hir.info(e).native_str() == "index"
-            || matches!(hir.resolution(e), Resolution::Native(n) if n.as_str() == "index") =>
-        {
-            Some((left, value))
-        }
+        } if is_index_apply(hir, e) => Some((left, index)),
         _ => None,
     }
 }
 
-/// Finds the root local of a place expression (`a`, `a.b.c`, `a.b[i].c`).
-pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
+/// Whether an `Apply` node is really an index read (`xs[i]`).
+pub(crate) fn is_index_apply(hir: &ModuleHir, e: &Expr) -> bool {
+    hir.info(e).native_str() == "index"
+        || matches!(hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
+}
+
+/// Peels field selections and element reads off a place expression down to its base.
+pub(crate) fn place_base<'e>(hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
     let mut cur = e;
     loop {
         if let ExprKind::Member { left, .. } = &cur.kind {
@@ -58,9 +60,14 @@ pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
         } else if let Some((left, _)) = index_parts(hir, cur) {
             cur = left;
         } else {
-            break;
+            return cur;
         }
     }
+}
+
+/// Finds the root local of a place expression (`a`, `a.b.c`, `a[i].c`).
+pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
+    let cur = place_base(hir, e);
     match hir.resolution(cur) {
         Resolution::Local(b) => Some(b.uid),
         _ => None,

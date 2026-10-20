@@ -309,7 +309,10 @@ impl<'a> FnLower<'a> {
             result,
             &mut |s| {
                 let x = s.b.opt_get(found.v);
-                Ok(Some(s.owned(Val { v: x, own: false })))
+                let hit = s.owned(Val { v: x, own: false });
+                // The eager fallback is unused on this path.
+                s.finish(fallback);
+                Ok(Some(hit))
             },
             &mut |s| Ok(Some(s.owned(fallback))),
         )?;

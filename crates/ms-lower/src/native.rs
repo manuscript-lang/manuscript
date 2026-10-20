@@ -1551,7 +1551,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Drops an owned operand once its branch is done with it.
-    fn finish(&mut self, x: Val) {
+    pub(crate) fn finish(&mut self, x: Val) {
         if x.own && self.needs_drop(self.ty_of(x.v)) {
             self.drop_value(x.v);
         }
@@ -1962,16 +1962,7 @@ impl<'a> FnLower<'a> {
 
     /// A variable or a field chain from one.
     pub fn is_place(&self, e: &Expr) -> bool {
-        let mut cur = e;
-        loop {
-            if let ExprKind::Member { left, .. } = &cur.kind {
-                cur = left;
-            } else if let Some((left, _)) = crate::mutation::index_parts(&self.hir, cur) {
-                cur = left;
-            } else {
-                break;
-            }
-        }
+        let cur = crate::mutation::place_base(&self.hir, e);
         matches!(&cur.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(cur), Resolution::Local(_))
     }
@@ -2419,6 +2410,8 @@ impl<'a> FnLower<'a> {
                         s.owned(Val { v: x, own: false })
                     };
                     let some = s.b.opt_some(payload);
+                    let old = s.b.use_var(acc);
+                    s.drop_value(old);
                     s.b.def_var(acc, some);
                     s.b.br(miss, &[]);
                     s.b.switch_to(miss);
@@ -2627,6 +2620,8 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(hit);
         let x = self.b.list_get(l, i);
         let xo = self.owned(Val { v: x, own: false });
+        // The eager default is unused on this path.
+        self.finish(default.val);
         self.b.def_var(out, xo);
         self.b.br(join, &[]);
         self.b.switch_to(miss);
@@ -2647,11 +2642,13 @@ impl<'a> FnLower<'a> {
                 v: inner,
                 own: false,
             });
+            self.finish(default.val);
             self.b.def_var(out, d);
             self.b.br(join, &[]);
             self.b.switch_to(fault);
             let x = self.b.list_get(l, idx);
             let xo = self.owned(Val { v: x, own: false });
+            self.finish(default.val);
             self.b.def_var(out, xo);
             self.b.br(join, &[]);
         }
