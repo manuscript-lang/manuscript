@@ -1,5 +1,4 @@
-//! Directory cursors and scoped temporary directories, ported from `osDirectory` and
-//! `osTemporary` in `pkg/runtime/fs_handle.go`.
+//! Directory cursors and scoped temporary directories.
 use crate::err::{Fail, Res};
 use crate::ops;
 use crate::sys::{self, CPath};
@@ -23,7 +22,7 @@ pub struct Directory {
 }
 
 impl Directory {
-    /// Opens `path`; anything but a directory is `Failed("not a directory")`, as in the Go runtime.
+    /// Opens `path`; anything but a directory is `Failed("not a directory")`.
     pub fn open(path: &[u8]) -> Res<Directory> {
         let p = CPath::new(path).ok_or_else(Fail::invalid)?;
         let st = sys::stat(&p, true).map_err(|e| Fail::errno(e, "open", path))?;

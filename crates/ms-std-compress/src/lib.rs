@@ -1,6 +1,5 @@
 //! `@std/compress.ms` natives: gzip, zlib and raw deflate with the framing, checks and error
-//! mapping of `pkg/runtime/compress.go` (Go's `compress/*`). The compressed bytes are produced by
-//! miniz_oxide, so they are valid but not byte-identical to Go's encoder output.
+//! mapping. The compressed bytes are produced by miniz_oxide.
 #![no_std]
 
 extern crate alloc;

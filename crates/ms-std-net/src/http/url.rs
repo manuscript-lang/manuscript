@@ -72,7 +72,7 @@ fn valid_host_text(host: &str) -> bool {
         .all(|b| b > 0x20 && b != 0x7f && !b"\\^`{|}#?/@".contains(&b) && b != b'%')
 }
 
-/// `httpURL` of the Go runtime: an http or https URL with a host, a valid port
+/// An http or https URL with a host, a valid port
 /// and no user info.
 pub fn parse(text: &str) -> Option<Url> {
     if text.bytes().any(|b| b < 0x20 || b == 0x7f) {

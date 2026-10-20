@@ -1,4 +1,4 @@
-//! `@std/semver.ms` natives: a port of `pkg/runtime/semver.go`.
+//! `@std/semver.ms` natives.
 #![no_std]
 
 extern crate alloc;

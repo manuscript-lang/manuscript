@@ -1,4 +1,4 @@
-//! Child processes, ported from `osCommands` in `pkg/runtime/process.go`.
+//! Child processes.
 //!
 //! Children start in their own process group (a job object on Windows) so a kill reaches the
 //! whole tree.

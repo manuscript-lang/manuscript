@@ -1,4 +1,4 @@
-//! `@std/fs` file-handle operations, ported from `osFileHandle` in `pkg/runtime/fs_handle.go`.
+//! `@std/fs` file-handle operations.
 //!
 //! A file handle is a [`Stream`] whose descriptor was opened by [`open`]; the same object also
 //! serves as the `reader()` / `writer()` `@std/io` views. Every operation first returns bytes a

@@ -1,4 +1,4 @@
-//! A host stream over a file descriptor, ported from `hostStream` in `pkg/runtime/io.go`.
+//! A host stream over a file descriptor.
 //!
 //! Reads and writes block in `poll(2)` slices so a pending cancellation interrupts them; bytes a
 //! line reader took beyond the current line wait in `pending` for the next read.

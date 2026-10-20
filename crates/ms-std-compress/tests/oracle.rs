@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/compress.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/compress.tsv`, a recorded corpus.
 //! Streams produced by Go must decode identically (including every error), and compress must
 //! accept and reject the same arguments; the encoded bytes themselves are implementation specific.
 use ms_std_compress::*;
