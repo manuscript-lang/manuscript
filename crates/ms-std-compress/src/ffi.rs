@@ -2,241 +2,162 @@
 //! (`"gzip"`, `"zlib"`, `"deflate"`); `CompressionFormat` methods pass the matching constant.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
 
 use crate::Format;
 use crate::stream::{Decoder, Encoder, Poll};
-use alloc::boxed::Box;
-use ms_rt_abi::Obj;
-use ms_std_core::{Fail, StrObj, VecVal, bytes_ref, opt, status_of, str_ref, write_bytes};
-
-unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_free(p: *mut u8);
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_compress(
-    data: *const VecVal,
-    format: *const StrObj,
-    level: i64,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `data` is a live Bytes value; `format` is live; `out` is writable.
-    unsafe {
-        let r = crate::compress(bytes_ref(data), str_ref(format), level, opt(has_max, max));
-        if let Ok(b) = &r {
-            write_bytes(out, b);
-        }
-        status_of(&r)
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_decompress(
-    data: *const VecVal,
-    format: *const StrObj,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `data` is a live Bytes value; `format` is live; `out` is writable.
-    unsafe {
-        let r = crate::decompress_bytes(bytes_ref(data), str_ref(format), opt(has_max, max));
-        if let Ok(b) = &r {
-            write_bytes(out, b);
-        }
-        status_of(&r)
-    }
-}
-
-// ---- streams ----
-//
-// A stream codec is a refcounted handle. The generated code owns the input `ReadStream` and the
-// pull loop: on `POLL_NEED_INPUT` it reads a chunk and calls `feed` (or `finish_input` at the end
-// of the input), then polls again.
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use ms_std_core::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
 
 /// `decoder_poll` status: no output yet, feed more input.
 pub const POLL_NEED_INPUT: u8 = 64;
 /// `decoder_poll` status: the stream ended cleanly.
 pub const POLL_DONE: u8 = 65;
 
-#[repr(C)]
-pub struct DecoderObj {
-    header: Obj,
-    decoder: *mut Decoder,
+/// Why a poll produced no output.
+pub enum Stop {
+    NeedInput,
+    Done,
+    Fail(Fail),
 }
 
-#[repr(C)]
-pub struct EncoderObj {
-    header: Obj,
-    encoder: *mut Encoder,
-}
-
-unsafe extern "C" fn decoder_drop(o: *mut Obj) {
-    // SAFETY: `o` was built by `msrt_compress_decoder_new`; `decoder` came from `Box::into_raw`.
-    unsafe {
-        drop(Box::from_raw((*o.cast::<DecoderObj>()).decoder));
-        msrt_free(o.cast());
-    }
-}
-
-unsafe extern "C" fn encoder_drop(o: *mut Obj) {
-    // SAFETY: `o` was built by `msrt_compress_encoder_new`; `encoder` came from `Box::into_raw`.
-    unsafe {
-        drop(Box::from_raw((*o.cast::<EncoderObj>()).encoder));
-        msrt_free(o.cast());
-    }
-}
-
-/// `decompress_stream` codec (+1); `format` is `"gzip"`, `"zlib"` or `"deflate"`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_decoder_new(
-    format: *const StrObj,
-    has_max: u8,
-    max: i64,
-    out: *mut *mut DecoderObj,
-) -> u8 {
-    // SAFETY: `format` is live; `out` is writable; the allocation is sized and initialised here.
-    unsafe {
-        let Some(format) = Format::from_name(str_ref(format)) else {
-            return Fail::Unsupported.status();
-        };
-        let p = msrt_alloc(core::mem::size_of::<DecoderObj>()).cast::<DecoderObj>();
-        p.write(DecoderObj {
-            header: Obj {
-                rc: 1,
-                drop: Some(decoder_drop),
-            },
-            decoder: Box::into_raw(Box::new(Decoder::new(format, opt(has_max, max)))),
-        });
-        out.write(p);
-        0
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_decoder_feed(d: *mut DecoderObj, data: *const VecVal) {
-    // SAFETY: `d` is a live handle; `data` is a live Bytes value.
-    unsafe { (*(*d).decoder).feed(bytes_ref(data)) };
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_decoder_finish_input(d: *mut DecoderObj) {
-    // SAFETY: `d` is a live handle.
-    unsafe { (*(*d).decoder).finish_input() };
-}
-
-/// Returns 0 with up to `max` bytes in `out`, `POLL_NEED_INPUT`, `POLL_DONE`, or an error status.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_decoder_poll(
-    d: *mut DecoderObj,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `d` is a live handle; `out` is writable.
-    unsafe {
-        match (*(*d).decoder).poll(usize::try_from(max).unwrap_or(1)) {
-            Ok(Poll::Output(b)) => {
-                write_bytes(out, &b);
-                0
-            }
-            Ok(Poll::NeedInput) => POLL_NEED_INPUT,
-            Ok(Poll::Done) => POLL_DONE,
-            Err(e) => e.status(),
+impl Status for Stop {
+    fn status(self) -> u8 {
+        match self {
+            Stop::NeedInput => POLL_NEED_INPUT,
+            Stop::Done => POLL_DONE,
+            Stop::Fail(e) => e.status(),
         }
     }
 }
 
-/// `compress_stream` codec (+1); a level outside 0..9 returns `STATUS_INVALID_INPUT`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_new(
-    format: *const StrObj,
-    level: i64,
-    out: *mut *mut EncoderObj,
-) -> u8 {
-    // SAFETY: `format` is live; `out` is writable; the allocation is sized and initialised here.
-    unsafe {
-        let Some(format) = Format::from_name(str_ref(format)) else {
-            return Fail::Unsupported.status();
-        };
-        let encoder = match Encoder::new(format, level) {
-            Ok(e) => e,
-            Err(e) => return e.status(),
-        };
-        let p = msrt_alloc(core::mem::size_of::<EncoderObj>()).cast::<EncoderObj>();
-        p.write(EncoderObj {
-            header: Obj {
-                rc: 1,
-                drop: Some(encoder_drop),
-            },
-            encoder: Box::into_raw(Box::new(encoder)),
-        });
-        out.write(p);
-        0
+// A stream codec is a refcounted handle. The generated code owns the input `ReadStream` and the
+// pull loop: on `POLL_NEED_INPUT` it reads a chunk and calls `feed` (or `finish_input` at the end
+// of the input), then polls again. Handles are shared, so the codec sits behind a `RefCell`.
+pub struct DecoderObj {
+    codec: RefCell<Decoder>,
+}
+pub struct EncoderObj {
+    codec: RefCell<Encoder>,
+}
+abi_handle!(DecoderObj);
+abi_handle!(EncoderObj);
+
+fn format(name: &str) -> Result<Format, Fail> {
+    Format::from_name(name).ok_or(Fail::Unsupported)
+}
+
+native! {
+    fn msrt_compress_compress(
+        data: &[u8],
+        format: &str,
+        level: i64,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<u8>, Fail> {
+        crate::compress(data, format, level, has_max.then_some(max))
+    }
+
+    fn msrt_compress_decompress(
+        data: &[u8],
+        format: &str,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<u8>, Fail> {
+        crate::decompress_bytes(data, format, has_max.then_some(max))
+    }
+
+    fn msrt_compress_decoder_new(
+        name: &str,
+        has_max: bool,
+        max: i64,
+        out: Out<Object<DecoderObj>>,
+    ) -> Result<(), Fail> {
+        let d = Decoder::new(format(name)?, has_max.then_some(max));
+        out.write(Object(DecoderObj {
+            codec: RefCell::new(d),
+        }));
+        Ok(())
+    }
+
+    fn msrt_compress_decoder_feed(d: ObjRef<DecoderObj>, data: &[u8]) -> () {
+        d.codec.borrow_mut().feed(data);
+    }
+
+    fn msrt_compress_decoder_finish_input(d: ObjRef<DecoderObj>) -> () {
+        d.codec.borrow_mut().finish_input();
+    }
+
+    fn msrt_compress_decoder_poll(d: ObjRef<DecoderObj>, max: i64) -> Result<Vec<u8>, Stop> {
+        match d.codec.borrow_mut().poll(usize::try_from(max).unwrap_or(1)) {
+            Ok(Poll::Output(b)) => Ok(b),
+            Ok(Poll::NeedInput) => Err(Stop::NeedInput),
+            Ok(Poll::Done) => Err(Stop::Done),
+            Err(e) => Err(Stop::Fail(e)),
+        }
+    }
+
+    fn msrt_compress_encoder_new(
+        name: &str,
+        level: i64,
+        out: Out<Object<EncoderObj>>,
+    ) -> Result<(), Fail> {
+        let e = Encoder::new(format(name)?, level)?;
+        out.write(Object(EncoderObj {
+            codec: RefCell::new(e),
+        }));
+        Ok(())
+    }
+
+    fn msrt_compress_encoder_feed(e: ObjRef<EncoderObj>, data: &[u8]) -> () {
+        e.codec.borrow_mut().feed(data);
+    }
+
+    fn msrt_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
+        e.codec.borrow_mut().finish();
+    }
+
+    fn msrt_compress_encoder_has_output(e: ObjRef<EncoderObj>) -> bool {
+        e.codec.borrow().has_output()
+    }
+
+    fn msrt_compress_encoder_is_finished(e: ObjRef<EncoderObj>) -> bool {
+        e.codec.borrow().is_finished()
+    }
+
+    fn msrt_compress_encoder_take(e: ObjRef<EncoderObj>, max: i64) -> out Vec<u8> {
+        e.codec.borrow_mut().take(usize::try_from(max).unwrap_or(0))
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_feed(e: *mut EncoderObj, data: *const VecVal) {
-    // SAFETY: `e` is a live handle; `data` is a live Bytes value.
-    unsafe { (*(*e).encoder).feed(bytes_ref(data)) };
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_finish(e: *mut EncoderObj) {
-    // SAFETY: `e` is a live handle.
-    unsafe { (*(*e).encoder).finish() };
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_has_output(e: *const EncoderObj) -> u8 {
-    // SAFETY: `e` is a live handle.
-    u8::from(unsafe { (*(*e).encoder).has_output() })
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_is_finished(e: *const EncoderObj) -> u8 {
-    // SAFETY: `e` is a live handle.
-    u8::from(unsafe { (*(*e).encoder).is_finished() })
-}
-
-/// Writes at most `max` buffered output bytes (possibly none) to `out`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_compress_encoder_take(
-    e: *mut EncoderObj,
-    max: i64,
-    out: *mut VecVal,
-) {
-    // SAFETY: `e` is a live handle; `out` is writable.
-    unsafe {
-        write_bytes(
-            out,
-            &(*(*e).encoder).take(usize::try_from(max).unwrap_or(0)),
-        )
-    };
-}
-
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
-    use ms_std_core::new_string;
+    use core::mem::MaybeUninit;
+    use ms_std_core::{ObjCell, VecVal, bytes_ref, new_string, write_bytes};
+
+    fn bytes(b: &[u8]) -> VecVal {
+        let mut v = MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_bytes` initializes the whole slot.
+        unsafe {
+            write_bytes(v.as_mut_ptr(), b);
+            v.assume_init()
+        }
+    }
+
+    fn blank() -> MaybeUninit<VecVal> {
+        MaybeUninit::uninit()
+    }
 
     #[test]
     fn abi_roundtrip() {
-        let mut input = core::mem::MaybeUninit::<VecVal>::uninit();
-        let (mut packed, mut plain) = (
-            core::mem::MaybeUninit::<VecVal>::uninit(),
-            core::mem::MaybeUninit::<VecVal>::uninit(),
-        );
+        let (input, mut packed, mut plain) = (bytes(b"hello hello hello"), blank(), blank());
         let f = new_string("gzip");
-        // SAFETY: all pointers are live; results are dropped below.
+        // SAFETY: all pointers are live; results are released below.
         unsafe {
-            write_bytes(input.as_mut_ptr(), b"hello hello hello");
             assert_eq!(
-                msrt_compress_compress(input.as_ptr(), f, 6, 0, 0, packed.as_mut_ptr()),
+                msrt_compress_compress(&input, f, 6, 0, 0, packed.as_mut_ptr()),
                 0
             );
             assert_eq!(
@@ -248,33 +169,33 @@ mod tests {
                 0
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
-            for v in [&mut input, &mut packed, &mut plain] {
-                ms_rt::vec::msrt_bytes_drop(v.as_mut_ptr());
+            let mut input = input;
+            for v in [
+                &mut input,
+                packed.as_mut_ptr().as_mut().unwrap(),
+                plain.as_mut_ptr().as_mut().unwrap(),
+            ] {
+                ms_rt::vec::msrt_bytes_drop(v);
             }
             ms_rt::obj::msrt_release(f.cast());
         }
     }
+
     #[test]
     fn stream_roundtrip() {
-        use ms_rt as _;
         let f = new_string("gzip");
-        let mut enc = core::mem::MaybeUninit::<*mut EncoderObj>::uninit();
-        let mut dec = core::mem::MaybeUninit::<*mut DecoderObj>::uninit();
-        let (mut data, mut chunk, mut plain) = (
-            core::mem::MaybeUninit::<VecVal>::uninit(),
-            core::mem::MaybeUninit::<VecVal>::uninit(),
-            core::mem::MaybeUninit::<VecVal>::uninit(),
-        );
-        // SAFETY: all pointers are live; handles and buffers are released by process exit.
+        let mut enc = MaybeUninit::<*mut ObjCell<EncoderObj>>::uninit();
+        let mut dec = MaybeUninit::<*mut ObjCell<DecoderObj>>::uninit();
+        let (data, mut chunk, mut plain) = (bytes(b"hello hello hello"), blank(), blank());
+        // SAFETY: all pointers are live; handles are released at the end.
         unsafe {
-            write_bytes(data.as_mut_ptr(), b"hello hello hello");
             assert_eq!(
                 msrt_compress_encoder_new(f, 10, enc.as_mut_ptr()),
                 ms_std_core::STATUS_INVALID_INPUT
             );
             assert_eq!(msrt_compress_encoder_new(f, 6, enc.as_mut_ptr()), 0);
             let enc = enc.assume_init();
-            msrt_compress_encoder_feed(enc, data.as_ptr());
+            msrt_compress_encoder_feed(enc, &data);
             msrt_compress_encoder_finish(enc);
             assert_eq!(msrt_compress_encoder_is_finished(enc), 1);
             msrt_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
@@ -287,7 +208,6 @@ mod tests {
             msrt_compress_decoder_feed(dec, chunk.as_ptr());
             assert_eq!(msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()), 0);
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
-            // A gzip stream may continue with another member until the input ends.
             assert_eq!(
                 msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
                 POLL_NEED_INPUT
@@ -297,6 +217,8 @@ mod tests {
                 msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),
                 POLL_DONE
             );
+            ms_rt::obj::msrt_release(enc.cast());
+            ms_rt::obj::msrt_release(dec.cast());
         }
     }
 }

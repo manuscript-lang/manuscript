@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,match,modules,optional,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
+# conform: tags=closures,control-flow,match,modules,optional,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/queues.ms
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"

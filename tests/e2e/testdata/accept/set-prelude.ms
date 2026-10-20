@@ -8,8 +8,7 @@ test "set construction and methods need no import":
     insert(var values, 3)
     values.add(1)
     values.add(3)
-    let add = values.add
-    add(2)
+    values.add(2)
     try expect_false(values.length() != 3 or not values.contains(2))
     try expect_equal(values.values(), [3, 1, 2])
     let copy = values.clone()

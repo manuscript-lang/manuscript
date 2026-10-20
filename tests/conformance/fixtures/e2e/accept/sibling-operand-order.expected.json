@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "sibling-operand-order.ms::field assignment evaluates its receiver before the value",
+          "name": "sibling-operand-order.ms::field assignment keeps sibling field writes made while evaluating the value",
           "status": "passed"
         }
       ],
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN sibling-operand-order.ms::list elements read before a later match assigns them\nPASS sibling-operand-order.ms::list elements read before a later match assigns them\nRUN sibling-operand-order.ms::map keys read before a later match assigns them\nPASS sibling-operand-order.ms::map keys read before a later match assigns them\nRUN sibling-operand-order.ms::generic binary operands read before a later match assigns them\nPASS sibling-operand-order.ms::generic binary operands read before a later match assigns them\nRUN sibling-operand-order.ms::field assignment evaluates its receiver before the value\nPASS sibling-operand-order.ms::field assignment evaluates its receiver before the value\n4 tests, 0 failed\n",
+      "stdout": "RUN sibling-operand-order.ms::list elements read before a later match assigns them\nPASS sibling-operand-order.ms::list elements read before a later match assigns them\nRUN sibling-operand-order.ms::map keys read before a later match assigns them\nPASS sibling-operand-order.ms::map keys read before a later match assigns them\nRUN sibling-operand-order.ms::generic binary operands read before a later match assigns them\nPASS sibling-operand-order.ms::generic binary operands read before a later match assigns them\nRUN sibling-operand-order.ms::field assignment keeps sibling field writes made while evaluating the value\nPASS sibling-operand-order.ms::field assignment keeps sibling field writes made while evaluating the value\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

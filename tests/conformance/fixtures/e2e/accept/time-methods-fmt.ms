@@ -1,4 +1,4 @@
-# conform: tags=aliasing,formatter,modules,parser,stdlib-testing,stdlib-time,testing,tier-io,try-result
+# conform: tags=formatter,modules,parser,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/time-methods.ms
 import {expect_equal, expect_false} from "@std/testing.ms"

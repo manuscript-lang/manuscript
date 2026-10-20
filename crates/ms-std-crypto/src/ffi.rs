@@ -1,364 +1,249 @@
 //! C ABI shims for `@std/crypto.ms`. Symbols are `msrt_crypto_<function>`; fallible functions
 //! return a `CryptoError` status (0 ok, 1 InvalidInput, 5 Unsupported, 6 AuthenticationFailed)
 //! and write the ok value through `out` only on success. `alg` is the `HashAlgorithm` case index.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
+use crate::{Alg, CryptoFail, Hasher, asym};
+use alloc::vec::Vec;
+use ms_std_core::{Fail, ObjMut, Object, Status, abi_handle, native};
 
-use crate::{Alg, CryptoFail, Hasher};
-use alloc::boxed::Box;
-use ms_rt_abi::Obj;
-use ms_std_core::{Fail, VecVal, bytes_ref, status_of, write_bytes};
+abi_handle!(Hasher);
 
-unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_free(p: *mut u8);
+/// Either error family a crypto native reports; both map onto `CryptoError` statuses.
+pub enum Error {
+    Crypto(CryptoFail),
+    Core(Fail),
 }
 
-unsafe fn crypto_result(r: Result<alloc::vec::Vec<u8>, CryptoFail>, out: *mut VecVal) -> u8 {
-    match r {
-        Ok(b) => {
-            // SAFETY: `out` is writable by the caller contract.
-            unsafe { write_bytes(out, &b) };
-            0
+impl From<CryptoFail> for Error {
+    fn from(e: CryptoFail) -> Error {
+        Error::Crypto(e)
+    }
+}
+
+impl From<Fail> for Error {
+    fn from(e: Fail) -> Error {
+        Error::Core(e)
+    }
+}
+
+impl Status for Error {
+    fn status(self) -> u8 {
+        match self {
+            Error::Crypto(e) => e.status(),
+            Error::Core(e) => e.status(),
         }
-        Err(e) => e.status(),
     }
 }
 
-unsafe fn fail_result(r: Result<alloc::vec::Vec<u8>, Fail>, out: *mut VecVal) -> u8 {
-    if let Ok(b) = &r {
-        // SAFETY: `out` is writable by the caller contract.
-        unsafe { write_bytes(out, b) };
-    }
-    status_of(&r)
-}
-
-unsafe fn digest_bytes(alg: i64, data: *const VecVal, out: *mut VecVal) {
-    let alg = Alg::from_index(alg).unwrap_or_else(|| ms_std_core::fault("invalid HashAlgorithm"));
-    // SAFETY: `data` is live and `out` is writable.
-    unsafe { write_bytes(out, &crate::digest(alg, bytes_ref(data))) };
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_digest(alg: i64, data: *const VecVal, out: *mut VecVal) {
-    // SAFETY: forwarded caller contract.
-    unsafe { digest_bytes(alg, data, out) };
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hmac(
-    alg: i64,
-    key: *const VecVal,
-    data: *const VecVal,
-    out: *mut VecVal,
-) -> u8 {
-    let Some(alg) = Alg::from_index(alg) else {
-        return CryptoFail::Unsupported.status();
-    };
-    // SAFETY: arguments are live; `out` is writable.
-    unsafe { write_bytes(out, &crate::hmac(alg, bytes_ref(key), bytes_ref(data))) };
-    0
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_derive_key(
-    alg: i64,
-    password: *const VecVal,
-    salt: *const VecVal,
-    iterations: i64,
-    length: i64,
-    out: *mut VecVal,
-) -> u8 {
-    let Some(alg) = Alg::from_index(alg) else {
-        return CryptoFail::Unsupported.status();
-    };
-    // SAFETY: arguments are live; `out` is writable.
-    unsafe {
-        fail_result(
-            crate::derive_key(
-                alg,
-                bytes_ref(password),
-                bytes_ref(salt),
-                iterations,
-                length,
-            ),
-            out,
-        )
+impl Status for CryptoFail {
+    fn status(self) -> u8 {
+        CryptoFail::status(self)
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hkdf(
-    alg: i64,
-    secret: *const VecVal,
-    salt: *const VecVal,
-    info: *const VecVal,
-    length: i64,
-    out: *mut VecVal,
-) -> u8 {
-    let Some(alg) = Alg::from_index(alg) else {
-        return CryptoFail::Unsupported.status();
-    };
-    // SAFETY: arguments are live; `out` is writable.
-    unsafe {
-        fail_result(
-            crate::hkdf(
-                alg,
-                bytes_ref(secret),
-                bytes_ref(salt),
-                bytes_ref(info),
-                length,
-            ),
-            out,
-        )
+fn alg(index: i64) -> Result<Alg, CryptoFail> {
+    Alg::from_index(index).ok_or(CryptoFail::Unsupported)
+}
+
+/// An unknown algorithm index here is a compiler bug, not a user error.
+fn alg_or_fault(index: i64) -> Alg {
+    Alg::from_index(index).unwrap_or_else(|| ms_std_core::fault("invalid HashAlgorithm"))
+}
+
+native! {
+    fn msrt_crypto_digest(alg: i64, data: &[u8]) -> out Vec<u8> {
+        crate::digest(alg_or_fault(alg), data)
+    }
+
+    fn msrt_crypto_hmac(alg_index: i64, key: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+        Ok(crate::hmac(alg(alg_index)?, key, data))
+    }
+
+    fn msrt_crypto_derive_key(
+        alg_index: i64,
+        password: &[u8],
+        salt: &[u8],
+        iterations: i64,
+        length: i64,
+    ) -> Result<Vec<u8>, Error> {
+        Ok(crate::derive_key(alg(alg_index)?, password, salt, iterations, length)?)
+    }
+
+    fn msrt_crypto_hkdf(
+        alg_index: i64,
+        secret: &[u8],
+        salt: &[u8],
+        info: &[u8],
+        length: i64,
+    ) -> Result<Vec<u8>, Error> {
+        Ok(crate::hkdf(alg(alg_index)?, secret, salt, info, length)?)
+    }
+
+    fn msrt_crypto_constant_time_equal(left: &[u8], right: &[u8]) -> bool {
+        crate::constant_time_equal(left, right)
+    }
+
+    fn msrt_crypto_seal(
+        key: &[u8],
+        nonce: &[u8],
+        data: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        crate::seal(key, nonce, data, aad)
+    }
+
+    fn msrt_crypto_open(
+        key: &[u8],
+        nonce: &[u8],
+        data: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        crate::open(key, nonce, data, aad)
+    }
+
+    fn msrt_crypto_aes_ctr(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+        crate::aes_ctr(key, iv, data)
+    }
+
+    fn msrt_crypto_aes_cbc_encrypt(
+        key: &[u8],
+        iv: &[u8],
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        crate::aes_cbc_encrypt(key, iv, data)
+    }
+
+    fn msrt_crypto_aes_cbc_decrypt(
+        key: &[u8],
+        iv: &[u8],
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        crate::aes_cbc_decrypt(key, iv, data)
+    }
+
+    fn msrt_crypto_sign(seed: &[u8], data: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+        crate::ed25519_sign(seed, data)
+    }
+
+    fn msrt_crypto_public_key(seed: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+        crate::ed25519_public_key(seed)
+    }
+
+    fn msrt_crypto_verify(key: &[u8], data: &[u8], signature: &[u8]) -> bool {
+        crate::ed25519_verify(key, data, signature)
+    }
+
+    fn msrt_crypto_hasher_new(alg: i64) -> Object<Hasher> {
+        Object(Hasher::new(alg_or_fault(alg)))
+    }
+
+    fn msrt_crypto_hmac_hasher_new(alg: i64, key: &[u8]) -> Object<Hasher> {
+        Object(Hasher::new_hmac(alg_or_fault(alg), key))
+    }
+
+    fn msrt_crypto_hasher_update(h: ObjMut<Hasher>, data: &[u8]) -> () {
+        h.0.update(data);
+    }
+
+    fn msrt_crypto_hasher_finish(h: ObjMut<Hasher>) -> out Vec<u8> {
+        h.0.finish()
+    }
+
+    // ---- asymmetric ----
+
+    fn msrt_crypto_ecdsa_generate(curve: i64) -> Result<Vec<u8>, CryptoFail> {
+        let curve = asym::Curve::from_index(curve).ok_or(CryptoFail::InvalidInput)?;
+        asym::ecdsa_generate(curve)
+    }
+
+    fn msrt_crypto_public_key_der(key: &[u8]) -> Result<Vec<u8>, CryptoFail> {
+        asym::public_key_der(key)
+    }
+
+    fn msrt_crypto_ecdh_shared_secret(
+        private_key: &[u8],
+        peer: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::ecdh_shared_secret(private_key, peer)
+    }
+
+    fn msrt_crypto_rsa_generate(bits: i64) -> Result<Vec<u8>, CryptoFail> {
+        asym::rsa_generate(bits)
+    }
+
+    fn msrt_crypto_ecdsa_sign(
+        private_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::ecdsa_sign(private_key, alg(alg_index)?, data)
+    }
+
+    fn msrt_crypto_rsa_sign(
+        private_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::rsa_sign(private_key, alg(alg_index)?, data)
+    }
+
+    fn msrt_crypto_rsa_sign_pss(
+        private_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::rsa_sign_pss(private_key, alg(alg_index)?, data)
+    }
+
+    fn msrt_crypto_rsa_encrypt(
+        private_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::rsa_encrypt(private_key, alg(alg_index)?, data)
+    }
+
+    fn msrt_crypto_rsa_decrypt(
+        private_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+    ) -> Result<Vec<u8>, CryptoFail> {
+        asym::rsa_decrypt(private_key, alg(alg_index)?, data)
+    }
+
+    fn msrt_crypto_ecdsa_verify(
+        public_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+        signature: &[u8],
+    ) -> bool {
+        alg(alg_index).is_ok_and(|a| asym::ecdsa_verify(public_key, a, data, signature))
+    }
+
+    fn msrt_crypto_rsa_verify(
+        public_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+        signature: &[u8],
+    ) -> bool {
+        alg(alg_index).is_ok_and(|a| asym::rsa_verify(public_key, a, data, signature))
+    }
+
+    fn msrt_crypto_rsa_verify_pss(
+        public_key: &[u8],
+        alg_index: i64,
+        data: &[u8],
+        signature: &[u8],
+    ) -> bool {
+        alg(alg_index).is_ok_and(|a| asym::rsa_verify_pss(public_key, a, data, signature))
     }
 }
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_constant_time_equal(
-    left: *const VecVal,
-    right: *const VecVal,
-) -> u8 {
-    // SAFETY: both are live Bytes values.
-    u8::from(crate::constant_time_equal(
-        unsafe { bytes_ref(left) },
-        unsafe { bytes_ref(right) },
-    ))
-}
-
-macro_rules! aead {
-    ($name:ident, $f:path) => {
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
-            key: *const VecVal,
-            nonce: *const VecVal,
-            data: *const VecVal,
-            aad: *const VecVal,
-            out: *mut VecVal,
-        ) -> u8 {
-            // SAFETY: arguments are live; `out` is writable.
-            unsafe {
-                crypto_result(
-                    $f(
-                        bytes_ref(key),
-                        bytes_ref(nonce),
-                        bytes_ref(data),
-                        bytes_ref(aad),
-                    ),
-                    out,
-                )
-            }
-        }
-    };
-}
-aead!(msrt_crypto_seal, crate::seal);
-aead!(msrt_crypto_open, crate::open);
-
-macro_rules! cipher3 {
-    ($name:ident, $f:path) => {
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
-            key: *const VecVal,
-            iv: *const VecVal,
-            data: *const VecVal,
-            out: *mut VecVal,
-        ) -> u8 {
-            // SAFETY: arguments are live; `out` is writable.
-            unsafe { crypto_result($f(bytes_ref(key), bytes_ref(iv), bytes_ref(data)), out) }
-        }
-    };
-}
-cipher3!(msrt_crypto_aes_ctr, crate::aes_ctr);
-cipher3!(msrt_crypto_aes_cbc_encrypt, crate::aes_cbc_encrypt);
-cipher3!(msrt_crypto_aes_cbc_decrypt, crate::aes_cbc_decrypt);
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_sign(
-    seed: *const VecVal,
-    data: *const VecVal,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: arguments are live; `out` is writable.
-    unsafe { crypto_result(crate::ed25519_sign(bytes_ref(seed), bytes_ref(data)), out) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_public_key(seed: *const VecVal, out: *mut VecVal) -> u8 {
-    // SAFETY: `seed` is live; `out` is writable.
-    unsafe { crypto_result(crate::ed25519_public_key(bytes_ref(seed)), out) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_verify(
-    key: *const VecVal,
-    data: *const VecVal,
-    signature: *const VecVal,
-) -> u8 {
-    // SAFETY: arguments are live Bytes values.
-    u8::from(crate::ed25519_verify(
-        unsafe { bytes_ref(key) },
-        unsafe { bytes_ref(data) },
-        unsafe { bytes_ref(signature) },
-    ))
-}
-
-/// Runtime handle object behind the `Hasher` interface: header, then the boxed state.
-#[repr(C)]
-pub struct HasherObj {
-    header: Obj,
-    state: *mut Hasher,
-}
-
-unsafe extern "C" fn hasher_drop(o: *mut Obj) {
-    let h = o.cast::<HasherObj>();
-    // SAFETY: `o` was created by `new_hasher`; `state` came from `Box::into_raw`.
-    unsafe {
-        drop(Box::from_raw((*h).state));
-        msrt_free(o.cast());
-    }
-}
-
-unsafe fn new_hasher(state: Hasher) -> *mut HasherObj {
-    // SAFETY: allocation sized for `HasherObj`; fully initialised before return.
-    unsafe {
-        let p = msrt_alloc(core::mem::size_of::<HasherObj>()).cast::<HasherObj>();
-        p.write(HasherObj {
-            header: Obj {
-                rc: 1,
-                drop: Some(hasher_drop),
-            },
-            state: Box::into_raw(Box::new(state)),
-        });
-        p
-    }
-}
-
-/// Creates an incremental digest handle (+1).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hasher_new(alg: i64) -> *mut HasherObj {
-    let alg = Alg::from_index(alg).unwrap_or_else(|| ms_std_core::fault("invalid HashAlgorithm"));
-    // SAFETY: allocation contract of `new_hasher`.
-    unsafe { new_hasher(Hasher::new(alg)) }
-}
-
-/// Creates an incremental HMAC handle (+1).
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hmac_hasher_new(
-    alg: i64,
-    key: *const VecVal,
-) -> *mut HasherObj {
-    let alg = Alg::from_index(alg).unwrap_or_else(|| ms_std_core::fault("invalid HashAlgorithm"));
-    // SAFETY: `key` is live; allocation contract of `new_hasher`.
-    unsafe { new_hasher(Hasher::new_hmac(alg, bytes_ref(key))) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hasher_update(h: *mut HasherObj, data: *const VecVal) {
-    // SAFETY: `h` is a live handle from `msrt_crypto_hasher_new`; `data` is live.
-    unsafe { (*(*h).state).update(bytes_ref(data)) };
-}
-
-/// Returns the digest and resets the handle to its initial state.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_hasher_finish(h: *mut HasherObj, out: *mut VecVal) {
-    // SAFETY: `h` is a live handle; `out` is writable.
-    unsafe { write_bytes(out, &(*(*h).state).finish()) };
-}
-
-// ---- asymmetric ----
-
-/// `ecdsa_generate(curve: Curve)`; `Curve` is passed as its case index.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_ecdsa_generate(curve: i64, out: *mut VecVal) -> u8 {
-    let Some(curve) = crate::asym::Curve::from_index(curve) else {
-        return CryptoFail::InvalidInput.status();
-    };
-    // SAFETY: `out` is writable.
-    unsafe { crypto_result(crate::asym::ecdsa_generate(curve), out) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_public_key_der(key: *const VecVal, out: *mut VecVal) -> u8 {
-    // SAFETY: `key` is live; `out` is writable.
-    unsafe { crypto_result(crate::asym::public_key_der(bytes_ref(key)), out) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_ecdh_shared_secret(
-    private_key: *const VecVal,
-    peer: *const VecVal,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: arguments are live; `out` is writable.
-    unsafe {
-        crypto_result(
-            crate::asym::ecdh_shared_secret(bytes_ref(private_key), bytes_ref(peer)),
-            out,
-        )
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8 {
-    // SAFETY: `out` is writable.
-    unsafe { crypto_result(crate::asym::rsa_generate(bits), out) }
-}
-
-macro_rules! sign_shim {
-    ($name:ident, $f:path) => {
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
-            private_key: *const VecVal,
-            alg: i64,
-            data: *const VecVal,
-            out: *mut VecVal,
-        ) -> u8 {
-            let Some(alg) = Alg::from_index(alg) else {
-                return CryptoFail::Unsupported.status();
-            };
-            // SAFETY: arguments are live; `out` is writable.
-            unsafe { crypto_result($f(bytes_ref(private_key), alg, bytes_ref(data)), out) }
-        }
-    };
-}
-
-macro_rules! verify_shim {
-    ($name:ident, $f:path) => {
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C" fn $name(
-            public_key: *const VecVal,
-            alg: i64,
-            data: *const VecVal,
-            signature: *const VecVal,
-        ) -> u8 {
-            let Some(alg) = Alg::from_index(alg) else {
-                return 0;
-            };
-            // SAFETY: arguments are live.
-            u8::from(unsafe {
-                $f(
-                    bytes_ref(public_key),
-                    alg,
-                    bytes_ref(data),
-                    bytes_ref(signature),
-                )
-            })
-        }
-    };
-}
-
-sign_shim!(msrt_crypto_ecdsa_sign, crate::asym::ecdsa_sign);
-sign_shim!(msrt_crypto_rsa_sign, crate::asym::rsa_sign);
-sign_shim!(msrt_crypto_rsa_sign_pss, crate::asym::rsa_sign_pss);
-sign_shim!(msrt_crypto_rsa_encrypt, crate::asym::rsa_encrypt);
-sign_shim!(msrt_crypto_rsa_decrypt, crate::asym::rsa_decrypt);
-verify_shim!(msrt_crypto_ecdsa_verify, crate::asym::ecdsa_verify);
-verify_shim!(msrt_crypto_rsa_verify, crate::asym::rsa_verify);
-verify_shim!(msrt_crypto_rsa_verify_pss, crate::asym::rsa_verify_pss);
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
-    use ms_rt as _; // links the msrt_* runtime symbols
+    use ms_rt as _;
+    use ms_std_core::{VecVal, bytes_ref, write_bytes}; // links the msrt_* runtime symbols
     extern crate std;
     use std::sync::Mutex;
 
@@ -396,7 +281,7 @@ mod tests {
             let mut want = core::mem::MaybeUninit::<VecVal>::uninit();
             assert_eq!(msrt_crypto_hmac(3, &key, &whole, want.as_mut_ptr()), 0);
             assert_eq!(read(&got.assume_init()), read(&want.assume_init()));
-            hasher_drop(h.cast());
+            ms_rt::obj::msrt_release(h.cast());
         }
     }
     #[test]

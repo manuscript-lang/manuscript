@@ -1,22 +1,43 @@
-//! Lexical path operations with the semantics of Go's `path/filepath` on Unix,
-//! plus `EvalSymlinks` with Go's exact error behavior.
+//! Lexical path operations with Go's `path/filepath` rules. Windows volumes and
+//! native separators normalize to the resolver's forward-slash path spelling;
+//! Unix symlink errors retain Go's exact behavior.
 
-use crate::error::{ENOTDIR, ProjectError};
+#[cfg(not(windows))]
+use crate::error::ENOTDIR;
+use crate::error::ProjectError;
 
 const SEP: u8 = b'/';
 
 pub fn is_abs(path: &str) -> bool {
-    path.starts_with('/') || (cfg!(windows) && windows_rooted(path))
+    #[cfg(windows)]
+    return std::path::Path::new(path).is_absolute();
+    #[cfg(not(windows))]
+    path.starts_with('/')
 }
 
-/// A drive path (`C:\x`, `C:/x`) or a UNC / extended path (`\\host\share`, `\\?\C:\x`).
-fn windows_rooted(path: &str) -> bool {
-    let bytes = path.as_bytes();
-    let drive = bytes.len() >= 3
-        && bytes[0].is_ascii_alphabetic()
-        && bytes[1] == b':'
-        && matches!(bytes[2], b'\\' | b'/');
-    drive || path.starts_with("\\\\")
+fn is_separator(c: char) -> bool {
+    c == '/' || (cfg!(windows) && c == '\\')
+}
+
+#[cfg(windows)]
+fn volume_len(path: &str) -> usize {
+    match std::path::Path::new(path).components().next() {
+        Some(std::path::Component::Prefix(prefix)) => prefix.as_os_str().len(),
+        _ => 0,
+    }
+}
+
+#[cfg(windows)]
+fn is_verbatim(path: &str) -> bool {
+    use std::path::{Component, Prefix};
+    matches!(std::path::Path::new(path).components().next(),
+        Some(Component::Prefix(prefix)) if matches!(prefix.kind(),
+            Prefix::VerbatimDisk(_) | Prefix::VerbatimUNC(_, _) | Prefix::Verbatim(_)))
+}
+
+#[cfg(not(windows))]
+fn volume_len(_: &str) -> usize {
+    0
 }
 
 /// `filepath.Clean`.
@@ -24,11 +45,22 @@ pub fn clean(path: &str) -> String {
     if path.is_empty() {
         return ".".to_string();
     }
-    // Drive and UNC paths are not lexically cleaned: the Unix rules below do not apply to them.
-    if cfg!(windows) && windows_rooted(path) {
+    // Verbatim paths have different separator and dot-name rules. Keep their
+    // spelling intact; filesystem entry points perform checked conversion.
+    #[cfg(windows)]
+    if is_verbatim(path) {
         return path.to_string();
     }
-    let rooted = is_abs(path);
+    let volume_len = volume_len(path);
+    #[cfg(windows)]
+    let normalized = path.replace('\\', "/");
+    #[cfg(windows)]
+    let path = normalized.as_str();
+    let (volume, path) = path.split_at(volume_len);
+    if path.is_empty() && volume.starts_with("//") {
+        return volume.to_string();
+    }
+    let rooted = path.starts_with('/');
     let mut out: Vec<&str> = Vec::new();
     for part in path.split('/') {
         match part {
@@ -44,10 +76,15 @@ pub fn clean(path: &str) -> String {
         }
     }
     let joined = out.join("/");
-    match (rooted, joined.is_empty()) {
+    let cleaned = match (rooted, joined.is_empty()) {
         (true, _) => format!("/{joined}"),
         (false, true) => ".".to_string(),
         (false, false) => joined,
+    };
+    if volume.is_empty() {
+        cleaned
+    } else {
+        format!("{volume}{cleaned}")
     }
 }
 
@@ -63,7 +100,10 @@ pub fn join(elements: &[&str]) -> String {
 
 /// `filepath.Dir`.
 pub fn dir(path: &str) -> String {
-    let split = path.rfind('/').map_or(0, |i| i + 1);
+    let split = path
+        .rfind(is_separator)
+        .map_or(0, |i| i + 1)
+        .max(volume_len(path));
     let directory = clean(&path[..split]);
     if split == 0 {
         ".".to_string()
@@ -77,11 +117,12 @@ pub fn base(path: &str) -> String {
     if path.is_empty() {
         return ".".to_string();
     }
-    let trimmed = path.trim_end_matches('/');
+    let trimmed = path.trim_end_matches(is_separator);
+    let trimmed = &trimmed[volume_len(trimmed)..];
     if trimmed.is_empty() {
         return "/".to_string();
     }
-    match trimmed.rfind('/') {
+    match trimmed.rfind(is_separator) {
         Some(i) => trimmed[i + 1..].to_string(),
         None => trimmed.to_string(),
     }
@@ -91,7 +132,7 @@ pub fn base(path: &str) -> String {
 pub fn ext(path: &str) -> &str {
     let bytes = path.as_bytes();
     let mut i = bytes.len();
-    while i > 0 && bytes[i - 1] != SEP {
+    while i > 0 && !is_separator(bytes[i - 1] as char) {
         i -= 1;
         if bytes[i] == b'.' {
             return &path[i..];
@@ -102,11 +143,26 @@ pub fn ext(path: &str) -> &str {
 
 /// `filepath.Abs`.
 pub fn abs(path: &str) -> Result<String, ProjectError> {
-    if is_abs(path) {
-        return Ok(clean(path));
+    #[cfg(windows)]
+    {
+        let path = if path.is_empty() { "." } else { path };
+        let absolute =
+            std::path::absolute(path).map_err(|e| ProjectError::path("abs", path, &e))?;
+        let absolute = absolute.to_string_lossy();
+        if is_verbatim(&absolute) {
+            eval_symlinks(&absolute)
+        } else {
+            Ok(clean(&absolute))
+        }
     }
-    let wd = std::env::current_dir().map_err(|e| ProjectError::path("getwd", "", &e))?;
-    Ok(join(&[&wd.to_string_lossy(), path]))
+    #[cfg(not(windows))]
+    {
+        if is_abs(path) {
+            return Ok(clean(path));
+        }
+        let wd = std::env::current_dir().map_err(|e| ProjectError::path("getwd", "", &e))?;
+        Ok(join(&[&wd.to_string_lossy(), path]))
+    }
 }
 
 /// `filepath.Rel`.
@@ -114,10 +170,26 @@ pub fn rel(basepath: &str, targpath: &str) -> Result<String, ProjectError> {
     let fail = || ProjectError::msg(format!("Rel: can't make {targpath} relative to {basepath}"));
     let base = clean(basepath);
     let targ = clean(targpath);
+    let (base_volume, base) = base.split_at(volume_len(&base));
+    let (targ_volume, targ) = targ.split_at(volume_len(&targ));
+    if !base_volume.eq_ignore_ascii_case(targ_volume) {
+        return Err(fail());
+    }
+    // A bare UNC share is a root even without a trailing separator.
+    let base = if base.is_empty() && base_volume.starts_with("//") {
+        "/"
+    } else {
+        base
+    };
+    let targ = if targ.is_empty() && targ_volume.starts_with("//") {
+        "/"
+    } else {
+        targ
+    };
     if targ == base {
         return Ok(".".to_string());
     }
-    let base = if base == "." { String::new() } else { base };
+    let base = if base == "." { "" } else { base };
     let (base, targ) = (base.as_bytes(), targ.as_bytes());
     let base_slashed = base.first() == Some(&SEP);
     let targ_slashed = targ.first() == Some(&SEP);
@@ -170,6 +242,7 @@ pub fn escapes(rel: &str) -> bool {
 
 /// `filepath.EvalSymlinks`: every component is resolved with `lstat`, errors
 /// carry the failing prefix exactly as Go reports them.
+#[cfg(not(windows))]
 pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
     let mut path = path.as_bytes().to_vec();
     // The Unix volume name is empty; a leading separator counts as the volume.
@@ -250,6 +323,50 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
         start = 0;
     }
     Ok(clean(&String::from_utf8_lossy(&dest)))
+}
+
+/// Windows canonicalization resolves native drive roots and junctions. Convert
+/// only the canonicalizer's disk/UNC namespace, and verify the ordinary spelling
+/// still names exactly the same filesystem entry before using it as an identity.
+#[cfg(windows)]
+pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
+    use std::path::{Component, Prefix};
+
+    let canonical =
+        std::fs::canonicalize(path).map_err(|e| ProjectError::path("lstat", path, &e))?;
+    let unsupported = || {
+        ProjectError::msg(format!(
+            "unsupported Windows project path {}; use names that do not require a verbatim namespace",
+            canonical.display()
+        ))
+    };
+    if canonical.components().any(|part| {
+        matches!(part, Component::Normal(name)
+        if name.to_string_lossy().ends_with(['.', ' ']))
+    }) {
+        return Err(unsupported());
+    }
+    let Some(Component::Prefix(prefix)) = canonical.components().next() else {
+        return Err(unsupported());
+    };
+    let text = canonical.to_string_lossy();
+    let suffix = &text[prefix.as_os_str().len()..];
+    let ordinary = match prefix.kind() {
+        Prefix::VerbatimDisk(drive) => format!("{}:{suffix}", char::from(drive)),
+        Prefix::VerbatimUNC(server, share) => format!(
+            "//{}/{}{suffix}",
+            server.to_string_lossy(),
+            share.to_string_lossy()
+        ),
+        _ => return Err(unsupported()),
+    };
+    let ordinary = clean(&ordinary);
+    let roundtrip =
+        std::fs::canonicalize(&ordinary).map_err(|e| ProjectError::path("lstat", &ordinary, &e))?;
+    if roundtrip != canonical {
+        return Err(unsupported());
+    }
+    Ok(ordinary)
 }
 
 #[cfg(test)]

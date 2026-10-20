@@ -12,13 +12,13 @@
           "file": "pkg-compiler-testclosedintlistexactlength-1.ms",
           "line": 9,
           "column": 1,
-          "offset": 275
+          "offset": 266
         },
         "end": {
           "file": "pkg-compiler-testclosedintlistexactlength-1.ms",
           "line": 9,
           "column": 1,
-          "offset": 275
+          "offset": 266
         }
       }
     ],

@@ -1,6 +1,7 @@
 //! Lowers small programs and verifies the MIR.
 
-use ms_lower::{Options, load, lower_program};
+use ms_driver::{CheckRequest, check_graph, load_file};
+use ms_lower::{Options, lower_program};
 use std::path::PathBuf;
 
 fn lower(name: &str, source: &str) -> String {
@@ -8,9 +9,12 @@ fn lower(name: &str, source: &str) -> String {
     std::fs::create_dir_all(&dir).expect("dir");
     let path: PathBuf = dir.join("main.ms");
     std::fs::write(&path, source).expect("write");
-    let loaded = load::load(&path);
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let program = loaded.program.expect("program");
     let module = lower_program(
         &program,
@@ -31,6 +35,39 @@ fn strings_and_loops() {
     );
     assert!(mir.contains("msrt_string_concat"));
     assert!(mir.contains("iadd.chk"));
+}
+
+#[test]
+fn rsa_source_calls_and_function_values() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/e2e/testdata/stdlib/crypto-rsa.ms");
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
+    let (module, tests) = ms_lower::lower_tests(
+        &loaded.program.expect("program"),
+        &Options {
+            entry: loaded.entry,
+        },
+    )
+    .expect("lower RSA fixture");
+    assert_eq!(tests.len(), 4);
+    ms_mir::verify::verify_module(&module).expect("verified RSA MIR");
+    let mir = ms_mir::print::print_module(&module);
+    for name in [
+        "sign",
+        "verify",
+        "sign_pss",
+        "verify_pss",
+        "encrypt",
+        "decrypt",
+    ] {
+        assert!(mir.contains(&format!("msrt_crypto_rsa_{name}")), "{name}");
+    }
+    assert!(mir.contains("alt.tag"));
+    assert!(mir.contains("iface.new"));
 }
 
 #[test]

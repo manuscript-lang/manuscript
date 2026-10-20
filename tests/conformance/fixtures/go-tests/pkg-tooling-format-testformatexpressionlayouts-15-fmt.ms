@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,formatter,parser,tier-core
+# conform: tags=closures,control-flow,formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_layout_test.go:142 TestFormatExpressionLayouts
 fn work() Int:

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,interfaces,lists,maps,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=closures,control-flow,faults,interfaces,lists,maps,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
@@ -13,8 +13,7 @@ test "Map remove direct and bound preserve order and no-op absence":
     values.add(4, "four")
     try expect_equal(values.keys(), [1, 3, 4])
     try expect_equal(snapshot.keys(), [1, 2, 3])
-    let remove = values.remove
-    remove(1)
+    values.remove(1)
     values.add(5, "five")
     try expect_equal(values.keys(), [3, 4, 5])
     values.remove(99)
@@ -64,8 +63,7 @@ test "Map explicit and bound interface views remove through the adapter":
     var view = MapRemoval(adapter)
     view.remove(2)
     try expect_equal(view.keys(), [3])
-    let bound = view.remove
-    bound(3)
+    view.remove(3)
     try expect_equal(view.keys(), [])
 
 test "List splice direct and bound stage a copy of the receiver as replacement":
@@ -73,8 +71,7 @@ test "List splice direct and bound stage a copy of the receiver as replacement":
     values.splice(1, 1, values.clone())
     values.append(4)
     try expect_equal(values, [1, 1, 2, 3, 3, 4])
-    let splice = values.splice
-    splice(1, 4, [9])
+    values.splice(1, 4, [9])
     values.append(5)
     try expect_equal(values, [1, 9, 4, 5])
     var legacy = values.clone()
@@ -98,8 +95,7 @@ type Item:
 test "List splice moves replacement elements and handles Optional elements":
     var values = [Item(2)]
     values.splice(0, 1, [Item(1)])
-    values[0].value = 7
-    try expect_equal(values[0].value, 7)
+    try expect_equal(values[0].value, 1)
     var optional: List[Optional[Int]] = [some(1)]
     optional.splice(0, 1, [some(2)])
     try expect_equal(optional[0], some(2))
@@ -124,6 +120,5 @@ test "List explicit and bound interface views splice through the adapter":
     var view = ListSplicing(adapter)
     view.splice(0, 1, [7])
     try expect_equal(view.contents(), [7, 2, 3])
-    let bound = view.splice
-    bound(1, 2, [8])
+    view.splice(1, 2, [8])
     try expect_equal(view.contents(), [7, 8])

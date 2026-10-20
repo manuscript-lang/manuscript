@@ -87,7 +87,10 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
             }
             let parent = gopath::eval_symlinks(&gopath::dir(&path))?;
             let canonical = gopath::join(&[&parent, &gopath::base(&path)]);
-            if !overlay.contains_key(&gopath::clean(&path)) && !overlay.contains_key(&canonical) {
+            if !(cfg!(windows) && overlay.contains_key(&path))
+                && !overlay.contains_key(&gopath::clean(&path))
+                && !overlay.contains_key(&canonical)
+            {
                 return Err(error);
             }
             canonical

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,control-flow,faults,generics,interfaces,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=alternatives,control-flow,faults,generics,interfaces,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/recursive-types.ms
 import {TextError} from "@std/errors.ms"

@@ -6,7 +6,9 @@
 //! fallible native (`-> Result<T, E>`) returns the status byte and writes `T` through a trailing
 //! out-pointer; a record result (`-> out T`) is written through a trailing out-pointer and the
 //! shim returns nothing. This is the same layout the hand-written shims used.
-use crate::{Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref};
+use crate::{
+    Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref, write_bytes,
+};
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -16,6 +18,10 @@ use core::ops::{Deref, DerefMut};
 unsafe extern "C" {
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
     fn msrt_release(o: *mut ms_rt_abi::Obj);
+    fn msrt_alloc(size: usize) -> *mut u8;
+    fn msrt_free(p: *mut u8);
+    fn msrt_bytes_drop(b: *mut VecVal);
+    fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal);
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     fn msrt_list_drop(v: *mut VecVal, d: *const TypeDesc);
@@ -73,7 +79,7 @@ macro_rules! scalar {
         }
     )*};
 }
-scalar!(i64, f64, u8);
+scalar!(i64, f64, u8, u32, u64);
 
 impl AbiType for bool {
     type Raw = u8;
@@ -206,6 +212,26 @@ impl StringList {
     }
 }
 
+/// An owned `Bytes` value stored inside a record, for [`abi_record!`].
+#[repr(transparent)]
+pub struct Bytes(VecVal);
+
+impl Bytes {
+    pub fn new(b: &[u8]) -> Bytes {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_bytes` initializes `v`.
+        unsafe {
+            write_bytes(v.as_mut_ptr(), b);
+            Bytes(v.assume_init())
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        // SAFETY: a `Bytes` is only created by `new` or by the runtime inside a live record.
+        unsafe { bytes_ref(&raw const self.0) }
+    }
+}
+
 /// A type that may be a field of an [`abi_record!`]. `release` and `duplicate` are the
 /// drop and copy of the slot inside a runtime list or record.
 pub trait AbiSlot: Sized {
@@ -229,7 +255,7 @@ macro_rules! plain_slot {
         }
     )*};
 }
-plain_slot!(i64, f64, u8, OptInt);
+plain_slot!(i64, f64, u8, u32, u64, OptInt);
 
 /// `Optional[Int]` stored inline in a record: a presence byte, then the value.
 #[repr(C)]
@@ -261,6 +287,21 @@ impl AbiSlot for Str {
         // SAFETY: caller contract.
         unsafe { msrt_retain(self.0.cast()) };
         Str(self.0)
+    }
+}
+
+impl AbiSlot for Bytes {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract.
+        unsafe { msrt_bytes_drop(&raw mut self.0) }
+    }
+    unsafe fn duplicate(&self) -> Bytes {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: caller contract; `msrt_bytes_copy` initializes `v`.
+        unsafe {
+            msrt_bytes_copy(&raw const self.0, v.as_mut_ptr());
+            Bytes(v.assume_init())
+        }
     }
 }
 
@@ -352,6 +393,211 @@ impl IntoAbi for *mut StrObj {
     type Raw = *mut StrObj;
     fn into_raw(self) -> *mut StrObj {
         self
+    }
+}
+
+// SAFETY: an optional `String` argument is a live string or null.
+unsafe impl<'a> FromAbi<'a> for Option<&'a str> {
+    unsafe fn from_raw(raw: *const StrObj) -> Option<&'a str> {
+        // SAFETY: caller contract.
+        (!raw.is_null()).then(|| unsafe { str_ref(raw) })
+    }
+}
+impl AbiType for Option<&str> {
+    type Raw = *const StrObj;
+}
+
+impl AbiType for Vec<Vec<&str>> {
+    type Raw = *const VecVal;
+}
+// SAFETY: `List[List[String]]` arguments are live and outlive the call.
+unsafe impl<'a> FromAbi<'a> for Vec<Vec<&'a str>> {
+    unsafe fn from_raw(raw: *const VecVal) -> Vec<Vec<&'a str>> {
+        // SAFETY: caller contract.
+        unsafe { crate::read_string_matrix(raw) }
+    }
+}
+impl IntoAbi for Vec<Vec<String>> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_matrix` initializes `v`.
+        unsafe {
+            crate::write_string_matrix(
+                v.as_mut_ptr(),
+                self.iter().map(|r| r.iter().map(String::as_str)),
+            );
+            v.assume_init()
+        }
+    }
+}
+impl IntoAbi for Vec<String> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_list` initializes `v`.
+        unsafe {
+            crate::write_string_list(v.as_mut_ptr(), &self);
+            v.assume_init()
+        }
+    }
+}
+
+/// An extra result slot of a native, written through a trailing pointer parameter.
+pub struct Out<'a, T: IntoAbi>(*mut T::Raw, PhantomData<&'a mut T::Raw>);
+
+impl<T: IntoAbi> Out<'_, T> {
+    pub fn write(self, v: T) {
+        // SAFETY: an `Out` is only built by `from_raw`, whose caller guarantees a writable slot.
+        unsafe { self.0.write(v.into_raw()) }
+    }
+}
+impl<T: IntoAbi> AbiType for Out<'_, T> {
+    type Raw = *mut T::Raw;
+}
+// SAFETY: the caller passes writable memory for one result slot.
+unsafe impl<'a, T: IntoAbi> FromAbi<'a> for Out<'a, T> {
+    unsafe fn from_raw(raw: *mut T::Raw) -> Out<'a, T> {
+        Out(raw, PhantomData)
+    }
+}
+
+/// A reference-counted runtime object (header plus a pointer to a boxed Rust value), returned to
+/// Manuscript as a `Shared`-class handle. The runtime frees the value when the count reaches zero.
+#[repr(C)]
+pub struct ObjCell<T> {
+    header: ms_rt_abi::Obj,
+    state: *mut T,
+}
+
+unsafe extern "C" fn cell_drop<T>(o: *mut ms_rt_abi::Obj) {
+    let c = o.cast::<ObjCell<T>>();
+    // SAFETY: `o` is an `ObjCell<T>` built by `Object::into_raw`; freed once, at count zero.
+    unsafe {
+        drop(Box::from_raw((*c).state));
+        msrt_free(o.cast());
+    }
+}
+
+/// A new runtime object owning `T`.
+pub struct Object<T: AbiHandle>(pub T);
+/// A borrow of the value inside a runtime object.
+pub struct ObjRef<'a, T: AbiHandle>(pub &'a T);
+
+impl<T: AbiHandle> Deref for ObjRef<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> AbiType for Object<T> {
+    type Raw = *mut ObjCell<T>;
+}
+impl<T: AbiHandle> AbiType for ObjRef<'_, T> {
+    type Raw = *const ObjCell<T>;
+}
+impl<T: AbiHandle> IntoAbi for Object<T> {
+    type Raw = *mut ObjCell<T>;
+    fn into_raw(self) -> *mut ObjCell<T> {
+        // SAFETY: a fresh runtime allocation, initialized before it escapes.
+        unsafe {
+            let p = msrt_alloc(core::mem::size_of::<ObjCell<T>>()).cast::<ObjCell<T>>();
+            p.write(ObjCell {
+                header: ms_rt_abi::Obj {
+                    rc: 1,
+                    drop: Some(cell_drop::<T>),
+                },
+                state: Box::into_raw(Box::new(self.0)),
+            });
+            p
+        }
+    }
+}
+// SAFETY: an object argument is a live runtime object that outlives the call.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjRef<'a, T> {
+    unsafe fn from_raw(raw: *const ObjCell<T>) -> ObjRef<'a, T> {
+        // SAFETY: caller contract.
+        ObjRef(unsafe { &*(*raw).state })
+    }
+}
+
+/// An exclusive borrow of the value inside a runtime object, for builders that mutate in place.
+/// The caller must not use the same object elsewhere during the call.
+pub struct ObjMut<'a, T: AbiHandle>(pub &'a mut T);
+
+impl<T: AbiHandle> Deref for ObjMut<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> DerefMut for ObjMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.0
+    }
+}
+impl<T: AbiHandle> AbiType for ObjMut<'_, T> {
+    type Raw = *mut ObjCell<T>;
+}
+// SAFETY: an object argument is a live runtime object that outlives the call and is not aliased.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjMut<'a, T> {
+    unsafe fn from_raw(raw: *mut ObjCell<T>) -> ObjMut<'a, T> {
+        // SAFETY: caller contract.
+        ObjMut(unsafe { &mut *(*raw).state })
+    }
+}
+
+/// A pointer to a caller-owned array whose length is a separate `n` parameter: read it with
+/// [`IdArray::get`] and the `n` the same call received.
+pub struct IdArray<'a>(*const u32, PhantomData<&'a u32>);
+
+impl IdArray<'_> {
+    pub fn get(&self, n: i64) -> Vec<u32> {
+        let n = usize::try_from(n).unwrap_or(0);
+        if n == 0 {
+            return Vec::new();
+        }
+        // SAFETY: the generated code passes a pointer to `n` readable ids.
+        unsafe { core::slice::from_raw_parts(self.0, n) }.to_vec()
+    }
+}
+impl AbiType for IdArray<'_> {
+    type Raw = *const u32;
+}
+// SAFETY: the caller passes a pointer to as many ids as the `n` argument it pairs with.
+unsafe impl<'a> FromAbi<'a> for IdArray<'a> {
+    unsafe fn from_raw(raw: *const u32) -> IdArray<'a> {
+        IdArray(raw, PhantomData)
+    }
+}
+
+/// Like [`IdArray`], for an array of string pointers.
+pub struct StrArray<'a>(*const *const StrObj, PhantomData<&'a StrObj>);
+
+impl<'a> StrArray<'a> {
+    pub fn get(&self, n: i64) -> Vec<&'a str> {
+        let n = usize::try_from(n).unwrap_or(0);
+        (0..n)
+            // SAFETY: the generated code passes `n` live strings.
+            .map(|i| unsafe { str_ref(*self.0.add(i)) })
+            .collect()
+    }
+}
+impl AbiType for StrArray<'_> {
+    type Raw = *const *const StrObj;
+}
+// SAFETY: the caller passes a pointer to as many live strings as the `n` argument it pairs with.
+unsafe impl<'a> FromAbi<'a> for StrArray<'a> {
+    unsafe fn from_raw(raw: *const *const StrObj) -> StrArray<'a> {
+        StrArray(raw, PhantomData)
+    }
+}
+
+/// `None` becomes a null string pointer.
+impl IntoAbi for Option<String> {
+    type Raw = *mut StrObj;
+    fn into_raw(self) -> *mut StrObj {
+        self.map_or(core::ptr::null_mut(), |s| new_string(&s))
     }
 }
 
@@ -548,11 +794,30 @@ macro_rules! native {
     (
         @item [$($q:tt)*]
         $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<(), $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C" fn $name($($p: <$t as $crate::AbiType>::Raw),*) -> u8 {
+            fn body($($p: $t),*) -> Result<(), $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            match body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*) {
+                Ok(()) => $crate::STATUS_OK,
+                Err(e) => $crate::Status::status(e),
+            }
+        }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<$ok:ty, $err:ty> $body:block
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
@@ -579,7 +844,7 @@ macro_rules! native {
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
@@ -600,7 +865,7 @@ macro_rules! native {
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*

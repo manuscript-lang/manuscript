@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,interpolation,lists,modules,numbers,records,sets,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
+# conform: tags=control-flow,interpolation,lists,modules,numbers,records,sets,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/record-structs.ms
 import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"

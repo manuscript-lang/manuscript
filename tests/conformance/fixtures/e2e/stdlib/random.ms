@@ -19,7 +19,9 @@ type ExactEntropy:
 
 impl Entropy for ExactEntropy:
     fn bytes(count: Int) Result[Bytes, RandomError]:
-        if count != self.expected: return error(RandomError.Failed("unexpected count"))
+        if count != self.expected:
+            return error(RandomError.Failed("unexpected count"))
+
         return ok(Bytes(filled(0, count).get()))
 
 type FailedEntropy:

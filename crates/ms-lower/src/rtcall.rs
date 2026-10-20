@@ -523,6 +523,20 @@ impl FnLower<'_> {
                     } else {
                         x
                     };
+                    // Payload-free alternatives (HashAlgorithm, Curve) cross the C ABI
+                    // as their declaration-order case index, rather than their MIR value.
+                    if p.ty == "i64"
+                        && let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(x.v))
+                        && self.b.m.alts[a.index()]
+                            .cases
+                            .iter()
+                            .all(|c| c.fields.is_empty())
+                    {
+                        let v = self.borrow(x);
+                        vals.push(self.b.alt_tag(v));
+                        i += 1;
+                        continue;
+                    }
                     // A generic element slot takes the record whole, whatever its field is called.
                     let element = p.ty == "*const u8" || p.ty == "*mut u8";
                     if let Some(fields) = self.record_fields_named(x, &p.name).filter(|_| !element)
@@ -1103,6 +1117,17 @@ impl FnLower<'_> {
         let TyKind::Alt(ea) = self.b.m.types.kind(et).clone() else {
             return Err(Error::new("a runtime status needs an error alternative"));
         };
+        // Crypto uses status 6 for authentication failure (the shared host status
+        // table uses it for AlreadyExists). Match the module's actual ABI.
+        let statuses: &[(i64, &str)] = if sym.starts_with("msrt_crypto_") {
+            &[
+                (1, "InvalidInput"),
+                (9, "Unsupported"),
+                (6, "AuthenticationFailed"),
+            ]
+        } else {
+            &STATUS_CASES
+        };
         // A runtime that reports `Failed` text through `err` numbers the cases 1 + declaration
         // index (`ms-std-net/ABI.md`); the others share the `STATUS_CASES` codes.
         let cases: Vec<(i64, usize)> = if ordinal_status(sym) {
@@ -1110,7 +1135,7 @@ impl FnLower<'_> {
                 .map(|i| (i as i64 + 1, i))
                 .collect()
         } else {
-            STATUS_CASES
+            statuses
                 .iter()
                 .filter_map(|(n, name)| {
                     let idx = self.b.m.alts[ea.index()]

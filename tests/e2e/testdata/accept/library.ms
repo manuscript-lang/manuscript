@@ -193,8 +193,7 @@ test "expanded packages run through compiler":
     ([1, 2, 3]).fold(initial: 0, step: sum) | try expect_equal(expected: 6)
     ([3, 1, 2]).sorted(compare: compare) | try expect_equal(expected: [1, 2, 3])
     var flipped = [1, 2]
-    let reverse_int = flipped.reverse_in_place
-    reverse_int()
+    flipped.reverse_in_place()
     flipped | try expect_equal(expected: [2, 1])
 
 test "malformed and bounded inputs return errors":

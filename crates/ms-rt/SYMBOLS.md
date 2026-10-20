@@ -273,6 +273,14 @@ msrt_compress_encoder_finish(e: *mut EncoderObj)
 msrt_compress_encoder_has_output(e: *const EncoderObj) -> u8
 msrt_compress_encoder_is_finished(e: *const EncoderObj) -> u8
 msrt_compress_encoder_take( e: *mut EncoderObj, max: i64, out: *mut VecVal, )
+msrt_crypto_ecdsa_sign( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
+msrt_crypto_rsa_sign( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
+msrt_crypto_rsa_sign_pss( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
+msrt_crypto_rsa_encrypt( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
+msrt_crypto_rsa_decrypt( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
+msrt_crypto_ecdsa_verify( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
+msrt_crypto_rsa_verify( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
+msrt_crypto_rsa_verify_pss( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
 msrt_crypto_digest(alg: i64, data: *const VecVal, out: *mut VecVal)
 msrt_crypto_hmac( alg: i64, key: *const VecVal, data: *const VecVal, out: *mut VecVal, ) -> u8
 msrt_crypto_derive_key( alg: i64, password: *const VecVal, salt: *const VecVal, iterations: i64, length: i64, out: *mut VecVal, ) -> u8

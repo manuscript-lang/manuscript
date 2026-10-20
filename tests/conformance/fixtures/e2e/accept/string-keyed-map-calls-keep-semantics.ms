@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
 import {expect_true} from "@std/testing.ms"

@@ -13,7 +13,6 @@ go-tests/pkg-tooling-lsp-testnativegenericmethodnavigation-1
 # test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
 go-tests/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
-e2e/accept/comparable
 e2e/accept/host-accessors
 e2e/accept/result-argument-inference
 e2e/accept/stdlib-revamp
@@ -23,4 +22,3 @@ go-tests/tests-e2e-testinherentimplfaultframe-1
 go-tests/tests-e2e-testmutationaliasesretainsplicefaults-1
 go-tests/tests-e2e-testpreferrednamesretainfaults-1
 go-tests/tests-e2e-testreplacenretainsnegativefaultsandframes-1
-repo/pkg-lower-testdata-operand-captures

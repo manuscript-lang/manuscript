@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
 import {TextError} from "@std/errors.ms"

@@ -49,7 +49,7 @@ test "pending captures grow beyond the small buffer":
     if values != [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]:
         return panic("earlier field reads changed")
 
-    var alias = counter
-    let shared = [alias.value, advance(var alias), alias.value]
-    if shared != [1, 2, 2]: return panic("immutable alias lost shared mutations")
-    if counter.value != 2: return panic("aliased effect count changed")
+    var copy = counter.clone()
+    let separate = [copy.value, advance(var copy), copy.value]
+    if separate != [1, 2, 2]: return panic("copy lost its own mutations")
+    if counter.value != 1: return panic("copy changed the original")

@@ -1,0 +1,16 @@
+[package]
+name = "ms-repo-check"
+version = "0.0.0"
+edition.workspace = true
+publish.workspace = true
+description = "Repository invariants: nested matches, formatting, stdlib syntax, release pins, workflow triggers, unsafe boundary"
+
+[lints]
+workspace = true
+
+[dependencies]
+ms-syntax = { path = "../ms-syntax" }
+
+[[bin]]
+name = "repo-check"
+path = "src/main.rs"

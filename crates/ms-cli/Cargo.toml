@@ -20,7 +20,6 @@ ms-json = { path = "../ms-json" }
 ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
 ms-syntax = { path = "../ms-syntax" }
-ms-lower = { path = "../ms-lower" }
 ms-guide = { path = "../ms-guide" }
 ms-lsp = { path = "../ms-lsp" }
 ms-tooling = { path = "../ms-tooling" }

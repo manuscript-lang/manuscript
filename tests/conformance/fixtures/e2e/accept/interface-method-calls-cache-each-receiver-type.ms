@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
+# conform: tags=control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/interface-method-calls-cache-each-receiver-type.ms
 import {expect_true} from "@std/testing.ms"

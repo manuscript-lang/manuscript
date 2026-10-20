@@ -39,10 +39,6 @@ mod testing;
 mod text;
 mod with;
 
-pub mod dump;
-pub mod load;
-pub mod pipeline;
-
 use ms_check::Program;
 use ms_mir::ir::Module;
 use std::fmt;
