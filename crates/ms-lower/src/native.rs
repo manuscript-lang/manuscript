@@ -213,6 +213,17 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
             }
+            "html/parse" => {
+                let mut args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let func = sym.decl.as_ref().and_then(|d| d.func());
+                self.fill_native_defaults(sym.module, func, params, &mut args)?;
+                self.at(e.pos);
+                let rty = self.emty(e)?;
+                self.html_parse(rty, &args)
+            }
             "crypto/derive_key" => {
                 // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
                 let args = self.native_args(view)?;

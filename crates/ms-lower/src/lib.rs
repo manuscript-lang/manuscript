@@ -16,6 +16,7 @@ mod fixture;
 mod fsinfo;
 mod fswalk;
 mod func;
+mod html;
 mod iface;
 mod iterate;
 mod json;

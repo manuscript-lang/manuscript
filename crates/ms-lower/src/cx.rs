@@ -33,6 +33,8 @@ pub enum JobKind {
     DefaultThunk(Rc<DefaultThunkJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
+    /// The conversion of a parsed HTML tree node.
+    Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
     /// An operation of a compression stream.

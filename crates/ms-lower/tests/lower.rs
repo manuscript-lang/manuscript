@@ -188,3 +188,13 @@ fn entries_keys_and_add_default_from_lower() {
     );
     assert!(mir.contains("msrt_map_contains"));
 }
+
+#[test]
+fn html_parse_converts_the_tree_in_a_helper() {
+    let mir = lower(
+        "html",
+        "import stdout from \"@std/io.ms\"\nimport {parse} from \"@std/html.ms\"\n\nexport fn main() Int:\n    let page = parse(\"<p>x\")\n    let r = stdout().write(\"{page.is_ok()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("msrt_html_parse"));
+    assert!(mir.contains("html_node"));
+}
