@@ -1,0 +1,21 @@
+module "list"
+entry @main
+fn @main() -> int {
+b0:
+  %n: int = iconst 4
+  %l0: list<int> = list.new %n
+  %a: int = iconst 10
+  %b: int = iconst 20
+  %c: int = iconst 30
+  %l1: list<int> = list.push %l0, %a
+  %l2: list<int> = list.push %l1, %b
+  %l3: list<int> = list.push %l2, %c
+  %l4: list<int> = list.droplast %l3
+  %l5: list<int> = list.push %l4, %a
+  %m1: int = iconst -1
+  %last: int = list.get %l5, %m1
+  %len: int = list.len %l5
+  drop %l5
+  %r: int = iadd %last, %len
+  ret %r
+}
