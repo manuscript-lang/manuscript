@@ -75,7 +75,13 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .env_remove("RUSTFLAGS");
     let status = command.status().expect("run cargo to build ms-native");
     assert!(status.success(), "building ms-native failed");
-    target.join("release/libms_native.a")
+    // MSVC emits `ms_native.lib`; Unix and MinGW use the `lib*.a` spelling.
+    let archive = if cfg!(target_env = "msvc") {
+        "ms_native.lib"
+    } else {
+        "libms_native.a"
+    };
+    target.join("release").join(archive)
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {
