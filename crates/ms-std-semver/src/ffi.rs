@@ -2,70 +2,68 @@
 //!
 //! `Version` is a record `major, minor, patch: Int, prerelease, build: List[String]` in declaration
 //! order ([`VersionRec`]); lists written by the runtime are owned by the record.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
+use crate::{SemverFail, Version};
+use alloc::string::String;
+use ms_std_core::{Status, StringList, abi_record, native};
 
-use crate::Version;
-use ms_std_core::{StrObj, VecVal, new_string, read_string_list, str_ref, write_string_list};
-
-#[repr(C)]
-pub struct VersionRec {
-    pub major: i64,
-    pub minor: i64,
-    pub patch: i64,
-    pub prerelease: VecVal,
-    pub build: VecVal,
-}
-
-unsafe fn read_version(v: *const VersionRec) -> Version {
-    // SAFETY: `v` is a live Version record.
-    unsafe {
-        let v = &*v;
-        let strings = |l: *const VecVal| read_string_list(l).into_iter().map(Into::into).collect();
-        Version {
-            major: v.major,
-            minor: v.minor,
-            patch: v.patch,
-            prerelease: strings(&raw const v.prerelease),
-            build: strings(&raw const v.build),
-        }
+abi_record! {
+    pub struct VersionRec {
+        pub major: i64,
+        pub minor: i64,
+        pub patch: i64,
+        pub prerelease: StringList,
+        pub build: StringList,
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_semver_parse(text: *const StrObj, out: *mut VersionRec) -> u8 {
-    // SAFETY: `text` is live; `out` is writable memory for a record.
-    unsafe {
-        match crate::parse(str_ref(text)) {
-            Ok(v) => {
-                (&raw mut (*out).major).write(v.major);
-                (&raw mut (*out).minor).write(v.minor);
-                (&raw mut (*out).patch).write(v.patch);
-                write_string_list(&raw mut (*out).prerelease, &v.prerelease);
-                write_string_list(&raw mut (*out).build, &v.build);
-                0
-            }
-            Err(e) => e.status(),
-        }
+impl Status for SemverFail {
+    fn status(self) -> u8 {
+        SemverFail::status(self)
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_semver_format(v: *const VersionRec) -> *mut StrObj {
-    // SAFETY: `v` is a live Version record.
-    new_string(&crate::format(&unsafe { read_version(v) }))
+fn read_version(v: &VersionRec) -> Version {
+    let strings = |l: &StringList| l.to_vec().into_iter().map(Into::into).collect();
+    Version {
+        major: v.major,
+        minor: v.minor,
+        patch: v.patch,
+        prerelease: strings(&v.prerelease),
+        build: strings(&v.build),
+    }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_semver_compare(l: *const VersionRec, r: *const VersionRec) -> i64 {
-    // SAFETY: both are live Version records.
-    unsafe { crate::compare(&read_version(l), &read_version(r)) }
+fn write_version(v: Version) -> VersionRec {
+    VersionRec {
+        major: v.major,
+        minor: v.minor,
+        patch: v.patch,
+        prerelease: StringList::new(&v.prerelease),
+        build: StringList::new(&v.build),
+    }
+}
+
+native! {
+    fn msrt_semver_parse(text: &str) -> Result<VersionRec, SemverFail> {
+        crate::parse(text).map(write_version)
+    }
+
+    fn msrt_semver_format(v: &VersionRec) -> String {
+        crate::format(&read_version(v))
+    }
+
+    fn msrt_semver_compare(l: &VersionRec, r: &VersionRec) -> i64 {
+        crate::compare(&read_version(l), &read_version(r))
+    }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _; // links the msrt_* runtime symbols
+    use ms_std_core::{new_string, str_ref};
 
     #[test]
     fn abi_roundtrip() {

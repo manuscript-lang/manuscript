@@ -13,6 +13,9 @@
 
 extern crate alloc;
 
+mod native;
+pub use native::{AbiRecord, AbiSlot, AbiType, FromAbi, IntoAbi, Status, Str, StringList};
+
 use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
@@ -26,6 +29,7 @@ unsafe extern "C" {
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     fn msrt_fault(msg: *const u8, len: usize) -> !;
+    fn msrt_fault_int_overflow() -> !;
     static msrt_desc_string: TypeDesc;
     static msrt_desc_bytes: TypeDesc;
 }
@@ -71,6 +75,12 @@ pub fn opt(has: u8, value: i64) -> Option<i64> {
 pub fn fault(msg: &str) -> ! {
     // SAFETY: the runtime copies the message bytes.
     unsafe { msrt_fault(msg.as_ptr(), msg.len()) }
+}
+
+/// Raises the integer-overflow runtime fault; never returns.
+pub fn int_overflow() -> ! {
+    // SAFETY: provided by `ms-rt`; takes no arguments.
+    unsafe { msrt_fault_int_overflow() }
 }
 
 /// Borrows the text of a runtime string.
