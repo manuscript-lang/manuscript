@@ -80,6 +80,9 @@ pub fn build_executable(
     let cleanup = || {
         let _ = std::fs::remove_file(&object_path);
         let _ = std::fs::remove_file(&staged);
+        if let Some(companion) = ms_clif::link::debug_companion_path(&staged) {
+            let _ = std::fs::remove_dir_all(companion);
+        }
     };
     if let Err(error) = std::fs::write(&object_path, object) {
         cleanup();
@@ -91,8 +94,105 @@ pub fn build_executable(
         cleanup();
         return Err(error.to_string());
     }
-    std::fs::rename(&staged, output).map_err(|error| {
+    publish(&staged, output).map_err(|error| {
         cleanup();
         format!("cannot write {}: {error}", output.display())
     })
+}
+
+/// Publish the native debug companion together with the staged executable. If
+/// replacing the executable fails, restore the previous companion as well.
+fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
+    let Some(destination) = ms_clif::link::debug_companion_path(output) else {
+        return std::fs::rename(staged, output);
+    };
+    let companion = ms_clif::link::debug_companion_path(staged).expect("same native platform");
+    let has_new = companion.exists();
+    let backup = companion.with_extension("previous.dSYM");
+    let previous = destination.exists();
+    if previous {
+        std::fs::rename(&destination, &backup)?;
+    }
+    if has_new && let Err(error) = std::fs::rename(&companion, &destination) {
+        if previous && let Err(restore) = std::fs::rename(&backup, &destination) {
+            return Err(std::io::Error::new(
+                error.kind(),
+                format!(
+                    "{error}; cannot restore previous companion: {restore}; retained at {}",
+                    backup.display()
+                ),
+            ));
+        }
+        return Err(error);
+    }
+    if let Err(error) = std::fs::rename(staged, output) {
+        let mut failures = Vec::new();
+        if has_new && let Err(restore) = std::fs::rename(&destination, &companion) {
+            failures.push(format!(
+                "cannot recover new companion at {}: {restore}",
+                destination.display()
+            ));
+        }
+        if previous && let Err(restore) = std::fs::rename(&backup, &destination) {
+            failures.push(format!(
+                "cannot restore previous companion: {restore}; retained at {}",
+                backup.display()
+            ));
+        }
+        if !failures.is_empty() {
+            return Err(std::io::Error::new(
+                error.kind(),
+                format!("{error}; {}", failures.join("; ")),
+            ));
+        }
+        return Err(error);
+    }
+    if previous {
+        let _ = std::fs::remove_dir_all(backup);
+    }
+    Ok(())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    #[test]
+    fn publication_without_debug_lines_retires_old_companion() {
+        let root =
+            std::env::temp_dir().join(format!("ms-driver-debug-retire-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let staged = root.join("stage");
+        let output = root.join("output");
+        std::fs::write(&staged, "new executable").unwrap();
+        std::fs::write(&output, "old executable").unwrap();
+        let old = ms_clif::link::debug_companion_path(&output).unwrap();
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("data"), "old").unwrap();
+        super::publish(&staged, &output).unwrap();
+        assert_eq!(std::fs::read_to_string(&output).unwrap(), "new executable");
+        assert!(!old.exists());
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(), 1);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_binary_publication_restores_debug_companion() {
+        let root =
+            std::env::temp_dir().join(format!("ms-driver-debug-rollback-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let staged = root.join("stage");
+        let output = root.join("output");
+        std::fs::write(&staged, "new executable").unwrap();
+        std::fs::create_dir_all(&output).unwrap(); // file rename must fail
+        let new = ms_clif::link::debug_companion_path(&staged).unwrap();
+        let old = ms_clif::link::debug_companion_path(&output).unwrap();
+        std::fs::create_dir_all(&new).unwrap();
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(new.join("data"), "new").unwrap();
+        std::fs::write(old.join("data"), "old").unwrap();
+        assert!(super::publish(&staged, &output).is_err());
+        assert_eq!(std::fs::read_to_string(old.join("data")).unwrap(), "old");
+        assert_eq!(std::fs::read_to_string(new.join("data")).unwrap(), "new");
+        assert!(staged.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

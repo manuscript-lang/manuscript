@@ -32,6 +32,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - name: Keep native test artifacts in runner storage
+        run: |
+          echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          echo "TMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          echo "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
         with:
@@ -63,10 +68,30 @@ jobs:
           else
             cc --version
           fi
+      - name: Install LLVM native debug consumers
+        if: inputs.dwarf
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y llvm
+          elif [ "$RUNNER_OS" = macOS ]; then
+            brew install llvm
+            echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+          elif [ "$RUNNER_OS" = Windows ]; then
+            echo 'C:/Program Files/LLVM/bin' >> "$GITHUB_PATH"
+          fi
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Native overflow, fault positions, cleanup and inline frames
         run: cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
+      - name: Native object and linked source attribution
+        if: inputs.dwarf
+        run: |
+          llvm-dwarfdump --version
+          llvm-symbolizer --version
+          cargo test --locked -p ms-clif --test dwarf -- --nocapture
+          cargo test --locked -p ms-driver --test debug_artifacts -- --nocapture
+          cargo test --locked -p ms-driver --lib -- --nocapture
       - name: Preserve native test artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -75,4 +100,5 @@ jobs:
           path: |
             ${{ runner.temp }}/ms-clif-tests-*
             ${{ runner.temp }}/ms-dwarf-*
+            ${{ runner.temp }}/ms-driver-debug-*
           if-no-files-found: warn

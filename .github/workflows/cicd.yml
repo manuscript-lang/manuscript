@@ -80,6 +80,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - name: Install LLVM debug consumers
+        run: sudo apt-get update && sudo apt-get install -y llvm
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: rust
@@ -133,6 +135,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     uses: ./.github/workflows/codegen-platforms.yml
+    with:
+      dwarf: true
 
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
