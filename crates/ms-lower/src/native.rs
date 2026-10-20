@@ -196,6 +196,42 @@ impl<'a> FnLower<'a> {
                 let rty = self.emty(e)?;
                 self.html_parse(e, rty, &args)
             }
+            "collections/map_from_entries" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                self.map_from_entries(args[0].val, result)
+            }
+            // `shift(values)` removes the first item of the caller's list.
+            "collections/shift" => {
+                let arg = view
+                    .arguments
+                    .first()
+                    .ok_or_else(|| Error::new("shift without a list"))?
+                    .expr;
+                let result = self.emty(e)?;
+                if !self.is_place(arg) {
+                    let x = self.expr(arg)?;
+                    if self.dead {
+                        return Ok(x);
+                    }
+                    let old = self.owned(x);
+                    let (new, r) = self.mutate_list("shift", old, &[])?;
+                    self.drop_value(new);
+                    return r.ok_or_else(|| Error::new("shift yields the first item"));
+                }
+                let mut shifted = None;
+                self.place_update(arg, &mut |s, old| {
+                    let (new, r) = s.mutate_list("shift", old, &[])?;
+                    shifted = r;
+                    Ok(new)
+                })?;
+                let _ = result;
+                shifted.ok_or_else(|| Error::new("shift yields the first item"))
+            }
             "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
                 // The digest of the `HashAlgorithm` case of that name.
                 let args = self.native_args(view)?;
@@ -600,6 +636,39 @@ impl<'a> FnLower<'a> {
 
     /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
     /// parameter after the first declared one, spelled as the lowercase case name or as its index.
+    /// `map_from_entries(entries)`: later entries replace earlier values for a repeated key.
+    fn map_from_entries(&mut self, entries: Val, map: MTy) -> Result<Val, Error> {
+        let list = self.borrow(entries);
+        let lt = self.ty_of(list);
+        let TyKind::List(entry) = self.b.m.types.kind(lt).clone() else {
+            return Err(Error::new("map_from_entries takes a list"));
+        };
+        let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
+            return Err(Error::new("map_from_entries takes entry records"));
+        };
+        let lvar = self.fresh_var(lt);
+        let held = self.owned(Val {
+            v: list,
+            own: false,
+        });
+        self.b.def_var(lvar, held);
+        let acc = self.fresh_var(map);
+        let fresh = self.map_new(map)?;
+        self.b.def_var(acc, fresh);
+        self.each_element(lvar, &mut |s, _, item| {
+            let (k, v) = (s.b.rec_get(rid, 0, item), s.b.rec_get(rid, 1, item));
+            let k = s.owned(Val { v: k, own: false });
+            let v = s.owned(Val { v, own: false });
+            let old = s.b.use_var(acc);
+            let new = s.map_insert(old, k, v)?;
+            s.b.def_var(acc, new);
+            Ok(None)
+        })?;
+        self.release_source(lvar, true);
+        let out = self.b.use_var(acc);
+        Ok(Val { v: out, own: true })
+    }
+
     /// The runtime's format argument: the case index, or the lowercase case name.
     fn format_argument(
         &mut self,
@@ -2310,6 +2379,7 @@ impl<'a> FnLower<'a> {
             }
             "find" | "find_index" | "find_last_index" => {
                 let by_index = name != "find";
+                // The last match wins: keep scanning past hits.
                 let last = name == "find_last_index";
                 let acc = self.fresh_var(out);
                 let none = self.none_owned(out);

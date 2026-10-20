@@ -27,7 +27,8 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-const RENAMED: [(&str, &str); 5] = [
+const RENAMED: [(&str, &str); 6] = [
+    ("collections/flatten", "msrt_list_flatten"),
     ("http/headers", "msrt_http_headers_new"),
     ("net/ip_text", "msrt_net_ip_address_text"),
     ("net/ip_family", "msrt_net_ip_address_family"),
@@ -630,7 +631,7 @@ impl FnLower<'_> {
     /// Pushes `has_record` and the `(has, value)` pairs of the optional fields of an optional
     /// record argument, reading fields only when the record is present. Returns the number of
     /// runtime parameters used after the presence flag.
-    fn flatten_optional_record(
+    pub(crate) fn flatten_optional_record(
         &mut self,
         input: Input,
         params: &[RtParam],

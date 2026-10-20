@@ -33,6 +33,21 @@ impl Cx {
             return Ok(*v);
         }
         let sigs = m.ifaces[iface.index()].methods.clone();
+        if m.ifaces[iface.index()].name == "Comparable"
+            && let Some(sym) = builtin_compare(m, data_ty)
+        {
+            let f =
+                build_builtin_compare(m, &sigs[0], data_ty, sym, VtableId(m.vtables.len() as u32));
+            m.vtables.push(VtableDef {
+                name: key.clone(),
+                iface,
+                methods: vec![f],
+                data_ty,
+            });
+            let id = VtableId(m.vtables.len() as u32 - 1);
+            self.vtables.insert(key, id);
+            return Ok(id);
+        }
         let mut methods = Vec::new();
         for s in &sigs {
             let mut found = None;
@@ -534,4 +549,102 @@ impl Cx {
         self.vtables.insert(key, id);
         id
     }
+}
+
+/// How a built-in type orders itself as `Comparable`: its runtime comparison function, or the
+/// empty name for a type the IR compares directly.
+fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
+    if t == MTy::INT || t == MTy::FLOAT {
+        return Some("");
+    }
+    if t == MTy::STR {
+        return Some("msrt_string_compare");
+    }
+    let TyKind::Rec(rid) = m.types.kind(t) else {
+        return None;
+    };
+    match m.records[rid.index()].name.as_str() {
+        "Timestamp" => Some("msstd_time_timestamp_compare"),
+        "Instant" => Some("msstd_time_instant_compare"),
+        "Decimal" => Some("msstd_decimal_compare"),
+        _ => None,
+    }
+}
+
+/// `compare(other)` of a built-in type: the sign of the comparison, or `0` when `other` holds
+/// another type.
+fn build_builtin_compare(
+    m: &mut Module,
+    sig: &ms_mir::types::MethodSig,
+    data_ty: MTy,
+    sym: &str,
+    own_table: VtableId,
+) -> ms_mir::ir::FuncId {
+    use ms_mir::ir::{Cc, ExternDef};
+    let mut ps = vec![Param {
+        ty: MTy::PTR,
+        mode: Mode::Borrow,
+    }];
+    ps.extend(sig.params.iter().map(|t| Param {
+        ty: *t,
+        mode: Mode::Borrow,
+    }));
+    let mut b = FuncBuilder::new(m, "vt.compare", ps, sig.ret);
+    b.func_mut().kind = FuncKind::Method;
+    b.func_mut().linkage = Linkage::Internal;
+    let args = b.params();
+    let zero = b.iconst(0);
+    let (same, other) = (b.new_block(), b.new_block());
+    let hit = b
+        .emit(
+            Op::IfaceIs,
+            &[args[1]],
+            Imm::Vtable(own_table),
+            Some(MTy::BOOL),
+        )
+        .expect("iface.is");
+    b.br_if(hit, same, &[], other, &[]);
+    b.seal_block(same);
+    b.seal_block(other);
+    b.switch_to(other);
+    b.ret(Some(zero));
+    b.switch_to(same);
+    let me = b
+        .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
+        .expect("load");
+    let data = b
+        .emit(Op::IfaceData, &[args[1]], Imm::None, Some(MTy::PTR))
+        .expect("iface.data");
+    let you = b
+        .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+        .expect("load");
+    let sign = if sym.is_empty() {
+        let (gt, lt) = if data_ty == MTy::INT {
+            (b.icmp(Cc::Gt, me, you), b.icmp(Cc::Lt, me, you))
+        } else {
+            (b.fcmp(Cc::Gt, me, you), b.fcmp(Cc::Lt, me, you))
+        };
+        let (one, minus) = (b.iconst(1), b.iconst(-1));
+        let up = b.select(gt, one, zero);
+        b.select(lt, minus, up)
+    } else {
+        let params = [me, you]
+            .iter()
+            .map(|_| Param {
+                ty: data_ty,
+                mode: Mode::Borrow,
+            })
+            .collect();
+        let ext = b.m.add_extern(ExternDef {
+            name: sym.to_string(),
+            params,
+            ret: MTy::INT,
+            noreturn: false,
+            pure_: false,
+        });
+        b.call_rt(ext, &[me, you])
+    };
+    b.ret(Some(sign));
+    let f = b.into_func();
+    m.add_func(f)
 }

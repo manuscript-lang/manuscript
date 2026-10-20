@@ -311,12 +311,20 @@ impl Cx {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
-        if t.is_std("Map") || t.is_std("Set") {
+        // A list builder is its accumulating list; map and set builders are their collections.
+        if t.is_std("ListBuilder") {
+            let e = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.list(e));
+        }
+        let name = ["Map", "Set", "MapBuilder", "SetBuilder"]
+            .into_iter()
+            .find(|n| t.is_std(n));
+        if let Some(name) = name {
             let mut args = Vec::new();
             for a in &t.args {
                 args.push(self.lower_ty(m, a)?);
             }
-            let name = if t.is_std("Map") { "Map" } else { "Set" };
+            let name = name.trim_end_matches("Builder");
             return Ok(m.types.obj(name, args));
         }
         // Builders are growable byte buffers.
