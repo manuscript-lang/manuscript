@@ -1,4 +1,4 @@
-//! Native operations on standard receivers (`pkg/checker/native_members.go`).
+//! Native operations on standard receivers.
 
 use crate::calls::function_arguments;
 use crate::checker::Checker;

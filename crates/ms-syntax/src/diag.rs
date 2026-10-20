@@ -1,4 +1,4 @@
-//! Diagnostics: the information `pkg/syntax.Diagnostic` carries.
+//! Diagnostics: the information a diagnostic carries.
 
 use crate::pos::Pos;
 use std::fmt;
@@ -37,7 +37,7 @@ impl Phase {
 }
 
 /// A machine-applicable replacement of one exact source range
-/// (`pkg/syntax.DiagnosticFix`). Absence of a fix means human judgment is
+///. Absence of a fix means human judgment is
 /// required.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiagnosticFix {
@@ -79,7 +79,7 @@ impl Diagnostic {
         }
     }
 
-    /// Stable rule family code (`MS1000`, ...), matching `Diagnostic.Code` in Go.
+    /// Stable rule family code (`MS1000`, ...).
     pub fn code(&self) -> &'static str {
         // Messages read "<cause>; <fix>". Only the cause identifies the rule.
         let message = self.message.split("; ").next().unwrap_or("");
@@ -146,7 +146,7 @@ impl Diagnostic {
         }
     }
 
-    /// JSON object in the shape of Go's `Diagnostic.MarshalJSON`, indented by
+    /// JSON object in the shape of the CLI's JSON diagnostics, indented by
     /// `indent` levels of two spaces is left to the caller; this is compact.
     pub fn to_json(&self) -> String {
         let mut out = String::new();
@@ -201,7 +201,7 @@ fn json_position(out: &mut String, file: &str, pos: Pos) {
     ));
 }
 
-/// Appends `text` as a JSON string, escaping like Go's `encoding/json`
+/// Appends `text` as a JSON string, escaping like standard JSON encoders
 /// (HTML-sensitive characters are escaped as well).
 pub fn json_string(out: &mut String, text: &str) {
     out.push('"');

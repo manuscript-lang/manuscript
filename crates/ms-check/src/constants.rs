@@ -1,4 +1,4 @@
-//! Module-level constants (`pkg/checker/constants.go`).
+//! Module-level constants.
 
 use crate::checker::Checker;
 use crate::syntax::*;

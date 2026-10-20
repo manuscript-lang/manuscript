@@ -1,4 +1,4 @@
-//! Editor recovery parsing, a port of `pkg/parser/partial.go`.
+//! Editor recovery parsing.
 //!
 //! [`parse_partial`] retains independently valid declarations for editor
 //! analysis. [`crate::parser::parse`] remains the strict build API. Recovered
@@ -266,7 +266,7 @@ fn recover_statements(
 }
 
 /// Splits an `unterminated delimiter ... opened at line N:` message into the
-/// byte range of `N` (Go: `^unterminated delimiter .* opened at line (\d+):`).
+/// byte range of `N` (`unterminated delimiter ... opened at line N:`).
 fn opened_range(message: &str) -> Option<(usize, usize)> {
     const PREFIX: &str = "unterminated delimiter ";
     const MARK: &str = " opened at line ";

@@ -1,5 +1,4 @@
-//! Conservative potential effects of callables (`pkg/checker/effects.go`,
-//! `mutation.go`).
+//! Conservative potential effects of callables.
 
 use crate::checker::Checker;
 use crate::syntax::*;
@@ -193,7 +192,7 @@ impl Visitor for Scan<'_> {
         if self.info(e).is_some_and(|i| i.native_str() == "index") {
             self.effects.insert("read");
         }
-        // A constant is a nullary function in Go: each use is a call to it.
+        // A constant is a nullary function here: each use is a call to it.
         if self.module.facts().const_use.contains(&e.id) {
             self.scan_call(e, e);
             return;

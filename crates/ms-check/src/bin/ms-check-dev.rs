@@ -1,5 +1,5 @@
 //! Developer tool: check standalone `.ms` files like `ms check` and print the
-//! same diagnostics, so the checker can be compared with the Go oracle.
+//! same diagnostics.
 //!
 //! ```text
 //! ms-check-dev [--json] FILE...
@@ -189,7 +189,7 @@ impl Loader {
 }
 
 /// The first path component that does not exist, relative to the working
-/// directory when it lies beneath it (the name Go's path error reports).
+/// directory when it lies beneath it.
 fn missing_component(target: &Path) -> String {
     let mut prefix = PathBuf::new();
     for c in target.components() {

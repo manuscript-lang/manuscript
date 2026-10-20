@@ -1,4 +1,4 @@
-//! The bundled standard declarations (`pkg/checker/standard.go`).
+//! The bundled standard declarations.
 //!
 //! `stdlib/*.ms` and `bindings.json` are embedded unchanged. Native
 //! modules (declarations without bodies) are declared once per thread; source

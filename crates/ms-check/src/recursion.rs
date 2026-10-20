@@ -1,5 +1,4 @@
-//! Finite generic applications (`pkg/checker/recursion.go`,
-//! `type_recursion.go`).
+//! Finite generic applications.
 
 use crate::checker::Checker;
 use crate::syntax::*;

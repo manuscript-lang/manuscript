@@ -1,5 +1,5 @@
 //! Redundant prelude imports and their exact-source fix
-//! (`pkg/checker/prelude_imports.go`).
+//!.
 
 use crate::checker::Checker;
 use crate::syntax::*;

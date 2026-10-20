@@ -1,4 +1,4 @@
-//! Module graph loading: the port of Go `pkg/frontend.LoadFile`.
+//! Module graph loading.
 //!
 //! Resolves a source file or `ms.toml`, parses every reachable local module
 //! once in dependency order, and records which module each import names.
@@ -20,7 +20,7 @@ pub struct LoadOptions {
 }
 
 /// Editor loading: unsaved sources, syntax recovery and module selection
-/// (`Recover`, `Module`, `Overlay` and `ProjectSources` of Go `frontend.Options`).
+/// (`Recover`, `Module`, `Overlay` and `ProjectSources`).
 #[derive(Clone, Debug, Default)]
 pub struct EditorOptions {
     /// Keep the declarations that parse in unfinished source, and keep going
@@ -52,8 +52,7 @@ pub struct Graph {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// A loading failure that is not yet a diagnostic: Go distinguishes
-/// diagnostics, which pass through import edges unchanged, from plain errors,
+/// A loading failure that is not yet a diagnostic: diagnostics, which pass through import edges unchanged, from plain errors,
 /// which each edge wraps with its own position.
 enum Failure {
     Diagnostic(Box<Diagnostic>),
@@ -199,7 +198,7 @@ fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectErr
     Ok((config, false))
 }
 
-/// Go's `diagnostic(filename, phase, err)` for an error that is not already one.
+/// Builds a diagnostic for an error that is not already one.
 fn from_error(file: &Arc<str>, error: &ProjectError) -> Diagnostic {
     if let Some(manifest) = error.manifest_error() {
         let location = &manifest.location;

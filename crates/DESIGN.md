@@ -1,11 +1,11 @@
 # Rust and Cranelift implementation: design contract
 
-This is the working contract for the parallel workstreams in [the proposal](../proposals/rust-cranelift-backend.md). Where the two differ, this file wins; the proposal records why. Until cutover the Go implementation stays authoritative and is the **differential-test oracle**: build it with `make build` and run `./ms`.
+This is the working contract for the parallel workstreams in [the proposal](../proposals/rust-cranelift-backend.md). Where the two differ, this file wins; the proposal records why.
 
 ## Decisions (taken 2026-10-19, owner direction: keep today's behavior, maximum native speed)
 
 1. **Memory model: the proposal's value semantics, adopted by the owner on 2026-10-19.** Values have one owner and are dropped deterministically at scope end; no tracing collector and no reference counting for ordinary data. Records, lists, maps, sets, strings, bytes and alternatives are values: plain values (scalars, records of plain values) copy implicitly, others move at their last use into a consuming position, and `.copy()` duplicates explicitly. `let` is immutable including contents. Mutation uses **`var`** (kept from today instead of the proposal's `mut`, to limit churn): `var` bindings and `var` parameters (marked at the declaration and at the call, `f(var xs)`) may change, and a `var` argument may not overlap another argument. Identity is explicit: `Shared[T]` (reference counted, immutable), `Weak[T]`, `Arena[T]` with generation-checked `Id[T]`. Borrows are lexical (match/if-let payloads, loop variables, `with` bindings, accessor results): the borrowed root may not be mutated or reassigned while the borrow is live; no lifetimes appear in source. Strings are immutable and may be shared by reference count (non-atomic: no concurrency). Open design items (exclusivity corpus, projections/accessors, mutator results returning Unit, closure escape as a signature property, generic copyability bound, handle types) are settled in `crates/ms-check/OWNERSHIP.md` by the checker session and the stdlib delta by a later session; everything else in this file is independent of them.
-2. **Staging for behavior preservation.** The type checker is first ported with today's typing rules (parity with the Go diagnostics); ownership/exclusivity is a separate pass and standard-library signature changes (mutator results, accessors) land as one reviewed delta with an `ms migrate` tool that rewrites the repository's `.ms` files. Where value semantics changes observable behavior (aliasing, `.clone()`), that is intended; everything else must match Go. The Go `ms` remains the oracle for programs that do not alias.
+2. **Staging.** Ownership/exclusivity is a separate pass and standard-library signature changes (mutator results, accessors) land as one reviewed delta with an `ms migrate` tool that rewrites the repository's `.ms` files.
 3. **Faults** abort the process after running `with` cleanups in reverse order (a runtime cleanup stack, no frame unwinding in generated code). `ms test` runs each test in its own process invocation so a fault fails only that test. The 200,000-call depth limit is a per-call counter check that is elided for non-recursive call graphs.
 4. **No concurrency runtime.** The language has none today. Cancellation exists only for signals/shutdown: one global flag checked by runtime calls and I/O, not on loop back edges (atomic relaxed load).
 5. **Native tool: `ms profile`** replaces the debugger (the debugger and DAP are dropped). It captures sampling profiles of a native program (folded stacks, pprof-compatible output and a `perf` map file) using frame pointers plus a PC-to-source table. `perf record` works on any `ms build` output because the compiler keeps frame pointers and emits a perf map and DWARF line tables.
@@ -28,7 +28,7 @@ Each crate has one owner session. Cross-crate API changes go through the owner; 
 
 - `Int` i64 (checked arithmetic faults on overflow), `Float` f64, `Bool` i8 (0 or 1), `Unit` zero-sized.
 - Heap objects start with a 16-byte header `{ rc: usize, drop: extern "C" fn(*mut Obj) }`; a pointer to an object points at the header. Literal and static objects use a huge `rc` so count updates are harmless and need no immortality check.
-- `String` and `Bytes`: header, length, UTF-8 bytes (strings track their scalar count lazily; indices are Unicode scalar positions as in Go).
+- `String` and `Bytes`: header, length, UTF-8 bytes (strings track their scalar count lazily; indices are Unicode scalar positions).
 - Records: header plus fields in declaration order, each field in its natural word layout (Int/Float/Bool inline, everything else a pointer). Alternatives: header, tag, payload union sized to the largest case.
 - `List[T]`: header, len, cap, data pointer; elements inline in the monomorphized layout of `T`. Runtime functions that cannot be monomorphized in Rust take an element descriptor `{ size, align, drop, eq, hash, clone }`; the compiler emits one static descriptor per element type.
 - `Optional[T]`: pointer-like `T` uses the null pointer as `none`; scalars use `{ present: u8, value }`. `Result[T, E]`: tag plus payload.
@@ -46,12 +46,11 @@ The exact layouts and symbol names are documented and tested in `crates/ms-rt/AB
 ## Quality bars
 
 - Every crate: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test` green; no `unsafe` without a `// SAFETY:` comment; tests beside code.
-- Parity first: diagnostics (message, position, phase, JSON shape) must match the Go implementation on the shared corpus before a Rust stage is called done.
-- Performance claims need numbers from `bench/perf` on the same machine in the same run as the Go baseline.
+- Diagnostics (message, position, phase, JSON shape) are pinned by the conformance corpus.
+- Performance claims need numbers from `bench/perf` on the same machine.
 
 ## Workflow for sessions
 
-- Work in your own git worktree and branch; touch only the paths you own plus `Cargo.lock`. Do not edit Go sources, documentation or skills (the integrator updates those at cutover), except the files named in your brief.
+- Work in your own git worktree and branch; touch only the paths you own plus `Cargo.lock`. 
 - Use `cargo` with `CARGO_TARGET_DIR` set to a directory inside your worktree. The machine has four cores shared by several sessions: prefer `cargo check` and `cargo test -p <crate>` over workspace builds, avoid `--release` unless measuring.
 - Commit often with clear messages; do not push. The integrator merges branches.
-- The Go oracle is `./ms` in the main checkout (`/home/user/manuscript/ms`, built). Never modify it.

@@ -1,10 +1,10 @@
-//! Source-order walker over executable syntax, mirroring `pkg/syntax/walk.go`.
+//! Source-order walker over executable syntax.
 //!
 //! Implement [`Visitor`] and override the hooks you need; [`walk_decl`] does the
 //! recursion through parameter defaults, interpolation, closures, branches and
 //! match arms. Types and patterns are not executable and are not visited.
 //!
-//! Visit order (identical to Go): for a statement, `stmt` then the assignment
+//! Visit order : for a statement, `stmt` then the assignment
 //! target, the value, the body, the else body. For an expression, `expr`, then
 //! left/right, arguments, list/map elements, text interpolations, lambda
 //! parameter defaults and body, arms (body then value), and finally

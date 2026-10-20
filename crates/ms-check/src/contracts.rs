@@ -1,5 +1,4 @@
-//! Implementations, contracts and their evidence (`pkg/checker/contracts.go`,
-//! `errors.go`).
+//! Implementations, contracts and their evidence.
 
 use crate::checker::{Checker, Scope};
 use crate::hints::{list, signature_text};

@@ -1,4 +1,4 @@
-//! Function expressions (`pkg/checker/callbacks.go`).
+//! Function expressions.
 
 use crate::checker::{CallbackReturns, Checker, Scope};
 use crate::inference::{callback_context, inference_known_opt, inference_type_known};
