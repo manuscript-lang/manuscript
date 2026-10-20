@@ -116,9 +116,12 @@ jobs:
           else
             cc --version
           fi
+      # Runner images often ship the LLVM tools already; install only when they are missing.
       - name: Install LLVM native debug consumers
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then
+          if command -v llvm-dwarfdump >/dev/null 2>&1 && command -v llvm-symbolizer >/dev/null 2>&1; then
+            echo "LLVM debug consumers already installed"
+          elif [ "$RUNNER_OS" = Linux ]; then
             sudo apt-get update
             sudo apt-get install -y llvm
           elif [ "$RUNNER_OS" = macOS ]; then
