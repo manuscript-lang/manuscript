@@ -1,6 +1,7 @@
 /* Print hooks for MIR fixtures when linking the real ms-rt (which has no msrt_print_* symbols). */
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #ifdef _WIN32
 #include <io.h>
 #define write _write
@@ -16,3 +17,5 @@ void msrt_print_str(const uint8_t *s) {
   out((const char *)s + 32, (int)*(const int64_t *)(s + 16));
   out("\n", 1);
 }
+
+#include "callback.h"
