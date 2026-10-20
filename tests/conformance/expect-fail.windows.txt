@@ -14,4 +14,4 @@ snippets/internal-cli-testprojectcheckdiscoveryandreporting-1
 docs/core-language-modules-declarations-4
 docs/developer-tooling-builds-project-configuration-1
 # run: the Windows stack walk stops after 255 frames, so a 200000-deep recursion fault collapses to "repeated 255 more times" and never reaches main.
-go-tests/tests-e2e-testrunawayrecursionisafault-1
+snippets/tests-e2e-testrunawayrecursionisafault-1
