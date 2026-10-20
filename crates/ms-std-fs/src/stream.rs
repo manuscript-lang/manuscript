@@ -11,7 +11,7 @@ use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_NONE, STATUS_UNAVAILABLE,
 };
-use ms_std_rt::poll_cancel;
+use ms_std_rt::{poll_cancel, stash_stdin_pending, take_stdin_pending};
 
 /// The `IoError` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
 #[derive(Debug, PartialEq, Eq)]
@@ -65,7 +65,9 @@ pub struct Stream {
     /// An `@std/fs` file handle: flushing synchronizes the file.
     pub(crate) file: bool,
     pub(crate) name: Vec<u8>,
+    /// Read-ahead bytes, from `head` on; a line reader consumes them by advancing `head`.
     pub(crate) pending: Vec<u8>,
+    head: usize,
 }
 
 const DEFAULT_CHUNK: i64 = 64 * 1024;
@@ -88,6 +90,7 @@ impl Stream {
             file: false,
             name: name.to_vec(),
             pending: Vec::new(),
+            head: 0,
         }
     }
 
@@ -98,7 +101,31 @@ impl Stream {
             1 => b"/dev/stdout",
             _ => b"/dev/stderr",
         };
-        Stream::new(sys::standard(which), false, name)
+        let mut stream = Stream::new(sys::standard(which), false, name);
+        if which == 0 {
+            // Each `stdin()` call makes a new handle: pick up what the previous one read ahead.
+            stream.pending = take_stdin_pending();
+        }
+        stream
+    }
+
+    fn available(&self) -> &[u8] {
+        &self.pending[self.head..]
+    }
+
+    fn consume(&mut self, n: usize) {
+        self.head += n;
+        if self.head >= self.pending.len() {
+            self.pending.clear();
+            self.head = 0;
+        }
+    }
+
+    fn take_pending(&mut self) -> Vec<u8> {
+        let mut bytes = core::mem::take(&mut self.pending);
+        bytes.drain(..self.head);
+        self.head = 0;
+        bytes
     }
 
     /// Opens a file read-only; every failure is `Unavailable` except an embedded NUL.
@@ -175,10 +202,11 @@ impl Stream {
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
             Some(v) => v.min(DEFAULT_CHUNK),
         } as usize;
-        if !self.pending.is_empty() {
-            let take = n.min(self.pending.len());
-            let rest = self.pending.split_off(take);
-            return Ok(Some(core::mem::replace(&mut self.pending, rest)));
+        if !self.available().is_empty() {
+            let take = n.min(self.available().len());
+            let out = self.available()[..take].to_vec();
+            self.consume(take);
+            return Ok(Some(out));
         }
         let mut data = alloc::vec![0u8; n];
         match self.read_fd(&mut data) {
@@ -243,9 +271,10 @@ impl Stream {
 
     /// Returns read-ahead bytes to the file so position-based operations see them.
     pub(crate) fn rewind(&mut self) {
-        if self.file && !self.pending.is_empty() {
-            sys::rewind_by(self.fd, self.pending.len());
+        if self.file && !self.available().is_empty() {
+            sys::rewind_by(self.fd, self.available().len());
             self.pending.clear();
+            self.head = 0;
         }
     }
 
@@ -256,17 +285,16 @@ impl Stream {
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
             Some(v) => v,
         } as u64;
-        if let Some(i) = self.pending.iter().position(|&c| c == b'\n')
-            && line_length(&self.pending[..i]) < max
+        if let Some(i) = self.available().iter().position(|&c| c == b'\n')
+            && line_length(&self.available()[..i]) < max
         {
-            let rest = self.pending.split_off(i + 1);
-            let mut line = core::mem::replace(&mut self.pending, rest);
-            line.truncate(i);
+            let line = self.available()[..i].to_vec();
+            self.consume(i + 1);
             return finish_line(line).map(Some);
         }
         let mut b: Vec<u8> = Vec::new();
         loop {
-            let mut chunk = core::mem::take(&mut self.pending);
+            let mut chunk = self.take_pending();
             if chunk.is_empty() {
                 match self.read(Some(DEFAULT_CHUNK))? {
                     None if b.is_empty() => return Ok(None),
@@ -278,6 +306,7 @@ impl Stream {
                 // An over-long line is dropped; the lines after it stay readable.
                 if i + 1 < chunk.len() {
                     self.pending = chunk[i + 1..].to_vec();
+                    self.head = 0;
                 }
                 b.extend_from_slice(&chunk[..i]);
                 if line_length(&b) >= max {
@@ -296,6 +325,10 @@ impl Stream {
 
 impl Drop for Stream {
     fn drop(&mut self) {
+        if self.fd == sys::standard(0) && !self.owned && !self.available().is_empty() {
+            let rest = self.take_pending();
+            stash_stdin_pending(rest);
+        }
         let _ = self.close();
     }
 }
@@ -335,6 +368,20 @@ mod tests {
 
     fn pipe() -> (sys::Fd, sys::Fd) {
         sys::pipe()
+    }
+
+    #[test]
+    fn many_lines_from_one_chunk_and_stashed_read_ahead() {
+        let (r, w) = pipe();
+        let mut input = Stream::new(r, true, b"pipe");
+        let mut output = Stream::new(w, true, b"pipe");
+        output.write(b"a\nbb\nccc\n").unwrap();
+        output.close().unwrap();
+        assert_eq!(input.read_line(None).unwrap().unwrap(), b"a");
+        assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"bb");
+        stash_stdin_pending(input.take_pending());
+        assert_eq!(take_stdin_pending(), b"\nccc\n");
+        assert!(take_stdin_pending().is_empty());
     }
 
     #[test]

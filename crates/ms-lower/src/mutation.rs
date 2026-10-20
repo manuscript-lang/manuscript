@@ -83,6 +83,42 @@ pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
     v.count
 }
 
+/// Whether the statements read, name, or change the local `uid` anywhere, closures included.
+pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool {
+    struct Mentions<'h> {
+        hir: &'h ModuleHir,
+        uid: usize,
+        found: bool,
+    }
+    impl Visitor for Mentions<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if let Resolution::Local(b) = self.hir.resolution(e)
+                && b.uid == self.uid
+            {
+                self.found = true;
+            }
+        }
+        fn stmt(&mut self, s: &Stmt) {
+            if let StmtKind::Assign {
+                target: AssignTarget::Name(_),
+                value,
+                ..
+            } = &s.kind
+                && self.hir.assigned(value).is_some_and(|b| b.uid == self.uid)
+            {
+                self.found = true;
+            }
+        }
+    }
+    let mut v = Mentions {
+        hir,
+        uid,
+        found: false,
+    };
+    ms_syntax::visit::walk_block(&mut v, body);
+    v.found
+}
+
 /// The locals a body assigns to or mutates in place, and the source calls they feed.
 struct Mutations<'h> {
     hir: &'h ModuleHir,
