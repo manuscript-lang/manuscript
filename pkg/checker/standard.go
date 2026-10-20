@@ -9,8 +9,8 @@ import (
 
 	"github.com/manuscript-lang/manuscript/internal/nativeabi"
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/stdlib"
 )
 
 var standardSymbols map[string]*Symbol

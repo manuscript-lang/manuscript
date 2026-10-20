@@ -17,8 +17,10 @@ release, cancellation) and never the other way around.
   declaration index` of the error case in the `.ms` error type. Tables below.
   `Failed(message)` stores its text through the trailing `err: *mut *mut StrObj`
   (owned string; the pointer may be null when the caller does not need it).
-- **Results.** An ok value is written through `out` (before `err`). `Optional[T]`
-  results add `present: *mut u8` after `out`. Native handles are `*mut Obj`.
+- **Results.** An ok value is written through `out` (before `err`). An `Optional[T]` in a
+  `Result` answers `STATUS_NONE` (16) for none; a bare `Optional[T]` answers whether it is
+  present. Native handles are `*mut Obj`. Wire structs are passed by address and have the
+  leaves of the language record (lists inline as `VecVal`).
 - **Optional parameters** flatten to `has: u8, value: i64` (`Optional[Int]`,
   `Optional[Duration]`; a `Duration` is nanoseconds). A negative limit or timeout is
   `InvalidInput`, as in Go.
@@ -77,14 +79,14 @@ msrt_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out: *mut
 msrt_net_network_resolve(net, name, kind: u8, has_max, max, has_timeout, timeout,
                          records: *mut *mut DnsRecordWire, count: *mut usize, err) -> u8
 msrt_net_connection_{close, local_address, peer_address, shutdown_write(err) -> u8}
-msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, present: *mut u8, err) -> u8
+msrt_net_connection_read(c, has_max, max, has_timeout, timeout, out: *mut VecVal, err) -> u8   # STATUS_NONE (16) at end of stream
 msrt_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
 msrt_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
 msrt_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
-msrt_net_datagram_{address, close}
-msrt_net_datagram_receive(d, has_max, max, has_timeout, timeout, data: *mut VecVal, sender: *mut *mut StrObj, err) -> u8
-msrt_net_datagram_send(d, data: String, address, has_timeout, timeout, err) -> u8
-msrt_net_datagram_send_bytes(d, data: *const VecVal, address, has_timeout, timeout, err) -> u8
+msrt_net_datagram_{address, close}  # receiver `sock`
+msrt_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: *mut StrObj }, err) -> u8
+msrt_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
+msrt_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
 
 `DnsRecordWire { kind: u8, value: *mut StrObj, priority: i64, weight: i64, port: i64 }`
@@ -95,7 +97,7 @@ Behavior notes (same as Go unless stated):
 
 - Addresses are `host:port` with IPv6 hosts in brackets; Unix sockets use their path.
   A Unix listener removes its socket file on close.
-- `Connection.read` caps a chunk at 65536 bytes, returns `present = 0` at EOF, and a
+- `Connection.read` caps a chunk at 65536 bytes, answers `STATUS_NONE` at EOF, and a
   local timeout is `IoError.Failed("operation timed out")`.
 - `lookup`/`resolve` of A and AAAA on the default network use the system resolver
   (`getaddrinfo`) on a helper thread so a timeout or stop request is honored; other
@@ -150,24 +152,26 @@ idle_timeout: OptWire, decompress: u8, cookies: u8, tls: TlsOptionsWire }`;
 max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `RequestWire
 { method, path, query, protocol, headers, body }` and `ResponseWire { status, headers,
 body }` (all fields owned, +1); `ClientResponseWire { status, headers, protocol, body }`;
-`MetadataWire { status, headers, protocol }`; `StreamWire { data, read }` borrows a
-`ReadStream` for uploads (`read` follows the `Connection.read` convention).
+`MetadataWire { status, headers, protocol }`; `request_stream` takes a `src`
+closure (compiler generated, borrowed for the call) wrapping the `ReadStream`; its code word
+follows the `Connection.read` convention: `read(env, has_max, max, out, present, err) -> status`.
 
 ```text
 msrt_net_network_http_client(net, opts, out, err) -> u8
 msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
 msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
 msrt_http_body_{read,metadata,close}
-msrt_net_network_serve(net, address, env, thunk: BufferedThunk, limits..., out, err) -> u8
-msrt_net_network_serve_stream(net, address, env, thunk: StreamThunk, opts, out, err) -> u8
+msrt_net_network_serve(net, address, env, limits..., out, err) -> u8
+msrt_net_network_serve_stream(net, address, env, opts, out, err) -> u8
 msrt_http_server_{address,close,wait}
 msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
 ```
 
-Handler thunks are compiler generated and run on the ms thread, each request in its own
-`ms-rt` task (see Concurrency). `BufferedThunk(env, req, resp)` fills
-`resp`; `StreamThunk(env, exchange, err) -> u8` returns an `HttpError` status. `env` is
-the retained closure; the server releases it on drop. Behavior: one handler runs at a
+Handlers are compiler generated closures that run on the ms thread, each request in its
+own `ms-rt` task (see Concurrency). The server calls the closure's code word:
+`BufferedThunk(env, req, resp)` fills `resp`; `StreamThunk(env, exchange, err) -> u8`
+returns an `HttpError` status (the exchange handle is borrowed). `env` is the retained
+closure; the server releases it on drop. Behavior: one handler runs at a
 time; closing
 a server (or its network) from its own handler faults.
 

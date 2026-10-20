@@ -9,7 +9,7 @@ description = "Shared FFI helpers for the Manuscript standard-library native cra
 ms-rt-abi = { path = "../ms-rt-abi" }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

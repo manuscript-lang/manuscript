@@ -11,7 +11,7 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: conformance conform-oracle stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
+.PHONY: conformance conform-oracle conform-rust stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
@@ -45,7 +45,7 @@ repo-check:
 	"$(GO)" run ./scripts/repo-check
 
 unit:
-	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./pkg/stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
+	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
 
 stdlib-check:
 	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'
@@ -57,12 +57,20 @@ conformance: build
 	./ms test scripts/conformance.ms
 	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" "$(CONFORMANCE_SUITE)" "$(CONFORMANCE_SHARD)" "$(CONFORMANCE_SHARDS)"
 
-# The Rust corpus runner against the Go oracle itself: every recorded fixture must pass.
+# Re-checks the frozen expectations against the Go oracle that recorded them (local only; CI gates on conform-rust).
 # CONFORM_SHARD=i/n splits the run; see tests/conformance/README.md.
 CONFORM_SHARD ?= 0/1
 conform-oracle: build
 	cargo run -q -p ms-conform -- lint
 	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
+
+# The run, check and test phases of the corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
+# answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
+# The recorded expectations are frozen: they are the contract, and this is the corpus gate. CONFORM_SHARD=i/n splits the run.
+conform-rust:
+	cargo build -q -p ms-cli -p ms-conform
+	target/debug/ms-conform lint
+	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-rust.md
 
 examples-check:
 	"$(GO)" test ./tests/examples

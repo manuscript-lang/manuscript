@@ -347,6 +347,21 @@ mod tests {
             calendar(t, "Nowhere/City").err(),
             Some(STATUS_INVALID_INPUT)
         );
+        // Names are case-sensitive, as zoneinfo file names are in Go.
+        for name in [
+            "america/new_york",
+            "AMERICA/NEW_YORK",
+            "utc",
+            "Utc",
+            "local",
+        ] {
+            assert_eq!(
+                calendar(t, name).err(),
+                Some(STATUS_INVALID_INPUT),
+                "{name}"
+            );
+        }
+        assert!(calendar(t, "US/Pacific").is_ok());
         let text = format(t, b"YYYY-MM-DD HH:mm:ss.SSS ZZ [zone] SS", "Europe/Berlin").unwrap();
         assert_eq!(
             core::str::from_utf8(&text).unwrap(),

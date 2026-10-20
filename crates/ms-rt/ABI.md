@@ -12,8 +12,7 @@ recorded here before it is committed.)_
 
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (`no_std` rlibs linked into `libms_rt.a`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
-  `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results are bit-identical to Go's portable `math` except that
-  `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
+  `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
 - **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify,
@@ -348,7 +347,7 @@ Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is avai
 `eq`, `hash`, `io`, `process`, `profile`. Future crates (`ms-std-fs`, `ms-std-json`...)
 use their own prefix and link only when imported; they depend on `ms-rt-abi` and call
 `msrt_*` for allocation and faults. The authoritative symbol list is the `#[no_mangle]`
-items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `pkg/stdlib/*.ms`
+items in `ms-rt/src` (`cargo doc -p ms-rt`); language names follow `stdlib/*.ms`
 (`String.split` -> `msrt_string_split`). Argument order: receiver pointer(s), descriptors,
 declared parameters, flattened optionals, `out` last.
 

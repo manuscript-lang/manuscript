@@ -27,3 +27,6 @@ regex = { version = "1", default-features = false, features = ["std", "unicode-p
 [dev-dependencies]
 ms-mir = { path = "../ms-mir" }
 ms-check = { path = "../ms-check" }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = { version = "0.2", default-features = false }

@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "collection-prelude.ms::map add returns receiver and retains aliases clone and insertion order",
+          "name": "collection-prelude.ms::map add retains clones and insertion order",
           "status": "passed"
         },
         {
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN collection-prelude.ms::issue 187 programs need no collection imports\nPASS collection-prelude.ms::issue 187 programs need no collection imports\nRUN collection-prelude.ms::map add returns receiver and retains aliases clone and insertion order\nPASS collection-prelude.ms::map add returns receiver and retains aliases clone and insertion order\nRUN collection-prelude.ms::map add retains optional wrapping and generic bound calls\nPASS collection-prelude.ms::map add retains optional wrapping and generic bound calls\nRUN collection-prelude.ms::map add captures receivers and arguments in written order\nPASS collection-prelude.ms::map add captures receivers and arguments in written order\n4 tests, 0 failed\n",
+      "stdout": "RUN collection-prelude.ms::issue 187 programs need no collection imports\nPASS collection-prelude.ms::issue 187 programs need no collection imports\nRUN collection-prelude.ms::map add retains clones and insertion order\nPASS collection-prelude.ms::map add retains clones and insertion order\nRUN collection-prelude.ms::map add retains optional wrapping and generic bound calls\nPASS collection-prelude.ms::map add retains optional wrapping and generic bound calls\nRUN collection-prelude.ms::map add captures receivers and arguments in written order\nPASS collection-prelude.ms::map add captures receivers and arguments in written order\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

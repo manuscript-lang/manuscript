@@ -263,8 +263,12 @@ pub const STATUS_UNAVAILABLE: u8 = 12;
 pub const STATUS_TIMEOUT: u8 = 13;
 /// `CommandError.OutputLimit`.
 pub const STATUS_OUTPUT_LIMIT: u8 = 14;
+/// `TerminalError.NotTerminal`: a standard stream is redirected.
+pub const STATUS_NOT_TERMINAL: u8 = 15;
 /// Success with no value (`Ok(none)`): end of stream or an absent optional result.
 pub const STATUS_NONE: u8 = 16;
+/// `TerminalError.Busy`: another raw terminal holds the terminal.
+pub const STATUS_BUSY: u8 = 17;
 
 // ---------------------------------------------------------------------------
 // Faults, call depth, tables

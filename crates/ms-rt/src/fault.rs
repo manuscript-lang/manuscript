@@ -4,6 +4,7 @@ use crate::global::Global;
 #[allow(unused_imports)]
 use crate::sys;
 use core::fmt::{self, Write};
+use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 
 /// Current depth of recursive calls (generated code updates it inline).
@@ -11,7 +12,7 @@ use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_
 pub static mut msrt_call_depth: i64 = 0;
 /// Non-zero (the signal number) once a stop was requested and not shielded.
 #[unsafe(no_mangle)]
-pub static mut msrt_cancel_flag: u8 = 0;
+pub static msrt_cancel_flag: AtomicU8 = AtomicU8::new(0);
 
 pub static TABLES: Global<*const Tables> = Global::new(core::ptr::null());
 /// Lowest and highest valid stack addresses for frame walking (0 = unknown).
@@ -21,7 +22,7 @@ pub static STACK_HI: Global<usize> = Global::new(0);
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 static CLEANUPS: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
 pub(crate) static SHIELD: Global<u32> = Global::new(0);
-pub static PENDING_SIGNAL: core::sync::atomic::AtomicU8 = core::sync::atomic::AtomicU8::new(0);
+pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
 static FAULTING: Global<bool> = Global::new(false);
 static SECONDARY: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
 
@@ -32,9 +33,7 @@ static TASK_CANCEL: Global<u8> = Global::new(0);
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
-    PENDING_SIGNAL
-        .load(core::sync::atomic::Ordering::Relaxed)
-        .max(task)
+    PENDING_SIGNAL.load(Ordering::Relaxed).max(task)
 }
 
 /// Records a stop request aimed at the running task.
@@ -43,7 +42,7 @@ pub(crate) fn set_live_task_cancel(v: u8) {
     unsafe {
         *TASK_CANCEL.ptr() = v;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag = unshielded_cancel_flag();
+            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
 }
@@ -104,11 +103,14 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
         core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
-        msrt_cancel_flag = if *SHIELD.ptr() == 0 {
-            unshielded_cancel_flag()
-        } else {
-            0
-        };
+        msrt_cancel_flag.store(
+            if *SHIELD.ptr() == 0 {
+                unshielded_cancel_flag()
+            } else {
+                0
+            },
+            Ordering::Relaxed,
+        );
     }
 }
 
@@ -136,11 +138,15 @@ fn frame_pointer() -> usize {
     let fp: usize;
     // SAFETY: reads a register, no memory access.
     unsafe {
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(miri)]
+        {
+            fp = 0;
+        }
+        #[cfg(all(not(miri), target_arch = "x86_64"))]
         core::arch::asm!("mov {}, rbp", out(reg) fp, options(nomem, nostack, preserves_flags));
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(all(not(miri), target_arch = "aarch64"))]
         core::arch::asm!("mov {}, x29", out(reg) fp, options(nomem, nostack, preserves_flags));
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        #[cfg(not(any(miri, target_arch = "x86_64", target_arch = "aarch64")))]
         {
             fp = 0;
         }
@@ -253,6 +259,40 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     Some(unsafe { *t.scopes.add(id as usize - 1) })
 }
 
+/// Windows native frames do not use the generated code's frame layout. Recover
+/// the first source frame with native unwind metadata, then follow only the
+/// contiguous generated caller chain. Stop at native/glue boundaries rather
+/// than reconstructing a partial native register context.
+#[cfg(windows)]
+unsafe fn walk_fault_frames(_fp: usize, t: &Tables, mut f: impl FnMut(usize) -> bool) {
+    let Some((mut pc, mut fp)) = sys::source_frame(|pc| find_func(t, pc).is_some()) else {
+        return;
+    };
+    let (lo, hi) = sys::stack_limits();
+    for _ in 0..256 {
+        if find_func(t, pc).is_none() || !f(pc) {
+            break;
+        }
+        let Some(end) = fp.checked_add(16) else { break };
+        if !fp.is_multiple_of(8) || fp < lo || end > hi {
+            break;
+        }
+        // SAFETY: the first frame came from the native CONTEXT; subsequent
+        // frames belong to registered generated callers and stay in this stack.
+        let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
+        if next <= fp {
+            break;
+        }
+        (pc, fp) = (ret, next);
+    }
+}
+
+#[cfg(not(windows))]
+unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
+    // SAFETY: forwarded live frame-pointer chain.
+    unsafe { walk_frames(fp, f) }
+}
+
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut ByteBuf, fp: usize) {
     // SAFETY: tables pointer is set once at start.
@@ -266,7 +306,7 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
     let mut truncated = false;
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
     unsafe {
-        walk_frames(fp, |ret| {
+        walk_fault_frames(fp, t, |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
@@ -276,7 +316,7 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
             }
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
-            if line == 0 && file == u32::MAX {
+            if line == 0 {
                 return true;
             }
             // Frames of inlined callees, innermost first, then the physical function.
@@ -299,6 +339,10 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                 let Some(sc) = next else { break };
                 line = sc.call_line;
                 scope = sc.parent;
+                // A wrapper without a position of its own has no frame once its callee is shown.
+                if line == 0 && scope == 0 {
+                    break;
+                }
                 name = func.name_off;
                 file = func.file_off;
                 if shown == MAX_FAULT_FRAMES {
@@ -320,11 +364,11 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
     // registered by generated code with a valid function pointer.
     unsafe {
         *SHIELD.ptr() += 1;
-        msrt_cancel_flag = 0;
+        msrt_cancel_flag.store(0, Ordering::Relaxed);
         f(arg);
         *SHIELD.ptr() -= 1;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag = unshielded_cancel_flag();
+            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
 }
@@ -660,11 +704,14 @@ fn guard_exit(status: u8, message: &[u8]) -> ! {
         *FAULTING.ptr() = false;
         msrt_call_depth = f.depth;
         *SHIELD.ptr() = f.shield;
-        msrt_cancel_flag = if f.shield == 0 {
-            unshielded_cancel_flag()
-        } else {
-            0
-        };
+        msrt_cancel_flag.store(
+            if f.shield == 0 {
+                unshielded_cancel_flag()
+            } else {
+                0
+            },
+            Ordering::Relaxed,
+        );
         crate::desc::eq_truncate(f.eq_pairs);
         #[cfg(windows)]
         if f.trap {
@@ -1035,8 +1082,14 @@ mod tests {
         reset_for_tests();
         // Fake frame chain: three frames with return addresses 0x1010, 0x2010, 0x9999.
         let mut chain: [[usize; 2]; 3] = [[0, 0x1010], [0, 0x2010], [0, 0x9999]];
-        chain[0][0] = &chain[1] as *const _ as usize;
-        chain[1][0] = &chain[2] as *const _ as usize;
+        // Every link derives from one raw pointer to the whole chain, so the exposed address
+        // may be dereferenced later (a shared reference per frame would cover only that frame).
+        let base = chain.as_mut_ptr();
+        // SAFETY: the offsets stay inside `chain`.
+        unsafe {
+            (*base)[0] = base.add(1).expose_provenance();
+            (*base.add(1))[0] = base.add(2).expose_provenance();
+        }
         let strings = b"\0outer\0inner\0a.ms\0";
         let funcs = [
             FuncEntry {
@@ -1075,7 +1128,7 @@ mod tests {
         // SAFETY: test-only access to globals; `t` outlives the use.
         unsafe { *TABLES.ptr() = &t };
         let mut out = ByteBuf::new();
-        describe_frames(&mut out, &chain[0] as *const _ as usize);
+        describe_frames(&mut out, base.expose_provenance());
         // SAFETY: restore.
         unsafe { *TABLES.ptr() = core::ptr::null() };
         assert_eq!(

@@ -121,7 +121,12 @@ impl FnLower<'_> {
     }
 
     /// A runtime call whose `u8`/`u32` result is masked to its defined bits, as an `Int`.
-    fn jcall_masked(&mut self, sym: &str, args: &[Value], mask: i64) -> Result<Value, Error> {
+    pub(crate) fn jcall_masked(
+        &mut self,
+        sym: &str,
+        args: &[Value],
+        mask: i64,
+    ) -> Result<Value, Error> {
         let raw = self.call_runtime(sym, args, MTy::INT)?;
         let m = self.b.iconst(mask);
         Ok(self.b.binop(Op::And, raw, m))
@@ -144,7 +149,7 @@ impl FnLower<'_> {
         self.call_runtime("msrt_json_text", &[doc, id], MTy::STR)
     }
 
-    fn jslot(&mut self, t: MTy) -> Value {
+    pub(crate) fn jslot(&mut self, t: MTy) -> Value {
         self.b
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
             .expect("slot")
@@ -227,11 +232,11 @@ impl FnLower<'_> {
         self.jencode_call(t, doc, value)
     }
 
-    fn jmty(&mut self, t: &ct::Ty) -> Result<MTy, Error> {
+    pub(crate) fn jmty(&mut self, t: &ct::Ty) -> Result<MTy, Error> {
         self.cx.lower_ty(self.b.m, t)
     }
 
-    fn jvar(&mut self, t: MTy) -> Var {
+    pub(crate) fn jvar(&mut self, t: MTy) -> Var {
         self.fresh_var(t)
     }
 
@@ -1379,7 +1384,7 @@ impl FnLower<'_> {
         Ok(self.b.alt_new(ra, err as u32, &[e]))
     }
 
-    fn jarg(&self, args: &[NArg], name: &str) -> Result<Val, Error> {
+    pub(crate) fn jarg(&self, args: &[NArg], name: &str) -> Result<Val, Error> {
         args.iter()
             .find(|a| a.name.as_str() == name)
             .map(|a| a.val)
@@ -1387,7 +1392,7 @@ impl FnLower<'_> {
     }
 
     /// The flattened `(has, value)` pairs of the optional `JsonLimits` argument.
-    fn jlimits(&mut self, limits: Option<Val>) -> Result<Vec<Value>, Error> {
+    pub(crate) fn jlimits(&mut self, limits: Option<Val>) -> Result<Vec<Value>, Error> {
         let Some(l) = limits else {
             let (f, z) = (self.b.bconst(false), self.b.iconst(0));
             return Ok(vec![f, z, f, z, f, z]);

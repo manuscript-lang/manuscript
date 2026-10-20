@@ -31,6 +31,7 @@ Syntax changes usually need language-design, compiler, tooling, and documentatio
 
 ## Repository layout
 
+- The Rust and Cranelift implementation lives in `crates/` and is replacing the Go one; the Go code stays until the Rust `ms` passes the conformance corpus. Build it with `cargo build --release --locked -p ms-cli`; see the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) and `crates/DESIGN.md`. A change to behavior both implementations share reaches both until cutover.
 - Reusable Go packages live in `pkg/`; executable entrypoints live in `cmd/`, and private CLI/native helpers live in `internal/`.
 - Keep root Go embed carriers beside `go.mod`, `vendor/`, `.msversion`, and the generated toolchain payload. Package moves update imports, fixtures, dependency policy, release inputs, and expert routes; see the architecture guide.
 
@@ -40,6 +41,6 @@ Syntax changes usually need language-design, compiler, tooling, and documentatio
 - Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `try`, or call a small helper. `make repo-check` guards source, Markdown fences, and Go source strings; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - `AGENTS.md` is the sole source of repository guidance. `CLAUDE.md` contains only `@AGENTS.md` so Claude Code, which loads `CLAUDE.md` and not `AGENTS.md`, reads the same file; add no other content to it.
-- Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. All standard-library documentation belongs in `pkg/stdlib/*.ms`, including guide comment blocks; generate disposable book Markdown with `make docs`.
+- Skills describe workflows, `.experts/` preserves reasons and failure modes, and `documentation/` owns exact rules. All standard-library documentation belongs in `stdlib/*.ms`, including guide comment blocks; generate disposable book Markdown with `make docs`.
 - Keep skills concise and specific to Manuscript. Do not reinstall generic collections during routine setup. [Skill maintenance and history](skills/README.md) records why this catalog exists.
-- Run checks appropriate to the changed behavior from the current Makefile. `make verify` is the routine gate; `make verify-full` adds native, race, fuzz, book, and distribution checks. Guidance-only edits need reference/discovery validation and license freshness when notices change.
+- Run checks appropriate to the changed behavior from the current Makefile; Rust changes add `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`. `make verify` is the routine gate; `make verify-full` adds native, race, fuzz, book, and distribution checks. Guidance-only edits need reference/discovery validation and license freshness when notices change.

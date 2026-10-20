@@ -100,8 +100,19 @@ Start a project with `./ms init my-app`, or keep an executable and run the test:
 
 Version 0.1: working compiler, runtime, standard library, test runner, formatter, and editor tooling, still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work.
 
+## Rust toolchain
+
+The Rust and Cranelift `ms` is replacing the Go one. Releases still ship the Go `ms` until the Rust one passes the conformance corpus. To try it from a checkout, install [rustup](https://rustup.rs) and a system `cc`, then:
+
+```sh
+cargo build --release --locked -p ms-cli
+target/release/ms run examples/hello/ms.toml -- first second
+```
+
+See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for checks, crates, and behavior differences.
+
 ## Contribute
 
-See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds native validation.
+See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds native validation. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
 
-Layout: `pkg/` (compiler, runtime), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [pkg/stdlib/](pkg/stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
+Layout: `pkg/` (Go compiler, runtime), `crates/` (Rust compiler, runtime, tooling), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.

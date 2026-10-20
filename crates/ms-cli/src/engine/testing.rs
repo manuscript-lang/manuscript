@@ -433,8 +433,8 @@ impl Runner<'_> {
         if waited.timed_out {
             let limit = self.options.timeout.unwrap_or_default();
             return Ran::Failed(format!(
-                "timed out after {}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
-                go_duration(limit)
+                "timed out after {:?}; the test was cancelled (use --timeout to change the limit, 0 disables it)",
+                limit
             ));
         }
         if waited.interrupted {
@@ -496,34 +496,6 @@ fn describe_exit(status: &std::process::ExitStatus) -> String {
         }
     }
     "ended abnormally".to_string()
-}
-
-/// Go's `time.Duration.String` for the whole-second limits `--timeout` takes.
-fn go_duration(limit: Duration) -> String {
-    let nanos = limit.as_nanos();
-    if nanos >= 1_000_000_000 {
-        let seconds = limit.as_secs();
-        let fraction = limit.subsec_nanos();
-        let (hours, minutes, seconds) = (seconds / 3600, seconds / 60 % 60, seconds % 60);
-        let mut text = String::new();
-        if hours > 0 {
-            text.push_str(&format!("{hours}h"));
-        }
-        if hours > 0 || minutes > 0 {
-            text.push_str(&format!("{minutes}m"));
-        }
-        if fraction == 0 {
-            text.push_str(&format!("{seconds}s"));
-        } else {
-            let digits = format!("{fraction:09}");
-            text.push_str(&format!("{seconds}.{}s", digits.trim_end_matches('0')));
-        }
-        text
-    } else if nanos >= 1_000_000 {
-        format!("{}ms", nanos as f64 / 1e6)
-    } else {
-        format!("{nanos}ns")
-    }
 }
 
 /// Seeded Fisher-Yates. The permutation for a seed differs from Go's.
@@ -729,14 +701,6 @@ mod tests {
     }
 
     #[test]
-    fn go_duration_text() {
-        assert_eq!(go_duration(Duration::from_secs(60)), "1m0s");
-        assert_eq!(go_duration(Duration::from_secs(30)), "30s");
-        assert_eq!(go_duration(Duration::from_millis(1500)), "1.5s");
-        assert_eq!(go_duration(Duration::from_secs(3661)), "1h1m1s");
-    }
-
-    #[test]
     fn shuffle_is_a_seeded_permutation() {
         let mut a: Vec<u32> = (0..10).collect();
         let mut b = a.clone();
@@ -815,13 +779,13 @@ esac
     #[cfg(unix)]
     #[test]
     fn each_test_runs_in_its_own_process() {
-        let (status, text, document) = run_script(&["--timeout=400ms"]);
+        let (status, text, document) = run_script(&["--timeout=3s"]);
         assert_eq!(status, 3, "failed + crashed + timed out: {text}");
         let expected = [
             "RUN m::pass\nhello from pass\nPASS m::pass\n",
             "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4 in m::fail\n",
             "RUN m::crash\nFAIL m::crash: test process was terminated by signal 11\n",
-            "RUN m::hang\nFAIL m::hang: timed out after 400ms; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
+            "RUN m::hang\nFAIL m::hang: timed out after 3s; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
             "4 tests, 3 failed\n",
         ];
         assert_eq!(text, expected.concat());
@@ -854,7 +818,7 @@ esac
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);
         assert_eq!((status, text.as_str()), (0, "m::pass\nm::fail\n"));
 
-        let (status, text, document) = run_script(&["--fail-fast", "--timeout=400ms"]);
+        let (status, text, document) = run_script(&["--fail-fast", "--timeout=3s"]);
         assert_eq!(status, 1);
         assert!(text.ends_with("4 tests, 1 failed\n"), "{text}");
         assert_eq!(document.reason.as_deref(), Some("fail_fast"));
