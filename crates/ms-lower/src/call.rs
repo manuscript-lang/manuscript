@@ -396,7 +396,7 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| n.to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if ms_check::effects::collection_mutation(&self.ety(recv_expr), &method) {
+        if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         let recv = self.expr(recv_expr)?;
@@ -612,43 +612,8 @@ impl<'a> FnLower<'a> {
             .and_then(|p| p.default.as_ref())
             .ok_or_else(missing)?;
         let param_ty = sig.params.get(i).ok_or_else(missing)?.ty.clone();
-        self.literal_default(default, &param_ty)
-    }
-
-    /// A default of a bundled declaration, which carries no checked expressions: `false`, a
-    /// number, a text literal, `"".to_bytes()`, or a record built from its own field defaults.
-    pub(crate) fn literal_default(&mut self, default: &Expr, ty: &ct::Ty) -> Result<Val, Error> {
-        let missing = || Error::new("missing argument");
-        let want = self.cx.lower_ty(self.b.m, ty)?;
-        let v = match (&default.kind, self.b.m.types.kind(want).clone()) {
-            (ExprKind::Call { .. }, TyKind::Rec(r)) => {
-                let mut vals = Vec::new();
-                for i in 0..ct::fields(ty).len() {
-                    let earlier: Vec<(ct::Name, Value)> = ct::fields(ty)
-                        .iter()
-                        .zip(&vals)
-                        .map(|(f, v)| (f.name, *v))
-                        .collect();
-                    vals.push(self.field_default(ty, None, i, &earlier)?);
-                }
-                let v = self.b.rec_new(r, &vals);
-                return Ok(Val { v, own: true });
-            }
-            (ExprKind::Bool(b), TyKind::Bool) => self.b.bconst(*b),
-            (ExprKind::Number(n), TyKind::Int) => {
-                let value: i64 = n.as_str().parse().map_err(|_| missing())?;
-                self.b.iconst(value)
-            }
-            (ExprKind::Text(parts), TyKind::Str) => match parts.as_slice() {
-                [ms_syntax::ast::TextPart::Lit(t)] => {
-                    return Ok(self.lit(t));
-                }
-                _ => return Err(missing()),
-            },
-            (ExprKind::Call { .. }, TyKind::Bytes) => return self.empty_bytes(),
-            _ => return Err(missing()),
-        };
-        Ok(Val { v, own: false })
+        self.literal_default(default, &param_ty)?
+            .ok_or_else(missing)
     }
 
     // --------------------------------------------------------- constructors
@@ -790,14 +755,20 @@ impl<'a> FnLower<'a> {
         if matches!(&d.kind, ExprKind::Name(n) if n.as_str() == "none") && ft.is_std("Optional") {
             return Ok(self.none_owned(fm));
         }
-        let Ok(hir) = self.cx.module(sym.module) else {
-            let x = self.literal_default(d, &ft)?;
-            return Ok(self.owned(x));
-        };
+        if self.cx.module(sym.module).is_err() {
+            // Bundled declarations carry no checked facts: build literal defaults directly.
+            return match self.literal_default(d, &ft)? {
+                Some(v) => Ok(self.owned(v)),
+                None => Err(Error::new(format!(
+                    "unsupported default of field {}",
+                    field.name
+                ))),
+            };
+        }
         let saved_hir = self.hir.clone();
         let saved_subst = std::mem::replace(&mut self.subst, ct::substitution(t));
         let saved_file = self.file;
-        self.hir = hir;
+        self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
         self.bind_field_reads(d, earlier);
         // A default reports its own position, not the caller statement\'s.
@@ -809,6 +780,72 @@ impl<'a> FnLower<'a> {
         self.file = saved_file;
         let x = r?;
         Ok(self.owned(x))
+    }
+
+    /// A default written as a literal, an empty list or a constructor call of literals in a
+    /// declaration module without checked facts; none when `d` is anything else.
+    pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
+        let mt = self.cx.lower_ty(self.b.m, t)?;
+        let val = |v| Val { v, own: false };
+        Ok(match &d.kind {
+            ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
+            ExprKind::Number(n) if t.id.as_str() == "Int" => n
+                .as_str()
+                .parse::<i64>()
+                .ok()
+                .map(|n| val(self.b.iconst(n))),
+            ExprKind::Text(parts) if parts.iter().all(|p| matches!(p, TextPart::Lit(_))) => {
+                let text: String = parts
+                    .iter()
+                    .map(|p| match p {
+                        TextPart::Lit(s) => s.as_ref(),
+                        TextPart::Interp(_) => "",
+                    })
+                    .collect();
+                Some(self.lit(&text))
+            }
+            ExprKind::Call { .. } if matches!(self.b.m.types.kind(mt), TyKind::Bytes) => {
+                Some(self.empty_bytes()?)
+            }
+            ExprKind::List(items) if items.is_empty() => {
+                let v = self.call_runtime("msrt_list_new", &[], mt)?;
+                Some(Val { v, own: true })
+            }
+            ExprKind::Call { args, .. } if args.iter().all(|a| a.name.is_some()) => {
+                let (Some(sym), TyKind::Rec(rid)) = (t.symbol(), self.b.m.types.kind(mt).clone())
+                else {
+                    return Ok(None);
+                };
+                let Some(decl) = &sym.decl else {
+                    return Ok(None);
+                };
+                let types = ct::fields(t);
+                let mut vals = Vec::new();
+                for (field, ft) in decl.record_fields().iter().zip(&types) {
+                    let given = args
+                        .iter()
+                        .find(|a| {
+                            a.name
+                                .as_ref()
+                                .is_some_and(|n| n.as_str() == field.name.as_str())
+                        })
+                        .map(|a| &a.value)
+                        .or(field.default.as_ref());
+                    let Some(e) = given else {
+                        return Ok(None);
+                    };
+                    let Some(x) = self.literal_default(e, &ft.ty)? else {
+                        return Ok(None);
+                    };
+                    vals.push(self.owned(x));
+                }
+                Some(Val {
+                    v: self.b.rec_new(rid, &vals),
+                    own: true,
+                })
+            }
+            _ => None,
+        })
     }
 
     /// Binds the fields `earlier` that the default expression `d` reads by name.

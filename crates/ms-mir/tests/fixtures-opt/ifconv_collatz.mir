@@ -1,0 +1,30 @@
+module "ifconv_collatz"
+entry @main
+fn @main() -> int {
+b0:
+  %n: int = iconst 27
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %three: int = iconst 3
+  %z: int = iconst 0
+  br loop(%n, %z)
+loop(%x: int, %steps: int):
+  %c: bool = icmp.ne %x, %one
+  br_if %c, body(), done()
+body:
+  %r: int = srem %x, %two
+  %even: bool = icmp.eq %r, %z
+  br_if %even, half(), triple()
+half:
+  %h: int = sdiv %x, %two
+  br next(%h)
+triple:
+  %t: int = imul %x, %three
+  %t1: int = iadd %t, %one
+  br next(%t1)
+next(%y: int):
+  %s: int = iadd.chk %steps, %one
+  br loop(%y, %s)
+done:
+  ret %steps
+}

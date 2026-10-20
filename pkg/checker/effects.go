@@ -159,7 +159,7 @@ func (n *effectNode) scanMethodCall(expression *syntax.Expression, method *Metho
 		}
 	case "@std/List", "@std/Map", "@std/Set":
 		n.add("read")
-		if CollectionMutation(receiver, name) {
+		if CollectionMutation(method) {
 			n.add("write")
 		}
 		for _, param := range method.Type.Params {

@@ -4,11 +4,10 @@
 //! only on success. For `STATUS_FAILED` the Go-style diagnostic text is available from
 //! `msstd_fs_failure_message` until the next fallible call. `FileInfo` is flattened into
 //! [`InfoOut`]; optional limits are a present flag plus an `i64`.
-#![no_std]
 // The exports below are the C ABI compiled code links against.
 #![allow(unsafe_code)]
 #![allow(clippy::missing_safety_doc)]
-// `libc::stat` field widths differ per target, so the portable casts look redundant on Linux.
+// `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
 #![allow(clippy::unnecessary_cast)]
 
 extern crate alloc;

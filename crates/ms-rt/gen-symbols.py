@@ -21,5 +21,9 @@ for f in sorted(glob.glob("crates/ms-rt/src/*.rs") + glob.glob("crates/ms-std-*/
     }
     for m in re.finditer(r'^(aead|cipher3)!\((\w+),', s, re.M):
         out.append(f"{m.group(2)}({shims[m.group(1)]}")
+    # Indexed field getters declared through `text_getter!`/`int_getter!` (ms-std-system).
+    for m in re.finditer(r'^(text|int)_getter!\(\s*(msstd_\w+),', s, re.M):
+        out.append(f"{m.group(2)}(i: i64) -> {'*mut StrObj' if m.group(1) == 'text' else 'i64'}")
 out.append("```")
-open("crates/ms-rt/SYMBOLS.md", "w").write("\n".join(out) + "\n")
+# A symbol defined once per target (`msrt_trap_*`) is listed once.
+open("crates/ms-rt/SYMBOLS.md", "w").write("\n".join(l for i, l in enumerate(out) if not l or l.startswith(("#", "Generated", "`")) or l not in out[:i]) + "\n")

@@ -127,7 +127,18 @@ pub fn interrupt(child: &Child) {
     unsafe { kill(child.id() as i32, SIGINT) };
 }
 
-/// The exit status as a process status: the code, or 255 when killed by a signal.
+/// The exit status as a process status: the code, or 128 + signal (the shell convention).
 pub fn exit_code(status: ExitStatus) -> i32 {
-    status.code().unwrap_or(255)
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        status
+            .code()
+            .or_else(|| status.signal().map(|s| 128 + s))
+            .unwrap_or(255)
+    }
+    #[cfg(not(unix))]
+    {
+        status.code().unwrap_or(255)
+    }
 }

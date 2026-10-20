@@ -7,6 +7,8 @@ weight = 1
 
 One Go module. Reusable packages live in `pkg/`, entrypoints in `cmd/`, private CLI and native helpers in `internal/`. Tests sit beside their code; native conformance and publication checks live in `tests/`.
 
+The Rust implementation under `crates/` (`ms-syntax`, `ms-check`, `ms-mir`, `ms-clif`, `ms-rt`, and the rest) is replacing the Go pipeline described below; until cutover both live in this repository. See [Rust toolchain](rust-toolchain.md) for its pipeline and crate map.
+
 ## Follow one compilation
 
 ```mermaid

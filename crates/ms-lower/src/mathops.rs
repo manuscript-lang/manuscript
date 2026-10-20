@@ -6,12 +6,13 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
-use ms_mir::ir::{Cc, Mode, Value};
+use ms_check::types as ct;
+use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 impl FnLower<'_> {
     /// `-1`, `0` or `1` as `a` orders before, with or after `b`.
-    fn order(&mut self, t: MTy, a: Value, b: Value) -> Result<Value, Error> {
+    fn order(&mut self, t: MTy, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
         if t == MTy::INT {
             let (lt, gt) = (self.b.icmp(Cc::Lt, a, b), self.b.icmp(Cc::Gt, a, b));
             let (one, zero, minus) = (self.b.iconst(1), self.b.iconst(0), self.b.iconst(-1));
@@ -22,16 +23,61 @@ impl FnLower<'_> {
             TyKind::Float => "msrt_float_compare",
             TyKind::Str => "msrt_string_compare",
             TyKind::Obj(n, _) if n == "BigInt" => "msstd_bigint_compare",
-            _ => {
-                if let Some(sym) = self.ordering_symbol(t) {
-                    return self.call_runtime(sym, &[a, b], MTy::INT);
-                }
-                let f = self.cx.user_compare(self.b.m, t)?;
-                let f = f.ok_or_else(|| Error::new("ordering this type is not supported yet"))?;
-                return Ok(self.b.call(f, &[a, b]));
-            }
+            _ => return self.user_order(concrete, a, b),
         };
         self.call_runtime(sym, &[a, b], MTy::INT)
+    }
+
+    /// `a.compare(b)` through the `Comparable` implementation of `concrete`.
+    fn user_order(&mut self, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
+        let key = ct::type_key(concrete);
+        let im = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.contract.as_ref().is_some_and(|c| c.is_std("Comparable"))
+                    && m.name().is_some_and(|n| n.as_str() == "compare")
+                    && ct::type_key(&m.receiver) == key
+            })
+            .cloned()
+            .ok_or_else(|| Error::new("ordering this type is not supported yet"))?;
+        let decl = im
+            .decl
+            .as_ref()
+            .ok_or_else(|| Error::new("compare without declaration"))?;
+        let c = self.callable_of_decl(im.module, Some(decl.id()))?;
+        let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
+        let want = {
+            let other = c
+                .parameters
+                .first()
+                .ok_or_else(|| Error::new("compare without a parameter"))?;
+            self.mty(&other.ty)?
+        };
+        let other = self.fit_ty(Val { v: b, own: false }, concrete, want)?;
+        let other = other.v;
+        let recv = if self.cx.var_positions(&c).contains(&0) {
+            // A changing receiver is lent as a slot holding a copy that is dropped afterwards.
+            let t = self.ty_of(a);
+            let copy = self.owned(Val { v: a, own: false });
+            let slot = self
+                .b
+                .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+                .expect("slot");
+            self.move_into(slot, copy);
+            Some((slot, t))
+        } else {
+            None
+        };
+        let first = recv.map_or(a, |(slot, _)| slot);
+        let r = self.b.call(fid, &[first, other]);
+        self.drop_value(other);
+        if let Some((slot, t)) = recv {
+            let back = self.move_out(slot, t);
+            self.drop_value(back);
+        }
+        Ok(r)
     }
 
     /// `min(left, right)` or `max(left, right)`.
@@ -49,8 +95,14 @@ impl FnLower<'_> {
             return Err(Error::new("min and max take two operands"));
         };
         let t = self.ty_of(left.v);
+        let concrete = view
+            .arguments
+            .iter()
+            .find(|a| a.slot.name.as_str() == "left")
+            .map(|a| self.ety(a.expr))
+            .ok_or_else(|| Error::new("min and max take two operands"))?;
         let (l, r) = (self.borrow(left), self.borrow(right));
-        let c = self.order(t, l, r)?;
+        let c = self.order(t, &concrete, l, r)?;
         let zero = self.b.iconst(0);
         // The left operand wins ties.
         let keep_left = self.b.icmp(if greater { Cc::Ge } else { Cc::Le }, c, zero);
@@ -83,6 +135,12 @@ impl FnLower<'_> {
             .find(|a| a.name.as_str() == "values")
             .map(|a| a.val)
             .ok_or_else(|| Error::new("min_of and max_of take a list"))?;
+        let element = view
+            .arguments
+            .iter()
+            .find(|a| a.slot.name.as_str() == "values")
+            .and_then(|a| self.ety(a.expr).args.first().cloned())
+            .ok_or_else(|| Error::new("min_of and max_of take a list"))?;
         let list = self.borrow(values);
         let TyKind::List(elem) = self.b.m.types.kind(self.ty_of(list)).clone() else {
             return Err(Error::new("min_of and max_of take a list"));
@@ -103,7 +161,7 @@ impl FnLower<'_> {
             s.b.def_var(best, first);
             s.each_element(lvar, &mut |s, _, x| {
                 let cur = s.b.use_var(best);
-                let c = s.order(elem, x, cur)?;
+                let c = s.order(elem, &element, x, cur)?;
                 let z = s.b.iconst(0);
                 let better = s.b.icmp(if greater { Cc::Gt } else { Cc::Lt }, c, z);
                 let (take, skip) = (s.b.new_block(), s.b.new_block());

@@ -7,7 +7,7 @@
 // The exports below are the C ABI compiled code links against.
 #![allow(unsafe_code)]
 
-pub mod go;
+mod libm;
 
 unsafe extern "C-unwind" {
     fn msrt_fault_int_overflow() -> !;
@@ -28,32 +28,32 @@ macro_rules! constant {
 }
 
 unary! {
-    msstd_math_abs => go::abs,
-    msstd_math_acos => go::acos,
-    msstd_math_asin => go::asin,
-    msstd_math_atan => go::atan,
-    msstd_math_ceil => go::ceil_,
-    msstd_math_cos => go::cos,
-    msstd_math_cosh => go::cosh,
-    msstd_math_exp => go::exp,
-    msstd_math_floor => go::floor_,
-    msstd_math_log => go::log,
-    msstd_math_log10 => go::log10,
-    msstd_math_log2 => go::log2,
-    msstd_math_round => go::round,
-    msstd_math_sin => go::sin,
-    msstd_math_sinh => go::sinh,
-    msstd_math_sqrt => go::sqrt_,
-    msstd_math_tan => go::tan,
-    msstd_math_tanh => go::tanh,
-    msstd_math_truncate => go::trunc_,
-    msstd_math_acosh => go::acosh,
-    msstd_math_asinh => go::asinh,
-    msstd_math_atanh => go::atanh,
-    msstd_math_cbrt => go::cbrt,
-    msstd_math_expm1 => go::expm1,
-    msstd_math_log1p => go::log1p,
-    msstd_math_sign => go::sign,
+    msstd_math_abs => f64::abs,
+    msstd_math_acos => libm::acos_,
+    msstd_math_asin => libm::asin_,
+    msstd_math_atan => libm::atan_,
+    msstd_math_ceil => libm::ceil_,
+    msstd_math_cos => libm::cos_,
+    msstd_math_cosh => libm::cosh_,
+    msstd_math_exp => libm::exp_,
+    msstd_math_floor => libm::floor_,
+    msstd_math_log => libm::log_,
+    msstd_math_log10 => libm::log10_,
+    msstd_math_log2 => libm::log2_,
+    msstd_math_round => libm::round,
+    msstd_math_sin => libm::sin_,
+    msstd_math_sinh => libm::sinh_,
+    msstd_math_sqrt => libm::sqrt_,
+    msstd_math_tan => libm::tan_,
+    msstd_math_tanh => libm::tanh_,
+    msstd_math_truncate => libm::trunc_,
+    msstd_math_acosh => libm::acosh_,
+    msstd_math_asinh => libm::asinh_,
+    msstd_math_atanh => libm::atanh_,
+    msstd_math_cbrt => libm::cbrt_,
+    msstd_math_expm1 => libm::expm1_,
+    msstd_math_log1p => libm::log1p_,
+    msstd_math_sign => libm::sign,
     msstd_math_to_float32 => to_float32,
 }
 
@@ -63,23 +63,23 @@ fn to_float32(v: f64) -> f64 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_atan2(y: f64, x: f64) -> f64 {
-    go::atan2(y, x)
+    libm::atan2_(y, x)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_hypot(left: f64, right: f64) -> f64 {
-    go::hypot(left, right)
+    libm::hypot_(left, right)
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_pow(base: f64, exponent: f64) -> f64 {
-    go::pow(base, exponent)
+    libm::pow_(base, exponent)
 }
 
-/// `Math.remainder` is Go's `math.Mod` (C `fmod`), not the IEEE remainder.
+/// `Math.remainder` is C `fmod`, not the IEEE remainder.
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_remainder(left: f64, right: f64) -> f64 {
-    go::fmod(left, right)
+    libm::fmod_(left, right)
 }
 
 /// Faults on the one value whose magnitude does not fit.
@@ -99,12 +99,12 @@ pub extern "C" fn msstd_math_sign_int(n: i64) -> i64 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_is_integer(v: f64) -> u8 {
-    go::is_integer(v) as u8
+    libm::is_integer(v) as u8
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn msstd_math_is_safe_integer(v: f64) -> u8 {
-    (go::is_integer(v) && go::abs(v) <= MAX_SAFE_INTEGER as f64) as u8
+    (libm::is_integer(v) && v.abs() <= MAX_SAFE_INTEGER as f64) as u8
 }
 
 const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
@@ -113,7 +113,7 @@ constant! {
     msstd_math_e: f64 = core::f64::consts::E,
     msstd_math_pi: f64 = core::f64::consts::PI,
     msstd_math_infinity: f64 = f64::INFINITY,
-    msstd_math_nan: f64 = go::nan(),
+    msstd_math_nan: f64 = f64::NAN,
     msstd_math_epsilon: f64 = 1.0 / (1u64 << 52) as f64,
     msstd_math_max_float: f64 = f64::MAX,
     msstd_math_min_float: f64 = 5e-324,
@@ -121,10 +121,10 @@ constant! {
     msstd_math_min_int: i64 = i64::MIN,
     msstd_math_max_safe_integer: i64 = MAX_SAFE_INTEGER,
     msstd_math_min_safe_integer: i64 = -MAX_SAFE_INTEGER,
-    msstd_math_ln2: f64 = go::LN2,
-    msstd_math_ln10: f64 = go::LN10,
-    msstd_math_log2e: f64 = go::LOG2E,
-    msstd_math_log10e: f64 = go::LOG10E,
+    msstd_math_ln2: f64 = core::f64::consts::LN_2,
+    msstd_math_ln10: f64 = core::f64::consts::LN_10,
+    msstd_math_log2e: f64 = core::f64::consts::LOG2_E,
+    msstd_math_log10e: f64 = core::f64::consts::LOG10_E,
     msstd_math_sqrt2: f64 = core::f64::consts::SQRT_2,
     msstd_math_sqrt_half: f64 = core::f64::consts::SQRT_2 / 2.0,
 }

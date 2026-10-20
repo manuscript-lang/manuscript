@@ -12,8 +12,7 @@ recorded here before it is committed.)_
 
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (`no_std` rlibs linked into `libms_rt.a`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
-  `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results are bit-identical to Go's portable `math` except that
-  `exp`-derived functions may differ in the last bits, because Go's amd64 and arm64 `Exp` is CPU-specific assembly). `ms-rt` gains
+  `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
 - **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify,

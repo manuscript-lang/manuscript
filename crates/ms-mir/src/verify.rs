@@ -478,6 +478,20 @@ impl Verifier<'_> {
                     "operands and result must be int",
                 )
             }
+            Op::IAddOverflow | Op::IMulOverflow => {
+                arity(2)?;
+                want(
+                    t(0) == Ty::INT && t(1) == Ty::INT && res == Some(Ty::BOOL),
+                    "overflow flag takes two ints and yields bool",
+                )
+            }
+            Op::IntOverflowIf => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::BOOL && res.is_none(),
+                    "overflow guard takes bool and has no result",
+                )
+            }
             Op::INeg | Op::INegChk => {
                 arity(1)?;
                 want(

@@ -262,7 +262,7 @@ pub enum Op {
     // Constants.
     IConst, FConst, BConst, UnitConst, StrLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
-    IAdd, ISub, IMul, INeg, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
+    IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
     And, Or, Xor, Shl, Sshr, Not,
     // Comparisons.
@@ -383,7 +383,7 @@ impl Op {
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
-        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
+        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
@@ -415,6 +415,9 @@ impl Op {
             Op::ISub => ("isub", K::None, true, effects!()),
             Op::IMul => ("imul", K::None, true, effects!()),
             Op::INeg => ("ineg", K::None, true, effects!()),
+            Op::IAddOverflow => ("iadd.overflow", K::None, true, effects!()),
+            Op::IMulOverflow => ("imul.overflow", K::None, true, effects!()),
+            Op::IntOverflowIf => ("int_overflow.if", K::None, false, effects!(faults)),
             Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
             Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
             Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
