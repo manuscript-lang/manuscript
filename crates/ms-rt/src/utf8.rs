@@ -80,30 +80,10 @@ pub fn decode_last(s: &[u8]) -> (u32, usize) {
 
 /// Encodes a scalar; invalid values (surrogates, out of range) encode U+FFFD.
 pub fn encode(c: u32, out: &mut [u8; 4]) -> usize {
-    let c = if c > 0x10FFFF || (0xD800..=0xDFFF).contains(&c) {
-        RUNE_ERROR
-    } else {
-        c
-    };
-    if c < 0x80 {
-        out[0] = c as u8;
-        1
-    } else if c < 0x800 {
-        out[0] = 0xC0 | (c >> 6) as u8;
-        out[1] = 0x80 | (c & 0x3F) as u8;
-        2
-    } else if c < 0x10000 {
-        out[0] = 0xE0 | (c >> 12) as u8;
-        out[1] = 0x80 | ((c >> 6) & 0x3F) as u8;
-        out[2] = 0x80 | (c & 0x3F) as u8;
-        3
-    } else {
-        out[0] = 0xF0 | (c >> 18) as u8;
-        out[1] = 0x80 | ((c >> 12) & 0x3F) as u8;
-        out[2] = 0x80 | ((c >> 6) & 0x3F) as u8;
-        out[3] = 0x80 | (c & 0x3F) as u8;
-        4
-    }
+    char::from_u32(c)
+        .unwrap_or('\u{FFFD}')
+        .encode_utf8(out)
+        .len()
 }
 
 pub fn is_ascii(s: &[u8]) -> bool {

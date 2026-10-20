@@ -15,6 +15,7 @@ pub mod json;
 pub mod lexical;
 pub mod lint;
 pub mod nav;
+pub mod query;
 pub mod rename;
 pub mod semantic;
 pub mod server;

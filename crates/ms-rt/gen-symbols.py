@@ -19,7 +19,7 @@ for f in sorted(glob.glob("crates/ms-rt/src/*.rs") + glob.glob("crates/ms-std-*/
             continue
         for call in re.finditer(r'^' + re.escape(macro.group(1)) + r'!\((\w+),', s, re.M):
             out.append(f"{call.group(1)}{sig}")
-    for m in re.finditer(r'#\[unsafe\(no_mangle\)\]\s*pub (?:unsafe )?(?:extern "[^"]+" )?(fn|static)(?: mut)? (\w+)(.*?)(?:\{|=)', s, re.S):
+    for m in re.finditer(r'#\[unsafe\(no_mangle\)\]\s*(?:#\[[^\]]*\]\s*)*pub (?:unsafe )?(?:extern "[^"]+" )?(fn|static)(?: mut)? (\w+)(.*?)(?:\{|=)', s, re.S):
         sig = " ".join(m.group(3).split())
         out.append(f"{m.group(2)}{sig}" if m.group(1) == "fn" else f"{m.group(2)} (data)")
     # Symbols declared through the table macros of the ms-std crates (`name => path` / `name: type = value`).

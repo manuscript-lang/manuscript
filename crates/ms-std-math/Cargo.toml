@@ -8,5 +8,8 @@ description = "Manuscript standard-library natives for @std/math"
 [lib]
 crate-type = ["rlib"]
 
+[dependencies]
+ms-std-core = { path = "../ms-std-core" }
+
 [lints]
 workspace = true

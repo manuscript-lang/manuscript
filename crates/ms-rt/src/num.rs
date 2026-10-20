@@ -47,24 +47,7 @@ pub fn format_radix(v: i64, radix: u32, out: &mut ByteBuf) {
 
 /// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
 pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
-    let (neg, digits) = match text.first() {
-        Some(b'+') => (false, &text[1..]),
-        Some(b'-') => (true, &text[1..]),
-        _ => (false, text),
-    };
-    if digits.is_empty() {
-        return None;
-    }
-    let mut acc: i64 = 0;
-    for &c in digits {
-        if !c.is_ascii_digit() {
-            return None;
-        }
-        let d = (c - b'0') as i64;
-        // Accumulate negatively so i64::MIN is representable.
-        acc = acc.checked_mul(10)?.checked_sub(d)?;
-    }
-    if neg { Some(acc) } else { acc.checked_neg() }
+    core::str::from_utf8(text).ok()?.parse().ok()
 }
 
 /// `Numbers.parse_int`: Err carries the status code.
