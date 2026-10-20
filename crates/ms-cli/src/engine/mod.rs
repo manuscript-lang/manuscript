@@ -113,6 +113,15 @@ impl<L: Lower> Backend for RustBackend<L> {
         tooling::review(request, io)
     }
 
+    fn format_source(&self, file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+        tooling::format_source(file, source)
+    }
+
+    fn guide(&self, io: &mut Io) -> BackendResult {
+        let _ = write!(io.stdout, "{}", ms_guide::cheatsheet());
+        Ok(0)
+    }
+
     fn drop_redundant_labels(
         &self,
         file: &FormatFile,

@@ -591,3 +591,10 @@ pub(super) fn drop_redundant_labels(
     };
     Ok(ms_tooling::labels::drop_redundant_labels(program, source).0)
 }
+
+/// `ms fmt`: the formatter in `ms-syntax`; source that does not parse is reported, never rewritten.
+pub(super) fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+    let name: std::sync::Arc<str> = file.display.as_str().into();
+    ms_syntax::format::format(&name, source)
+        .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
+}

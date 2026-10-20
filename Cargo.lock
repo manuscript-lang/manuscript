@@ -971,6 +971,7 @@ dependencies = [
  "libc",
  "ms-check",
  "ms-driver",
+ "ms-guide",
  "ms-lower",
  "ms-lsp",
  "ms-mir",
