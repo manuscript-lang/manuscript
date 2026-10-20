@@ -29,6 +29,7 @@ use crate::backend::{
     FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, TestRequest,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
+use crate::json::Json;
 use crate::util::plural;
 
 /// The `ms` engine for native builds. `L` turns a checked program into MIR.
@@ -187,7 +188,12 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         message: issue.message.clone(),
         position: position(issue.pos),
         end: issue.end.map(position),
-        fix: None,
+        fix: issue.fix.as_ref().map(|fix| {
+            Json::object()
+                .with("position", position(fix.pos).to_json())
+                .with("end", position(fix.end).to_json())
+                .with("replacement", Json::str(&fix.replacement))
+        }),
     }
 }
 

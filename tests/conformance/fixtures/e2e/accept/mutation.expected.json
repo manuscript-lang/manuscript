@@ -11,22 +11,22 @@
       "tests": [
         {
           "index": 0,
-          "name": "mutation.ms::record fields mutate through aliases methods views and captures",
+          "name": "mutation.ms::record fields mutate through methods views and var parameters",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "mutation.ms::collection updates retain identity and clone separates storage",
+          "name": "mutation.ms::collection updates mutate in place and clone separates storage",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "mutation.ms::for loop captures length and observes backing writes",
+          "name": "mutation.ms::for loop iterates a snapshot while the source changes",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "mutation.ms::callbacks capture length while mutating their source",
+          "name": "mutation.ms::callbacks over a snapshot leave the source writable",
           "status": "passed"
         },
         {
@@ -36,17 +36,17 @@
         },
         {
           "index": 5,
-          "name": "mutation.ms::collection clones retain nested object references",
+          "name": "mutation.ms::collection clones keep independent lengths",
           "status": "passed"
         },
         {
           "index": 6,
-          "name": "mutation.ms::map and set clear affect aliases while copies retain contents",
+          "name": "mutation.ms::map and set clear affect their owner while copies retain contents",
           "status": "passed"
         },
         {
           "index": 7,
-          "name": "mutation.ms::alternative clones retain tags and shared payload references",
+          "name": "mutation.ms::alternative clones retain tags and payloads",
           "status": "passed"
         },
         {
@@ -65,7 +65,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN mutation.ms::record fields mutate through aliases methods views and captures\nPASS mutation.ms::record fields mutate through aliases methods views and captures\nRUN mutation.ms::collection updates retain identity and clone separates storage\nPASS mutation.ms::collection updates retain identity and clone separates storage\nRUN mutation.ms::for loop captures length and observes backing writes\nPASS mutation.ms::for loop captures length and observes backing writes\nRUN mutation.ms::callbacks capture length while mutating their source\nPASS mutation.ms::callbacks capture length while mutating their source\nRUN mutation.ms::list growth and saved clone methods preserve current contents\nPASS mutation.ms::list growth and saved clone methods preserve current contents\nRUN mutation.ms::collection clones retain nested object references\nPASS mutation.ms::collection clones retain nested object references\nRUN mutation.ms::map and set clear affect aliases while copies retain contents\nPASS mutation.ms::map and set clear affect aliases while copies retain contents\nRUN mutation.ms::alternative clones retain tags and shared payload references\nPASS mutation.ms::alternative clones retain tags and shared payload references\nRUN mutation.ms::mutable recursive graphs compare and clone without recursion failures\nPASS mutation.ms::mutable recursive graphs compare and clone without recursion failures\n9 tests, 0 failed\n",
+      "stdout": "RUN mutation.ms::record fields mutate through methods views and var parameters\nPASS mutation.ms::record fields mutate through methods views and var parameters\nRUN mutation.ms::collection updates mutate in place and clone separates storage\nPASS mutation.ms::collection updates mutate in place and clone separates storage\nRUN mutation.ms::for loop iterates a snapshot while the source changes\nPASS mutation.ms::for loop iterates a snapshot while the source changes\nRUN mutation.ms::callbacks over a snapshot leave the source writable\nPASS mutation.ms::callbacks over a snapshot leave the source writable\nRUN mutation.ms::list growth and saved clone methods preserve current contents\nPASS mutation.ms::list growth and saved clone methods preserve current contents\nRUN mutation.ms::collection clones keep independent lengths\nPASS mutation.ms::collection clones keep independent lengths\nRUN mutation.ms::map and set clear affect their owner while copies retain contents\nPASS mutation.ms::map and set clear affect their owner while copies retain contents\nRUN mutation.ms::alternative clones retain tags and payloads\nPASS mutation.ms::alternative clones retain tags and payloads\nRUN mutation.ms::mutable recursive graphs compare and clone without recursion failures\nPASS mutation.ms::mutable recursive graphs compare and clone without recursion failures\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -15,7 +15,7 @@ use crate::http::server::{
 use crate::http::url;
 use crate::tls::{self, TlsOptions};
 use crate::wait::Deadline;
-use ms_rt_abi::{Obj, StrObj, VecVal};
+use ms_rt_abi::{Obj, STATUS_NONE, StrObj, VecVal};
 use ms_std_core::{
     bytes_ref, desc_bytes, fault, new_string, read_string_list, str_ref, write_bytes,
     write_string_list,
@@ -140,20 +140,16 @@ pub type BufferedThunk =
 pub type StreamThunk =
     unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut *mut StrObj) -> u8;
 
-/// A `ReadStream` borrowed for an upload: `read` follows the `Connection.read`
-/// convention of `ABI.md` (`IoError` status).
-#[repr(C)]
-pub struct StreamWire {
-    pub data: *mut u8,
-    pub read: unsafe extern "C" fn(
-        data: *mut u8,
-        has_max: u8,
-        max: i64,
-        out: *mut VecVal,
-        present: *mut u8,
-        err: *mut *mut StrObj,
-    ) -> u8,
-}
+/// A `ReadStream` borrowed for an upload: the compiler-generated closure `src` whose code
+/// follows the `Connection.read` convention of `ABI.md` (`IoError` status).
+pub type ReadThunk = unsafe extern "C" fn(
+    env: *mut Obj,
+    has_max: u8,
+    max: i64,
+    out: *mut VecVal,
+    present: *mut u8,
+    err: *mut *mut StrObj,
+) -> u8;
 
 // --------------------------------------------------------------------- helpers
 
@@ -259,7 +255,8 @@ pub unsafe extern "C" fn msrt_http_headers_append(
     }
 }
 
-/// `HttpHeaders.values(name) -> Optional[List[Bytes]]`: an owned copy of the list.
+/// `HttpHeaders.values(name) -> Optional[List[Bytes]]`: an owned copy of the list; the
+/// result is whether the header is present.
 ///
 /// # Safety
 /// Pointers per `ABI.md`; `out` is writable.
@@ -268,22 +265,20 @@ pub unsafe extern "C" fn msrt_http_headers_values(
     h: *const Obj,
     name: *const StrObj,
     out: *mut VecVal,
-    present: *mut u8,
-) {
+) -> u8 {
     // SAFETY: caller contract; each element is moved into the list by the push.
     unsafe {
         let headers = shared(h).borrow();
         let Some(values) = headers.values(str_ref(name)) else {
-            *present = 0;
-            return;
+            return 0;
         };
-        *present = 1;
         msrt_list_new(out);
         for value in values {
             let mut element = std::mem::MaybeUninit::<VecVal>::uninit();
             write_bytes(element.as_mut_ptr(), value);
             msrt_list_push(out, desc_bytes(), element.as_ptr().cast());
         }
+        1
     }
 }
 
@@ -296,20 +291,15 @@ pub unsafe extern "C" fn msrt_http_headers_text(
     h: *const Obj,
     name: *const StrObj,
     out: *mut VecVal,
-    present: *mut u8,
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         match shared(h).borrow().text(str_ref(name)) {
             Ok(Some(values)) => {
-                *present = 1;
                 write_string_list(out, values);
                 0
             }
-            Ok(None) => {
-                *present = 0;
-                0
-            }
+            Ok(None) => STATUS_NONE,
             Err(e) => http_code(&e),
         }
     }
@@ -376,7 +366,7 @@ unsafe fn tls_options(w: &TlsOptionsWire) -> TlsOptions {
             roots_pem: str_ref(w.roots_pem).to_string(),
             certificate_pem: str_ref(w.certificate_pem).to_string(),
             private_key_pem: str_ref(w.private_key_pem).to_string(),
-            alpn: read_string_list(w.alpn)
+            alpn: read_string_list(&w.alpn)
                 .into_iter()
                 .map(str::to_string)
                 .collect(),
@@ -581,8 +571,10 @@ pub unsafe extern "C" fn msrt_http_client_request_bytes(
     }
 }
 
+/// The upload of a request, read through the `src` closure borrowed for the call.
 struct Upload {
-    stream: StreamWire,
+    env: *mut Obj,
+    read: ReadThunk,
 }
 
 impl Source for Upload {
@@ -591,10 +583,10 @@ impl Source for Upload {
         let mut present = 0u8;
         let mut message: *mut StrObj = std::ptr::null_mut();
         // SAFETY: the thunk follows the `Connection.read` convention and fills `out`
-        // (an owned `Bytes`) when it reports a chunk; `data` is borrowed for the call.
+        // (an owned `Bytes`) when it reports a chunk; `env` is borrowed for the call.
         let status = unsafe {
-            (self.stream.read)(
-                self.stream.data,
+            (self.read)(
+                self.env,
                 1,
                 max as i64,
                 out.as_mut_ptr(),
@@ -624,14 +616,14 @@ impl Source for Upload {
 /// `HttpClient.request_stream(method, url, headers, body: ReadStream, ...)`.
 ///
 /// # Safety
-/// Pointers per `ABI.md`; `body` is a live `StreamWire` borrowed for the call.
+/// Pointers per `ABI.md`; `src` is a live read closure borrowed for the call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msrt_http_client_request_stream(
     c: *const Obj,
     method: *const StrObj,
     address: *const StrObj,
     headers: *const Obj,
-    body: *const StreamWire,
+    src: *mut Obj,
     has_max: u8,
     max: i64,
     has_timeout: u8,
@@ -641,16 +633,13 @@ pub unsafe extern "C" fn msrt_http_client_request_stream(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let stream = StreamWire {
-            data: (*body).data,
-            read: (*body).read,
-        };
+        let read: ReadThunk = closure_code(src);
         client_send(
             c,
             method,
             address,
             headers,
-            Body::Stream(Box::new(Upload { stream })),
+            Body::Stream(Box::new(Upload { env: src, read })),
             opt(has_max, max),
             opt(has_timeout, timeout),
             out,
@@ -698,7 +687,6 @@ pub unsafe extern "C" fn msrt_http_body_read(
     has_max: u8,
     max: i64,
     out: *mut VecVal,
-    present: *mut u8,
     err: *mut *mut StrObj,
 ) -> u8 {
     // SAFETY: caller contract.
@@ -708,17 +696,30 @@ pub unsafe extern "C" fn msrt_http_body_read(
             Some(n) if n <= 0 => return IoErr::InvalidInput.code(),
             Some(n) => n.min(65536) as usize,
         };
-        finish(
-            handle_ref::<BodyRef>(b).read(max),
-            err,
-            |chunk| match chunk {
-                Some(data) => {
-                    *present = 1;
+        chunk_status(handle_ref::<BodyRef>(b).read(max), out, err)
+    }
+}
+
+/// A read result as a status: `STATUS_NONE` at the end of the stream, else the chunk
+/// through `out`.
+///
+/// # Safety
+/// `out` is writable memory for a `VecVal`; `err` is null or writable.
+unsafe fn chunk_status<E: Status>(
+    r: Result<Option<Vec<u8>>, E>,
+    out: *mut VecVal,
+    err: *mut *mut StrObj,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        match r {
+            Ok(None) => STATUS_NONE,
+            r => finish(r, err, |chunk| {
+                if let Some(data) = chunk {
                     write_bytes(out, &data);
                 }
-                None => *present = 0,
-            },
-        )
+            }),
+        }
     }
 }
 
@@ -939,15 +940,17 @@ impl Dispatch for Program {
             return Outcome::Fault("no handler".into());
         };
         let mut message: *mut StrObj = std::ptr::null_mut();
-        // SAFETY: the exchange handle moves to the thunk; the status and optional
-        // message string come back owned.
+        // SAFETY: the thunk borrows the exchange handle (it takes its own reference for the
+        // handler); the status and optional message string come back owned.
         let mut status = 0;
         let handle = new_handle::<ExchangeRef>(exchange);
-        // SAFETY: the thunk contract; the handle moves to it.
+        // SAFETY: the thunk contract; the handle is live for the call.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
         if let Some(stop) = guarded(call) {
             return stop;
         }
+        // SAFETY: the handle created above is released once, after the thunk returned.
+        unsafe { msrt_release(handle) };
         let text = if message.is_null() {
             String::new()
         } else {
@@ -993,8 +996,8 @@ fn server_limits(
 
 /// `Network.serve(address, handler, ...) -> Result[HttpServer, IoError]`.
 ///
-/// `env` is the handler closure (the native takes a reference; the server
-/// releases it when dropped) and `thunk` calls it.
+/// `env` is the compiler-generated handler closure (the native takes a reference; the
+/// server releases it when dropped); its code word is the `BufferedThunk`.
 ///
 /// # Safety
 /// Pointers per `ABI.md`.
@@ -1003,7 +1006,6 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     net: *const Obj,
     address: *const StrObj,
     env: *mut Obj,
-    thunk: BufferedThunk,
     has_max_requests: u8,
     max_requests: i64,
     has_max_body: u8,
@@ -1021,7 +1023,7 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     unsafe {
         let program = Box::new(Program {
             env: retained(env),
-            buffered: Some(thunk),
+            buffered: Some(closure_code(env)),
             streaming: None,
         });
         let limits = server_limits(
@@ -1053,6 +1055,16 @@ pub unsafe extern "C" fn msrt_net_network_serve(
     }
 }
 
+/// The code word of a closure object: `Closure { hdr, code @16, .. }` (`ms-rt/ABI.md` §6).
+///
+/// # Safety
+/// `env` is a live closure whose code has the signature `T`.
+unsafe fn closure_code<T: Copy>(env: *mut Obj) -> T {
+    const { assert!(size_of::<T>() == size_of::<usize>()) };
+    // SAFETY: caller contract; the code word follows the 16-byte header.
+    unsafe { std::mem::transmute_copy(&*env.cast::<usize>().add(2)) }
+}
+
 /// Takes a reference to `env` for the server.
 ///
 /// # Safety
@@ -1077,7 +1089,6 @@ pub unsafe extern "C" fn msrt_net_network_serve_stream(
     net: *const Obj,
     address: *const StrObj,
     env: *mut Obj,
-    thunk: StreamThunk,
     opts: *const HttpServerOptionsWire,
     out: *mut *mut Obj,
     err: *mut *mut StrObj,
@@ -1088,7 +1099,7 @@ pub unsafe extern "C" fn msrt_net_network_serve_stream(
         let program = Box::new(Program {
             env: retained(env),
             buffered: None,
-            streaming: Some(thunk),
+            streaming: Some(closure_code(env)),
         });
         let limits = server_limits(
             w.max_requests.get(),
@@ -1243,23 +1254,10 @@ pub unsafe extern "C" fn msrt_http_exchange_read(
     has_max: u8,
     max: i64,
     out: *mut VecVal,
-    present: *mut u8,
     err: *mut *mut StrObj,
 ) -> u8 {
     // SAFETY: caller contract.
-    unsafe {
-        finish(
-            exchange(x).read(opt(has_max, max)),
-            err,
-            |chunk| match chunk {
-                Some(data) => {
-                    *present = 1;
-                    write_bytes(out, &data);
-                }
-                None => *present = 0,
-            },
-        )
-    }
+    unsafe { chunk_status(exchange(x).read(opt(has_max, max)), out, err) }
 }
 
 /// `HttpExchange.send_headers(status, headers) -> Result[Unit, HttpError]`.

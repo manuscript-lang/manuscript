@@ -88,7 +88,16 @@ fn opt_method(name: &str) -> bool {
 fn is_higher_order(name: &str) -> bool {
     matches!(
         name,
-        "map" | "filter" | "count" | "some" | "every" | "for_each" | "find" | "find_index"
+        "map"
+            | "filter"
+            | "flat_map"
+            | "group_by"
+            | "count"
+            | "some"
+            | "every"
+            | "for_each"
+            | "find"
+            | "find_index"
     )
 }
 
@@ -1000,6 +1009,20 @@ impl<'a> FnLower<'a> {
                 None => Val { v: new, own: true },
             });
         }
+        if let (TyKind::List(elem), "take" | "drop") =
+            (self.b.m.types.kind(rty).clone(), name.as_str())
+        {
+            let sym = if name == "take" {
+                "msrt_list_take"
+            } else {
+                "msrt_list_drop_n"
+            };
+            let d = self.type_desc(elem);
+            let r = self.borrow(recv);
+            let n = self.borrow(args[0].val);
+            let out = self.call_runtime(sym, &[r, d, n], rty)?;
+            return Ok(Val { v: out, own: true });
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1020,6 +1043,14 @@ impl<'a> FnLower<'a> {
                 v: self.borrow(recv),
                 own: false,
             }));
+        }
+        if m.receiver.is_std("ClientResponse") && name == "metadata" {
+            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+                return Err(Error::new("ClientResponse is not a record"));
+            };
+            let r = self.borrow(recv);
+            let v = self.b.rec_get(rid, 0, r);
+            return Ok(Some(Val { v, own: false }));
         }
         let field = match name.as_str() {
             "unix_seconds" => 0,
@@ -1900,6 +1931,102 @@ impl<'a> FnLower<'a> {
                 let r = self.b.use_var(acc);
                 Ok(Val { v: r, own: true })
             }
+            "flat_map" => {
+                let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("flat_map without list result"));
+                };
+                let zero = self.b.iconst(0);
+                let first = self.b.list_new(res_elem, zero);
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let r = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let rt = s.ty_of(r);
+                    let rv = s.fresh_var(rt);
+                    s.b.def_var(rv, r);
+                    s.each_element(rv, &mut |s, _, y| {
+                        let yo = s.owned(Val { v: y, own: false });
+                        let cur = s.b.use_var(acc);
+                        let next = s.b.list_push(cur, yo);
+                        s.b.def_var(acc, next);
+                        Ok(None)
+                    })?;
+                    let done = s.b.use_var(rv);
+                    s.drop_value(done);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
+            }
+            "group_by" => {
+                let TyKind::Obj(_, parts) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("group_by without a map result"));
+                };
+                let (key_ty, group_ty) = (parts[0], parts[1]);
+                let first = self.map_new(out)?;
+                let acc = self.fresh_var(out);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, _, x| {
+                    let k = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let (kd, vd) = s.map_descs(out)?;
+                    let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
+                    // The lookup lends a copy of the key, taken back afterwards.
+                    let probe = s.owned(Val { v: k, own: false });
+                    let kslot = s.put_slot(probe);
+                    let m = s.b.use_var(acc);
+                    let found =
+                        s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+                    if s.needs_drop(key_ty) {
+                        let back = s.take_slot(kslot, key_ty);
+                        s.drop_value(back);
+                    }
+                    let missing =
+                        s.b.emit(
+                            ms_mir::ir::Op::PtrIsNull,
+                            &[found],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::BOOL),
+                        )
+                        .expect("is_null");
+                    let TyKind::List(group_elem) = s.b.m.types.kind(group_ty).clone() else {
+                        return Err(Error::new("group_by without list groups"));
+                    };
+                    let group = s.two_ways(
+                        missing,
+                        group_ty,
+                        &mut |s| Ok(Some(s.b.list_lit(group_elem, &[]))),
+                        &mut |s| {
+                            let at =
+                                s.b.emit(
+                                    ms_mir::ir::Op::Load,
+                                    &[found],
+                                    ms_mir::ir::Imm::Ty(group_ty),
+                                    Some(group_ty),
+                                )
+                                .expect("load");
+                            Ok(Some(s.owned(Val { v: at, own: false })))
+                        },
+                    )?;
+                    let xo = s.owned(Val { v: x, own: false });
+                    let grown = s.b.list_push(group.v, xo);
+                    let cur = s.b.use_var(acc);
+                    let next = s.map_insert(cur, k, grown)?;
+                    s.b.def_var(acc, next);
+                    Ok(None)
+                })?;
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
+            }
             "count" => {
                 let acc = self.b.declare_var(MTy::INT, Mode::Borrow);
                 let z = self.b.iconst(0);
@@ -2238,13 +2365,14 @@ fn build_stream_method(
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;
     let args = b.params();
-    if name == "write" {
-        let sym = if stderr {
-            "msrt_io_write_stderr"
-        } else {
-            "msrt_io_write_stdout"
+    if name == "write" || name == "write_bytes" {
+        let (sym, arg) = match (name == "write", stderr) {
+            (true, true) => ("msrt_io_write_stderr", MTy::STR),
+            (true, false) => ("msrt_io_write_stdout", MTy::STR),
+            (false, true) => ("msrt_io_write_bytes_stderr", MTy::BYTES),
+            (false, false) => ("msrt_io_write_bytes_stdout", MTy::BYTES),
         };
-        let ext = runtime_fn(b.m, sym, &[MTy::STR], MTy::UNIT);
+        let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
         b.call_rt(ext, &[args[1]]);
     }
     match b.m.types.kind(ret).clone() {

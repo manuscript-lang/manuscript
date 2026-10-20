@@ -19,12 +19,36 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
+/// Where a wide value (`Map`, `Set`: six words) also lives in memory, so calls take its
+/// address instead of spilling a copy. A home on a block parameter holds for the rest of the
+/// function; any other holds only within the block that created it (`blk`).
+#[derive(Clone, Copy)]
+struct Home {
+    addr: Value,
+    slot: Option<ir::StackSlot>,
+    blk: Option<usize>,
+}
+
 pub struct Lower<'a, 'm> {
     g: &'a mut Gen<'m>,
     b: FunctionBuilder<'a>,
     frefs: HashMap<FuncId, FuncRef>,
     grefs: HashMap<DataId, GlobalValue>,
     vals: Vec<Vs>,
+    /// Memory copies of `Map`/`Set` values (see [`Home`]), by MIR value index.
+    homes: Vec<Option<Home>>,
+    /// Stack slot behind each MIR value that holds a slot address.
+    slot_of: HashMap<usize, ir::StackSlot>,
+    /// Block that defined each MIR `slot` value.
+    slot_blk: HashMap<usize, usize>,
+    /// MIR values that an already lowered instruction used.
+    used: Vec<bool>,
+    /// Home slot of each wide block parameter, by `(block, parameter)`.
+    pslots: HashMap<(usize, usize), ir::StackSlot>,
+    /// Wide block parameters whose leaves are loaded from their home at each use.
+    lazy: Vec<bool>,
+    /// MIR block being lowered.
+    cur: usize,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
@@ -46,6 +70,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             frefs: HashMap::new(),
             grefs: HashMap::new(),
             vals: Vec::new(),
+            homes: Vec::new(),
+            slot_of: HashMap::new(),
+            slot_blk: HashMap::new(),
+            used: Vec::new(),
+            pslots: HashMap::new(),
+            lazy: Vec::new(),
+            cur: 0,
             blocks: Vec::new(),
             unsupported: None,
         }
@@ -913,6 +944,58 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.store_leaves(addr, 0, leaves, vs);
         addr
     }
+
+    /// Loads the leaves of lazy wide parameters among `vs` from their home slots.
+    fn refresh(&mut self, f: &Func, vs: impl Iterator<Item = ms_mir::ir::Value>) {
+        for v in vs {
+            if self.lazy[v.index()] {
+                let h = self.homes[v.index()].expect("lazy value has a home");
+                let leaves = self.g.lay.leaves(f.ty(v));
+                self.vals[v.index()] = self.load_leaves(h.addr, 0, &leaves);
+            }
+        }
+    }
+
+    fn is_wide(&self, ty: Ty) -> bool {
+        matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+    }
+
+    fn new_slot(&mut self, size: u32) -> ir::StackSlot {
+        self.b.create_sized_stack_slot(StackSlotData::new(
+            StackSlotKind::ExplicitSlot,
+            size.max(8),
+            3,
+        ))
+    }
+
+    /// The memory copy of MIR value `v`, when it has one that is valid here.
+    fn home_of(&self, v: ms_mir::ir::Value) -> Option<Home> {
+        self.homes[v.index()].filter(|h| h.blk.is_none_or(|b| b == self.cur))
+    }
+
+    /// Stores the wide arguments of an edge into the home slots of the target's parameters,
+    /// except those that already live there.
+    fn edge_stores(&self, t: &Target) -> Vec<(ir::StackSlot, Vs, Vec<Leaf>)> {
+        let mut out = Vec::new();
+        for (j, a) in t.args.iter().enumerate() {
+            let Some(slot) = self.pslots.get(&(t.block.index(), j)) else {
+                continue;
+            };
+            if self.home_of(*a).is_some_and(|h| h.slot == Some(*slot)) {
+                continue;
+            }
+            let leaves = (0..self.vals[a.index()].len()).map(|_| Leaf::I64).collect();
+            out.push((*slot, self.vals[a.index()].clone(), leaves));
+        }
+        out
+    }
+
+    fn emit_stores(&mut self, stores: Vec<(ir::StackSlot, Vs, Vec<Leaf>)>) {
+        for (slot, vs, leaves) in stores {
+            let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+            self.store_leaves(addr, 0, &leaves, &vs);
+        }
+    }
 }
 
 // ---- functions -------------------------------------------------------------
@@ -932,7 +1015,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         let args: Vs = t
             .args
             .iter()
-            .flat_map(|a| self.vals[a.index()].clone())
+            .enumerate()
+            .filter(|(j, _)| !self.pslots.contains_key(&(t.block.index(), *j)))
+            .flat_map(|(_, a)| self.vals[a.index()].clone())
             .collect();
         (
             self.blocks[t.block.index()].expect("reachable block"),
@@ -953,13 +1038,25 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         self.blocks = vec![None; f.blocks.len()];
         self.vals = vec![Vec::new(); f.values.len()];
+        self.homes = vec![None; f.values.len()];
+        self.used = vec![false; f.values.len()];
+        self.lazy = vec![false; f.values.len()];
+        self.slot_of.clear();
+        self.slot_blk.clear();
+        self.pslots.clear();
         for b in &rpo {
             let cb = self.b.create_block();
             self.blocks[b.index()] = Some(cb);
             if b.index() == 0 {
                 self.b.append_block_params_for_function_params(cb);
             } else {
-                for p in &f.blocks[b.index()].params {
+                for (j, p) in f.blocks[b.index()].params.iter().enumerate() {
+                    if self.is_wide(f.ty(p.value)) {
+                        let size = self.g.lay.mem(f.ty(p.value)).size;
+                        let slot = self.new_slot(size);
+                        self.pslots.insert((b.index(), j), slot);
+                        continue;
+                    }
                     for l in self.g.lay.leaves(f.ty(p.value)) {
                         self.b.append_block_param(cb, leaf_type(l));
                     }
@@ -970,18 +1067,50 @@ impl<'a, 'm> Lower<'a, 'm> {
             let cb = self.blocks[b.index()].expect("created");
             self.b.switch_to_block(cb);
             // Bind block parameters.
+            self.cur = b.index();
             let params = self.b.block_params(cb).to_vec();
             let mut at = 0;
-            for p in &f.blocks[b.index()].params {
-                let w = self.g.lay.width(f.ty(p.value));
+            for (j, p) in f.blocks[b.index()].params.iter().enumerate() {
+                let ty = f.ty(p.value);
+                if let Some(slot) = self.pslots.get(&(b.index(), j)).copied() {
+                    let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+                    self.lazy[p.value.index()] = true;
+                    self.homes[p.value.index()] = Some(Home {
+                        addr,
+                        slot: Some(slot),
+                        blk: None,
+                    });
+                    continue;
+                }
+                let w = self.g.lay.width(ty);
                 self.vals[p.value.index()] = params[at..at + w].to_vec();
                 at += w;
+                if b.index() == 0 && self.is_wide(ty) {
+                    let leaves = self.g.lay.leaves(ty);
+                    let size = self.g.lay.mem(ty).size;
+                    let slot = self.new_slot(size);
+                    let addr = self.b.ins().stack_addr(types::I64, slot, 0);
+                    let vs = self.vals[p.value.index()].clone();
+                    self.store_leaves(addr, 0, &leaves, &vs);
+                    self.homes[p.value.index()] = Some(Home {
+                        addr,
+                        slot: Some(slot),
+                        blk: None,
+                    });
+                }
             }
             for inst in &f.blocks[b.index()].insts {
                 self.set_loc(inst.loc);
+                self.refresh(f, inst.args.iter().copied());
                 self.lower_inst(f, inst);
+                for a in &inst.args {
+                    self.used[a.index()] = true;
+                }
             }
             self.set_loc(f.blocks[b.index()].term_loc);
+            let mut uses = Vec::new();
+            f.blocks[b.index()].term.for_each_use(|v| uses.push(v));
+            self.refresh(f, uses.into_iter());
             self.lower_term(f, &f.blocks[b.index()].term);
         }
     }
@@ -1011,13 +1140,27 @@ impl<'a, 'm> Lower<'a, 'm> {
         match t {
             Term::Br(tg) => {
                 let (b, args) = self.target(tg);
+                let stores = self.edge_stores(tg);
+                self.emit_stores(stores);
                 self.b.ins().jump(b, &args);
             }
             Term::CondBr { cond, then, els } => {
                 let c = self.vals[cond.index()][0];
                 let (tb, ta) = self.target(then);
                 let (eb, ea) = self.target(els);
-                self.b.ins().brif(c, tb, &ta, eb, &ea);
+                let (ts, es) = (self.edge_stores(then), self.edge_stores(els));
+                if ts.is_empty() && es.is_empty() {
+                    self.b.ins().brif(c, tb, &ta, eb, &ea);
+                } else {
+                    let (tt, te) = (self.b.create_block(), self.b.create_block());
+                    self.b.ins().brif(c, tt, &[], te, &[]);
+                    self.b.switch_to_block(tt);
+                    self.emit_stores(ts);
+                    self.b.ins().jump(tb, &ta);
+                    self.b.switch_to_block(te);
+                    self.emit_stores(es);
+                    self.b.ins().jump(eb, &ea);
+                }
             }
             Term::Switch {
                 value,
@@ -1030,26 +1173,29 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let mut trampolines = Vec::new();
                 for (k, tg) in cases {
                     let (blk, args) = self.target(tg);
-                    let entry = if args.is_empty() {
+                    let stores = self.edge_stores(tg);
+                    let entry = if args.is_empty() && stores.is_empty() {
                         blk
                     } else {
                         let tramp = self.b.create_block();
-                        trampolines.push((tramp, blk, args));
+                        trampolines.push((tramp, blk, args, stores));
                         tramp
                     };
                     sw.set_entry(*k as u64 as u128, entry);
                 }
                 let (db, da) = self.target(default);
-                let dblock = if da.is_empty() {
+                let dstores = self.edge_stores(default);
+                let dblock = if da.is_empty() && dstores.is_empty() {
                     db
                 } else {
                     let tramp = self.b.create_block();
-                    trampolines.push((tramp, db, da));
+                    trampolines.push((tramp, db, da, dstores));
                     tramp
                 };
                 sw.emit(&mut self.b, v, dblock);
-                for (tramp, blk, args) in trampolines {
+                for (tramp, blk, args, stores) in trampolines {
                     self.b.switch_to_block(tramp);
+                    self.emit_stores(stores);
                     self.b.ins().jump(blk, &args);
                 }
             }
@@ -1573,6 +1719,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                     lay.size.max(8),
                     3,
                 ));
+                if let Some(r) = inst.res {
+                    self.slot_of.insert(r.index(), slot);
+                    self.slot_blk.insert(r.index(), self.cur);
+                }
                 vec![self.b.ins().stack_addr(types::I64, slot, 0)]
             }
             Op::ListAddr => {
@@ -1603,10 +1753,36 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let leaves = self.g.lay.leaves(ty);
                 let p = self.a(inst, 0)[0];
-                self.load_leaves(p, 0, &leaves)
+                let out = self.load_leaves(p, 0, &leaves);
+                if inst.op == Op::Take
+                    && self.is_wide(ty)
+                    && let Some(r) = inst.res
+                {
+                    self.homes[r.index()] = Some(Home {
+                        addr: p,
+                        slot: self.slot_of.get(&inst.args[0].index()).copied(),
+                        blk: Some(self.cur),
+                    });
+                }
+                out
             }
             Op::Store | Op::Put => {
                 let ty = f.ty(inst.args[1]);
+                let (dst, src) = (inst.args[0].index(), inst.args[1]);
+                // A wide value moving into a fresh slot just adopts the memory it already lives in.
+                if inst.op == Op::Put
+                    && self.is_wide(ty)
+                    && !self.used[dst]
+                    && self.slot_blk.get(&dst) == Some(&self.cur)
+                    && let Some(h) = self.home_of(src)
+                {
+                    self.vals[dst] = vec![h.addr];
+                    match h.slot {
+                        Some(s) => self.slot_of.insert(dst, s),
+                        None => self.slot_of.remove(&dst),
+                    };
+                    return;
+                }
                 let leaves = self.g.lay.leaves(ty);
                 let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));
                 self.store_leaves(p, 0, &leaves, &v);
@@ -2009,6 +2185,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             let v = self.a(inst, i);
             if Self::passes_directly(&self.g.lay, p.ty) {
                 args.extend(v);
+            } else if let Some(h) = self.home_of(inst.args[i]) {
+                args.push(h.addr);
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
                 args.push(self.spill(&v, &leaves));
@@ -2029,6 +2207,15 @@ impl<'a, 'm> Lower<'a, 'm> {
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);
+            if self.is_wide(ret_ty)
+                && let Some(r) = inst.res
+            {
+                self.homes[r.index()] = Some(Home {
+                    addr: out,
+                    slot: Some(slot),
+                    blk: Some(self.cur),
+                });
+            }
             self.load_leaves(out, 0, &leaves)
         }
     }
