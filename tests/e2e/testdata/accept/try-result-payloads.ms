@@ -1,6 +1,7 @@
-import {expect_equal, expect_true} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
 import TextError from "@std/errors.ms"
 import Closeable from "@std/cleanup.ms"
+import filesystem from "@std/fs.ms"
 
 type Failure:
     detail: String
@@ -40,12 +41,11 @@ test "try can change the success type":
 
 test "try retains aliases and error views":
     var visits: List[Int] = []
-    var original = Failure("before")
+    let original = Failure("before")
     let exact = relay(Result[Int, Failure].error(original), var visits)
     let abstract = widened(Result[Int, Failure].error(original))
-    original.detail = "after"
-    exact.err().detail | try expect_equal(expected: "after")
-    abstract.err().message() | try expect_equal(expected: "after")
+    exact.err().detail | try expect_equal(expected: "before")
+    abstract.err().message() | try expect_equal(expected: "before")
     widened(Result[Int, Failure].ok(7)).get() | try expect_equal(expected: 7)
 
 fn visit[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
@@ -57,17 +57,19 @@ fn tail[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
     return ok(value)
 
 type TailCleanup:
-    visits: List[Int]
+    marker: String
 
+# Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
     var fn close() Unit:
-        self.visits.append(2)
+        let written = filesystem().write_file(self.marker, "closed", true)
 
 fn tail_cleanup(
     result: Result[Int, TextError],
-    var visits: List[Int]
+    var visits: List[Int],
+    marker: String
 ) Result[Int, TextError]:
-    with resource = TailCleanup(visits):
+    with resource = TailCleanup(marker):
         let value = try visit(result, var visits)
         return ok(value)
 
@@ -77,10 +79,9 @@ fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError
 
 test "tail Results evaluate once and retain payload identity":
     var visits: List[Int] = []
-    var original = Failure("before")
+    let original = Failure("before")
     let exact = tail(Result[Int, Failure].error(original), var visits)
-    original.detail = "after"
-    exact.err().detail | try expect_equal(expected: "after")
+    exact.err().detail | try expect_equal(expected: "before")
     tail(Result[Int, TextError].ok(42), var visits).get() | try expect_equal(
         expected: 42
     )
@@ -89,12 +90,20 @@ test "tail Results evaluate once and retain payload identity":
 
 test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
-    tail_cleanup(Result[Int, TextError].ok(42), var visits).get() | try expect_equal(
-        expected: 42
-    )
-    visits | try expect_equal(expected: [1, 2])
-    tail_cleanup(Result[Int, TextError].error(TextError("")), var visits).is_error() | try expect_true
-    visits | try expect_equal(expected: [1, 2, 1, 2])
+    let fs = filesystem()
+
+    with temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
+        let first = "{temporary.path()}/first"
+        let second = "{temporary.path()}/second"
+        tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(
+            expected: 42
+        )
+        visits | try expect_equal(expected: [1])
+        fs.read_file(first).is_ok() | try expect_true
+        fs.read_file(second).is_ok() | try expect_false
+        tail_cleanup(Result[Int, TextError].error(TextError("")), var visits, second).is_error() | try expect_true
+        visits | try expect_equal(expected: [1, 1])
+        fs.read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42
