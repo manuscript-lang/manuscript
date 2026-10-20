@@ -455,7 +455,8 @@ mod process {
             unsafe { ms_std_rt::write_list(&[10i64], &mut v) };
             v
         };
-        let mut h: *mut ms_std_rt::Handle<ms_std_process::signals::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_std_core::ObjCell<ms_std_process::signals::Watcher> =
+            core::ptr::null_mut();
         let mut n = 0i64;
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
@@ -486,10 +487,7 @@ mod process {
                 STATUS_OK
             );
             let o = out.assume_init_read();
-            assert_eq!(
-                (o.exit_code, ms_std_rt::vec_bytes(&o.stdout)),
-                (2, b"hi\n".as_slice())
-            );
+            assert_eq!((o.exit_code, o.stdout.as_slice()), (2, b"hi\n".as_slice()));
             assert_eq!(
                 msstd_process_command_run(
                     st("nope-nope"),
@@ -581,7 +579,7 @@ mod process {
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
             assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((text(i.os).as_str(), i.pid > 0), ("linux", true));
+            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), ("linux", true));
         }
     }
 }
