@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
+# conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=scripts/conformance.ms
 import {expect_equal, expect_false, expect_some, expect_true, fail} from "@std/testing.ms"
@@ -173,7 +173,7 @@ test "reports require complete nonempty executions and count explicit skips":
     report.summary.not_run = 1
     validate(report).is_error() | try expect_true
     report.summary.not_run = 0
-    report.tests.get(0).status = "failed"
+    report.tests = [Case("pass", "failed"), Case("skip", "skipped")]
     validate(report).is_error() | try expect_true
     validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
     check_output(1, "\{\}").is_error() | try expect_true

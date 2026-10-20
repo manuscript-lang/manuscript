@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,interpolation,lists,maps,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=control-flow,faults,interpolation,lists,maps,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/text-interpolation-and-map-lookup-keep-semantics.ms
 import {expect_true, fail} from "@std/testing.ms"

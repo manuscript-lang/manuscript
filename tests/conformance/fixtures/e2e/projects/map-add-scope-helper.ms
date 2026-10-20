@@ -1,4 +1,4 @@
-# conform: tags=aliasing,diagnostics,maps,tier-core
+# conform: tags=diagnostics,maps,tier-core
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/map_add_scope/helper.ms
 export fn insert[K: Hashable, V](var m: Map[K, V], key: K, value: V) Unit:

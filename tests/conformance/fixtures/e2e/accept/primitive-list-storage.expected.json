@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "primitive-list-storage.ms::primitive storage retains generic record Optional and saved aliases",
+          "name": "primitive-list-storage.ms::primitive storage retains generic record Optional and independent copies",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN primitive-list-storage.ms::primitive storage retains generic record Optional and saved aliases\nPASS primitive-list-storage.ms::primitive storage retains generic record Optional and saved aliases\nRUN primitive-list-storage.ms::Float Bool and String preserve mutation traversal and width\nPASS primitive-list-storage.ms::Float Bool and String preserve mutation traversal and width\nRUN primitive-list-storage.ms::stable sort and strict Result slice preserve separate storage\nPASS primitive-list-storage.ms::stable sort and strict Result slice preserve separate storage\n3 tests, 0 failed\n",
+      "stdout": "RUN primitive-list-storage.ms::primitive storage retains generic record Optional and independent copies\nPASS primitive-list-storage.ms::primitive storage retains generic record Optional and independent copies\nRUN primitive-list-storage.ms::Float Bool and String preserve mutation traversal and width\nPASS primitive-list-storage.ms::Float Bool and String preserve mutation traversal and width\nRUN primitive-list-storage.ms::stable sort and strict Result slice preserve separate storage\nPASS primitive-list-storage.ms::stable sort and strict Result slice preserve separate storage\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

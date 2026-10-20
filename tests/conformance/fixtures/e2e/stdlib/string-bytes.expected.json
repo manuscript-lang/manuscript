@@ -36,7 +36,7 @@
         },
         {
           "index": 5,
-          "name": "string-bytes.ms::string and bytes builders freeze idempotently",
+          "name": "string-bytes.ms::string and bytes builders freeze",
           "status": "passed"
         },
         {
@@ -60,7 +60,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-bytes.ms::Unicode scalar indexing differs from byte length\nPASS string-bytes.ms::Unicode scalar indexing differs from byte length\nRUN string-bytes.ms::strings honor omitted none zero and explicit output limits\nPASS string-bytes.ms::strings honor omitted none zero and explicit output limits\nRUN string-bytes.ms::bytes copy slice search and UTF8 validation\nPASS string-bytes.ms::bytes copy slice search and UTF8 validation\nRUN string-bytes.ms::Bytes values direct bound and free calls return independent lists\nPASS string-bytes.ms::Bytes values direct bound and free calls return independent lists\nRUN string-bytes.ms::String slice uses Unicode scalars with relative bounds and OutOfRange errors\nPASS string-bytes.ms::String slice uses Unicode scalars with relative bounds and OutOfRange errors\nRUN string-bytes.ms::string and bytes builders freeze idempotently\nPASS string-bytes.ms::string and bytes builders freeze idempotently\nRUN string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nPASS string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nRUN string-bytes.ms::indexing and slicing long mixed-width text matches scalar positions\nPASS string-bytes.ms::indexing and slicing long mixed-width text matches scalar positions\n8 tests, 0 failed\n",
+      "stdout": "RUN string-bytes.ms::Unicode scalar indexing differs from byte length\nPASS string-bytes.ms::Unicode scalar indexing differs from byte length\nRUN string-bytes.ms::strings honor omitted none zero and explicit output limits\nPASS string-bytes.ms::strings honor omitted none zero and explicit output limits\nRUN string-bytes.ms::bytes copy slice search and UTF8 validation\nPASS string-bytes.ms::bytes copy slice search and UTF8 validation\nRUN string-bytes.ms::Bytes values direct bound and free calls return independent lists\nPASS string-bytes.ms::Bytes values direct bound and free calls return independent lists\nRUN string-bytes.ms::String slice uses Unicode scalars with relative bounds and OutOfRange errors\nPASS string-bytes.ms::String slice uses Unicode scalars with relative bounds and OutOfRange errors\nRUN string-bytes.ms::string and bytes builders freeze\nPASS string-bytes.ms::string and bytes builders freeze\nRUN string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nPASS string-bytes.ms::empty text splits into one part and case mapping is full Unicode\nRUN string-bytes.ms::indexing and slicing long mixed-width text matches scalar positions\nPASS string-bytes.ms::indexing and slicing long mixed-width text matches scalar positions\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,interpolation,lists,modules,mutation,numbers,sets,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=control-flow,interpolation,lists,modules,mutation,numbers,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/primitive-list-append-and-range-keep-semantics.ms
 import {expect_true} from "@std/testing.ms"

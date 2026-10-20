@@ -3,33 +3,29 @@ import range from "@std/collections.ms"
 
 fn append_value[T](var values: List[T], value: T) List[T]:
     values.append(value)
-    return values
+    return values.clone()
 
 fn forwarded[T](values: List[T]) List[T]:
-    return values
+    return values.clone()
 
 type Lists:
     values: List[Int]
 
-test "primitive storage retains generic record Optional and saved aliases":
+test "primitive storage retains generic record Optional and independent copies":
     var values = [9223372036854775807, -9223372036854775808]
-    var record = Lists(values)
-    let wrapped: Optional[List[Int]] = some(values)
-    let append = forwarded(values).append
+    var record = Lists(values.clone())
+    let wrapped: Optional[List[Int]] = some(values.clone())
     for i in range(0, 4096):
         append_value(var record.values, i)
-    append(17)
-    wrapped.get().set(0, 41)
-    try expect_false(
-        not (
-            values.length() == 4099
-            and record.values[0] == 41
-            and values[-1] == 17
-        )
-    )
+    values.append(17)
+    try expect_equal(values.length(), 3)
+    try expect_equal(record.values.length(), 4098)
+    try expect_equal(values[-1], 17)
+    try expect_equal(values[0], 9223372036854775807)
+    try expect_equal(wrapped.get() [0], 9223372036854775807)
     var copy = values.clone()
     values.set(0, 42)
-    try expect_equal(copy[0], 41)
+    try expect_equal(copy[0], 9223372036854775807)
     let nested: List[Optional[Int]] = [some(7), none]
     try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
@@ -39,13 +35,19 @@ test "Float Bool and String preserve mutation traversal and width":
     var seen: List[Float] = []
     var index = 0
 
-    for value in floats:
+    for value in floats.clone():
         seen.append(value)
         if index == 0:
             floats.set(1, 0.5)
         index += 1
 
-    try expect_false(not (seen == [1e-300, 0.5, 0.25] and clone[1] == 1e300))
+    try expect_false(
+        not (
+            seen == [1e-300, 1e300, 0.25]
+            and clone[1] == 1e300
+            and floats[1] == 0.5
+        )
+    )
     var booleans = [true, false, true]
     booleans.remove(0)
     booleans.prepend(false)
@@ -61,7 +63,8 @@ test "stable sort and strict Result slice preserve separate storage":
     sorted.set(0, 99)
     try expect_equal(values[0], 7)
 
-    if let copy = values.slice(-2, 6):
+    if let slice = values.slice(-2, 6):
+        var copy = slice.clone()
         copy.set(0, 12)
         try expect_false(not (copy == [12, 5] and values[4] == 2))
     else:

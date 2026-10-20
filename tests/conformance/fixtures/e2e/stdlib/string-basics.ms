@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,control-flow,interpolation,lists,modules,mutation,records,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=alternatives,control-flow,interpolation,lists,modules,mutation,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/string-basics.ms
 import {expect_equal, expect_false, fail} from "@std/testing.ms"

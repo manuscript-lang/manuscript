@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,interpolation,parser,sets,strings,tier-core
+# conform: tags=control-flow,faults,interpolation,parser,sets,strings,tier-core
 # conform: phase=parse
 # conform: origin=documentation/learn/tour.md:49
 let tags = ["docs", "release"]

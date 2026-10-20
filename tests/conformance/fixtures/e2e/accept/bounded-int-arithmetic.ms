@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,generics,lists,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,control-flow,generics,lists,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/bounded-int-arithmetic.ms
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"

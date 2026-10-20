@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,modules,mutation,stdlib-faults,tier-stdlib
+# conform: tags=control-flow,faults,modules,mutation,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/lists/repro-cleared-tail.ms
 import panic from "@std/faults.ms"
