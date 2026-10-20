@@ -1068,7 +1068,12 @@ impl Client {
                     return Ok(head);
                 }
                 Parsed::Bad(bad) => {
-                    let text = if bad.reason == "response headers too large" {
+                    let text = if bad.reason == "too many response header fields" {
+                        format!(
+                            "http: server response has more than {} header fields; aborted",
+                            h1::MAX_FIELDS
+                        )
+                    } else if bad.reason == "response headers too large" {
                         format!("http: server response headers exceeded {limit} bytes; aborted")
                     } else {
                         let line = wire
@@ -1557,6 +1562,9 @@ impl ResponseBody {
                     return Err(ReadAll::Limit);
                 }
                 Err(IoErr::Closed) => return Err(ReadAll::Closed),
+                Err(IoErr::Failed(m)) if m == "context deadline exceeded" => {
+                    return Err(ReadAll::Timeout);
+                }
                 Err(_) => return Err(ReadAll::Invalid),
             }
         }
@@ -1568,6 +1576,8 @@ impl ResponseBody {
 pub enum ReadAll {
     Limit,
     Closed,
+    /// The request deadline passed while the body was still arriving.
+    Timeout,
     Invalid,
 }
 
@@ -1915,6 +1925,42 @@ mod tests {
         let (_net, plain) = client(ClientOptions::default());
         plain.send(request("GET", &address, "/set")).unwrap();
         assert!(!text(&plain.send(request("GET", &address, "/x")).unwrap()).contains("Cookie"));
+    }
+
+    /// A deadline that passes while the body is still arriving is a timeout, not bad data.
+    #[test]
+    fn body_deadline_is_a_timeout() {
+        let (address, _) = serve(|s, _| {
+            let _ = read_request(s);
+            reply(s, "HTTP/1.1 200 OK\r\nContent-Length: 1000\r\n\r\nx");
+            std::thread::sleep(Duration::from_millis(500));
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut slow = request("GET", &address, "/");
+        slow.deadline = Deadline::after(Duration::from_millis(100));
+        assert_eq!(c.send(slow).unwrap().read_all(), Err(ReadAll::Timeout));
+    }
+
+    /// The field-count cap names the count, not the unset byte limit.
+    #[test]
+    fn too_many_header_fields_are_reported_as_a_count() {
+        let (address, _) = serve(|s, _| {
+            let _ = read_request(s);
+            let mut head = String::from("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n");
+            for i in 0..300 {
+                head += &format!("H{i}: v\r\n");
+            }
+            head += "\r\n";
+            reply(s, &head);
+        });
+        let (_net, c) = client(ClientOptions::default());
+        match c.send(request("GET", &address, "/")) {
+            Err(HttpErr::Failed(m)) => assert_eq!(
+                m,
+                "http: server response has more than 256 header fields; aborted"
+            ),
+            other => panic!("{:?}", other.map(|b| b.status)),
+        }
     }
 
     #[test]
