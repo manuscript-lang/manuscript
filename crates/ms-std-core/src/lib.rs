@@ -14,12 +14,15 @@
 extern crate alloc;
 
 mod native;
-pub use native::{AbiRecord, AbiSlot, AbiType, FromAbi, IntoAbi, Status, Str, StringList};
+pub use native::{
+    AbiHandle, AbiRecord, AbiSlot, AbiType, FromAbi, IntoAbi, Mut, OptInt, Own, RecList, Ref,
+    Status, Str, StringList,
+};
 
 use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
-    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
+    KIND_CUSTOM, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
     STATUS_OUT_OF_RANGE, STATUS_UNSUPPORTED, StrObj, TypeDesc, VecVal,
 };
 
