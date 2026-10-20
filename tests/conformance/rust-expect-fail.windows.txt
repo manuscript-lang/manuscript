@@ -6,3 +6,9 @@ go-tests/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
 e2e/stdlib/terminal
 # test: fs.glob returns backslash-separated paths on Windows; the fixture expects "/" (owned by the Windows std-crates port).
 e2e/stdlib/fs
+# check: "looked for"/"file not found" name an absolute path; the POSIX-only gopath::rel cannot relativize a drive-letter path.
+e2e/projects/project-check
+e2e/projects/result-argument-scope-conformance-test
+e2e/projects/result-argument-scope-first
+e2e/projects/result-argument-scope-second
+e2e/projects/same-type-names-conformance-test
