@@ -23,6 +23,8 @@
     "@std/collections.ms/SetBuilder": "native",
     "@std/decimal.ms/Decimal": "native",
     "@std/http.ms/HttpHeaders": "native",
+    "@std/logcore.ms/LogGate": "native",
+    "@std/logcore.ms/LogState": "native",
     "@std/net.ms/Cidr": "native",
     "@std/net.ms/IpAddress": "native",
     "@std/queues.ms/PriorityQueue": "native",

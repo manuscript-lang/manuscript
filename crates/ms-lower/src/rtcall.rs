@@ -184,6 +184,8 @@ const TYPED_NATIVES: &[(&str, &str)] = &[
     ("IpAddress", "net"),
     ("Cidr", "net"),
     ("HttpHeaders", "http"),
+    ("LogState", "logcore"),
+    ("LogGate", "logcore"),
 ];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
@@ -827,7 +829,10 @@ impl FnLower<'_> {
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
                 TyKind::Obj(n, _) => {
-                    matches!(n.as_str(), "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr")
+                    matches!(
+                        n.as_str(),
+                        "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr" | "LogGate"
+                    )
                 }
                 TyKind::Iface(_) => is_handle_return(&sig.ret),
                 _ => false,

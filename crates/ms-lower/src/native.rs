@@ -802,27 +802,9 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
-        if let Some(sym) = match native {
-            "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
-            "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
-            "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
-            "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
-            "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
-            "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
-            _ => None,
-        } {
-            // The algorithm is the receiver's case index, the first runtime argument.
+        if let Some(sym) = hash_algorithm_symbol(native) {
             let result = self.emty(e)?;
-            let tag = self.borrow(recv);
-            let alg = self.b.alt_tag(tag);
-            let mut vals = vec![alg];
-            for a in &args {
-                vals.push(self.borrow(a.val));
-            }
-            let sig = crate::rtcall::rt_sig(sym)
-                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-            let has_out = sig.params.last().is_some_and(|p| p.name == "out");
-            return self.finish_rt_call(sym, &sig, has_out, vals, result);
+            return self.hash_algorithm_call(sym, recv, &args, result);
         }
         if let Some(decode) = match native {
             "compress/format_compress_stream" => Some(false),
@@ -1313,6 +1295,9 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r, d, n], rty)?;
             return Ok(Val { v: out, own: true });
         }
+        if let Some(sym) = hash_algorithm_symbol(m.native.as_str()) {
+            return self.hash_algorithm_call(sym, recv, args, result);
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1323,6 +1308,26 @@ impl<'a> FnLower<'a> {
                 ))
             })?;
         self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// A `HashAlgorithm` operation: the algorithm is the receiver's case index, the first runtime argument.
+    fn hash_algorithm_call(
+        &mut self,
+        sym: &str,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let tag = self.borrow(recv);
+        let alg = self.b.alt_tag(tag);
+        let mut vals = vec![alg];
+        for a in args {
+            vals.push(self.borrow(a.val));
+        }
+        let sig = crate::rtcall::rt_sig(sym)
+            .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+        let has_out = sig.params.last().is_some_and(|p| p.name == "out");
+        self.finish_rt_call(sym, &sig, has_out, vals, result)
     }
 
     /// `Timestamp` and `Duration` accessors that read the representation directly.
@@ -2777,4 +2782,17 @@ fn build_clock_method(
     b.ret(Some(reading));
     let f = b.into_func();
     m.add_func(f)
+}
+
+/// The runtime symbol of a `HashAlgorithm` operation, by native identity.
+fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
+    match native {
+        "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
+        "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
+        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
+        "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
+        "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+        _ => None,
+    }
 }
