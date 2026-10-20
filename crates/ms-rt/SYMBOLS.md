@@ -53,6 +53,8 @@ msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
 msrt_io_write_stderr(s: *mut StrObj)
+msrt_io_write_bytes_stdout(v: *const VecVal)
+msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
 rust_eh_personality()
 msrt_map_new(out: *mut MapVal)
@@ -502,7 +504,7 @@ msrt_net_network_http_client( net: *const Obj, opts: *const HttpClientOptionsWir
 msrt_http_client_close(c: *const Obj)
 msrt_http_client_request( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_http_client_request_bytes( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StreamWire, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
+msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, src: *mut Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
 msrt_http_body_close(b: *const Obj)
 msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8

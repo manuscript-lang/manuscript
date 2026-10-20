@@ -221,6 +221,13 @@ const METHODS: &[MethodRow] = &[
     ),
     (
         "net",
+        "HttpClient",
+        "request_stream",
+        "msrt_http_client_request_stream",
+        &[],
+    ),
+    (
+        "net",
         "HttpServer",
         "address",
         "msrt_http_server_address",
