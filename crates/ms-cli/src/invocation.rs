@@ -1,11 +1,6 @@
 //! Option parsing and validation for the source commands (`check`, `lint`,
-//! `build`, `emit`, `run`, `test`, `inspect`, `diagram`, `profile`), a direct
-//! port of `internal/cli/invocation.go` and `options.go`.
-//!
-//! Dropped from the Go CLI (the Rust implementation has no Go runtime):
-//! `--cpu-profile`, `--heap-profile`, `--trace`, `--script`, `--break` and the
-//! `debug`, `dap`, `pprof`, `trace` commands. Those flags are now ordinary
-//! unknown options. `ms profile` is redefined; see [`crate::profile`].
+//! `build`, `emit`, `run`, `test`, `inspect`, `diagram`, `profile`).
+//! `ms profile` is described in [`crate::profile`].
 
 use crate::backend::{BuildType, Io};
 use crate::regexp;

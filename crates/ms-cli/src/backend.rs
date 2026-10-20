@@ -4,19 +4,19 @@
 //! option parsing and validation, help text, usage errors and exit statuses.
 //! The compiler engines (parser, checker, MIR, Cranelift, linker, runtime,
 //! tooling) plug in by implementing [`Backend`]. Every method has a default
-//! that reports "not yet implemented in the Rust implementation" and exits with
+//! that reports "not yet implemented" and exits with
 //! [`EXIT_NOT_IMPLEMENTED`], so an engine session overrides exactly the
 //! commands it can serve and the rest keep failing loudly.
 //!
 //! A backend method receives a validated request and the process streams, does
 //! the work, writes the command's output (text or `--json`) to `io`, and
-//! returns the exit status. Rendering helpers shared with the Go-compatible
+//! returns the exit status. Rendering helpers shared with the CLI
 //! output ([`crate::diagnostic`], [`crate::json`], [`crate::util`]) are public.
 
 use std::io::{Read, Write};
 
 /// Exit status for a command whose engine is not available yet. It is distinct
-/// from every status the Go `ms` uses (0 success, 1 failure, 2 usage error) and
+/// from the statuses `ms` normally uses (0 success, 1 failure, 2 usage error) and
 /// from the 126/127 shell statuses, so scripts and the differential tests can
 /// tell "not implemented" from "failed".
 pub const EXIT_NOT_IMPLEMENTED: i32 = 70;
@@ -116,7 +116,7 @@ pub struct RunRequest {
     pub arguments: Vec<String>,
 }
 
-/// `ms test`. `arguments` is what Go forwards to the test executable: the
+/// `ms test`. `arguments` is what is forwarded to the test executable: the
 /// selection options (`--list`, `--fail-fast`, `--test=...`, `--match=...`,
 /// `--exclude=...`, `--repeat=...`, `--shuffle=...`), then `--timeout=` and
 /// `--filter=` when set, then the user's arguments after `--`.
@@ -255,9 +255,7 @@ pub trait Backend {
 }
 
 pub fn not_implemented_message(what: &str) -> String {
-    format!(
-        "ms {what}: not yet implemented in the Rust implementation; use the Go ms until its engine lands"
-    )
+    format!("ms {what}: not yet implemented")
 }
 
 pub fn not_implemented(what: &'static str) -> BackendResult {

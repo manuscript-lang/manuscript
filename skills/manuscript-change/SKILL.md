@@ -17,7 +17,7 @@ State a small observable example: what source is accepted, rejected, or behaves 
 
 ## Trace the change
 
-Behavior is implemented in `crates/`; run `make conform-rust` when a change can alter observable behavior ([Rust toolchain](../../documentation/contributing/rust-toolchain.md)).
+Behavior is implemented in `crates/`; run `make conform` when a change can alter observable behavior ([Rust toolchain](../../documentation/contributing/rust-toolchain.md)).
 
 Follow the behavior through the surfaces it actually reaches. A language change can reach syntax, parsing, checking, lowering, runtime dispatch, diagnostics, formatting, navigation, completion, examples, and conformance. A standard API change can reach source declarations, native bindings, implementations, editor information, and generated reference pages. Identify the applicable surfaces before editing; a keyword search alone cannot discover aliases or related helper APIs.
 

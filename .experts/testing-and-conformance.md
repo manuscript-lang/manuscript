@@ -4,19 +4,19 @@ How behavior is proven in this repository. Test-API semantics (plans, fixtures, 
 
 ### Choose the layer that can fail for the right reason
 
-Verified: the layers are Rust unit and integration tests per crate (`cargo nextest run --workspace`); the frozen conformance corpus in `tests/conformance/fixtures` (run, check, test, parse phases, gated by `make conform-rust`); `.ms` fixtures under `tests/e2e/testdata/` (`accept`, `reject`, `stdlib`, `projects`, `shutdown`) that seed the corpus; and documentation fences checked by `make docs-check`. A language change needs an accepting case and a rejecting case; a stdlib change needs its module fixture; a lifetime or cancellation change needs observable close/cancel/join cases.
+Verified: the layers are Rust unit and integration tests per crate (`cargo nextest run --workspace`); the frozen conformance corpus in `tests/conformance/fixtures` (run, check, test, parse phases, gated by `make conform`); `.ms` fixtures under `tests/e2e/testdata/` (`accept`, `reject`, `stdlib`, `projects`, `shutdown`) that seed the corpus; and documentation fences checked by `make docs-check`. A language change needs an accepting case and a rejecting case; a stdlib change needs its module fixture; a lifetime or cancellation change needs observable close/cancel/join cases.
 
 Apply when: deciding where a regression test belongs.
 Evidence: [conformance corpus](../tests/conformance/README.md), [development checks](../documentation/contributing/development.md), [Makefile](../Makefile).
-Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conform-rust`) pass.
+Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conform`) pass.
 
 ### Conformance expectations are frozen contracts
 
-Decision: the corpus expectations were first recorded from the Go `ms` and are now the contract; the Go implementation is gone and is not needed to extend them. Known differences of the Rust `ms` are listed in `tests/conformance/rust-expect-fail.txt` with a reason, and fixtures tagged `aliasing` are excluded because the value-semantics migration changes them on purpose. Remove an expect-fail entry when it is fixed; do not add one to hide a new regression.
+Decision: the corpus expectations were first recorded from the Go `ms` and are now the contract; the Go implementation is gone and is not needed to extend them. Known differences of the Rust `ms` are listed in `tests/conformance/expect-fail.txt` with a reason, and fixtures tagged `aliasing` are excluded because the value-semantics migration changes them on purpose. Remove an expect-fail entry when it is fixed; do not add one to hide a new regression.
 
 Apply when: a conformance case fails, or a deliberate semantic change alters recorded output.
-Evidence: [corpus README](../tests/conformance/README.md), [expected failures](../tests/conformance/rust-expect-fail.txt), [runner](../crates/ms-conform/src/runner.rs).
-Verify: `make conform-rust` reports a nonempty plan with no unexpected failures or unexpected passes.
+Evidence: [corpus README](../tests/conformance/README.md), [expected failures](../tests/conformance/expect-fail.txt), [runner](../crates/ms-conform/src/runner.rs).
+Verify: `make conform` reports a nonempty plan with no unexpected failures or unexpected passes.
 
 ### Source tests return Result and run through `ms test`
 
@@ -26,7 +26,7 @@ Verified: runners that accepted `0 tests, 0 failed` and bypassed CLI argument ha
 
 Apply when: adding source conformance cases, assertion helpers, or changing test entrypoints.
 Evidence: [testing declarations](../stdlib/testing.ms), [core parity project](../tests/e2e/testdata/projects/core_parity/conformance_test.ms).
-Verify: `make conform-rust`; source tests use `try`, pipeline calls do not discard Result errors, and invalid or incomplete reports fail.
+Verify: `make conform`; source tests use `try`, pipeline calls do not discard Result errors, and invalid or incomplete reports fail.
 
 ### Fixtures follow current idiom, except where they test the old form
 
@@ -38,7 +38,7 @@ Verify: `rg` for the old spelling finds only reject fixtures and intentionally s
 
 ### Do not accept an empty run
 
-Verified: a runner that reports `0 tests, 0 failed` is a failure. Any new runner, shard script, or report parser needs a guard against empty inventories and a test that injects the empty case. `make conform-rust` shards with `CONFORM_SHARD=i/n`; a single shard may legitimately select nothing only if the full inventory is nonempty.
+Verified: a runner that reports `0 tests, 0 failed` is a failure. Any new runner, shard script, or report parser needs a guard against empty inventories and a test that injects the empty case. `make conform` shards with `CONFORM_SHARD=i/n`; a single shard may legitimately select nothing only if the full inventory is nonempty.
 
 Apply when: adding test entrypoints, sharding, or report parsers.
 Evidence: [conformance runner](../crates/ms-conform/src/runner.rs), [Makefile](../Makefile).

@@ -1,6 +1,4 @@
-//! Help text. The strings in [`crate::help_text`] were generated from the Go
-//! `ms help` output and edited only where the Rust implementation differs
-//! (no Go toolchain, no debugger, redefined `ms profile`).
+//! Help text. The strings in [`crate::help_text`] hold the `ms help` output.
 
 use crate::help_text as t;
 pub use crate::help_text::HELP;

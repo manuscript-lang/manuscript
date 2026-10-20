@@ -46,4 +46,4 @@ The CLI exits 70, labeled incomplete cleanup. The native runtime (`crates/ms-rt/
 ## Verifying
 
 - `cargo clippy -p ms-rt -p ms-rt-abi --all-targets -- -D warnings` and `cargo nextest run -p ms-rt`.
-- `make unit` runs every crate's tests, and `make conform-rust` runs programs end to end.
+- `make unit` runs every crate's tests, and `make conform` runs programs end to end.
