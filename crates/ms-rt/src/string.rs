@@ -14,7 +14,7 @@ use ms_rt_abi::{
     STATUS_OUT_OF_RANGE, STR_DATA_OFFSET, StrObj, VecVal,
 };
 
-/// Native allocation ceiling for built strings (as the Go runtime).
+/// Native allocation ceiling for built strings.
 pub const MAX_BYTES: usize = 1 << 30;
 
 /// Bytes of a string.
@@ -701,7 +701,7 @@ fn count_matches(text: &[u8], old: &[u8]) -> usize {
     n
 }
 
-/// Go `strings.Replace(text, old, new, n)` semantics (n < 0 means all).
+/// Replace the first `n` occurrences (n < 0 means all).
 fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     if old.is_empty() {
@@ -817,7 +817,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
             return STATUS_INVALID_INPUT;
         }
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
-        // Size check before building (the Go runtime fails as soon as output exceeds the budget).
+        // Size check before building.
         let count = if o.is_empty() {
             utf8::count(text) + 1
         } else {
@@ -1056,7 +1056,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
             return;
         }
         if sepb.is_empty() {
-            // Split after each scalar (Go `strings.Split` with an empty separator).
+            // Split after each scalar.
             let mut i = 0;
             while i < text.len() && v.len < limit {
                 let w = utf8::decode(&text[i..]).1;

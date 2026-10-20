@@ -1,4 +1,4 @@
-//! UTF-8 decoding with Go's `unicode/utf8` semantics: an invalid byte decodes as
+//! UTF-8 decoding: an invalid byte decodes as
 //! U+FFFD with width 1.
 
 pub const RUNE_ERROR: u32 = 0xFFFD;
@@ -90,7 +90,7 @@ pub fn is_ascii(s: &[u8]) -> bool {
     s.is_ascii()
 }
 
-/// Number of scalars (Go's `utf8.RuneCountInString`).
+/// Number of scalars.
 pub fn count(s: &[u8]) -> usize {
     if core::str::from_utf8(s).is_ok() {
         return s.iter().filter(|&&b| b & 0xC0 != 0x80).count();
