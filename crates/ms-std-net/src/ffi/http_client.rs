@@ -237,6 +237,7 @@ fn one_shot(
             .map_err(|e| match e {
                 client::ReadAll::Limit => HttpErr::LimitExceeded,
                 client::ReadAll::Closed => HttpErr::Closed,
+                client::ReadAll::Timeout => HttpErr::Timeout,
                 client::ReadAll::Invalid => HttpErr::InvalidData,
             })
             .map_err(|e| {

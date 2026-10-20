@@ -16,6 +16,7 @@ pub fn run(m: &mut Module) -> bool {
         changed |= run_func(m, fi);
         changed |= move_dead_sources(&mut m.funcs[fi]);
         changed |= unbox_dead_sources(m, fi);
+        changed |= unbox_dead_options(&mut m.funcs[fi]);
     }
     changed
 }
@@ -79,6 +80,74 @@ fn move_dead_sources(f: &mut Func) -> bool {
         });
     }
     true
+}
+
+/// Turns `p = opt.get v; c = copy p; ...; drop v` into `c = opt.unbox v` when `v` is not
+/// touched in between and `p` has no other use: the payload moves out and the shell is freed
+/// instead of the payload being deep-copied and then dropped with its source. This is the
+/// shape of unwrapping a recursive result, which would otherwise copy every subtree once per
+/// level.
+fn unbox_dead_options(f: &mut Func) -> bool {
+    let mut uses = vec![0u32; f.values.len()];
+    for b in &f.blocks {
+        for i in &b.insts {
+            for a in &i.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    let mut changed = false;
+    for b in &mut f.blocks {
+        'again: loop {
+            let term_uses_of = |v: Value| {
+                let mut hit = false;
+                b.term.for_each_use(|u| hit |= u == v);
+                hit
+            };
+            for (gi, get) in b.insts.iter().enumerate() {
+                let (Op::OptGet, Some(p)) = (get.op, get.res) else {
+                    continue;
+                };
+                let v = get.args[0];
+                if uses[p.index()] != 1 {
+                    continue;
+                }
+                let Some(ci) = b.insts[gi + 1..]
+                    .iter()
+                    .position(|n| n.op == Op::Copy && n.args[0] == p)
+                    .map(|k| gi + 1 + k)
+                else {
+                    continue;
+                };
+                let Some(di) = b.insts[ci + 1..]
+                    .iter()
+                    .position(|n| n.op == Op::Drop && n.args[0] == v)
+                    .map(|k| ci + 1 + k)
+                else {
+                    continue;
+                };
+                let term_uses = term_uses_of(v);
+                if b.insts[gi + 1..di]
+                    .iter()
+                    .enumerate()
+                    .any(|(k, n)| gi + 1 + k != ci && n.args.contains(&v))
+                    || b.insts[di + 1..].iter().any(|n| n.args.contains(&v))
+                    || term_uses
+                {
+                    continue;
+                }
+                b.insts[ci].op = Op::OptUnbox;
+                b.insts[ci].args = vec![v];
+                b.insts.remove(di);
+                b.insts.remove(gi);
+                changed = true;
+                continue 'again;
+            }
+            break;
+        }
+    }
+    changed
 }
 
 /// Turns `p = alt.get f v; c = copy p; ...; drop v` into `c = alt.unbox f v` when `v` is

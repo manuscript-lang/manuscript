@@ -689,6 +689,18 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
     }
 }
 
+/// Hook run by a task just before it parks in `msrt_task_wait_fd` or `msrt_task_sleep`; zero
+/// when none is installed. Single threaded like the scheduler.
+static PREPARK: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+/// Installs (or, with `None`, removes) the hook a task runs just before it parks. A native that
+/// lends its own task to another job (the HTTP reactor running handlers inline) uses it to hand
+/// that job on, so a handler that sleeps or waits does not stall everything else.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>) {
+    PREPARK.store(hook.map_or(0, |f| f as usize), Ordering::Relaxed);
+}
+
 /// Parks the current task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`), the
 /// timeout (nanoseconds, negative for none) expires, or cancellation is requested. Returns the
 /// ready bits, `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A file that cannot be polled (a regular
@@ -700,6 +712,12 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         let cur = ensure_init();
         if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
+        }
+        let hook = PREPARK.load(Ordering::Relaxed);
+        if hook != 0 {
+            // SAFETY: only `msrt_task_set_prepark` stores here, and it stores a function pointer.
+            let hook: unsafe extern "C-unwind" fn() = core::mem::transmute(hook);
+            hook();
         }
         let s = sched();
         if fd >= 0 {

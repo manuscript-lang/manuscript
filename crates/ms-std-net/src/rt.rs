@@ -10,6 +10,7 @@ unsafe extern "C" {
     static msrt_cancel_flag: AtomicU8;
     fn msrt_cancelled() -> !;
     fn msrt_task_current() -> u64;
+    fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>);
     fn msrt_task_spawn(
         entry: unsafe extern "C-unwind" fn(*mut u8),
         arg: *mut u8,
@@ -73,4 +74,14 @@ pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
 pub fn sleep(ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
     unsafe { msrt_task_sleep(ns) }
+}
+
+/// Makes every park of a task (including `time.sleep` and other natives' waits) first hand the
+/// server reactor role on, so a request handler that waits does not stall the other requests.
+pub fn install_prepark_hook() {
+    unsafe extern "C-unwind" fn hook() {
+        crate::http::server::give_up_reactor_role();
+    }
+    // SAFETY: `hook` follows the runtime's hook ABI and stays valid for the process lifetime.
+    unsafe { msrt_task_set_prepark(Some(hook)) };
 }
