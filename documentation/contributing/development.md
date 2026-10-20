@@ -89,7 +89,7 @@ The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/m
 
 ## Generate the standard library reference
 
-`scripts/docgen` reads the checker's registry from pinned `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`ms-docgen` (`crates/ms-guide`) reads the checker's registry from pinned `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
 

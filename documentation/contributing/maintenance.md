@@ -17,7 +17,7 @@ Use the checkout SDK. These commands modify tracked inputs; `make verify` only c
 | Node | `toolchain/go/bin/go run ./scripts/maintenance node 24.13.0` updates `.node-version`; install it, then `npm ci` in `extensions/vscode` |
 | Go dependencies | Edit requirements, then `make vendor-refresh` (tidy, rebuild `vendor/`, refresh notices) |
 | Extension dependencies | Edit `extensions/vscode/package.json`, run `npm install --package-lock-only --ignore-scripts`, then `npm ci` and `npm run package -- --allow-missing-repository` |
-| License inventory | `make licenses` records paths and SHA-256 hashes of vendored notices; `make licenses-check` detects drift. It is not a legal assessment |
+| License inventory | `make licenses` records each locked Cargo crate's name, version, and declared SPDX license (from `cargo metadata --locked`) plus SHA-256 hashes of bundled notices; `make licenses-check` detects drift. It is not a legal assessment |
 | Linters | Update `scripts/devtools.env` and ShellCheck checksums, then `make setup`; tools stay in `.tools/` |
 
 Dependabot groups weekly updates into PRs with normal verification and no auto-merge; run native and packaged checks before merging.

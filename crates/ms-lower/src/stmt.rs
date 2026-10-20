@@ -465,7 +465,6 @@ impl<'a> FnLower<'a> {
             cont_used: false,
             brk_used: false,
         });
-        self.b.poll();
         self.block(body)?;
         let ctx = self.loops.pop().expect("loop");
         if !self.dead {
@@ -561,7 +560,6 @@ impl<'a> FnLower<'a> {
         self.b.br_if(c, body_b, &[], exit, &[]);
         self.b.seal_block(body_b);
         self.enter(body_b);
-        self.b.poll();
         let depth = self.scopes.len();
         self.loops.push(LoopCtx {
             brk: exit,

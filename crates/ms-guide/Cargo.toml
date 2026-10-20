@@ -9,6 +9,7 @@ description = "Manuscript agent guide, standard-library search and API documenta
 workspace = true
 
 [dependencies]
+ms-json = { path = "../ms-json" }
 ms-check = { path = "../ms-check" }
 ms-syntax = { path = "../ms-syntax" }
 
