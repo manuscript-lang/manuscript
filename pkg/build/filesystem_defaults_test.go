@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/syntax"
+	"github.com/manuscript-lang/manuscript/stdlib"
 )
 
 func TestFilesystemDefaultCallableBoundaries(t *testing.T) {

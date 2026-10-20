@@ -1,12 +1,12 @@
 name: Rust distributions
 
 # Builds the Rust `ms` (with the ms-native runtime embedded) natively on a runner of each of
-# the six release targets, packages it, and runs the packaged binary on a hello project. The
-# Go distributions in release.yml stay the shipped ones until lowering reaches parity.
+# the six release targets, packages it, and runs the packaged binary on a hello project.
+# release.yml calls this workflow on a version tag and publishes its archives; there every
+# target gates, as it does on pull requests.
 
 on:
-  push:
-    tags: ['v*']
+  workflow_call:
   pull_request:
     paths:
       - 'crates/**'

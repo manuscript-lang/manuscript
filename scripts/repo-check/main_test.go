@@ -32,7 +32,7 @@ func TestRequiredWorkflowTriggers(t *testing.T) {
 
 func TestStandardLibrarySyntax(t *testing.T) {
 	t.Chdir("../..")
-	if err := checkStandardSyntax(os.DirFS("pkg/stdlib"), "pkg/stdlib"); err != nil {
+	if err := checkStandardSyntax(os.DirFS("stdlib"), "stdlib"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -43,7 +43,7 @@ func TestStandardSyntaxGate(t *testing.T) {
 		"data.ms":       {Data: []byte("type Data:\n    count: Int = 3\nimpl Data:\n    fn read() Int:\n")},
 		"bindings.json": {Data: []byte("not Manuscript source")},
 	}
-	if err := checkStandardSyntax(valid, "pkg/stdlib"); err != nil {
+	if err := checkStandardSyntax(valid, "stdlib"); err != nil {
 		t.Fatal("rejected valid declarations", err)
 	}
 	for name, source := range map[string]string{
@@ -57,7 +57,7 @@ func TestStandardSyntaxGate(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := fstest.MapFS{"broken.ms": {Data: []byte(source)}}
-			err := checkStandardSyntax(files, "pkg/stdlib")
+			err := checkStandardSyntax(files, "stdlib")
 			if err == nil || !strings.Contains(err.Error(), "invalid standard-library syntax") || !strings.Contains(err.Error(), "broken.ms:") || !strings.Contains(err.Error(), "parse:") {
 				t.Fatalf("missing positioned syntax error: %v", err)
 			}
@@ -93,7 +93,7 @@ func TestVerificationTargetsExecuteTheirContracts(t *testing.T) {
 	t.Chdir("../..")
 	for target, expected := range map[string][]string{
 		"verify":   {"vet ./...", "staticcheck ./...", "run ./scripts/repo-check\n", "test ./tests/examples", "maintenance licenses -check"},
-		"unit":     {"./pkg/stdlib", "./scripts/repo-check"},
+		"unit":     {"./stdlib", "./scripts/repo-check"},
 		"coverage": {"test -covermode=atomic", "-coverprofile=", "tool cover -html"},
 		"build":    {"run ./scripts/mktoolchain", "-tags exp.winarm64"},
 		"race":     {"test -race"}, "fuzz": {"test ./pkg/build -list '^FuzzCompile$'", "test ./pkg/build -run '^$' -fuzz '^FuzzCompile$'"}, "e2e": {"test  ./tests/e2e"},

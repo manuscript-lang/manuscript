@@ -283,7 +283,7 @@ func (g *gen) alternativeDecl(d *typeDecl) []ast.Decl {
 }
 
 // sharedCategory names the cases of the standard ErrorCategory type
-// (pkg/stdlib/errors.ms). A standard error case written in source whose name
+// (stdlib/errors.ms). A standard error case written in source whose name
 // is one of them has that category.
 var sharedCategory = map[string]bool{
 	"InvalidInput": true, "InvalidData": true, "LimitExceeded": true, "NotFound": true,
