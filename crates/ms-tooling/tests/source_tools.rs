@@ -5,7 +5,7 @@
 //! `go_locals`) are not compared: they name Go lowering artifacts.
 
 use ms_check::{CheckOptions, ImportMap, Program};
-use ms_cli::json::{Json, parse};
+use ms_json::{Json, parse};
 use ms_tooling::inspect::inspect;
 use ms_tooling::lint::lint_modules;
 use std::path::{Path, PathBuf};
@@ -170,7 +170,9 @@ fn lint_and_inspect_match_go() {
             continue;
         };
         let want = normalize(parse(&inspection).expect("oracle inspection json"));
-        let got = normalize(parse(&inspect(&program).to_json().encode()).expect("own json"));
+        let got = normalize(
+            parse(inspect(&program).to_json().pretty(ms_json::Escape::GoHtml)).expect("own json"),
+        );
         assert_eq!(got, want, "{label}: inspection differs");
         compared += 1;
     }

@@ -75,13 +75,13 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .env_remove("RUSTFLAGS");
     let status = command.status().expect("run cargo to build ms-native");
     assert!(status.success(), "building ms-native failed");
-    // MSVC emits `ms_native.lib`; Unix and MinGW use the `lib*.a` spelling.
-    let archive = if cfg!(target_env = "msvc") {
-        "ms_native.lib"
+    // The MSVC toolchain names a staticlib `ms_native.lib`; every other target uses `libms_native.a`.
+    let msvc = std::env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|env| env == "msvc");
+    target.join(if msvc {
+        "release/ms_native.lib"
     } else {
-        "libms_native.a"
-    };
-    target.join("release").join(archive)
+        "release/libms_native.a"
+    })
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {
