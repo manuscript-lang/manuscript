@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "log-file-transport.ms::levels filter, fields nest under data, and bound fields merge",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "log-file-transport.ms::limits, invalid levels, and closed transports are errors",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "log-file-transport.ms::a missing directory is a filesystem error",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN log-file-transport.ms::levels filter, fields nest under data, and bound fields merge\nPASS log-file-transport.ms::levels filter, fields nest under data, and bound fields merge\nRUN log-file-transport.ms::limits, invalid levels, and closed transports are errors\nPASS log-file-transport.ms::limits, invalid levels, and closed transports are errors\nRUN log-file-transport.ms::a missing directory is a filesystem error\nPASS log-file-transport.ms::a missing directory is a filesystem error\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
