@@ -75,7 +75,7 @@ fn window(rows: u16, columns: u16) -> Winsize {
     }
 }
 
-fn open(pty: &Pty, alternate: bool) -> *mut ms_std_rt::Handle<Raw> {
+fn open(pty: &Pty, alternate: bool) -> Raw {
     Raw::open(pty.fd(), pty.fd(), alternate).expect("raw terminal")
 }
 
@@ -85,9 +85,8 @@ fn next(raw: &Raw, timeout_ms: Option<i64>) -> (u8, Option<Event>) {
     (status, current)
 }
 
-fn release(h: *mut ms_std_rt::Handle<Raw>) {
-    // SAFETY: `h` came from `Raw::open` and is released once.
-    unsafe { core::ptr::drop_in_place(&mut (*h).value) };
+fn release(h: Raw) {
+    drop(h);
 }
 
 fn key(name: &str) -> Event {
@@ -106,8 +105,7 @@ fn raw_mode_decodes_input_and_restores_settings() {
     let before = pty.local_modes();
     assert!(before.contains(LocalModes::ICANON));
     let h = open(&pty, false);
-    // SAFETY: `h` is live until released below.
-    let raw = unsafe { &(*h).value };
+    let raw = &h;
     assert!(
         !pty.local_modes()
             .intersects(LocalModes::ICANON | LocalModes::ECHO | LocalModes::ISIG)
@@ -134,8 +132,7 @@ fn a_lone_escape_becomes_the_escape_key() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
     let h = open(&pty, false);
-    // SAFETY: `h` is live until released below.
-    let raw = unsafe { &(*h).value };
+    let raw = &h;
     pty.type_text(b"\x1b");
     assert_eq!(next(raw, Some(1000)), (STATUS_OK, Some(key("escape"))));
     release(h);
@@ -146,8 +143,7 @@ fn cursor_and_screen_commands_write_escape_sequences() {
     let _turn = TURN.lock().unwrap_or_else(|e| e.into_inner());
     let pty = Pty::new();
     let h = open(&pty, true);
-    // SAFETY: `h` is live until released below.
-    let raw = unsafe { &(*h).value };
+    let raw = &h;
     assert_eq!(raw.move_cursor(2, 9), STATUS_OK);
     assert_eq!(raw.move_cursor(-1, 0), STATUS_INVALID_INPUT);
     assert_eq!(raw.move_cursor(0, 70_000), STATUS_INVALID_INPUT);
@@ -174,8 +170,7 @@ fn one_raw_terminal_at_a_time_and_resize_events() {
         Raw::open(pty.fd(), pty.fd(), false).err(),
         Some(ms_rt_abi::STATUS_BUSY)
     );
-    // SAFETY: `h` is live until released below.
-    let raw = unsafe { &(*h).value };
+    let raw = &h;
     tcsetwinsize(&pty.master, window(30, 100)).expect("set size");
     let resize = Event::Resize {
         columns: 100,

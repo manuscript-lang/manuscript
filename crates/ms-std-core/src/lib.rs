@@ -15,8 +15,9 @@ extern crate alloc;
 
 mod native;
 pub use native::{
-    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, FromAbi, IdArray, IntoAbi, Mut, ObjCell, ObjMut,
-    ObjRef, Object, OptInt, Out, Own, RecList, Ref, Status, StatusCode, Str, StrArray, StringList,
+    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, FromAbi, Global, IdArray, IntoAbi, Mut, ObjCell,
+    ObjMut, ObjRef, Object, OptInt, Out, Own, RecList, Ref, Status, StatusCode, Str, StrArray,
+    StringList,
 };
 
 use alloc::vec::Vec;

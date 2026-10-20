@@ -6,7 +6,7 @@ use ms_rt_abi::STATUS_UNSUPPORTED;
 pub struct Raw;
 
 impl Raw {
-    pub fn open(_: i32, _: i32, _: bool) -> Result<*mut ms_std_rt::Handle<Raw>, u8> {
+    pub fn open(_: i32, _: i32, _: bool) -> Result<Raw, u8> {
         Err(STATUS_UNSUPPORTED)
     }
 
