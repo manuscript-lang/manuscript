@@ -16,6 +16,8 @@ use core::ops::{Deref, DerefMut};
 unsafe extern "C" {
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
     fn msrt_release(o: *mut ms_rt_abi::Obj);
+    fn msrt_alloc(size: usize) -> *mut u8;
+    fn msrt_free(p: *mut u8);
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     fn msrt_list_drop(v: *mut VecVal, d: *const TypeDesc);
@@ -73,7 +75,7 @@ macro_rules! scalar {
         }
     )*};
 }
-scalar!(i64, f64, u8);
+scalar!(i64, f64, u8, u32, u64);
 
 impl AbiType for bool {
     type Raw = u8;
@@ -229,7 +231,7 @@ macro_rules! plain_slot {
         }
     )*};
 }
-plain_slot!(i64, f64, u8, OptInt);
+plain_slot!(i64, f64, u8, u32, u64, OptInt);
 
 /// `Optional[Int]` stored inline in a record: a presence byte, then the value.
 #[repr(C)]
@@ -352,6 +354,131 @@ impl IntoAbi for *mut StrObj {
     type Raw = *mut StrObj;
     fn into_raw(self) -> *mut StrObj {
         self
+    }
+}
+
+// SAFETY: an optional `String` argument is a live string or null.
+unsafe impl<'a> FromAbi<'a> for Option<&'a str> {
+    unsafe fn from_raw(raw: *const StrObj) -> Option<&'a str> {
+        // SAFETY: caller contract.
+        (!raw.is_null()).then(|| unsafe { str_ref(raw) })
+    }
+}
+impl AbiType for Option<&str> {
+    type Raw = *const StrObj;
+}
+
+impl AbiType for Vec<Vec<&str>> {
+    type Raw = *const VecVal;
+}
+// SAFETY: `List[List[String]]` arguments are live and outlive the call.
+unsafe impl<'a> FromAbi<'a> for Vec<Vec<&'a str>> {
+    unsafe fn from_raw(raw: *const VecVal) -> Vec<Vec<&'a str>> {
+        // SAFETY: caller contract.
+        unsafe { crate::read_string_matrix(raw) }
+    }
+}
+impl IntoAbi for Vec<Vec<String>> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_matrix` initializes `v`.
+        unsafe {
+            crate::write_string_matrix(
+                v.as_mut_ptr(),
+                self.iter().map(|r| r.iter().map(String::as_str)),
+            );
+            v.assume_init()
+        }
+    }
+}
+impl IntoAbi for Vec<String> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_list` initializes `v`.
+        unsafe {
+            crate::write_string_list(v.as_mut_ptr(), &self);
+            v.assume_init()
+        }
+    }
+}
+
+/// An extra result slot of a native, written through a trailing pointer parameter.
+pub struct Out<'a, T: IntoAbi>(*mut T::Raw, PhantomData<&'a mut T::Raw>);
+
+impl<T: IntoAbi> Out<'_, T> {
+    pub fn write(self, v: T) {
+        // SAFETY: an `Out` is only built by `from_raw`, whose caller guarantees a writable slot.
+        unsafe { self.0.write(v.into_raw()) }
+    }
+}
+impl<T: IntoAbi> AbiType for Out<'_, T> {
+    type Raw = *mut T::Raw;
+}
+// SAFETY: the caller passes writable memory for one result slot.
+unsafe impl<'a, T: IntoAbi> FromAbi<'a> for Out<'a, T> {
+    unsafe fn from_raw(raw: *mut T::Raw) -> Out<'a, T> {
+        Out(raw, PhantomData)
+    }
+}
+
+/// A reference-counted runtime object (header plus a pointer to a boxed Rust value), returned to
+/// Manuscript as a `Shared`-class handle. The runtime frees the value when the count reaches zero.
+#[repr(C)]
+pub struct ObjCell<T> {
+    header: ms_rt_abi::Obj,
+    state: *mut T,
+}
+
+unsafe extern "C" fn cell_drop<T>(o: *mut ms_rt_abi::Obj) {
+    let c = o.cast::<ObjCell<T>>();
+    // SAFETY: `o` is an `ObjCell<T>` built by `Object::into_raw`; freed once, at count zero.
+    unsafe {
+        drop(Box::from_raw((*c).state));
+        msrt_free(o.cast());
+    }
+}
+
+/// A new runtime object owning `T`.
+pub struct Object<T: AbiHandle>(pub T);
+/// A borrow of the value inside a runtime object.
+pub struct ObjRef<'a, T: AbiHandle>(pub &'a T);
+
+impl<T: AbiHandle> Deref for ObjRef<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> AbiType for Object<T> {
+    type Raw = *mut ObjCell<T>;
+}
+impl<T: AbiHandle> AbiType for ObjRef<'_, T> {
+    type Raw = *const ObjCell<T>;
+}
+impl<T: AbiHandle> IntoAbi for Object<T> {
+    type Raw = *mut ObjCell<T>;
+    fn into_raw(self) -> *mut ObjCell<T> {
+        // SAFETY: a fresh runtime allocation, initialized before it escapes.
+        unsafe {
+            let p = msrt_alloc(core::mem::size_of::<ObjCell<T>>()).cast::<ObjCell<T>>();
+            p.write(ObjCell {
+                header: ms_rt_abi::Obj {
+                    rc: 1,
+                    drop: Some(cell_drop::<T>),
+                },
+                state: Box::into_raw(Box::new(self.0)),
+            });
+            p
+        }
+    }
+}
+// SAFETY: an object argument is a live runtime object that outlives the call.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for ObjRef<'a, T> {
+    unsafe fn from_raw(raw: *const ObjCell<T>) -> ObjRef<'a, T> {
+        // SAFETY: caller contract.
+        ObjRef(unsafe { &*(*raw).state })
     }
 }
 
@@ -548,11 +675,30 @@ macro_rules! native {
     (
         @item [$($q:tt)*]
         $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<(), $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C" fn $name($($p: <$t as $crate::AbiType>::Raw),*) -> u8 {
+            fn body($($p: $t),*) -> Result<(), $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            match body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*) {
+                Ok(()) => $crate::STATUS_OK,
+                Err(e) => $crate::Status::status(e),
+            }
+        }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<$ok:ty, $err:ty> $body:block
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
@@ -579,7 +725,7 @@ macro_rules! native {
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
@@ -600,7 +746,7 @@ macro_rules! native {
         $($rest:tt)*
     ) => {
         $(#[$m])*
-        #[allow(unsafe_code, clippy::missing_safety_doc)]
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*
