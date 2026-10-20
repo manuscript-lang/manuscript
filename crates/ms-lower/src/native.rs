@@ -140,6 +140,14 @@ impl<'a> FnLower<'a> {
                 let v = self.call_runtime("msrt_list_range", &vals, lt)?;
                 Ok(Val { v, own: true })
             }
+            "collections/map_from_entries" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let mt = self.emty(e)?;
+                self.map_from_entries(args[0].val, mt)
+            }
             "panic" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -767,6 +775,32 @@ impl<'a> FnLower<'a> {
             (TyKind::Obj(n, _), "entries") if n == "Map" => {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
+            }
+            (TyKind::Obj(n, _), "entries") if n == "Set" => {
+                let result = self.emty(e)?;
+                self.set_entries(recv, result)
+            }
+            (TyKind::List(_), "list_keys") => {
+                let result = self.emty(e)?;
+                let r = self.borrow(recv);
+                let n = self.b.list_len(r);
+                let acc = self.fresh_var(result);
+                let first = self.b.list_new(MTy::INT, n);
+                self.b.def_var(acc, first);
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                self.each_element(lv, &mut |s, i, _| {
+                    let cur = s.b.use_var(acc);
+                    let next = s.b.list_push(cur, i);
+                    s.b.def_var(acc, next);
+                    Ok(None)
+                })?;
+                self.release_source(lv, hidden);
+                let out = self.b.use_var(acc);
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(_), "list_entries") => {
+                let result = self.emty(e)?;
+                self.list_entries(recv_expr, recv, result)
             }
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);

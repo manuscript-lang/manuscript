@@ -179,3 +179,12 @@ fn direct_call_with_try_default_runs_it_in_the_callee_frame() {
     );
     assert!(mir.contains("call.ind"));
 }
+
+#[test]
+fn entries_keys_and_add_default_from_lower() {
+    let mir = lower(
+        "entries",
+        "import stdout from \"@std/io.ms\"\nimport {map_from_entries} from \"@std/collections.ms\"\n\nexport fn main() Int:\n    var m: Map[String, Int] = Map()\n    m.add_default_from(\"a\", fn(key: String): 5)\n    let items = [4, 5]\n    let r = stdout().write(\"{items.keys()} {items.entries().length()} {[1].to_set().entries()} {map_from_entries(m.entries()).length()}\\n\")\n    return 0\n",
+    );
+    assert!(mir.contains("msrt_map_contains"));
+}
