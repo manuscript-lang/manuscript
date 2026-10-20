@@ -90,9 +90,10 @@ jobs:
       - name: Install Windows x64 LLVM consumers
         if: inputs.dwarf && runner.os == 'Windows' && matrix.arch == 'amd64'
         run: |
-          tools="$RUNNER_TEMP/llvm-debug-19.1.7"
+          temp_root=$(cygpath -u "$RUNNER_TEMP")
+          tools="$temp_root/llvm-debug-19.1.7"
           if [ ! -x "$tools/llvm-dwarfdump.exe" ] || [ ! -x "$tools/llvm-symbolizer.exe" ]; then
-            archive="$RUNNER_TEMP/llvm-debug-19.1.7.tar.xz"
+            archive="$temp_root/llvm-debug-19.1.7.tar.xz"
             curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/clang%2Bllvm-19.1.7-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
             echo "b4557b4f012161f56a2f5d9e877ab9635cafd7a08f7affe14829bd60c9d357f0  $archive" | sha256sum --check
             mkdir -p "$tools"
@@ -100,7 +101,7 @@ jobs:
               clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
               clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
           fi
-          echo "$tools" >> "$GITHUB_PATH"
+          cygpath -w "$tools" >> "$GITHUB_PATH"
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Native overflow, fault positions, cleanup and inline frames
