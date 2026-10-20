@@ -76,6 +76,8 @@ pub(crate) struct FnLower<'a> {
     pub fixture: Option<crate::fixture::Hooks>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
+    /// Exclusive borrows in scope: the place each names.
+    pub aliases: HashMap<usize, crate::alias::Alias>,
 }
 
 impl Cx {
@@ -311,6 +313,7 @@ impl<'a> FnLower<'a> {
             stmt_pos: None,
             fixture: None,
             err_slot: None,
+            aliases: HashMap::new(),
         }
     }
 
@@ -483,6 +486,9 @@ impl<'a> FnLower<'a> {
 
     /// The current value of a local as a borrow.
     pub fn read_local(&mut self, binding: &BindingRef) -> Result<Val, Error> {
+        if let Some(a) = self.aliases.get(&binding.uid).cloned() {
+            return self.alias_read(&a);
+        }
         let l = self.local(binding)?;
         let v = self.b.use_var(l.var);
         Ok(Val { v, own: false })

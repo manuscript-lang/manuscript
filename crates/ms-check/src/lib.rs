@@ -64,9 +64,17 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
     checker.imports = imports;
     let bundled = options.bundled;
     let mut program = checker.check_modules(modules, bundled);
-    if options.ownership && program.diagnostics.is_empty() {
-        let found = program.hir().ownership().diagnostics;
-        program.diagnostics.extend(found);
+    if program.diagnostics.is_empty() {
+        if options.ownership {
+            let own = program.hir().ownership();
+            program.exclusive_borrows = Rc::new(own.exclusive);
+            program.diagnostics.extend(own.diagnostics);
+        } else if ownership::uses_mutable_borrow(&program) {
+            // A mutable borrow changes what the program means, so its functions are always checked.
+            let own = program.hir().ownership();
+            program.exclusive_borrows = Rc::new(own.exclusive);
+            program.diagnostics.extend(own.borrow_diagnostics);
+        }
     }
     program
 }

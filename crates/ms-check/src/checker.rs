@@ -110,6 +110,9 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
+    /// Bindings that are exclusive (`var`) borrows of another value, for lowering. Filled when
+    /// the ownership pass ran (requested, or because a function uses a mutable borrow).
+    pub exclusive_borrows: Rc<HashSet<usize>>,
 }
 
 /// A body-check result retained from an inference probe.

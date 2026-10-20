@@ -120,6 +120,7 @@ impl Pass<'_> {
             StmtKind::If {
                 binding,
                 cond,
+                mutable: _,
                 body,
                 else_body,
             } => {

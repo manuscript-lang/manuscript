@@ -24,6 +24,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 - **Mutability.** `let` is immutable including contents; only `var` bindings, `var` parameters and `var fn` receivers change. Fields/elements of a `var` binding are changed through it.
 - **Overlap.** Operands that a call keeps hold of (a `var` argument, a `Move`-class borrow, a closure capture) must not overlap: `f(var a, a)` and `f(var r, r.items)` are rejected. A `Copy` value computed before the call (`f(var xs, xs.length())`) is fine.
 - **Borrows are lexical.** Payload bindings, loop variables, `with` bindings, accessor results and `let x = a.b` / `a[i]` / `let y = x` hold a borrow of their origin until the holder's last use (payload and loop borrows last the whole arm/body). While held, the origin cannot be changed, reassigned or moved; closures that mutate a capture hold it exclusively (reads are also rejected). Moving out of a borrow is rejected (`.copy()` first).
+- **Mutable borrows.** `var x = a.b` / `a[i]` binds an exclusive borrow of the part: changes through `x` change the origin, which must itself be changeable (`var`). While `x` is live nothing else may read, change, move or borrow the origin (so there is only one mutable borrow at a time; disjoint fields are fine). `x` cannot be reassigned or moved out, and ends at its last use. `let x = a.b` stays a shared borrow. `if var x = a.get(k):` borrows the payload the same way for the branch. A borrow taken through another mutable borrow (`var it = b.items`) may be used while `b` is live, but not the reverse. Lowering names the origin's place instead of copying (`ms-lower/src/alias.rs`), so every exit path writes through; the CLI always runs this pass on functions that hold a mutable borrow. `var x = <call result>` owns.
 - **Match / destructuring** consumes an owned last-use scrutinee (payloads own their parts, `consumed_scrutinees`); otherwise payloads are borrows. `var` in a case payload is rejected.
 - **Closures.** A closure that is returned, stored or passed to a consuming parameter *escapes*: it owns its captures (moved at creation, so the captured variable is dead afterwards) and may not change them or move them out when called (it can run many times: return `x.copy()`). A non-escaping closure borrows its captures lexically. Escape is inferred per module by fixpoint; native callbacks on collections are non-escaping.
 - **Mutators** (`append`, `set`, ...) take their receiver `var` and return `Unit`-like unusable results: chaining and using the result are errors.
@@ -47,11 +48,12 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 | --- | --- |
 | Use after move | `move_then_use`, `move_into_call_then_use`, `move_into_list_literal`, `move_into_record`, `move_in_loop`, `move_in_branch_then_join`, `use_param_after_move`, `moved_value_in_closure_after` |
 | Immutability | `mutate_let`, `mutate_field_of_let`, `mutate_param`, `assign_field_of_borrow` |
-| `var` markers | `missing_var_marker`, `extra_var_marker`, `var_argument_of_let`, `var_argument_not_a_place`, `var_from_projection`, `receiver_without_var_fn`, `receiver_var_method_from_plain_method` |
+| `var` markers | `missing_var_marker`, `extra_var_marker`, `var_argument_of_let`, `var_argument_not_a_place`, `receiver_without_var_fn`, `receiver_var_method_from_plain_method` |
 | Overlap | `overlapping_var_arguments`, `holder_passed_with_var_root` |
 | Borrow exclusivity | `borrow_held_across_mutation`, `borrow_held_across_loop`, `borrow_held_across_branch`, `loop_mutates_iterable`, `match_payload_reassign`, `reborrow_chain` |
 | Move out of borrow/var | `consume_borrowed_binding`, `projection_move_out`, `match_payload_move_out`, `loop_variable_moved_out`, `return_borrowed_binding`, `var_parameter_moved_out` |
 | Closures | `closure_exclusive_borrow`, `closure_borrow_then_mutation`, `closure_reads_changed_variable`, `escaping_closure_changes_capture`, `escaping_closure_takes_capture` |
+| Mutable borrows | `var_borrow_second_mutable`, `var_borrow_read_origin`, `var_borrow_mutate_origin`, `var_borrow_of_let`, `var_borrow_reassigned`, `var_borrow_moved_out`, `if_var_of_let`, `if_var_read_origin`, `if_var_mutate_origin`, `if_var_reassigned` |
 | Mutators | `mutator_chaining`, `mutator_result_used` |
 
 ## Behavior changes for the migration tool

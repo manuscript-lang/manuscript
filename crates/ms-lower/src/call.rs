@@ -175,6 +175,7 @@ impl<'a> FnLower<'a> {
         let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
             return false;
         };
+        let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
         self.locals
             .get(&uid)
             .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)

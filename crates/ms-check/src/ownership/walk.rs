@@ -59,6 +59,9 @@ enum Perm {
     Immutable,
     /// Borrows from elsewhere: neither changeable nor movable.
     Borrowed,
+    /// An exclusive borrow (`var x = place`): changes go to the origin, which
+    /// nothing else may touch until the last use; not movable or reassignable.
+    MutBorrowed,
     /// A variable inside an escaping closure's body: the closure owns a
     /// snapshot, so it is read-only there. A change is reported once, where
     /// the closure is made.
@@ -77,6 +80,8 @@ struct Meta {
     /// A parameter, by index.
     parameter: Option<usize>,
     is_receiver: bool,
+    /// The mutable borrow this one was taken through (`var it = b.items` where `b` borrows).
+    parent: Option<usize>,
 }
 
 /// A live borrow: until `holder` is last used, its origins stay unchanged.
@@ -237,6 +242,7 @@ impl Walker<'_> {
                 lambda: None,
                 parameter,
                 is_receiver,
+                parent: None,
             },
         );
         self.declared.push(b.uid);
@@ -246,14 +252,45 @@ impl Walker<'_> {
                 binding: b.clone(),
                 role,
                 class,
-                owned: perm != Perm::Borrowed
+                owned: !matches!(perm, Perm::Borrowed | Perm::MutBorrowed)
                     && !matches!(
                         role,
                         Role::Parameter | Role::SelfValue | Role::LambdaParameter | Role::Fixture
                     ),
                 borrows: Vec::new(),
+                exclusive: false,
             },
         );
+    }
+
+    /// Declares a `var` binding that holds `origins` exclusively.
+    fn declare_mut_borrow(
+        &mut self,
+        b: &BindingRef,
+        role: Role,
+        origins: Vec<Place>,
+        pos: Pos,
+        parent: Option<usize>,
+    ) {
+        self.declare(b, role, Perm::MutBorrowed, None, false);
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.parent = parent;
+        }
+        if let Some(f) = self.facts.bindings.get_mut(&b.uid) {
+            f.owned = false;
+            f.exclusive = true;
+            f.borrows = origins.clone();
+        }
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.origins = origins.clone();
+        }
+        self.active.push(Borrow {
+            holder: b.uid,
+            holder_name: b.name,
+            origins: origins.into_iter().map(|p| (p, true)).collect(),
+            pos,
+            why: "mutable borrow".to_string(),
+        });
     }
 
     /// Declares a binding that borrows from `origins`.
@@ -361,7 +398,7 @@ impl Walker<'_> {
         ignore: Option<usize>,
     ) {
         let found = self.active.iter().find(|a| {
-            Some(a.holder) != ignore
+            !ignore.is_some_and(|i| self.related(a.holder, i))
                 && a.origins
                     .iter()
                     .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
@@ -378,22 +415,29 @@ impl Walker<'_> {
         }
     }
 
-    /// Reports a read of `places` while a closure holds them exclusively.
-    fn check_read(&mut self, pos: Pos, places: &[Place], shown: &str) {
+    /// Reports a read of `places` while a closure or a `var` borrow holds them
+    /// exclusively; `reader` is the binding the read goes through.
+    fn check_read(&mut self, pos: Pos, places: &[Place], shown: &str, reader: usize) {
         let found = self.active.iter().find(|a| {
-            a.origins
-                .iter()
-                .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
+            !self.related(a.holder, reader)
+                && a.origins
+                    .iter()
+                    .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
         });
         if let Some(a) = found {
-            let (holder, bpos) = (a.holder_name, a.pos);
-            self.error(
-                pos,
+            let (holder, bpos, why) = (a.holder_name, a.pos, a.why.clone());
+            let text = if why == "mutable borrow" {
+                format!(
+                    "cannot use `{shown}` while `{holder}` (a mutable borrow at {}:{}) holds it; finish using `{holder}` first, or use the value through `{holder}`",
+                    bpos.line, bpos.column
+                )
+            } else {
                 format!(
                     "cannot use `{shown}` while closure `{holder}` (made at {}:{}) changes it; call or drop the closure first, or copy the value before creating it",
                     bpos.line, bpos.column
-                ),
-            );
+                )
+            };
+            self.error(pos, text);
         }
     }
 
@@ -430,7 +474,10 @@ impl Walker<'_> {
 
     fn resolve(&self, p: &Place) -> Vec<Place> {
         match self.meta.get(&p.root) {
-            Some(m) if m.perm == Perm::Borrowed && !m.origins.is_empty() => {
+            Some(m)
+                if matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed)
+                    && !m.origins.is_empty() =>
+            {
                 m.origins.iter().map(|o| o.join(&p.path)).collect()
             }
             _ => vec![p.clone()],
@@ -518,10 +565,11 @@ impl Walker<'_> {
             StmtKind::Break | StmtKind::Continue => {}
             StmtKind::If {
                 binding,
+                mutable,
                 cond,
                 body,
                 else_body,
-            } => self.if_stmt(s, binding.as_ref(), cond, body, else_body),
+            } => self.if_stmt(s, binding.as_ref(), *mutable, cond, body, else_body),
             StmtKind::While { cond, body } => {
                 self.expr(cond, Demand::Read);
                 self.release_pending();
@@ -548,6 +596,7 @@ impl Walker<'_> {
         &mut self,
         s: &Stmt,
         binding: Option<&Pattern>,
+        mutable: bool,
         cond: &Expr,
         body: &[Stmt],
         else_body: &[Stmt],
@@ -557,7 +606,11 @@ impl Walker<'_> {
         match binding {
             Some(p) => {
                 let scrutinee = self.scrutinee(s.id, cond);
-                self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                if mutable {
+                    self.mutable_payload(p, cond, &scrutinee);
+                } else {
+                    self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                }
             }
             None => self.expr(cond, Demand::Read),
         }
@@ -638,18 +691,32 @@ impl Walker<'_> {
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.
-            self.expr(value, Demand::Read);
             if mutable {
-                let text = self.expr_text(value);
-                self.error(
-                    pattern.pos,
-                    format!(
-                        "`var {}` cannot take part of another value: `{text}` stays where it is; copy it with `{text}.{COPY}()` to own it",
-                        b.name
-                    ),
-                );
-                self.declare(&b, role, Perm::Mutable, None, false);
+                if let Some((info, _)) = self.place(value) {
+                    // The origin must itself be changeable and free of other borrows.
+                    let before = self.diags.len();
+                    self.mutate(pattern.pos, &info, "borrow mutably");
+                    if self.diags.len() == before {
+                        let parent = self.borrow_parent(&info.root);
+                        self.declare_mut_borrow(&b, role, info.resolved, pattern.pos, parent);
+                    } else {
+                        // Already reported; an owned binding avoids a cascade.
+                        self.declare(&b, role, Perm::Mutable, None, false);
+                    }
+                } else {
+                    let text = self.expr_text(value);
+                    self.expr(value, Demand::Read);
+                    self.error(
+                        pattern.pos,
+                        format!(
+                            "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
+                            b.name
+                        ),
+                    );
+                    self.declare(&b, role, Perm::Mutable, None, false);
+                }
             } else {
+                self.expr(value, Demand::Read);
                 self.declare_borrow(&b, role, origins, pattern.pos, "binding of a part of it");
             }
             return;
@@ -666,7 +733,7 @@ impl Walker<'_> {
             && self
                 .meta
                 .get(&src.uid)
-                .is_some_and(|m| m.perm == Perm::Borrowed)
+                .is_some_and(|m| matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed))
         {
             let origins = self.resolve(&Place::local(src.uid));
             self.expr(value, Demand::Read);
@@ -759,6 +826,10 @@ impl Walker<'_> {
                 pos,
                 format!("cannot assign to parameter `{name}`: it is not declared var; write `var {name}: <Type>` in the signature and `var` at every call"),
             ),
+            Perm::MutBorrowed => self.error(
+                pos,
+                format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or copy with `{name}.{COPY}()`"),
+            ),
             Perm::Immutable | Perm::Borrowed | Perm::Captured => self.error(
                 pos,
                 format!("cannot assign to `{name}`: it is not a var; declare it `var {name} = ...`"),
@@ -784,7 +855,7 @@ impl Walker<'_> {
         };
         let text = info.text.clone();
         match perm {
-            Perm::Mutable | Perm::Captured => {}
+            Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
             Perm::Borrowed => {
                 let from = self
                     .meta
@@ -830,7 +901,7 @@ impl Walker<'_> {
     /// A read through a place.
     fn read_place(&mut self, pos: Pos, info: &PlaceInfo) {
         let text = info.text.clone();
-        self.check_read(pos, &info.resolved, &text);
+        self.check_read(pos, &info.resolved, &text, info.root.uid);
         let root = info.root.clone();
         self.record(info.root_node, &root, Access::Borrow);
     }
@@ -846,7 +917,7 @@ impl Walker<'_> {
                 && class != Class::Copy
                 && let Resolution::Local(b) = self.cx.m.resolution(e)
                 && self.meta.get(&b.uid).is_some_and(|m| {
-                    m.perm != Perm::Borrowed
+                    !matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed)
                         && m.role != Role::Parameter
                         && m.role != Role::SelfValue
                         || self.is_consumable_param(&b)
@@ -884,6 +955,71 @@ impl Walker<'_> {
             owned: true,
             origins: Vec::new(),
         }
+    }
+
+    /// `if var name = value`: the payload is an exclusive borrow of the part of
+    /// its origin the value reads in place, or an owned value otherwise.
+    fn mutable_payload(&mut self, p: &Pattern, value: &Expr, source: &Scrutinee) {
+        let Some(b) = self.cx.m.pattern_binding(p) else {
+            return;
+        };
+        let class = self.cx.classes.class(&b.ty);
+        let named = self.root_name(value);
+        let root = named.and_then(|n| match self.cx.m.resolution(n) {
+            Resolution::Local(r) => Some((r, n.id)),
+            _ => None,
+        });
+        let (Some((root, root_node)), false) = (root, source.owned || class == Class::Copy) else {
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            return;
+        };
+        let info = PlaceInfo {
+            text: self.expr_text(value),
+            root,
+            root_node,
+            resolved: source.origins.clone(),
+            projection: true,
+        };
+        let before = self.diags.len();
+        self.mutate(p.pos, &info, "borrow mutably");
+        if self.diags.len() == before {
+            let parent = self.borrow_parent(&info.root);
+            self.declare_mut_borrow(&b, Role::Pattern, source.origins.clone(), p.pos, parent);
+        } else {
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+        }
+    }
+
+    /// The name expression a place chain or accessor call starts from.
+    fn root_name<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        match &e.kind {
+            ExprKind::Name(_) => Some(e),
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply { left, .. } => self.root_name(left),
+            ExprKind::Call { callee, .. } => self.root_name(callee),
+            _ => None,
+        }
+    }
+
+    /// The mutable borrow a new borrow is taken through, if its root is one.
+    fn borrow_parent(&self, root: &BindingRef) -> Option<usize> {
+        self.meta
+            .get(&root.uid)
+            .filter(|m| m.perm == Perm::MutBorrowed)
+            .map(|_| root.uid)
+    }
+
+    /// Whether `holder` is `of` or a mutable borrow `of` was taken through.
+    fn related(&self, holder: usize, of: usize) -> bool {
+        let mut cur = Some(of);
+        while let Some(c) = cur {
+            if c == holder {
+                return true;
+            }
+            cur = self.meta.get(&c).and_then(|m| m.parent);
+        }
+        false
     }
 
     fn is_consumable_param(&self, b: &BindingRef) -> bool {
@@ -1077,7 +1213,7 @@ impl Walker<'_> {
         let place = Place::local(b.uid);
         let resolved = self.resolve(&place);
         if d != Demand::Consume || class == Class::Copy {
-            self.check_read(e.pos, &resolved, b.name.as_str());
+            self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
             let access = if d == Demand::Consume {
                 Access::Copy
             } else {
@@ -1105,7 +1241,7 @@ impl Walker<'_> {
             self.record(e.id, b, Access::Move);
             return;
         }
-        if perm == Perm::Borrowed || perm == Perm::Captured {
+        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
             self.error(
                 e.pos,
                 format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
@@ -1251,7 +1387,10 @@ impl Walker<'_> {
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
         }
-        if modes.accessor && d == Demand::Consume && self.class_of(e) != Class::Copy {
+        // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
+        // consumes it; only a result borrowed from a variable or part of one must stay in place.
+        let on_place = receiver_expr.is_some_and(|r| self.is_place(r));
+        if modes.accessor && on_place && d == Demand::Consume && self.class_of(e) != Class::Copy {
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
             self.error(
                 e.pos,
@@ -1484,7 +1623,7 @@ impl Walker<'_> {
                     self.mutate(e.pos, &info, "change");
                     facts.push((b.uid, CaptureMode::BorrowMut));
                 } else {
-                    self.check_read(e.pos, &resolved, b.name.as_str());
+                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Borrow);
                     facts.push((b.uid, CaptureMode::Borrow));
                 }
@@ -1506,7 +1645,7 @@ impl Walker<'_> {
     fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
-        if perm == Perm::Borrowed || perm == Perm::Captured {
+        if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
             self.error(
                 e.pos,
                 format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),

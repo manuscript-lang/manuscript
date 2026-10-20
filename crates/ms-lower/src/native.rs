@@ -1370,7 +1370,9 @@ impl<'a> FnLower<'a> {
         recv_expr: Option<&Expr>,
         recv: Val,
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
-        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r)) {
+        if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
+            && !self.aliases.contains_key(&b.uid)
+        {
             return Ok((self.local(&b)?.var, false));
         }
         let t = self.ty_of(recv.v);
