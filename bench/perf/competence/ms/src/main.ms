@@ -40,6 +40,12 @@ impl Error for Fail:
     fn message() String:
         return "fail"
 
+type P:
+    x: Int
+    y: Int
+    vx: Int
+    vy: Int
+
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
@@ -69,6 +75,12 @@ fn compare(left: Int, right: Int) Int:
     if left < right: return -1
     if left > right: return 1
 
+    timed("grid2d_500x20", fn() Int: return grid2d(500))
+    timed("struct_100M", fn() Int: return structs(100000000))
+    timed("stack_20M", fn() Int: return stack_ops(20000000))
+    timed("optional_100M", fn() Int: return optionals(100000000))
+    timed("set_2M", fn() Int: return sets(2000000))
+    timed("chars_1M", fn() Int: return chars(1000000))
     return 0
 
 fn sorting(n: Int) Int:
@@ -169,6 +181,118 @@ fn records(n: Int) Int:
 
     return total
 
+fn grid2d(n: Int) Int:
+    var g: List[List[Int]] = []
+    var i = 0
+
+    while i < n:
+        var row: List[Int] = []
+        var j = 0
+
+        while j < n:
+            row.append(i * j % 10)
+            j += 1
+
+        g.append(row)
+        i += 1
+
+    var total = 0
+    var r = 0
+
+    while r < 20:
+        var a = 1
+
+        while a < n - 1:
+            var b = 1
+
+            while b < n - 1:
+                total += g.get(a).get(b) + g.get(a - 1).get(b) + g.get(a + 1).get(b)
+                b += 1
+
+            a += 1
+
+        r += 1
+
+    return total
+
+fn bump(p: P) P:
+    return P(p.x + p.vx, p.y + p.vy, p.vx, p.vy)
+
+fn structs(n: Int) Int:
+    var p = P(0, 0, 1, 2)
+    var i = 0
+
+    while i < n:
+        p = bump(p)
+        i += 1
+
+    return p.x + p.y
+
+fn stack_ops(n: Int) Int:
+    var s: List[Int] = []
+    var total = 0
+    var i = 0
+
+    while i < n:
+        s.append(i)
+
+        if i % 3 == 2:
+            total += s.pop().get(0)
+            total += s.pop().get(0)
+
+        i += 1
+
+    return total + s.length()
+
+fn optionals(n: Int) Int:
+    var total = 0
+    var i = 0
+
+    while i < n:
+        var o: Optional[Int] = none
+        if i % 5 != 0:
+            o = some(i)
+
+        if let v = o:
+            total += v
+        else:
+            total += 1
+
+        i += 1
+
+    return total
+
+fn sets(n: Int) Int:
+    var s = Set[Int]()
+    var i = 0
+
+    while i < n:
+        s.add(i * 7919 % 100003)
+        i += 1
+
+    var hits = 0
+    var j = 0
+
+    while j < n:
+        if s.contains(j):
+            hits += 1
+        j += 1
+
+    return hits + s.length()
+
+fn chars(n: Int) Int:
+    var text = "the quick brown fox jumps over the lazy dog "
+    var total = 0
+    var r = 0
+
+    while r < n:
+        for c in text.chars():
+            if c == "o":
+                total += 1
+        r += 1
+
+    return total
+
 fn timed(name: String, run: fn() Int) Unit:
     let t = clock().now()
     let r = run()
@@ -183,4 +307,10 @@ export fn main() Int:
     timed("strmap_10M", fn() Int: return word_map(10000000))
     timed("errors_50M", fn() Int: return errors(50000000))
     timed("records_1M_x20", fn() Int: return records(1000000))
+    timed("grid2d_500x20", fn() Int: return grid2d(500))
+    timed("struct_100M", fn() Int: return structs(100000000))
+    timed("stack_20M", fn() Int: return stack_ops(20000000))
+    timed("optional_100M", fn() Int: return optionals(100000000))
+    timed("set_2M", fn() Int: return sets(2000000))
+    timed("chars_1M", fn() Int: return chars(1000000))
     return 0
