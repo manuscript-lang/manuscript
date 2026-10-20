@@ -91,7 +91,7 @@ Verified: navigation must continue after the first jump into a standard declarat
 Verified: standard source syntax must also pass ordinary `parser.Parse` and formatting. A permissive library-only parser concealed missing bodies, mixed receiver signatures, and field-default errors. The user requires ordinary empty functions with colon headers, including receiver functions, and empty opaque schemas with colons. Do not replace these with a `native` modifier. Binding authorization belongs to checking. Disk editor documents reuse pinned bindings only for exact source matches, while syntax validity is independently tested. Both repo-check modes validate working-tree stdlib sources through the strict frontend and return a positioned error before checker initialization, so `make check`, `make repo-check`, and CI verification reject invalid syntax directly. Evidence: [all-source parsing and formatting](../stdlib/sources_test.go), [empty-function grammar boundaries](../pkg/parser/empty_declarations_test.go), [disk document checks](../pkg/tooling/lsp/standard_test.go), and [syntax gate regressions](../scripts/repo-check/main_test.go).
 
 Apply when: adding standard APIs, changing their signatures, or extending hover/navigation/documentation.
-Evidence: [declaration ownership](../stdlib/intrinsics.ms); [embedded sources](../stdlib/sources.go); [documentation generator](../scripts/docgen/main.go).
+Evidence: [declaration ownership](../stdlib/intrinsics.ms); [embedded sources](../stdlib/sources.go); [documentation generator](../crates/ms-guide/src/bin/ms-docgen.rs).
 Evidence for continued navigation: [standard loader](../pkg/checker/standard.go), [virtual document analysis](../pkg/tooling/lsp/analysis.go), [navigation regression tests](../pkg/tooling/lsp/features_test.go), [read-only session test](../pkg/tooling/lsp/server_test.go), and [client restart test](../extensions/vscode/tests/extension.test.js).
 Verify: native calling signatures agree with the declarations, editor definitions reach the declaration and can follow imports and signature types from there, and source documentation and the generated book pass their checks. Update the source or generator when output changes. Regenerate from combined source after integration: adding List/Map to the prelude makes their receiver additions appear in the prelude reference as well as the collections reference. Conflict-free merges can still leave generated prelude/download artifacts stale; post-merge docs-check caught this for #262/#269, and combined generation restores those methods. Member-description extraction changes also require combined regeneration, even when merged signature strings remain current.
 
@@ -262,7 +262,7 @@ their `.ms` modules.
 
 Apply when: changing library docs or the book pipeline.
 Evidence: [guide extraction](../pkg/tooling/docgen/guides.go),
-[generation](../scripts/docgen/main.go), and
+[generation](../crates/ms-guide/src/bin/ms-docgen.rs), and
 [source example discovery](../tests/examples/examples_test.go).
 Verify: source checks and tutorial discovery work without generated Markdown;
 `make book-check` generates the mounted pages and validates routes and downloads.

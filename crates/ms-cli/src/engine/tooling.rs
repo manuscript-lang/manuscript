@@ -280,7 +280,7 @@ fn ordered(diagnostics: Vec<CommandDiagnostic>) -> Vec<CommandDiagnostic> {
     let mut seen = BTreeSet::new();
     let mut unique: Vec<CommandDiagnostic> = diagnostics
         .into_iter()
-        .filter(|d| seen.insert(d.to_json().encode()))
+        .filter(|d| seen.insert(d.to_json().pretty_line(ms_json::Escape::GoHtml)))
         .collect();
     unique.sort_by(|a, b| {
         let key = |d: &CommandDiagnostic| {
@@ -326,7 +326,9 @@ pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendRe
         Err(done) => return done,
     };
     let program = checked.program.as_ref().expect("accepted program");
-    let mut text = inspect(program).to_json().encode();
+    let mut text = inspect(program)
+        .to_json()
+        .pretty_line(ms_json::Escape::GoHtml);
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }

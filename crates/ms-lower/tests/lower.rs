@@ -235,3 +235,14 @@ fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
     );
     assert!(mir.contains("store %"));
 }
+
+#[test]
+fn collection_builders_are_shared_handles() {
+    let mir = lower(
+        "shared-builders",
+        "import {ListBuilder} from \"@std/collections.ms\"\n\nexport fn main() Int:\n    let b = ListBuilder[Int]()\n    let c = b\n    b.append(1)\n    c.append(2)\n    return b.freeze().length()\n",
+    );
+    assert!(mir.contains("shared.new"));
+    assert!(mir.contains("shared.addr"));
+    assert!(mir.contains("builder is sealed"));
+}

@@ -6,9 +6,22 @@
 //! fallible native (`-> Result<T, E>`) returns the status byte and writes `T` through a trailing
 //! out-pointer; a record result (`-> out T`) is written through a trailing out-pointer and the
 //! shim returns nothing. This is the same layout the hand-written shims used.
-use crate::{Fail, StrObj, VecVal, bytes_ref, new_string, read_string_list, str_ref};
+use crate::{Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref};
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+
+unsafe extern "C" {
+    fn msrt_retain(o: *mut ms_rt_abi::Obj);
+    fn msrt_release(o: *mut ms_rt_abi::Obj);
+    fn msrt_list_new(out: *mut VecVal);
+    fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
+    fn msrt_list_drop(v: *mut VecVal, d: *const TypeDesc);
+    fn msrt_list_copy(v: *const VecVal, d: *const TypeDesc, out: *mut VecVal);
+    static msrt_desc_string: TypeDesc;
+}
 
 /// The C representation of a Manuscript value type: a scalar or a pointer to a runtime value.
 /// It does not depend on the borrow lifetime of the Rust type.
@@ -115,6 +128,18 @@ unsafe impl<'a> FromAbi<'a> for &'a [u8] {
 impl AbiType for Vec<&str> {
     type Raw = *const VecVal;
 }
+impl IntoAbi for Vec<u8> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_bytes` initializes `v`.
+        unsafe {
+            crate::write_bytes(v.as_mut_ptr(), &self);
+            v.assume_init()
+        }
+    }
+}
+
 // SAFETY: `List[String]` arguments are live and outlive the call.
 unsafe impl<'a> FromAbi<'a> for Vec<&'a str> {
     unsafe fn from_raw(raw: *const VecVal) -> Vec<&'a str> {
@@ -151,6 +176,10 @@ impl Str {
         Str(new_string(s))
     }
 
+    pub fn as_ptr(&self) -> *const StrObj {
+        self.0
+    }
+
     pub fn as_str(&self) -> &str {
         // SAFETY: a `Str` is only created by `new` or by the runtime inside a live record.
         unsafe { str_ref(self.0) }
@@ -177,20 +206,249 @@ impl StringList {
     }
 }
 
-/// A type that may be a field of an [`abi_record!`].
-pub trait AbiSlot {}
-impl AbiSlot for i64 {}
-impl AbiSlot for f64 {}
-impl AbiSlot for u8 {}
-impl AbiSlot for Str {}
-impl AbiSlot for StringList {}
+/// A type that may be a field of an [`abi_record!`]. `release` and `duplicate` are the
+/// drop and copy of the slot inside a runtime list or record.
+pub trait AbiSlot: Sized {
+    /// Releases what the slot owns.
+    ///
+    /// # Safety
+    /// The slot is live and not used afterwards.
+    unsafe fn release(&mut self);
+    /// A deep copy: strings retained, lists copied.
+    ///
+    /// # Safety
+    /// The slot is live.
+    unsafe fn duplicate(&self) -> Self;
+}
+
+macro_rules! plain_slot {
+    ($($t:ty),*) => {$(
+        impl AbiSlot for $t {
+            unsafe fn release(&mut self) {}
+            unsafe fn duplicate(&self) -> $t { *self }
+        }
+    )*};
+}
+plain_slot!(i64, f64, u8, OptInt);
+
+/// `Optional[Int]` stored inline in a record: a presence byte, then the value.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct OptInt {
+    present: u8,
+    value: i64,
+}
+
+impl OptInt {
+    pub fn new(v: Option<i64>) -> OptInt {
+        OptInt {
+            present: u8::from(v.is_some()),
+            value: v.unwrap_or(0),
+        }
+    }
+
+    pub fn get(&self) -> Option<i64> {
+        (self.present != 0).then_some(self.value)
+    }
+}
+
+impl AbiSlot for Str {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract; a `Str` owns one reference.
+        unsafe { msrt_release(self.0.cast()) }
+    }
+    unsafe fn duplicate(&self) -> Str {
+        // SAFETY: caller contract.
+        unsafe { msrt_retain(self.0.cast()) };
+        Str(self.0)
+    }
+}
+
+impl AbiSlot for StringList {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract.
+        unsafe { msrt_list_drop(&raw mut self.0, &raw const msrt_desc_string) }
+    }
+    unsafe fn duplicate(&self) -> StringList {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: caller contract; `msrt_list_copy` initializes `v`.
+        unsafe {
+            msrt_list_copy(
+                &raw const self.0,
+                &raw const msrt_desc_string,
+                v.as_mut_ptr(),
+            );
+            StringList(v.assume_init())
+        }
+    }
+}
+
+/// An owned `List[R]` of records, stored inside a record or returned from a native.
+#[repr(transparent)]
+pub struct RecList<R: AbiRecord>(VecVal, PhantomData<R>);
+
+impl<R: AbiRecord> RecList<R> {
+    pub fn new(items: impl IntoIterator<Item = R>) -> RecList<R> {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `msrt_list_new` initializes `v`; each pushed record moves into the list.
+        unsafe {
+            msrt_list_new(v.as_mut_ptr());
+            for item in items {
+                msrt_list_push(v.as_mut_ptr(), R::desc(), (&raw const item).cast());
+                core::mem::forget(item);
+            }
+            RecList(v.assume_init(), PhantomData)
+        }
+    }
+
+    pub fn as_slice(&self) -> &[R] {
+        if self.0.len == 0 {
+            return &[];
+        }
+        // SAFETY: a non-empty list holds `len` records inline at `ptr`.
+        unsafe { core::slice::from_raw_parts(self.0.ptr as *const R, self.0.len) }
+    }
+}
+
+impl<R: AbiRecord> AbiSlot for RecList<R> {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract.
+        unsafe { msrt_list_drop(&raw mut self.0, R::desc()) }
+    }
+    unsafe fn duplicate(&self) -> RecList<R> {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: caller contract; `msrt_list_copy` initializes `v`.
+        unsafe {
+            msrt_list_copy(&raw const self.0, R::desc(), v.as_mut_ptr());
+            RecList(v.assume_init(), PhantomData)
+        }
+    }
+}
+
+impl<R: AbiRecord> AbiType for &RecList<R> {
+    type Raw = *const RecList<R>;
+}
+// SAFETY: list arguments are live lists that outlive the call.
+unsafe impl<'a, R: AbiRecord> FromAbi<'a> for &'a RecList<R> {
+    unsafe fn from_raw(raw: *const RecList<R>) -> &'a RecList<R> {
+        // SAFETY: caller contract.
+        unsafe { &*raw }
+    }
+}
+impl<R: AbiRecord> IntoAbi for RecList<R> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        self.0
+    }
+}
+
+impl IntoAbi for () {
+    type Raw = ();
+    fn into_raw(self) {}
+}
+
+/// A runtime string passes through unchanged (+1 owned by the caller).
+impl IntoAbi for *mut StrObj {
+    type Raw = *mut StrObj;
+    fn into_raw(self) -> *mut StrObj {
+        self
+    }
+}
+
+/// A Rust value handed to Manuscript as an opaque pointer (a `handle` type); declare it with
+/// [`abi_handle!`]. Use [`Own`], [`Ref`] and [`Mut`] in native signatures.
+///
+/// # Safety
+/// Only [`abi_handle!`] implements it.
+pub unsafe trait AbiHandle: Sized {}
+
+/// An owned handle: returned to Manuscript as a pointer, or received to be freed.
+pub struct Own<T: AbiHandle>(pub Box<T>);
+/// A shared borrow of a handle.
+pub struct Ref<'a, T: AbiHandle>(pub &'a T);
+/// An exclusive borrow of a handle.
+pub struct Mut<'a, T: AbiHandle>(pub &'a mut T);
+
+impl<T: AbiHandle> Deref for Own<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+impl<T: AbiHandle> Deref for Ref<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> Deref for Mut<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+impl<T: AbiHandle> DerefMut for Mut<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.0
+    }
+}
+
+impl<T: AbiHandle> AbiType for Own<T> {
+    type Raw = *mut T;
+}
+impl<T: AbiHandle> AbiType for Ref<'_, T> {
+    type Raw = *const T;
+}
+impl<T: AbiHandle> AbiType for Mut<'_, T> {
+    type Raw = *mut T;
+}
+// SAFETY: an owned handle came from `into_raw` and is received once.
+unsafe impl<T: AbiHandle> FromAbi<'_> for Own<T> {
+    unsafe fn from_raw(raw: *mut T) -> Own<T> {
+        // SAFETY: caller contract.
+        Own(unsafe { Box::from_raw(raw) })
+    }
+}
+// SAFETY: a handle argument is a live handle.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for Ref<'a, T> {
+    unsafe fn from_raw(raw: *const T) -> Ref<'a, T> {
+        // SAFETY: caller contract.
+        Ref(unsafe { &*raw })
+    }
+}
+// SAFETY: a handle argument is a live handle with no other borrow during the call.
+unsafe impl<'a, T: AbiHandle> FromAbi<'a> for Mut<'a, T> {
+    unsafe fn from_raw(raw: *mut T) -> Mut<'a, T> {
+        // SAFETY: caller contract.
+        Mut(unsafe { &mut *raw })
+    }
+}
+impl<T: AbiHandle> IntoAbi for Own<T> {
+    type Raw = *mut T;
+    fn into_raw(self) -> *mut T {
+        Box::into_raw(self.0)
+    }
+}
+
+/// Declares a Rust type as a handle for [`native!`](crate::native).
+#[macro_export]
+macro_rules! abi_handle {
+    ($t:ty) => {
+        #[allow(unsafe_code)]
+        // SAFETY: handles cross the ABI only through `Own`, `Ref` and `Mut`.
+        unsafe impl $crate::AbiHandle for $t {}
+    };
+}
 
 /// A `repr(C)` record whose fields are all [`AbiSlot`]s; declare it with [`abi_record!`].
 ///
 /// # Safety
 /// The type is `repr(C)` with the layout of the Manuscript record and every field is an
 /// [`AbiSlot`]. Only [`abi_record!`] implements it.
-pub unsafe trait AbiRecord: Sized {}
+pub unsafe trait AbiRecord: Sized {
+    /// The slot descriptor of the record, for `List[Record]`.
+    fn desc() -> &'static TypeDesc;
+}
 
 impl<R: AbiRecord> AbiType for &R {
     type Raw = *const R;
@@ -222,13 +480,37 @@ macro_rules! abi_record {
         #[repr(C)]
         $vis struct $name { $($fvis $f: $t),* }
         #[allow(unsafe_code)]
-        // SAFETY: `repr(C)` above; the const below proves every field is an `AbiSlot`.
-        unsafe impl $crate::AbiRecord for $name {}
-        const _: () = {
-            fn assert_slot<T: $crate::AbiSlot>() {}
-            #[allow(dead_code)]
-            fn fields() { $(assert_slot::<$t>();)* }
-        };
+        // SAFETY: `repr(C)` above; every field is an `AbiSlot` (a bound of the calls below).
+        unsafe impl $crate::AbiRecord for $name {
+            fn desc() -> &'static $crate::TypeDesc {
+                // SAFETY (both fns): the runtime passes live slots of this record type.
+                unsafe extern "C" fn release(slot: *mut u8) {
+                    let r = unsafe { &mut *slot.cast::<$name>() };
+                    $(unsafe { $crate::AbiSlot::release(&mut r.$f) };)*
+                }
+                unsafe extern "C" fn duplicate(src: *const u8, dst: *mut u8) {
+                    let r = unsafe { &*src.cast::<$name>() };
+                    unsafe {
+                        dst.cast::<$name>().write($name {
+                            $($f: $crate::AbiSlot::duplicate(&r.$f)),*
+                        })
+                    };
+                }
+                static DESC: $crate::TypeDesc = $crate::TypeDesc {
+                    size: ::core::mem::size_of::<$name>() as u32,
+                    align: ::core::mem::align_of::<$name>() as u32,
+                    kind: $crate::KIND_CUSTOM,
+                    reserved: 0,
+                    inner0: ::core::ptr::null(),
+                    inner1: ::core::ptr::null(),
+                    drop: Some(release),
+                    copy: Some(duplicate),
+                    eq: None,
+                    hash: None,
+                };
+                &DESC
+            }
+        }
     };
 }
 

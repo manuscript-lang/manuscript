@@ -241,7 +241,7 @@ pub fn inspect(program: &Program) -> Inspection {
     gosort::slice(&mut result.sources, |a, b| a.file < b.file);
     gosort::slice(&mut result.entities, |a, b| a.id < b.id);
     gosort::slice(&mut result.calls, |a, b| a.id < b.id);
-    result.build_id = sha256::hex(result.to_json().encode_compact().as_bytes());
+    result.build_id = sha256::hex(result.to_json().compact(ms_json::Escape::GoHtml).as_bytes());
     result
 }
 

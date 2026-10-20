@@ -1,211 +1,108 @@
 //! C ABI shims for `@std/url.ms` (`msrt_url_*`).
 //!
-//! `Url` and `QueryEntry` are passed by pointer to records at their natural layout, fields in
-//! declaration order (see [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the
-//! runtime are owned (+1) by the record; strings inside a record read by the runtime are borrowed.
-#![allow(unsafe_code, clippy::missing_safety_doc)]
-
+//! `Url` and `QueryEntry` are records at their natural layout, fields in declaration order (see
+//! [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the runtime are owned (+1)
+//! by the record; strings inside a record read by the runtime are borrowed.
 use crate::Components;
-use ms_rt_abi::KIND_CUSTOM;
-use ms_std_core::{StrObj, TypeDesc, VecVal, new_string, opt, status_of, str_ref};
+use alloc::string::String;
+use alloc::vec::Vec;
+use ms_std_core::{Fail, OptInt, RecList, Str, abi_record, native};
 
-unsafe extern "C" {
-    fn msrt_list_new(out: *mut VecVal);
-    fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
-    fn msrt_retain(o: *mut ms_rt_abi::Obj);
-    fn msrt_release(o: *mut ms_rt_abi::Obj);
-}
-
-/// `Url` record: `scheme, host, port: Optional[Int], path, query, fragment`.
-#[repr(C)]
-pub struct UrlRec {
-    pub scheme: *mut StrObj,
-    pub host: *mut StrObj,
-    pub port_present: u8,
-    pub port: i64,
-    pub path: *mut StrObj,
-    pub query: *mut StrObj,
-    pub fragment: *mut StrObj,
-}
-
-/// `QueryEntry` record: `key, value`.
-#[repr(C)]
-pub struct QueryEntryRec {
-    pub key: *mut StrObj,
-    pub value: *mut StrObj,
-}
-
-unsafe fn read_url(u: *const UrlRec) -> Components {
-    // SAFETY: `u` is a live Url record whose strings are live.
-    unsafe {
-        let u = &*u;
-        Components {
-            scheme: str_ref(u.scheme).into(),
-            host: str_ref(u.host).into(),
-            port: opt(u.port_present, u.port),
-            path: str_ref(u.path).into(),
-            query: str_ref(u.query).into(),
-            fragment: str_ref(u.fragment).into(),
-        }
+abi_record! {
+    /// `Url` record: `scheme, host, port: Optional[Int], path, query, fragment`.
+    pub struct UrlRec {
+        pub scheme: Str,
+        pub host: Str,
+        pub port: OptInt,
+        pub path: Str,
+        pub query: Str,
+        pub fragment: Str,
     }
 }
 
-unsafe fn write_url(c: &Components, out: *mut UrlRec) {
-    // SAFETY: `out` is writable.
-    unsafe {
-        out.write(UrlRec {
-            scheme: new_string(&c.scheme),
-            host: new_string(&c.host),
-            port_present: u8::from(c.port.is_some()),
-            port: c.port.unwrap_or(0),
-            path: new_string(&c.path),
-            query: new_string(&c.query),
-            fragment: new_string(&c.fragment),
-        });
+abi_record! {
+    /// `QueryEntry` record: `key, value`.
+    pub struct QueryEntryRec {
+        pub key: Str,
+        pub value: Str,
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_encode_component(text: *const StrObj) -> *mut StrObj {
-    // SAFETY: `text` is live.
-    new_string(&crate::encode_component(unsafe { str_ref(text) }))
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_decode_component(
-    text: *const StrObj,
-    out: *mut *mut StrObj,
-) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        let r = crate::decode_component(str_ref(text));
-        if let Ok(s) = &r {
-            out.write(new_string(s));
-        }
-        status_of(&r)
+fn read_url(u: &UrlRec) -> Components {
+    Components {
+        scheme: u.scheme.as_str().into(),
+        host: u.host.as_str().into(),
+        port: u.port.get(),
+        path: u.path.as_str().into(),
+        query: u.query.as_str().into(),
+        fragment: u.fragment.as_str().into(),
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_parse(text: *const StrObj, out: *mut UrlRec) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        let r = crate::parse(str_ref(text));
-        if let Ok(c) = &r {
-            write_url(c, out);
-        }
-        status_of(&r)
+fn write_url(c: Components) -> UrlRec {
+    UrlRec {
+        scheme: Str::new(&c.scheme),
+        host: Str::new(&c.host),
+        port: OptInt::new(c.port),
+        path: Str::new(&c.path),
+        query: Str::new(&c.query),
+        fragment: Str::new(&c.fragment),
     }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_resolve(
-    base: *const UrlRec,
-    reference: *const StrObj,
-    out: *mut UrlRec,
-) -> u8 {
-    // SAFETY: `base` is a live Url record; `reference` is live; `out` is writable.
-    unsafe {
-        let r = crate::resolve(&read_url(base), str_ref(reference));
-        if let Ok(c) = &r {
-            write_url(c, out);
-        }
-        status_of(&r)
+native! {
+    fn msrt_url_encode_component(text: &str) -> String {
+        crate::encode_component(text)
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_format(value: *const UrlRec, out: *mut *mut StrObj) -> u8 {
-    // SAFETY: `value` is a live Url record; `out` is writable.
-    unsafe {
-        let r = crate::format(&read_url(value));
-        if let Ok(s) = &r {
-            out.write(new_string(s));
-        }
-        status_of(&r)
+    fn msrt_url_decode_component(text: &str) -> Result<String, Fail> {
+        crate::decode_component(text)
     }
-}
 
-unsafe extern "C" fn entry_drop(slot: *mut u8) {
-    // SAFETY: `slot` holds a `QueryEntryRec` owning both strings.
-    unsafe {
-        let e = &*(slot as *const QueryEntryRec);
-        msrt_release(e.key.cast());
-        msrt_release(e.value.cast());
+    fn msrt_url_parse(text: &str) -> Result<UrlRec, Fail> {
+        crate::parse(text).map(write_url)
     }
-}
 
-unsafe extern "C" fn entry_copy(src: *const u8, dst: *mut u8) {
-    // SAFETY: `src` holds a live record; `dst` is writable and uninitialised.
-    unsafe {
-        let e = &*(src as *const QueryEntryRec);
-        msrt_retain(e.key.cast());
-        msrt_retain(e.value.cast());
-        (dst as *mut QueryEntryRec).write(QueryEntryRec {
-            key: e.key,
-            value: e.value,
-        });
+    fn msrt_url_resolve(base: &UrlRec, reference: &str) -> Result<UrlRec, Fail> {
+        crate::resolve(&read_url(base), reference).map(write_url)
     }
-}
 
-/// Descriptor of `QueryEntry` (a record of two strings), for `List[QueryEntry]`.
-pub static DESC_QUERY_ENTRY: TypeDesc = TypeDesc {
-    size: 16,
-    align: 8,
-    kind: KIND_CUSTOM,
-    reserved: 0,
-    inner0: core::ptr::null(),
-    inner1: core::ptr::null(),
-    drop: Some(entry_drop),
-    copy: Some(entry_copy),
-    eq: None,
-    hash: None,
-};
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_parse_query(
-    text: *const StrObj,
-    has_max: u8,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: `text` is live; `out` is writable.
-    unsafe {
-        let r = crate::parse_query(str_ref(text), opt(has_max, max));
-        if let Ok(items) = &r {
-            msrt_list_new(out);
-            for (k, v) in items {
-                let e = QueryEntryRec {
-                    key: new_string(k),
-                    value: new_string(v),
-                };
-                msrt_list_push(out, &DESC_QUERY_ENTRY, (&raw const e).cast());
-            }
-        }
-        status_of(&r)
+    fn msrt_url_format(value: &UrlRec) -> Result<String, Fail> {
+        crate::format(&read_url(value))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_url_format_query(entries: *const VecVal) -> *mut StrObj {
-    // SAFETY: `entries` is a live `List[QueryEntry]`, records stored inline 16 bytes apart.
-    unsafe {
-        let v = &*entries;
-        let items: alloc::vec::Vec<(&str, &str)> = (0..v.len)
-            .map(|i| {
-                let e = &*(v.ptr as *const QueryEntryRec).add(i);
-                (str_ref(e.key), str_ref(e.value))
-            })
+    fn msrt_url_parse_query(
+        text: &str,
+        has_max: bool,
+        max: i64,
+    ) -> Result<RecList<QueryEntryRec>, Fail> {
+        crate::parse_query(text, has_max.then_some(max)).map(|items| {
+            RecList::new(items.iter().map(|(k, v)| QueryEntryRec {
+                key: Str::new(k),
+                value: Str::new(v),
+            }))
+        })
+    }
+
+    fn msrt_url_format_query(entries: &RecList<QueryEntryRec>) -> String {
+        let items: Vec<(&str, &str)> = entries
+            .as_slice()
+            .iter()
+            .map(|e| (e.key.as_str(), e.value.as_str()))
             .collect();
-        new_string(&crate::format_query(&items))
+        crate::format_query(&items)
     }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
+    use ms_rt::obj::msrt_release;
     use ms_rt_abi::STATUS_OK;
+    use ms_std_core::AbiRecord;
+    use ms_std_core::{StrObj, VecVal, new_string, str_ref};
 
     #[test]
     fn abi_roundtrip() {
@@ -217,33 +114,30 @@ mod tests {
         unsafe {
             assert_eq!(msrt_url_parse(text, rec.as_mut_ptr()), STATUS_OK);
             let r = rec.assume_init_ref();
-            assert_eq!(
-                (str_ref(r.host), r.port_present, r.port),
-                ("example.com", 1, 81)
-            );
+            assert_eq!((r.host.as_str(), r.port.get()), ("example.com", Some(81)));
             assert_eq!(msrt_url_format(rec.as_ptr(), s.as_mut_ptr()), STATUS_OK);
             assert_eq!(
                 str_ref(s.assume_init()),
                 "https://example.com:81/p?a=1&a=2#f"
             );
             assert_eq!(
-                msrt_url_parse_query(r.query, 0, 0, q.as_mut_ptr()),
+                msrt_url_parse_query(r.query.as_ptr(), 0, 0, q.as_mut_ptr()),
                 STATUS_OK
             );
             assert_eq!((*q.as_ptr()).len, 2);
-            let f = msrt_url_format_query(q.as_ptr());
+            let f = msrt_url_format_query(q.as_ptr().cast());
             assert_eq!(str_ref(f), "a=1&a=2");
-            ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), &DESC_QUERY_ENTRY);
+            ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), QueryEntryRec::desc());
             for o in [
-                r.scheme,
-                r.host,
-                r.path,
-                r.query,
-                r.fragment,
-                text,
-                f,
-                s.assume_init(),
+                r.scheme.as_ptr(),
+                r.host.as_ptr(),
+                r.path.as_ptr(),
+                r.query.as_ptr(),
+                r.fragment.as_ptr(),
             ] {
+                msrt_release(o.cast_mut().cast());
+            }
+            for o in [text, f, s.assume_init()] {
                 msrt_release(o.cast());
             }
         }

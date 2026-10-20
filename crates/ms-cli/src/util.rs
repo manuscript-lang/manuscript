@@ -48,7 +48,10 @@ pub fn file_error(error: &ProjectError) -> String {
 
 /// Write a JSON document to stdout and return `status`.
 pub fn emit_json(io: &mut Io, value: &Json, status: i32) -> i32 {
-    match io.stdout.write_all(value.encode().as_bytes()) {
+    match io
+        .stdout
+        .write_all(value.pretty_line(ms_json::Escape::GoHtml).as_bytes())
+    {
         Ok(()) => status,
         Err(error) => {
             let _ = writeln!(io.stderr, "{error}");

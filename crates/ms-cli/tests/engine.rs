@@ -265,3 +265,32 @@ fn native_chains_copy_and_drop_iteratively() {
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
+
+/// A field of a list element, and a mutator on one, change the list in place; copies keep
+/// the old value.
+#[test]
+fn native_list_element_places_update_the_list() {
+    let dir = scratch("native-elem");
+    let source = write(
+        &dir,
+        "main.ms",
+        "type Cell:\n    n: Int\n    tag: String\n\nexport fn main() Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
+    );
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+}
+
+/// Labeled arguments of a native method bind by name, whatever order they are written in.
+#[test]
+fn native_method_labels_bind_by_name() {
+    let dir = scratch("native-labels");
+    let source = write(
+        &dir,
+        "main.ms",
+        "export fn main() Int:\n    var items = [1, 2, 3]\n    items.set(value: 8, 0)\n    items.insert(value: 5, 1)\n    if items[0] != 8 or items[1] != 5 or items.length() != 4:\n        return 1\n    return 0\n",
+    );
+    let backend = RustBackend::new(Native);
+    let (status, _, err) = ms(&backend, &["run", &source]);
+    assert_eq!((status, err.as_str()), (0, ""));
+}

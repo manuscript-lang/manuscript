@@ -65,7 +65,7 @@ fn declaration_kind_presentation() {
         let Json::Obj(root) = json::parse(&data).unwrap() else {
             panic!()
         };
-        assert_eq!(root[0].1, Json::Int(1));
+        assert_eq!(root[0].1, Json::int(1));
         assert!(
             data.contains(&format!("\"kind\": \"{kind}\""))
                 && data.contains("\"type\": \"fn(value: String) Bool\"")

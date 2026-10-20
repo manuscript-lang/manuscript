@@ -312,7 +312,7 @@ impl Server<'_> {
     }
 
     fn send(&mut self, value: &Json) -> Flow {
-        let body = value.encode();
+        let body = value.compact(ms_json::Escape::Plain);
         write!(
             self.output,
             "Content-Length: {}\r\n\r\n{}",
