@@ -4,40 +4,50 @@ How behavior is proven in this repository. Test-API semantics (plans, fixtures, 
 
 ### Choose the layer that can fail for the right reason
 
-Verified: the layers are Go unit tests per package; `tests/e2e/testdata/accept` and `reject` (accepted fixtures run their `test` blocks, rejected cases assert diagnostics); `tests/e2e/testdata/stdlib` (one fixture per public module); `projects/` for multi-file modules; `shutdown/` for signals; and tutorial fences run by `make examples-check` / coverage. A language change needs an accept fixture and a reject fixture; a stdlib change needs its module fixture; a lifetime or concurrency change needs observable close/cancel/join cases under `-race`.
+Verified: the layers are Rust unit and integration tests per crate (`cargo nextest run --workspace`); the frozen conformance corpus in `tests/conformance/fixtures` (run, check, test, parse phases, gated by `make conform-rust`); `.ms` fixtures under `tests/e2e/testdata/` (`accept`, `reject`, `stdlib`, `projects`, `shutdown`) that seed the corpus; and documentation fences checked by `make docs-check`. A language change needs an accepting case and a rejecting case; a stdlib change needs its module fixture; a lifetime or cancellation change needs observable close/cancel/join cases.
 
 Apply when: deciding where a regression test belongs.
-Evidence: [development checks](../documentation/contributing/development.md#conformance-and-coverage), [Makefile](../Makefile).
-Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conformance`, `make stdlib-test`, `make race`) pass.
+Evidence: [conformance corpus](../tests/conformance/README.md), [development checks](../documentation/contributing/development.md), [Makefile](../Makefile).
+Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conform-rust`) pass.
+
+### Conformance expectations are frozen contracts
+
+Decision: the corpus expectations were first recorded from the Go `ms` and are now the contract; the Go implementation is gone and is not needed to extend them. Known differences of the Rust `ms` are listed in `tests/conformance/rust-expect-fail.txt` with a reason, and fixtures tagged `aliasing` are excluded because the value-semantics migration changes them on purpose. Remove an expect-fail entry when it is fixed; do not add one to hide a new regression.
+
+Apply when: a conformance case fails, or a deliberate semantic change alters recorded output.
+Evidence: [corpus README](../tests/conformance/README.md), [expected failures](../tests/conformance/rust-expect-fail.txt), [runner](../crates/ms-conform/src/runner.rs).
+Verify: `make conform-rust` reports a nonempty plan with no unexpected failures or unexpected passes.
 
 ### Source tests return Result and run through `ms test`
 
-Decision: Manuscript conformance uses `ms test` with Result assertions; no panic sentinels, and no Go loops orchestrating `.ms` files. Details and the empty-report guard are in the first entry of [repository.md](repository.md).
+Decision: the user asked to replace panic assertions with the standard testing API, to use pipe chains where they clarify the flow, and to remove host-language orchestration of Manuscript conformance. Assertions return Result; helpers propagate errors, and task callers inspect returned Results after joining. Physical `.ms` tests use Result errors and run through `ms test`; keep deliberate fault/Never/nonexecution subjects as embedded source fixtures. Prove skipped callbacks with invocation assertions instead of panic sentinels.
 
-Apply when: writing or migrating a `.ms` fixture.
-Evidence: [dispatcher](../scripts/conformance.ms), commit c4c5d1bd.
-Verify: `make conformance` reports a nonempty plan.
+Verified: runners that accepted `0 tests, 0 failed` and bypassed CLI argument handling hid breakage. Runner flags must not become test host arguments.
+
+Apply when: adding source conformance cases, assertion helpers, or changing test entrypoints.
+Evidence: [testing declarations](../stdlib/testing.ms), [core parity project](../tests/e2e/testdata/projects/core_parity/conformance_test.ms).
+Verify: `make conform-rust`; source tests use `try`, pipeline calls do not discard Result errors, and invalid or incomplete reports fail.
 
 ### Fixtures follow current idiom, except where they test the old form
 
 Decision: after sweeping renames (`to_string`, positional arguments, `--drop-labels`, `get(default)`, `TextError`, `write_bytes`, no `->`), fixtures are migrated to the new spelling; only rejected-variant fixtures keep removed syntax, and only to assert the diagnostic. A fixture that uses a removed name to pass is a stale test, not a compatibility contract. Accepted fixtures keep some/none `match` only when testing match semantics; nested `match` is guarded by `make repo-check`.
 
 Apply when: a rename or removal lands, or a rebase brings in fixtures written before it.
-Evidence: commits 977c5fe7, 74af558c, 36a3ed43, [nested-match check](../scripts/repo-check/nested_match.go).
+Evidence: [nested-match check](../crates/ms-repo-check/src/nested.rs); `ms-repo-check` skips `tests/conformance/fixtures/` because those inputs are frozen.
 Verify: `rg` for the old spelling finds only reject fixtures and intentionally scoped allowances.
 
 ### Do not accept an empty run
 
-Verified: a runner that reports `0 tests, 0 failed` is a failure. CI sharding and the conformance dispatcher both reject empty inventories. Any new runner or shard script needs the same guard and a test that injects the empty case.
+Verified: a runner that reports `0 tests, 0 failed` is a failure. Any new runner, shard script, or report parser needs a guard against empty inventories and a test that injects the empty case. `make conform-rust` shards with `CONFORM_SHARD=i/n`; a single shard may legitimately select nothing only if the full inventory is nonempty.
 
 Apply when: adding test entrypoints, sharding, or report parsers.
-Evidence: [shard runner](../scripts/ci-test.sh), [its regressions](../scripts/repo-check/ci_test_test.go).
-Verify: injected discovery failure exits nonzero.
+Evidence: [conformance runner](../crates/ms-conform/src/runner.rs), [Makefile](../Makefile).
+Verify: an injected discovery failure exits nonzero.
 
-### Fuzz and fixture-run time budgets are explicit
+### Fuzz regressions become observable tests
 
-Verified: `make fuzz` runs parsing, editor recovery, and compilation for ten seconds each (`FUZZTIME` overrides). A fuzz-found failure becomes an observable regression test before it is called resolved. Race-checked packages run without coverage instrumentation because it makes timing tests flaky.
+Verified: the conformance tool has generated-input fuzzing (`ms-conform fuzz-gen`, `fuzz`). A fuzz-found failure becomes an observable regression test before it is called resolved, with the minimized input kept in the test.
 
 Apply when: fixing a crash found by fuzzing or adding timing-sensitive tests.
-Evidence: [development checks](../documentation/contributing/development.md).
+Evidence: [fuzz module](../crates/ms-conform/src/fuzz.rs), [corpus README](../tests/conformance/README.md).
 Verify: the minimized input lives in a regression test.

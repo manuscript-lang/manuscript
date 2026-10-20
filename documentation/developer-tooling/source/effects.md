@@ -9,7 +9,7 @@ An effect is external behavior reachable from a function; a callee's write is pa
 
 ## Transitive analysis
 
-Effects combine along calls. The vocabulary is `read`, `write`, `external-call`, and `unknown` (`pkg/checker/effects.go`).
+Effects combine along calls. The vocabulary is `read`, `write`, `external-call`, and `unknown` (`crates/ms-check/src/effects.rs`).
 
 | Call target | How it contributes to the summary |
 | --- | --- |

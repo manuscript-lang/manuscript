@@ -6,4 +6,4 @@ weight = 4
 # Debugging
 
 - [Build, source, and task metadata](metadata.md)
-- [Debugger transport](debugger-integration.md)
+- [Profiling and native debugging](debugger-integration.md)
