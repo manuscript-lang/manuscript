@@ -67,6 +67,8 @@ fn restore(sig: i32) {
     unsafe { libc::sigaction(sig, &act, core::ptr::null_mut()) };
 }
 
+ms_std_core::abi_handle!(Watcher);
+
 /// One `SignalStream`.
 pub struct Watcher {
     read: i32,

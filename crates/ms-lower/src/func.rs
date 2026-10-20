@@ -70,6 +70,8 @@ pub(crate) struct FnLower<'a> {
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
     pub discard: Option<usize>,
+    /// The start of the statement being lowered.
+    pub stmt_pos: Option<Pos>,
     /// The fixture hooks a test runs after its body, on every exit.
     pub fixture: Option<crate::fixture::Hooks>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
@@ -151,6 +153,9 @@ impl Cx {
             format!("test {}", t.name)
         } else if c.name.as_str().is_empty() {
             "test".to_string()
+        } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
+            // Fault traces name a method after its receiver type.
+            format!("{}.{}", i.receiver.name(), c.name)
         } else {
             c.name.to_string()
         };
@@ -184,9 +189,7 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
         .cloned()
         .ok_or_else(|| Error::new("no main function"))?;
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
-    while let Some(job) = cx.queue.pop() {
-        lower_job(&mut cx, &mut m, job)?;
-    }
+    drain(&mut cx, &mut m)?;
     let f = &mut m.funcs[main_id.index()];
     f.linkage = Linkage::Export;
     m.entry = Some(main_id);
@@ -216,11 +219,28 @@ pub(crate) fn lower_tests(
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
-    while let Some(job) = cx.queue.pop() {
-        lower_job(&mut cx, &mut m, job)?;
-    }
+    drain(&mut cx, &mut m)?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
+}
+
+/// Lowers queued jobs until none remain. The text of an interface value tests every table of
+/// the interface, so it waits until no other job can still add one.
+fn drain(cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
+    let deferred = |m: &Module, j: &Job| {
+        matches!(&j.kind, JobKind::Category(_))
+            || matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)))
+    };
+    loop {
+        let next = match cx.queue.iter().rposition(|j| !deferred(m, j)) {
+            Some(i) => cx.queue.remove(i),
+            None => match cx.queue.pop() {
+                Some(j) => j,
+                None => return Ok(()),
+            },
+        };
+        lower_job(cx, m, next)?;
+    }
 }
 
 fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
@@ -238,8 +258,11 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
+        JobKind::DefaultThunk(n) => return crate::closure::build_default_thunk(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
         JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
+        JobKind::IfaceThunk(j) => return crate::closure::build_iface_thunk(cx, m, job.func, j),
+        JobKind::Category(t) => return crate::category::build_category(cx, m, job.func, *t),
         JobKind::Html(j) => return crate::html::build_html(cx, m, job.func, j),
     };
     let hir = cx.module(c.module.file)?;
@@ -280,6 +303,7 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_slots: Vec::new(),
             discard: None,
+            stmt_pos: None,
             fixture: None,
             err_slot: None,
         }
@@ -292,6 +316,7 @@ impl<'a> FnLower<'a> {
 
     /// Sets the location of subsequent instructions.
     pub fn at(&mut self, pos: Pos) {
+        let pos = self.stmt_pos.unwrap_or(pos);
         let l = self.loc(pos);
         self.b.set_loc(l);
     }

@@ -49,6 +49,8 @@ unsafe extern "C-unwind" {
     fn msrt_io_flush();
 }
 
+ms_std_core::abi_handle!(Stream);
+
 pub struct Stream {
     pub(crate) fd: sys::Fd,
     /// Standard output and error share the descriptor with the runtime's buffered `print`.

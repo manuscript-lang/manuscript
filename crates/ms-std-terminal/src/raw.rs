@@ -4,14 +4,18 @@
 //! acquired it, by dropping the last reference, or at process exit) shows the cursor, leaves the
 //! alternate screen and restores the saved settings. Window changes are noticed by comparing the
 //! size while waiting for input, so a `Resize` event can lag by up to one wait step.
+#![allow(unsafe_code)] // the `ms-rt` task and exit-hook calls below
 
 use crate::decoder::{Decoder, Event};
 use alloc::collections::VecDeque;
+use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
+use core::ops::Deref;
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK,
 };
+use ms_std_core::Global;
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
 use rustix::io::{Errno, read, write};
@@ -41,7 +45,7 @@ const ESCAPE_NS: i64 = 40 * NS_PER_MS;
 /// Cursor positions beyond this are refused, as the escape sequences cannot carry them.
 const MAX_POSITION: i64 = 65534;
 
-pub struct Raw {
+pub struct State {
     input: BorrowedFd<'static>,
     output: BorrowedFd<'static>,
     saved: Termios,
@@ -56,26 +60,31 @@ pub struct Raw {
 }
 
 /// The raw terminal currently holding the host terminal.
-struct Active(Cell<*const Raw>);
-
-// SAFETY: the runtime runs Manuscript code on one thread.
-unsafe impl Sync for Active {}
-
-static ACTIVE: Active = Active(Cell::new(core::ptr::null()));
+static ACTIVE: Global<RefCell<Weak<State>>> = Global::new(RefCell::new(Weak::new()));
 
 /// Whether the exit hook is registered.
-struct Flag(Cell<bool>);
-
-// SAFETY: the runtime runs Manuscript code on one thread.
-unsafe impl Sync for Flag {}
-
-static HOOKED: Flag = Flag(Cell::new(false));
+static HOOKED: Global<Cell<bool>> = Global::new(Cell::new(false));
 
 extern "C" fn restore_at_exit() {
-    let active = ACTIVE.0.get();
-    if !active.is_null() {
-        // SAFETY: the pointer is cleared before its terminal is freed.
-        unsafe { (*active).close() };
+    let active = ACTIVE.get().borrow().upgrade();
+    if let Some(active) = active {
+        active.close();
+    }
+}
+
+/// A raw terminal; dropping the last reference restores the host terminal.
+pub struct Raw(Rc<State>);
+
+impl Deref for Raw {
+    type Target = State;
+    fn deref(&self) -> &State {
+        &self.0
+    }
+}
+
+impl Drop for Raw {
+    fn drop(&mut self) {
+        self.0.close();
     }
 }
 
@@ -187,11 +196,11 @@ impl Raw {
         input: BorrowedFd<'static>,
         output: BorrowedFd<'static>,
         alternate: bool,
-    ) -> Result<*mut ms_std_rt::Handle<Raw>, u8> {
+    ) -> Result<Raw, u8> {
         if !(isatty(input) && isatty(output)) {
             return Err(STATUS_NOT_TERMINAL);
         }
-        if !ACTIVE.0.get().is_null() {
+        if ACTIVE.get().borrow().upgrade().is_some() {
             return Err(ms_rt_abi::STATUS_BUSY);
         }
         let Ok(saved) = tcgetattr(input) else {
@@ -223,7 +232,7 @@ impl Raw {
         if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
             return Err(failed(b"cannot enter raw mode"));
         }
-        let terminal = Raw {
+        let terminal = State {
             input,
             output,
             saved,
@@ -239,16 +248,17 @@ impl Raw {
             // Nothing useful to report if the terminal vanished already; reads will say so.
             let _ = terminal.write(b"\x1b[?1049h");
         }
-        let handle = ms_std_rt::new_handle(terminal);
-        // SAFETY: `handle` was just allocated and is not shared yet.
-        ACTIVE.0.set(unsafe { &(*handle).value });
-        if !HOOKED.0.replace(true) {
+        let terminal = Rc::new(terminal);
+        *ACTIVE.get().borrow_mut() = Rc::downgrade(&terminal);
+        if !HOOKED.get().replace(true) {
             // SAFETY: provided by `ms-rt`.
             unsafe { msrt_process_on_exit(restore_at_exit) };
         }
-        Ok(handle)
+        Ok(Raw(terminal))
     }
+}
 
+impl State {
     pub fn is_closed(&self) -> bool {
         self.closed.get()
     }
@@ -266,8 +276,9 @@ impl Raw {
         }
         // Nothing to report if the terminal vanished already.
         let _ = tcsetattr(self.input, OptionalActions::Now, &self.saved);
-        if core::ptr::eq(ACTIVE.0.get(), self) {
-            ACTIVE.0.set(core::ptr::null());
+        let mut active = ACTIVE.get().borrow_mut();
+        if core::ptr::eq(active.as_ptr(), self) {
+            *active = Weak::new();
         }
     }
 
@@ -404,12 +415,6 @@ impl Raw {
             Err(Errno::INTR | Errno::AGAIN) => Ok(()),
             Err(_) => Err(STATUS_CLOSED),
         }
-    }
-}
-
-impl Drop for Raw {
-    fn drop(&mut self) {
-        self.close();
     }
 }
 

@@ -503,6 +503,18 @@ impl Doc {
         }
     }
 
+    /// A container child under `parents` containers must stay within what `parse` accepts.
+    fn check_depth(&self, child: NodeId, parents: usize) -> Result<(), ()> {
+        let container = matches!(
+            self.nodes.get(child as usize),
+            Some(Node::Array(_) | Node::Object(_))
+        );
+        if container && parents >= DEPTH_CEILING {
+            return Err(());
+        }
+        Ok(())
+    }
+
     fn emit(&self, root: NodeId, width: usize, out: &mut Out) -> Result<(), ()> {
         let newline = |out: &mut Out, level: usize| -> Result<(), ()> {
             if width == 0 {
@@ -541,6 +553,7 @@ impl Doc {
                             newline(out, level + 1)?;
                             let last = stack.len() - 1;
                             stack[last].1 = next + 1;
+                            self.check_depth(items[next], stack.len())?;
                             stack.push((items[next], 0));
                             continue;
                         }
@@ -564,6 +577,7 @@ impl Doc {
                             out.write(if width > 0 { b": " } else { b":" })?;
                             let last = stack.len() - 1;
                             stack[last].1 = next + 1;
+                            self.check_depth(entries[next].1, stack.len())?;
                             stack.push((entries[next].1, 0));
                             continue;
                         }

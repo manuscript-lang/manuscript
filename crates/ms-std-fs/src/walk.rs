@@ -189,6 +189,9 @@ pub fn copy_tree(
     entries: i64,
     bytes: i64,
 ) -> Res<()> {
+    if entries < 0 || bytes < 0 {
+        return Err(Fail::invalid());
+    }
     let real = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source))?;
     let resolved = resolve_destination(destination)?;
     if within_path(&real, &resolved) {

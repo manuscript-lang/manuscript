@@ -26,9 +26,13 @@ impl<'a> FnLower<'a> {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
-                let names = self.param_names(&c);
-                let args = self.eval_args(&view, &names, &c, &subst, None)?;
-                self.call_callable(&c, &subst, args, e)?
+                if let Some(v) = self.try_default_call(&view, &c, &subst, e)? {
+                    v
+                } else {
+                    let names = self.param_names(&c);
+                    let args = self.eval_args(&view, &names, &c, &subst, None)?;
+                    self.call_callable(&c, &subst, args, e)?
+                }
             }
             Resolution::Constant(sym) => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
@@ -144,13 +148,22 @@ impl<'a> FnLower<'a> {
             read_at.push((idx, a.expr, at));
         }
         for (idx, expr, at) in read_at {
-            if let Some(x) = slots[idx] {
-                slots[idx] = Some(self.refresh(expr, x, at)?);
-            }
+            let Some(x) = slots[idx] else {
+                continue;
+            };
+            // A `var` argument is the variable itself: it sees what its siblings changed.
+            slots[idx] = Some(
+                if vars.contains(&(idx + offset)) && !x.own && self.is_place(expr) {
+                    self.expr(expr)?
+                } else {
+                    self.refresh(expr, x, at)?
+                },
+            );
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                slots[i] = Some(self.default_argument(callee, i, subst, &slots, recv)?);
+                let d = self.default_argument(callee, i, subst, &mut slots, recv)?;
+                slots[i] = Some(d);
             }
         }
         Ok(Args { slots, places })
@@ -194,12 +207,12 @@ impl<'a> FnLower<'a> {
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
-    fn default_argument(
+    pub(crate) fn default_argument(
         &mut self,
         callee: &Callable,
         i: usize,
         subst: &Subst,
-        earlier: &[Option<Val>],
+        earlier: &mut [Option<Val>],
         recv: Option<Val>,
     ) -> Result<Val, Error> {
         let params = callee
@@ -216,6 +229,9 @@ impl<'a> FnLower<'a> {
                 let v = self.b.opt_none(mty);
                 return Ok(Val { v, own: false });
             }
+            if let Some((decl, sig)) = self.contract_operation(callee) {
+                return self.contract_default(decl.as_ref(), &sig, i);
+            }
             return Err(Error::new(format!("missing argument {}", binding.name)));
         };
         // `none` in a bundled declaration carries no checked expression.
@@ -231,12 +247,38 @@ impl<'a> FnLower<'a> {
         if let (Some(b), Some(r)) = (&callee.self_binding, recv) {
             self.bind_borrowed(b, r.v);
         }
-        for (j, v) in earlier.iter().enumerate().take(i) {
-            if let Some(v) = v {
-                self.bind_borrowed(&callee.parameters[j].clone(), v.v);
+        // A `var` parameter is a copy the default may change; the changed value is what the
+        // call passes on.
+        let offset = usize::from(callee.self_binding.is_some());
+        let vars = self.cx.var_positions(callee);
+        let mut changed = Vec::new();
+        for (j, slot) in earlier.iter().enumerate().take(i) {
+            let Some(v) = *slot else {
+                continue;
+            };
+            let binding = callee.parameters[j].clone();
+            if vars.contains(&(j + offset)) {
+                let ty = self.ty_of(v.v);
+                let o = self.owned(v);
+                let var = self.b.declare_var(ty, Mode::Own);
+                self.b.def_var(var, o);
+                self.locals
+                    .insert(binding.uid, crate::func::Local { var, ty });
+                changed.push((j, var));
+            } else {
+                self.bind_borrowed(&binding, v.v);
             }
         }
+        // A default reports its own position, not the caller statement\'s.
+        let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
+        for (j, var) in changed {
+            if !self.dead {
+                let v = self.b.use_var(var);
+                earlier[j] = Some(Val { v, own: true });
+            }
+        }
+        self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
         self.file = saved_file;
@@ -481,6 +523,16 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        // A `try` in an argument may return early: what was evaluated before it is released then.
+        let any_try = view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr));
+        let recv = if recv.own && any_try {
+            self.hold_temp(recv)
+        } else {
+            recv
+        };
         let rty = self.ty_of(recv.v);
         let TyKind::Iface(iface) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("contract receiver is not an interface value"));
@@ -494,7 +546,7 @@ impl<'a> FnLower<'a> {
         let sig = self.b.m.ifaces[iface.index()].methods[k].clone();
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
-        for a in &view.arguments {
+        for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
@@ -506,6 +558,14 @@ impl<'a> FnLower<'a> {
                     Val { v, own: true }
                 }
                 None => x,
+            };
+            let later_try = view.arguments[n + 1..]
+                .iter()
+                .any(|l| crate::mutation::has_try(l.expr));
+            let x = if later_try && x.own {
+                self.hold_temp(x)
+            } else {
+                x
             };
             let idx = params
                 .iter()
@@ -523,7 +583,7 @@ impl<'a> FnLower<'a> {
                         let v = self.b.opt_none(t);
                         Val { v, own: false }
                     } else {
-                        self.contract_default(m, i)?
+                        self.contract_default(m.decl.as_ref(), &m.ty, i)?
                     }
                 }
             };
@@ -535,48 +595,46 @@ impl<'a> FnLower<'a> {
         Ok(self.val(v, true))
     }
 
+    /// The contract operation an implementation method fulfils: its parameters without a
+    /// default of their own take the contract's.
+    fn contract_operation(
+        &self,
+        callee: &Callable,
+    ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+        let im = self.cx.methods.iter().find(|m| {
+            !m.id.as_str().is_empty() && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
+        })?;
+        let def = im.contract.as_ref()?.def.as_ref()?;
+        let ops = def.operations.borrow();
+        let op = ops.iter().find(|o| Some(o.name) == im.name())?;
+        Some((op.decl.clone(), op.ty.clone()))
+    }
+
+    /// The bytes default `"".to_bytes()` of a bundled declaration.
+    pub(crate) fn empty_bytes(&mut self) -> Result<Val, Error> {
+        let empty = self.b.str_lit("");
+        let v = self.call_runtime("msrt_string_to_bytes", &[empty], MTy::BYTES)?;
+        Ok(Val { v, own: true })
+    }
+
     /// The default written on parameter `i` of a contract operation. Bundled declarations
     /// carry no checked expressions, so only literal defaults are understood: `false`, a
     /// number, a text literal, and `"".to_bytes()`.
-    fn contract_default(&mut self, m: &ct::MethodRef, i: usize) -> Result<Val, Error> {
+    fn contract_default(
+        &mut self,
+        decl: Option<&ms_check::syntax::FuncRef>,
+        sig: &ct::Ty,
+        i: usize,
+    ) -> Result<Val, Error> {
         let missing = || Error::new("missing argument");
-        let default = m
-            .decl
-            .as_ref()
+        let default = decl
             .and_then(|d| d.func())
             .and_then(|f| f.params.get(i))
             .and_then(|p| p.default.as_ref())
             .ok_or_else(missing)?;
-        let param_ty = m.ty.params.get(i).ok_or_else(missing)?.ty.clone();
-        let want = self.cx.lower_ty(self.b.m, &param_ty)?;
-        let text = |parts: &[ms_syntax::ast::TextPart]| match parts {
-            [ms_syntax::ast::TextPart::Lit(t)] => Some(t.to_string()),
-            _ => None,
-        };
-        let v = match (&default.kind, self.b.m.types.kind(want)) {
-            (ExprKind::Bool(b), TyKind::Bool) => self.b.bconst(*b),
-            (ExprKind::Number(n), TyKind::Int) => {
-                let value: i64 = n.as_str().parse().map_err(|_| missing())?;
-                self.b.iconst(value)
-            }
-            (ExprKind::Text(parts), TyKind::Str) => {
-                let t = text(parts).ok_or_else(missing)?;
-                return Ok(Val {
-                    v: self.b.str_lit(&t),
-                    own: false,
-                });
-            }
-            (ExprKind::Call { .. }, TyKind::Bytes) => {
-                let empty = self.b.str_lit("");
-                let bytes = self.call_runtime("msrt_string_to_bytes", &[empty], MTy::BYTES)?;
-                return Ok(Val {
-                    v: bytes,
-                    own: true,
-                });
-            }
-            _ => return Err(missing()),
-        };
-        Ok(Val { v, own: false })
+        let param_ty = sig.params.get(i).ok_or_else(missing)?.ty.clone();
+        self.literal_default(default, &param_ty)?
+            .ok_or_else(missing)
     }
 
     // --------------------------------------------------------- constructors
@@ -735,7 +793,10 @@ impl<'a> FnLower<'a> {
         self.hir = self.cx.module(sym.module)?;
         self.file = self.b.m.add_file(sym.module.as_str());
         self.bind_field_reads(d, earlier);
+        // A default reports its own position, not the caller statement\'s.
+        let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
+        self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
         self.subst = saved_subst;
         self.file = saved_file;
@@ -745,7 +806,7 @@ impl<'a> FnLower<'a> {
 
     /// A default written as a literal, an empty list or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
-    fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
+    pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
@@ -764,6 +825,9 @@ impl<'a> FnLower<'a> {
                     })
                     .collect();
                 Some(self.lit(&text))
+            }
+            ExprKind::Call { .. } if matches!(self.b.m.types.kind(mt), TyKind::Bytes) => {
+                Some(self.empty_bytes()?)
             }
             ExprKind::List(items) if items.is_empty() => {
                 let v = self.call_runtime("msrt_list_new", &[], mt)?;

@@ -104,6 +104,43 @@ jobs:
           cygpath -w "$tools" >> "$GITHUB_PATH"
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
+      - name: Build CLI for native source conformance
+        run: |
+          set -euo pipefail
+          reports="$RUNNER_TEMP/ms-native-conformance"
+          if [ "$RUNNER_OS" = Windows ]; then reports="$(cygpath -u "$RUNNER_TEMP")/ms-native-conformance"; fi
+          mkdir -p "$reports"
+          printf 'NATIVE_REPORTS=%s\n' "$reports" >> "$GITHUB_ENV"
+          git rev-parse HEAD > "$reports/commit.txt"
+          rustc -vV > "$reports/host.txt"
+          cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
+      - name: Native Windows project paths
+        if: runner.os == 'Windows'
+        run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+      - name: Native standard-library source conformance
+        run: |
+          set -euo pipefail
+          ms=target/debug/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          for build_type in Release Debug; do
+            report="$NATIVE_REPORTS/rsa-$build_type.json"
+            stderr="$NATIVE_REPORTS/rsa-$build_type.stderr"
+            status=0
+            "$ms" test tests/e2e/testdata/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report" 2> "$stderr" || status=$?
+            cat "$report"
+            cat "$stderr" >&2
+            if [ "$status" -ne 0 ]; then exit "$status"; fi
+            json="$report"
+            if [ "$RUNNER_OS" = Windows ]; then json="$(cygpath -w "$report")"; fi
+            node -e '
+              const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+              if (!r.completed || r.exit_code !== 0 || r.summary.available !== 4 ||
+                  r.summary.selected !== 4 || r.summary.passed !== 4 ||
+                  r.summary.failed !== 0 || r.summary.skipped !== 0 ||
+                  r.summary.not_run !== 0 || r.tests.length !== 4 ||
+                  r.tests.some(t => t.status !== "passed")) process.exit(1);
+            ' "$json"
+          done
       - name: Native overflow, fault positions, cleanup and inline frames
         run: |
           cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
@@ -123,6 +160,7 @@ jobs:
           name: codegen-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             ${{ runner.temp }}/ms-clif-tests-*
+            ${{ runner.temp }}/ms-native-conformance/
             ${{ runner.temp }}/ms-dwarf-*
             ${{ runner.temp }}/ms-driver-debug-*
           if-no-files-found: warn

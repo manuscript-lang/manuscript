@@ -1105,7 +1105,9 @@ version = "0.1.0"
 name = "ms-repo-check"
 version = "0.0.0"
 dependencies = [
+ "ms-json",
  "ms-syntax",
+ "ms-tooling",
 ]
 
 [[package]]
@@ -1114,6 +1116,7 @@ version = "0.1.0"
 dependencies = [
  "mio",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-fs",
  "ms-std-io",
  "ms-std-math",
@@ -1143,6 +1146,7 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-rt",
  "num-bigint",
  "num-traits",
@@ -1230,6 +1234,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-path",
  "ms-std-rt",
  "windows-sys 0.61.2",
@@ -1250,6 +1255,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-fs",
  "ms-std-rt",
 ]
@@ -1317,6 +1323,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-fs",
  "ms-std-io",
  "ms-std-rt",
@@ -1367,6 +1374,7 @@ dependencies = [
  "libc",
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-process",
  "ms-std-rt",
  "rustix",
@@ -1378,6 +1386,7 @@ version = "0.1.0"
 dependencies = [
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-rt",
  "rustix",
 ]
@@ -1388,6 +1397,7 @@ version = "0.1.0"
 dependencies = [
  "jiff",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-rt",
 ]
 

@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "crypto-rsa.ms::RSA PKCS1 PSS and OAEP support every declared hash",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "crypto-rsa.ms::RSA malformed keys and signatures fail without faulting",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "crypto-rsa.ms::RSA OAEP rejects ciphertext and oversized plaintext with domain errors",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "crypto-rsa.ms::RSA native function values preserve argument order and borrowed bytes",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN crypto-rsa.ms::RSA PKCS1 PSS and OAEP support every declared hash\nPASS crypto-rsa.ms::RSA PKCS1 PSS and OAEP support every declared hash\nRUN crypto-rsa.ms::RSA malformed keys and signatures fail without faulting\nPASS crypto-rsa.ms::RSA malformed keys and signatures fail without faulting\nRUN crypto-rsa.ms::RSA OAEP rejects ciphertext and oversized plaintext with domain errors\nPASS crypto-rsa.ms::RSA OAEP rejects ciphertext and oversized plaintext with domain errors\nRUN crypto-rsa.ms::RSA native function values preserve argument order and borrowed bytes\nPASS crypto-rsa.ms::RSA native function values preserve argument order and borrowed bytes\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

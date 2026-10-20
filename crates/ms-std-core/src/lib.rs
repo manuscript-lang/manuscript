@@ -15,8 +15,10 @@ extern crate alloc;
 
 mod native;
 pub use native::{
-    AbiHandle, AbiRecord, AbiSlot, AbiType, FromAbi, IntoAbi, Mut, ObjCell, ObjRef, Object, OptInt,
-    Out, Own, RecList, Ref, Status, Str, StringList,
+    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesArray, BytesList, EntryFilter, ErrOut,
+    FromAbi, Global, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell, ObjMut,
+    ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecArray, RecList,
+    Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, Text, TextList, argv, start_nanos,
 };
 
 use alloc::vec::Vec;
@@ -31,10 +33,14 @@ unsafe extern "C" {
     fn msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj;
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
-    fn msrt_fault(msg: *const u8, len: usize) -> !;
-    fn msrt_fault_int_overflow() -> !;
     static msrt_desc_string: TypeDesc;
     static msrt_desc_bytes: TypeDesc;
+}
+
+// Faults unwind through the natives that raise them.
+unsafe extern "C-unwind" {
+    fn msrt_fault(msg: *const u8, len: usize) -> !;
+    fn msrt_fault_int_overflow() -> !;
 }
 
 /// Error cases shared by the std error types (`InvalidInput`, `InvalidData`, `LimitExceeded`).
@@ -101,6 +107,11 @@ pub unsafe fn str_ref<'a>(p: *const StrObj) -> &'a str {
 
 /// Creates an owned runtime string (+1).
 pub fn new_string(s: &str) -> *mut StrObj {
+    new_string_bytes(s.as_bytes())
+}
+
+/// Creates an owned runtime string (+1) from bytes the caller trusts to be UTF-8.
+pub fn new_string_bytes(s: &[u8]) -> *mut StrObj {
     // SAFETY: pointer and length describe `s`.
     unsafe { msrt_string_from_bytes(s.as_ptr(), s.len()) }
 }

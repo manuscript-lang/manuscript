@@ -83,6 +83,7 @@ impl ProjectError {
 }
 
 pub(crate) const ENOENT: i32 = 2;
+#[cfg(not(windows))]
 pub(crate) const ENOTDIR: i32 = 20;
 
 /// The Go (`syscall.Errno`) message for an errno: lower-case, no `(os error N)`.

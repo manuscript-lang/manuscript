@@ -101,7 +101,7 @@ fn timestamps_round_trip_through_strings() {
             (cal.year, cal.month, cal.day, cal.hour, cal.offset_seconds),
             (2024, 7, 5, 1, 9 * 3600)
         );
-        assert_eq!(text(cal.zone), "JST");
+        assert_eq!(text(cal.zone.as_ptr()), "JST");
         let mut c2 = std::mem::MaybeUninit::<CalendarOut>::uninit();
         assert_eq!(
             msstd_time_timestamp_calendar(&t, st("Mars/Base"), c2.as_mut_ptr()),
@@ -193,7 +193,7 @@ mod fs_io {
             assert_eq!(contents(&out), b"hellohello");
             assert_eq!(msstd_fs_stat(file, 1, info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((i.size, text(i.name).as_str()), (10, "a.txt"));
+            assert_eq!((i.size, text(i.name.as_ptr()).as_str()), (10, "a.txt"));
             let mut listed = VecVal {
                 ptr: core::ptr::null_mut(),
                 len: 0,
@@ -248,7 +248,8 @@ mod fs_io {
             st(&std::format!("{root}/sub/deep")),
             st(&std::format!("{root}-out")),
         );
-        let mut handle: *mut ms_std_rt::Handle<ms_std_fs::stream::Stream> = core::ptr::null_mut();
+        let mut handle: *mut ms_std_core::ObjCell<ms_std_fs::stream::Stream> =
+            core::ptr::null_mut();
         let mut out = empty();
         let mut size = 0i64;
         let data = vec_of(b"abcdef");
@@ -269,21 +270,18 @@ mod fs_io {
             assert_eq!(msstd_fs_file_seek(handle, 0, 0, &mut size), STATUS_OK);
             assert_eq!(msstd_fs_file_read_file(handle, 0, 0, &mut out), STATUS_OK);
             assert_eq!(contents(&out), b"aXYd");
-            msstd_io_close(handle);
+            msstd_io_close(handle.cast());
             assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
             ms_std_rt::release(handle.cast());
 
-            let mut cursor: *mut ms_std_rt::Handle<ms_std_fs::dir::Directory> =
+            let mut cursor: *mut ms_std_core::ObjCell<ms_std_fs::dir::Directory> =
                 core::ptr::null_mut();
             assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
-            let mut entry = ms_std_fs::EntryOut {
-                name: core::ptr::null_mut(),
-                directory: 0,
-                symlink: 0,
-            };
+            let mut entry = std::mem::MaybeUninit::<ms_std_fs::EntryOut>::uninit();
             let mut seen = Vec::new();
-            while msstd_fs_directory_read(cursor, &mut entry) == STATUS_OK {
-                seen.push((text(entry.name), entry.directory));
+            while msstd_fs_directory_read(cursor, entry.as_mut_ptr()) == STATUS_OK {
+                let e = entry.assume_init_read();
+                seen.push((text(e.name.as_ptr()), e.directory));
             }
             seen.sort();
             assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
@@ -340,7 +338,7 @@ mod fs_io {
         let root = std::format!("/tmp/msrt-watch-{}", std::process::id());
         let r = st(&root);
         let overflow = st("error");
-        let mut h: *mut ms_std_rt::Handle<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
         let (mut paths, mut kinds) = (empty(), empty());
         // SAFETY: valid runtime strings, live handles and writable outputs throughout.
         unsafe {
@@ -457,7 +455,8 @@ mod process {
             unsafe { ms_std_rt::write_list(&[10i64], &mut v) };
             v
         };
-        let mut h: *mut ms_std_rt::Handle<ms_std_process::signals::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_std_core::ObjCell<ms_std_process::signals::Watcher> =
+            core::ptr::null_mut();
         let mut n = 0i64;
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
@@ -488,10 +487,7 @@ mod process {
                 STATUS_OK
             );
             let o = out.assume_init_read();
-            assert_eq!(
-                (o.exit_code, ms_std_rt::vec_bytes(&o.stdout)),
-                (2, b"hi\n".as_slice())
-            );
+            assert_eq!((o.exit_code, o.stdout.as_slice()), (2, b"hi\n".as_slice()));
             assert_eq!(
                 msstd_process_command_run(
                     st("nope-nope"),
@@ -538,10 +534,10 @@ mod process {
             let stdout = msstd_process_subprocess_stream(child, 1);
             let mut data = empty();
             ms_std_rt::write_bytes(b"ping", &mut data);
-            assert_eq!(msstd_io_write_bytes(stdin, &data), STATUS_OK);
-            msstd_io_close(stdin);
+            assert_eq!(msstd_io_write_bytes(stdin.cast(), &data), STATUS_OK);
+            msstd_io_close(stdin.cast());
             let mut chunk = empty();
-            assert_eq!(msstd_io_read(stdout, 0, 0, &mut chunk), STATUS_OK);
+            assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk), STATUS_OK);
             assert_eq!(ms_std_rt::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(
@@ -583,7 +579,7 @@ mod process {
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
             assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((text(i.os).as_str(), i.pid > 0), ("linux", true));
+            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), ("linux", true));
         }
     }
 }

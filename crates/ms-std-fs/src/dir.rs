@@ -14,6 +14,8 @@ pub struct Item {
     pub symlink: bool,
 }
 
+ms_std_core::abi_handle!(Directory);
+
 pub struct Directory {
     dir: sys::Dir,
     path: Vec<u8>,
@@ -75,6 +77,8 @@ impl Drop for Directory {
         self.close();
     }
 }
+
+ms_std_core::abi_handle!(Temporary);
 
 /// A temporary directory removed with its contents when closed.
 pub struct Temporary {

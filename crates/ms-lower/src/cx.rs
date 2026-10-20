@@ -29,14 +29,31 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A source callable used as a value whose omittable parameters are optionals.
+    DefaultThunk(Rc<DefaultThunkJob>),
+    /// An interface method used as a value whose function type takes optionals.
+    IfaceThunk(Rc<IfaceThunkJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
+    /// The shared category of a standard error value.
+    Category(MTy),
     /// A copy of an HTML parse tree into `HtmlNode`.
     Html(Rc<crate::html::HtmlJob>),
     /// A forwarder of an interface operation to a runtime handle function.
     HandleMethod(Rc<crate::natiface::MethodJob>),
     /// An operation of a compression stream.
     Codec(Rc<crate::codecstream::CodecJob>),
+}
+
+/// An interface method value waiting to be lowered; the closure holds the interface value.
+pub struct IfaceThunkJob {
+    /// The interface and the method's vtable index.
+    pub iface: ms_mir::types::IfaceId,
+    pub index: u32,
+    /// The method as declared.
+    pub method: ct::MethodRef,
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -53,6 +70,8 @@ pub struct NativeThunkJob {
     pub native: String,
     /// Declared parameters under the use site's substitution.
     pub params: Vec<ct::Param>,
+    /// The declaration, for the defaults of omitted parameters.
+    pub sym: ct::SymRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
 }
@@ -67,6 +86,16 @@ pub struct LambdaJob {
     pub subst: Subst,
     /// Captured variables in closure-object order.
     pub captures: Vec<ct::BindingRef>,
+}
+
+/// A source callable behind a function value that fills omitted defaults.
+pub struct DefaultThunkJob {
+    /// The callable.
+    pub callable: Rc<Callable>,
+    /// Type variables of the instance.
+    pub subst: Subst,
+    /// The captured receiver type of a bound method.
+    pub recv: Option<MTy>,
 }
 
 /// A function body waiting to be lowered.
@@ -89,6 +118,8 @@ pub struct Cx {
     pub insts: HashMap<String, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
+    /// Alternatives declared by the standard library.
+    pub std_alts: std::collections::HashSet<usize>,
     /// Helper functions (formatting, equality, ...) by key.
     pub helpers: HashMap<String, FuncId>,
     /// Interface implementation tables built by lowering.
@@ -97,6 +128,8 @@ pub struct Cx {
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
+    /// The checker type behind each lowered record or alternative.
+    pub source_tys: HashMap<MTy, ct::Ty>,
     /// Types whose descriptor glue is registered.
     pub glue_seen: std::collections::HashSet<MTy>,
     /// Parameters (receiver first) that functions hand back changed.
@@ -121,10 +154,12 @@ impl Cx {
             mods,
             callables,
             mutated,
+            source_tys: HashMap::new(),
             glue_seen: Default::default(),
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),
+            std_alts: Default::default(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
@@ -169,6 +204,12 @@ impl Cx {
             return Ok(*found);
         }
         let out = self.lower_ty_uncached(m, t, &key)?;
+        if matches!(
+            m.types.kind(out),
+            ms_mir::types::TyKind::Rec(_) | ms_mir::types::TyKind::Alt(_)
+        ) {
+            self.source_tys.entry(out).or_insert_with(|| t.clone());
+        }
         self.tycache.insert(key, out);
         Ok(out)
     }
@@ -178,7 +219,10 @@ impl Cx {
             Kind::Function => {
                 let mut params = Vec::new();
                 for p in &t.params {
-                    params.push(self.lower_ty(m, &p.ty)?);
+                    let pt = self.lower_ty(m, &p.ty)?;
+                    // A parameter that may be omitted crosses a function value as an optional.
+                    let lifted = t.is_default(p.name) && !p.ty.is_std("Optional");
+                    params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;
                 Ok(m.types.func(params, ret))
@@ -205,6 +249,11 @@ impl Cx {
             Kind::Alternative => {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
                 self.tycache.insert(key.to_string(), ty);
+                if t.symbol()
+                    .is_some_and(|s| s.module.as_str().starts_with("@std/"))
+                {
+                    self.std_alts.insert(id.index());
+                }
                 let mut cases = Vec::new();
                 for c in ct::cases(t) {
                     let mut fields = Vec::new();
