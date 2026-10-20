@@ -255,9 +255,7 @@ pub trait Backend {
 }
 
 pub fn not_implemented_message(what: &str) -> String {
-    format!(
-        "ms {what}: not yet implemented"
-    )
+    format!("ms {what}: not yet implemented")
 }
 
 pub fn not_implemented(what: &'static str) -> BackendResult {
