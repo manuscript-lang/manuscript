@@ -193,15 +193,13 @@ pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String>
 
 /// Status codes of `ms-rt-abi` and the error cases they name. Status 11 (`Failed`) carries the
 /// module's `failure_message` text when the error case has a `String` field.
-const STATUS_CASES: [(i64, &str); 15] = [
+const STATUS_CASES: [(i64, &str); 14] = [
     (1, "InvalidInput"),
     (2, "OutOfRange"),
     (3, "LimitExceeded"),
     (4, "InvalidData"),
     (5, "NotFound"),
     (6, "AlreadyExists"),
-    // `ms-std-crypto`'s `STATUS_AUTHENTICATION_FAILED` shares the code; the error alternative decides.
-    (6, "AuthenticationFailed"),
     (7, "NotEmpty"),
     (8, "PermissionDenied"),
     (9, "Unsupported"),
@@ -534,8 +532,6 @@ impl FnLower<'_> {
                     } else {
                         let v = self.borrow(x);
                         let v = match self.b.m.types.kind(self.ty_of(v)).clone() {
-                            // An enum crosses as its case index.
-                            TyKind::Alt(_) if p.ty == "i64" => self.b.alt_tag(v),
                             // A budget that may be absent crosses as `i64::MAX` when it is.
                             TyKind::Opt(t) if p.ty == "i64" && t == MTy::INT => {
                                 let has = self.b.opt_is_some(v);

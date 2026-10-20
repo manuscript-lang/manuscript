@@ -442,31 +442,6 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: out, own: true })
     }
 
-    /// `map_from_entries(entries)`: later entries replace earlier values of equal keys.
-    pub(crate) fn map_from_entries(&mut self, entries: Val, mt: MTy) -> Result<Val, Error> {
-        let (lv, hidden) = self.list_source(None, entries)?;
-        let acc = self.fresh_var(mt);
-        let empty = self.map_new(mt)?;
-        self.b.def_var(acc, empty);
-        self.each_element(lv, &mut |s, _, x| {
-            let rec_ty = s.ty_of(x);
-            let TyKind::Rec(rid) = s.b.m.types.kind(rec_ty).clone() else {
-                return Err(Error::new("map entry is not a record"));
-            };
-            let k = s.b.rec_get(rid, 0, x);
-            let v = s.b.rec_get(rid, 1, x);
-            let ko = s.owned(Val { v: k, own: false });
-            let vo = s.owned(Val { v, own: false });
-            let cur = s.b.use_var(acc);
-            let next = s.map_insert(cur, ko, vo)?;
-            s.b.def_var(acc, next);
-            Ok(None)
-        })?;
-        self.release_source(lv, hidden);
-        let out = self.b.use_var(acc);
-        Ok(Val { v: out, own: true })
-    }
-
     /// `set.entries()`: `[value, value]` lists in insertion order.
     pub(crate) fn set_entries(&mut self, recv: Val, result: MTy) -> Result<Val, Error> {
         let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {

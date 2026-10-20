@@ -144,7 +144,7 @@ impl FnLower<'_> {
         self.call_runtime("msrt_json_text", &[doc, id], MTy::STR)
     }
 
-    pub(crate) fn jslot(&mut self, t: MTy) -> Value {
+    fn jslot(&mut self, t: MTy) -> Value {
         self.b
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
             .expect("slot")
@@ -1387,7 +1387,7 @@ impl FnLower<'_> {
     }
 
     /// The flattened `(has, value)` pairs of the optional `JsonLimits` argument.
-    pub(crate) fn jlimits(&mut self, limits: Option<Val>) -> Result<Vec<Value>, Error> {
+    fn jlimits(&mut self, limits: Option<Val>) -> Result<Vec<Value>, Error> {
         let Some(l) = limits else {
             let (f, z) = (self.b.bconst(false), self.b.iconst(0));
             return Ok(vec![f, z, f, z, f, z]);

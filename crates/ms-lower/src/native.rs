@@ -140,14 +140,6 @@ impl<'a> FnLower<'a> {
                 let v = self.call_runtime("msrt_list_range", &vals, lt)?;
                 Ok(Val { v, own: true })
             }
-            "collections/map_from_entries" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let mt = self.emty(e)?;
-                self.map_from_entries(args[0].val, mt)
-            }
             "panic" => {
                 let args = self.native_args(view)?;
                 if self.dead {
@@ -212,17 +204,6 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
                 self.at(e.pos);
                 self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
-            }
-            "html/parse" => {
-                let mut args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let func = sym.decl.as_ref().and_then(|d| d.func());
-                self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                self.at(e.pos);
-                let rty = self.emty(e)?;
-                self.html_parse(rty, &args)
             }
             "crypto/derive_key" => {
                 // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.

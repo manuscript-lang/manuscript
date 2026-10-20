@@ -257,7 +257,6 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
         JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
         JobKind::IfaceThunk(j) => return crate::closure::build_iface_thunk(cx, m, job.func, j),
-        JobKind::Html(j) => return crate::html::build_html(cx, m, job.func, j),
     };
     let hir = cx.module(c.module.file)?;
     let file = m.add_file(c.module.file.as_str());
