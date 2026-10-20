@@ -9,6 +9,7 @@ description = "Manuscript language server: JSON-RPC transport, document analysis
 workspace = true
 
 [dependencies]
+ms-json = { path = "../ms-json" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
 ms-project = { path = "../ms-project" }

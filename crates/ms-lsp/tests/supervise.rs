@@ -39,7 +39,7 @@ impl std::io::Write for Sink {
 }
 
 fn frame(value: &Json) -> Vec<u8> {
-    let body = value.encode();
+    let body = value.compact(ms_json::Escape::Plain);
     format!("Content-Length: {}\r\n\r\n{body}", body.len()).into_bytes()
 }
 

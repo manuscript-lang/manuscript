@@ -983,6 +983,7 @@ dependencies = [
  "ms-check",
  "ms-driver",
  "ms-guide",
+ "ms-json",
  "ms-lower",
  "ms-lsp",
  "ms-mir",
@@ -1010,6 +1011,9 @@ dependencies = [
 [[package]]
 name = "ms-conform"
 version = "0.1.0"
+dependencies = [
+ "ms-json",
+]
 
 [[package]]
 name = "ms-driver"
@@ -1028,8 +1032,13 @@ name = "ms-guide"
 version = "0.1.0"
 dependencies = [
  "ms-check",
+ "ms-json",
  "ms-syntax",
 ]
+
+[[package]]
+name = "ms-json"
+version = "0.1.0"
 
 [[package]]
 name = "ms-lower"
@@ -1048,6 +1057,7 @@ version = "0.0.0"
 dependencies = [
  "ms-check",
  "ms-driver",
+ "ms-json",
  "ms-project",
  "ms-syntax",
  "ms-tooling",
@@ -1393,7 +1403,7 @@ name = "ms-tooling"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-cli",
+ "ms-json",
  "ms-syntax",
 ]
 

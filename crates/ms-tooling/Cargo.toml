@@ -9,11 +9,9 @@ description = "Manuscript developer tooling over checked programs: review, diagr
 workspace = true
 
 [dependencies]
+ms-json = { path = "../ms-json" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
-
-[dev-dependencies]
-ms-cli = { path = "../ms-cli" }
 
 [[bin]]
 name = "ms-tooling-dev"

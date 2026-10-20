@@ -375,7 +375,7 @@ impl Report {
     /// Writes the report as ascii, markdown, or json.
     pub fn render(&self, format: &str) -> String {
         if format == "json" {
-            return self.to_json().encode() + "\n";
+            return self.to_json().pretty(ms_json::Escape::GoHtml) + "\n";
         }
         format!("{}\ndigest {}\n", self.body(format), self.digest)
     }

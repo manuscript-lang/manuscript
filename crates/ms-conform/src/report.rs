@@ -42,7 +42,7 @@ impl Tally {
     }
 
     fn to_json(self) -> Json {
-        let mut o = Json::obj();
+        let mut o = Json::object();
         o.set("total", Json::int(self.total as i64));
         o.set("pass", Json::int(self.passing() as i64));
         o.set("fail", Json::int(self.fail as i64));
@@ -85,15 +85,15 @@ pub fn has_regressions(cases: &[Case]) -> bool {
 
 pub fn to_json(ms: &str, cases: &[Case]) -> Json {
     let s = summarize(cases);
-    let mut o = Json::obj();
+    let mut o = Json::object();
     o.set("ms", Json::str(ms));
     o.set("summary", s.all.to_json());
-    let mut phases = Json::obj();
+    let mut phases = Json::object();
     for (p, t) in &s.by_phase {
         phases.set(p.name(), t.to_json());
     }
     o.set("by_phase", phases);
-    let mut tags = Json::obj();
+    let mut tags = Json::object();
     for (t, tally) in &s.by_tag {
         tags.set(t, tally.to_json());
     }
@@ -102,7 +102,7 @@ pub fn to_json(ms: &str, cases: &[Case]) -> Json {
         .iter()
         .filter(|c| c.outcome != Outcome::Pass && c.outcome != Outcome::UnexpectedPass)
         .map(|c| {
-            let mut f = Json::obj();
+            let mut f = Json::object();
             f.set("id", Json::str(c.id.clone()));
             f.set("phase", Json::str(c.phase.name()));
             f.set("outcome", Json::str(format!("{:?}", c.outcome)));

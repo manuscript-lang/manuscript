@@ -52,13 +52,16 @@ impl Transport {
     /// Whether the client canceled the request with this id.
     pub fn canceled(&self, id: &json::Json) -> bool {
         let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        pending.get(&id.encode()).copied().unwrap_or(false)
+        pending
+            .get(&id.compact(ms_json::Escape::Plain))
+            .copied()
+            .unwrap_or(false)
     }
 
     /// Forgets a finished request.
     pub fn done(&self, id: &json::Json) {
         let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        pending.remove(&id.encode());
+        pending.remove(&id.compact(ms_json::Escape::Plain));
     }
 }
 
@@ -82,7 +85,7 @@ fn read_loop(input: impl Read, sender: SyncSender<Incoming>, pending: Pending) {
             if method == Some("$/cancelRequest") {
                 if let Some(id) = message.get("params").and_then(|p| p.get("id")) {
                     let mut pending = pending.lock().unwrap_or_else(|e| e.into_inner());
-                    if let Some(flag) = pending.get_mut(&id.encode()) {
+                    if let Some(flag) = pending.get_mut(&id.compact(ms_json::Escape::Plain)) {
                         *flag = true;
                     }
                 }
@@ -91,7 +94,7 @@ fn read_loop(input: impl Read, sender: SyncSender<Incoming>, pending: Pending) {
             let id = message.get("id");
             if let Some(id) = id {
                 let mut pending = pending.lock().unwrap_or_else(|e| e.into_inner());
-                pending.insert(id.encode(), false);
+                pending.insert(id.compact(ms_json::Escape::Plain), false);
             }
             change = message.get("jsonrpc").and_then(|v| v.as_str()) == Some("2.0")
                 && id.is_none()
