@@ -216,3 +216,38 @@ fn unwrapping_an_owned_option_moves_the_payload_out() {
     assert_eq!(count(&m, "build", Op::OptUnbox), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
+
+const CLOSURE_LOOP: &str = r#"module "t"
+entry @main
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 10
+  %f: fn(int) -> int = closure.new @add %k
+  %c: fn(int) -> int = copy %f
+  %x: int = iconst 5
+  %r: int = call.ind (%c, %x)
+  drop %c
+  drop %f
+  ret %r
+}
+"#;
+
+#[test]
+fn a_closure_copy_that_only_feeds_calls_is_removed() {
+    let mut m = parse_module(CLOSURE_LOOP).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Drop), 1);
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}
