@@ -19,6 +19,10 @@ Use for `pkg/syntax/`, `pkg/lexer/`, `pkg/parser/`, `pkg/frontend/`, `pkg/checke
 - Choose the right algorithm and data structure: passes stay linear (or n log n) in source size. Share visited sets/memos across roots, index instead of rescanning, and avoid per-byte or per-query allocation. Time `ms check`, `ms emit`, and `ms build` at N/2N/4N and profile anything above 2x per doubling; see [the lesson](../../.experts/compiler.md#compiler-passes-use-the-right-algorithm-and-data-structure-for-their-input-size).
 - Run affected checker/compiler/project tests and `make repo-check`; execute changed semantics through called `tests/e2e` cases. Build/cache/toolchain changes need artifact evidence and applicable `make dist-check`. Declaration-only acceptance does not establish execution.
 
+## Rust pipeline
+
+`crates/` holds the Rust pipeline (`ms-syntax`, `ms-check`, `ms-mir`, `ms-clif`, `ms-lower`, `ms-driver`) that is replacing the Go one above; the Go code stays until cutover. Read [Rust toolchain](../../documentation/contributing/rust-toolchain.md) and `crates/DESIGN.md`. A syntax, checking, or diagnostic change reaches both pipelines until cutover, and the conformance corpus (`make conform-oracle`, `ms-conform run`) compares them. Ownership and `var` rules live in `crates/ms-check/OWNERSHIP.md`. Do not add code only to reproduce Go output where Rust std covers the concept.
+
 ## Syntax and parsing
 
 - `pkg/syntax/ast.go` owns the untyped tree and positions; checked semantics belong in `pkg/checker/`. Keep syntax independent of compiler/runtime/editor machinery.

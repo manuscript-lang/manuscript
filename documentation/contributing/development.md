@@ -33,6 +33,10 @@ make verify-full
 It adds coverage, native conformance, race checks, fuzzing, strict book checks, and a standalone distribution test. Set `HUGO=/path/to/hugo` if it is not on PATH. `make build` creates the self-contained `ms`. Run `make payload` before invoking Go directly in a fresh checkout; an unprepared build fails at the embed input rather than using a system toolchain.
 
 
+## Rust toolchain
+
+The Rust `ms` builds with cargo, not Make: `cargo build --release --locked -p ms-cli` produces `target/release/ms`, and `sh scripts/package-rust.sh` packages it. Rust changes run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`; `make conform-oracle` replays the conformance corpus against the Go `ms`. Setup, crates, and differences from the Go `ms` are in [Rust toolchain](rust-toolchain.md). The Go commands in this guide stay authoritative until cutover.
+
 ## Conformance and coverage
 
 - `make coverage` runs the Go suite, native conformance fixtures, and complete tutorial modules from Markdown, instrumenting dependency packages. Reports land in `.artifacts/coverage/`. Race-checked packages run without coverage because instrumentation makes timing tests flaky; native subprocesses are judged by observable expectations.
