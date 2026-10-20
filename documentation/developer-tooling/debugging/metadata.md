@@ -7,9 +7,6 @@ weight = 118
 
 - `ms inspect <module-or-project>` emits format-1 JSON: build identity, source hashes, deterministic entity IDs, generated declaration and local names, types, call sites including implicit cleanup, conservative transitive effects, and statement header spans (half-open original-byte ranges excluding line terminators).
 - `ms diagram` emits the static call graph as ascii (default) or Mermaid (`--format mermaid`).
-- Native checked builds emit a separate executable and toolchain manifest.
 
-- Debuggers map native lines back to `.ms` statements, and locals keep source names.
-- `--debug` keeps native symbols, disables optimization and inlining, and uses absolute source paths.
-- Only the VS Code adapter (`extensions/vscode/debug-adapter.js`) shows records, collections, and variants as Manuscript values; interactive `ms debug` and `ms dap` clients see Delve's Go values.
-- Scripted `ms debug` (`--break`, `--script`) reports source function names, local names and types, and only Manuscript frames; scalars render directly, others use Delve's one-line form.
+- Native builds keep frame pointers and DWARF line tables that map machine addresses back to `.ms` lines. They do not describe variables or types, and the Rust `ms` has no debugger; see [profiling and native debugging](debugger-integration.md).
+- `--build-type Debug` disables optimization for a build.

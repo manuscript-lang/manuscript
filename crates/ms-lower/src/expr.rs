@@ -81,8 +81,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether an `Apply` node is really an index read (`xs[i]`).
     fn is_index_apply(&self, e: &Expr) -> bool {
-        self.hir.info(e).native_str() == "index"
-            || matches!(self.hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
+        crate::mutation::is_index_apply(&self.hir, e)
     }
 
     /// A method used as a value (`value.name`).

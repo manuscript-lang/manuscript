@@ -5,7 +5,10 @@ weight = 93
 
 # Function lowering
 
-Functions, closures, and contract methods lower to Go calls that carry a hidden execution context (cancellation, deadlines, host service accessors). A closure also keeps its captured snapshots in an environment object. Source has one function kind, and every function can wait.
+Source has one function kind. Functions, closures, and contract methods lower to MIR functions in `ms-lower`; a closure is an object `{ header, code, captured... }` holding snapshots of its captures, and a contract view is a `{ data, vtable }` fat pointer. Generics are monomorphized, so each instantiation is an ordinary function.
 
-- The context carries the current operation, cancellation signal, deadline, cleanup mode, and host roots. Closure creation does not capture the caller's context; invocation supplies it.
-- Each loop back-edge polls the stop signal and unwinds through the iteration's cleanup. Cleanup contexts are shielded, so the poll never fires during cleanup. The Rust backend does not poll on loop back edges; it observes the stop signal in runtime calls and I/O.
+- Closure creation snapshots captures and does not run the body.
+- The Rust backend does not poll for cancellation on loop back edges; one global stop flag is observed in runtime calls and I/O.
+- The call depth limit is a per-call counter check that is elided for non-recursive call graphs.
+
+See the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) and the [lowering overview](_index.md).

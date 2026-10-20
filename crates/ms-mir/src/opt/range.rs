@@ -890,6 +890,12 @@ impl<'a> Fa<'a> {
                             out.push(Edit::Op(bi, ii, op));
                         }
                     }
+                    Op::ListAddr => {
+                        let Some(idx) = get(1) else { continue };
+                        if idx.lo >= 0 && self.below_len(inst.args[1], inst.args[0], env) {
+                            out.push(Edit::Op(bi, ii, Op::ListAddrU));
+                        }
+                    }
                     Op::ICmp => {
                         let decided = inst
                             .res
