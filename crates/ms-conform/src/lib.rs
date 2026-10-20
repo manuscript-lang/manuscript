@@ -6,7 +6,6 @@
 //! observation with the recorded expectation, records new expectations, runs
 //! differential fuzzing and benchmarks. See `tests/conformance/README.md`.
 
-pub mod bench;
 pub mod cli;
 pub mod compare;
 pub mod exec;
