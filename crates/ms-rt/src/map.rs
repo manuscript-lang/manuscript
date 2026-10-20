@@ -6,7 +6,7 @@
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
 use crate::alloc;
-use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
+use crate::desc::{slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
 use ms_rt_abi::*;
 
@@ -532,7 +532,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
     // SAFETY: caller contract.
     unsafe {
         let (m, kd, vd) = (&mut *m, &*kd, opt(vd));
-        if int_pair(kd, vd) && vd.is_some_and(needs_no_drop) {
+        if int_pair(kd, vd) && vd.is_some_and(|v| v.kind <= KIND_BOOL) {
             // Int keys and scalar values own nothing: overwrite an existing entry in place.
             let p = find_int(m, *(key as *const i64));
             if !p.is_null() {
@@ -580,7 +580,12 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
     key: *const u8,
 ) -> u8 {
     // SAFETY: caller contract.
-    unsafe { contains_key(&*m, &*kd, opt(vd), key) as u8 }
+    unsafe {
+        if int_pair(&*kd, opt(vd)) {
+            return !find_int(&*m, *(key as *const i64)).is_null() as u8;
+        }
+        contains_key(&*m, &*kd, opt(vd), key) as u8
+    }
 }
 
 /// Borrowed pointer to the value of `key`, or null.
@@ -598,7 +603,22 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
             let p = find_int(m, *(key as *const i64));
             return if p.is_null() { p } else { p.add(16) };
         }
-        let l = layout(kd, opt(vd));
+        get_ptr_general(m, kd, opt(vd), key)
+    }
+}
+
+/// `get_ptr` for keys and values the Int fast path does not cover. Kept out of line so the fast
+/// paths above keep a small frame.
+#[inline(never)]
+unsafe fn get_ptr_general(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let l = layout(kd, vd);
         match find(m, kd, &l, key, hash_key(kd, key)) {
             Some(i) => slot(m, &l, i).add(l.voff),
             None => core::ptr::null(),
@@ -617,7 +637,17 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let p = msrt_map_get_ptr(m, kd, vd, key);
+        let (kd, m) = (&*kd, &*m);
+        if int_pair(kd, opt(vd)) && opt(vd).is_some_and(|v| v.kind <= KIND_BOOL) {
+            // Scalar values are plain 8-byte words: copy without the descriptor dispatch.
+            let p = find_int(m, *(key as *const i64));
+            if p.is_null() {
+                return 0;
+            }
+            core::ptr::copy_nonoverlapping(p.add(16), out, 8);
+            return 1;
+        }
+        let p = get_ptr_general(m, kd, opt(vd), key);
         if p.is_null() {
             return 0;
         }
