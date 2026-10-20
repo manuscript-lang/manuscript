@@ -1,38 +1,37 @@
 //! `@std/bigint.ms` natives. Symbols are `msstd_bigint_<name>`.
 //!
-//! A `BigInt` is an immutable refcounted [`BigObj`] handle; operations return fresh handles.
+//! A `BigInt` is an immutable refcounted [`Big`] handle; operations return fresh handles.
 //! Fallible calls return a `STATUS_*` code and write `out` only on success; `to_int` returns
 //! a presence flag (0 where the value does not fit an `Int`).
 #![no_std]
-// The exports below are the C ABI compiled code links against.
-#![allow(unsafe_code)]
-#![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
 
 use alloc::string::String;
-use ms_rt_abi::{
-    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, StrObj,
-};
-use ms_std_rt::{Handle, fault_fmt, new_handle, new_string, str_bytes};
+use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
+use ms_std_core::{ObjRef, Object, Out, Status, abi_handle, native};
+use ms_std_rt::{fault_fmt, poll_cancel};
 use num_bigint::{BigInt, Sign};
 use num_traits::{Signed, ToPrimitive, Zero};
 
-/// The runtime object behind a `BigInt` value.
-pub type BigObj = Handle<BigInt>;
+/// The value behind a `BigInt` runtime object.
+pub struct Big(BigInt);
+abi_handle!(Big);
+
+/// A bare `STATUS_*` byte as an error.
+pub struct Code(u8);
+
+impl Status for Code {
+    fn status(self) -> u8 {
+        self.0
+    }
+}
 
 /// Result size ceiling in bits for `pow` and `shift_left`.
 const MAX_BITS: i64 = 1 << 24;
 
-fn make(n: BigInt) -> *mut BigObj {
-    new_handle(n)
-}
-
-/// # Safety
-/// `p` must point to a live `BigObj` that outlives `'a`.
-unsafe fn val<'a>(p: *const BigObj) -> &'a BigInt {
-    // SAFETY: guaranteed by the caller.
-    unsafe { &(*p).value }
+fn make(n: BigInt) -> Object<Big> {
+    Object(Big(n))
 }
 
 fn digit(b: u8) -> Option<u32> {
@@ -81,287 +80,188 @@ pub fn format(n: &BigInt, radix: u32) -> String {
     n.to_str_radix(radix)
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_bigint_from_int(value: i64) -> *mut BigObj {
-    make(BigInt::from(value))
+fn n<'a>(a: &'a ObjRef<Big>) -> &'a BigInt {
+    &a.0.0
 }
 
-/// The unsigned integer with the bits of `value`.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_bigint_from_u64(value: i64) -> *mut BigObj {
-    make(BigInt::from(value as u64))
-}
+native! {
+    fn msstd_bigint_from_int(value: i64) -> Object<Big> {
+        make(BigInt::from(value))
+    }
 
-/// Nanoseconds since the Unix epoch for a seconds-and-nanoseconds pair.
-#[unsafe(no_mangle)]
-pub extern "C" fn msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut BigObj {
-    make(BigInt::from(seconds) * BigInt::from(1_000_000_000_i64) + BigInt::from(nanoseconds))
-}
+    /// The unsigned integer with the bits of `value`.
+    fn msstd_bigint_from_u64(value: i64) -> Object<Big> {
+        make(BigInt::from(value as u64))
+    }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_parse(
-    text: *const StrObj,
-    radix: i64,
-    has_max: u8,
-    max: i64,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: `text` is a live string; `out` is writable.
-    unsafe {
-        match parse(str_bytes(text), radix, (has_max != 0).then_some(max)) {
-            Ok(n) => {
-                out.write(make(n));
-                STATUS_OK
-            }
-            Err(status) => status,
+    /// Nanoseconds since the Unix epoch for a seconds-and-nanoseconds pair.
+    fn msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> Object<Big> {
+        make(BigInt::from(seconds) * BigInt::from(1_000_000_000_i64) + BigInt::from(nanoseconds))
+    }
+
+    fn msstd_bigint_parse(
+        text: &str,
+        radix: i64,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Object<Big>, Code> {
+        parse(text.as_bytes(), radix, has_max.then_some(max))
+            .map(make)
+            .map_err(Code)
+    }
+
+    fn msstd_bigint_add(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) + n(&other))
+    }
+
+    fn msstd_bigint_subtract(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) - n(&other))
+    }
+
+    fn msstd_bigint_multiply(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) * n(&other))
+    }
+
+    fn msstd_bigint_bit_and(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) & n(&other))
+    }
+
+    fn msstd_bigint_bit_or(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) | n(&other))
+    }
+
+    fn msstd_bigint_bit_xor(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        make(n(&a) ^ n(&other))
+    }
+
+    /// Truncates toward zero.
+    fn msstd_bigint_divide(a: ObjRef<Big>, other: ObjRef<Big>) -> Result<Object<Big>, Code> {
+        if n(&other).is_zero() {
+            return Err(Code(STATUS_INVALID_INPUT));
+        }
+        Ok(make(n(&a) / n(&other)))
+    }
+
+    /// Takes the sign of the dividend.
+    fn msstd_bigint_remainder(a: ObjRef<Big>, other: ObjRef<Big>) -> Result<Object<Big>, Code> {
+        if n(&other).is_zero() {
+            return Err(Code(STATUS_INVALID_INPUT));
+        }
+        Ok(make(n(&a) % n(&other)))
+    }
+
+    fn msstd_bigint_compare(a: ObjRef<Big>, other: ObjRef<Big>) -> i64 {
+        n(&a).cmp(n(&other)) as i64
+    }
+
+    fn msstd_bigint_bit_not(a: ObjRef<Big>) -> Object<Big> {
+        make(!n(&a).clone())
+    }
+
+    fn msstd_bigint_negate(a: ObjRef<Big>) -> Object<Big> {
+        make(-n(&a).clone())
+    }
+
+    fn msstd_bigint_abs(a: ObjRef<Big>) -> Object<Big> {
+        make(n(&a).abs())
+    }
+
+    fn msstd_bigint_sign(a: ObjRef<Big>) -> i64 {
+        match n(&a).sign() {
+            Sign::Minus => -1,
+            Sign::NoSign => 0,
+            Sign::Plus => 1,
         }
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_add(a: *const BigObj, other: *const BigObj) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a + b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_subtract(
-    a: *const BigObj,
-    other: *const BigObj,
-) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a - b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_multiply(
-    a: *const BigObj,
-    other: *const BigObj,
-) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a * b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_bit_and(
-    a: *const BigObj,
-    other: *const BigObj,
-) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a & b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_bit_or(
-    a: *const BigObj,
-    other: *const BigObj,
-) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a | b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_bit_xor(
-    a: *const BigObj,
-    other: *const BigObj,
-) -> *mut BigObj {
-    // SAFETY: both are live BigInts.
-    let (a, b) = unsafe { (val(a), val(other)) };
-    make(a ^ b)
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_divide(
-    a: *const BigObj,
-    other: *const BigObj,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: both are live BigInts; `out` is writable.
-    unsafe {
-        let (a, b) = (val(a), val(other));
-        if b.is_zero() {
-            return STATUS_INVALID_INPUT;
-        }
-        // Truncates toward zero.
-        out.write(make(a / b));
-        STATUS_OK
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_remainder(
-    a: *const BigObj,
-    other: *const BigObj,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: both are live BigInts; `out` is writable.
-    unsafe {
-        let (a, b) = (val(a), val(other));
-        if b.is_zero() {
-            return STATUS_INVALID_INPUT;
-        }
-        // Takes the sign of the dividend.
-        out.write(make(a % b));
-        STATUS_OK
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64 {
-    // SAFETY: both are live BigInts.
-    unsafe { val(a).cmp(val(other)) as i64 }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj {
-    // SAFETY: `a` is a live BigInt.
-    make(!unsafe { val(a) }.clone())
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_negate(a: *const BigObj) -> *mut BigObj {
-    // SAFETY: `a` is a live BigInt.
-    make(-unsafe { val(a) }.clone())
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_abs(a: *const BigObj) -> *mut BigObj {
-    // SAFETY: `a` is a live BigInt.
-    make(unsafe { val(a) }.abs())
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_sign(a: *const BigObj) -> i64 {
-    // SAFETY: `a` is a live BigInt.
-    match unsafe { val(a) }.sign() {
-        Sign::Minus => -1,
-        Sign::NoSign => 0,
-        Sign::Plus => 1,
-    }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_pow(
-    a: *const BigObj,
-    exponent: i64,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: `a` is a live BigInt; `out` is writable.
-    unsafe {
-        let a = val(a);
+    fn msstd_bigint_pow(a: ObjRef<Big>, exponent: i64) -> Result<Object<Big>, Code> {
         if exponent < 0 {
-            return STATUS_INVALID_INPUT;
+            return Err(Code(STATUS_INVALID_INPUT));
         }
-        let bits = i64::try_from(a.bits()).unwrap_or(i64::MAX);
+        let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if exponent > 1
             && bits > 1
             && (exponent > MAX_BITS || bits.saturating_mul(exponent) > MAX_BITS + exponent)
         {
-            return STATUS_LIMIT_EXCEEDED;
+            return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
-        ms_std_rt::poll_cancel();
-        out.write(make(num_traits::pow::Pow::pow(a, exponent as u64)));
-        STATUS_OK
+        poll_cancel();
+        Ok(make(num_traits::pow::Pow::pow(n(&a), exponent as u64)))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_shift_left(
-    a: *const BigObj,
-    count: i64,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: `a` is a live BigInt; `out` is writable.
-    unsafe {
-        let a = val(a);
+    fn msstd_bigint_shift_left(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
-            return STATUS_INVALID_INPUT;
+            return Err(Code(STATUS_INVALID_INPUT));
         }
-        let bits = i64::try_from(a.bits()).unwrap_or(i64::MAX);
+        let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         if count > MAX_BITS || bits.saturating_add(count) > MAX_BITS {
-            return STATUS_LIMIT_EXCEEDED;
+            return Err(Code(STATUS_LIMIT_EXCEEDED));
         }
-        out.write(make(a << count as usize));
-        STATUS_OK
+        Ok(make(n(&a) << count as usize))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_shift_right(
-    a: *const BigObj,
-    count: i64,
-    out: *mut *mut BigObj,
-) -> u8 {
-    // SAFETY: `a` is a live BigInt; `out` is writable.
-    unsafe {
-        let a = val(a);
+    fn msstd_bigint_shift_right(a: ObjRef<Big>, count: i64) -> Result<Object<Big>, Code> {
         if count < 0 {
-            return STATUS_INVALID_INPUT;
+            return Err(Code(STATUS_INVALID_INPUT));
         }
-        let bits = i64::try_from(a.bits()).unwrap_or(i64::MAX);
+        let bits = i64::try_from(n(&a).bits()).unwrap_or(i64::MAX);
         // Shifting by more than the width gives 0 or -1 (floor semantics).
         let count = count.min(bits.saturating_add(1)) as usize;
-        out.write(make(a >> count));
-        STATUS_OK
+        Ok(make(n(&a) >> count))
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_to_float(a: *const BigObj) -> f64 {
-    // SAFETY: `a` is a live BigInt.
-    let n = unsafe { val(a) };
-    // Out of range: infinity of the same sign.
-    n.to_f64().unwrap_or(if n.is_negative() {
-        f64::NEG_INFINITY
-    } else {
-        f64::INFINITY
-    })
-}
+    fn msstd_bigint_to_float(a: ObjRef<Big>) -> f64 {
+        // Out of range: infinity of the same sign.
+        n(&a).to_f64().unwrap_or(if n(&a).is_negative() {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        })
+    }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_to_int(a: *const BigObj, out: *mut i64) -> u8 {
-    // SAFETY: `a` is a live BigInt; `out` is writable.
-    unsafe {
-        match val(a).to_i64() {
+    /// Writes `out` and returns true when the value fits an `Int`.
+    fn msstd_bigint_to_int(a: ObjRef<Big>, out: Out<i64>) -> bool {
+        match n(&a).to_i64() {
             Some(v) => {
                 out.write(v);
-                1
+                true
             }
-            None => 0,
+            None => false,
         }
     }
-}
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_to_string_radix(a: *const BigObj, radix: i64) -> *mut StrObj {
-    if !(2..=36).contains(&radix) {
-        fault_fmt(format_args!(
-            "BigInt.to_string_radix: radix must be between 2 and 36, found {radix}"
-        ));
+    fn msstd_bigint_to_string_radix(a: ObjRef<Big>, radix: i64) -> String {
+        if !(2..=36).contains(&radix) {
+            fault_fmt(format_args!(
+                "BigInt.to_string_radix: radix must be between 2 and 36, found {radix}"
+            ));
+        }
+        format(n(&a), radix as u32)
     }
-    // SAFETY: `a` is a live BigInt.
-    new_string(format(unsafe { val(a) }, radix as u32).as_bytes())
-}
 
-/// Whether two values hold the same integer.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn msstd_bigint_equal(a: *const BigObj, other: *const BigObj) -> u8 {
-    // SAFETY: both are live BigInts.
-    u8::from(unsafe { val(a) == val(other) })
+    /// Whether two values hold the same integer.
+    fn msstd_bigint_equal(a: ObjRef<Big>, other: ObjRef<Big>) -> bool {
+        n(&a) == n(&other)
+    }
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
+    use ms_rt_abi::STATUS_OK;
+    use ms_std_core::{FromAbi, ObjCell};
 
     fn big(text: &str) -> BigInt {
         parse(text.as_bytes(), 10, None).expect("parse")
+    }
+
+    /// # Safety
+    /// `p` is a live handle.
+    unsafe fn val<'a>(p: *const ObjCell<Big>) -> &'a BigInt {
+        // SAFETY: caller contract.
+        &unsafe { ObjRef::<Big>::from_raw(p) }.0.0
     }
 
     #[test]
@@ -387,10 +287,10 @@ mod tests {
 
     #[test]
     fn handles_roundtrip() {
-        let a = msstd_bigint_from_int(-5);
-        let mut out = core::ptr::null_mut();
+        let mut out: *mut ObjCell<Big> = core::ptr::null_mut();
         // SAFETY: handles are live until released by the process.
         unsafe {
+            let a = msstd_bigint_from_int(-5);
             assert_eq!(msstd_bigint_shift_right(a, 1, &mut out), STATUS_OK);
             assert_eq!(val(out), &BigInt::from(-3));
             assert_eq!(msstd_bigint_shift_right(a, 1000, &mut out), STATUS_OK);

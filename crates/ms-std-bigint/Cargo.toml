@@ -7,6 +7,7 @@ description = "Native implementation of @std/bigint.ms"
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
+ms-std-core = { path = "../ms-std-core" }
 ms-std-rt = { path = "../ms-std-rt" }
 num-bigint = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
