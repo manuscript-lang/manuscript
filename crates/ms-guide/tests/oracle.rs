@@ -67,7 +67,7 @@ fn match_json(m: &Match) -> Json {
         ("Signature".into(), Json::str(&m.signature)),
         ("Doc".into(), Json::str(&m.doc)),
         ("Path".into(), Json::str(&m.path)),
-        ("Score".into(), Json::Int(m.score)),
+        ("Score".into(), Json::int(m.score)),
     ])
 }
 
@@ -76,7 +76,7 @@ fn search_answer(limit: usize, query: &str) -> String {
     let data = if matches.is_empty() {
         "null".to_string()
     } else {
-        Json::Arr(matches.iter().map(match_json).collect()).pretty()
+        Json::Arr(matches.iter().map(match_json).collect()).pretty(ms_json::Escape::GoHtml)
     };
     format!("{data}\n{}", format_matches(query, &matches))
 }

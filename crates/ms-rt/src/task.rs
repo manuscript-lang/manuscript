@@ -7,13 +7,14 @@
 //! stack, a cleanup stack, a guard stack, a call depth and a cancellation request, which are
 //! swapped in and out of the runtime globals on every switch (`fault::Ctx`).
 use crate::alloc;
-use crate::buf::RawVec;
 use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
 use crate::global::Global;
 use crate::sys;
+use core::cmp::Reverse;
 use core::ptr::null_mut;
 use core::sync::atomic::Ordering;
 use ms_rt_abi::StrObj;
+use std::collections::{BinaryHeap, VecDeque};
 
 /// Results of a park, ORed together.
 pub const WAIT_READ: u32 = 1;
@@ -31,6 +32,7 @@ const MIN_STACK: usize = 128 << 10;
 const GUARD: usize = 64 << 10;
 const STACK_POOL: usize = 32;
 const NO_DEADLINE: i64 = i64::MAX;
+const MIN_TIMER_LIMIT: usize = 1024;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -69,60 +71,21 @@ struct Slot {
     gen_: u32,
 }
 
-/// FIFO of task handles.
-struct Fifo {
-    buf: RawVec<u64>,
-    head: usize,
-}
-
-impl Fifo {
-    const fn new() -> Self {
-        Fifo {
-            buf: RawVec::new(),
-            head: 0,
-        }
-    }
-
-    fn push(&mut self, h: u64) {
-        self.buf.push(h);
-    }
-
-    fn pop(&mut self) -> Option<u64> {
-        if self.head == self.buf.len() {
-            self.buf.clear();
-            self.head = 0;
-            return None;
-        }
-        let h = self.buf.get(self.head);
-        self.head += 1;
-        if self.head >= 1024 && self.head * 2 >= self.buf.len() {
-            let n = self.buf.len() - self.head;
-            for i in 0..n {
-                let v = self.buf.get(self.head + i);
-                self.buf.set(i, v);
-            }
-            while self.buf.len() > n {
-                self.buf.pop();
-            }
-            self.head = 0;
-        }
-        Some(h)
-    }
-}
-
 struct Sched {
     cur: *mut Task,
     main: *mut Task,
-    ready: Fifo,
-    slots: RawVec<Slot>,
-    free_slots: RawVec<usize>,
+    ready: VecDeque<u64>,
+    slots: Vec<Slot>,
+    free_slots: Vec<usize>,
     /// Min-heap of (deadline, handle).
-    timers: RawVec<(i64, u64)>,
+    timers: BinaryHeap<Reverse<(i64, u64)>>,
+    /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
+    timer_limit: usize,
     /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
-    fd_waiters: RawVec<u64>,
+    fd_waiters: Vec<u64>,
     fd_waiting: usize,
     epfd: i32,
-    pool: RawVec<usize>,
+    pool: Vec<usize>,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
@@ -131,14 +94,15 @@ struct Sched {
 static SCHED: Global<Sched> = Global::new(Sched {
     cur: null_mut(),
     main: null_mut(),
-    ready: Fifo::new(),
-    slots: RawVec::new(),
-    free_slots: RawVec::new(),
-    timers: RawVec::new(),
-    fd_waiters: RawVec::new(),
+    ready: VecDeque::new(),
+    slots: Vec::new(),
+    free_slots: Vec::new(),
+    timers: BinaryHeap::new(),
+    timer_limit: MIN_TIMER_LIMIT,
+    fd_waiters: Vec::new(),
     fd_waiting: 0,
     epfd: -1,
-    pool: RawVec::new(),
+    pool: Vec::new(),
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
@@ -340,18 +304,16 @@ fn clock_ns() -> i64 {
     sys::monotonic_ns()
 }
 
-unsafe fn lookup(h: u64) -> *mut Task {
-    let s = sched();
+fn lookup_in(slots: &[Slot], h: u64) -> *mut Task {
     let idx = (h & 0xffff_ffff) as usize;
-    if idx == 0 || idx > s.slots.len() {
-        return null_mut();
+    match slots.get(idx.wrapping_sub(1)) {
+        Some(slot) if slot.gen_ == (h >> 32) as u32 => slot.task,
+        _ => null_mut(),
     }
-    let slot = s.slots.get(idx - 1);
-    if slot.task.is_null() || slot.gen_ != (h >> 32) as u32 {
-        null_mut()
-    } else {
-        slot.task
-    }
+}
+
+fn lookup(h: u64) -> *mut Task {
+    lookup_in(&sched().slots, h)
 }
 
 unsafe fn new_task(ctx: Ctx) -> *mut Task {
@@ -359,10 +321,9 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
     let t = alloc::alloc(size_of::<Task>()) as *mut Task;
     let (idx, gen_) = match s.free_slots.pop() {
         Some(i) => {
-            let mut slot = s.slots.get(i);
+            let slot = &mut s.slots[i];
             slot.gen_ = slot.gen_.wrapping_add(1).max(1);
             slot.task = t;
-            s.slots.set(i, slot);
             (i, slot.gen_)
         }
         None => {
@@ -400,9 +361,7 @@ unsafe fn free_task(t: *mut Task) {
     // SAFETY: `t` is a live record from `new_task`; its slot is cleared before release.
     unsafe {
         let idx = ((*t).handle & 0xffff_ffff) as usize - 1;
-        let mut slot = s.slots.get(idx);
-        slot.task = null_mut();
-        s.slots.set(idx, slot);
+        s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
@@ -473,54 +432,6 @@ unsafe fn reap() {
     }
 }
 
-// ---- timers (binary min-heap) ----
-
-fn timer_push(entry: (i64, u64)) {
-    let h = &mut sched().timers;
-    h.push(entry);
-    let mut i = h.len() - 1;
-    while i > 0 {
-        let parent = (i - 1) / 2;
-        if h.get(parent).0 <= h.get(i).0 {
-            break;
-        }
-        let (a, b) = (h.get(parent), h.get(i));
-        h.set(parent, b);
-        h.set(i, a);
-        i = parent;
-    }
-}
-
-fn timer_pop() -> Option<(i64, u64)> {
-    let h = &mut sched().timers;
-    let top = h.get(0);
-    let last = h.pop()?;
-    if h.is_empty() {
-        return Some(top);
-    }
-    h.set(0, last);
-    let n = h.len();
-    let mut i = 0;
-    loop {
-        let (l, r) = (2 * i + 1, 2 * i + 2);
-        let mut m = i;
-        if l < n && h.get(l).0 < h.get(m).0 {
-            m = l;
-        }
-        if r < n && h.get(r).0 < h.get(m).0 {
-            m = r;
-        }
-        if m == i {
-            break;
-        }
-        let (a, b) = (h.get(i), h.get(m));
-        h.set(i, b);
-        h.set(m, a);
-        i = m;
-    }
-    Some(top)
-}
-
 // ---- reactor ----
 
 pub use crate::poller::kick;
@@ -543,22 +454,24 @@ unsafe fn wake(t: *mut Task, result: u32) {
             return;
         }
         if (*t).wait_fd >= 0 {
-            s.fd_waiters.set((*t).wait_fd as usize, 0);
+            s.fd_waiters[(*t).wait_fd as usize] = 0;
             s.fd_waiting -= 1;
             (*t).wait_fd = -1;
         }
         (*t).deadline = NO_DEADLINE;
         (*t).wait_result = result;
         (*t).state = State::Ready;
-        s.ready.push((*t).handle);
+        s.ready.push_back((*t).handle);
     }
 }
 
 /// Wakes timers that have expired.
 unsafe fn expire_timers(now: i64) {
     let s = sched();
-    while !s.timers.is_empty() && s.timers.get(0).0 <= now {
-        let (deadline, h) = timer_pop().unwrap_or((0, 0));
+    while let Some(&Reverse((deadline, h))) = s.timers.peek()
+        && deadline <= now
+    {
+        s.timers.pop();
         // SAFETY: handles are validated by `lookup`.
         unsafe {
             let t = lookup(h);
@@ -569,21 +482,38 @@ unsafe fn expire_timers(now: i64) {
     }
 }
 
-/// Wakes every waiting task with `WAIT_CANCELLED`, the main task first.
-unsafe fn cancel_all_waiters() {
+/// Whether `t` runs a cleanup action, which cancellation must not interrupt.
+unsafe fn shielded(t: *mut Task) -> bool {
+    // SAFETY: `t` is a live record; the running task's state is in the live globals.
+    unsafe {
+        if t == sched().cur {
+            fault::live_shielded()
+        } else {
+            (*t).ctx.shielded()
+        }
+    }
+}
+
+/// Wakes every waiting task that is not shielded with `WAIT_CANCELLED`, the main task first.
+/// Returns whether any task woke.
+unsafe fn cancel_all_waiters() -> bool {
     let s = sched();
+    let mut woke = false;
     // SAFETY: slots hold live records or null.
     unsafe {
-        if !s.main.is_null() && (*s.main).state == State::Waiting {
+        if !s.main.is_null() && (*s.main).state == State::Waiting && !shielded(s.main) {
             wake(s.main, WAIT_CANCELLED);
+            woke = true;
         }
         for i in 0..s.slots.len() {
-            let t = s.slots.get(i).task;
-            if !t.is_null() && (*t).state == State::Waiting {
+            let t = s.slots[i].task;
+            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) {
                 wake(t, WAIT_CANCELLED);
+                woke = true;
             }
         }
     }
+    woke
 }
 
 /// Blocks until at least one task is runnable.
@@ -592,21 +522,20 @@ unsafe fn reactor_wait() {
     // SAFETY: syscalls with valid buffers; task records are live.
     unsafe {
         loop {
-            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 {
-                cancel_all_waiters();
+            // Tasks in a shielded cleanup keep waiting; they see the stop request afterwards.
+            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 && cancel_all_waiters() {
                 return;
             }
             let now = clock_ns();
             expire_timers(now);
-            if s.ready.head < s.ready.buf.len() {
+            if !s.ready.is_empty() {
                 return;
             }
             let mut timeout_ms = -1;
-            while !s.timers.is_empty() {
-                let (deadline, h) = s.timers.get(0);
+            while let Some(&Reverse((deadline, h))) = s.timers.peek() {
                 let t = lookup(h);
                 if t.is_null() || (*t).state != State::Waiting || (*t).deadline != deadline {
-                    timer_pop();
+                    s.timers.pop();
                     continue;
                 }
                 let ns = (deadline - now).max(0);
@@ -625,7 +554,7 @@ unsafe fn reactor_wait() {
                 if fd >= s.fd_waiters.len() {
                     continue;
                 }
-                let t = lookup(s.fd_waiters.get(fd));
+                let t = lookup(s.fd_waiters[fd]);
                 if t.is_null() {
                     continue;
                 }
@@ -650,7 +579,7 @@ unsafe fn switch_away() {
     unsafe {
         let cur = s.cur;
         loop {
-            if let Some(h) = s.ready.pop() {
+            if let Some(h) = s.ready.pop_front() {
                 let next = lookup(h);
                 if next.is_null() || (*next).state != State::Ready {
                     continue;
@@ -742,7 +671,7 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).arg = arg;
         (*t).detached = flags & SPAWN_DETACHED != 0;
         (*t).sp = sp;
-        sched().ready.push((*t).handle);
+        sched().ready.push_back((*t).handle);
         (*t).handle
     }
 }
@@ -754,7 +683,7 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
     unsafe {
         let cur = ensure_init();
         (*cur).state = State::Ready;
-        sched().ready.push((*cur).handle);
+        sched().ready.push_back((*cur).handle);
         switch_away();
     }
 }
@@ -777,7 +706,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             while s.fd_waiters.len() <= fd_idx {
                 s.fd_waiters.push(0);
             }
-            if s.fd_waiters.get(fd_idx) != 0 {
+            if s.fd_waiters[fd_idx] != 0 {
                 fault::fault(b"another task is already waiting on this file descriptor");
             }
             match crate::poller::watch(poller_fd(), fd, events) {
@@ -787,7 +716,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
                     fault::fault(b"cannot wait on this file descriptor");
                 }
             }
-            s.fd_waiters.set(fd_idx, (*cur).handle);
+            s.fd_waiters[fd_idx] = (*cur).handle;
             s.fd_waiting += 1;
             (*cur).wait_fd = fd;
         }
@@ -796,7 +725,17 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         if timeout_ns >= 0 {
             let deadline = clock_ns().saturating_add(timeout_ns);
             (*cur).deadline = deadline;
-            timer_push((deadline, (*cur).handle));
+            s.timers.push(Reverse((deadline, (*cur).handle)));
+            if s.timers.len() > s.timer_limit {
+                // A task woken by its descriptor leaves its entry behind until the deadline;
+                // a loop of short waits with long timeouts must not grow the heap without bound.
+                let slots = &s.slots;
+                s.timers.retain(|&Reverse((deadline, h))| {
+                    let t = lookup_in(slots, h);
+                    !t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline
+                });
+                s.timer_limit = (s.timers.len() * 2).max(MIN_TIMER_LIMIT);
+            }
         }
         (*cur).state = State::Waiting;
         switch_away();
@@ -844,7 +783,9 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
             return;
         }
         (*t).ctx.set_cancel(1);
-        wake(t, WAIT_CANCELLED);
+        if !shielded(t) {
+            wake(t, WAIT_CANCELLED);
+        }
     }
 }
 
@@ -907,7 +848,7 @@ pub fn reset_for_tests() {
     unsafe {
         let s = sched();
         for i in 0..s.slots.len() {
-            let t = s.slots.get(i).task;
+            let t = s.slots[i].task;
             if !t.is_null() {
                 let base = (*t).stack;
                 if !base.is_null() {
@@ -922,11 +863,12 @@ pub fn reset_for_tests() {
         }
         s.cur = null_mut();
         s.main = null_mut();
-        s.ready = Fifo::new();
-        s.slots = RawVec::new();
-        s.free_slots = RawVec::new();
-        s.timers = RawVec::new();
-        s.fd_waiters = RawVec::new();
+        s.ready = VecDeque::new();
+        s.slots = Vec::new();
+        s.free_slots = Vec::new();
+        s.timers = BinaryHeap::new();
+        s.timer_limit = MIN_TIMER_LIMIT;
+        s.fd_waiters = Vec::new();
         s.fd_waiting = 0;
         s.epfd = -1;
         s.zombie_stack = (0, 0);
@@ -1036,6 +978,29 @@ mod tests {
         }
 
         #[test]
+        fn timers_of_woken_waits_do_not_pile_up() {
+            let _g = lock();
+            reset_for_tests();
+            let fds = pipe();
+            put(fds[1]);
+            // SAFETY: tests hold the global lock; the descriptor stays open.
+            unsafe {
+                // A sleeper with an earlier deadline holds the heap's head, so the stale entries
+                // behind it are never popped lazily.
+                msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(10_000), 0, 0);
+                // Each wait returns at once (the byte stays unread) and leaves its hour-long
+                // deadline in the heap; the heap must not keep all of them.
+                for _ in 0..10 * MIN_TIMER_LIMIT {
+                    let r = msrt_task_wait_fd(fds[0], WAIT_READ, 3_600_000_000_000);
+                    assert_eq!(r & WAIT_READ, WAIT_READ);
+                }
+                assert!(sched().timers.len() <= 2 * MIN_TIMER_LIMIT);
+            }
+            close_all(fds);
+            reset_for_tests();
+        }
+
+        #[test]
         fn wakes_on_readable_then_stays_ready() {
             let _g = lock();
             reset_for_tests();
@@ -1091,5 +1056,75 @@ mod tests {
             close_all(fds);
             reset_for_tests();
         }
+    }
+
+    /// Runs `f` as a shielded cleanup action would: cancellation is off until it returns.
+    fn shielded_call<R>(f: impl FnOnce() -> R) -> R {
+        // SAFETY: tests hold the global lock and run on the task that owns the live globals.
+        unsafe {
+            *fault::SHIELD.ptr() += 1;
+            msrt_cancel_flag.store(0, Ordering::Relaxed);
+            let r = f();
+            *fault::SHIELD.ptr() -= 1;
+            r
+        }
+    }
+
+    unsafe extern "C-unwind" fn shielded_sleeper(_: *mut u8) {
+        let r = shielded_call(|| {
+            // SAFETY: called from a running task.
+            unsafe { msrt_task_sleep(3_000_000) }
+        });
+        note(if r == WAIT_TIMEOUT { 1 } else { 2 });
+    }
+
+    /// Clears the simulated stop request even when an assertion fails.
+    struct StopRequest;
+
+    impl StopRequest {
+        fn raise() -> Self {
+            PENDING_SIGNAL.store(2, Ordering::Relaxed);
+            StopRequest
+        }
+    }
+
+    impl Drop for StopRequest {
+        fn drop(&mut self) {
+            PENDING_SIGNAL.store(0, Ordering::Relaxed);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "parks on the poller")]
+    fn stop_request_does_not_interrupt_a_shielded_wait() {
+        let _g = lock();
+        reset_for_tests();
+        let _stop = StopRequest::raise();
+        // SAFETY: tests hold the global lock; the sleeps run on the test's own task.
+        unsafe {
+            // A parked task is woken at once by a stop request ...
+            assert_eq!(msrt_task_sleep(3_000_000), WAIT_CANCELLED);
+            // ... except while it runs a cleanup action, which waits out its sleep.
+            let r = shielded_call(|| msrt_task_sleep(3_000_000));
+            assert_eq!(r, WAIT_TIMEOUT);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn cancelling_a_task_does_not_interrupt_its_shielded_wait() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let t = msrt_task_spawn(shielded_sleeper, null_mut(), 0, 0);
+            msrt_task_yield();
+            msrt_task_cancel(t);
+            assert_eq!(msrt_task_join(t, null_mut()), 0);
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1]);
+        }
+        reset_for_tests();
     }
 }

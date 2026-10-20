@@ -225,7 +225,10 @@ pub fn render_meta(meta: &Meta) -> String {
     }
     if !meta.args.is_empty() {
         let arr = Json::Arr(meta.args.iter().map(|a| Json::str(a.clone())).collect());
-        out.push_str(&format!("{PREFIX} args={}\n", arr.compact()));
+        out.push_str(&format!(
+            "{PREFIX} args={}\n",
+            arr.compact(ms_json::Escape::Plain)
+        ));
     }
     if let Some(t) = meta.timeout_secs {
         out.push_str(&format!("{PREFIX} timeout={t}\n"));

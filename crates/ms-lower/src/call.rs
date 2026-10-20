@@ -354,6 +354,9 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| n.to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
+        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
+            return self.builder_method(e, view, m, recv_expr, &method);
+        }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
@@ -591,11 +594,12 @@ impl<'a> FnLower<'a> {
         {
             return self.construct_queue(view, mt);
         }
+        if crate::sharedbuilder::builder_kind(&t).is_some() {
+            return self.construct_builder(mt);
+        }
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is_std("Bytes")
-            || t.is_std("StringBuilder")
-            || t.is_std("BytesBuilder")
         {
             return self.construct_collection(view, mt);
         }

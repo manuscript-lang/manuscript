@@ -262,16 +262,32 @@ impl Cx {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
-        if t.is_std("Map") || t.is_std("Set") {
+        // A collection builder is a shared handle over its accumulating collection.
+        if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
+            let items = if kind == "ListBuilder" {
+                let e = self.lower_ty(m, &t.args[0])?;
+                m.types.list(e)
+            } else if kind == "StringBuilder" || kind == "BytesBuilder" {
+                MTy::BYTES
+            } else {
+                let mut args = Vec::new();
+                for a in &t.args {
+                    args.push(self.lower_ty(m, a)?);
+                }
+                m.types.obj(kind.trim_end_matches("Builder"), args)
+            };
+            return Ok(crate::sharedbuilder::handle_ty(m, kind, items));
+        }
+        let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
+        if let Some(name) = name {
             let mut args = Vec::new();
             for a in &t.args {
                 args.push(self.lower_ty(m, a)?);
             }
-            let name = if t.is_std("Map") { "Map" } else { "Set" };
             return Ok(m.types.obj(name, args));
         }
-        // Builders are growable byte buffers.
-        if t.is_std("Bytes") || t.is_std("StringBuilder") || t.is_std("BytesBuilder") {
+        // Bytes is a growable byte buffer; the text and byte builders are handles over one.
+        if t.is_std("Bytes") {
             return Ok(MTy::BYTES);
         }
         // A queue is a refcounted runtime object shared by its copies.

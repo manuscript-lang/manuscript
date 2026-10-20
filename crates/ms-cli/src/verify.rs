@@ -168,7 +168,7 @@ fn run_step(name: &'static str, args: &[&str], backend: &dyn Backend, io: &mut I
     step.exit_code = code;
     step.duration_ns = start.elapsed().as_nanos() as i64;
     let output = String::from_utf8_lossy(&out);
-    step.result = json::parse(output.trim());
+    step.result = json::parse(output.trim()).ok();
     if code == 0 {
         step.status = "passed";
         return step;

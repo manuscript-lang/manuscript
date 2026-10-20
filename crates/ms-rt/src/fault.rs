@@ -1,11 +1,11 @@
 //! Faults, the cleanup stack, call depth, cancellation and process exit.
-use crate::buf::{ByteBuf, RawVec};
 use crate::global::Global;
 #[allow(unused_imports)]
 use crate::sys;
-use core::fmt::{self, Write};
+use core::fmt;
 use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
+use std::io::Write as _;
 
 /// Current depth of recursive calls (generated code updates it inline).
 #[unsafe(no_mangle)]
@@ -20,11 +20,11 @@ pub static STACK_LO: Global<usize> = Global::new(0);
 pub static STACK_HI: Global<usize> = Global::new(0);
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
-static CLEANUPS: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
+static CLEANUPS: Global<Vec<(usize, usize)>> = Global::new(Vec::new());
 pub(crate) static SHIELD: Global<u32> = Global::new(0);
 pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
 static FAULTING: Global<bool> = Global::new(false);
-static SECONDARY: Global<RawVec<(usize, usize)>> = Global::new(RawVec::new());
+static SECONDARY: Global<Vec<Vec<u8>>> = Global::new(Vec::new());
 
 /// Stop request aimed at the running task (see `task`); 0 when none.
 static TASK_CANCEL: Global<u8> = Global::new(0);
@@ -49,11 +49,11 @@ pub(crate) fn set_live_task_cancel(v: u8) {
 
 /// The per-task slice of runtime state; `task` swaps it on every context switch.
 pub(crate) struct Ctx {
-    cleanups: RawVec<(usize, usize)>,
-    guards: RawVec<GuardFrame>,
-    secondary: RawVec<(usize, usize)>,
-    eq_pairs: RawVec<(usize, usize)>,
-    primary: Option<ByteBuf>,
+    cleanups: Vec<(usize, usize)>,
+    guards: Vec<GuardFrame>,
+    secondary: Vec<Vec<u8>>,
+    eq_pairs: Vec<(usize, usize)>,
+    primary: Option<Vec<u8>>,
     shield: u32,
     faulting: bool,
     depth: i64,
@@ -66,10 +66,10 @@ impl Ctx {
     /// State of a task that has not run yet, with the given stack bounds.
     pub(crate) const fn new(stack_lo: usize, stack_hi: usize) -> Ctx {
         Ctx {
-            cleanups: RawVec::new(),
-            guards: RawVec::new(),
-            secondary: RawVec::new(),
-            eq_pairs: RawVec::new(),
+            cleanups: Vec::new(),
+            guards: Vec::new(),
+            secondary: Vec::new(),
+            eq_pairs: Vec::new(),
             primary: None,
             shield: 0,
             faulting: false,
@@ -83,6 +83,17 @@ impl Ctx {
     pub(crate) fn set_cancel(&mut self, v: u8) {
         self.cancel = v;
     }
+
+    /// Whether the task is inside a cleanup action that shields it from cancellation.
+    pub(crate) fn shielded(&self) -> bool {
+        self.shield > 0
+    }
+}
+
+/// Whether the running task is inside a shielded cleanup action.
+pub(crate) fn live_shielded() -> bool {
+    // SAFETY: single threaded access.
+    unsafe { *SHIELD.ptr() > 0 }
 }
 
 /// Exchanges `c` with the live per-task state.
@@ -164,7 +175,7 @@ pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
     let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
     let mut steps = 0usize;
     while fp != 0 && fp.is_multiple_of(8) && steps < 1_000_000 {
-        if hi != 0 && (fp < lo || fp + 16 > hi) {
+        if hi != 0 && (fp < lo || fp.checked_add(16).is_none_or(|end| end > hi)) {
             break;
         }
         // SAFETY: `fp` is inside the stack bounds (or bounds are unknown and the
@@ -294,7 +305,7 @@ unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool
 }
 
 /// Appends `file:line in name` lines for the source frames found from `fp`.
-fn describe_frames(out: &mut ByteBuf, fp: usize) {
+fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
@@ -329,12 +340,12 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
                         file = sc.file_off;
                     }
                 }
-                out.extend(b"\n  at ");
-                out.extend(cstr(t, file));
+                out.extend_from_slice(b"\n  at ");
+                out.extend_from_slice(cstr(t, file));
                 out.push(b':');
-                out.push_i64(line as i64);
-                out.extend(b" in ");
-                out.extend(cstr(t, name));
+                crate::num::push_i64(out, line as i64);
+                out.extend_from_slice(b" in ");
+                out.extend_from_slice(cstr(t, name));
                 shown += 1;
                 let Some(sc) = next else { break };
                 line = sc.call_line;
@@ -354,7 +365,7 @@ fn describe_frames(out: &mut ByteBuf, fp: usize) {
         });
     }
     if truncated {
-        out.extend(b"\n  ... outer frames omitted");
+        out.extend_from_slice(b"\n  ... outer frames omitted");
     }
 }
 
@@ -405,17 +416,14 @@ pub fn fault(msg: &[u8]) -> ! {
     unsafe {
         if *FAULTING.ptr() {
             // A fault inside a cleanup action: record it and keep unwinding from here.
-            let mut copy = ByteBuf::with_capacity(msg.len());
-            copy.extend(msg);
-            let (p, l, _) = copy.into_raw();
-            (*SECONDARY.ptr()).push((p as usize, l));
+            (*SECONDARY.ptr()).push(msg.to_vec());
             while run_one_cleanup() {}
             finish_report(None)
         }
         *FAULTING.ptr() = true;
     }
-    let mut report = ByteBuf::with_capacity(msg.len() + 256);
-    report.extend(msg);
+    let mut report = Vec::with_capacity(msg.len() + 256);
+    report.extend_from_slice(msg);
     describe_frames(&mut report, frame_pointer());
     // SAFETY: single threaded; a fault inside a cleanup action finishes this report.
     unsafe { *PRIMARY.ptr() = Some(report) };
@@ -427,9 +435,9 @@ pub fn fault(msg: &[u8]) -> ! {
 #[cfg(not(test))]
 const SKIP_MARKER: &[u8] = b"\x01SKIP\x01";
 
-static PRIMARY: Global<Option<ByteBuf>> = Global::new(None);
+static PRIMARY: Global<Option<Vec<u8>>> = Global::new(None);
 
-fn finish_report(primary: Option<ByteBuf>) -> ! {
+fn finish_report(primary: Option<Vec<u8>>) -> ! {
     // SAFETY: single threaded access to the report state.
     let mut report = unsafe {
         if let Some(p) = primary {
@@ -437,16 +445,12 @@ fn finish_report(primary: Option<ByteBuf>) -> ! {
         }
         (*PRIMARY.ptr()).take().unwrap_or_default()
     };
-    // SAFETY: secondary messages were stored from `ByteBuf::into_raw`.
+    // SAFETY: single threaded access to the fault state.
     unsafe {
-        let sec = &mut *SECONDARY.ptr();
-        for i in 0..sec.len() {
-            let (p, l) = sec.get(i);
-            report.extend(b"\ncleanup fault: ");
-            report.extend(core::slice::from_raw_parts(p as *const u8, l));
-            crate::alloc::free(p as *mut u8);
+        for message in (*SECONDARY.ptr()).drain(..) {
+            report.extend_from_slice(b"\ncleanup fault: ");
+            report.extend_from_slice(&message);
         }
-        sec.clear();
         *FAULTING.ptr() = false;
     }
     #[cfg(test)]
@@ -472,8 +476,8 @@ fn finish_report(primary: Option<ByteBuf>) -> ! {
                 .split(|b| *b == b'\n')
                 .next()
                 .unwrap_or_default();
-            let mut out = ByteBuf::new();
-            out.extend(line);
+            let mut out = Vec::new();
+            out.extend_from_slice(line);
             out.push(b'\n');
             crate::io::flush_stdout();
             sys::write_all(sys::STDERR, out.as_slice());
@@ -489,7 +493,7 @@ fn finish_report(primary: Option<ByteBuf>) -> ! {
 /// Faults with a formatted message.
 #[cold]
 pub fn fault_fmt(args: fmt::Arguments) -> ! {
-    let mut b = ByteBuf::new();
+    let mut b = Vec::new();
     let _ = b.write_fmt(args);
     fault(b.as_slice())
 }
@@ -672,7 +676,7 @@ struct GuardFrame {
     trap: bool,
 }
 
-static GUARDS: Global<RawVec<GuardFrame>> = Global::new(RawVec::new());
+static GUARDS: Global<Vec<GuardFrame>> = Global::new(Vec::new());
 
 /// Length of the cleanup stack below the innermost guard (0 outside guards).
 #[inline]
@@ -980,6 +984,7 @@ pub fn reset_for_tests() {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
         *FAULTING.ptr() = false;
+        *SHIELD.ptr() = 0;
         (*SECONDARY.ptr()).clear();
     }
 }
@@ -1077,6 +1082,21 @@ mod tests {
     }
 
     #[test]
+    fn walk_frames_rejects_frame_pointers_that_wrap_the_address_space() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: test-only access to the stack bounds, restored below.
+        unsafe {
+            *STACK_LO.ptr() = 0x1000;
+            *STACK_HI.ptr() = 0x2000;
+            // `fp + 16` wraps to 8, which a plain add would accept as below `hi`.
+            walk_frames(usize::MAX - 7, |_| panic!("read a frame outside the stack"));
+            *STACK_LO.ptr() = 0;
+            *STACK_HI.ptr() = 0;
+        }
+    }
+
+    #[test]
     fn frames_resolve_through_tables() {
         let _g = lock();
         reset_for_tests();
@@ -1127,7 +1147,7 @@ mod tests {
         };
         // SAFETY: test-only access to globals; `t` outlives the use.
         unsafe { *TABLES.ptr() = &t };
-        let mut out = ByteBuf::new();
+        let mut out = Vec::new();
         describe_frames(&mut out, base.expose_provenance());
         // SAFETY: restore.
         unsafe { *TABLES.ptr() = core::ptr::null() };

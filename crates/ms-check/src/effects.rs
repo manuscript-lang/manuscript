@@ -21,6 +21,12 @@ pub fn collection_mutation(method: &Method) -> bool {
     if receiver.is_std("BytesBuilder") {
         return matches!(name, "append" | "concat" | "freeze");
     }
+    if receiver.is_std("ListBuilder") {
+        return matches!(name, "append" | "freeze");
+    }
+    if receiver.is_std("MapBuilder") || receiver.is_std("SetBuilder") {
+        return matches!(name, "add" | "freeze");
+    }
     (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
         && method
             .decl

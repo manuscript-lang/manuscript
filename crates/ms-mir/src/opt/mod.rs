@@ -11,8 +11,8 @@
 //! * Pure instructions (no effects) can be moved, merged and duplicated freely.
 //! * Ownership stays linear: a pass may delete a `drop` only together with the
 //!   allocation it pairs with, and must never duplicate a consumed owned value.
-//! * `poll` instructions stay on every loop back edge (a pass may merge two polls on
-//!   one path, but not remove the only poll of a loop).
+//! * `poll` instructions are not inserted on loop back edges (the stop signal is observed
+//!   at runtime calls and I/O); a pass must keep any `poll` that is present.
 
 use crate::ir::Module;
 
