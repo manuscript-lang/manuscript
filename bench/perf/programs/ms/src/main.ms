@@ -124,11 +124,11 @@ fn bench_generic() Int:
     var i = 0
     var g = 0
 
-    while i < 1000000:
+    while i < 100000000:
         g += ident[Int](i)
         i += 1
 
-    report("generic_call", 1000000, t)
+    report("generic_call", 100000000, t)
     return g
 
 fn bench_method() Int:
@@ -136,11 +136,11 @@ fn bench_method() Int:
     var acc = Acc(0)
     var i = 0
 
-    while i < 1000000:
+    while i < 100000000:
         acc.bump(1)
         i += 1
 
-    report("method_call", 1000000, t)
+    report("method_call", 100000000, t)
     return acc.total
 
 fn bench_try() Int:
@@ -148,7 +148,7 @@ fn bench_try() Int:
     var i = 0
     var tr = 0
 
-    while i < 1000000:
+    while i < 100000000:
         if let v = chain(i):
             tr += v
         else:
@@ -156,7 +156,7 @@ fn bench_try() Int:
 
         i += 1
 
-    report("try", 1000000, t)
+    report("try", 100000000, t)
     return tr
 
 fn bench_match() Int:
@@ -165,11 +165,11 @@ fn bench_match() Int:
     var i = 0
     var ma = 0
 
-    while i < 1000000:
+    while i < 100000000:
         ma += area(shapes.get(i % 3))
         i += 1
 
-    report("match", 1000000, t)
+    report("match", 100000000, t)
     return ma
 
 fn bench_length() Int:
@@ -184,11 +184,11 @@ fn bench_length() Int:
     i = 0
     var ln = 0
 
-    while i < 1000000:
+    while i < 100000000:
         ln += xs.length()
         i += 1
 
-    report("builtin_length", 1000000, t)
+    report("builtin_length", 100000000, t)
     return ln
 
 fn bench_for_list() Int:
@@ -201,9 +201,14 @@ fn bench_for_list() Int:
 
     let t = clock().now()
     var fs = 0
-    for x in big:
-        fs += x
-    report("for_list", 1000000, t)
+    var rep = 0
+
+    while rep < 100:
+        for x in big:
+            fs += x
+        rep += 1
+
+    report("for_list", 100000000, t)
     return fs
 
 export fn main() Int:
