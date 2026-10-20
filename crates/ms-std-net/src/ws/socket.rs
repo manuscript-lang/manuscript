@@ -1,16 +1,15 @@
-//! A WebSocket message session over a [`Connection`], the Rust counterpart of `osWebSocket`
-//! in `pkg/runtime/websocket.go` on top of gorilla's `Conn`.
+//! A WebSocket message session over a [`Connection`].
 //!
 //! Everything runs on the ms thread. Reads and writes go through `Connection::read` and
 //! `Connection::write`, which wait while serving queued HTTP handlers, so a nested call on the
 //! same socket is possible; a second receive on a busy socket fails and a send queued behind a
 //! running write is written by it, in order.
 //!
-//! Error texts follow what the Go runtime reports: peer close frames and transport failures
+//! Error texts: peer close frames and transport failures
 //! are `Failed("websocket: close 1006 (abnormal closure): unexpected EOF")` and the like, and
 //! anything that goes wrong after the first frame of a message was accepted reads
-//! `connection closed before the exchange completed`, because the Go runtime reads message
-//! bodies through a reader whose errors it cannot tell apart.
+//! `connection closed before the exchange completed`, because message bodies are read through
+//! a reader whose errors cannot be told apart.
 
 use super::frame::{
     self, DecodeError, Decoder, Event, OP_BINARY, OP_CLOSE, OP_PING, OP_PONG, OP_TEXT, code,

@@ -1,6 +1,6 @@
 //! `@std/encoding.ms` natives: hex, base64, UTF-16, Latin-1 and ASCII.
 //!
-//! Behavior mirrors `pkg/runtime/encoding.go`. Limits are `Option<i64>`; `None` is unlimited.
+//! Limits are `Option<i64>`; `None` is unlimited.
 #![no_std]
 
 extern crate alloc;

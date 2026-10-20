@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/archive.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/archive.tsv`, a recorded corpus.
 //! Tar output must match byte for byte; zip output only has to match in status because the
 //! deflate payload differs from Go's encoder (the Rust-packed zip must round-trip instead).
 use ms_std_archive::{Entry, Limits, pack, unpack};

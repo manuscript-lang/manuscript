@@ -229,7 +229,7 @@ pub fn select_subprotocol(offered: &[String], server: &[String]) -> String {
         .unwrap_or_default()
 }
 
-/// The origin policy of the Go runtime's `Upgrade`. `host` is the request's `Host` and `tls`
+/// The origin policy of the server upgrade. `host` is the request's `Host` and `tls`
 /// whether the connection is TLS.
 ///
 /// A missing or empty `Origin` is accepted. Otherwise it must be a bare `http` or `https`
@@ -275,7 +275,7 @@ pub struct ServerOptions<'a> {
     pub allowed_origins: &'a [String],
     /// Subprotocols the server speaks, in order of preference.
     pub subprotocols: &'a [String],
-    /// Negotiate permessage-deflate when the client offers it. The Go runtime never does.
+    /// Negotiate permessage-deflate when the client offers it.
     pub compression: bool,
 }
 
@@ -304,7 +304,7 @@ impl Rejected {
         Rejected { status, message }
     }
 
-    /// The error the Go runtime returns: `Failed(<handshake error text>)`.
+    /// The error returned: `Failed(<handshake error text>)`.
     pub fn error(&self) -> WsErr {
         WsErr::Failed(self.message.to_string())
     }

@@ -1,5 +1,5 @@
-//! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify), ported from
-//! `pkg/runtime/fs_handle.go`. Both are driven from `next`, which waits in short slices and polls
+//! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify).
+//! Both are driven from `next`, which waits in short slices and polls
 //! for cancellation between them, so no worker thread is needed.
 use crate::err::{Fail, Res};
 use crate::path;

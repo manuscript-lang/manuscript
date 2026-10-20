@@ -1,6 +1,6 @@
-//! `@std/json.ms` natives with the behavior of `pkg/runtime/json*.go`: a strict JSON parser that
+//! `@std/json.ms` natives a strict JSON parser that
 //! keeps number text verbatim and rejects duplicate keys, trailing values and unpaired surrogate
-//! escapes, and a serializer matching Go's `encoding/json` string escaping.
+//! escapes, and a serializer.
 //!
 //! Values live in an arena ([`Doc`]) so that neither side needs the other's value layout: the
 //! parser builds a [`Doc`], the generated typed decoders read it through node ids, and typed

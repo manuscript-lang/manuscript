@@ -1,6 +1,5 @@
-//! Failure classification shared by the filesystem natives, following `classifyOS` in
-//! `pkg/runtime/fs.go`: errno values become `FileSystemError` cases; anything else is `Failed`
-//! with Go's `*PathError` text.
+//! Failure classification shared by the filesystem natives, for the filesystem natives: errno values become `FileSystemError` cases; anything else is `Failed`
+//! with the operation, path and OS error text.
 use crate::sys::{self, Errno};
 use alloc::string::String;
 use alloc::vec::Vec;
