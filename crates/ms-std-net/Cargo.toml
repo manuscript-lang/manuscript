@@ -36,7 +36,7 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [dev-dependencies]
-ms-rt = { path = "../ms-rt", features = ["std"] }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

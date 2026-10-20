@@ -10,6 +10,8 @@
 #![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
+#[cfg(unix)]
+extern crate std;
 
 mod decoder;
 #[cfg(unix)]
@@ -28,27 +30,41 @@ pub extern "C" fn msstd_terminal_failure_message() -> *mut StrObj {
 
 #[cfg(unix)]
 mod imp {
-    use core::ffi::CStr;
+    use rustix::fd::BorrowedFd;
+    use rustix::stdio::{stderr, stdin, stdout};
+    use rustix::termios::{isatty, tcgetwinsize};
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStrExt;
 
-    pub fn is_terminal(fd: i32) -> bool {
-        // SAFETY: plain system call.
-        unsafe { libc::isatty(fd) == 1 }
+    /// The standard descriptor numbered `fd` (0 and 1; anything else is standard error).
+    fn standard(fd: i32) -> BorrowedFd<'static> {
+        match fd {
+            0 => stdin(),
+            1 => stdout(),
+            _ => stderr(),
+        }
     }
 
-    fn env(name: &CStr) -> Option<&'static [u8]> {
-        // SAFETY: `getenv` answers a NUL-terminated string that stays valid until the
-        // environment changes; callers only compare it at once.
-        let p = unsafe { libc::getenv(name.as_ptr()) };
-        // SAFETY: a non-null result is a NUL-terminated string.
-        (!p.is_null()).then(|| unsafe { CStr::from_ptr(p) }.to_bytes())
+    pub fn is_terminal(fd: i32) -> bool {
+        isatty(standard(fd))
+    }
+
+    fn env(name: &str) -> Option<OsString> {
+        std::env::var_os(name)
+    }
+
+    pub fn open_raw(alternate: bool) -> Result<*mut ms_std_rt::Handle<crate::raw::Raw>, u8> {
+        crate::raw::Raw::open(stdin(), stdout(), alternate)
     }
 
     pub fn colors() -> i64 {
-        let term = env(c"TERM").unwrap_or_default();
-        if !is_terminal(1) || env(c"NO_COLOR").is_some() || term == b"dumb" {
+        let term = env("TERM").unwrap_or_default();
+        let term = term.as_bytes();
+        if !is_terminal(1) || env("NO_COLOR").is_some() || term == b"dumb" {
             return 0;
         }
-        let truecolor = env(c"COLORTERM").unwrap_or_default();
+        let truecolor = env("COLORTERM").unwrap_or_default();
+        let truecolor = truecolor.as_bytes();
         if truecolor == b"truecolor" || truecolor == b"24bit" {
             16_777_216
         } else if term.windows(8).any(|w| w == b"256color") {
@@ -60,11 +76,8 @@ mod imp {
 
     /// `(columns, rows)` of standard output, or `None` when it is not a sized terminal.
     pub fn size() -> Option<(i64, i64)> {
-        // SAFETY: `winsize` is plain data that the ioctl fills.
-        let mut w: libc::winsize = unsafe { core::mem::zeroed() };
-        // SAFETY: `w` is writable.
-        let rc = unsafe { libc::ioctl(1, libc::TIOCGWINSZ, &mut w) };
-        (rc == 0).then_some((i64::from(w.ws_col), i64::from(w.ws_row)))
+        let w = tcgetwinsize(stdout()).ok()?;
+        Some((i64::from(w.ws_col), i64::from(w.ws_row)))
     }
 }
 
@@ -80,6 +93,10 @@ mod imp {
 
     pub fn size() -> Option<(i64, i64)> {
         None
+    }
+
+    pub fn open_raw(alternate: bool) -> Result<*mut ms_std_rt::Handle<crate::raw::Raw>, u8> {
+        crate::raw::Raw::open(0, 1, alternate)
     }
 }
 
@@ -144,7 +161,7 @@ pub unsafe extern "C" fn msstd_terminal_raw_mode(
     alternate_screen: u8,
     out: *mut *mut RawHandle,
 ) -> u8 {
-    match raw::Raw::open(0, 1, alternate_screen != 0) {
+    match imp::open_raw(alternate_screen != 0) {
         Ok(handle) => {
             // SAFETY: `out` is writable.
             unsafe { out.write(handle) };
