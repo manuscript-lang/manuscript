@@ -237,9 +237,16 @@ fn real_runtime() -> &'static PathBuf {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         let target = root.join("target").join("ms-rt-for-clif");
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-        let st = Command::new(cargo)
+        let mut command = Command::new(cargo);
+        command
             .current_dir(&root)
-            .args(["build", "--release", "-p", "ms-rt", "--target-dir"])
+            .args(["build", "--release", "-p", "ms-rt"]);
+        if cfg!(windows) {
+            // Windows runtime dependencies use std; match the ms-native feature.
+            command.args(["--features", "std"]);
+        }
+        let st = command
+            .arg("--target-dir")
             .arg(&target)
             .status()
             .expect("cargo build ms-rt");
@@ -803,4 +810,62 @@ b0:
         err.contains("main") && err.contains("inline_flags.ms:21"),
         "{err}"
     );
+}
+
+/// A native callback boundary is the deliberate limit of Windows attribution.
+#[test]
+fn predicated_overflow_stops_at_native_callback_boundary() {
+    let src = r#"module "callback_trace"
+file 0 "callback.ms"
+entry @main
+extern @msrt_test_callback(fn(int) -> int) -> int
+fn @callback(%env: ptr, %x: int) -> int closure() inline(never) !0:10:1 {
+b0:
+  %two: int = iconst 2
+  %r: int = imul.chk %x, %two !0:12:3
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %f: fn(int) -> int = closure.new @callback
+  %r: int = call.rt @msrt_test_callback(%f) !0:22:3
+  drop %f
+  ret %r
+}
+"#;
+    for opt_level in ["none", "speed"] {
+        let options = Options {
+            opt_level,
+            ..Options::default()
+        };
+        let (out, err) = run_native_full(src, &options, &format!("callback-{opt_level}"));
+        assert_eq!(out.code, 70, "{err}");
+        assert!(err.contains("callback callback.ms:12"), "{err}");
+        if cfg!(windows) {
+            assert!(!err.contains("main callback.ms:"), "{err}");
+        }
+        let m = module(src);
+        let d = dir();
+        let obj = d.join(format!("real-callback-{opt_level}.o"));
+        std::fs::write(&obj, compile(&m, &options).unwrap()).unwrap();
+        let shim = d.join(format!("callback-shim-{opt_level}.o"));
+        let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
+        assert!(
+            cc().args(["-O1", "-c", "-o"])
+                .arg(&shim)
+                .arg(c)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let exe = d.join(format!("real-callback-{opt_level}"));
+        ms_clif::link::link_all(&obj, &[&shim, real_runtime()], &exe).unwrap();
+        let out = Command::new(exe).output().unwrap();
+        assert_eq!(out.status.code(), Some(70));
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(err.contains("callback.ms:12 in callback"), "{err}");
+        if cfg!(windows) {
+            assert!(!err.contains("callback.ms:22 in main"), "{err}");
+        }
+    }
 }

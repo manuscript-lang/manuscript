@@ -45,34 +45,78 @@ typedef struct { uintptr_t addr; uint32_t size, name, file, line; } FuncEntry;
 typedef struct { uintptr_t pc; uint32_t line, file; } LineEntry;
 static const Tables *tables;
 
-/* Walks the frame-pointer chain and prints "  at name file:line" per frame. */
+static const FuncEntry *find_func(uintptr_t pc) {
+  const FuncEntry *fe = tables->funcs;
+  for (size_t i = 0; i < tables->nfuncs; i++)
+    if (pc > fe[i].addr && pc <= fe[i].addr + fe[i].size) return &fe[i];
+  return 0;
+}
+static void show_frame(uintptr_t pc, const FuncEntry *fe) {
+  const LineEntry *le = tables->lines;
+  const LineEntry *best = 0;
+  for (size_t k = 0; k < tables->nlines; k++)
+    if (le[k].pc <= pc - 1 && (!best || le[k].pc >= best->pc)) best = &le[k];
+  const char *file = fe->file == UINT32_MAX ? "?" : tables->strings + fe->file;
+  fprintf(stderr, "  at %s %s:%u\n", tables->strings + fe->name, file, best ? best->line : fe->line);
+}
+
+/* Windows native frames need their unwind records before reaching generated
+   code. Once there, stop at native/glue boundaries; never invent a partially
+   restored native register context from a generated frame pointer. */
 static void trace(void) {
   if (!tables) return;
-  uintptr_t *fp = __builtin_frame_address(0);
 #ifdef _WIN32
+  CONTEXT context;
+  RtlCaptureContext(&context);
   ULONG_PTR lo, hi;
   GetCurrentThreadStackLimits(&lo, &hi);
+#if defined(_M_ARM64) || defined(__aarch64__)
+#define CTX_PC Pc
+#define CTX_SP Sp
+#define CTX_FP Fp
+#else
+#define CTX_PC Rip
+#define CTX_SP Rsp
+#define CTX_FP Rbp
 #endif
+  for (int depth = 0; depth < 256; depth++) {
+    uintptr_t pc = context.CTX_PC, sp = context.CTX_SP;
+    if (!pc || sp < lo || sp >= hi || sp % 8) return;
+    if (find_func(pc)) break;
+    DWORD64 image = 0, establisher = 0;
+    PRUNTIME_FUNCTION entry = RtlLookupFunctionEntry(pc, &image, 0);
+    if (!entry) return;
+    void *handler = 0;
+    RtlVirtualUnwind(0, image, pc, entry, &context, &handler, &establisher, 0);
+    if (context.CTX_SP < sp || (context.CTX_SP == sp && context.CTX_PC == pc)) return;
+  }
+  uintptr_t pc = context.CTX_PC;
+  uintptr_t *fp = (uintptr_t *)context.CTX_FP;
+  for (int depth = 0; depth < 64; depth++) {
+    const FuncEntry *fe = find_func(pc);
+    if (!fe) break;
+    show_frame(pc, fe);
+    uintptr_t address = (uintptr_t)fp;
+    if (address % 8 || address < lo || address > hi || hi - address < 16) break;
+    uintptr_t *next = (uintptr_t *)fp[0];
+    pc = fp[1];
+    if (next <= fp) break;
+    fp = next;
+  }
+#undef CTX_PC
+#undef CTX_SP
+#undef CTX_FP
+#else
+  uintptr_t *fp = __builtin_frame_address(0);
   for (int depth = 0; fp && depth < 64; depth++) {
-#ifdef _WIN32
-    if ((uintptr_t)fp < lo || (uintptr_t)fp + 2 * sizeof(uintptr_t) > hi) break;
-#endif
     uintptr_t pc = fp[1];
-    const FuncEntry *fe = tables->funcs;
-    for (size_t i = 0; i < tables->nfuncs; i++) {
-      if (pc > fe[i].addr && pc <= fe[i].addr + fe[i].size) {
-        const LineEntry *le = tables->lines;
-        const LineEntry *best = 0;
-        for (size_t k = 0; k < tables->nlines; k++) if (le[k].pc <= pc - 1 && (!best || le[k].pc >= best->pc)) best = &le[k];
-        const char *file = fe[i].file == UINT32_MAX ? "?" : tables->strings + fe[i].file;
-        fprintf(stderr, "  at %s %s:%u\n", tables->strings + fe[i].name, file, best ? best->line : fe[i].line);
-        break;
-      }
-    }
+    const FuncEntry *fe = find_func(pc);
+    if (fe) show_frame(pc, fe);
     uintptr_t *next = (uintptr_t *)fp[0];
     if (next <= fp) break;
     fp = next;
   }
+#endif
 }
 static void die(const char *msg, size_t len) {
   fflush(stdout);
@@ -145,3 +189,5 @@ int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
   if (r < 0 || r > 125) { fprintf(stderr, "exit code out of range\n"); return 70; }
   return (int)r;
 }
+
+#include "callback.h"

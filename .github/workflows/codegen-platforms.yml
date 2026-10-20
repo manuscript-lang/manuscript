@@ -86,7 +86,9 @@ jobs:
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Native overflow, fault positions, cleanup and inline frames
-        run: cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
+        run: |
+          cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
+          cargo test --locked -p ms-clif --test native fault_trace_on_real_runtime -- --nocapture
       - name: Native object and linked source attribution
         if: inputs.dwarf
         run: |
