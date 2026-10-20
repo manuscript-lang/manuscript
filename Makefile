@@ -45,7 +45,7 @@ repo-check:
 	"$(GO)" run ./scripts/repo-check
 
 unit:
-	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
+	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./pkg/stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
 
 stdlib-check:
 	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'
@@ -57,20 +57,17 @@ conformance: build
 	./ms test scripts/conformance.ms
 	./ms run scripts/conformance.ms -- "$(CURDIR)/ms" "$(CONFORMANCE_SUITE)" "$(CONFORMANCE_SHARD)" "$(CONFORMANCE_SHARDS)"
 
-# Re-checks the frozen expectations against the Go oracle that recorded them (local only; CI gates on conform-rust).
+# The Rust corpus runner against the Go oracle itself: every recorded fixture must pass.
 # CONFORM_SHARD=i/n splits the run; see tests/conformance/README.md.
 CONFORM_SHARD ?= 0/1
 conform-oracle: build
 	cargo run -q -p ms-conform -- lint
 	cargo run -q -p ms-conform -- run --ms "$(CURDIR)/ms" --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-oracle.md
 
-# The run, check and test phases of the corpus against the Rust `ms` (cargo build -p ms-cli), excluding fixtures whose
-# answer depends on aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt.
-# The recorded expectations are frozen: they are the contract, and this is the corpus gate. CONFORM_SHARD=i/n splits the run.
+# The run, check and test phases of the corpus against the Rust `ms`, excluding fixtures whose answer depends on
+# aliasing; known differences are listed in tests/conformance/rust-expect-fail.txt (plus rust/expect-fail.<os>.txt).
 conform-rust:
-	cargo build -q -p ms-cli -p ms-conform
-	target/debug/ms-conform lint
-	target/debug/ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail tests/conformance/rust-expect-fail.txt --shard "$(CONFORM_SHARD)" --quiet --markdown .artifacts/conform-rust.md
+	sh scripts/conform-rust.sh
 
 examples-check:
 	"$(GO)" test ./tests/examples

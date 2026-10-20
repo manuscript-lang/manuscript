@@ -20,7 +20,8 @@ jobs:
     name: Language checks
     uses: ./.github/workflows/test-language.yml
 
-  # Docs-only changes skip the Rust jobs.
+  # Docs-only changes skip the Rust jobs. The conformance corpus replays the Go
+  # oracle, so Go, corpus, and workflow changes all count as Rust-relevant.
   changes:
     name: Detect Rust-relevant changes
     runs-on: ubuntu-latest
@@ -91,8 +92,8 @@ jobs:
         if: matrix.partition == 1
         run: cargo test --workspace --doc
 
-  # The frozen conformance corpus replayed against the Rust `ms`; known differences are
-  # listed in tests/conformance/rust-expect-fail.txt.
+  # The conformance corpus replayed against the Go oracle that recorded it (a
+  # drifting oracle or a stale expectation fails here).
   rust-conform:
     name: Rust corpus (shard ${{ matrix.shard }})
     needs: changes
@@ -107,27 +108,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/cache@v6
+        with:
+          path: toolchain/
+          key: sdk-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.go-version', 'scripts/toolchains.sha256') }}
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: rust-conform
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Rust ms replays the corpus
-        run: make conform-rust CONFORM_SHARD=${{ matrix.shard }}/4
+      - name: Oracle replays the corpus
+        run: make conform-oracle CONFORM_SHARD=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: conform-rust-${{ matrix.shard }}
-          path: .artifacts/conform-rust.md
+          name: conform-oracle-${{ matrix.shard }}
+          path: .artifacts/conform-oracle.md
 
-  rust-native:
-    name: Native codegen
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
-    uses: ./.github/workflows/codegen-platforms.yml
-
-  # The corpus against the Rust ms on the other platforms it ships for. Failures shared with
-  # Linux are in tests/conformance/rust-expect-fail.txt; platform-only ones go in
-  # tests/conformance/rust-expect-fail.<os>.txt with a reason.
+  # The corpus against the Rust ms on the platforms it ships for beyond Linux. Failures that
+  # also occur on Linux are listed in tests/conformance/rust-expect-fail.txt; failures specific
+  # to one platform go in expect-fail.<os>.txt with a reason.
   rust-conform-os:
     name: Rust corpus (${{ matrix.os }})
     needs: changes
@@ -147,18 +150,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: rust-conform-${{ matrix.os }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Use clang as the linker driver
-        if: runner.os == 'Windows'
-        run: |
-          echo 'CC=clang' >> "$GITHUB_ENV"
-          echo 'MS_LINKER=clang' >> "$GITHUB_ENV"
-      - name: Rust ms replays the corpus
+      - name: Corpus against the Rust ms
         run: sh scripts/conform-rust.sh
       - uses: actions/upload-artifact@v7
         if: always()
@@ -166,6 +162,12 @@ jobs:
           name: conform-rust-${{ matrix.os }}
           path: .artifacts/conform-rust.md
           if-no-files-found: ignore
+
+  rust-native:
+    name: Native codegen
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    uses: ./.github/workflows/codegen-platforms.yml
 
   # Keep one stable required check; every Rust job must pass before merging.
   rust-ok:
