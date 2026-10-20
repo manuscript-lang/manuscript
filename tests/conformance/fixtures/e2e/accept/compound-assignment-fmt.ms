@@ -40,10 +40,15 @@ test "compound assignment on fields":
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
-    var outer = Outer(counter)
+    var outer = Outer(counter.clone())
     outer.inner.count -= 5
     try expect_false(
-        (counter.count != 20 or counter.label != "xy" or tally([1, 2, 3]) != 6)
+        (
+            counter.count != 25
+            or counter.label != "xy"
+            or outer.inner.count != 20
+            or tally([1, 2, 3]) != 6
+        )
     )
 
 test "compound assignment in loops":
