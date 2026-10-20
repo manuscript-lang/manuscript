@@ -984,7 +984,6 @@ dependencies = [
  "ms-driver",
  "ms-guide",
  "ms-json",
- "ms-lower",
  "ms-lsp",
  "ms-mir",
  "ms-project",
@@ -1045,7 +1044,6 @@ name = "ms-lower"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-clif",
  "ms-mir",
  "ms-std-decimal",
  "ms-syntax",
