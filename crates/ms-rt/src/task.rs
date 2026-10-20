@@ -569,21 +569,38 @@ unsafe fn expire_timers(now: i64) {
     }
 }
 
-/// Wakes every waiting task with `WAIT_CANCELLED`, the main task first.
-unsafe fn cancel_all_waiters() {
+/// Whether `t` runs a cleanup action, which cancellation must not interrupt.
+unsafe fn shielded(t: *mut Task) -> bool {
+    // SAFETY: `t` is a live record; the running task's state is in the live globals.
+    unsafe {
+        if t == sched().cur {
+            fault::live_shielded()
+        } else {
+            (*t).ctx.shielded()
+        }
+    }
+}
+
+/// Wakes every waiting task that is not shielded with `WAIT_CANCELLED`, the main task first.
+/// Returns whether any task woke.
+unsafe fn cancel_all_waiters() -> bool {
     let s = sched();
+    let mut woke = false;
     // SAFETY: slots hold live records or null.
     unsafe {
-        if !s.main.is_null() && (*s.main).state == State::Waiting {
+        if !s.main.is_null() && (*s.main).state == State::Waiting && !shielded(s.main) {
             wake(s.main, WAIT_CANCELLED);
+            woke = true;
         }
         for i in 0..s.slots.len() {
             let t = s.slots.get(i).task;
-            if !t.is_null() && (*t).state == State::Waiting {
+            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) {
                 wake(t, WAIT_CANCELLED);
+                woke = true;
             }
         }
     }
+    woke
 }
 
 /// Blocks until at least one task is runnable.
@@ -592,8 +609,8 @@ unsafe fn reactor_wait() {
     // SAFETY: syscalls with valid buffers; task records are live.
     unsafe {
         loop {
-            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 {
-                cancel_all_waiters();
+            // Tasks in a shielded cleanup keep waiting; they see the stop request afterwards.
+            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 && cancel_all_waiters() {
                 return;
             }
             let now = clock_ns();
@@ -844,7 +861,9 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
             return;
         }
         (*t).ctx.set_cancel(1);
-        wake(t, WAIT_CANCELLED);
+        if !shielded(t) {
+            wake(t, WAIT_CANCELLED);
+        }
     }
 }
 
@@ -1091,5 +1110,75 @@ mod tests {
             close_all(fds);
             reset_for_tests();
         }
+    }
+
+    /// Runs `f` as a shielded cleanup action would: cancellation is off until it returns.
+    fn shielded_call<R>(f: impl FnOnce() -> R) -> R {
+        // SAFETY: tests hold the global lock and run on the task that owns the live globals.
+        unsafe {
+            *fault::SHIELD.ptr() += 1;
+            msrt_cancel_flag.store(0, Ordering::Relaxed);
+            let r = f();
+            *fault::SHIELD.ptr() -= 1;
+            r
+        }
+    }
+
+    unsafe extern "C-unwind" fn shielded_sleeper(_: *mut u8) {
+        let r = shielded_call(|| {
+            // SAFETY: called from a running task.
+            unsafe { msrt_task_sleep(3_000_000) }
+        });
+        note(if r == WAIT_TIMEOUT { 1 } else { 2 });
+    }
+
+    /// Clears the simulated stop request even when an assertion fails.
+    struct StopRequest;
+
+    impl StopRequest {
+        fn raise() -> Self {
+            PENDING_SIGNAL.store(2, Ordering::Relaxed);
+            StopRequest
+        }
+    }
+
+    impl Drop for StopRequest {
+        fn drop(&mut self) {
+            PENDING_SIGNAL.store(0, Ordering::Relaxed);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "parks on the poller")]
+    fn stop_request_does_not_interrupt_a_shielded_wait() {
+        let _g = lock();
+        reset_for_tests();
+        let _stop = StopRequest::raise();
+        // SAFETY: tests hold the global lock; the sleeps run on the test's own task.
+        unsafe {
+            // A parked task is woken at once by a stop request ...
+            assert_eq!(msrt_task_sleep(3_000_000), WAIT_CANCELLED);
+            // ... except while it runs a cleanup action, which waits out its sleep.
+            let r = shielded_call(|| msrt_task_sleep(3_000_000));
+            assert_eq!(r, WAIT_TIMEOUT);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn cancelling_a_task_does_not_interrupt_its_shielded_wait() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let t = msrt_task_spawn(shielded_sleeper, null_mut(), 0, 0);
+            msrt_task_yield();
+            msrt_task_cancel(t);
+            assert_eq!(msrt_task_join(t, null_mut()), 0);
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1]);
+        }
+        reset_for_tests();
     }
 }

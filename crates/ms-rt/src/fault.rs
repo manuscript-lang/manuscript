@@ -83,6 +83,17 @@ impl Ctx {
     pub(crate) fn set_cancel(&mut self, v: u8) {
         self.cancel = v;
     }
+
+    /// Whether the task is inside a cleanup action that shields it from cancellation.
+    pub(crate) fn shielded(&self) -> bool {
+        self.shield > 0
+    }
+}
+
+/// Whether the running task is inside a shielded cleanup action.
+pub(crate) fn live_shielded() -> bool {
+    // SAFETY: single threaded access.
+    unsafe { *SHIELD.ptr() > 0 }
 }
 
 /// Exchanges `c` with the live per-task state.
@@ -980,6 +991,7 @@ pub fn reset_for_tests() {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
         *FAULTING.ptr() = false;
+        *SHIELD.ptr() = 0;
         (*SECONDARY.ptr()).clear();
     }
 }
