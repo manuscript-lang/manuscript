@@ -1,5 +1,5 @@
 //! Lexer with layout: scans UTF-8 source and enforces the indentation rules,
-//! emitting `Newline`/`Indent`/`Dedent` tokens. A port of `pkg/lexer`.
+//! emitting `Newline`/`Indent`/`Dedent` tokens.
 
 use crate::diag::Diagnostic;
 use crate::pos::Pos;
@@ -105,7 +105,7 @@ pub(crate) fn lex_at<'a>(
     })
 }
 
-/// Lexes raw bytes, reporting invalid UTF-8 like the Go lexer.
+/// Lexes raw bytes, reporting invalid UTF-8.
 pub fn lex_bytes<'a>(file: &'a Arc<str>, source: &'a [u8]) -> PResult<Lexed<'a>> {
     match std::str::from_utf8(source) {
         Ok(text) => lex(file, text),
@@ -139,7 +139,7 @@ fn normalize_source(source: &str) -> (Cow<'_, str>, Vec<u32>) {
     (Cow::Owned(normalized), offsets)
 }
 
-/// Go's `strconv.QuoteRune`, used for `%q` of characters in messages.
+/// Quotes a character, used for `%q` of characters in messages.
 pub fn quote_rune(c: char) -> String {
     let mut out = String::from("'");
     match c {
@@ -161,7 +161,7 @@ pub fn quote_rune(c: char) -> String {
     out
 }
 
-/// Approximation of Go's `unicode.IsPrint` (no unassigned-code-point table).
+/// Approximation of Unicode printability (no unassigned-code-point table).
 fn is_print(c: char) -> bool {
     let u = c as u32;
     if u < 0x80 {
@@ -781,7 +781,7 @@ impl Scanner<'_> {
     }
 }
 
-/// Go's `unicode.IsSpace` for `strings.TrimSpace`.
+/// Unicode whitespace as trimmed by the lexer.
 pub fn go_space(c: char) -> bool {
     matches!(
         c,

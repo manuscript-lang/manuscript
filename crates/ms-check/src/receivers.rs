@@ -1,4 +1,4 @@
-//! Native receiver operation identities, generated from `internal/nativeabi/receivers.go`.
+//! Native receiver operation identities.
 
 /// `(receiver, [(operation, native identity)])`.
 pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[

@@ -1,5 +1,4 @@
-//! Checking a loaded graph: the port of Go `pkg/compiler.compile` up to (not
-//! including) lowering.
+//! Checking a loaded graph: everything up to (not including) lowering.
 
 use std::sync::Arc;
 

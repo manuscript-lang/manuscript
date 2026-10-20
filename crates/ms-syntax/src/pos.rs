@@ -1,6 +1,6 @@
 //! Source positions.
 
-/// A position in a source file, as the Go implementation reports it.
+/// A position in a source file.
 ///
 /// `line` and `column` are 1-based; `column` counts **bytes** within the line
 /// (not characters), and `offset` is the 0-based byte offset into the original

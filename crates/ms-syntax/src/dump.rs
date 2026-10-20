@@ -1,9 +1,5 @@
-//! Canonical text dump of a [`Module`] in the shape of the Go AST.
-//!
-//! The format is shared with the Go oracle used by the differential tests: it
-//! maps every Rust node back onto the Go `Kind`/`Text`/field encoding, so two
-//! trees are equal exactly when the Go and Rust parsers agree node for node,
-//! position for position.
+//! Canonical text dump of a [`Module`] for snapshot tests: two trees are equal
+//! exactly when they agree node for node, position for position.
 
 use crate::ast::*;
 use crate::pos::Pos;

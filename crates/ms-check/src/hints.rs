@@ -1,4 +1,4 @@
-//! Diagnostic wording helpers (`pkg/checker/hints.go`, `inference_hints.go`).
+//! Diagnostic wording helpers.
 //!
 //! Diagnostics read "<cause>; <fix>". The cause comes first and keeps the
 //! stable wording rule codes classify; the fix names concrete source to write.

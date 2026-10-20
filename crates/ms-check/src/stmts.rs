@@ -1,4 +1,4 @@
-//! Statements, patterns and `match` (`pkg/checker/checker.go`, `pattern_names.go`).
+//! Statements, patterns and `match`.
 
 use crate::checker::{Checker, Scope};
 use crate::hints::*;
@@ -10,7 +10,7 @@ use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-/// The case or type name an arm path stands for (`Text` in Go).
+/// The case or type name an arm path stands for.
 pub(crate) fn path_text(path: &Expr) -> Name {
     match &path.kind {
         ExprKind::Name(nm) => *nm,

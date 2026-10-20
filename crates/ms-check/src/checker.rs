@@ -1,4 +1,4 @@
-//! The checker state and the module-level passes (`pkg/checker/checker.go`).
+//! The checker state and the module-level passes.
 
 use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
@@ -78,8 +78,7 @@ pub struct CheckOptions {
     /// The bundled standard source module being checked for the shared cache.
     pub bundled: Option<Name>,
     /// Also enforce the value-semantics ownership rules (`ownership` module)
-    /// once the program type checks. Off by default: the Go checker has no
-    /// such rules, and parity comes first.
+    /// once the program type checks. Off by default.
     pub ownership: bool,
 }
 
@@ -1230,7 +1229,7 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
     let mut seen: HashSet<(String, Pos, String)> = HashSet::new();
     let mut result = Vec::with_capacity(diagnostics.len());
     for d in diagnostics {
-        // The position includes the file in Go; carry the file here as well.
+        // The position carries its file.
         let key = (d.file.to_string(), d.pos, d.message.clone());
         if seen.insert(key) {
             result.push(d);

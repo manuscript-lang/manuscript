@@ -1,6 +1,6 @@
 # HIR to MIR lowering
 
-`ms-lower` turns a checked program (`ms-check`'s HIR query view) into monomorphic MIR for `ms-mir`, which `ms-clif` compiles. The gate is `ms-conform` running tier-core fixtures through a native build, compared with the Go `ms` as oracle.
+`ms-lower` turns a checked program (`ms-check`'s HIR query view) into monomorphic MIR for `ms-mir`, which `ms-clif` compiles. The gate is `ms-conform` running tier-core fixtures through a native build.
 
 ```
 cargo build --release -p ms-cli

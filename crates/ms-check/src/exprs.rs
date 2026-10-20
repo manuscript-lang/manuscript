@@ -1,4 +1,4 @@
-//! Expression checking (`pkg/checker/expressions.go`).
+//! Expression checking.
 
 use crate::checker::Checker;
 use crate::hints::*;

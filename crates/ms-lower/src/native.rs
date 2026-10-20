@@ -773,7 +773,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
         let at = self.b.current();
-        // Go evaluates the receiver first: an argument that reassigns its variable must not
+        // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
         let snapshot = self.argument_reassigns(recv_expr, view);
         let recv = if snapshot {

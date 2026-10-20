@@ -1,4 +1,4 @@
-//! Calls, constructors, specialization (`pkg/checker/calls.go`).
+//! Calls, constructors, specialization.
 
 use crate::checker::Checker;
 use crate::exprs::callee_name;

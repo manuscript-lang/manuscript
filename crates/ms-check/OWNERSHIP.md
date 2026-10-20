@@ -1,6 +1,6 @@
 # Ownership (value semantics)
 
-`Hir::ownership()` enforces the value-semantics memory model of `crates/DESIGN.md` (decision 1) and exposes the moves, drops and borrows lowering needs. It is opt-in for diagnostics (`CheckOptions.ownership`, `ms-check-dev --ownership`) so Go-parity checking is unchanged; it runs only on programs the parity checker accepts.
+`Hir::ownership()` enforces the value-semantics memory model of `crates/DESIGN.md` (decision 1) and exposes the moves, drops and borrows lowering needs. It is opt-in for diagnostics (`CheckOptions.ownership`, `ms-check-dev --ownership`); it runs only on programs that already type check.
 
 ```rust
 let own = program.hir().ownership();

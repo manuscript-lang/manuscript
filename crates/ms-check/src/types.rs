@@ -1,11 +1,10 @@
 //! Checked types, definitions, symbols, bindings and methods.
 //!
-//! This mirrors `pkg/checker/types.go`. A [`Ty`] is a reference-counted,
-//! immutable type value with two exceptions that the Go checker also has: a
-//! type variable's bounds and default are filled in after the variable is
-//! created. Those two fields are `RefCell`s; cloning a [`Type`] snapshots them,
-//! exactly like Go's struct copy `r := *t`, while cloning the `Rc` shares them
-//! like a Go pointer.
+//! A [`Ty`] is a reference-counted,
+//! immutable type value with two exceptions: a type variable's bounds and
+//! default are filled in after the variable is created. Those two fields are
+//! `RefCell`s; cloning a [`Type`] snapshots them, while cloning the `Rc`
+//! shares them.
 
 use crate::syntax::{DeclRef, FuncRef};
 pub use ms_syntax::Symbol as Name;
@@ -22,7 +21,7 @@ pub fn n(text: &str) -> Name {
 /// A shared, immutable checked type.
 pub type Ty = Rc<Type>;
 
-/// The kind of a type (Go's `Type.Kind` string).
+/// The kind of a type .
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {
     /// `Int`, `Bool`, ... and the `<invalid>` marker.
@@ -42,7 +41,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    /// The Go spelling.
+    /// The source spelling.
     pub fn as_str(self) -> &'static str {
         match self {
             Kind::Primitive => "primitive",
@@ -599,7 +598,7 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
         return v.clone();
     }
     if t.kind == Kind::Variable {
-        // Go copies the variable, snapshotting its bounds.
+        // Copy the variable, snapshotting its bounds.
         return Rc::new((**t).clone());
     }
     if t.args.is_empty() && t.params.is_empty() && t.result.is_none() {
