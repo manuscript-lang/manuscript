@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found String",
+        "message": "expected Int, found String (in the initializer of 'bad')",
         "position": {
           "file": "seed-0127.ms",
           "line": 25,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0127.ms:25:20: type: expected Int, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0127.ms:25:20: type: expected Int, found String (in the initializer of 'bad')\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

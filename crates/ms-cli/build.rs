@@ -86,8 +86,13 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
 
 /// Drops the debug sections the toolchain's precompiled std, core and alloc objects carry (about 4 MB
 /// of every linked program). A copy is stripped, so the shared `ms-native` build stays intact. Without
-/// a strip tool the archive is used as built.
+/// a strip tool the archive is used as built. Windows keeps the archive whole: `llvm-strip` is the
+/// only strip tool there, and it rewrites some members (the ring assembly objects) so that `ld` rejects
+/// the archive when they are linked.
 fn strip_debug(out: &Path, archive: PathBuf) -> PathBuf {
+    if cfg!(windows) {
+        return archive;
+    }
     let stripped = out.join("libms_native.stripped");
     if std::fs::copy(&archive, &stripped).is_err() {
         return archive;

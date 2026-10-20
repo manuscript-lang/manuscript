@@ -68,7 +68,11 @@ pub fn build_executable(
     }
     let (level, options) = profile.options();
     optimize(module, level, cfg!(debug_assertions));
-    let object = ms_clif::compile(module, &options).map_err(|e| e.to_string())?;
+    let object = ms_clif::compile(module, &options).map_err(|e| {
+        format!(
+            "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
+        )
+    })?;
 
     let directory = output
         .parent()

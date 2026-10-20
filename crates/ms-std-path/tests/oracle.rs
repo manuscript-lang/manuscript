@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/path.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/path.tsv`, a recorded corpus.
 use ms_std_path::*;
 
 fn bytes(tok: &str) -> Vec<u8> {

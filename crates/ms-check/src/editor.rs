@@ -1,5 +1,5 @@
 //! Editor queries over a checked program: the members a receiver offers and
-//! the standard exports import completion may suggest (`pkg/checker/editor.go`).
+//! the standard exports import completion may suggest.
 
 use crate::checker::{CheckOptions, Checker};
 use crate::contracts::native_method;

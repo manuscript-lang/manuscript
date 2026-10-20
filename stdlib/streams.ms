@@ -104,11 +104,11 @@ impl ReadStream for ConcatStream:
 
     var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         while self.index < self.inputs.length():
-            let current = self.inputs[self.index]
-            let chunk = try current.read(max_bytes)
+            # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
+            let chunk = try self.inputs[self.index].read(max_bytes)
             if let bytes = chunk: return ok(some(bytes))
 
-            current.close()
+            self.inputs[self.index].close()
             self.index += 1
 
         return ok(none)

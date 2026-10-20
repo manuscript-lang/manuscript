@@ -1,7 +1,6 @@
 //! `@std/archive.ms` natives: in-memory zip and tar packing and unpacking with the validation,
-//! limits and error mapping of `pkg/runtime/archive.go` (Go's `archive/zip` and `archive/tar`).
-//! Zip members are compressed with miniz_oxide, so archives are valid but their compressed
-//! bytes and sizes can differ from Go's encoder (tar output is byte-identical).
+//! limits and error mapping.
+//! Zip members are compressed with miniz_oxide.
 #![no_std]
 
 extern crate alloc;

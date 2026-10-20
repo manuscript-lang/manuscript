@@ -1,5 +1,4 @@
 //! Default expressions of native standard declarations
-//! (`checkNativeDefaults` in `pkg/checker/standard.go`).
 
 use crate::checker::Checker;
 use crate::syntax::*;

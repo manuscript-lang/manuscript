@@ -1,6 +1,6 @@
 //! Passes that run around checking: inherent-impl desugaring, and the
 //! post-check passes that make trees ready for lowering (constant folding,
-//! argument order, `try` shape) from `pkg/checker/{inherent,pass_*}.go`.
+//! argument order, `try` shape).
 
 use crate::syntax::*;
 use crate::types::*;

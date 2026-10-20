@@ -1,6 +1,6 @@
-//! `@std/json.ms` natives with the behavior of `pkg/runtime/json*.go`: a strict JSON parser that
+//! `@std/json.ms` natives a strict JSON parser that
 //! keeps number text verbatim and rejects duplicate keys, trailing values and unpaired surrogate
-//! escapes, and a serializer matching Go's `encoding/json` string escaping.
+//! escapes, and a serializer.
 //!
 //! Values live in an arena ([`Doc`]) so that neither side needs the other's value layout: the
 //! parser builds a [`Doc`], the generated typed decoders read it through node ids, and typed
@@ -433,7 +433,7 @@ impl Out {
         Ok(())
     }
 
-    /// Go's `json.Marshal` of a string: HTML-safe escaping.
+    /// Encodes a string, escaping only quotes, backslashes and control characters.
     fn string(&mut self, s: &str) -> Result<(), ()> {
         if s.len() > self.max - self.buf.len() {
             self.overflow = true;
@@ -450,9 +450,7 @@ impl Out {
                 '\n' => enc.extend_from_slice(b"\\n"),
                 '\r' => enc.extend_from_slice(b"\\r"),
                 '\t' => enc.extend_from_slice(b"\\t"),
-                c if (c as u32) < 0x20
-                    || matches!(c, '<' | '>' | '&' | '\u{2028}' | '\u{2029}') =>
-                {
+                c if (c as u32) < 0x20 => {
                     const HEX: &[u8; 16] = b"0123456789abcdef";
                     let v = c as u32;
                     enc.extend_from_slice(b"\\u");

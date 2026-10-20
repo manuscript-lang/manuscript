@@ -526,7 +526,12 @@ impl FnLower<'_> {
         let slot = self.put_slot(copy);
         let (kd, vd) = self.map_descs(self.ty_of(m))?;
         let vd = vd.ok_or_else(|| Error::new("a map has a value descriptor"))?;
-        let found = self.jcall_masked("msrt_map_contains", &[m, kd, vd, slot], 0xff)?;
+        // The runtime returns a Bool, the type `Map.contains` declares for the same symbol.
+        let has = self.call_runtime("msrt_map_contains", &[m, kd, vd, slot], MTy::BOOL)?;
+        let found = self
+            .b
+            .emit(Op::B2I, &[has], Imm::None, Some(MTy::INT))
+            .expect("b2i");
         let back = self.take_slot(slot, kt);
         self.drop_value(back);
         Ok(found)

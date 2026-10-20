@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/json.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/json.tsv`, a recorded corpus of parse, stringify and scalar cases.
 use ms_std_core::Fail;
 use ms_std_json::*;
 
@@ -112,7 +112,7 @@ fn parse_dump(text: &str, limits: Limits) -> String {
 }
 
 #[test]
-fn matches_go() {
+fn matches_recorded_cases() {
     let data = include_str!("oracle/json.tsv");
     let (mut n, mut skipped) = (0, 0);
     for line in data.lines().filter(|l| !l.starts_with('#')) {

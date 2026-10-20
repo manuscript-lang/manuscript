@@ -14,7 +14,7 @@ use ms_rt_abi::{
     STATUS_OUT_OF_RANGE, STR_DATA_OFFSET, StrObj, VecVal,
 };
 
-/// Native allocation ceiling for built strings (as the Go runtime).
+/// Native allocation ceiling for built strings.
 pub const MAX_BYTES: usize = 1 << 30;
 
 /// Bytes of a string.
@@ -498,6 +498,43 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     }
 }
 
+/// A growable byte buffer the text formatters append to, so building a long text is linear.
+pub struct StrBuf(Vec<u8>);
+
+/// Starts an empty string builder (finish it with [`msrt_strbuf_finish`]).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_strbuf_new() -> *mut StrBuf {
+    Box::into_raw(Box::new(StrBuf(Vec::new())))
+}
+
+/// Appends a string's bytes to the builder.
+///
+/// # Safety
+/// `buf` must come from `msrt_strbuf_new` and `s` must be live.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const StrObj) {
+    // SAFETY: the caller passes a live builder and string.
+    unsafe {
+        let text = bytes(s);
+        let out = &mut (*buf).0;
+        if out.len() + text.len() > MAX_BYTES {
+            fault::fault(b"string: limit exceeded");
+        }
+        out.extend_from_slice(text);
+    }
+}
+
+/// Consumes the builder and returns its text.
+///
+/// # Safety
+/// `buf` must come from `msrt_strbuf_new` and is not used afterwards.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf) -> *mut StrObj {
+    // SAFETY: the builder was boxed by `msrt_strbuf_new` and is consumed once.
+    let buf = unsafe { Box::from_raw(buf) };
+    from_bytes(&buf.0)
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrObj) -> *mut StrObj {
     // SAFETY: caller passes a live string.
@@ -571,7 +608,16 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrObj) -> *mut S
 }
 
 fn is_cased(c: char) -> bool {
-    c.is_lowercase() || c.is_uppercase()
+    // Titlecase letters (Lt) are neither `is_lowercase` nor `is_uppercase` in Rust.
+    c.is_lowercase()
+        || c.is_uppercase()
+        || matches!(
+            c,
+            '\u{1C5}' | '\u{1C8}' | '\u{1CB}' | '\u{1F2}' | '\u{1FBC}' | '\u{1FCC}' | '\u{1FFC}'
+        )
+        || ('\u{1F88}'..='\u{1F8F}').contains(&c)
+        || ('\u{1F98}'..='\u{1F9F}').contains(&c)
+        || ('\u{1FA8}'..='\u{1FAF}').contains(&c)
 }
 
 fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
@@ -643,6 +689,8 @@ fn is_case_ignorable(c: char) -> bool {
             | '\u{B8}'
             | '\u{2019}'
     ) || ('\u{300}'..='\u{36F}').contains(&c)
+        || ('\u{2B0}'..='\u{2FF}').contains(&c)
+        || ('\u{200B}'..='\u{200F}').contains(&c)
 }
 
 #[unsafe(no_mangle)]
@@ -701,7 +749,7 @@ fn count_matches(text: &[u8], old: &[u8]) -> usize {
     n
 }
 
-/// Go `strings.Replace(text, old, new, n)` semantics (n < 0 means all).
+/// Replace the first `n` occurrences (n < 0 means all).
 fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     if old.is_empty() {
@@ -817,7 +865,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
             return STATUS_INVALID_INPUT;
         }
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
-        // Size check before building (the Go runtime fails as soon as output exceeds the budget).
+        // Size check before building.
         let count = if o.is_empty() {
             utf8::count(text) + 1
         } else {
@@ -1056,7 +1104,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
             return;
         }
         if sepb.is_empty() {
-            // Split after each scalar (Go `strings.Split` with an empty separator).
+            // Split after each scalar.
             let mut i = 0;
             while i < text.len() && v.len < limit {
                 let w = utf8::decode(&text[i..]).1;

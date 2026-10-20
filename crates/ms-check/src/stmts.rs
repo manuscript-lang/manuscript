@@ -1,4 +1,4 @@
-//! Statements, patterns and `match` (`pkg/checker/checker.go`, `pattern_names.go`).
+//! Statements, patterns and `match`.
 
 use crate::checker::{Checker, Scope};
 use crate::hints::*;
@@ -10,7 +10,7 @@ use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-/// The case or type name an arm path stands for (`Text` in Go).
+/// The case or type name an arm path stands for.
 pub(crate) fn path_text(path: &Expr) -> Name {
     match &path.kind {
         ExprKind::Name(nm) => *nm,
@@ -121,7 +121,14 @@ impl Checker {
             expected = Some(resolved);
         }
         let before = self.p.diagnostics.len();
-        let info = self.expression(value, expected.as_ref());
+        let info = match (&pattern.kind, &expected) {
+            (PatternKind::Name(name), Some(_)) => self.expression_in(
+                value,
+                expected.as_ref(),
+                format!("the initializer of '{name}'"),
+            ),
+            _ => self.expression(value, expected.as_ref()),
+        };
         let mut bound = info.t();
         if let Some(exp) = &expected
             && self.p.diagnostics.len() > before
@@ -241,7 +248,10 @@ impl Checker {
             }
             Some(v) => {
                 let result = self.result.clone();
-                let i = self.expression(v, result.as_ref());
+                let i = match &result {
+                    Some(r) => self.expression_in(v, Some(r), "the return value".to_string()),
+                    None => self.expression(v, None),
+                };
                 return (false, i.breaks);
             }
         }
@@ -279,7 +289,7 @@ impl Checker {
     }
 
     fn check_if(&mut self, cond: &Expr, body: &[Stmt], else_body: &[Stmt]) -> (bool, bool) {
-        let i = self.expression(cond, Some(&bool_()));
+        let i = self.expression_in(cond, Some(&bool_()), "an if condition".to_string());
         let (a, ab) = self.block(body, true);
         let (mut b, mut bb) = (true, false);
         if !else_body.is_empty() {
@@ -324,7 +334,7 @@ impl Checker {
     }
 
     fn check_while(&mut self, cond: &Expr, body: &[Stmt]) -> (bool, bool) {
-        let i = self.expression(cond, Some(&bool_()));
+        let i = self.expression_in(cond, Some(&bool_()), "a while condition".to_string());
         self.loops += 1;
         let (_, br) = self.block(body, true);
         self.loops -= 1;
@@ -616,8 +626,9 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "non-exhaustive match; missing cases: {}, or add a final '_' arm",
-                    list(&missing_cases(&all_cases, &seen), 12)
+                    "non-exhaustive match; missing cases: {}, or add a final '_' arm; add the arms {}",
+                    list(&missing_cases(&all_cases, &seen), 12),
+                    missing_arms(&all_cases, &seen)
                 ),
             );
         }

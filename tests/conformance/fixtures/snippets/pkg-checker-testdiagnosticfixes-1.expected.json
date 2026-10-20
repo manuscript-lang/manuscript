@@ -42,7 +42,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Error, found Result; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)",
+        "message": "expected Error, found Result (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-1.ms",
           "line": 8,
@@ -54,7 +54,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-1.ms:7:19: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:4:16: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:4:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:8:12: type: expected Error, found Result; use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-1.ms:7:19: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:4:16: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:4:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n<DIR>/pkg-checker-testdiagnosticfixes-1.ms:8:12: type: expected Error, found Result (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

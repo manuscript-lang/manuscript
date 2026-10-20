@@ -145,7 +145,13 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     };
     match inst.op {
         Op::RecNew | Op::AltNew | Op::ListLit | Op::ClosureNew => all(Mode::Own),
-        Op::RecSet | Op::ListPush | Op::ListSet | Op::ListSetNn | Op::ListSetU => all(Mode::Own),
+        Op::RecSet
+        | Op::RecFill
+        | Op::ListPush
+        | Op::ListSet
+        | Op::ListSetNn
+        | Op::ListSetU
+        | Op::ListFill => all(Mode::Own),
         Op::OptSome
         | Op::IfaceNew
         | Op::Drop
@@ -611,7 +617,7 @@ impl Verifier<'_> {
                     "rec.new yields the record type",
                 )
             }
-            Op::RecGet | Op::RecSet => {
+            Op::RecGet | Op::RecSet | Op::RecFill => {
                 let Imm::Field(r, i) = inst.imm else {
                     return Err("missing field".into());
                 };
@@ -710,7 +716,7 @@ impl Verifier<'_> {
                     "index must be int; result is the element type",
                 )
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 arity(3)?;
                 let elem = m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(
@@ -954,6 +960,13 @@ impl Verifier<'_> {
                     "copy duplicates a droppable value",
                 )
             }
+            Op::MoveOut => {
+                arity(1)?;
+                want(
+                    res == Some(t(0)) && m.needs_drop(t(0)),
+                    "move.out takes ownership of a droppable value",
+                )
+            }
             Op::Drop => {
                 arity(1)?;
                 want(m.needs_drop(t(0)), "drop takes a droppable value")
@@ -1032,6 +1045,16 @@ impl Verifier<'_> {
                 want(
                     t(0) == Ty::PTR && !m.needs_drop(t(1)),
                     "store writes a non-droppable value through a ptr",
+                )
+            }
+            Op::FuncAddr => {
+                arity(0)?;
+                let Imm::Func(g) = inst.imm else {
+                    return Err("missing function".into());
+                };
+                want(
+                    g.index() < m.funcs.len() && res == Some(Ty::PTR),
+                    "func.addr yields the ptr of a function",
                 )
             }
             Op::TypeDesc => {

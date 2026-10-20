@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Optional[Float], found Optional[Int]",
+        "message": "expected Optional[Float], found Optional[Int] (in argument 'value' of f)",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-9.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-9.ms:5:39: type: expected Optional[Float], found Optional[Int]\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-9.ms:5:39: type: expected Optional[Float], found Optional[Int] (in argument 'value' of f)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

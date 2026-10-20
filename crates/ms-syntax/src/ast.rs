@@ -1,13 +1,12 @@
 //! The untyped Manuscript syntax tree.
 //!
-//! This mirrors `pkg/syntax/ast.go` with Rust enums instead of string kinds.
-//! Every Go distinction is kept:
+//! Position and shape conventions:
 //!
-//! * `pos` fields carry the exact Go positions, including the unusual ones: a
+//! * `pos` fields carry exact positions, including the unusual ones: a
 //!   binary expression sits at its **operator**, a member access at the
 //!   **member name**, a call/index/apply at its **callee's start**, a method
 //!   declaration at its **name**, a top-level declaration at its keyword.
-//! * Pipes are desugared by the parser exactly as in Go: `x | f(a: 1)` is the
+//! * Pipes are desugared by the parser: `x | f(a: 1)` is the
 //!   call `f(x, a: 1)` (first argument at `x`'s position), `x | .m()` is
 //!   `x.m()`, and `x | try` / `x | try step` wrap in [`UnaryOp::Try`]. Use the
 //!   source text if the written form matters (the formatter does).
@@ -17,10 +16,10 @@
 //!   operator).
 //! * `let (a = 1, ...)` groups are expanded into one node each with `group`
 //!   set to the keyword position.
-//! * A module-level `let` is [`DeclKind::Const`]; Go lowers it to a nullary
+//! * A module-level `let` is [`DeclKind::Const`]; it is held as a nullary
 //!   function whose body returns the initializer (see [`ConstDecl`]).
 //! * A statement-position expression in an inline function/arm body is parsed
-//!   as [`StmtKind::Return`], the same as Go.
+//!   as [`StmtKind::Return`].
 //!
 //! # Node ids
 //!
@@ -29,8 +28,7 @@
 //! `Vec`s indexed by id (side tables) rather than on the nodes. Clones made by
 //! the parser (compound-assignment targets) have their own ids.
 //!
-//! Synthetic declarations the checker builds for `impl Type:` (Go's
-//! `Declaration.Synthetic`) are created by the checker, never by the parser;
+//! Synthetic declarations the checker builds for `impl Type:`  are created by the checker, never by the parser;
 //! [`Decl::synthetic`] exists so they can be represented.
 
 use crate::pos::{Pos, Span};
@@ -137,7 +135,7 @@ pub struct Func {
 
 /// A module-level constant.
 ///
-/// Go stores it as a function without parameters whose body is
+/// Stored as a function without parameters whose body is
 /// `return value`, with `Result` the annotation or a placeholder at the
 /// initializer. Every use evaluates the initializer. The synthetic return
 /// statement is positioned at the **first token** of the initializer
@@ -147,15 +145,12 @@ pub struct Func {
 pub struct ConstDecl {
     /// Constant name.
     pub name: Symbol,
-    /// Annotation, if written. Go uses a placeholder type at the initializer's
-    /// position when absent; the checker infers the type from `value`.
+    /// Annotation, if written. When absent, the checker infers the type from `value`.
     pub ty: Option<TypeRef>,
     /// Initializer.
     pub value: Expr,
     /// Position of the initializer's first token.
     pub init_pos: Pos,
-    /// Id of the synthetic `return` statement Go builds around the value.
-    pub return_id: NodeId,
     /// Position of the `let` keyword when written inside `let ( ... )`.
     pub group: Option<Pos>,
 }
@@ -205,7 +200,7 @@ pub struct ImplDecl {
 }
 
 impl ImplDecl {
-    /// Display name: `"Contract for Type"` or `"Type"` (Go `ImplName`).
+    /// Display name: `"Contract for Type"` or `"Type"`.
     pub fn display_name(&self, synthetic: bool) -> String {
         match (&self.contract, synthetic) {
             (Some(c), false) => format!("{} for {}", c.name(), self.receiver.name()),
@@ -296,7 +291,7 @@ pub struct TypeRef {
 #[derive(Debug, Clone)]
 pub enum TypeKind {
     /// `Name`, `module.Name`, `Name[Args]`. `name` keeps the dotted spelling
-    /// exactly as Go does (`"a.B"`).
+    /// (`"a.B"`).
     Named {
         /// Possibly dotted name.
         name: Symbol,
@@ -333,7 +328,7 @@ pub struct Expr {
     pub kind: ExprKind,
 }
 
-/// Expression variants (Go's `Kind` strings, one to one).
+/// Expression variants .
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     /// Number literal; the symbol is the exact spelling (`1_000` is not valid;
@@ -356,7 +351,7 @@ pub enum ExprKind {
     },
     /// `left[T, ...]`: the bracket read as type arguments. When exactly one
     /// argument is written and it can also be a value (not a `fn` type),
-    /// `value` holds the value interpretation (Go: `Right`), so `xs[i]` is
+    /// `value` holds the value interpretation , so `xs[i]` is
     /// retained both ways until name resolution identifies the receiver.
     Apply {
         /// Receiver.
@@ -627,7 +622,7 @@ pub enum AssignTarget {
     Member(Expr),
 }
 
-/// Statement variants (Go's `Kind` strings, one to one).
+/// Statement variants.
 #[derive(Debug, Clone)]
 pub enum StmtKind {
     /// `let`/`var` binding: `pattern [: Type] = value`.

@@ -146,13 +146,14 @@ core::arch::global_asm!(
 ///
 /// # Safety
 /// `buf` is the buffer `msrt_trap_begin` filled, whose caller frame is still live.
-pub(crate) unsafe fn leave(buf: *mut usize, faulted: bool, message: &[u8]) -> ! {
+pub(crate) unsafe fn leave(buf: *mut usize, faulted: bool, message: Vec<u8>) -> ! {
     // SAFETY: single threaded runtime state.
     unsafe {
         *FAULTED.ptr() = faulted;
         if faulted {
-            (*REPORT.ptr()).extend_from_slice(message);
+            (*REPORT.ptr()).extend_from_slice(&message);
         }
+        drop(message);
         msrt_trap_restore(buf, 1)
     }
 }

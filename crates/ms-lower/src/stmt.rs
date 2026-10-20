@@ -230,10 +230,14 @@ impl<'a> FnLower<'a> {
             let at = self.borrow(i);
             let mut new = Some(self.owned(x));
             return self.place_update(left, &mut |s, list| {
-                let elem = s.list_elem_at(list, at)?;
+                let (elem, moved) = s.list_elem_at(list, at)?;
                 let new = new.take().expect("one update");
                 let updated = s.set_path(elem, true, &path, new)?;
-                Ok(s.b.list_set(list, at, updated))
+                Ok(if moved {
+                    s.b.list_fill(list, at, updated)
+                } else {
+                    s.b.list_set(list, at, updated)
+                })
             });
         }
         let ExprKind::Name(_) = &cur.kind else {
@@ -279,9 +283,13 @@ impl<'a> FnLower<'a> {
             }
             let at = self.borrow(i);
             return self.place_update(left, &mut |s, list| {
-                let elem = s.list_elem_at(list, at)?;
+                let (elem, moved) = s.list_elem_at(list, at)?;
                 let updated = s.update_path(elem, &path, f)?;
-                Ok(s.b.list_set(list, at, updated))
+                Ok(if moved {
+                    s.b.list_fill(list, at, updated)
+                } else {
+                    s.b.list_set(list, at, updated)
+                })
             });
         }
         if !matches!(cur.kind, ExprKind::Name(_)) {
@@ -302,20 +310,32 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
-    /// An owned copy of element `at` of the list `list`.
+    /// Element `at` of the owned list `list`, owned: a droppable element is moved out (the caller
+    /// refills the slot with `list_fill`, reported by the flag) instead of copied.
     fn list_elem_at(
         &mut self,
         list: ms_mir::ir::Value,
         at: ms_mir::ir::Value,
-    ) -> Result<ms_mir::ir::Value, Error> {
+    ) -> Result<(ms_mir::ir::Value, bool), Error> {
         if !matches!(self.b.m.types.kind(self.ty_of(list)), TyKind::List(_)) {
             return Err(Error::new("element update on a non-list"));
         }
         let elem = self.b.list_get(list, at);
-        Ok(self.owned(Val {
-            v: elem,
-            own: false,
-        }))
+        Ok(self.take_projection(elem))
+    }
+
+    /// An owned `projection` of a value the caller owns and will overwrite: moved out when it
+    /// needs dropping (the flag), a plain copy otherwise.
+    fn take_projection(&mut self, projection: ms_mir::ir::Value) -> (ms_mir::ir::Value, bool) {
+        if self.needs_drop(self.ty_of(projection)) {
+            (self.b.move_out(projection), true)
+        } else {
+            let v = self.owned(Val {
+                v: projection,
+                own: false,
+            });
+            (v, false)
+        }
     }
 
     fn update_path(
@@ -340,9 +360,13 @@ impl<'a> FnLower<'a> {
             .position(|f| f.0 == name.as_str())
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
         let cur = self.b.rec_get(rid, idx, obj);
-        let cur_own = self.owned(Val { v: cur, own: false });
+        let (cur_own, moved) = self.take_projection(cur);
         let inner = self.update_path(cur_own, rest, f)?;
-        Ok(self.b.rec_set(rid, idx, obj, inner))
+        Ok(if moved {
+            self.b.rec_fill(rid, idx, obj, inner)
+        } else {
+            self.b.rec_set(rid, idx, obj, inner)
+        })
     }
 
     /// Returns `obj` with the field chain replaced by `new`. `obj_own` says whether `obj` is
@@ -367,11 +391,16 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name.as_str())
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
+        let mut moved = false;
         let inner = if rest.is_empty() {
             new
         } else {
             let cur = self.b.rec_get(rid, idx, obj);
-            let cur_own = if self.needs_drop(self.ty_of(cur)) {
+            let cur_own = if obj_own {
+                let (v, was_moved) = self.take_projection(cur);
+                moved = was_moved;
+                v
+            } else if self.needs_drop(self.ty_of(cur)) {
                 self.owned(Val { v: cur, own: false })
             } else {
                 cur
@@ -383,7 +412,11 @@ impl<'a> FnLower<'a> {
         } else {
             self.owned(Val { v: obj, own: false })
         };
-        Ok(self.b.rec_set(rid, idx, base, inner))
+        Ok(if moved {
+            self.b.rec_fill(rid, idx, base, inner)
+        } else {
+            self.b.rec_set(rid, idx, base, inner)
+        })
     }
 
     fn if_stmt(

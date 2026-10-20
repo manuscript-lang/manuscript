@@ -25,6 +25,10 @@ const CONN_WINDOW: u32 = 1 << 20;
 const MAX_STREAMS: u32 = 250;
 /// Output a streaming writer may leave unsent before it waits for the socket.
 const OUT_HOLD: usize = 512 * 1024;
+/// Output a peer may leave unread before the connection is dropped. Handlers wait at
+/// `OUT_HOLD`, so only control frames (PING and SETTINGS acknowledgements, resets) a peer
+/// provokes without reading the answers can pile up this far.
+const OUT_ABUSE: usize = if cfg!(test) { 1 << 20 } else { 64 << 20 };
 /// Bytes read per reactor turn before yielding to other connections.
 const READ_ROUND: usize = 1 << 20;
 
@@ -259,6 +263,9 @@ fn drain(conn: &Conn) -> Drain {
         st.out_pos = 0;
     }
     st.outbuf.extend_from_slice(&out);
+    if st.outbuf.len() - st.out_pos > OUT_ABUSE {
+        return Drain::Failed;
+    }
     drain_io(&*io, st)
 }
 

@@ -1,6 +1,5 @@
 //! Parser and formatter tests against the repository corpus and the recorded
-//! output of the Go implementation (see `tools/` for the differential scripts
-//! that produced and re-check the fixtures).
+//! fixtures under `tests/data`.
 
 use ms_syntax::dump::{dump_module, quote};
 use ms_syntax::{format, parse_partial};
@@ -82,7 +81,7 @@ fn repository_sources_parse_and_are_formatted() {
             assert_eq!(
                 once,
                 text,
-                "{} is not formatted like the Go formatter leaves it",
+                "{} is not formatted as the recorded output",
                 path.display()
             );
             assert_eq!(

@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected String, found Int",
+        "message": "expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
         "position": {
           "file": "seed-0223.ms",
           "line": 16,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0223.ms:16:19: type: expected String, found Int\n<DIR>/seed-0223.ms:16:22: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0223.ms:16:19: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n<DIR>/seed-0223.ms:16:22: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

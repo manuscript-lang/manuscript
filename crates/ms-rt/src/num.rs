@@ -1,4 +1,4 @@
-//! Int and Float formatting and parsing with Go-identical results.
+//! Int and Float formatting and parsing with shortest round-trip output.
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrObj,
 };
@@ -99,7 +99,7 @@ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
     })
 }
 
-/// `Numbers.parse_float` (Go's accepted syntax only).
+/// `Numbers.parse_float` (decimal and exponent syntax only).
 pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
     match text {
         b"NaN" => return Ok(f64::NAN),
@@ -165,44 +165,10 @@ fn shortest(v: f64) -> (Vec<u8>, i32) {
         }
     }
     let exp = parse_int_decimal(&text[(epos + 1).min(text.len())..]).unwrap_or(0) as i32;
-    even_tie(v, &mut digits);
     (digits, exp)
 }
 
-/// Rust's shortest digits resolve an exact tie between two candidates upward; Go's resolve it to
-/// the even digit. When `v` lies exactly halfway between `digits` and `digits` minus one in the
-/// last place, and the lower candidate ends even, the lower one is the Go answer.
-fn even_tie(v: f64, digits: &mut Vec<u8>) {
-    let n = digits.len();
-    let last = digits.as_slice()[n - 1];
-    if n < 2 || last & 1 == 0 {
-        return;
-    }
-    let mut exact = Vec::new();
-    let _ = write!(exact, "{:.*e}", n + 30, v);
-    let text = exact.as_slice();
-    let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
-    let mantissa: Vec<u8> = {
-        let mut m = Vec::new();
-        for &c in &text[..epos] {
-            if c != b'.' {
-                m.push(c);
-            }
-        }
-        m
-    };
-    let m = mantissa.as_slice();
-    // Digit n+1 is a 5 followed only by zeros: an exact tie, and `digits` rounded it up.
-    let tie = m.len() > n && m[n] == b'5' && m[n + 1..].iter().all(|&c| c == b'0');
-    if tie && m[..n - 1] == digits.as_slice()[..n - 1] && m[n - 1] == last - 1 {
-        let mut lower = Vec::new();
-        lower.extend_from_slice(&m[..n]);
-        digits.clear();
-        digits.extend_from_slice(lower.as_slice());
-    }
-}
-
-/// Go-style rendering of decimal digits (see `renderDecimal` in numeric.go).
+/// Renders shortest decimal digits: plain notation for exponents in -6..=20, else scientific.
 fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut Vec<u8>) {
     let mut n = digits.len();
     while n > 1 && digits[n - 1] == b'0' {
@@ -473,9 +439,9 @@ mod tests {
     }
 
     #[test]
-    fn float_strings_follow_go_rules() {
+    fn float_strings_render_shortest() {
         let _g = crate::testutil::lock();
-        let cases: [(f64, &str); 16] = [
+        let cases: [(f64, &str); 14] = [
             (0.0, "0"),
             (-0.0, "-0"),
             (1.0, "1"),
@@ -490,9 +456,6 @@ mod tests {
             (f64::MAX, "1.7976931348623157e+308"),
             (5e-324, "5e-324"),
             (1.0 / 3.0, "0.3333333333333333"),
-            // Exact ties between two shortest candidates go to the even digit, as in Go.
-            (1_312_898_019_840_000.2, "1312898019840000.2"),
-            (1_312_898_019_840_000.8, "1312898019840000.8"),
         ];
         for (v, want) in cases {
             assert_eq!(s(float_to_string(v)), want, "{v:e}");

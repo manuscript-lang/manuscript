@@ -173,21 +173,29 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("list literal of a non-list type"));
         };
         let mut vals = Vec::new();
+        let mut pending = Vec::new();
         for (n, it) in items.iter().enumerate() {
             let x = self.expr(it)?;
             if self.dead {
+                for v in pending {
+                    self.unhold_temp(v);
+                }
                 return Ok(self.dummy(lt));
             }
-            // A later element may return early (`try`): hold this one as a temporary until then.
-            let x = if items[n + 1..].iter().any(crate::mutation::has_try) {
-                self.hold_temp(x)
-            } else {
-                x
-            };
+            // Each element is copied when read, so later elements cannot change it. A later
+            // element may return early (`try`): this copy stays a temporary until then.
             let o = self.owned(x);
+            if self.needs_drop(self.ty_of(o)) && items[n + 1..].iter().any(crate::mutation::has_try)
+            {
+                self.temps.push(o);
+                pending.push(o);
+            }
             vals.push(o);
         }
         let v = self.b.list_lit(elem, &vals);
+        for v in pending {
+            self.unhold_temp(v);
+        }
         Ok(Val { v, own: true })
     }
 

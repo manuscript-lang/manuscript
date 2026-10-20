@@ -641,7 +641,7 @@ impl<'m> Interp<'m> {
                 };
                 set!(r[i as usize].clone());
             }
-            Op::RecSet => {
+            Op::RecSet | Op::RecFill => {
                 let Imm::Field(_, i) = inst.imm else {
                     return Err(Raw::internal("rec.set without field"));
                 };
@@ -709,13 +709,13 @@ impl<'m> Interp<'m> {
                 let k = list_index(l.len(), i, inst.op == Op::ListGet)?;
                 set!(l[k].clone());
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 let i = int!(1);
                 let v = arg(f, regs, a[2], true, m);
                 let Val::List(mut l) = arg(f, regs, a[0], true, m) else {
                     return Err(Raw::internal("list.set on a non-list"));
                 };
-                let k = list_index(l.len(), i, inst.op == Op::ListSet)?;
+                let k = list_index(l.len(), i, matches!(inst.op, Op::ListSet | Op::ListFill))?;
                 Rc::make_mut(&mut l)[k] = v;
                 set!(Val::List(l));
             }
@@ -802,7 +802,7 @@ impl<'m> Interp<'m> {
                 };
                 set!((**d).clone());
             }
-            Op::Copy => set!(regs[a[0].index()].clone()),
+            Op::Copy | Op::MoveOut => set!(regs[a[0].index()].clone()),
             Op::Drop => {
                 self.drops += 1;
                 arg(f, regs, a[0], true, m);
@@ -900,6 +900,12 @@ impl<'m> Interp<'m> {
                 let r = host(&mut self.stdout, &args)
                     .map_err(|msg| Raw::new(FaultKind::Unreachable, msg))?;
                 set!(r);
+            }
+            Op::FuncAddr => {
+                let Imm::Func(g) = inst.imm else {
+                    return Err(Raw::internal("func.addr without function"));
+                };
+                set!(Val::Ptr(g.0 as u64));
             }
             Op::TypeDesc => {
                 let Imm::Ty(t) = inst.imm else {

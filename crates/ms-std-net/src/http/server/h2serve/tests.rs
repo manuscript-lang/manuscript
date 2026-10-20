@@ -642,3 +642,25 @@ fn close_sends_goaway_and_finishes_streams() {
     assert!(goaway);
     net.close();
 }
+
+#[test]
+fn drops_a_peer_that_floods_pings_without_reading() {
+    let (_net, server) = start(Box::new(App), false, limits());
+    let addr = server.address().to_string();
+    let closed_after = with_client(move || {
+        let mut c = Client::connect(&addr, big_window());
+        // PING frame: 8-byte payload, type 6, no flags, stream 0.
+        let mut ping = vec![0, 0, 8, 6, 0, 0, 0, 0, 0];
+        ping.extend_from_slice(b"flooding");
+        let burst = ping.repeat(2000);
+        // Every ping is answered; this client never reads, so the answers pile up server side.
+        for sent in 0..2000 {
+            if c.tls.write_all(&burst).is_err() || c.tls.flush().is_err() {
+                return Some(sent * burst.len());
+            }
+        }
+        None
+    });
+    let bytes = closed_after.expect("server kept answering pings it could not deliver");
+    assert!(bytes < 32 << 20, "closed only after {bytes} bytes");
+}

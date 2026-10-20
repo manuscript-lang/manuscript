@@ -1,4 +1,4 @@
-//! `@std/decimal.ms` natives: a port of `pkg/runtime/decimal.go`.
+//! `@std/decimal.ms` natives.
 //!
 //! A `Decimal` is `coefficient * 10^exponent` with at most 34 significant digits and the
 //! coefficient free of trailing zeros, so equal values have equal representations. Operators

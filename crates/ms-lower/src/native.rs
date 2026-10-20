@@ -773,7 +773,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let native = m.native.as_str();
         let at = self.b.current();
-        // Go evaluates the receiver first: an argument that reassigns its variable must not
+        // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
         let snapshot = self.argument_reassigns(recv_expr, view);
         let recv = if snapshot {
@@ -802,27 +802,9 @@ impl<'a> FnLower<'a> {
         let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
         self.at(e.pos);
-        if let Some(sym) = match native {
-            "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
-            "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
-            "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
-            "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
-            "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
-            "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
-            _ => None,
-        } {
-            // The algorithm is the receiver's case index, the first runtime argument.
+        if let Some(sym) = hash_algorithm_symbol(native) {
             let result = self.emty(e)?;
-            let tag = self.borrow(recv);
-            let alg = self.b.alt_tag(tag);
-            let mut vals = vec![alg];
-            for a in &args {
-                vals.push(self.borrow(a.val));
-            }
-            let sig = crate::rtcall::rt_sig(sym)
-                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-            let has_out = sig.params.last().is_some_and(|p| p.name == "out");
-            return self.finish_rt_call(sym, &sig, has_out, vals, result);
+            return self.hash_algorithm_call(sym, recv, &args, result);
         }
         if let Some(decode) = match native {
             "compress/format_compress_stream" => Some(false),
@@ -1313,6 +1295,9 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r, d, n], rty)?;
             return Ok(Val { v: out, own: true });
         }
+        if let Some(sym) = hash_algorithm_symbol(m.native.as_str()) {
+            return self.hash_algorithm_call(sym, recv, args, result);
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1323,6 +1308,26 @@ impl<'a> FnLower<'a> {
                 ))
             })?;
         self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// A `HashAlgorithm` operation: the algorithm is the receiver's case index, the first runtime argument.
+    fn hash_algorithm_call(
+        &mut self,
+        sym: &str,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let tag = self.borrow(recv);
+        let alg = self.b.alt_tag(tag);
+        let mut vals = vec![alg];
+        for a in args {
+            vals.push(self.borrow(a.val));
+        }
+        let sig = crate::rtcall::rt_sig(sym)
+            .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+        let has_out = sig.params.last().is_some_and(|p| p.name == "out");
+        self.finish_rt_call(sym, &sig, has_out, vals, result)
     }
 
     /// `Timestamp` and `Duration` accessors that read the representation directly.
@@ -1382,84 +1387,60 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// A stable insertion sort of a copy, ordered by the comparator's sign.
+    /// A stable merge sort of a copy (the runtime's), ordered by the comparator's sign.
     fn list_sorted(
         &mut self,
         lv: ms_mir::builder::Var,
         fvar: ms_mir::builder::Var,
         elem: MTy,
     ) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let _ = elem;
         let l = self.b.use_var(lv);
-        let n = self.b.list_len(l);
-        let t = self.ty_of(l);
-        let copy = self.owned(Val { v: l, own: false });
-        let acc = self.b.declare_var(t, Mode::Own);
-        self.b.def_var(acc, copy);
-        let one = self.b.iconst(1);
-        let zero = self.b.iconst(0);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
-        let j = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(i, one);
-        let oh = self.b.new_block();
-        let ob = self.b.new_block();
-        let ih = self.b.new_block();
-        let ic = self.b.new_block();
-        let sw = self.b.new_block();
-        let on = self.b.new_block();
-        let exit = self.b.new_block();
-        self.b.br(oh, &[]);
-        self.b.switch_to(oh);
-        let iv = self.b.use_var(i);
-        let c = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(c, ob, &[], exit, &[]);
-        self.b.seal_block(ob);
-        self.b.switch_to(ob);
-        let iv = self.b.use_var(i);
-        self.b.def_var(j, iv);
-        self.b.br(ih, &[]);
-        self.b.switch_to(ih);
-        let jv = self.b.use_var(j);
-        let c = self.b.icmp(Cc::Gt, jv, zero);
-        self.b.br_if(c, ic, &[], on, &[]);
-        self.b.seal_block(ic);
-        self.b.switch_to(ic);
-        let jv = self.b.use_var(j);
-        let prev = self.b.binop(Op::ISub, jv, one);
-        let cur = self.b.use_var(acc);
-        let a = self.b.list_get(cur, prev);
-        let b = self.b.list_get(cur, jv);
         let f = self.b.use_var(fvar);
-        let r = self.b.call_ind(f, &[a, b]);
-        let gt = self.b.icmp(Cc::Gt, r, zero);
-        self.b.br_if(gt, sw, &[], on, &[]);
-        self.b.seal_block(sw);
-        self.b.seal_block(on);
-        self.b.switch_to(sw);
-        let jv = self.b.use_var(j);
-        let prev = self.b.binop(Op::ISub, jv, one);
-        let cur = self.b.use_var(acc);
-        let a = self.b.list_get(cur, prev);
-        let b = self.b.list_get(cur, jv);
-        let ac = self.owned(Val { v: a, own: false });
-        let bc = self.owned(Val { v: b, own: false });
-        let l1 = self.b.list_set(cur, prev, bc);
-        let l2 = self.b.list_set(l1, jv, ac);
-        self.b.def_var(acc, l2);
-        self.b.def_var(j, prev);
-        self.b.br(ih, &[]);
-        self.b.seal_block(ih);
-        self.b.switch_to(on);
-        let iv = self.b.use_var(i);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(oh, &[]);
-        self.b.seal_block(oh);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
-        let r = self.b.use_var(acc);
-        Ok(Val { v: r, own: true })
+        let thunk = self.sort_thunk(elem, self.ty_of(f));
+        let cmp = self
+            .b
+            .emit(
+                ms_mir::ir::Op::FuncAddr,
+                &[],
+                ms_mir::ir::Imm::Func(thunk),
+                Some(MTy::PTR),
+            )
+            .expect("func.addr");
+        let d = self.type_desc(elem);
+        let t = self.ty_of(l);
+        let out = self.call_runtime("msrt_list_sorted", &[l, d, cmp, f], t)?;
+        Ok(Val { v: out, own: true })
+    }
+
+    /// `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and
+    /// calls the source comparator on them.
+    fn sort_thunk(&mut self, elem: MTy, closure: MTy) -> ms_mir::ir::FuncId {
+        let p = |ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        };
+        let mut tb = ms_mir::builder::FuncBuilder::new(
+            self.b.m,
+            "sort.cmp",
+            vec![p(closure), p(MTy::PTR), p(MTy::PTR)],
+            MTy::INT,
+        );
+        tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = tb.params();
+        let mut load = |a| {
+            tb.emit(
+                ms_mir::ir::Op::Load,
+                &[a],
+                ms_mir::ir::Imm::Ty(elem),
+                Some(elem),
+            )
+            .expect("load")
+        };
+        let (x, y) = (load(args[1]), load(args[2]));
+        let r = tb.call_ind(args[0], &[x, y]);
+        tb.ret(Some(r));
+        let thunk = tb.into_func();
+        self.b.m.add_func(thunk)
     }
 
     /// A collection method that changes its receiver place: the place receives the new value.
@@ -2777,4 +2758,17 @@ fn build_clock_method(
     b.ret(Some(reading));
     let f = b.into_func();
     m.add_func(f)
+}
+
+/// The runtime symbol of a `HashAlgorithm` operation, by native identity.
+fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
+    match native {
+        "crypto/hash_algorithm_digest" => Some("msrt_crypto_digest"),
+        "crypto/hash_algorithm_hmac" => Some("msrt_crypto_hmac"),
+        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msrt_crypto_derive_key"),
+        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msrt_crypto_hkdf"),
+        "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
+        "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
+        _ => None,
+    }
 }

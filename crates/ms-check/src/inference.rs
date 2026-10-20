@@ -1,5 +1,5 @@
-//! Generic argument inference (`pkg/checker/inference.go`) and the pieces of
-//! callback return inference it shares (`callbacks.go`).
+//! Generic argument inference and the pieces of
+//! callback return inference it shares.
 
 use crate::checker::{CheckedArgument, Checker};
 use crate::hints::{arity_mismatch_hint, label_mismatch_hint};
@@ -9,7 +9,7 @@ use crate::types::*;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 
-/// A call argument with its label resolved (Go's `syntax.Argument` after
+/// A call argument with its label resolved (after
 /// `functionArguments`). An empty `name` means no parameter was left for it.
 #[derive(Clone, Copy)]
 pub(crate) struct Arg<'a> {

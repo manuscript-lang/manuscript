@@ -17,7 +17,7 @@ use ms_mir::ir::{
 use ms_mir::types::{IfaceId, RecId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
-/// The decoder poll statuses and the input chunk size of `compressedStream` in the Go runtime.
+/// The decoder poll statuses and the input chunk size of `compressedStream` in the runtime.
 const NEED_INPUT: i64 = 64;
 const DONE: i64 = 65;
 const INPUT_CHUNK: i64 = 32768;

@@ -1,5 +1,4 @@
-//! `@std/html.ms` natives: HTML5 parsing (a port of `golang.org/x/net/html`) and Go's `html`
-//! escaping, with the resource limits of `pkg/runtime/html.go`.
+//! `@std/html.ms` natives: HTML5 parsing and HTML escaping, with resource limits.
 #![no_std]
 
 extern crate alloc;
@@ -51,7 +50,12 @@ pub fn parse(text: &str, limits: Limits) -> Result<Tree, Fail> {
         return Err(Fail::LimitExceeded);
     }
     let mut p = parse::Parser::new(text.as_bytes());
+    // Twice the depth budget plus slack for elements the tree places shallower than the stack.
+    p.max_open = max_depth.saturating_mul(2).saturating_add(64);
     p.parse();
+    if p.exceeded {
+        return Err(Fail::LimitExceeded);
+    }
     let tree = Tree {
         root: p.doc,
         nodes: p.nodes,

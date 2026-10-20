@@ -23,10 +23,10 @@ use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-/// `User-Agent` of requests that name none, as Go's transport sends.
-pub const USER_AGENT: &str = "Go-http-client/1.1";
+/// `User-Agent` of requests that name none.
+pub const USER_AGENT: &str = "ms-http";
 /// `User-Agent` over HTTP/2.
-const USER_AGENT_H2: &str = "Go-http-client/2.0";
+const USER_AGENT_H2: &str = USER_AGENT;
 
 /// Largest read from a connection and from a request-body source.
 const READ_BUF: usize = 64 * 1024;
@@ -1695,7 +1695,7 @@ mod tests {
         assert_eq!(
             text(&body),
             format!(
-                "GET /p?x=1 HTTP/1.1\r\nHost: {address}\r\nUser-Agent: Go-http-client/1.1\r\nAccept: */*\r\nX-Zed: 1\r\nX-Zed: 2\r\n\r\n"
+                "GET /p?x=1 HTTP/1.1\r\nHost: {address}\r\nUser-Agent: ms-http\r\nAccept: */*\r\nX-Zed: 1\r\nX-Zed: 2\r\n\r\n"
             )
         );
 

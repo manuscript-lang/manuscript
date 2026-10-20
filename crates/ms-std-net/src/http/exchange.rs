@@ -677,7 +677,7 @@ mod tests {
                     "/wsbad" => {
                         assert!(matches!(
                             ex.upgrade(&[], &[], None),
-                            Err(WsErr::Failed(m)) if m == "websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header"
+                            Err(WsErr::Failed(m)) if m == "websocket: 'Connection' header lacks the 'upgrade' token"
                         ));
                         return Ok(());
                     }

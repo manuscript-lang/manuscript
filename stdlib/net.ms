@@ -282,7 +282,7 @@ export interface Network:
         allow_listen: Bool
     ) Result[Network, NetworkError]
     # Starts an HTTP server on `address` that calls `handler` with each fully buffered request and sends the returned response.
-    # A request beyond `limit` concurrent requests is answered with 503, an oversized request body with 413, and a handler fault with 500. An address that cannot be bound returns IoError.Unavailable.
+    # A request beyond `limit` concurrent requests is answered with 503, a request header block over 1 MiB with 431, an oversized request body with 413, and a handler fault with 500. An address that cannot be bound returns IoError.Unavailable.
     fn serve(
         address: String,
         handler: fn(request: HttpRequest) HttpResponse,

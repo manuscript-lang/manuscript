@@ -1,4 +1,4 @@
-//! Replays `tests/oracle/crypto.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
+//! Replays `tests/oracle/crypto.tsv`, a recorded corpus.
 use ms_std_core::Fail;
 use ms_std_crypto::*;
 

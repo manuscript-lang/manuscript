@@ -9,7 +9,7 @@ use crate::fault;
 use crate::string::{self, from_bytes};
 use ms_rt_abi::*;
 
-/// Limit on native list sizes (as the Go runtime).
+/// Limit on native list sizes.
 pub const MAX_ITEMS: usize = 1 << 28;
 
 const EMPTY: VecVal = VecVal {

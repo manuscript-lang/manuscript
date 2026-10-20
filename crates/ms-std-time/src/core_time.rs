@@ -1,4 +1,4 @@
-//! Timestamp semantics of `@std/time`, ported from `pkg/runtime/time.go`.
+//! Timestamp semantics of `@std/time`.
 //!
 //! Failures are the ABI status codes of `ms-rt-abi` (`TimeError.InvalidInput`, `OutOfRange`,
 //! `InvalidData`).

@@ -205,6 +205,17 @@ impl<'m> FuncBuilder<'m> {
         let t = self.ty(obj);
         self.val(Op::RecSet, &[obj, v], Imm::Field(r, field), t)
     }
+    /// `rec.fill`: like `rec.set`, for a field whose old value was moved out with `move.out`.
+    pub fn rec_fill(&mut self, r: RecId, field: u32, obj: Value, v: Value) -> Value {
+        let t = self.ty(obj);
+        self.val(Op::RecFill, &[obj, v], Imm::Field(r, field), t)
+    }
+    /// `move.out`: takes ownership of a borrowed projection without copying it. The projected
+    /// slot must be refilled with `rec.fill` or `list.fill` before anything else reads it.
+    pub fn move_out(&mut self, v: Value) -> Value {
+        let t = self.ty(v);
+        self.val(Op::MoveOut, &[v], Imm::None, t)
+    }
     /// `alt.new`.
     pub fn alt_new(&mut self, a: AltId, case: u32, fields: &[Value]) -> Value {
         let t = self.m.types.alt(a);
@@ -245,6 +256,11 @@ impl<'m> FuncBuilder<'m> {
     pub fn list_set(&mut self, l: Value, i: Value, v: Value) -> Value {
         let t = self.ty(l);
         self.val(Op::ListSet, &[l, i, v], Imm::None, t)
+    }
+    /// `list.fill`: like `list.set`, for an element that was moved out with `move.out`.
+    pub fn list_fill(&mut self, l: Value, i: Value, v: Value) -> Value {
+        let t = self.ty(l);
+        self.val(Op::ListFill, &[l, i, v], Imm::None, t)
     }
     /// `list.push`.
     pub fn list_push(&mut self, l: Value, v: Value) -> Value {

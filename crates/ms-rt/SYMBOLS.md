@@ -133,6 +133,9 @@ msrt_string_ends_with(a: *const StrObj, v: *const StrObj) -> u8
 msrt_string_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_concat( a: *const StrObj, b: *const StrObj, ) -> *mut StrObj
+msrt_strbuf_new() -> *mut StrBuf
+msrt_strbuf_push(buf: *mut StrBuf, s: *const StrObj)
+msrt_strbuf_finish(buf: *mut StrBuf) -> *mut StrObj
 msrt_string_reverse(a: *const StrObj) -> *mut StrObj
 msrt_string_trim(s: *const StrObj) -> *mut StrObj
 msrt_string_trim_start(s: *const StrObj) -> *mut StrObj
@@ -442,13 +445,17 @@ msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
 msrt_json_enc_float(v: f64) -> *mut StrObj
-msrt_log_logger_new( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
-msrt_log_logger_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8
-msrt_log_logger_enabled(l: *const LoggerObj, level: i64) -> u8
-msrt_log_logger_level(l: *const LoggerObj) -> i64
-msrt_log_logger_set_level(l: *const LoggerObj, level: i64)
-msrt_log_logger_encode( l: *const LoggerObj, level: i64, message: *const StrObj, fields: *const StrObj, now_ms: i64, out: *mut VecVal, written: *mut u8, ) -> u8
-msrt_log_object_text(text: *const StrObj) -> *mut StrObj
+msrt_logcore_new_state( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
+msrt_logcore_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8
+msrt_logcore_enabled(l: *const LoggerObj, level: i64) -> u8
+msrt_logcore_level(l: *const LoggerObj) -> i64
+msrt_logcore_set_level(l: *const LoggerObj, level: i64)
+msrt_logcore_line( l: *const LoggerObj, level: i64, message: *const StrObj, now_ms: i64, out: *mut *mut StrObj, ) -> u8
+msrt_logcore_line_json( l: *const LoggerObj, level: i64, message: *const StrObj, fields: *const StrObj, now_ms: i64, out: *mut *mut StrObj, ) -> u8
+msrt_logcore_new_gate() -> *mut GateObj
+msrt_logcore_shut(g: *const GateObj)
+msrt_logcore_is_shut(g: *const GateObj) -> u8
+msrt_logcore_object_text(text: *const StrObj) -> *mut StrObj
 msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64

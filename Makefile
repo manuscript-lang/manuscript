@@ -5,7 +5,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: setup tools doctor verify verify-full check lint repo-check unit test build conform fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
+.PHONY: setup tools doctor verify verify-full check lint repo-check unit test build conform leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
 
 setup: tools
 
@@ -50,6 +50,10 @@ build:
 # CONFORM_SHARD=i/n splits the run.
 conform:
 	sh scripts/conform.sh
+
+# Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
+leak-check:
+	sh scripts/leak-check.sh
 
 # The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
 licenses:

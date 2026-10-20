@@ -1,9 +1,9 @@
-//! Deterministic source formatter, a port of `pkg/tooling/format`.
+//! Deterministic source formatter.
 //!
 //! The formatter keeps the lexer's tokens and comment text. The delimiter tree
 //! gives expressions safe continuation boundaries; the AST identifies calls,
 //! literals, parameters and statement values instead of guessing from token
-//! spellings. Output is byte-identical to the Go formatter.
+//! spellings.
 
 use crate::ast::*;
 use crate::lexer::{PResult, lex};
@@ -343,7 +343,7 @@ fn guard_statement(s: &Stmt) -> bool {
     }
 }
 
-/// The statement's value expression (Go `Statement.Value`).
+/// The statement's value expression.
 fn statement_value(s: &Stmt) -> Option<&Expr> {
     match &s.kind {
         StmtKind::Bind { value, .. }

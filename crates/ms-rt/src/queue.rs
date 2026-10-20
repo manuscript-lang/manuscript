@@ -1,5 +1,5 @@
 //! `Queue[T]`: a local mutable FIFO held in a refcounted object, so copies of a queue value
-//! share one queue as they do in the Go runtime. Elements live in a growable buffer with a
+//! share one queue. Elements live in a growable buffer with a
 //! head index; consumed slots are reclaimed by sliding the live range down once the head
 //! passes half the buffer.
 use crate::alloc;

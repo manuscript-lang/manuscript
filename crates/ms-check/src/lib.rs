@@ -1,6 +1,4 @@
-//! The Manuscript type checker: a port of `pkg/checker` over the `ms-syntax`
-//! tree. The Go checker is the behavioural authority: diagnostics (message,
-//! position, phase) are byte-identical.
+//! The Manuscript type checker over the `ms-syntax` tree.
 //!
 //! Facts live in per-module side tables indexed by node id, not on the tree
 //! (see [`syntax::Facts`]). Types are [`types::Ty`], reference-counted and

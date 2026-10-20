@@ -74,6 +74,20 @@ pub(crate) fn scalar_text(
     Some((b.call_rt(ext, &[v]), true))
 }
 
+/// Nesting depth at which conversion emits `...` (the outer value is depth 0).
+const MAX_TEXT_DEPTH: i64 = 64;
+
+/// A formatting helper takes the value and its nesting depth.
+fn format_params(t: MTy) -> Vec<Param> {
+    [t, MTy::INT]
+        .into_iter()
+        .map(|ty| Param {
+            ty,
+            mode: Mode::Borrow,
+        })
+        .collect()
+}
+
 impl Cx {
     /// The function formatting a value of `t` (reserved on first use); `repr` is the quoted form.
     pub(crate) fn format_fn(&mut self, m: &mut Module, t: MTy, repr: bool) -> FuncId {
@@ -81,14 +95,7 @@ impl Cx {
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
-        let f = ms_mir::ir::Func::new(
-            "format",
-            vec![Param {
-                ty: t,
-                mode: Mode::Borrow,
-            }],
-            MTy::STR,
-        );
+        let f = ms_mir::ir::Func::new("format", format_params(t), MTy::STR);
         let id = m.add_func(f);
         self.helpers.insert(key, id);
         self.queue.push(Job {
@@ -99,13 +106,11 @@ impl Cx {
     }
 }
 
-/// Appends `piece` to the owned accumulator variable.
+/// Appends `piece` to the string builder held by `acc`.
 fn append(b: &mut FuncBuilder<'_>, acc: Var, piece: Value, piece_owned: bool) {
-    let old = b.use_var(acc);
-    let ext = runtime_fn(b.m, "msrt_string_concat", &[MTy::STR, MTy::STR], MTy::STR);
-    let new = b.call_rt(ext, &[old, piece]);
-    b.def_var(acc, new);
-    b.emit(Op::Drop, &[old], Imm::None, None);
+    let buf = b.use_var(acc);
+    let ext = runtime_fn(b.m, "msrt_strbuf_push", &[MTy::PTR, MTy::STR], MTy::UNIT);
+    b.call_rt(ext, &[buf, piece]);
     if piece_owned {
         b.emit(Op::Drop, &[piece], Imm::None, None);
     }
@@ -116,30 +121,70 @@ fn append_lit(b: &mut FuncBuilder<'_>, acc: Var, text: &str) {
     append(b, acc, l, false);
 }
 
-/// An accumulator variable holding an owned copy of `text`.
+/// A string builder variable that already holds `text`.
 fn start(b: &mut FuncBuilder<'_>, text: &str) -> Var {
-    let l = b.str_lit(text);
-    let first = b
-        .emit(Op::Copy, &[l], Imm::None, Some(MTy::STR))
-        .expect("copy");
-    let acc = b.declare_var(MTy::STR, Mode::Own);
-    b.def_var(acc, first);
+    let ext = runtime_fn(b.m, "msrt_strbuf_new", &[], MTy::PTR);
+    let buf = b.call_rt(ext, &[]);
+    let acc = b.declare_var(MTy::PTR, Mode::Borrow);
+    b.def_var(acc, buf);
+    if !text.is_empty() {
+        append_lit(b, acc, text);
+    }
     acc
 }
 
-/// Formats one element: scalars directly, compound types through their helper.
+/// The builder's text as an owned string; the builder is consumed.
+fn finish(b: &mut FuncBuilder<'_>, acc: Var) -> Value {
+    let buf = b.use_var(acc);
+    let ext = runtime_fn(b.m, "msrt_strbuf_finish", &[MTy::PTR], MTy::STR);
+    b.call_rt(ext, &[buf])
+}
+
+/// Formats one element nested in a container at `depth`: scalars directly, compound types through
+/// their helper, and `...` once the element would sit at the maximum depth.
 fn element_text(
     cx: &mut Cx,
     b: &mut FuncBuilder<'_>,
     t: MTy,
     v: Value,
     repr: bool,
+    depth: Value,
 ) -> (Value, bool) {
-    if let Some(r) = scalar_text(b, t, v, repr) {
-        return r;
-    }
-    let f = cx.format_fn(b.m, t, repr);
-    (b.call(f, &[v]), true)
+    let one = b.iconst(1);
+    let child = b.binop(Op::IAdd, depth, one);
+    let limit = b.iconst(MAX_TEXT_DEPTH);
+    let too_deep = b.icmp(Cc::Ge, child, limit);
+    let out = b.declare_var(MTy::STR, Mode::Own);
+    let (cut, fmt, join) = (b.new_block(), b.new_block(), b.new_block());
+    b.br_if(too_deep, cut, &[], fmt, &[]);
+    b.seal_block(cut);
+    b.seal_block(fmt);
+    b.switch_to(cut);
+    let dots = b.str_lit("...");
+    let dots = b
+        .emit(Op::Copy, &[dots], Imm::None, Some(MTy::STR))
+        .expect("copy");
+    b.def_var(out, dots);
+    b.br(join, &[]);
+    b.switch_to(fmt);
+    let (txt, owned) = match scalar_text(b, t, v, repr) {
+        Some(r) => r,
+        None => {
+            let f = cx.format_fn(b.m, t, repr);
+            (b.call(f, &[v, child]), true)
+        }
+    };
+    let txt = if owned {
+        txt
+    } else {
+        b.emit(Op::Copy, &[txt], Imm::None, Some(MTy::STR))
+            .expect("copy")
+    };
+    b.def_var(out, txt);
+    b.br(join, &[]);
+    b.seal_block(join);
+    b.switch_to(join);
+    (b.use_var(out), true)
 }
 
 /// Appends `label: value` pieces of a field list as `(a: 1, b: 2)`.
@@ -149,6 +194,7 @@ fn append_fields(
     acc: Var,
     fields: &[(Option<String>, MTy, Value)],
     repr: bool,
+    depth: Value,
 ) {
     append_lit(b, acc, "(");
     for (i, (label, ty, v)) in fields.iter().enumerate() {
@@ -158,7 +204,7 @@ fn append_fields(
         if let Some(l) = label {
             append_lit(b, acc, &format!("{l}: "));
         }
-        let (txt, owned) = element_text(cx, b, *ty, *v, repr);
+        let (txt, owned) = element_text(cx, b, *ty, *v, repr, depth);
         append(b, acc, txt, owned);
     }
     append_lit(b, acc, ")");
@@ -172,6 +218,7 @@ fn append_items(
     list: Value,
     elem: MTy,
     repr: bool,
+    depth: Value,
 ) {
     let idx = b.declare_var(MTy::INT, Mode::Borrow);
     let zero = b.iconst(0);
@@ -197,7 +244,7 @@ fn append_items(
     b.switch_to(nosep);
     let i = b.use_var(idx);
     let e = b.list_get(list, i);
-    let (txt, owned) = element_text(cx, b, elem, e, repr);
+    let (txt, owned) = element_text(cx, b, elem, e, repr, depth);
     append(b, acc, txt, owned);
     let i = b.use_var(idx);
     let one = b.iconst(1);
@@ -217,22 +264,15 @@ pub(crate) fn build_format(
     t: MTy,
     repr: bool,
 ) -> Result<(), Error> {
-    let mut b = FuncBuilder::new(
-        m,
-        "format",
-        vec![Param {
-            ty: t,
-            mode: Mode::Borrow,
-        }],
-        MTy::STR,
-    );
+    let mut b = FuncBuilder::new(m, "format", format_params(t), MTy::STR);
     let x = b.params()[0];
+    let depth = b.params()[1];
     match b.m.types.kind(t).clone() {
         TyKind::List(elem) => {
             let acc = start(&mut b, "[");
-            append_items(cx, &mut b, acc, x, elem, repr);
+            append_items(cx, &mut b, acc, x, elem, repr, depth);
             append_lit(&mut b, acc, "]");
-            let r = b.use_var(acc);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
         TyKind::Bytes => {
@@ -240,10 +280,10 @@ pub(crate) fn build_format(
             let list_ty = b.m.types.list(MTy::INT);
             let ext = runtime_fn(b.m, "msrt_bytes_values", &[t], list_ty);
             let values = b.call_rt(ext, &[x]);
-            append_items(cx, &mut b, acc, values, MTy::INT, repr);
+            append_items(cx, &mut b, acc, values, MTy::INT, repr, depth);
             b.emit(Op::Drop, &[values], Imm::None, None);
             append_lit(&mut b, acc, ")");
-            let r = b.use_var(acc);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
         TyKind::Opt(inner) => {
@@ -254,13 +294,13 @@ pub(crate) fn build_format(
             b.seal_block(none);
             b.switch_to(none);
             let acc = start(&mut b, if repr { "none" } else { "Optional.none" });
-            let r = b.use_var(acc);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
             b.switch_to(some);
             let v = b.opt_get(x);
             let acc = start(&mut b, if repr { "some" } else { "Optional.some" });
-            append_fields(cx, &mut b, acc, &[(None, inner, v)], repr);
-            let r = b.use_var(acc);
+            append_fields(cx, &mut b, acc, &[(None, inner, v)], repr, depth);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
         TyKind::Rec(r) => {
@@ -275,8 +315,8 @@ pub(crate) fn build_format(
                 vals.push((Some(def.fields[i].0.clone()), def.fields[i].1, v));
             }
             let acc = start(&mut b, def.name.split('[').next().unwrap_or(&def.name));
-            append_fields(cx, &mut b, acc, &vals, repr);
-            let out = b.use_var(acc);
+            append_fields(cx, &mut b, acc, &vals, repr, depth);
+            let out = finish(&mut b, acc);
             b.ret(Some(out));
         }
         TyKind::Alt(a) => {
@@ -309,9 +349,9 @@ pub(crate) fn build_format(
                         let v = b.alt_get(a, i as u32, j as u32, x);
                         vals.push((repr.then(|| name.clone()), *ft, v));
                     }
-                    append_fields(cx, &mut b, acc, &vals, repr);
+                    append_fields(cx, &mut b, acc, &vals, repr, depth);
                 }
-                let out = b.use_var(acc);
+                let out = finish(&mut b, acc);
                 b.ret(Some(out));
             }
         }
@@ -378,7 +418,7 @@ pub(crate) fn build_format(
             let key = b
                 .emit(Op::Load, &[kaddr], Imm::Ty(args[0]), Some(args[0]))
                 .expect("load");
-            let (txt, owned) = element_text(cx, &mut b, args[0], key, repr);
+            let (txt, owned) = element_text(cx, &mut b, args[0], key, repr, depth);
             append(&mut b, acc, txt, owned);
             if let Some(vt) = args.get(1) {
                 append_lit(&mut b, acc, ": ");
@@ -388,7 +428,7 @@ pub(crate) fn build_format(
                 let val = b
                     .emit(Op::Load, &[vaddr], Imm::Ty(*vt), Some(*vt))
                     .expect("load");
-                let (txt, owned) = element_text(cx, &mut b, *vt, val, repr);
+                let (txt, owned) = element_text(cx, &mut b, *vt, val, repr, depth);
                 append(&mut b, acc, txt, owned);
             }
             b.br(next, &[]);
@@ -403,7 +443,7 @@ pub(crate) fn build_format(
             b.seal_block(exit);
             b.switch_to(exit);
             append_lit(&mut b, acc, ")");
-            let r = b.use_var(acc);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
         TyKind::Obj(name, _) if name == "BigInt" => {
@@ -455,14 +495,14 @@ pub(crate) fn build_format(
                     .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
                     .expect("load");
                 let acc = start(&mut b, "");
-                let (txt, owned) = element_text(cx, &mut b, data_ty, v, repr);
+                let (txt, owned) = element_text(cx, &mut b, data_ty, v, repr, depth);
                 append(&mut b, acc, txt, owned);
-                let r = b.use_var(acc);
+                let r = finish(&mut b, acc);
                 b.ret(Some(r));
                 b.switch_to(next);
             }
             let acc = start(&mut b, "");
-            let r = b.use_var(acc);
+            let r = finish(&mut b, acc);
             b.ret(Some(r));
         }
         _ => {
@@ -482,7 +522,9 @@ impl<'a> FnLower<'a> {
     /// The quoted text form of a borrowed operand (how test failures show values); owned.
     pub fn repr_text(&mut self, v: Value) -> Val {
         let t = self.ty_of(v);
-        let (r, owned) = element_text(self.cx, &mut self.b, t, v, true);
+        // The value itself is depth 0, one level below this notional container.
+        let outside = self.b.iconst(-1);
+        let (r, owned) = element_text(self.cx, &mut self.b, t, v, true, outside);
         Val { v: r, own: owned }
     }
 
@@ -510,7 +552,8 @@ impl<'a> FnLower<'a> {
             None => {
                 let f = self.cx.format_fn(self.b.m, t, false);
                 let a = self.borrow(x);
-                self.b.call(f, &[a])
+                let top = self.b.iconst(0);
+                self.b.call(f, &[a, top])
             }
         };
         Ok(Val { v, own: true })

@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found String",
+        "message": "expected Int, found String (in the return value)",
         "position": {
           "file": "internal-cli-testprojectcheckfindsunimportederrors-2.ms",
           "line": 5,
@@ -20,7 +20,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected String, found Int",
+        "message": "expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
         "position": {
           "file": "internal-cli-testprojectcheckfindsunimportederrors-2.ms",
           "line": 8,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testprojectcheckfindsunimportederrors-2.ms:5:12: type: expected Int, found String\n<DIR>/internal-cli-testprojectcheckfindsunimportederrors-2.ms:8:12: type: expected String, found Int\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testprojectcheckfindsunimportederrors-2.ms:5:12: type: expected Int, found String (in the return value)\n<DIR>/internal-cli-testprojectcheckfindsunimportederrors-2.ms:8:12: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

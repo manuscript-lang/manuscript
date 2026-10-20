@@ -1,6 +1,5 @@
-//! `@std/csv.ms` natives. The reader is a port of Go's `encoding/csv` in its strict
-//! configuration (no lazy quotes, no comments, variable record width), and the writer follows
-//! `pkg/runtime/csv.go`, which is the behavioral oracle.
+//! `@std/csv.ms` natives. The reader is strict (no lazy quotes,
+//! no comments, variable record width).
 #![no_std]
 
 extern crate alloc;

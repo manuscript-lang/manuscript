@@ -1585,14 +1585,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (_, at, w) = self.fields_of(ty)[i as usize];
                 self.a(inst, 0)[at..at + w].to_vec()
             }
-            Op::RecSet => {
+            Op::RecSet | Op::RecFill => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let (fty, at, w) = self.fields_of(ty)[i as usize];
                 let mut obj = self.a(inst, 0);
-                if m.needs_drop(fty) {
+                if inst.op == Op::RecSet && m.needs_drop(fty) {
                     let old = obj[at..at + w].to_vec();
                     self.drop_value(fty, &old);
                 }
@@ -1685,6 +1685,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListSet
             | Op::ListSetNn
             | Op::ListSetU
+            | Op::ListFill
             | Op::ListPush => self.lower_list(f, inst),
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
@@ -1855,6 +1856,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let want = self.data_addr(id);
                 vec![self.b.ins().icmp(IntCC::Equal, have, want)]
             }
+            Op::MoveOut => self.a(inst, 0),
             Op::Copy => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
@@ -1968,6 +1970,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::CallInd => self.call_closure(f, inst),
             Op::CallMethod => self.call_method(f, inst),
             Op::CallRt => self.call_extern(f, inst),
+            Op::FuncAddr => {
+                let Imm::Func(g) = inst.imm else {
+                    unreachable!()
+                };
+                let r = self.fref(self.g.funcs[g.index()]);
+                vec![self.b.ins().func_addr(types::I64, r)]
+            }
             Op::TypeDesc => {
                 let Imm::Ty(t) = inst.imm else { unreachable!() };
                 vec![self.typedesc_addr(t)]
@@ -2099,7 +2108,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Normalizes `i` (negative counts from the end) and bounds-checks it; returns the element address.
     fn elem_addr(&mut self, ptr: Value, len: Value, i: Value, size: i64, mode: Op) -> Value {
         let idx = match mode {
-            Op::ListGet | Op::ListSet => {
+            Op::ListGet | Op::ListSet | Op::ListFill => {
                 let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, i, 0);
                 let wrapped = self.b.ins().iadd(i, len);
                 self.b.ins().select(neg, wrapped, i)
@@ -2163,14 +2172,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
                 self.load_leaves(at, 0, &leaves)
             }
-            Op::ListSet | Op::ListSetNn | Op::ListSetU => {
+            Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill => {
                 let lt = f.ty(inst.args[0]);
                 let (e, leaves, size) = self.elem_info(lt);
                 let l = self.a(inst, 0);
                 let i = self.a(inst, 1)[0];
                 let v = self.a(inst, 2);
                 let at = self.elem_addr(l[0], l[1], i, size, inst.op);
-                if self.g.m.needs_drop(e) {
+                if inst.op != Op::ListFill && self.g.m.needs_drop(e) {
                     let old = self.load_leaves(at, 0, &leaves);
                     self.drop_value(e, &old);
                 }

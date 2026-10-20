@@ -5,7 +5,7 @@ weight = 5
 
 # Mutation and references
 
-Several names can refer to one object. Passing it to a function, storing it in a record, or capturing it in a closure adds an access path; the original still works.
+Records, lists, maps, sets, and alternatives are values. Assigning, passing, storing, or capturing one copies it, so no two names change the same object. Only resource handles and other service handles are shared.
 
 ## Reassignment
 
@@ -18,7 +18,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Data copies
 
-Aliases of a record or collection see each other's updates. `.clone()` copies the outer storage and keeps nested references, so a cloned file or socket handle is the same handle. Opaque handles have no built-in clone. See [mutation and cloning](records.md#mutation-and-cloning).
+`.clone()` is a deep copy of nested values. Opaque handles have no built-in clone and are never copied. See [mutation and cloning](records.md#mutation-and-cloning).
 
 ## References inside other values
 

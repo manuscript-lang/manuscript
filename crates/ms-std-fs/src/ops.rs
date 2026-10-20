@@ -1,4 +1,4 @@
-//! Path-based filesystem operations, ported from `osFileSystem` in `pkg/runtime/fs.go`.
+//! Path-based filesystem operations.
 //!
 //! Relative paths resolve against the live working directory (the operating system does that), so
 //! no path is joined here except where Go joins them. All failures are [`Fail`] values.

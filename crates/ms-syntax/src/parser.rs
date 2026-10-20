@@ -1,5 +1,4 @@
-//! The strict parser: a port of `pkg/parser` producing [`Module`] and
-//! byte-identical diagnostics.
+//! The strict parser, producing a [`Module`] or the first diagnostic.
 
 use crate::ast::*;
 use crate::diag::{Diagnostic, Phase};
@@ -581,13 +580,11 @@ impl<'a> Parser<'a> {
         // starts at the first token of the initializer for source tooling.
         let init_pos = self.peek().pos;
         let value = self.expression(0)?;
-        let return_id = self.id();
         Ok(ConstDecl {
             name: self.sym(name),
             ty,
             value,
             init_pos,
-            return_id,
             group,
         })
     }
@@ -2022,7 +2019,7 @@ impl<'a> Parser<'a> {
                 Err(_) => {
                     self.at = start;
                     // Unwinding restores nesting except for a failed `enter`,
-                    // exactly like the Go parser's deferred leave functions.
+                    // as deferred leave functions would.
                     let _ = saved_depth;
                 }
             }

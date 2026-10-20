@@ -384,6 +384,29 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
     }
 }
 
+/// Shields the running task from stop requests until the matching `msrt_shield_exit`, for
+/// work that must drain after SIGINT/SIGTERM (a server finishing in-flight requests).
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_shield_enter() {
+    // SAFETY: single threaded access to the shield counter.
+    unsafe {
+        *SHIELD.ptr() += 1;
+        msrt_cancel_flag.store(0, Ordering::Relaxed);
+    }
+}
+
+/// Ends one `msrt_shield_enter`; a stop request that arrived meanwhile applies again.
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_shield_exit() {
+    // SAFETY: single threaded access to the shield counter.
+    unsafe {
+        *SHIELD.ptr() = (*SHIELD.ptr()).saturating_sub(1);
+        if *SHIELD.ptr() == 0 {
+            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
+        }
+    }
+}
+
 /// Pops and runs the innermost cleanup action; false when none remain.
 fn run_one_cleanup() -> bool {
     // SAFETY: single threaded access to the cleanup stack.
@@ -412,18 +435,26 @@ fn run_one_cleanup() -> bool {
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {
+    let mut report = Vec::with_capacity(msg.len() + 256);
+    report.extend_from_slice(msg);
+    fault_vec(report)
+}
+
+/// [`fault`] with the message already in an owned buffer, which becomes the report: a guarded
+/// fault leaves by a jump, so no caller frame gets to free a buffer of its own.
+#[cold]
+#[inline(never)]
+pub fn fault_vec(mut report: Vec<u8>) -> ! {
     // SAFETY: single threaded access to the fault state.
     unsafe {
         if *FAULTING.ptr() {
             // A fault inside a cleanup action: record it and keep unwinding from here.
-            (*SECONDARY.ptr()).push(msg.to_vec());
+            (*SECONDARY.ptr()).push(report);
             while run_one_cleanup() {}
             finish_report(None)
         }
         *FAULTING.ptr() = true;
     }
-    let mut report = Vec::with_capacity(msg.len() + 256);
-    report.extend_from_slice(msg);
     describe_frames(&mut report, frame_pointer());
     // SAFETY: single threaded; a fault inside a cleanup action finishes this report.
     unsafe { *PRIMARY.ptr() = Some(report) };
@@ -462,7 +493,7 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
     #[cfg(not(test))]
     {
         if guard_active() {
-            guard_exit(GUARD_FAULT, report.as_slice())
+            guard_exit(GUARD_FAULT, report)
         }
         if report.as_slice().starts_with(SKIP_MARKER)
             && !report
@@ -495,7 +526,7 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
 pub fn fault_fmt(args: fmt::Arguments) -> ! {
     let mut b = Vec::new();
     let _ = b.write_fmt(args);
-    fault(b.as_slice())
+    fault_vec(b)
 }
 
 /// Convenience: `fault!("fmt {}", x)`.
@@ -644,7 +675,7 @@ pub extern "C-unwind" fn msrt_cancelled() -> ! {
     }
     #[cfg(not(test))]
     if guard_active() {
-        guard_exit(GUARD_CANCELLED, b"")
+        guard_exit(GUARD_CANCELLED, Vec::new())
     }
     #[cfg(not(test))]
     crate::process::exit(if sig == sys::SIGINT as u8 {
@@ -697,9 +728,10 @@ fn guard_active() -> bool {
     unsafe { !(*GUARDS.ptr()).is_empty() }
 }
 
-/// Leaves the innermost guard with `status`, handing the message to its caller.
+/// Leaves the innermost guard with `status`, handing the message to its caller. The jump skips
+/// destructors, so the message buffer is released here first.
 #[cfg(not(test))]
-fn guard_exit(status: u8, message: &[u8]) -> ! {
+fn guard_exit(status: u8, message: Vec<u8>) -> ! {
     // SAFETY: single threaded access; the frame belongs to a live `msrt_guard_call`.
     unsafe {
         let f = (*GUARDS.ptr())
@@ -722,10 +754,11 @@ fn guard_exit(status: u8, message: &[u8]) -> ! {
             crate::trap::leave(f.jmp as *mut usize, status == GUARD_FAULT, message)
         }
         GUARD_MESSAGE = if status == GUARD_FAULT {
-            crate::string::from_bytes(message)
+            crate::string::from_bytes(&message)
         } else {
             core::ptr::null_mut()
         };
+        drop(message);
         guard_jump(f.jmp as *mut usize, status as usize)
     }
 }

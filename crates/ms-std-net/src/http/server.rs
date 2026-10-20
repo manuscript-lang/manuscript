@@ -32,6 +32,23 @@ const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection (net/http's value).
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 
+/// How long accepting pauses after the process runs out of descriptors or memory.
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
+
+/// Whether `accept` failed for lack of descriptors, buffers, or memory.
+fn is_resource_exhaustion(e: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        // EMFILE, ENFILE, ENOBUFS (Linux/macOS), ENOMEM
+        matches!(e.raw_os_error(), Some(24 | 23 | 105 | 55 | 12))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = e;
+        false
+    }
+}
+
 /// Server limits; `UNLIMITED` means none.
 #[derive(Clone, Debug)]
 pub struct Limits {
@@ -134,6 +151,8 @@ pub(super) struct ConnSt {
     pub flush_pending: bool,
     pub eof: bool,
     pub deadline: Option<Instant>,
+    /// The deadline bounds an idle wait for the next request, not a request in progress.
+    pub idle_deadline: bool,
     pub interest: Ev,
     pub registered: bool,
     pub h2: Option<Box<h2serve::H2Conn>>,
@@ -358,7 +377,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
     let me = rt::current_task();
     reactor.role.set(me);
+    let mut drain = DrainShield::default();
     loop {
+        drain.set(reactor.drains());
         PARKING.with(|p| p.set(true));
         let got = reactor.poller.park();
         PARKING.with(|p| p.set(false));
@@ -375,6 +396,31 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             reactor.task_started.set(false);
             return;
         }
+    }
+}
+
+/// Shields the reactor task (and the handlers it runs) from SIGINT/SIGTERM while a server with a
+/// nonzero `grace` is open, so in-flight requests finish within the grace period.
+#[derive(Default)]
+struct DrainShield(bool);
+
+impl DrainShield {
+    fn set(&mut self, want: bool) {
+        if want == self.0 {
+            return;
+        }
+        self.0 = want;
+        if want {
+            rt::shield();
+        } else {
+            rt::unshield();
+        }
+    }
+}
+
+impl Drop for DrainShield {
+    fn drop(&mut self) {
+        self.set(false);
     }
 }
 
@@ -395,6 +441,20 @@ pub(crate) fn give_up_reactor_role() {
 }
 
 impl Reactor {
+    /// Whether any open server or connection asked to drain in-flight requests on a stop.
+    fn drains(&self) -> bool {
+        self.targets.borrow().values().any(|t| {
+            let limits = match t {
+                Target::Listener(s) => s.upgrade().map(|s| s.limits.grace),
+                Target::Conn(c) => c
+                    .upgrade()
+                    .and_then(|c| c.server.upgrade())
+                    .map(|s| s.limits.grace),
+            };
+            limits.flatten().is_some_and(|g| !g.is_zero())
+        })
+    }
+
     /// Handles whatever is ready without blocking.
     fn service(&self) {
         let mut events = Vec::new();
@@ -445,6 +505,18 @@ impl Reactor {
                 server.close_conn(&conn, self);
             }
         }
+        let listeners: Vec<Rc<Server>> = self
+            .targets
+            .borrow()
+            .values()
+            .filter_map(|t| match t {
+                Target::Listener(s) => s.upgrade(),
+                Target::Conn(_) => None,
+            })
+            .collect();
+        for server in listeners {
+            server.resume_accept(self);
+        }
         let h2_conns: Vec<Rc<Conn>> = self
             .targets
             .borrow()
@@ -490,6 +562,8 @@ struct ServerSt {
     closed: bool,
     /// Requests queued or running (the admission count).
     admitted: usize,
+    /// Set while the listener is unwatched after accept ran out of descriptors or memory.
+    accept_paused_until: Option<Instant>,
 }
 
 impl Resource for Server {
@@ -547,6 +621,7 @@ impl Server {
                 closing: false,
                 closed: false,
                 admitted: 0,
+                accept_paused_until: None,
             }),
             token,
         });
@@ -687,9 +762,34 @@ impl Server {
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(_) => break,
+                Err(e) => {
+                    if is_resource_exhaustion(&e) {
+                        self.pause_accept(reactor);
+                    }
+                    break;
+                }
             }
         }
+    }
+
+    /// Stops watching the listener for a moment: out of descriptors it stays readable, and
+    /// polling it would spin the reactor while connections it could free sit unserved.
+    fn pause_accept(&self, reactor: &Reactor) {
+        let mut st = self.st.borrow_mut();
+        if st.accept_paused_until.is_none() && !st.closing {
+            reactor.delete(self.listener.as_sock());
+            st.accept_paused_until = Some(Instant::now() + ACCEPT_BACKOFF);
+        }
+    }
+
+    /// Watches the listener again once the backoff passed.
+    fn resume_accept(&self, reactor: &Reactor) {
+        let mut st = self.st.borrow_mut();
+        if st.closing || st.accept_paused_until.is_none_or(|t| t > Instant::now()) {
+            return;
+        }
+        st.accept_paused_until = None;
+        reactor.add(self.listener.as_sock(), self.token, Ev::IN);
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
@@ -724,6 +824,7 @@ impl Server {
                 flush_pending: false,
                 eof: false,
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
+                idle_deadline: false,
                 interest: Ev::IN,
                 registered: false,
                 h2: None,
@@ -731,10 +832,10 @@ impl Server {
         });
         {
             let mut st = conn.st.borrow_mut();
-            // A silent connection is bounded by the timeout only while it holds a
-            // half-read request; a fresh plain connection may idle.
+            // A fresh plain connection is idle until its first byte; the timeout bounds that
+            // wait too, so silent connections cannot pin file descriptors.
             if self.tls.is_none() {
-                st.deadline = None;
+                st.idle_deadline = st.deadline.is_some();
             }
             if !reactor.add(st.fd(), token, Ev::IN) {
                 return;
@@ -950,6 +1051,13 @@ impl Server {
         if closed {
             return;
         }
+        if idle_head && !eof {
+            let mut st = conn.st.borrow_mut();
+            if st.deadline.is_none() {
+                st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                st.idle_deadline = st.deadline.is_some();
+            }
+        }
         if eof {
             // The peer is gone: finish a pending response, otherwise close.
             let phase_writing = matches!(conn.st.borrow().phase, Phase::Writing);
@@ -1022,14 +1130,16 @@ impl Server {
             }
             match h1::parse_request(st.unread(), self.limits.header.min(1 << 30)) {
                 Parsed::Partial => {
-                    if st.deadline.is_none() {
+                    if st.deadline.is_none() || st.idle_deadline {
                         st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                        st.idle_deadline = false;
                     }
                     return false;
                 }
                 Parsed::Complete(head) => {
                     st.consume(head.length);
                     st.deadline = None;
+                    st.idle_deadline = false;
                     Ok(head)
                 }
                 Parsed::Bad(bad) => Err(bad),
@@ -1782,6 +1892,15 @@ pub(crate) mod tests {
             old.contains("HTTP/1.0") && old.contains("Connection: close"),
             "{old}"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn accept_pauses_only_for_resource_exhaustion() {
+        let emfile = std::io::Error::from_raw_os_error(24);
+        let reset = std::io::Error::from_raw_os_error(104);
+        assert!(is_resource_exhaustion(&emfile));
+        assert!(!is_resource_exhaustion(&reset));
     }
 
     #[test]

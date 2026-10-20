@@ -1,4 +1,4 @@
-//! Calls, constructors, specialization (`pkg/checker/calls.go`).
+//! Calls, constructors, specialization.
 
 use crate::checker::Checker;
 use crate::exprs::callee_name;
@@ -485,7 +485,11 @@ impl Checker {
                 let hint = unknown_argument_hint(arg.name.as_str(), &call_name, params);
                 self.type_error(arg.pos, format!("unknown argument {}{hint}", arg.name));
             }
+            if expected.is_some() && !call_name.is_empty() {
+                self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));
+            }
             let v = self.argument_expression(arg.value, expected.as_ref());
+            self.mismatch_context = None;
             no_return = no_return || v.no_return;
             seen.insert(arg.name);
         }

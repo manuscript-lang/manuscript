@@ -222,7 +222,7 @@ pub struct ArgSlot {
     pub index: usize,
 }
 
-/// Checked facts of one expression (Go `Info`).
+/// Checked facts of one expression.
 #[derive(Clone, Default)]
 pub struct Info {
     /// Type.

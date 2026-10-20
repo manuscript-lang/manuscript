@@ -1,4 +1,4 @@
-//! `@std/crypto.ms` natives, behaviorally identical to `pkg/runtime/crypto.go`: digests, HMAC,
+//! `@std/crypto.ms` natives: digests, HMAC,
 //! PBKDF2, HKDF, AES-GCM/CTR/CBC and Ed25519, built on RustCrypto.
 #![no_std]
 

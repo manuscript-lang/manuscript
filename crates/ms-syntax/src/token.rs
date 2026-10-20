@@ -9,7 +9,7 @@ macro_rules! tokens {
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Tok { $($variant),* }
         impl Tok {
-            /// Go's `Token.Kind` string for this kind.
+            /// The kind's name string.
             pub fn as_str(self) -> &'static str {
                 match self { $(Tok::$variant => $text),* }
             }
@@ -77,7 +77,7 @@ impl Tok {
     }
 }
 
-/// The reserved words, sorted (Go `lexer.Keywords`). `_` is lexed as its own
+/// The reserved words, sorted. `_` is lexed as its own
 /// kind but is not in this list.
 pub const KEYWORDS: &[&str] = &[
     "and",

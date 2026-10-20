@@ -1,8 +1,7 @@
 //! WebSocket frames (RFC 6455) and permessage-deflate (RFC 7692, no context takeover).
 //!
 //! [`Decoder`] is a resumable, pure state machine: push bytes in, pull [`Event`]s out. It
-//! reproduces the checks of gorilla's `advanceFrame` in the same order and with the same
-//! texts, because the Go runtime surfaces them. Encoding helpers build whole frames.
+//! checks frames in RFC 6455 order and reports the failure texts used by the socket. Encoding helpers build whole frames.
 
 use flate2::{Compress, Compression, Decompress, FlushCompress, FlushDecompress, Status};
 use ring::rand::{SecureRandom, SystemRandom};
@@ -304,8 +303,7 @@ pub enum Event {
 }
 
 /// A failure of the stream. `body` is true when it happened after the first frame of a data
-/// message was accepted; gorilla reports those through the message reader, and the Go runtime
-/// words them as a truncated exchange.
+/// message was accepted; those are worded as a truncated exchange.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DecodeError {
     /// A protocol violation. The peer is sent close 1002 with the text (see

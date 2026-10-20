@@ -1,4 +1,4 @@
-//! The checker state and the module-level passes (`pkg/checker/checker.go`).
+//! The checker state and the module-level passes.
 
 use crate::stdlib::{self, StdResult};
 use crate::syntax::*;
@@ -78,8 +78,7 @@ pub struct CheckOptions {
     /// The bundled standard source module being checked for the shared cache.
     pub bundled: Option<Name>,
     /// Also enforce the value-semantics ownership rules (`ownership` module)
-    /// once the program type checks. Off by default: the Go checker has no
-    /// such rules, and parity comes first.
+    /// once the program type checks. Off by default.
     pub ownership: bool,
 }
 
@@ -165,6 +164,8 @@ impl ImportMap {
 
 /// The checker.
 pub struct Checker {
+    /// Where the next checked expression is used, e.g. "argument 'a' of f".
+    pub(crate) mismatch_context: Option<String>,
     pub(crate) scope_marker: Option<String>,
     pub(crate) standard_declarations: bool,
     pub(crate) deferred_default_bounds: Vec<DeferredBound>,
@@ -201,6 +202,7 @@ impl Checker {
     /// A fresh checker.
     pub fn new(options: &CheckOptions) -> Checker {
         Checker {
+            mismatch_context: None,
             scope_marker: options.scope_marker.clone(),
             standard_declarations: false,
             deferred_default_bounds: Vec::new(),
@@ -1032,10 +1034,7 @@ impl Checker {
         let fall;
         if let Some(c) = d.decl.constant().filter(|_| d.index.is_none()) {
             self.check_parameters(d, &[], &t.params);
-            // The synthetic `return value` of a constant.
-            let i = self.expression(&c.value, self.result.clone().as_ref());
-            let _ = i;
-            self.set_flow(c.return_id, false);
+            self.expression(&c.value, self.result.clone().as_ref());
             fall = false;
         } else {
             let params: &[ms_syntax::ast::Param] = match d.func() {
@@ -1230,7 +1229,7 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
     let mut seen: HashSet<(String, Pos, String)> = HashSet::new();
     let mut result = Vec::with_capacity(diagnostics.len());
     for d in diagnostics {
-        // The position includes the file in Go; carry the file here as well.
+        // The position carries its file.
         let key = (d.file.to_string(), d.pos, d.message.clone());
         if seen.insert(key) {
             result.push(d);
