@@ -298,7 +298,7 @@ fn check_candidate(ms: &Path, scratch: &Path, id: usize, cand: &Candidate) -> Ve
     if out.timed_out {
         return unusable("check timed out");
     }
-    let Ok(report) = json::parse(&out.stdout_text()) else {
+    let Ok(report) = json::parse(out.stdout_text()) else {
         return unusable("check printed no JSON");
     };
     let mut v = Verdict::default();

@@ -115,6 +115,18 @@ unsafe impl<'a> FromAbi<'a> for &'a [u8] {
 impl AbiType for Vec<&str> {
     type Raw = *const VecVal;
 }
+impl IntoAbi for Vec<u8> {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_bytes` initializes `v`.
+        unsafe {
+            crate::write_bytes(v.as_mut_ptr(), &self);
+            v.assume_init()
+        }
+    }
+}
+
 // SAFETY: `List[String]` arguments are live and outlive the call.
 unsafe impl<'a> FromAbi<'a> for Vec<&'a str> {
     unsafe fn from_raw(raw: *const VecVal) -> Vec<&'a str> {
