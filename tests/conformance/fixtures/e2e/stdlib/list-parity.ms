@@ -16,13 +16,11 @@ test "List count calls the predicate once per element":
     let empty: List[Int] = []
     try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
 
-test "List insert mutates in place and returns the same list":
+test "List insert mutates in place":
     var values = [1, 3]
-    let alias = values
     values.insert(1, 2)
-    var returned = values
-    try expect_false((values != [1, 2, 3] or alias != [1, 2, 3] or returned != values))
-    returned.append(4)
+    try expect_equal(values, [1, 2, 3])
+    values.append(4)
     try expect_equal(values, [1, 2, 3, 4])
     values.insert(0, 0)
     values.insert(5, 5)
@@ -37,9 +35,8 @@ test "List insert mutates in place and returns the same list":
 
 test "List pop removes and returns the last element":
     var values = [1, 2, 3]
-    let alias = values
     let last = values.pop()
-    try expect_false((last != some(3) or values != [1, 2] or alias != [1, 2]))
+    try expect_false((last != some(3) or values != [1, 2]))
     values.pop()
     values.pop()
     try expect_false(values.pop().is_some() or not (values.is_empty()))
@@ -47,16 +44,19 @@ test "List pop removes and returns the last element":
 type Box:
     value: Int
 
-test "List pop and distinct retain payload references":
+test "List pop and distinct copy payloads":
     let shared = Box(1)
-    let boxes = [shared]
-    boxes.pop().get().value = 2
-    try expect_equal(shared.value, 2)
+    var boxes = [shared.clone()]
+    let popped = boxes.pop()
+    var item = popped.get().clone()
+    item.value = 2
+    try expect_false(shared.value != 1 or item.value != 2 or not boxes.is_empty())
     let nested = [1]
-    let lists = [nested, [1], [2]]
+    let lists = [nested.clone(), [1], [2]]
     let unique = lists.distinct()
-    unique.get(0).append(3)
-    try expect_false(unique.length() != 2 or nested != [1, 3])
+    var inner = unique.get(0).clone()
+    inner.append(3)
+    try expect_false(unique.length() != 2 or nested != [1] or inner != [1, 3])
 
 test "List distinct keeps the first equal element in order":
     let values = [3, 1, 3, 2, 1]
@@ -80,10 +80,8 @@ test "List parity operations support generic and bound use":
     let insert = values.insert
     let pop: fn() Optional[Int] = values.pop
     let count = values.count
-    values = [9]
     insert(2, 3)
     try expect_false(pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
-    try expect_equal(values, [9])
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []

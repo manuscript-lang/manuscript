@@ -16,12 +16,12 @@
         },
         {
           "index": 1,
-          "name": "recursive-types.ms::recursive records retain aliases and clone only outer storage",
+          "name": "recursive-types.ms::recursive records clone into independent storage",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "recursive-types.ms::recursive structural equality terminates and checks unequal fields",
+          "name": "recursive-types.ms::recursive structural equality checks nested and unequal fields",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN recursive-types.ms::recursive alternatives construct match compare and clone\nPASS recursive-types.ms::recursive alternatives construct match compare and clone\nRUN recursive-types.ms::recursive records retain aliases and clone only outer storage\nPASS recursive-types.ms::recursive records retain aliases and clone only outer storage\nRUN recursive-types.ms::recursive structural equality terminates and checks unequal fields\nPASS recursive-types.ms::recursive structural equality terminates and checks unequal fields\nRUN recursive-types.ms::recursive domain hashing uses explicit implementations\nPASS recursive-types.ms::recursive domain hashing uses explicit implementations\nRUN recursive-types.ms::recursive defaults construct independent complete objects\nPASS recursive-types.ms::recursive defaults construct independent complete objects\nRUN recursive-types.ms::finite nested generic composition constructs and extracts values\nPASS recursive-types.ms::finite nested generic composition constructs and extracts values\n6 tests, 0 failed\n",
+      "stdout": "RUN recursive-types.ms::recursive alternatives construct match compare and clone\nPASS recursive-types.ms::recursive alternatives construct match compare and clone\nRUN recursive-types.ms::recursive records clone into independent storage\nPASS recursive-types.ms::recursive records clone into independent storage\nRUN recursive-types.ms::recursive structural equality checks nested and unequal fields\nPASS recursive-types.ms::recursive structural equality checks nested and unequal fields\nRUN recursive-types.ms::recursive domain hashing uses explicit implementations\nPASS recursive-types.ms::recursive domain hashing uses explicit implementations\nRUN recursive-types.ms::recursive defaults construct independent complete objects\nPASS recursive-types.ms::recursive defaults construct independent complete objects\nRUN recursive-types.ms::finite nested generic composition constructs and extracts values\nPASS recursive-types.ms::finite nested generic composition constructs and extracts values\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

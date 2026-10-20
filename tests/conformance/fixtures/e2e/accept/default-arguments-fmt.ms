@@ -16,23 +16,18 @@ fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
 fn identity[T](value: T, fallback: T = value) T:
     return fallback
 
-fn mark(var state: Cell, value: Int) Int:
-    state.value = state.value * 10 + value
-    return value
-
 fn ordered(
-    var state: Cell,
-    first: Int = mark(state: state, value: 3),
-    second: Int = mark(state: state, value: 4),
+    seed: Int,
+    first: Int = seed * 10 + 3,
+    second: Int = first * 10 + 4,
     third: Int = 0
 ) Int:
-    state.value = state.value * 10 + 5
-    return first + second + third
+    return second * 10 + 5 + third
 
-fn unit_default(var calls: List[Int]) Unit:
-    calls.append(1)
+fn unit_default() Unit:
+    return unit
 
-fn unit_value(calls: List[Int], value: Unit = unit_default(calls)) Unit:
+fn unit_value(value: Unit = unit_default()) Unit:
     return value
 
 fn optional(value: Optional[Int] = some(3)) Optional[Int]:
@@ -68,9 +63,8 @@ test "omitted and explicit defaults":
     (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | try expect_false
     (combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5) | try expect_false
     (identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
-    let calls: List[Int] = []
-    unit_value(calls, unit)
-    calls.length() | try expect_equal(expected: 0)
+    unit_value(unit) | try expect_equal(expected: unit)
+    unit_value() | try expect_equal(expected: unit)
     (optional(value: none) != Optional[Int].none or optional() != some(3)) | try expect_false
     (
         (
@@ -82,19 +76,11 @@ test "omitted and explicit defaults":
     ) | try expect_false
 
 test "default evaluation order and repeated calls":
-    var state = Cell(value: 0)
-    let total = ordered(
-        state: var state,
-        third: mark(state: var state, value: 1),
-        second: mark(state: var state, value: 2)
-    )
-    (total != 6 or state.value != 1235) | try expect_false
-    state.value = 0
-    let ignored = ordered(state: var state)
-    state.value | try expect_equal(expected: 345)
-    state.value = 0
-    let again = ordered(state: var state)
-    state.value | try expect_equal(expected: 345)
+    ordered(0) | try expect_equal(expected: 345)
+    ordered(0, third: 1) | try expect_equal(expected: 346)
+    ordered(0, second: 7) | try expect_equal(expected: 75)
+    ordered(1, first: 2) | try expect_equal(expected: 245)
+    ordered(0) | try expect_equal(expected: 345)
 
 test "function values and captures":
     let copy = increment
@@ -102,10 +88,9 @@ test "function values and captures":
     copied() | try expect_equal(expected: 4)
     let typed: fn(value: Int) Int = increment
     typed(2) | try expect_equal(expected: 3)
-    var offset = 5
+    let offset = 5
     let callback = fn(value: Int = offset):
         return value
-    offset = 9
     (callback() != 5 or callback(0) != 0) | try expect_false
     let nested = fn(first: Int = 6, second: Int = first + 1):
         return second
