@@ -147,6 +147,14 @@ jobs:
         with:
           shared-key: rust-conform-${{ matrix.os }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Git Bash puts usr/bin/link.exe (GNU link) ahead of MSVC's; name the MSVC linker for cargo.
+      - name: Select the MSVC linker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvcLinker" >> $env:GITHUB_ENV
       - name: Use clang as the linker driver
         if: runner.os == 'Windows'
         run: |
