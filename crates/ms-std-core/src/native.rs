@@ -92,7 +92,7 @@ macro_rules! scalar {
         }
     )*};
 }
-scalar!(i64, f64, u8, u32, u64, usize);
+scalar!(i64, f64, u8, u32, u64, i32, usize);
 
 impl AbiType for bool {
     type Raw = u8;
@@ -613,7 +613,7 @@ macro_rules! plain_slot {
         }
     )*};
 }
-plain_slot!(i64, f64, u8, u32, u64, OptInt);
+plain_slot!(i64, f64, u8, u32, u64, i32, OptInt);
 
 /// `Optional[Int]` stored inline in a record: a presence byte, then the value.
 #[repr(C)]
@@ -820,6 +820,59 @@ impl AbiType for ErrOut {
 unsafe impl FromAbi<'_> for ErrOut {
     unsafe fn from_raw(raw: *mut *mut StrObj) -> ErrOut {
         ErrOut(raw)
+    }
+}
+
+/// A `List[Bytes]`-shaped pair stored inline in a record: a pointer to a runtime-allocated array
+/// of `Bytes` values, then its length.
+#[repr(C)]
+pub struct BytesArray {
+    ptr: *mut VecVal,
+    count: usize,
+}
+
+impl BytesArray {
+    pub fn new(items: &[Vec<u8>]) -> BytesArray {
+        if items.is_empty() {
+            return BytesArray {
+                ptr: core::ptr::null_mut(),
+                count: 0,
+            };
+        }
+        // SAFETY: the block holds `len` values, each written once.
+        unsafe {
+            let ptr = msrt_alloc(items.len() * core::mem::size_of::<VecVal>()).cast::<VecVal>();
+            for (i, item) in items.iter().enumerate() {
+                ptr.add(i).write(Bytes::new(item).0);
+            }
+            BytesArray {
+                ptr,
+                count: items.len(),
+            }
+        }
+    }
+}
+
+impl AbiSlot for BytesArray {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract; the block was built by `new`.
+        unsafe {
+            for i in 0..self.count {
+                msrt_bytes_drop(self.ptr.add(i));
+            }
+            if !self.ptr.is_null() {
+                msrt_free(self.ptr.cast());
+            }
+        }
+    }
+    unsafe fn duplicate(&self) -> BytesArray {
+        // SAFETY: caller contract.
+        unsafe {
+            let items: Vec<Vec<u8>> = (0..self.count)
+                .map(|i| crate::bytes_ref(self.ptr.add(i)).to_vec())
+                .collect();
+            BytesArray::new(&items)
+        }
     }
 }
 
@@ -1127,6 +1180,18 @@ macro_rules! abi_record {
         $(#[$m])*
         #[repr(C)]
         $vis struct $name { $($fvis $f: $t),* }
+        #[allow(unsafe_code)]
+        // A record nested in another record is itself a slot.
+        impl $crate::AbiSlot for $name {
+            unsafe fn release(&mut self) {
+                // SAFETY: caller contract; every field is a live slot.
+                $(unsafe { $crate::AbiSlot::release(&mut self.$f) };)*
+            }
+            unsafe fn duplicate(&self) -> $name {
+                // SAFETY: caller contract.
+                $name { $($f: unsafe { $crate::AbiSlot::duplicate(&self.$f) }),* }
+            }
+        }
         #[allow(unsafe_code)]
         // SAFETY: `repr(C)` above; every field is an `AbiSlot` (a bound of the calls below).
         unsafe impl $crate::AbiRecord for $name {

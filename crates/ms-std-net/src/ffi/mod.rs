@@ -131,6 +131,12 @@ handle_newtype! {
     ListenerH(std::rc::Rc<crate::conn::Listener>);
     /// A `DatagramSocket` handle.
     DgramH(std::rc::Rc<crate::conn::Datagrams>);
+    /// An `HttpHeaders` handle.
+    HeadersH(crate::http::headers::Shared);
+    /// An `HttpExchange` handle.
+    ExchH(std::rc::Rc<crate::http::exchange::Exchange>);
+    /// A `WebSocket` handle.
+    SocketH(std::rc::Rc<crate::ws::socket::Socket>);
     /// An `IpAddress` handle.
     IpH(std::net::IpAddr);
 }

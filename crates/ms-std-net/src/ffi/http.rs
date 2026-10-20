@@ -13,12 +13,11 @@ use crate::http::server::{
     CloseError, Dispatch, Limits, Options, Outcome, Reply, Request as ServerRequest, Server,
 };
 use crate::http::url;
-use crate::tls::{self, TlsOptions};
+use crate::tls;
 use crate::wait::Deadline;
 use ms_rt_abi::{Obj, STATUS_NONE, StrObj, VecVal};
 use ms_std_core::{
-    bytes_ref, desc_bytes, fault, new_string, read_string_list, str_ref, write_bytes,
-    write_string_list,
+    bytes_ref, desc_bytes, fault, new_string, str_ref, write_bytes, write_string_list,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -344,7 +343,7 @@ fn client_options(w: &HttpClientOptionsWire) -> Result<ClientOptions, HttpErr> {
     let max_redirects = limit(w.max_redirects.get()).map_err(bad)?;
     let idle_timeout = limit(w.idle_timeout.get()).map_err(bad)?;
     // SAFETY: the wire record is live for the call.
-    let tls = unsafe { tls_options(&w.tls) };
+    let tls = w.tls.to_options();
     Ok(ClientOptions {
         max_redirects,
         max_idle,
@@ -354,25 +353,6 @@ fn client_options(w: &HttpClientOptionsWire) -> Result<ClientOptions, HttpErr> {
         cookies: w.cookies != 0,
         tls,
     })
-}
-
-/// # Safety
-/// `w` holds live strings and a live list.
-unsafe fn tls_options(w: &TlsOptionsWire) -> TlsOptions {
-    // SAFETY: caller contract.
-    unsafe {
-        TlsOptions {
-            server_name: str_ref(w.server_name).to_string(),
-            roots_pem: str_ref(w.roots_pem).to_string(),
-            certificate_pem: str_ref(w.certificate_pem).to_string(),
-            private_key_pem: str_ref(w.private_key_pem).to_string(),
-            alpn: read_string_list(&w.alpn)
-                .into_iter()
-                .map(str::to_string)
-                .collect(),
-            require_client_certificate: w.require_client_certificate != 0,
-        }
-    }
 }
 
 /// `Network.http_client(options) -> Result[HttpClient, HttpError]`.
@@ -1116,7 +1096,7 @@ pub unsafe extern "C" fn msrt_net_network_serve_stream(
                 return Err(HttpErr::PermissionDenied);
             }
             let tls = if w.tls_present != 0 {
-                let mut options = tls_options(&w.tls);
+                let mut options = w.tls.to_options();
                 if options.alpn.is_empty() {
                     options.alpn = vec!["http/1.1".to_string()];
                 }
