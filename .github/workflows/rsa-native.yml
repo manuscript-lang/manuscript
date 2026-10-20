@@ -91,6 +91,7 @@ jobs:
         with:
           name: rsa-native-${{ matrix.os }}-${{ matrix.arch }}
           path: .artifacts/rsa-native/
+          include-hidden-files: true
           if-no-files-found: error
 
   ok:
