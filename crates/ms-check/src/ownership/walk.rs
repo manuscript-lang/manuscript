@@ -1251,7 +1251,10 @@ impl Walker<'_> {
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
         }
-        if modes.accessor && d == Demand::Consume && self.class_of(e) != Class::Copy {
+        // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
+        // consumes it; only a result borrowed from a variable or part of one must stay in place.
+        let on_place = receiver_expr.is_some_and(|r| self.is_place(r));
+        if modes.accessor && on_place && d == Demand::Consume && self.class_of(e) != Class::Copy {
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
             self.error(
                 e.pos,
