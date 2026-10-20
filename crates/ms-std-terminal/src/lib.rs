@@ -1,12 +1,22 @@
 //! `@std/terminal` natives. Symbols are `msstd_terminal_<name>`.
 //!
 //! `capabilities()` and `size()` cross as one getter per record field (`size` also has a
-//! `_status` call first). Raw mode is not implemented: on a terminal `raw_mode` answers
-//! `Unsupported`, and with a redirected stream it answers `NotTerminal` like the Go runtime.
+//! `_status` call first). `raw_mode` returns a handle whose operations are the
+//! `msstd_terminal_raw_terminal_*` exports; the event delivered by `next_event` is read back
+//! through the `msstd_terminal_event_*` getters.
 #![no_std]
 // The exports below are the C ABI compiled code links against.
 #![allow(unsafe_code)]
 #![allow(clippy::missing_safety_doc)]
+
+extern crate alloc;
+
+mod decoder;
+#[cfg(unix)]
+mod raw;
+#[cfg(not(unix))]
+#[path = "raw_unsupported.rs"]
+mod raw;
 
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED, StrObj};
 
@@ -124,20 +134,171 @@ pub extern "C" fn msstd_terminal_size_rows() -> i64 {
     imp::size().map_or(0, |s| s.1)
 }
 
-/// Raw mode is not implemented yet: redirected streams answer `NotTerminal`, terminals
-/// `Unsupported`.
+/// The raw terminal handle the lowered `RawTerminal` operations pass back.
+pub type RawHandle = ms_std_rt::Handle<raw::Raw>;
+
+/// Enters raw mode on standard input and output. Redirected streams answer `NotTerminal`,
+/// another open raw terminal `Busy`, and hosts without termios `Unsupported`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn msstd_terminal_raw_mode(
-    _alternate_screen: u8,
-    out: *mut *mut ms_std_rt::Handle<()>,
+    alternate_screen: u8,
+    out: *mut *mut RawHandle,
 ) -> u8 {
-    // No handle is ever written to `out`.
-    let _ = out;
-    if imp::is_terminal(0) && imp::is_terminal(1) {
-        STATUS_UNSUPPORTED
-    } else {
-        STATUS_NOT_TERMINAL
+    match raw::Raw::open(0, 1, alternate_screen != 0) {
+        Ok(handle) => {
+            // SAFETY: `out` is writable.
+            unsafe { out.write(handle) };
+            STATUS_OK
+        }
+        Err(status) => status,
     }
+}
+
+/// Restores the terminal; closing again does nothing.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_close(h: *mut RawHandle) {
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.close() };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_size_status(h: *mut RawHandle) -> u8 {
+    ms_std_rt::poll_cancel();
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.size() }.err().unwrap_or(STATUS_OK)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_size_columns(h: *mut RawHandle) -> i64 {
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.size() }.map_or(0, |s| s.0)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_size_rows(h: *mut RawHandle) -> i64 {
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.size() }.map_or(0, |s| s.1)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_move_cursor(
+    h: *mut RawHandle,
+    row: i64,
+    column: i64,
+) -> u8 {
+    ms_std_rt::poll_cancel();
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.move_cursor(row, column) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_show_cursor(
+    h: *mut RawHandle,
+    visible: u8,
+) -> u8 {
+    ms_std_rt::poll_cancel();
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.show_cursor(visible != 0) }
+}
+
+/// `region` is the `EraseRegion` case index: screen, line, line end, line start.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_erase(h: *mut RawHandle, region: i64) -> u8 {
+    ms_std_rt::poll_cancel();
+    // SAFETY: `h` is a live raw terminal handle.
+    unsafe { (*h).value.erase(region) }
+}
+
+/// Waits for the next event (a negative timeout polls). `STATUS_OK` leaves the event for the
+/// `msstd_terminal_event_*` getters; `STATUS_NONE` means the timeout elapsed first.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msstd_terminal_raw_terminal_next_event(
+    h: *mut RawHandle,
+    has_timeout: u8,
+    timeout_ns: i64,
+) -> u8 {
+    ms_std_rt::poll_cancel();
+    let timeout = (has_timeout != 0).then_some(timeout_ns.max(0));
+    // SAFETY: `h` is a live raw terminal handle and the runtime is single-threaded.
+    unsafe { (*h).value.next_event(timeout, &mut *CURRENT.0.get()) }
+}
+
+/// The event `next_event` last delivered.
+struct Current(core::cell::UnsafeCell<Option<decoder::Event>>);
+
+// SAFETY: the runtime runs Manuscript code on one thread.
+unsafe impl Sync for Current {}
+
+static CURRENT: Current = Current(core::cell::UnsafeCell::new(None));
+
+fn current<T>(read: impl FnOnce(&decoder::Event) -> T) -> Option<T> {
+    // SAFETY: single-threaded; the reference does not outlive the call.
+    unsafe { (*CURRENT.0.get()).as_ref() }.map(read)
+}
+
+/// The kind of the delivered event, as its `TerminalEvent` case index: text, key, resize.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_kind() -> i64 {
+    current(|e| match e {
+        decoder::Event::Text(_) => 0,
+        decoder::Event::Key { .. } => 1,
+        decoder::Event::Resize { .. } => 2,
+    })
+    .unwrap_or(0)
+}
+
+/// The typed text, or the key name.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_text() -> *mut StrObj {
+    let text = current(|e| match e {
+        decoder::Event::Text(t) => t.clone(),
+        decoder::Event::Key { name, .. } => name.clone(),
+        decoder::Event::Resize { .. } => alloc::vec::Vec::new(),
+    });
+    ms_std_rt::new_string(&text.unwrap_or_default())
+}
+
+fn key_flag(read: impl FnOnce(bool, bool, bool) -> bool) -> u8 {
+    let flag = current(|e| match e {
+        decoder::Event::Key {
+            ctrl, alt, shift, ..
+        } => read(*ctrl, *alt, *shift),
+        _ => false,
+    });
+    u8::from(flag.unwrap_or(false))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_ctrl() -> u8 {
+    key_flag(|ctrl, _, _| ctrl)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_alt() -> u8 {
+    key_flag(|_, alt, _| alt)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_shift() -> u8 {
+    key_flag(|_, _, shift| shift)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_columns() -> i64 {
+    current(|e| match e {
+        decoder::Event::Resize { columns, .. } => *columns,
+        _ => 0,
+    })
+    .unwrap_or(0)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_terminal_event_rows() -> i64 {
+    current(|e| match e {
+        decoder::Event::Resize { rows, .. } => *rows,
+        _ => 0,
+    })
+    .unwrap_or(0)
 }
 
 #[cfg(all(test, unix))]

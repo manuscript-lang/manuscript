@@ -12,7 +12,10 @@
 
 extern crate alloc;
 
+mod inventory;
+
 use alloc::vec::Vec;
+use inventory::{Cpu, Interface, Metrics, Slot};
 use ms_rt_abi::{MapVal, STATUS_OK, STATUS_UNSUPPORTED, StrObj};
 use ms_std_process::control;
 use ms_std_rt::{MapValue, new_string, write_string_map};
@@ -176,6 +179,139 @@ pub extern "C" fn msstd_system_user_info_shell() -> *mut StrObj {
     new_string(&imp::user().map(|u| u.shell).unwrap_or_default())
 }
 
+// Lists and the metrics record cross as a status call that takes a snapshot, then getters
+// (indexed for lists): `msstd_system_<call>_status`, `_count`, `_<field>`.
+static INTERFACES: Slot<Vec<Interface>> = Slot::new();
+static CPUS: Slot<Vec<Cpu>> = Slot::new();
+static METRICS: Slot<Metrics> = Slot::new();
+
+fn snapshot<T>(slot: &Slot<T>, taken: Result<T, u8>) -> u8 {
+    match taken {
+        Ok(v) => {
+            slot.set(v);
+            STATUS_OK
+        }
+        Err(status) => status,
+    }
+}
+
+fn item<T>(slot: &Slot<Vec<T>>, i: i64) -> Option<&T> {
+    slot.get()?.get(usize::try_from(i).ok()?)
+}
+
+/// Exports `$name(i)` reading the text field `$field` of item `i`.
+macro_rules! text_getter {
+    ($name:ident, $slot:ident, $field:ident) => {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $name(i: i64) -> *mut StrObj {
+            new_string(item(&$slot, i).map_or(&[][..], |x| &x.$field))
+        }
+    };
+}
+
+/// Exports `$name(i)` reading the integer field `$field` of item `i`.
+macro_rules! int_getter {
+    ($name:ident, $slot:ident, $field:ident) => {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn $name(i: i64) -> i64 {
+            item(&$slot, i).map_or(0, |x| x.$field)
+        }
+    };
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_network_interfaces_status() -> u8 {
+    snapshot(&INTERFACES, inventory::interfaces())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_network_interfaces_count() -> i64 {
+    INTERFACES.get().map_or(0, |v| v.len() as i64)
+}
+
+text_getter!(msstd_system_network_interfaces_name, INTERFACES, name);
+text_getter!(msstd_system_network_interfaces_address, INTERFACES, address);
+text_getter!(msstd_system_network_interfaces_netmask, INTERFACES, netmask);
+text_getter!(msstd_system_network_interfaces_mac, INTERFACES, mac);
+int_getter!(
+    msstd_system_network_interfaces_scope_id,
+    INTERFACES,
+    scope_id
+);
+
+/// The family's `IpFamily` case index: `0` is IPv4, `1` is IPv6.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_network_interfaces_family(i: i64) -> i64 {
+    item(&INTERFACES, i).map_or(0, |x| i64::from(x.v6))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_network_interfaces_internal(i: i64) -> u8 {
+    item(&INTERFACES, i).map_or(0, |x| u8::from(x.internal))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_cpus_status() -> u8 {
+    snapshot(&CPUS, inventory::cpus())
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_cpus_count() -> i64 {
+    CPUS.get().map_or(0, |v| v.len() as i64)
+}
+
+text_getter!(msstd_system_cpus_model, CPUS, model);
+int_getter!(msstd_system_cpus_speed_mhz, CPUS, speed_mhz);
+int_getter!(msstd_system_cpus_user, CPUS, user);
+int_getter!(msstd_system_cpus_nice, CPUS, nice);
+int_getter!(msstd_system_cpus_system, CPUS, system);
+int_getter!(msstd_system_cpus_idle, CPUS, idle);
+int_getter!(msstd_system_cpus_irq, CPUS, irq);
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_status() -> u8 {
+    snapshot(&METRICS, inventory::metrics())
+}
+
+fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
+    METRICS.get().map(read).unwrap_or_default()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_total_memory() -> i64 {
+    metric(|m| m.total_memory)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_free_memory() -> i64 {
+    metric(|m| m.free_memory)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_available_memory() -> i64 {
+    metric(|m| m.available_memory)
+}
+
+/// Host uptime in nanoseconds, the representation of a `Duration`.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_uptime() -> i64 {
+    metric(|m| m.uptime_ns)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_available_parallelism() -> i64 {
+    metric(|m| m.parallelism)
+}
+
+/// The 1, 5 and 15 minute load average for `window` 0, 1 and 2.
+#[unsafe(no_mangle)]
+pub extern "C" fn msstd_system_metrics_load_average(window: i64) -> f64 {
+    metric(|m| {
+        let slot = usize::try_from(window).unwrap_or(usize::MAX);
+        m.load.get(slot).copied().unwrap_or(0.0)
+    })
+}
+
 #[cfg(unix)]
 mod imp {
     use super::*;
@@ -233,7 +369,7 @@ mod imp {
         }
     }
 
-    fn errno() -> i32 {
+    pub(crate) fn errno() -> i32 {
         // SAFETY: the slot is this thread's.
         unsafe { *errno_slot() }
     }
@@ -251,7 +387,7 @@ mod imp {
         }
     }
 
-    pub fn cpu_count() -> i64 {
+    pub(crate) fn cpu_count() -> i64 {
         // SAFETY: plain system call.
         let n = unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) };
         i64::from(n.max(1) as i32)
@@ -428,6 +564,31 @@ mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
     use ms_rt_abi::STATUS_INVALID_INPUT;
+
+    #[test]
+    fn interfaces_include_a_loopback_address() {
+        assert_eq!(msstd_system_network_interfaces_status(), STATUS_OK);
+        let n = msstd_system_network_interfaces_count();
+        assert!(n >= 1);
+        let loopback = (0..n).any(|i| msstd_system_network_interfaces_internal(i) == 1);
+        assert!(loopback);
+        assert!(msstd_system_network_interfaces_scope_id(0) >= 1);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn cpus_and_metrics_read_proc() {
+        assert_eq!(msstd_system_cpus_status(), STATUS_OK);
+        assert!(msstd_system_cpus_count() >= 1);
+        assert!(msstd_system_cpus_idle(0) >= 0);
+        assert_eq!(msstd_system_metrics_status(), STATUS_OK);
+        assert!(msstd_system_metrics_total_memory() > 0);
+        assert!(msstd_system_metrics_available_memory() <= msstd_system_metrics_total_memory());
+        assert!(msstd_system_metrics_uptime() > 0);
+        assert!(msstd_system_metrics_available_parallelism() >= 1);
+        assert!(msstd_system_metrics_load_average(0) >= 0.0);
+        assert_eq!(msstd_system_metrics_load_average(3), 0.0);
+    }
 
     #[test]
     fn priorities_validate_and_read() {
