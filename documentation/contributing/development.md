@@ -15,7 +15,7 @@ make verify
 
 - `make setup` installs verified Go and pinned linters; `make doctor` reports missing prerequisites without downloading.
 - `make verify` runs read-only format/vet, lint, workflow/shell lint, repository invariants, fast unit tests, checked tutorial examples, documentation validation, and license freshness. It builds no native conformance executables.
-- `make check` and `make repo-check` reject invalid syntax in any `pkg/stdlib/*.ms` file, reporting file, line, and column.
+- `make check` and `make repo-check` reject invalid syntax in any `stdlib/*.ms` file, reporting file, line, and column.
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
 `make repo-check` also rejects nested matches in repository Manuscript sources, Markdown fences (`manuscript`, `ms`, `text`), and Go source strings, including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
@@ -56,7 +56,7 @@ Complete tutorial fences carry a `manuscript-example` JSON comment giving `test`
 
 ## Preview and publish the book
 
-Author guides in `documentation/`; standard-library descriptions live above declarations in `pkg/stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
+Author guides in `documentation/`; standard-library descriptions live above declarations in `stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
 make docs
@@ -89,7 +89,7 @@ The [distribution workflow](https://github.com/manuscript-lang/manuscript/blob/m
 
 ## Generate the standard library reference
 
-`scripts/docgen` reads the checker's registry from pinned `pkg/stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`scripts/docgen` reads the checker's registry from pinned `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
 

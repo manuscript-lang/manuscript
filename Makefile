@@ -45,7 +45,7 @@ repo-check:
 	"$(GO)" run ./scripts/repo-check
 
 unit:
-	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./pkg/stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
+	"$(GO)" test ./pkg/syntax ./pkg/lexer ./pkg/parser ./pkg/frontend ./pkg/project ./stdlib ./pkg/checker ./pkg/runtime ./pkg/tooling/... ./scripts/repo-check
 
 stdlib-check:
 	"$(GO)" test ./tests/e2e -run '^TestStandardLibrarySources$$'
