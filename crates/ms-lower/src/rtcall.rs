@@ -1030,7 +1030,7 @@ impl FnLower<'_> {
     }
 
     /// The payload-free case of `a` whose index is `code`, trying cases from `from`.
-    fn enum_from_index(
+    pub(crate) fn enum_from_index(
         &mut self,
         a: ms_mir::types::AltId,
         code: Value,

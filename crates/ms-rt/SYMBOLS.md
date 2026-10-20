@@ -674,6 +674,31 @@ msstd_system_user_info_uid() -> i64
 msstd_system_user_info_gid() -> i64
 msstd_system_user_info_home() -> *mut StrObj
 msstd_system_user_info_shell() -> *mut StrObj
+msstd_system_network_interfaces_status() -> u8
+msstd_system_network_interfaces_count() -> i64
+msstd_system_network_interfaces_family(i: i64) -> i64
+msstd_system_network_interfaces_internal(i: i64) -> u8
+msstd_system_cpus_status() -> u8
+msstd_system_cpus_count() -> i64
+msstd_system_metrics_status() -> u8
+msstd_system_metrics_total_memory() -> i64
+msstd_system_metrics_free_memory() -> i64
+msstd_system_metrics_available_memory() -> i64
+msstd_system_metrics_uptime() -> i64
+msstd_system_metrics_available_parallelism() -> i64
+msstd_system_metrics_load_average(window: i64) -> f64
+msstd_system_network_interfaces_name(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_address(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_netmask(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_mac(i: i64) -> *mut StrObj
+msstd_system_network_interfaces_scope_id(i: i64) -> i64
+msstd_system_cpus_model(i: i64) -> *mut StrObj
+msstd_system_cpus_speed_mhz(i: i64) -> i64
+msstd_system_cpus_user(i: i64) -> i64
+msstd_system_cpus_nice(i: i64) -> i64
+msstd_system_cpus_system(i: i64) -> i64
+msstd_system_cpus_idle(i: i64) -> i64
+msstd_system_cpus_irq(i: i64) -> i64
 msstd_terminal_failure_message() -> *mut StrObj
 msstd_terminal_capabilities_input_is_terminal() -> u8
 msstd_terminal_capabilities_output_is_terminal() -> u8

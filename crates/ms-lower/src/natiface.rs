@@ -753,6 +753,21 @@ const METHODS: &[MethodRow] = &[
     (
         "system",
         "System",
+        "network_interfaces",
+        "msstd_system_network_interfaces_records",
+        &[],
+    ),
+    ("system", "System", "cpus", "msstd_system_cpus_records", &[]),
+    (
+        "system",
+        "System",
+        "metrics",
+        "msstd_system_metrics_record",
+        &[],
+    ),
+    (
+        "system",
+        "System",
         "get_priority",
         "msstd_system_get_priority",
         &[],
@@ -959,6 +974,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.emit_return(Some(r));
         return Ok(());
     }
+    if let Some(base) = sym.strip_suffix("_records") {
+        let r = fl.record_list_getters(base, job.ret)?;
+        fl.emit_return(Some(r));
+        return Ok(());
+    }
     let takes_handle = crate::rtcall::rt_sig(sym)
         .and_then(|s| {
             s.params
@@ -1126,7 +1146,7 @@ impl FnLower<'_> {
 }
 
 impl FnLower<'_> {
-    /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<field>`.
+    /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.
     /// An optional `<base>_status` call runs first: a nonzero status is the error case.
     pub(crate) fn record_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
         let (alt, rec_ty) = match self.b.m.types.kind(result).clone() {
@@ -1142,15 +1162,8 @@ impl FnLower<'_> {
         let TyKind::Rec(rid) = self.b.m.types.kind(rec_ty).clone() else {
             return Err(Error::new(format!("{base}: not a record result")));
         };
-        let fields = self.b.m.records[rid.index()].fields.clone();
         let build = |s: &mut Self| -> Result<ms_mir::ir::Value, Error> {
-            let mut values = Vec::new();
-            for (name, ty) in &fields {
-                let sym = format!("{base}_{name}");
-                let v = s.rt_function(&sym, &[], &[], *ty)?;
-                values.push(s.owned(v));
-            }
-            let rec = s.b.rec_new(rid, &values);
+            let rec = s.record_from_getters(base, rid, None)?;
             Ok(match alt {
                 Some((a, ok)) => s.b.alt_new(a, ok as u32, &[rec]),
                 None => rec,
@@ -1167,5 +1180,132 @@ impl FnLower<'_> {
         self.two_ways(good, result, &mut |s| build(s).map(Some), &mut |s| {
             s.status_failure(result, code, &status).map(Some)
         })
+    }
+
+    /// A `Result` of a list of records read from a runtime snapshot: `<base>_status` takes it,
+    /// `<base>_count` sizes it and each field comes from `<base>_<name>(index)`.
+    pub(crate) fn record_list_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new(format!("{base}: not a Result")));
+        };
+        let ok = self.ok_case_index(a)?;
+        let list_ty = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+        let TyKind::List(rec_ty) = self.b.m.types.kind(list_ty).clone() else {
+            return Err(Error::new(format!("{base}: not a list result")));
+        };
+        let TyKind::Rec(rid) = self.b.m.types.kind(rec_ty).clone() else {
+            return Err(Error::new(format!("{base}: not a list of records")));
+        };
+        let status = format!("{base}_status");
+        let code = self.status_code(&status, &[])?;
+        let zero = self.b.iconst(0);
+        let good = self.b.icmp(ms_mir::ir::Cc::Eq, code, zero);
+        self.two_ways(
+            good,
+            result,
+            &mut |s| {
+                let n = s.call_runtime(&format!("{base}_count"), &[], MTy::INT)?;
+                let empty = s.b.list_new(rec_ty, n);
+                let acc = s.b.declare_var(list_ty, Mode::Own);
+                s.b.def_var(acc, empty);
+                let idx = s.b.declare_var(MTy::INT, Mode::Borrow);
+                let start = s.b.iconst(0);
+                s.b.def_var(idx, start);
+                let (header, body, exit) = (s.b.new_block(), s.b.new_block(), s.b.new_block());
+                s.b.br(header, &[]);
+                s.b.switch_to(header);
+                let i = s.b.use_var(idx);
+                let more = s.b.icmp(ms_mir::ir::Cc::Lt, i, n);
+                s.b.br_if(more, body, &[], exit, &[]);
+                s.b.seal_block(body);
+                s.b.switch_to(body);
+                let i = s.b.use_var(idx);
+                let rec = s.record_from_getters(base, rid, Some(i))?;
+                let cur = s.b.use_var(acc);
+                let next = s.b.list_push(cur, rec);
+                s.b.def_var(acc, next);
+                let one = s.b.iconst(1);
+                let i = s.b.use_var(idx);
+                let after = s.b.binop(Op::IAdd, i, one);
+                s.b.def_var(idx, after);
+                s.b.br(header, &[]);
+                s.b.seal_block(header);
+                s.b.seal_block(exit);
+                s.b.switch_to(exit);
+                let list = s.b.use_var(acc);
+                Ok(Some(s.b.alt_new(a, ok as u32, &[list])))
+            },
+            &mut |s| s.status_failure(result, code, &status).map(Some),
+        )
+    }
+
+    /// The record `rid` with each field read by the getter `<base>_<field>`, called with `index`
+    /// for an item of a list.
+    fn record_from_getters(
+        &mut self,
+        base: &str,
+        rid: ms_mir::types::RecId,
+        index: Option<ms_mir::ir::Value>,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let fields = self.b.m.records[rid.index()].fields.clone();
+        let mut values = Vec::new();
+        for (name, ty) in &fields {
+            let sym = format!("{base}_{name}");
+            let v = self.getter_field(&sym, *ty, index)?;
+            values.push(self.owned(v));
+        }
+        Ok(self.b.rec_new(rid, &values))
+    }
+
+    /// One record field: scalars and strings come straight from the getter, a payload-free enum
+    /// from its case index, and a `List[Float]` (the three load averages) from `sym(window)`.
+    fn getter_field(
+        &mut self,
+        sym: &str,
+        ty: MTy,
+        index: Option<ms_mir::ir::Value>,
+    ) -> Result<Val, Error> {
+        match self.b.m.types.kind(ty).clone() {
+            TyKind::Alt(a) => {
+                let code = self.getter_call(sym, MTy::INT, index)?;
+                let v = self.enum_from_index(a, code, 0)?;
+                Ok(Val { v, own: true })
+            }
+            TyKind::List(e) if e == MTy::FLOAT => {
+                let three = self.b.iconst(3);
+                let mut list = self.b.list_new(e, three);
+                for window in 0..3 {
+                    let w = self.b.iconst(window);
+                    let x = self.call_runtime(sym, &[w], MTy::FLOAT)?;
+                    list = self.b.list_push(list, x);
+                }
+                Ok(Val { v: list, own: true })
+            }
+            _ => {
+                let v = self.getter_call(sym, ty, index)?;
+                Ok(Val { v, own: true })
+            }
+        }
+    }
+
+    /// Calls the getter `sym`, with `index` when given. A `Bool` crosses as a `u8` of which
+    /// only the low byte is defined.
+    fn getter_call(
+        &mut self,
+        sym: &str,
+        ty: MTy,
+        index: Option<ms_mir::ir::Value>,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let Some(i) = index else {
+            return Ok(self.rt_function(sym, &[], &[], ty)?.v);
+        };
+        if ty != MTy::BOOL {
+            return self.call_runtime(sym, &[i], ty);
+        }
+        let raw = self.call_runtime(sym, &[i], MTy::INT)?;
+        let mask = self.b.iconst(0xff);
+        let low = self.b.binop(Op::And, raw, mask);
+        let zero = self.b.iconst(0);
+        Ok(self.b.icmp(ms_mir::ir::Cc::Ne, low, zero))
     }
 }
