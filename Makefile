@@ -11,12 +11,12 @@ BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 export PATH := $(dir $(GO)):$(PATH)
 export STATICCHECK_CACHE ?= $(CURDIR)/.artifacts/staticcheck
 
-.PHONY: conformance conform-oracle conform-rust stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
+.PHONY: conformance conform-oracle conform-rust stdgen agent-bench-check toolchain setup tools doctor verify verify-full lint unit stdlib-check stdlib-test stdlib-bench repo-check repo-check-go examples-check licenses licenses-check payload build test e2e race coverage fuzz check fmt dist dist-check docs docs-check docs-coverage docs-rs docs-check-rs docs-parity book book-check vendor-refresh
 
 toolchain:
 	sh scripts/bootstrap-go.sh
 
-check lint repo-check unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check docs-coverage docs-parity: | payload
+check lint repo-check-go unit stdlib-check stdlib-test examples-check licenses licenses-check test e2e race coverage fuzz fmt docs docs-check docs-coverage docs-parity: | payload
 
 setup: payload tools
 
@@ -27,7 +27,7 @@ doctor:
 	HUGO="$(HUGO)" sh scripts/doctor.sh
 
 # Routine feedback excludes native compilation. The merge gate adds native checks.
-verify: check lint repo-check unit stdlib-check docs-check examples-check licenses-check
+verify: check lint repo-check repo-check-go unit stdlib-check docs-check examples-check licenses-check
 
 verify-full: verify coverage race fuzz book-check dist-check
 
@@ -41,7 +41,12 @@ lint:
 	.tools/actionlint -shellcheck .tools/shellcheck
 	.tools/shellcheck -x scripts/*.sh
 
+# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
 repo-check:
+	cargo run --release --locked -q -p ms-repo-check
+
+# Go-only package boundaries and native bundle pins; retires with the Go implementation.
+repo-check-go:
 	"$(GO)" run ./scripts/repo-check
 
 unit:
