@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,formatter,interpolation,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=control-flow,formatter,interpolation,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
 import {expect_true} from "@std/testing.ms"

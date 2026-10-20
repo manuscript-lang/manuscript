@@ -37,12 +37,13 @@ test "inlined callbacks":
     try expect_true((not items.some(predicate: fn(v: Int) Bool: v == 9)))
     try expect_true((items.every(predicate: fn(v: Int) Bool: v < 5)))
     try expect_true((not items.every(predicate: fn(v: Int) Bool: v < 4)))
+    # Closures cannot mutate captures, so iterate a clone while growing the original.
     var seen = List[Int]()
-    items.for_each(
-        operation: fn(v: Int) Unit:
-            items.append(value: 100)
-            seen.append(value: v)
-    )
+
+    for v in items.clone():
+        items.append(value: 100)
+        seen.append(value: v)
+
     try expect_true((seen.length() == 5 and items.length() == 10))
     try expect_true((List[Int]().map(fn(v: Int) Int: v).length() == 0))
     try expect_true(

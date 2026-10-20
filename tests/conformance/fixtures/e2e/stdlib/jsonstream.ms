@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,interpolation,lists,modules,mutation,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=control-flow,interpolation,lists,modules,mutation,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
 import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"

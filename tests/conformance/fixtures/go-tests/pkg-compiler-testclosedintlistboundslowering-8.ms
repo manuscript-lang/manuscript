@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,lists,mutation,parser,tier-core
+# conform: tags=control-flow,lists,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/list_bounds_test.go:29 TestClosedIntListBoundsLowering
 let values: List[Int] = []

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,formatter,interpolation,match,modules,parser,stdlib-archive,stdlib-binary,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-encoding,stdlib-json,stdlib-math,stdlib-string,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
+# conform: tags=control-flow,formatter,interpolation,match,modules,parser,stdlib-archive,stdlib-binary,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-encoding,stdlib-json,stdlib-math,stdlib-string,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library.ms
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
@@ -196,8 +196,7 @@ test "expanded packages run through compiler":
     ([1, 2, 3]).fold(initial: 0, step: sum) | try expect_equal(expected: 6)
     ([3, 1, 2]).sorted(compare: compare) | try expect_equal(expected: [1, 2, 3])
     var flipped = [1, 2]
-    let reverse_int = flipped.reverse_in_place
-    reverse_int()
+    flipped.reverse_in_place()
     flipped | try expect_equal(expected: [2, 1])
 
 test "malformed and bounded inputs return errors":

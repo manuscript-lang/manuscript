@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,lists,modules,mutation,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,control-flow,faults,lists,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/list-callbacks-reuse-arguments-without-changing-semantics.ms
 import {expect_true} from "@std/testing.ms"
@@ -44,9 +44,8 @@ test "list callbacks":
     )
     try expect_true((items.count(predicate: fn(value: Int) Bool: value > 1) == 3))
     var retained = List[fn() Int]()
-    items.for_each(
-        operation: fn(value: Int) Unit: keep(list: var retained, value: value)
-    )
+    for value in items:
+        keep(list: var retained, value: value)
     let called = retained.map(fn(value: fn() Int) Int: value())
     try expect_true(
         (
@@ -62,6 +61,8 @@ test "list callbacks":
     var grown = List[Int]()
     grown.append(value: 1)
     grown.append(value: 2)
-    let seen = grown.map(fn(value: Int) Int: grow(list: var grown, value: value))
+    var seen = List[Int]()
+    for value in grown.clone():
+        seen.append(value: grow(list: var grown, value: value))
     try expect_true((seen.length() == 2 and grown.length() == 4))
     try expect_true((nested(items: items).get(index: 2) == 7))

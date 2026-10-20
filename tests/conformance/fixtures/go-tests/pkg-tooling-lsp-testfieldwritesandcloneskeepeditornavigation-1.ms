@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,diagnostics,records,tier-core
+# conform: tags=closures,diagnostics,records,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/mutation_test.go:11 TestFieldWritesAndClonesKeepEditorNavigation
 type Val:

@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "generic-instances.ms::instances share one identity for non-scalar arguments",
+          "name": "generic-instances.ms::instances copy non-scalar arguments",
           "status": "passed"
         }
       ],
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN generic-instances.ms::parametric generics keep each instantiation's values\nPASS generic-instances.ms::parametric generics keep each instantiation's values\nRUN generic-instances.ms::instances share one identity for non-scalar arguments\nPASS generic-instances.ms::instances share one identity for non-scalar arguments\n2 tests, 0 failed\n",
+      "stdout": "RUN generic-instances.ms::parametric generics keep each instantiation's values\nPASS generic-instances.ms::parametric generics keep each instantiation's values\nRUN generic-instances.ms::instances copy non-scalar arguments\nPASS generic-instances.ms::instances copy non-scalar arguments\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

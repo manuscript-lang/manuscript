@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
+# conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/inference-call-order.ms
 import {expect_equal} from "@std/testing.ms"

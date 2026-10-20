@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,faults,formatter,lists,modules,optional,parser,stdlib-testing,testing,tier-core,try-result
+# conform: tags=closures,faults,formatter,lists,modules,optional,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/optional-members-call-directly.ms
 import {expect_equal, expect_true} from "@std/testing.ms"

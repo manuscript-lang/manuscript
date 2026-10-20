@@ -1,8 +1,6 @@
-import {expect_true} from "@std/testing.ms"
+import {expect_equal, expect_fault} from "@std/testing.ms"
+import panic from "@std/faults.ms"
 import Closeable from "@std/cleanup.ms"
-
-type Flag:
-    value: Bool
 
 interface OtherClose:
     fn close(flag: Bool) Int
@@ -11,21 +9,20 @@ interface Disposable:
     fn close() Unit
 
 type Resource:
-    closed: Flag
-    unexpected: List[Int]
+    closed: Int
 
 impl OtherClose for Resource:
     var fn close(flag: Bool) Int:
-        self.unexpected.append(1)
+        panic("other")
         return 0
 
 impl Closeable for Resource:
     var fn close() Unit:
-        self.closed.value = true
+        panic("closeable")
 
 impl Disposable for Resource:
     var fn close() Unit:
-        self.closed.value = true
+        panic("disposable")
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
@@ -36,15 +33,13 @@ fn canonical_cleanup[T: Closeable](resource: T) Unit:
         let completed = unit
 
 test "cleanup uses the selected contract":
-    var closed = Flag(value: false)
-    let unexpected: List[Int] = []
-    with resource = Resource(closed, unexpected):
-        (not closed.value) | try expect_true
-    closed.value | try expect_true
-    closed.value = false
-    bound_cleanup(resource: Resource(closed, unexpected))
-    closed.value | try expect_true
-    closed.value = false
-    canonical_cleanup(resource: Resource(closed, unexpected))
-    closed.value | try expect_true
-    unexpected.is_empty() | try expect_true
+    let direct = try expect_fault(
+        fn():
+            with resource = Resource(0):
+                let completed = unit
+    )
+    try expect_equal(direct, "closeable")
+    let bound = try expect_fault(fn(): bound_cleanup(resource: Resource(0)))
+    try expect_equal(bound, "disposable")
+    let canonical = try expect_fault(fn(): canonical_cleanup(resource: Resource(0)))
+    try expect_equal(canonical, "closeable")

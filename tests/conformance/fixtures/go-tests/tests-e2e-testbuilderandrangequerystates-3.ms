@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,lists,mutation,parser,tier-core,with-cleanup
+# conform: tags=control-flow,lists,mutation,parser,tier-core,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/builder_range_test.go:54 TestBuilderAndRangeQueryStates
 fn %s(visits: List[Int], scoped: Bool) Int:

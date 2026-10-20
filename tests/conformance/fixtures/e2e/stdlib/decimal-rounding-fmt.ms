@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,decimal,formatter,interpolation,modules,optional,parser,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
+# conform: tags=closures,decimal,formatter,interpolation,modules,optional,parser,stdlib-decimal,stdlib-numbers,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/decimal-rounding.ms
 import {expect_equal} from "@std/testing.ms"

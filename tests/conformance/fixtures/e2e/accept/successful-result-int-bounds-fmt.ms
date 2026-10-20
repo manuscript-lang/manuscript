@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
 import Closeable from "@std/cleanup.ms"
@@ -135,4 +135,3 @@ test "Result bounds preserve argument effects and cleanup":
     ordered(var visits) | try expect_equal(expected: 3)
     visits | try expect_equal(expected: [-1, 0, 1])
     cleanup(visits) | try expect_equal(expected: 500498)
-    visits | try expect_equal(expected: [-1, 0, 1, 7])

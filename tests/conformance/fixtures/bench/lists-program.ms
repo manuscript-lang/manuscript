@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,lists,modules,mutation,records,stdlib-collections,tier-stdlib
+# conform: tags=closures,control-flow,faults,lists,modules,mutation,records,stdlib-collections,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/lists/program.ms
 import range from "@std/collections.ms"

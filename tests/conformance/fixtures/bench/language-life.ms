@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
+# conform: tags=control-flow,faults,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/language/life.ms
 import {filled, range} from "@std/collections.ms"

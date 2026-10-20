@@ -132,4 +132,3 @@ test "Result bounds preserve argument effects and cleanup":
     ordered(var visits) | try expect_equal(expected: 3)
     visits | try expect_equal(expected: [-1, 0, 1])
     cleanup(visits) | try expect_equal(expected: 500498)
-    visits | try expect_equal(expected: [-1, 0, 1, 7])

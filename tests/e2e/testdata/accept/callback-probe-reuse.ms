@@ -13,30 +13,21 @@ fn with_result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: tr
 type Callback[T, U]:
     transform: fn(value: T) U
 
-type Events:
-    values: List[Int]
-
 type Failure[T]:
     detail: T
 
 impl Error for Failure[T]:
     fn message() String: self.detail.to_string()
 
-fn record(var events: Events, value: Int) Int:
-    events.values.append(value)
-    return value
-
 test "callback inference retains captures and contextual metadata":
-    var events = Events([])
     let offset = 7
     let values = [1, 2].map(
         fn(outer): [3, 4].map(
             fn(inner):
-                return record(var events, value: outer + inner + offset)
+                return outer + inner + offset
         )
     )
     try expect_equal(values, [[11, 12], [12, 13]])
-    try expect_equal(events.values, [11, 12, 12, 13])
     let callable: fn(value: Int) fn(input: Int) Int = apply(
         value: 1,
         transform: fn(base): fn(item): fn(extra): item + extra + base
