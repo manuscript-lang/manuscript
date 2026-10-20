@@ -56,29 +56,31 @@ impl Ctx {
 
 /// Replace every spelling of the work directory with `<DIR>`.
 pub fn normalize_text(text: &str, work: &Path) -> String {
-    let mut out = text.to_string();
-    let mut spellings = vec![work.to_string_lossy().into_owned()];
-    if let Ok(real) = fs::canonicalize(work) {
-        spellings.push(real.to_string_lossy().into_owned());
-    }
-    spellings.sort_by_key(|s| std::cmp::Reverse(s.len()));
-    spellings.dedup();
-    for s in spellings {
-        out = out.replace(&s, "<DIR>");
-    }
+    let mut out = replace_spellings(text, work, "<DIR>");
     // Imports such as `../a.ms` name the scratch root, whose name carries a process id.
     if let Some(root) = work.parent() {
-        // The canonical spelling can extend the plain one (`/private/var/...` for `/var/...`), so the
-        // longer one goes first.
-        let mut roots = vec![root.to_string_lossy().into_owned()];
-        if let Ok(real) = fs::canonicalize(root) {
-            roots.push(real.to_string_lossy().into_owned());
-        }
-        roots.sort_by_key(|s| std::cmp::Reverse(s.len()));
-        roots.dedup();
-        for r in roots {
-            out = out.replace(&r, "<SCRATCH>");
-        }
+        out = replace_spellings(&out, root, "<SCRATCH>");
+    }
+    out
+}
+
+/// Replace every spelling of `path` in `text`: as given, canonical (`/private/var/...` for
+/// `/var/...`, `\\?\C:\...` on Windows), and with `/` separators, which `ms` prints on Windows.
+fn replace_spellings(text: &str, path: &Path, with: &str) -> String {
+    let mut spellings = vec![path.to_string_lossy().into_owned()];
+    if let Ok(real) = fs::canonicalize(path) {
+        let real = real.to_string_lossy().into_owned();
+        spellings.push(real.strip_prefix(r"\\?\").unwrap_or(&real).to_string());
+        spellings.push(real);
+    }
+    let slashed: Vec<String> = spellings.iter().map(|s| s.replace('\\', "/")).collect();
+    spellings.extend(slashed);
+    // The longer spelling goes first: a canonical one can extend the plain one.
+    spellings.sort_by_key(|s| std::cmp::Reverse(s.len()));
+    spellings.dedup();
+    let mut out = text.to_string();
+    for s in spellings {
+        out = out.replace(&s, with);
     }
     out
 }
