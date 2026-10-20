@@ -2,7 +2,8 @@
 //!
 //! Like the Go launcher, `ms` stays alive until the native program completes
 //! its own cancellation and cleanup: SIGINT and SIGTERM sent to `ms` are
-//! forwarded to the child instead of killing the launcher.
+//! forwarded to the child instead of killing the launcher on Unix. Windows has no POSIX
+//! `kill`: an interrupted child is force-stopped through its handle, without a cleanup guarantee.
 
 // The only FFI in the CLI: std has no signal API, so `signal`/`kill` come from libc.
 #![allow(unsafe_code)]
@@ -17,6 +18,7 @@ const SIG_DFL: usize = 0;
 
 unsafe extern "C" {
     fn signal(signum: i32, handler: usize) -> usize;
+    #[cfg(unix)]
     fn kill(pid: i32, signum: i32) -> i32;
 }
 
@@ -31,7 +33,7 @@ pub struct Waited {
     pub status: ExitStatus,
     /// The deadline passed and the child was killed.
     pub timed_out: bool,
-    /// SIGINT or SIGTERM arrived while waiting (the child received it too).
+    /// SIGINT or SIGTERM arrived while waiting (forwarded on Unix; force-stop on Windows).
     pub interrupted: bool,
 }
 
@@ -103,8 +105,7 @@ pub fn wait_supervised(
         if let Some(pending) = stops.take() {
             interrupted = true;
             last = Some(pending);
-            // SAFETY: the pid belongs to a child of this process that has not been reaped.
-            unsafe { kill(child.id() as i32, pending) };
+            signal_child(child, pending);
         }
         if !timed_out && timeout.is_some_and(|limit| started.elapsed() >= limit) {
             timed_out = true;
@@ -121,10 +122,23 @@ pub fn wait_supervised(
     result
 }
 
-/// Ask `child` to stop the way Ctrl-C does, so it can cancel and clean up.
-pub fn interrupt(child: &Child) {
-    // SAFETY: the pid belongs to a child of this process that has not been reaped.
-    unsafe { kill(child.id() as i32, SIGINT) };
+/// Ask `child` to cancel and clean up on Unix; force-stop it on Windows.
+pub fn interrupt(child: &mut Child) {
+    signal_child(child, SIGINT);
+}
+
+fn signal_child(child: &mut Child, signum: i32) {
+    #[cfg(unix)]
+    {
+        // SAFETY: the pid belongs to a child of this process that has not been reaped.
+        unsafe { kill(child.id() as i32, signum) };
+    }
+    #[cfg(not(unix))]
+    {
+        // Use the same owned-handle termination as a supervisor timeout.
+        let _ = signum;
+        let _ = child.kill();
+    }
 }
 
 /// The exit status as a process status: the code, or 128 + signal (the shell convention).
