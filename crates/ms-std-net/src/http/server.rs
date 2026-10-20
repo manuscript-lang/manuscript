@@ -32,6 +32,23 @@ const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection (net/http's value).
 pub const DRAIN_LIMIT: usize = 256 * 1024;
 
+/// How long accepting pauses after the process runs out of descriptors or memory.
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
+
+/// Whether `accept` failed for lack of descriptors, buffers, or memory.
+fn is_resource_exhaustion(e: &std::io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        // EMFILE, ENFILE, ENOBUFS (Linux/macOS), ENOMEM
+        matches!(e.raw_os_error(), Some(24 | 23 | 105 | 55 | 12))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = e;
+        false
+    }
+}
+
 /// Server limits; `UNLIMITED` means none.
 #[derive(Clone, Debug)]
 pub struct Limits {
@@ -447,6 +464,18 @@ impl Reactor {
                 server.close_conn(&conn, self);
             }
         }
+        let listeners: Vec<Rc<Server>> = self
+            .targets
+            .borrow()
+            .values()
+            .filter_map(|t| match t {
+                Target::Listener(s) => s.upgrade(),
+                Target::Conn(_) => None,
+            })
+            .collect();
+        for server in listeners {
+            server.resume_accept(self);
+        }
         let h2_conns: Vec<Rc<Conn>> = self
             .targets
             .borrow()
@@ -492,6 +521,8 @@ struct ServerSt {
     closed: bool,
     /// Requests queued or running (the admission count).
     admitted: usize,
+    /// Set while the listener is unwatched after accept ran out of descriptors or memory.
+    accept_paused_until: Option<Instant>,
 }
 
 impl Resource for Server {
@@ -549,6 +580,7 @@ impl Server {
                 closing: false,
                 closed: false,
                 admitted: 0,
+                accept_paused_until: None,
             }),
             token,
         });
@@ -689,9 +721,34 @@ impl Server {
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
-                Err(_) => break,
+                Err(e) => {
+                    if is_resource_exhaustion(&e) {
+                        self.pause_accept(reactor);
+                    }
+                    break;
+                }
             }
         }
+    }
+
+    /// Stops watching the listener for a moment: out of descriptors it stays readable, and
+    /// polling it would spin the reactor while connections it could free sit unserved.
+    fn pause_accept(&self, reactor: &Reactor) {
+        let mut st = self.st.borrow_mut();
+        if st.accept_paused_until.is_none() && !st.closing {
+            reactor.delete(self.listener.as_sock());
+            st.accept_paused_until = Some(Instant::now() + ACCEPT_BACKOFF);
+        }
+    }
+
+    /// Watches the listener again once the backoff passed.
+    fn resume_accept(&self, reactor: &Reactor) {
+        let mut st = self.st.borrow_mut();
+        if st.closing || st.accept_paused_until.is_none_or(|t| t > Instant::now()) {
+            return;
+        }
+        st.accept_paused_until = None;
+        reactor.add(self.listener.as_sock(), self.token, Ev::IN);
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
@@ -1794,6 +1851,15 @@ pub(crate) mod tests {
             old.contains("HTTP/1.0") && old.contains("Connection: close"),
             "{old}"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn accept_pauses_only_for_resource_exhaustion() {
+        let emfile = std::io::Error::from_raw_os_error(24);
+        let reset = std::io::Error::from_raw_os_error(104);
+        assert!(is_resource_exhaustion(&emfile));
+        assert!(!is_resource_exhaustion(&reset));
     }
 
     #[test]
