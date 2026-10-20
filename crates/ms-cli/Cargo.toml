@@ -20,6 +20,7 @@ ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
 ms-syntax = { path = "../ms-syntax" }
 ms-lower = { path = "../ms-lower" }
+ms-guide = { path = "../ms-guide" }
 ms-lsp = { path = "../ms-lsp" }
 ms-tooling = { path = "../ms-tooling" }
 regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case", "unicode-gencat", "unicode-script", "unicode-bool", "unicode-age", "unicode-segment"] }
