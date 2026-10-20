@@ -3,21 +3,7 @@ use super::Fd;
 use core::ptr::{null, null_mut};
 use ms_std_fs::sys;
 use windows_sys::Win32::Foundation::HANDLE;
-use windows_sys::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 use windows_sys::Win32::System::Pipes::{CreatePipe, PIPE_NOWAIT, SetNamedPipeHandleState};
-
-/// Monotonic nanoseconds (`QueryPerformanceCounter`).
-pub fn now_ns() -> i64 {
-    let (mut freq, mut count) = (0i64, 0i64);
-    // SAFETY: both outputs are writable.
-    unsafe {
-        QueryPerformanceFrequency(&mut freq);
-        QueryPerformanceCounter(&mut count);
-    }
-    let freq = freq.max(1);
-    // Split to avoid overflowing `count * 1e9`.
-    (count / freq) * 1_000_000_000 + (count % freq) * 1_000_000_000 / freq
-}
 
 /// An anonymous pipe `(read, write)`. Neither end is inheritable; `start` makes the ends the child
 /// uses inheritable only for the duration of the spawn.

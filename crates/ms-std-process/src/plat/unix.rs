@@ -2,14 +2,6 @@
 use super::Fd;
 use ms_std_fs::sys;
 
-pub fn now_ns() -> i64 {
-    // SAFETY: zeroed `timespec` is a valid out buffer.
-    let mut t: libc::timespec = unsafe { core::mem::zeroed() };
-    // SAFETY: `t` is writable.
-    unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut t) };
-    t.tv_sec as i64 * 1_000_000_000 + t.tv_nsec as i64
-}
-
 pub fn pipe() -> Result<(Fd, Fd), i32> {
     let mut fds = [0i32; 2];
     // SAFETY: `fds` has room for two descriptors.

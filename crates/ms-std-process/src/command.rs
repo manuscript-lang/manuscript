@@ -22,7 +22,16 @@ mod plat;
 mod plat;
 
 pub use crate::spawn::{Child, start};
-pub use plat::{now_ns, pipe};
+pub use plat::pipe;
+
+/// Monotonic nanoseconds since the first call.
+pub fn now_ns() -> i64 {
+    static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    ORIGIN
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos() as i64
+}
 use plat::{set_nonblocking, wait_io, would_block};
 
 /// Sleeps `ms` milliseconds.
