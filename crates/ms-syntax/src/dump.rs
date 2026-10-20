@@ -830,7 +830,7 @@ impl D {
                 };
                 let result = c.ty.as_ref().unwrap_or(&placeholder);
                 let ret = Stmt {
-                    id: c.return_id,
+                    id: NodeId(0),
                     pos: c.init_pos,
                     kind: StmtKind::Return(Some(c.value.clone())),
                 };

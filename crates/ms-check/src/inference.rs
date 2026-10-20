@@ -1,5 +1,5 @@
 //! Generic argument inference and the pieces of
-//! callback return inference it shares (`callbacks.go`).
+//! callback return inference it shares.
 
 use crate::checker::{CheckedArgument, Checker};
 use crate::hints::{arity_mismatch_hint, label_mismatch_hint};

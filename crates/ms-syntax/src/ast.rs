@@ -145,15 +145,12 @@ pub struct Func {
 pub struct ConstDecl {
     /// Constant name.
     pub name: Symbol,
-    /// Annotation, if written. A placeholder is used type at the initializer's
-    /// position when absent; the checker infers the type from `value`.
+    /// Annotation, if written. When absent, the checker infers the type from `value`.
     pub ty: Option<TypeRef>,
     /// Initializer.
     pub value: Expr,
     /// Position of the initializer's first token.
     pub init_pos: Pos,
-    /// Id of the synthetic `return` statement built around the value.
-    pub return_id: NodeId,
     /// Position of the `let` keyword when written inside `let ( ... )`.
     pub group: Option<Pos>,
 }
