@@ -16,7 +16,7 @@ cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
 
-`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively; the darwin and windows legs are experimental and may fail without turning the check red.
+`sh scripts/package-rust.sh [OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively, and every leg gates the check.
 
 `.cargo/config.toml` forces frame pointers: fault traces and `ms profile` walk them. On Windows, fault reporting uses native unwind records to reach the first generated source frame, then follows contiguous generated callers. Attribution stops at a native callback or generated glue boundary; complete mixed native/generated stack unwinding is not supported.
 
@@ -64,6 +64,6 @@ The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these 
 - **Math.** `@std/math` calls the host libm; results can differ from Go in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
 - **`ms test --shuffle`** uses its own random generator, so orders differ from the Go `ms`; fixtures run once per test, not once per module.
 - **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ from Go where the corpus does not pin them.
-- **Windows.** The standard crates follow Go's Windows behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds are experimental until their runtime ports land.
+- **Windows.** The standard crates follow Go's Windows behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds gate CI like Linux.
 
 Anything the Rust `ms` does only to match the Go output is recorded and tracked for removal after cutover. Do not add code solely to reproduce Go output where Rust std covers the concept.

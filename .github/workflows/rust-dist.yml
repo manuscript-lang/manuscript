@@ -33,9 +33,6 @@ jobs:
     name: ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    # The darwin and windows legs are experimental until the ms-rt ports land: their steps
-    # may fail without turning the check red, and each failure is surfaced as a warning.
-    continue-on-error: ${{ matrix.os != 'linux' }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,12 +60,8 @@ jobs:
           shared-key: rust-dist-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build and package
-        id: build
-        continue-on-error: ${{ matrix.os != 'linux' }}
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
       - name: Run the packaged binary on a hello project
-        id: smoke
-        continue-on-error: ${{ matrix.os != 'linux' }}
         run: |
           set -eu
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
@@ -84,7 +77,6 @@ jobs:
           cd "extracted distribution/$name/examples/hello"
           "../../$(basename "$ms")" run ms.toml
       - uses: actions/upload-artifact@v7
-        continue-on-error: ${{ matrix.os != 'linux' }}
         with:
           name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
           path: |
@@ -92,9 +84,6 @@ jobs:
             dist/*.zip
             dist/*.sha256
           if-no-files-found: error
-      - name: Report an experimental leg that failed
-        if: always() && matrix.os != 'linux' && (steps.build.outcome == 'failure' || steps.smoke.outcome == 'failure')
-        run: echo "::warning::${{ matrix.os }}-${{ matrix.arch }} does not build or run yet (build ${{ steps.build.outcome }}, smoke ${{ steps.smoke.outcome }}); it gates once its port lands"
 
   ok:
     name: Rust distributions
