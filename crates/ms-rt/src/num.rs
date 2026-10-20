@@ -1,9 +1,8 @@
 //! Int and Float formatting and parsing with Go-identical results.
-use crate::buf::ByteBuf;
-use core::fmt::Write;
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrObj,
 };
+use std::io::Write;
 
 /// Formats `v` in decimal into `tmp`, returning the used tail.
 pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
@@ -24,8 +23,13 @@ pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
     &tmp[i..]
 }
 
+/// Appends `v` in decimal.
+pub fn push_i64(out: &mut Vec<u8>, v: i64) {
+    out.extend_from_slice(format_i64(v, &mut [0; 20]));
+}
+
 /// Lowercase radix formatting (`radix` in 2..=36).
-pub fn format_radix(v: i64, radix: u32, out: &mut ByteBuf) {
+pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
     let mut tmp = [0u8; 65];
     let mut i = tmp.len();
     let mut n = v.unsigned_abs();
@@ -42,7 +46,7 @@ pub fn format_radix(v: i64, radix: u32, out: &mut ByteBuf) {
         i -= 1;
         tmp[i] = b'-';
     }
-    out.extend(&tmp[i..]);
+    out.extend_from_slice(&tmp[i..]);
 }
 
 /// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
@@ -149,12 +153,12 @@ fn float_syntax(t: &[u8]) -> bool {
 }
 
 /// Shortest round-trip digits and decimal exponent of a finite positive `v`.
-fn shortest(v: f64) -> (ByteBuf, i32) {
-    let mut s = ByteBuf::new();
+fn shortest(v: f64) -> (Vec<u8>, i32) {
+    let mut s = Vec::new();
     let _ = write!(s, "{v:e}");
     let text = s.as_slice();
     let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
-    let mut digits = ByteBuf::new();
+    let mut digits = Vec::new();
     for &c in &text[..epos] {
         if c != b'.' {
             digits.push(c);
@@ -168,18 +172,18 @@ fn shortest(v: f64) -> (ByteBuf, i32) {
 /// Rust's shortest digits resolve an exact tie between two candidates upward; Go's resolve it to
 /// the even digit. When `v` lies exactly halfway between `digits` and `digits` minus one in the
 /// last place, and the lower candidate ends even, the lower one is the Go answer.
-fn even_tie(v: f64, digits: &mut ByteBuf) {
+fn even_tie(v: f64, digits: &mut Vec<u8>) {
     let n = digits.len();
     let last = digits.as_slice()[n - 1];
     if n < 2 || last & 1 == 0 {
         return;
     }
-    let mut exact = ByteBuf::new();
+    let mut exact = Vec::new();
     let _ = write!(exact, "{:.*e}", n + 30, v);
     let text = exact.as_slice();
     let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
-    let mantissa: ByteBuf = {
-        let mut m = ByteBuf::new();
+    let mantissa: Vec<u8> = {
+        let mut m = Vec::new();
         for &c in &text[..epos] {
             if c != b'.' {
                 m.push(c);
@@ -191,15 +195,15 @@ fn even_tie(v: f64, digits: &mut ByteBuf) {
     // Digit n+1 is a 5 followed only by zeros: an exact tie, and `digits` rounded it up.
     let tie = m.len() > n && m[n] == b'5' && m[n + 1..].iter().all(|&c| c == b'0');
     if tie && m[..n - 1] == digits.as_slice()[..n - 1] && m[n - 1] == last - 1 {
-        let mut lower = ByteBuf::new();
-        lower.extend(&m[..n]);
+        let mut lower = Vec::new();
+        lower.extend_from_slice(&m[..n]);
         digits.clear();
-        digits.extend(lower.as_slice());
+        digits.extend_from_slice(lower.as_slice());
     }
 }
 
 /// Go-style rendering of decimal digits (see `renderDecimal` in numeric.go).
-fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut ByteBuf) {
+fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut Vec<u8>) {
     let mut n = digits.len();
     while n > 1 && digits[n - 1] == b'0' {
         n -= 1;
@@ -211,48 +215,48 @@ fn render_decimal(digits: &[u8], exponent: i32, negative: bool, out: &mut ByteBu
     if (-6..=20).contains(&exponent) {
         let point = exponent + 1;
         if point <= 0 {
-            out.extend(b"0.");
+            out.extend_from_slice(b"0.");
             for _ in 0..-point {
                 out.push(b'0');
             }
-            out.extend(digits);
+            out.extend_from_slice(digits);
         } else if point as usize >= digits.len() {
-            out.extend(digits);
+            out.extend_from_slice(digits);
             for _ in 0..(point as usize - digits.len()) {
                 out.push(b'0');
             }
         } else {
-            out.extend(&digits[..point as usize]);
+            out.extend_from_slice(&digits[..point as usize]);
             out.push(b'.');
-            out.extend(&digits[point as usize..]);
+            out.extend_from_slice(&digits[point as usize..]);
         }
         return;
     }
     out.push(digits[0]);
     if digits.len() > 1 {
         out.push(b'.');
-        out.extend(&digits[1..]);
+        out.extend_from_slice(&digits[1..]);
     }
     out.push(b'e');
     if exponent >= 0 {
         out.push(b'+');
     }
-    out.push_i64(exponent as i64);
+    push_i64(out, exponent as i64);
 }
 
 /// `Float.to_string`.
-pub fn float_to_string(v: f64) -> ByteBuf {
-    let mut out = ByteBuf::new();
+pub fn float_to_string(v: f64) -> Vec<u8> {
+    let mut out = Vec::new();
     if v.is_nan() {
-        out.extend(b"NaN");
+        out.extend_from_slice(b"NaN");
     } else if v.is_infinite() {
-        out.extend(if v > 0.0 {
+        out.extend_from_slice(if v > 0.0 {
             b"Infinity".as_slice()
         } else {
             b"-Infinity".as_slice()
         });
     } else if v == 0.0 {
-        out.extend(if v.is_sign_negative() {
+        out.extend_from_slice(if v.is_sign_negative() {
             b"-0".as_slice()
         } else {
             b"0".as_slice()
@@ -271,7 +275,7 @@ pub fn float_to_string(v: f64) -> ByteBuf {
 
 /// `to_precision` (`'g'`, minimum 1), `to_exponential` (`'e'`), `to_fixed` (`'f'`).
 /// Returns `None` when `digits` is outside `minimum..=100`.
-pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<ByteBuf> {
+pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<Vec<u8>> {
     if digits < minimum || digits > 100 {
         return None;
     }
@@ -279,7 +283,7 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
     if v.is_nan() || v.is_infinite() {
         return Some(float_to_string(v));
     }
-    let mut out = ByteBuf::new();
+    let mut out = Vec::new();
     if format == b'f' {
         if v.abs() >= 1e21 {
             return Some(float_to_string(v));
@@ -288,7 +292,7 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
         return Some(out);
     }
     let mdigits = if format == b'g' { digits - 1 } else { digits };
-    let mut text = ByteBuf::new();
+    let mut text = Vec::new();
     let _ = write!(text, "{v:.mdigits$e}");
     let t = text.as_slice();
     let epos = t.iter().position(|&c| c == b'e').unwrap_or(t.len());
@@ -298,12 +302,12 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
         let _ = write!(out, "{v:.frac$}");
         return Some(out);
     }
-    out.extend(&t[..epos]);
+    out.extend_from_slice(&t[..epos]);
     out.push(b'e');
     if e >= 0 {
         out.push(b'+');
     }
-    out.push_i64(e);
+    push_i64(&mut out, e);
     Some(out)
 }
 
@@ -436,7 +440,7 @@ mod tests {
     use super::*;
     use std::string::{String, ToString};
 
-    fn s(b: ByteBuf) -> String {
+    fn s(b: Vec<u8>) -> String {
         String::from_utf8(b.as_slice().to_vec()).unwrap()
     }
 
@@ -446,7 +450,7 @@ mod tests {
         let mut tmp = [0u8; 20];
         assert_eq!(format_i64(i64::MIN, &mut tmp), b"-9223372036854775808");
         assert_eq!(format_i64(0, &mut tmp), b"0");
-        let mut b = ByteBuf::new();
+        let mut b = Vec::new();
         format_radix(-255, 16, &mut b);
         format_radix(i64::MIN, 2, &mut b);
         assert_eq!(
