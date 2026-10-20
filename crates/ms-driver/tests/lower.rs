@@ -265,6 +265,15 @@ fn try_in_an_argument_releases_the_receiver_and_earlier_arguments() {
 }
 
 #[test]
+fn try_in_a_literal_releases_the_elements_built_before_it() {
+    // The verifier rejects an owned element, map, or key left unreleased on the early return.
+    lower(
+        "tryliteral",
+        "import {TextError} from \"@std/errors.ms\"\n\nfn bad() Result[String, Error]:\n    return error(TextError(\"no\"))\n\nfn list() Result[Int, Error]:\n    let xs = [\"a\", try bad(), \"c\"]\n    return ok(xs.length())\n\nfn nested() Result[Int, Error]:\n    let xs = [[\"a\"], [\"b\", try bad()]]\n    return ok(xs.length())\n\nfn map_value() Result[Int, Error]:\n    let m = {\"a\": \"x\", \"b\": try bad()}\n    return ok(m.length())\n\nfn map_key() Result[Int, Error]:\n    let m = {\"a\": \"x\", (try bad()): \"y\"}\n    return ok(m.length())\n\nexport fn main() Int:\n    let a = list()\n    let b = nested()\n    let c = map_value()\n    let d = map_key()\n    return 0\n",
+    );
+}
+
+#[test]
 fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
     let mir = lower(
         "elemslot",

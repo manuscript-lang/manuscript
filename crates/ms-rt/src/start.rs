@@ -222,6 +222,8 @@ pub unsafe extern "C-unwind" fn msrt_start(
         run_on_big_stack();
         crate::io::flush_stdout();
         crate::profile::finish();
+        #[cfg(feature = "stats")]
+        eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
         *MAIN_RESULT.ptr() as i32
     }
 }
