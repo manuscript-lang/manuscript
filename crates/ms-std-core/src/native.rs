@@ -897,6 +897,107 @@ impl<R: AbiRecord> IntoAbi for RecArray<R> {
     }
 }
 
+/// A compiled function value passed to a native that keeps or calls it, as the raw closure object.
+/// Retaining it and reading its code word is left to the (small, `unsafe`) module that owns the
+/// calling convention of that closure.
+#[derive(Clone, Copy)]
+pub struct Handler(*mut ms_rt_abi::Obj);
+
+impl Handler {
+    pub fn as_ptr(&self) -> *mut ms_rt_abi::Obj {
+        self.0
+    }
+}
+impl AbiType for Handler {
+    type Raw = *mut ms_rt_abi::Obj;
+}
+// SAFETY: a closure argument is a live closure object that outlives the call.
+unsafe impl FromAbi<'_> for Handler {
+    unsafe fn from_raw(raw: *mut ms_rt_abi::Obj) -> Handler {
+        Handler(raw)
+    }
+}
+
+/// A runtime object stored inline in a record (one reference), for [`abi_record!`].
+#[repr(transparent)]
+pub struct ObjSlot<T: AbiHandle>(*mut ObjCell<T>);
+
+impl<T: AbiHandle> ObjSlot<T> {
+    pub fn new(value: T) -> ObjSlot<T> {
+        ObjSlot(Object(value).into_raw())
+    }
+}
+
+impl<T: AbiHandle> AbiSlot for ObjSlot<T> {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract; the slot owns one reference.
+        unsafe { msrt_release(self.0.cast()) }
+    }
+    unsafe fn duplicate(&self) -> ObjSlot<T> {
+        // SAFETY: caller contract.
+        unsafe { msrt_retain(self.0.cast()) };
+        ObjSlot(self.0)
+    }
+}
+
+type ReadCode = unsafe extern "C-unwind" fn(
+    *mut Closure,
+    u8,
+    i64,
+    *mut VecVal,
+    *mut u8,
+    *mut *mut StrObj,
+) -> u8;
+
+/// A compiled `ReadStream` closure, read with the `Connection.read` convention of `ABI.md`. It
+/// borrows the closure for the duration of the native call that received it.
+pub struct ReadSource(*mut Closure, ReadCode);
+
+impl AbiType for ReadSource {
+    type Raw = *mut Closure;
+}
+// SAFETY: a closure argument is a live closure whose code has the `ReadStream` signature.
+unsafe impl FromAbi<'_> for ReadSource {
+    unsafe fn from_raw(raw: *mut Closure) -> ReadSource {
+        // SAFETY: the code word follows the 16-byte header (`Closure`).
+        ReadSource(raw, unsafe { core::mem::transmute_copy(&(*raw).code) })
+    }
+}
+
+impl ReadSource {
+    /// Reads up to `max` bytes: `Ok(None)` at the end, `Err` with the stream's status byte.
+    pub fn read(&self, max: usize) -> Result<Option<Vec<u8>>, u8> {
+        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
+        let mut present = 0u8;
+        let mut message: *mut StrObj = core::ptr::null_mut();
+        // SAFETY: the code follows the `Connection.read` convention, filling `out` with an owned
+        // `Bytes` when it reports a chunk; the closure is borrowed for the call.
+        unsafe {
+            let status = (self.1)(
+                self.0,
+                1,
+                max as i64,
+                out.as_mut_ptr(),
+                &mut present,
+                &mut message,
+            );
+            if !message.is_null() {
+                msrt_release(message.cast());
+            }
+            if status != 0 {
+                return Err(status);
+            }
+            if present == 0 {
+                return Ok(None);
+            }
+            let mut v = out.assume_init();
+            let data = bytes_ref(&raw const v).to_vec();
+            msrt_bytes_drop(&raw mut v);
+            Ok(Some(data))
+        }
+    }
+}
+
 /// An extra result slot of a native, written through a trailing pointer parameter.
 pub struct Out<'a, T: IntoAbi>(*mut T::Raw, PhantomData<&'a mut T::Raw>);
 
@@ -1268,9 +1369,9 @@ macro_rules! native {
         #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
         pub $($q)* extern "C-unwind" fn $name($($p: <$t as $crate::AbiType>::Raw),*) -> u8 {
-            fn body($($p: $t),*) -> Result<(), $err> $body
+            fn native_body($($p: $t),*) -> Result<(), $err> $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            match body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*) {
+            match native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*) {
                 Ok(()) => $crate::STATUS_OK,
                 Err(e) => $crate::Status::status(e),
             }
@@ -1291,9 +1392,9 @@ macro_rules! native {
             out: *mut <$a as $crate::IntoAbi>::Raw,
             out2: *mut <$b as $crate::IntoAbi>::Raw,
         ) -> u8 {
-            fn body($($p: $t),*) -> Result<($a, $b), $err> $body
+            fn native_body($($p: $t),*) -> Result<($a, $b), $err> $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            let r = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            let r = native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
             match r {
                 Ok((x, y)) => {
                     // SAFETY: `out` and `out2` are writable for one result slot each.
@@ -1321,9 +1422,9 @@ macro_rules! native {
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$ok as $crate::IntoAbi>::Raw,
         ) -> u8 {
-            fn body($($p: $t),*) -> Result<$ok, $err> $body
+            fn native_body($($p: $t),*) -> Result<$ok, $err> $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            let r = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            let r = native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
             match r {
                 Ok(v) => {
                     // SAFETY: `out` is writable for one result slot by the caller contract.
@@ -1349,9 +1450,9 @@ macro_rules! native {
             out: *mut <$a as $crate::IntoAbi>::Raw,
             out2: *mut <$b as $crate::IntoAbi>::Raw,
         ) {
-            fn body($($p: $t),*) -> ($a, $b) $body
+            fn native_body($($p: $t),*) -> ($a, $b) $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            let (x, y) = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            let (x, y) = native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
             // SAFETY: `out` and `out2` are writable for one result slot each.
             unsafe {
                 out.write($crate::IntoAbi::into_raw(x));
@@ -1373,9 +1474,9 @@ macro_rules! native {
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$res as $crate::IntoAbi>::Raw,
         ) {
-            fn body($($p: $t),*) -> $res $body
+            fn native_body($($p: $t),*) -> $res $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            let v = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            let v = native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
             // SAFETY: `out` is writable for one result slot by the caller contract.
             unsafe { out.write($crate::IntoAbi::into_raw(v)) };
         }
@@ -1393,9 +1494,9 @@ macro_rules! native {
         pub $($q)* extern "C-unwind" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*
         ) -> <$ret as $crate::IntoAbi>::Raw {
-            fn body($($p: $t),*) -> $ret $body
+            fn native_body($($p: $t),*) -> $ret $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
-            $crate::IntoAbi::into_raw(body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*))
+            $crate::IntoAbi::into_raw(native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*))
         }
         $crate::native! { $($rest)* }
     };

@@ -1,25 +1,17 @@
 //! Natives for `@std/net.ms`.
 
-use super::{ConnH, DgramH, IpH, ListenerH, NetH, handle_ref, report};
+use super::{ConnH, DgramH, IpH, ListenerH, NetH, report};
 use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
-use crate::net::{DnsKind, Network, root};
-use ms_rt_abi::{Obj, STATUS_NONE};
+use crate::net::{DnsKind, root};
+use ms_rt_abi::STATUS_NONE;
 use ms_std_core::{
     Bytes, ErrOut, ObjBox, ObjRef, ObjShare, Object, Out, RecArray, StatusCode, Str, abi_handle,
     abi_record, native,
 };
 use std::net::IpAddr;
-use std::rc::Rc;
-
-type NetRef = Rc<Network>;
 
 abi_handle!(Cidr);
-
-pub(super) unsafe fn network<'a>(o: *const Obj) -> &'a NetRef {
-    // SAFETY: forwarded caller contract (`o` is a Network handle).
-    unsafe { handle_ref::<NetRef>(o) }
-}
 
 abi_record! {
     /// One resolved DNS record as compiled code lays out `DnsRecord`.
