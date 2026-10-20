@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/manuscript-lang/manuscript/pkg/parser"
-	"github.com/manuscript-lang/manuscript/pkg/stdlib"
 	"github.com/manuscript-lang/manuscript/pkg/tooling/format"
+	"github.com/manuscript-lang/manuscript/stdlib"
 )
 
 func TestPinnedSources(t *testing.T) {
@@ -43,7 +43,7 @@ func TestPinnedSources(t *testing.T) {
 				continue
 			}
 			if formatted != string(source) {
-				t.Errorf("%s is not canonically formatted; run ms fmt pkg/stdlib/%s", entry.Name(), entry.Name())
+				t.Errorf("%s is not canonically formatted; run ms fmt stdlib/%s", entry.Name(), entry.Name())
 			}
 			if again, err := format.Format(entry.Name(), formatted); err != nil || again != formatted {
 				t.Errorf("format %s is not idempotent: %v", entry.Name(), err)

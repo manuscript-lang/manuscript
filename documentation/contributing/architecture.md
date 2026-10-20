@@ -64,7 +64,7 @@ Each layer imports only layers above it in this list; `scripts/repo-check/policy
 | `pkg/lower/` | Checked program to Go source; consumes only checker identities |
 | `pkg/build/` | Native builds: assembly, pins, command replay, shared workspace, SDKs |
 | `pkg/runtime/` | Values, numerics, work lifetimes, cleanup, synchronization, host implementations |
-| `pkg/stdlib/` | Public `.ms` declarations, `bindings.json` native identities (opaque types, function and contract-method overrides), embedded sources; the signature authority |
+| `stdlib/` | Public `.ms` declarations, `bindings.json` native identities (opaque types, function and contract-method overrides), embedded sources; the signature authority |
 | `pkg/tooling/format/` | Formatter; needs only syntax, lexer, and frontend, never the checker |
 | `pkg/tooling/` | Lint, navigation, inspection, review, static diagrams |
 | `pkg/tooling/lsp/` | Transport, snapshots, typed editor features |

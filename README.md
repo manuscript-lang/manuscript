@@ -115,4 +115,4 @@ See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for
 
 See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds native validation. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
 
-Layout: `pkg/` (Go compiler, runtime), `crates/` (Rust compiler, runtime, tooling), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [pkg/stdlib/](pkg/stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
+Layout: `pkg/` (Go compiler, runtime), `crates/` (Rust compiler, runtime, tooling), `cmd/` (entrypoints), `internal/` (helpers), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
