@@ -4,7 +4,7 @@ package checker
 func CollectionMutation(receiver *Type, name string) bool {
 	if std(receiver, "List") {
 		switch name {
-		case "append", "prepend", "insert", "pop", "set", "remove", "splice", "fill", "copy_within", "reverse_in_place":
+		case "append", "prepend", "insert", "pop", "shift", "set", "remove", "splice", "fill", "copy_within", "reverse_in_place":
 			return true
 		}
 	}

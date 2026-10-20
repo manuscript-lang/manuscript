@@ -18,6 +18,7 @@ pub fn collection_mutation(receiver: &Ty, name: &str) -> bool {
                 | "prepend"
                 | "insert"
                 | "pop"
+                | "shift"
                 | "set"
                 | "remove"
                 | "splice"

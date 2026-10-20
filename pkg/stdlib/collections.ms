@@ -47,6 +47,9 @@ impl List[T]:
     # Removes and returns the last element in place, or none for an empty list.
     var fn pop() Optional[T]:
 
+    # Removes and returns the first element in place, or none for an empty list.
+    var fn shift() Optional[T]:
+
     # Replaces an element in place; negative indexes count from the end.
     # Invalid indexes fault.
     var fn set(index: Int, value: T) Unit:
@@ -404,6 +407,3 @@ impl SetBuilder[T]:
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]:
 
-# Removes and returns the first item, or none when the list is empty (JavaScript `Array.prototype.shift`).
-# The list is mutated in place and shared by aliases.
-export fn shift[T](var values: List[T]) Optional[T]:

@@ -129,30 +129,6 @@ impl<'a> FnLower<'a> {
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         match native {
-            "collections/shift" => {
-                let [arg] = view.arguments.as_slice() else {
-                    return Err(Error::new("shift takes one list"));
-                };
-                let place = arg.expr;
-                let result_mty = self.emty(e)?;
-                if self.dead {
-                    return Ok(self.dummy(result_mty));
-                }
-                if !self.is_place(place) {
-                    let x = self.expr(place)?;
-                    let old = self.owned(x);
-                    let (new, r) = self.mutate_any("shift", old, &[], &[], true, result_mty)?;
-                    self.drop_value(new);
-                    return r.ok_or_else(|| Error::new("shift without a result"));
-                }
-                let mut result: Option<Val> = None;
-                self.place_update(place, &mut |s, old| {
-                    let (new, r) = s.mutate_any("shift", old, &[], &[], false, result_mty)?;
-                    result = r;
-                    Ok(new)
-                })?;
-                result.ok_or_else(|| Error::new("shift without a result"))
-            }
             "collections/range" => {
                 let args = self.native_args(view)?;
                 if self.dead {
