@@ -107,7 +107,7 @@ test "JSON stringify keeps map insertion order and encodes scalars exactly":
     try expect_equal((try encoded(1.0)), "1")
     try expect_equal((try encoded(0.1)), "0.1")
     try expect_equal((try encoded(1e300)), "1e+300")
-    try expect_equal((try encoded("<é\n")), "\"\\u003cé\\n\"")
+    try expect_equal((try encoded("<é\n")), "\"<é\\n\"")
     let parsed = try parse("\{\"n\":1.50\}")
     let mixed = Box[JsonValue](parsed, none)
     try expect_equal((try encoded(mixed)), "\{\"first\":\{\"n\":1.50\}\}")

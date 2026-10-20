@@ -1,5 +1,5 @@
-//! Replays `tests/oracle/log.tsv`, recorded from the Go runtime by `go run ./scripts/rs-oracle`.
-//! The wall clock is fixed at 0 here and normalized to 0 in the Go output.
+//! Replays `tests/oracle/log.tsv`, a recorded corpus of log records.
+//! The wall clock is fixed at 0 here.
 use ms_std_log::*;
 
 fn text(tok: &str) -> String {
@@ -39,7 +39,7 @@ fn run(a: &[&str]) -> Result<Option<Vec<u8>>, LogFail> {
 }
 
 #[test]
-fn matches_go() {
+fn matches_recorded_cases() {
     let data = include_str!("oracle/log.tsv");
     let mut n = 0;
     for line in data.lines().filter(|l| !l.starts_with('#')) {
