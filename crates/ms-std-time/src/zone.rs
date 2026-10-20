@@ -74,7 +74,9 @@ fn named(name: &str) -> Option<Zone> {
     if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
         return None;
     }
-    TimeZone::get(name).ok().map(Zone::Named)
+    // The bundled database matches names case-insensitively; Go reads zoneinfo files by exact name.
+    let tz = TimeZone::get(name).ok()?;
+    (tz.iana_name() == Some(name)).then_some(Zone::Named(tz))
 }
 
 #[cfg(unix)]
