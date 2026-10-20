@@ -968,6 +968,7 @@ dependencies = [
 name = "ms-cli"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "ms-check",
  "ms-driver",
  "ms-lower",

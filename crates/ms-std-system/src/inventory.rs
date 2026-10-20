@@ -267,7 +267,9 @@ pub fn cpus() -> Result<Vec<Cpu>, u8> {
         }
     }
     // SAFETY: plain system call.
-    let ticks = i64::from(unsafe { libc::sysconf(libc::_SC_CLK_TCK) }).max(1) as i64;
+    let hertz = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+    #[allow(clippy::useless_conversion)] // `c_long` is narrower than `i64` on 32-bit hosts
+    let ticks = i64::from(hertz).max(1);
     let ms = |jiffies: i64| jiffies.saturating_mul(1000) / ticks;
     let mut cpus: Vec<Cpu> = Vec::new();
     for line in stat.split(|&b| b == b'\n') {

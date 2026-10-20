@@ -801,6 +801,48 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     (
+        "terminal",
+        "RawTerminal",
+        "close",
+        "msstd_terminal_raw_terminal_close",
+        &[],
+    ),
+    (
+        "terminal",
+        "RawTerminal",
+        "next_event",
+        "msstd_terminal_raw_terminal_next_event",
+        &[],
+    ),
+    (
+        "terminal",
+        "RawTerminal",
+        "size",
+        "msstd_terminal_raw_terminal_size_record",
+        &[],
+    ),
+    (
+        "terminal",
+        "RawTerminal",
+        "move_cursor",
+        "msstd_terminal_raw_terminal_move_cursor",
+        &[],
+    ),
+    (
+        "terminal",
+        "RawTerminal",
+        "show_cursor",
+        "msstd_terminal_raw_terminal_show_cursor",
+        &[],
+    ),
+    (
+        "terminal",
+        "RawTerminal",
+        "erase",
+        "msstd_terminal_raw_terminal_erase",
+        &[],
+    ),
+    (
         "process",
         "Subprocess",
         "kill",
@@ -969,8 +1011,13 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.b.unreachable();
         return Ok(());
     };
+    // The getters of a record result take the handle too when the status call does.
     if let Some(base) = sym.strip_suffix("_record") {
-        let r = fl.record_getters(base, job.ret)?;
+        let lead: Vec<_> = takes_handle(&format!("{base}_status"))
+            .then(|| load_handle(fl, job, args))
+            .into_iter()
+            .collect();
+        let r = fl.record_getters(base, job.ret, &lead)?;
         fl.emit_return(Some(r));
         return Ok(());
     }
@@ -979,27 +1026,28 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         fl.emit_return(Some(r));
         return Ok(());
     }
-    let takes_handle = crate::rtcall::rt_sig(sym)
-        .and_then(|s| {
-            s.params
-                .first()
-                .map(|p| p.name == "h" || p.ty == "*const Obj")
-        })
-        .unwrap_or(false);
-    let recv = takes_handle.then(|| {
-        let handle =
-            fl.b.emit(
-                Op::Load,
-                &[args[0]],
-                Imm::Ty(job.data_ty),
-                Some(job.data_ty),
-            )
-            .expect("load");
-        Val {
-            v: handle,
-            own: false,
-        }
+    let recv = takes_handle(sym).then(|| Val {
+        v: load_handle(fl, job, args),
+        own: false,
     });
+    // Operations whose arguments or result do not fit the generic marshalling.
+    match sym.as_str() {
+        "msstd_terminal_raw_terminal_next_event" => {
+            let h = load_handle(fl, job, args);
+            let r = fl.terminal_next_event(sym, h, args[1], job.ret)?;
+            fl.emit_return(Some(r));
+            return Ok(());
+        }
+        "msstd_terminal_raw_terminal_erase" => {
+            let h = load_handle(fl, job, args);
+            let region = fl.b.alt_tag(args[1]);
+            let code = fl.status_code(sym, &[h, region])?;
+            let r = fl.status_result(sym, code, None, None, job.ret)?;
+            fl.emit_return(Some(r));
+            return Ok(());
+        }
+        _ => {}
+    }
     let mut nargs: Vec<NArg> = job
         .decl
         .iter()
@@ -1038,7 +1086,117 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
     Ok(())
 }
 
+/// Whether the runtime function `sym` takes the receiver's handle first.
+fn takes_handle(sym: &str) -> bool {
+    crate::rtcall::rt_sig(sym)
+        .and_then(|s| {
+            s.params
+                .first()
+                .map(|p| p.name == "h" || p.ty == "*const Obj")
+        })
+        .unwrap_or(false)
+}
+
+/// The runtime handle inside the receiver interface value `args[0]`.
+fn load_handle(
+    fl: &mut FnLower<'_>,
+    job: &MethodJob,
+    args: &[ms_mir::ir::Value],
+) -> ms_mir::ir::Value {
+    fl.b.emit(
+        Op::Load,
+        &[args[0]],
+        Imm::Ty(job.data_ty),
+        Some(job.data_ty),
+    )
+    .expect("load")
+}
+
 impl FnLower<'_> {
+    /// `RawTerminal.next_event(timeout)`: the runtime answers a status and keeps the event for
+    /// the `msstd_terminal_event_*` getters.
+    fn terminal_next_event(
+        &mut self,
+        sym: &str,
+        handle: ms_mir::ir::Value,
+        timeout: ms_mir::ir::Value,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("next_event: not a Result"));
+        };
+        let ok = self.ok_case_index(a)?;
+        let opt = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+        let TyKind::Opt(event) = self.b.m.types.kind(opt).clone() else {
+            return Err(Error::new("next_event: not an optional event"));
+        };
+        let TyKind::Alt(ea) = self.b.m.types.kind(event).clone() else {
+            return Err(Error::new("next_event: not an event alternative"));
+        };
+        let input = crate::rtcall::Input {
+            val: Some(Val {
+                v: timeout,
+                own: false,
+            }),
+            wrapped: false,
+        };
+        let (has, nanos) = self.flatten_optional(input, "i64")?;
+        let code = self.status_code(sym, &[handle, has, nanos])?;
+        self.status_optional_result(sym, code, &mut |s| s.terminal_event(ea), result)
+    }
+
+    /// The `TerminalEvent` the runtime last delivered.
+    fn terminal_event(&mut self, ea: ms_mir::types::AltId) -> Result<ms_mir::ir::Value, Error> {
+        let case = |s: &Self, name: &str| {
+            s.b.m.alts[ea.index()]
+                .cases
+                .iter()
+                .position(|c| c.name == name)
+                .map(|i| i as u32)
+                .ok_or_else(|| Error::new(format!("TerminalEvent has no {name} case")))
+        };
+        let (text_case, key_case, resize_case) = (
+            case(self, "Text")?,
+            case(self, "Key")?,
+            case(self, "Resize")?,
+        );
+        let ty = self.b.m.types.alt(ea);
+        let kind = self.getter_call("msstd_terminal_event_kind", MTy::INT, &[])?;
+        let zero = self.b.iconst(0);
+        let is_text = self.b.icmp(ms_mir::ir::Cc::Eq, kind, zero);
+        let r = self.two_ways(
+            is_text,
+            ty,
+            &mut |s| {
+                let text = s.getter_call("msstd_terminal_event_text", MTy::STR, &[])?;
+                Ok(Some(s.b.alt_new(ea, text_case, &[text])))
+            },
+            &mut |s| {
+                let one = s.b.iconst(1);
+                let is_key = s.b.icmp(ms_mir::ir::Cc::Eq, kind, one);
+                let r = s.two_ways(
+                    is_key,
+                    ty,
+                    &mut |s| {
+                        let name = s.getter_call("msstd_terminal_event_text", MTy::STR, &[])?;
+                        let ctrl = s.getter_call("msstd_terminal_event_ctrl", MTy::BOOL, &[])?;
+                        let alt = s.getter_call("msstd_terminal_event_alt", MTy::BOOL, &[])?;
+                        let shift = s.getter_call("msstd_terminal_event_shift", MTy::BOOL, &[])?;
+                        Ok(Some(s.b.alt_new(ea, key_case, &[name, ctrl, alt, shift])))
+                    },
+                    &mut |s| {
+                        let columns =
+                            s.getter_call("msstd_terminal_event_columns", MTy::INT, &[])?;
+                        let rows = s.getter_call("msstd_terminal_event_rows", MTy::INT, &[])?;
+                        Ok(Some(s.b.alt_new(ea, resize_case, &[columns, rows])))
+                    },
+                )?;
+                Ok(Some(r.v))
+            },
+        )?;
+        Ok(r.v)
+    }
+
     /// `stdin()`: an interface value over a runtime handle made by `make(constant)`.
     pub(crate) fn handle_interface(
         &mut self,
@@ -1147,8 +1305,14 @@ impl FnLower<'_> {
 
 impl FnLower<'_> {
     /// A record (or `Result` of one) built from one runtime getter per field, `<base>_<name>`.
-    /// An optional `<base>_status` call runs first: a nonzero status is the error case.
-    pub(crate) fn record_getters(&mut self, base: &str, result: MTy) -> Result<Val, Error> {
+    /// An optional `<base>_status` call runs first: a nonzero status is the error case. `lead`
+    /// are the leading arguments of every call (the handle of a handle method).
+    pub(crate) fn record_getters(
+        &mut self,
+        base: &str,
+        result: MTy,
+        lead: &[ms_mir::ir::Value],
+    ) -> Result<Val, Error> {
         let (alt, rec_ty) = match self.b.m.types.kind(result).clone() {
             TyKind::Alt(a) => {
                 let ok = self.ok_case_index(a)?;
@@ -1163,7 +1327,7 @@ impl FnLower<'_> {
             return Err(Error::new(format!("{base}: not a record result")));
         };
         let build = |s: &mut Self| -> Result<ms_mir::ir::Value, Error> {
-            let rec = s.record_from_getters(base, rid, None)?;
+            let rec = s.record_from_getters(base, rid, lead)?;
             Ok(match alt {
                 Some((a, ok)) => s.b.alt_new(a, ok as u32, &[rec]),
                 None => rec,
@@ -1174,7 +1338,7 @@ impl FnLower<'_> {
             let v = build(self)?;
             return Ok(Val { v, own: true });
         }
-        let code = self.status_code(&status, &[])?;
+        let code = self.status_code(&status, lead)?;
         let zero = self.b.iconst(0);
         let good = self.b.icmp(ms_mir::ir::Cc::Eq, code, zero);
         self.two_ways(good, result, &mut |s| build(s).map(Some), &mut |s| {
@@ -1220,7 +1384,7 @@ impl FnLower<'_> {
                 s.b.seal_block(body);
                 s.b.switch_to(body);
                 let i = s.b.use_var(idx);
-                let rec = s.record_from_getters(base, rid, Some(i))?;
+                let rec = s.record_from_getters(base, rid, &[i])?;
                 let cur = s.b.use_var(acc);
                 let next = s.b.list_push(cur, rec);
                 s.b.def_var(acc, next);
@@ -1239,19 +1403,19 @@ impl FnLower<'_> {
         )
     }
 
-    /// The record `rid` with each field read by the getter `<base>_<field>`, called with `index`
-    /// for an item of a list.
+    /// The record `rid` with each field read by the getter `<base>_<field>`, called with `lead`
+    /// (the item index of a list, or the handle).
     fn record_from_getters(
         &mut self,
         base: &str,
         rid: ms_mir::types::RecId,
-        index: Option<ms_mir::ir::Value>,
+        lead: &[ms_mir::ir::Value],
     ) -> Result<ms_mir::ir::Value, Error> {
         let fields = self.b.m.records[rid.index()].fields.clone();
         let mut values = Vec::new();
         for (name, ty) in &fields {
             let sym = format!("{base}_{name}");
-            let v = self.getter_field(&sym, *ty, index)?;
+            let v = self.getter_field(&sym, *ty, lead)?;
             values.push(self.owned(v));
         }
         Ok(self.b.rec_new(rid, &values))
@@ -1263,11 +1427,11 @@ impl FnLower<'_> {
         &mut self,
         sym: &str,
         ty: MTy,
-        index: Option<ms_mir::ir::Value>,
+        lead: &[ms_mir::ir::Value],
     ) -> Result<Val, Error> {
         match self.b.m.types.kind(ty).clone() {
             TyKind::Alt(a) => {
-                let code = self.getter_call(sym, MTy::INT, index)?;
+                let code = self.getter_call(sym, MTy::INT, lead)?;
                 let v = self.enum_from_index(a, code, 0)?;
                 Ok(Val { v, own: true })
             }
@@ -1282,27 +1446,27 @@ impl FnLower<'_> {
                 Ok(Val { v: list, own: true })
             }
             _ => {
-                let v = self.getter_call(sym, ty, index)?;
+                let v = self.getter_call(sym, ty, lead)?;
                 Ok(Val { v, own: true })
             }
         }
     }
 
-    /// Calls the getter `sym`, with `index` when given. A `Bool` crosses as a `u8` of which
-    /// only the low byte is defined.
+    /// Calls the getter `sym` with `lead`. A `Bool` crosses as a `u8` of which only the low byte
+    /// is defined.
     fn getter_call(
         &mut self,
         sym: &str,
         ty: MTy,
-        index: Option<ms_mir::ir::Value>,
+        lead: &[ms_mir::ir::Value],
     ) -> Result<ms_mir::ir::Value, Error> {
-        let Some(i) = index else {
+        if lead.is_empty() {
             return Ok(self.rt_function(sym, &[], &[], ty)?.v);
-        };
-        if ty != MTy::BOOL {
-            return self.call_runtime(sym, &[i], ty);
         }
-        let raw = self.call_runtime(sym, &[i], MTy::INT)?;
+        if ty != MTy::BOOL {
+            return self.call_runtime(sym, lead, ty);
+        }
+        let raw = self.call_runtime(sym, lead, MTy::INT)?;
         let mask = self.b.iconst(0xff);
         let low = self.b.binop(Op::And, raw, mask);
         let zero = self.b.iconst(0);

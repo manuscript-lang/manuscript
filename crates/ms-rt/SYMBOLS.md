@@ -98,6 +98,7 @@ msrt_free(p: *mut u8)
 msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
+msrt_process_on_exit(hook: extern "C" fn())
 msrt_process_exit(code: i64) -> !
 msrt_queue_new( d: *const TypeDesc, has_capacity: u8, capacity: i64, ) -> *mut QueueObj
 msrt_queue_enqueue(q: *mut QueueObj, value: *mut u8) -> u8
@@ -171,8 +172,6 @@ msrt_task_count() -> usize
 msrt_task_cancel(handle: u64)
 msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
 msrt_trap_begin() -> u8
-msrt_trap_end() -> !
-msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
 msrt_list_new(out: *mut VecVal)
@@ -375,9 +374,6 @@ msstd_fs_watch( path: *const StrObj, recursive: u8, interval_ns: i64, has_max: u
 msstd_fs_watch_native( path: *const StrObj, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrObj, out: *mut *mut WatchHandle, ) -> u8
 msstd_fs_watch_next( h: *mut WatchHandle, paths: *mut VecVal, kinds: *mut VecVal, ) -> u8
 msstd_fs_watch_close(h: *mut WatchHandle)
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
 msrt_html_escape(text: *const StrObj) -> *mut StrObj
 msrt_html_unescape(text: *const StrObj) -> *mut StrObj
 msrt_html_kind(t: *const TreeObj, id: u32) -> u8
@@ -406,9 +402,6 @@ msstd_io_write(h: *mut Host, data: *const StrObj) -> u8
 msstd_io_flush(h: *mut Host) -> u8
 msstd_io_close(h: *mut Host)
 msstd_io_is_closed(h: *const Host) -> u8
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
 msrt_json_kind(d: *const DocObj, id: u32) -> u8
 msrt_json_bool(d: *const DocObj, id: u32) -> u8
 msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj
@@ -637,11 +630,6 @@ msstd_process_info_uid() -> i64
 msstd_process_info_gid() -> i64
 msstd_process_info_effective_uid() -> i64
 msstd_process_info_effective_gid() -> i64
-msrt_cancel_flag (data)
-msrt_cancelled() -> !
-msrt_io_flush()
-msrt_heap_stats(out: *mut i64)
-msrt_start_nanos() -> i64
 msrt_argv(_: *mut ms_rt_abi::VecVal)
 msrt_random_os_bytes( count: i64, out: *mut VecVal, message: *mut *mut StrObj, ) -> u8
 msrt_regex_compile(pattern: *const StrObj, out: *mut *mut RegexObj) -> u8
@@ -709,7 +697,22 @@ msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_size_status() -> u8
 msstd_terminal_size_columns() -> i64
 msstd_terminal_size_rows() -> i64
-msstd_terminal_raw_mode( _alternate_screen: u8, out: *mut *mut ms_std_rt::Handle<()>, ) -> u8
+msstd_terminal_raw_mode( alternate_screen: u8, out: *mut *mut RawHandle, ) -> u8
+msstd_terminal_raw_terminal_close(h: *mut RawHandle)
+msstd_terminal_raw_terminal_size_status(h: *mut RawHandle) -> u8
+msstd_terminal_raw_terminal_size_columns(h: *mut RawHandle) -> i64
+msstd_terminal_raw_terminal_size_rows(h: *mut RawHandle) -> i64
+msstd_terminal_raw_terminal_move_cursor( h: *mut RawHandle, row: i64, column: i64, ) -> u8
+msstd_terminal_raw_terminal_show_cursor( h: *mut RawHandle, visible: u8, ) -> u8
+msstd_terminal_raw_terminal_erase(h: *mut RawHandle, region: i64) -> u8
+msstd_terminal_raw_terminal_next_event( h: *mut RawHandle, has_timeout: u8, timeout_ns: i64, ) -> u8
+msstd_terminal_event_kind() -> i64
+msstd_terminal_event_text() -> *mut StrObj
+msstd_terminal_event_ctrl() -> u8
+msstd_terminal_event_alt() -> u8
+msstd_terminal_event_shift() -> u8
+msstd_terminal_event_columns() -> i64
+msstd_terminal_event_rows() -> i64
 msstd_time_duration_add(left: i64, other: i64) -> i64
 msstd_time_duration_plus(left: i64, right: i64) -> i64
 msstd_time_duration_minus(left: i64, right: i64) -> i64
