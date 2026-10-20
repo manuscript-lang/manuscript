@@ -31,15 +31,12 @@ mod native;
 mod random;
 mod rtcall;
 mod runner;
+mod sharedbuilder;
 mod stmt;
 mod streamloop;
 mod testing;
 mod text;
 mod with;
-
-pub mod dump;
-pub mod load;
-pub mod pipeline;
 
 use ms_check::Program;
 use ms_mir::ir::Module;

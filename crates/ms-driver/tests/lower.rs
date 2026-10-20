@@ -1,6 +1,7 @@
 //! Lowers small programs and verifies the MIR.
 
-use ms_lower::{Options, load, lower_program};
+use ms_driver::{CheckRequest, check_graph, load_file};
+use ms_lower::{Options, lower_program};
 use std::path::PathBuf;
 
 fn lower(name: &str, source: &str) -> String {
@@ -8,9 +9,12 @@ fn lower(name: &str, source: &str) -> String {
     std::fs::create_dir_all(&dir).expect("dir");
     let path: PathBuf = dir.join("main.ms");
     std::fs::write(&path, source).expect("write");
-    let loaded = load::load(&path);
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let program = loaded.program.expect("program");
     let module = lower_program(
         &program,
@@ -37,8 +41,11 @@ fn strings_and_loops() {
 fn rsa_source_calls_and_function_values() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../tests/e2e/testdata/stdlib/crypto-rsa.ms");
-    let loaded = load::load(&path);
-    assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let (module, tests) = ms_lower::lower_tests(
         &loaded.program.expect("program"),
         &Options {
@@ -162,4 +169,15 @@ fn instant_arithmetic() {
     assert!(mir.contains("msstd_time_instant_shift"));
     assert!(mir.contains("msstd_time_instant_difference"));
     assert!(mir.contains("msstd_time_instant_unshift"));
+}
+
+#[test]
+fn collection_builders_are_shared_handles() {
+    let mir = lower(
+        "shared-builders",
+        "import {ListBuilder} from \"@std/collections.ms\"\n\nexport fn main() Int:\n    let b = ListBuilder[Int]()\n    let c = b\n    b.append(1)\n    c.append(2)\n    return b.freeze().length()\n",
+    );
+    assert!(mir.contains("shared.new"));
+    assert!(mir.contains("shared.addr"));
+    assert!(mir.contains("builder is sealed"));
 }
