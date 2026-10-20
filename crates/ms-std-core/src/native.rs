@@ -15,7 +15,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::MapVal;
+use ms_rt_abi::{Closure, MapVal};
 
 unsafe extern "C" {
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
@@ -193,6 +193,11 @@ impl Str {
         Str(new_string(s))
     }
 
+    /// A string made from host bytes the caller trusts to be text.
+    pub fn from_bytes(b: &[u8]) -> Str {
+        Str(new_string_bytes(b))
+    }
+
     pub fn as_ptr(&self) -> *const StrObj {
         self.0
     }
@@ -294,6 +299,195 @@ fn build_map<'a>(pairs: impl Iterator<Item = (&'a Vec<u8>, MapItem<'a>)>, ints: 
             }
         }
         out.assume_init()
+    }
+}
+
+/// A `List[String]` result held as bytes, like [`Text`].
+pub struct TextList(pub Vec<Vec<u8>>);
+
+impl IntoAbi for TextList {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `msrt_list_new` initializes `out`; each pushed string moves into the list.
+        unsafe {
+            msrt_list_new(out.as_mut_ptr());
+            for item in &self.0 {
+                let s = new_string_bytes(item);
+                msrt_list_push(
+                    out.as_mut_ptr(),
+                    &raw const msrt_desc_string,
+                    (&raw const s).cast(),
+                );
+            }
+            out.assume_init()
+        }
+    }
+}
+
+/// A `List[Int]` result.
+pub struct IntList(pub Vec<i64>);
+
+impl IntoAbi for IntList {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `msrt_list_new` initializes `out`; integers are pushed by value.
+        unsafe {
+            msrt_list_new(out.as_mut_ptr());
+            for item in &self.0 {
+                msrt_list_push(
+                    out.as_mut_ptr(),
+                    &raw const msrt_desc_int,
+                    (item as *const i64).cast(),
+                );
+            }
+            out.assume_init()
+        }
+    }
+}
+
+/// A `List[Bytes]` result.
+pub struct BytesList(pub Vec<Vec<u8>>);
+
+impl IntoAbi for BytesList {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `msrt_list_new` and `write_bytes` initialize their outputs; each pushed bytes
+        // value moves into the list.
+        unsafe {
+            msrt_list_new(out.as_mut_ptr());
+            for item in &self.0 {
+                let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+                write_bytes(v.as_mut_ptr(), item);
+                msrt_list_push(out.as_mut_ptr(), crate::desc_bytes(), v.as_ptr().cast());
+            }
+            out.assume_init()
+        }
+    }
+}
+
+/// A `List[Int]` argument.
+impl AbiType for &[i64] {
+    type Raw = *const VecVal;
+}
+// SAFETY: `List[Int]` arguments are live lists that outlive the call.
+unsafe impl<'a> FromAbi<'a> for &'a [i64] {
+    unsafe fn from_raw(raw: *const VecVal) -> &'a [i64] {
+        // SAFETY: caller contract; integers are stored inline, and an empty list may carry null.
+        unsafe {
+            let v = &*raw;
+            if v.len == 0 {
+                &[]
+            } else {
+                core::slice::from_raw_parts(v.ptr.cast::<i64>(), v.len)
+            }
+        }
+    }
+}
+
+/// A `List[Bytes]` argument.
+impl AbiType for Vec<&[u8]> {
+    type Raw = *const VecVal;
+}
+// SAFETY: `List[Bytes]` arguments are live lists that outlive the call.
+unsafe impl<'a> FromAbi<'a> for Vec<&'a [u8]> {
+    unsafe fn from_raw(raw: *const VecVal) -> Vec<&'a [u8]> {
+        // SAFETY: caller contract; `VecVal`s are stored inline, and an empty list may carry null.
+        unsafe {
+            let v = &*raw;
+            if v.len == 0 {
+                return Vec::new();
+            }
+            (0..v.len)
+                .map(|i| bytes_ref(v.ptr.cast::<VecVal>().add(i)))
+                .collect()
+        }
+    }
+}
+
+/// An existing runtime object handed back to the caller as another reference (the same object,
+/// retained), as when one handle serves two interfaces.
+pub struct ObjShare<T: AbiHandle>(*mut ObjCell<T>);
+
+impl<T: AbiHandle> AbiType for ObjShare<T> {
+    type Raw = *mut ObjCell<T>;
+}
+// SAFETY: an object argument is a live runtime object that outlives the call.
+unsafe impl<T: AbiHandle> FromAbi<'_> for ObjShare<T> {
+    unsafe fn from_raw(raw: *mut ObjCell<T>) -> ObjShare<T> {
+        ObjShare(raw)
+    }
+}
+impl<T: AbiHandle> IntoAbi for ObjShare<T> {
+    type Raw = *mut ObjCell<T>;
+    fn into_raw(self) -> *mut ObjCell<T> {
+        // SAFETY: `self.0` is a live object; the caller receives its own reference.
+        unsafe { msrt_retain(self.0.cast()) };
+        self.0
+    }
+}
+
+type PairCode = unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj) -> u8;
+type EntryCode =
+    unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj, u8, u8) -> u8;
+
+/// Calls `code` with temporary strings made from `bytes`, released after the call.
+fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(*const StrObj, *const StrObj) -> R) -> R {
+    let (a, b) = (new_string_bytes(bytes[0]), new_string_bytes(bytes[1]));
+    let r = call(a, b);
+    // SAFETY: the callee only borrowed the strings; this releases the one reference made above.
+    unsafe {
+        msrt_release(a.cast());
+        msrt_release(b.cast());
+    }
+    r
+}
+
+/// A nullable compiled closure over two strings, answering a bool (`copy`'s filter).
+pub struct PairFilter(*mut Closure, PairCode);
+
+impl PairFilter {
+    pub fn call(&self, a: &[u8], b: &[u8]) -> bool {
+        // SAFETY: the compiler built the closure with this signature (`FromAbi`).
+        with_strings([a, b], |a, b| unsafe { (self.1)(self.0, a, b) } != 0)
+    }
+}
+
+/// A nullable compiled closure over `(path, name, directory, symlink)` (`glob`'s exclusion).
+pub struct EntryFilter(*mut Closure, EntryCode);
+
+impl EntryFilter {
+    pub fn call(&self, path: &[u8], name: &[u8], directory: bool, symlink: bool) -> bool {
+        // SAFETY: the compiler built the closure with this signature (`FromAbi`).
+        with_strings(
+            [path, name],
+            |p, n| unsafe { (self.1)(self.0, p, n, u8::from(directory), u8::from(symlink)) } != 0,
+        )
+    }
+}
+
+impl AbiType for Option<PairFilter> {
+    type Raw = *mut Closure;
+}
+// SAFETY: the compiler passes a closure whose code has this signature, or null.
+unsafe impl FromAbi<'_> for Option<PairFilter> {
+    unsafe fn from_raw(raw: *mut Closure) -> Option<PairFilter> {
+        // SAFETY: caller contract.
+        (!raw.is_null())
+            .then(|| unsafe { PairFilter(raw, core::mem::transmute_copy(&(*raw).code)) })
+    }
+}
+impl AbiType for Option<EntryFilter> {
+    type Raw = *mut Closure;
+}
+// SAFETY: the compiler passes a closure whose code has this signature, or null.
+unsafe impl FromAbi<'_> for Option<EntryFilter> {
+    unsafe fn from_raw(raw: *mut Closure) -> Option<EntryFilter> {
+        // SAFETY: caller contract.
+        (!raw.is_null())
+            .then(|| unsafe { EntryFilter(raw, core::mem::transmute_copy(&(*raw).code)) })
     }
 }
 
@@ -925,6 +1119,37 @@ macro_rules! native {
     (
         @item [$($q:tt)*]
         $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<($a:ty, $b:ty), $err:ty> $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C-unwind" fn $name(
+            $($p: <$t as $crate::AbiType>::Raw,)*
+            out: *mut <$a as $crate::IntoAbi>::Raw,
+            out2: *mut <$b as $crate::IntoAbi>::Raw,
+        ) -> u8 {
+            fn body($($p: $t),*) -> Result<($a, $b), $err> $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            let r = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            match r {
+                Ok((x, y)) => {
+                    // SAFETY: `out` and `out2` are writable for one result slot each.
+                    unsafe {
+                        out.write($crate::IntoAbi::into_raw(x));
+                        out2.write($crate::IntoAbi::into_raw(y));
+                    }
+                    $crate::STATUS_OK
+                }
+                Err(e) => $crate::Status::status(e),
+            }
+        }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Result<$ok:ty, $err:ty> $body:block
         $($rest:tt)*
     ) => {
@@ -945,6 +1170,31 @@ macro_rules! native {
                     $crate::STATUS_OK
                 }
                 Err(e) => $crate::Status::status(e),
+            }
+        }
+        $crate::native! { $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> out ($a:ty, $b:ty) $body:block
+        $($rest:tt)*
+    ) => {
+        $(#[$m])*
+        #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
+        #[unsafe(no_mangle)]
+        pub $($q)* extern "C-unwind" fn $name(
+            $($p: <$t as $crate::AbiType>::Raw,)*
+            out: *mut <$a as $crate::IntoAbi>::Raw,
+            out2: *mut <$b as $crate::IntoAbi>::Raw,
+        ) {
+            fn body($($p: $t),*) -> ($a, $b) $body
+            // SAFETY: arguments are live values of their declared types (`FromAbi`).
+            let (x, y) = body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*);
+            // SAFETY: `out` and `out2` are writable for one result slot each.
+            unsafe {
+                out.write($crate::IntoAbi::into_raw(x));
+                out2.write($crate::IntoAbi::into_raw(y));
             }
         }
         $crate::native! { $($rest)* }

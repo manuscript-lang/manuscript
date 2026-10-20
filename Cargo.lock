@@ -1116,6 +1116,7 @@ version = "0.1.0"
 dependencies = [
  "mio",
  "ms-rt-abi",
+ "ms-std-core",
  "ms-std-fs",
  "ms-std-io",
  "ms-std-math",

@@ -360,6 +360,8 @@ enum Kind {
     Native(Native),
 }
 
+ms_std_core::abi_handle!(Watcher);
+
 /// A `FileWatcher`.
 pub struct Watcher {
     kind: Kind,
