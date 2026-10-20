@@ -288,7 +288,7 @@ pub enum Op {
     // Calls.
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
-    TypeDesc, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
 }
 
 /// How an instruction touches machine state; used by optimization passes.
@@ -396,7 +396,7 @@ impl Op {
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
-        Op::TypeDesc, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
+        Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
         Op::GlobalGet, Op::GlobalSet,
     ];
 
@@ -497,6 +497,7 @@ impl Op {
             Op::CallRt => ("call.rt", K::Ext, true, effects!(reads, writes, faults, rc, alloc, io)),
             Op::CallMethod => ("call.method", K::Method, true, effects!(reads, writes, faults, rc, alloc, io)),
             Op::TypeDesc => ("typedesc", K::Ty, true, effects!()),
+            Op::FuncAddr => ("func.addr", K::Func, true, effects!()),
             Op::Poll => ("poll", K::None, false, effects!(faults, io)),
             Op::DepthEnter => ("depth.enter", K::None, false, effects!(faults, io)),
             Op::DepthLeave => ("depth.leave", K::None, false, effects!(io)),
