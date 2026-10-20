@@ -37,6 +37,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
     for _ in 0..24 {
         let mut c = false;
         c |= fold(f);
+        c |= known_alts(m, f);
         c |= phis(m, f);
         c |= branches(f);
         c |= cse(m, f);
@@ -69,6 +70,86 @@ fn apply_subst(f: &mut Func, subst: &HashMap<Value, Value>) {
         }
         b.term.for_each_use_mut(|v| *v = resolve(subst, *v));
     }
+}
+
+/// Folds operations on an alternative built in the same function by `alt.new` with a case
+/// whose payload needs no drop: `alt.tag` becomes the case index, `alt.get` of the same
+/// case becomes the payload operand, and when only drops remain the construction and the
+/// drops are deleted (a plain-data case owns nothing, so ownership stays linear).
+fn known_alts(m: &Module, f: &mut Func) -> bool {
+    let mut known: HashMap<Value, (u32, Vec<Value>)> = HashMap::new();
+    for b in &f.blocks {
+        for i in &b.insts {
+            let (Op::AltNew, Imm::Case(_, case), Some(r)) = (i.op, i.imm, i.res) else {
+                continue;
+            };
+            if i.args.iter().all(|a| !m.needs_drop(f.ty(*a))) {
+                known.insert(r, (case, i.args.clone()));
+            }
+        }
+    }
+    if known.is_empty() {
+        return false;
+    }
+    let mut changed = false;
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut blocks = std::mem::take(&mut f.blocks);
+    for b in &mut blocks {
+        for i in &mut b.insts {
+            let Some((case, args)) = i.args.first().and_then(|a| known.get(a)) else {
+                continue;
+            };
+            match (i.op, i.imm) {
+                (Op::AltTag, _) => {
+                    i.op = Op::IConst;
+                    i.imm = Imm::Int(i64::from(*case));
+                    i.args.clear();
+                    changed = true;
+                }
+                (Op::AltGet, Imm::AltField(_, c, field)) if c == *case => {
+                    if let (Some(r), Some(v)) = (i.res, args.get(field as usize)) {
+                        subst.insert(r, *v);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    f.blocks = blocks;
+    if !subst.is_empty() {
+        for b in &mut f.blocks {
+            b.insts
+                .retain(|i| i.res.is_none_or(|r| !subst.contains_key(&r)));
+        }
+        apply_subst(f, &subst);
+        changed = true;
+    }
+    // A value left with only its drop is never observed: delete both.
+    let uses = f.use_counts();
+    let dead: Vec<Value> = known
+        .keys()
+        .copied()
+        .filter(|v| {
+            let drops = f
+                .blocks
+                .iter()
+                .flat_map(|b| &b.insts)
+                .filter(|i| i.op == Op::Drop && i.args[0] == *v)
+                .count();
+            uses[v.index()] > 0 && uses[v.index()] as usize == drops
+        })
+        .collect();
+    if !dead.is_empty() {
+        for b in &mut f.blocks {
+            b.insts.retain(|i| {
+                let is_drop = i.op == Op::Drop && dead.contains(&i.args[0]);
+                let is_def = i.res.is_some_and(|r| dead.contains(&r));
+                !(is_drop || is_def)
+            });
+        }
+        changed = true;
+    }
+    changed
 }
 
 // ---- folding ---------------------------------------------------------------
