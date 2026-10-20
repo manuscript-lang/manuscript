@@ -80,6 +80,8 @@ struct Meta {
     /// A parameter, by index.
     parameter: Option<usize>,
     is_receiver: bool,
+    /// The mutable borrow this one was taken through (`var it = b.items` where `b` borrows).
+    parent: Option<usize>,
 }
 
 /// A live borrow: until `holder` is last used, its origins stay unchanged.
@@ -240,6 +242,7 @@ impl Walker<'_> {
                 lambda: None,
                 parameter,
                 is_receiver,
+                parent: None,
             },
         );
         self.declared.push(b.uid);
@@ -255,15 +258,27 @@ impl Walker<'_> {
                         Role::Parameter | Role::SelfValue | Role::LambdaParameter | Role::Fixture
                     ),
                 borrows: Vec::new(),
+                exclusive: false,
             },
         );
     }
 
     /// Declares a `var` binding that holds `origins` exclusively.
-    fn declare_mut_borrow(&mut self, b: &BindingRef, role: Role, origins: Vec<Place>, pos: Pos) {
+    fn declare_mut_borrow(
+        &mut self,
+        b: &BindingRef,
+        role: Role,
+        origins: Vec<Place>,
+        pos: Pos,
+        parent: Option<usize>,
+    ) {
         self.declare(b, role, Perm::MutBorrowed, None, false);
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.parent = parent;
+        }
         if let Some(f) = self.facts.bindings.get_mut(&b.uid) {
             f.owned = false;
+            f.exclusive = true;
             f.borrows = origins.clone();
         }
         if let Some(m) = self.meta.get_mut(&b.uid) {
@@ -383,7 +398,7 @@ impl Walker<'_> {
         ignore: Option<usize>,
     ) {
         let found = self.active.iter().find(|a| {
-            Some(a.holder) != ignore
+            !ignore.is_some_and(|i| self.related(a.holder, i))
                 && a.origins
                     .iter()
                     .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
@@ -404,7 +419,7 @@ impl Walker<'_> {
     /// exclusively; `reader` is the binding the read goes through.
     fn check_read(&mut self, pos: Pos, places: &[Place], shown: &str, reader: usize) {
         let found = self.active.iter().find(|a| {
-            a.holder != reader
+            !self.related(a.holder, reader)
                 && a.origins
                     .iter()
                     .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
@@ -682,7 +697,8 @@ impl Walker<'_> {
                     let before = self.diags.len();
                     self.mutate(pattern.pos, &info, "borrow mutably");
                     if self.diags.len() == before {
-                        self.declare_mut_borrow(&b, role, info.resolved, pattern.pos);
+                        let parent = self.borrow_parent(&info.root);
+                        self.declare_mut_borrow(&b, role, info.resolved, pattern.pos, parent);
                     } else {
                         // Already reported; an owned binding avoids a cascade.
                         self.declare(&b, role, Perm::Mutable, None, false);
@@ -948,16 +964,12 @@ impl Walker<'_> {
             return;
         };
         let class = self.cx.classes.class(&b.ty);
-        let root = source
-            .origins
-            .first()
-            .and_then(|o| self.meta.get(&o.root))
-            .map(|m| m.binding.clone());
-        let (Some(root), false) = (root, source.owned || class == Class::Copy) else {
-            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
-            return;
-        };
-        let Some(root_node) = self.root_node(value) else {
+        let named = self.root_name(value);
+        let root = named.and_then(|n| match self.cx.m.resolution(n) {
+            Resolution::Local(r) => Some((r, n.id)),
+            _ => None,
+        });
+        let (Some((root, root_node)), false) = (root, source.owned || class == Class::Copy) else {
             self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
             return;
         };
@@ -971,22 +983,43 @@ impl Walker<'_> {
         let before = self.diags.len();
         self.mutate(p.pos, &info, "borrow mutably");
         if self.diags.len() == before {
-            self.declare_mut_borrow(&b, Role::Pattern, source.origins.clone(), p.pos);
+            let parent = self.borrow_parent(&info.root);
+            self.declare_mut_borrow(&b, Role::Pattern, source.origins.clone(), p.pos, parent);
         } else {
             self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
         }
     }
 
     /// The name expression a place chain or accessor call starts from.
-    fn root_node(&self, e: &Expr) -> Option<NodeId> {
+    fn root_name<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
         match &e.kind {
-            ExprKind::Name(_) => Some(e.id),
+            ExprKind::Name(_) => Some(e),
             ExprKind::Member { left, .. }
             | ExprKind::Index { left, .. }
-            | ExprKind::Apply { left, .. } => self.root_node(left),
-            ExprKind::Call { callee, .. } => self.root_node(callee),
+            | ExprKind::Apply { left, .. } => self.root_name(left),
+            ExprKind::Call { callee, .. } => self.root_name(callee),
             _ => None,
         }
+    }
+
+    /// The mutable borrow a new borrow is taken through, if its root is one.
+    fn borrow_parent(&self, root: &BindingRef) -> Option<usize> {
+        self.meta
+            .get(&root.uid)
+            .filter(|m| m.perm == Perm::MutBorrowed)
+            .map(|_| root.uid)
+    }
+
+    /// Whether `holder` is `of` or a mutable borrow `of` was taken through.
+    fn related(&self, holder: usize, of: usize) -> bool {
+        let mut cur = Some(of);
+        while let Some(c) = cur {
+            if c == holder {
+                return true;
+            }
+            cur = self.meta.get(&c).and_then(|m| m.parent);
+        }
+        false
     }
 
     fn is_consumable_param(&self, b: &BindingRef) -> bool {

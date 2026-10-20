@@ -101,16 +101,11 @@ impl<'a> FnLower<'a> {
             }
             StmtKind::If {
                 binding,
-                mutable,
+                mutable: _,
                 cond,
                 body,
                 else_body,
             } => {
-                if *mutable {
-                    return Err(Error::new(
-                        "`if var` borrows the payload mutably, which is not lowered yet; use `if let` and change the origin through its path",
-                    ));
-                }
                 self.if_stmt(binding.as_ref(), cond, body, else_body)?;
                 self.flush_temps(mark);
                 return Ok(());
@@ -126,6 +121,14 @@ impl<'a> FnLower<'a> {
     }
 
     fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
+        if let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && self.cx.exclusive.contains(&b.uid)
+        {
+            let alias = self.alias_chain(value)?;
+            self.aliases.insert(b.uid, alias);
+            return Ok(());
+        }
         let x = self.expr(value)?;
         if self.dead {
             return Ok(());
@@ -260,12 +263,30 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("assignment target is not a local variable"));
         };
         let _ = value;
+        if let Some(a) = self.aliases.get(&binding.uid).cloned() {
+            let fields = Self::field_names(&path);
+            let mut new = Some(self.owned(x));
+            return self.alias_update(&a, &fields, &mut |s, old| {
+                s.drop_value(old);
+                Ok(new.take().expect("one update"))
+            });
+        }
         let l = self.local(&binding)?;
         let root = self.b.use_var(l.var);
         let new = self.owned(x);
         let updated = self.set_path(root, true, &path, new)?;
         self.b.def_var(l.var, updated);
         Ok(())
+    }
+
+    /// The field names of a chain of member selections.
+    fn field_names(path: &[&Expr]) -> Vec<ms_check::types::Name> {
+        path.iter()
+            .filter_map(|e| match &e.kind {
+                ExprKind::Member { name, .. } => Some(*name),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Replaces the place `target` (a variable or a field chain from one) by `f(current)`.
@@ -309,6 +330,10 @@ impl<'a> FnLower<'a> {
         let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
             return Err(Error::new("mutation target is not a local variable"));
         };
+        if let Some(a) = self.aliases.get(&binding.uid).cloned() {
+            let fields = Self::field_names(&path);
+            return self.alias_update(&a, &fields, f);
+        }
         let l = self.local(&binding)?;
         let root = self.b.use_var(l.var);
         let updated = self.update_path(root, &path, f)?;
@@ -318,7 +343,7 @@ impl<'a> FnLower<'a> {
 
     /// Element `at` of the owned list `list`, owned: a droppable element is moved out (the caller
     /// refills the slot with `list_fill`, reported by the flag) instead of copied.
-    fn list_elem_at(
+    pub(crate) fn list_elem_at(
         &mut self,
         list: ms_mir::ir::Value,
         at: ms_mir::ir::Value,
@@ -332,7 +357,10 @@ impl<'a> FnLower<'a> {
 
     /// An owned `projection` of a value the caller owns and will overwrite: moved out when it
     /// needs dropping (the flag), a plain copy otherwise.
-    fn take_projection(&mut self, projection: ms_mir::ir::Value) -> (ms_mir::ir::Value, bool) {
+    pub(crate) fn take_projection(
+        &mut self,
+        projection: ms_mir::ir::Value,
+    ) -> (ms_mir::ir::Value, bool) {
         if self.needs_drop(self.ty_of(projection)) {
             (self.b.move_out(projection), true)
         } else {
@@ -459,20 +487,29 @@ impl<'a> FnLower<'a> {
         self.enter(then_b);
         self.push_scope();
         if let (Some(p), Some(o)) = (binding, scrutinee) {
-            let payload = self.success_payload(o.v)?;
             let bnd = self
                 .hir
                 .pattern_binding(p)
                 .ok_or_else(|| Error::new("if let without binding"))?;
-            self.bind_local(
-                &bnd,
-                Val {
-                    v: payload,
-                    own: false,
-                },
-            );
-            if o.own {
-                self.drop_value(o.v);
+            if self.cx.exclusive.contains(&bnd.uid) {
+                // `if var`: the payload is the entry itself, not a copy.
+                if o.own {
+                    self.drop_value(o.v);
+                }
+                let alias = self.alias_accessor(cond)?;
+                self.aliases.insert(bnd.uid, alias);
+            } else {
+                let payload = self.success_payload(o.v)?;
+                self.bind_local(
+                    &bnd,
+                    Val {
+                        v: payload,
+                        own: false,
+                    },
+                );
+                if o.own {
+                    self.drop_value(o.v);
+                }
             }
         }
         self.stmts(body)?;

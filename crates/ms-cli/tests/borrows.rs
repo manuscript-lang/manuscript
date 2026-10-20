@@ -1,0 +1,60 @@
+//! `var x = place` and `if var` borrow the place: changes through `x` change the origin, on every
+//! exit path, and the ownership rules are enforced in any function that holds such a borrow.
+
+use std::process::Command;
+
+fn run_ms(args: &[&str]) -> (Option<i32>, String) {
+    let out = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(args)
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (out.status.code(), text)
+}
+
+fn fixture(name: &str) -> String {
+    format!("{}/tests/borrows/{name}", env!("CARGO_MANIFEST_DIR"))
+}
+
+#[test]
+fn borrows_write_through_on_every_exit() {
+    let (status, text) = run_ms(&["run", &fixture("exits_and_paths.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(
+        text,
+        "[[0, 1, 1, 2], [0]]\n\
+         [[0, 100], [0], [0]]\n\
+         [[0], [0, 7, 7, 8]]\n\
+         [[a, z], [b]]\n\
+         [[1, 9], [2]]\n\
+         [Box(items: [], name: p), Box(items: [1, 42], name: renamed)]\n\
+         [[0, 55], [0], [1]]\n"
+    );
+}
+
+#[test]
+fn if_var_borrows_map_and_list_entries() {
+    let (status, text) = run_ms(&["run", &fixture("map_and_list_entries.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(
+        text,
+        "2 2 [x] [[1, 5], [2], [9]] 15 Optional.some(Counter(count: 15, tags: [t])) [[1, 2], [3, 4]]\n"
+    );
+}
+
+#[test]
+fn touching_the_origin_while_borrowed_is_rejected() {
+    let (status, text) = run_ms(&["run", &fixture("rejected_read_origin.ms")]);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("cannot use `rows` while `head`"), "{text}");
+    let (status, text) = run_ms(&["run", &fixture("rejected_change_origin.ms")]);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(
+        text.contains("cannot change `m` while `e` borrows it"),
+        "{text}"
+    );
+}

@@ -92,6 +92,8 @@ pub struct BindingFacts {
     pub owned: bool,
     /// Where a non-owning binding borrows from (empty for owned bindings).
     pub borrows: Vec<Place>,
+    /// The binding is a `var` borrow: changes through it change the origin.
+    pub exclusive: bool,
 }
 
 /// How a lambda holds what it captures.
@@ -155,6 +157,10 @@ pub struct Ownership {
     facts: HashMap<Key, CallableOwnership>,
     /// Rejected programs, in callable order.
     pub diagnostics: Vec<Diagnostic>,
+    /// The rejections inside callables that hold a mutable borrow.
+    pub borrow_diagnostics: Vec<Diagnostic>,
+    /// Identities of the exclusive borrow bindings.
+    pub exclusive: HashSet<usize>,
 }
 
 impl Ownership {
@@ -165,8 +171,51 @@ impl Ownership {
 }
 
 /// Modules the user wrote: not the embedded standard library.
-fn is_user_module(file: Name) -> bool {
+pub(crate) fn is_user_module(file: Name) -> bool {
     !file.as_str().starts_with("@std/")
+}
+
+/// Whether a user callable contains `if var` or a `var` binding of a part of another value.
+pub(crate) fn uses_mutable_borrow(program: &crate::checker::Program) -> bool {
+    use ms_syntax::ast::*;
+    struct Scan(bool);
+    impl ms_syntax::visit::Visitor for Scan {
+        fn stmt(&mut self, s: &Stmt) {
+            match &s.kind {
+                StmtKind::If {
+                    binding: Some(_),
+                    mutable: true,
+                    ..
+                } => self.0 = true,
+                StmtKind::Bind {
+                    mutable: true,
+                    value,
+                    ..
+                } if matches!(
+                    value.kind,
+                    ExprKind::Member { .. }
+                        | ExprKind::Index { .. }
+                        | ExprKind::Apply { value: Some(_), .. }
+                ) =>
+                {
+                    self.0 = true
+                }
+                _ => {}
+            }
+        }
+    }
+    let hir = program.hir();
+    hir.callables().iter().any(|c| {
+        if !is_user_module(c.module.file) {
+            return false;
+        }
+        let mut scan = Scan(false);
+        match c.body() {
+            Body::Block(b) => ms_syntax::visit::walk_block(&mut scan, b),
+            Body::Expr(e) => ms_syntax::visit::walk_expr(&mut scan, e),
+        }
+        scan.0
+    })
 }
 
 impl Hir<'_> {
@@ -223,10 +272,28 @@ impl Hir<'_> {
         }
         let mut facts = HashMap::new();
         let mut diagnostics = Vec::new();
+        let mut borrow_diagnostics = Vec::new();
+        let mut exclusive = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            let held: Vec<usize> = out
+                .facts
+                .bindings
+                .values()
+                .filter(|f| f.exclusive)
+                .map(|f| f.binding.uid)
+                .collect();
+            if !held.is_empty() {
+                borrow_diagnostics.extend(out.diagnostics.iter().cloned());
+                exclusive.extend(held);
+            }
             diagnostics.extend(out.diagnostics);
             facts.insert((c.module.file, c.id()), out.facts);
         }
-        Ownership { facts, diagnostics }
+        Ownership {
+            facts,
+            diagnostics,
+            borrow_diagnostics,
+            exclusive,
+        }
     }
 }
