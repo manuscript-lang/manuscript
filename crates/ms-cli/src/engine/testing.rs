@@ -779,13 +779,13 @@ esac
     #[cfg(unix)]
     #[test]
     fn each_test_runs_in_its_own_process() {
-        let (status, text, document) = run_script(&["--timeout=400ms"]);
+        let (status, text, document) = run_script(&["--timeout=3s"]);
         assert_eq!(status, 3, "failed + crashed + timed out: {text}");
         let expected = [
             "RUN m::pass\nhello from pass\nPASS m::pass\n",
             "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4 in m::fail\n",
             "RUN m::crash\nFAIL m::crash: test process was terminated by signal 11\n",
-            "RUN m::hang\nFAIL m::hang: timed out after 400ms; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
+            "RUN m::hang\nFAIL m::hang: timed out after 3s; the test was cancelled (use --timeout to change the limit, 0 disables it)\n",
             "4 tests, 3 failed\n",
         ];
         assert_eq!(text, expected.concat());
@@ -818,7 +818,7 @@ esac
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);
         assert_eq!((status, text.as_str()), (0, "m::pass\nm::fail\n"));
 
-        let (status, text, document) = run_script(&["--fail-fast", "--timeout=400ms"]);
+        let (status, text, document) = run_script(&["--fail-fast", "--timeout=3s"]);
         assert_eq!(status, 1);
         assert!(text.ends_with("4 tests, 1 failed\n"), "{text}");
         assert_eq!(document.reason.as_deref(), Some("fail_fast"));

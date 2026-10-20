@@ -929,7 +929,12 @@ impl FnLower<'_> {
             None
         };
         if let (Some(inner), Some(code)) = (eof, code) {
-            return self.status_optional_result(sym, code, slot, inner, result);
+            let take = &mut |s: &mut Self| {
+                Ok(s.b
+                    .emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
+                    .expect("take"))
+            };
+            return self.status_optional_result(sym, code, take, result);
         }
         let wrap = match wrap {
             Some(i) => {
@@ -1030,7 +1035,7 @@ impl FnLower<'_> {
     }
 
     /// The payload-free case of `a` whose index is `code`, trying cases from `from`.
-    fn enum_from_index(
+    pub(crate) fn enum_from_index(
         &mut self,
         a: ms_mir::types::AltId,
         code: Value,
@@ -1142,12 +1147,11 @@ impl FnLower<'_> {
     }
 
     /// `ok(some(value))` for status zero, `ok(none)` for `STATUS_NONE`, else the error the status names.
-    fn status_optional_result(
+    pub(crate) fn status_optional_result(
         &mut self,
         sym: &str,
         code: Value,
-        slot: Value,
-        inner: MTy,
+        take: &mut dyn FnMut(&mut Self) -> Result<Value, Error>,
         result: MTy,
     ) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
@@ -1163,9 +1167,7 @@ impl FnLower<'_> {
             good,
             result,
             &mut |s| {
-                let v =
-                    s.b.emit(Op::Take, &[slot], Imm::Ty(inner), Some(inner))
-                        .expect("take");
+                let v = take(s)?;
                 let some = s.b.opt_some(v);
                 Ok(Some(s.b.alt_new(a, ok as u32, &[some])))
             },
