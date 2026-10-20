@@ -97,7 +97,8 @@ fn strip_debug(out: &Path, archive: PathBuf) -> PathBuf {
     } else {
         "--strip-debug"
     };
-    for tool in ["llvm-strip", "strip"] {
+    // GNU/system `strip` first: llvm-strip corrupts some members (the C objects `ring` ships).
+    for tool in ["strip", "llvm-strip"] {
         if Command::new(tool)
             .arg(flag)
             .arg(&stripped)
