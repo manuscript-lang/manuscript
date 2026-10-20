@@ -170,3 +170,26 @@ fn matches_recorded_cases() {
     }
     assert!(n > 5000, "{n} cases, {skipped} skipped");
 }
+
+#[test]
+fn duplicate_keys_are_rejected_in_small_and_large_objects() {
+    let object = |n: usize, repeat: &str| {
+        let members: Vec<String> = (0..n).map(|i| format!("\"k{i}\":{i}")).collect();
+        format!("{{{},{repeat}}}", members.join(","))
+    };
+    for n in [1usize, 5, 16, 17, 40] {
+        let limits = Limits::default();
+        assert!(
+            parse(&object(n, "\"extra\":1"), limits).is_ok(),
+            "{n} distinct"
+        );
+        assert!(
+            parse(&object(n, "\"k0\":1"), limits).is_err() || n == 0,
+            "{n} first"
+        );
+        let last = format!("\"k{}\":1", n - 1);
+        assert!(parse(&object(n, &last), limits).is_err(), "{n} last");
+    }
+    assert!(parse(r#"{"":1,"":2}"#, Limits::default()).is_err());
+    assert!(parse(r#"{"":1,"a":2}"#, Limits::default()).is_ok());
+}
