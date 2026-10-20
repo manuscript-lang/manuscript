@@ -373,6 +373,13 @@ impl<'a> FnLower<'a> {
         x.v
     }
 
+    /// Stops treating `v` as a pending temporary once it is consumed.
+    pub fn unhold_temp(&mut self, v: Value) {
+        if let Some(at) = self.temps.iter().rposition(|t| *t == v) {
+            self.temps.remove(at);
+        }
+    }
+
     /// Drops the owned temporaries registered after `mark`.
     pub fn flush_temps(&mut self, mark: usize) {
         while self.temps.len() > mark {

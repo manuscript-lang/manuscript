@@ -75,17 +75,28 @@ impl<'a> FnLower<'a> {
     /// `{key: value, ...}`.
     pub(crate) fn map_literal(&mut self, ty: MTy, entries: &[MapEntry]) -> Result<Val, Error> {
         let mut acc = self.map_new(ty)?;
+        let early = entries
+            .iter()
+            .any(|en| crate::mutation::has_try(&en.key) || crate::mutation::has_try(&en.value));
         for en in entries {
-            let k = self.expr(&en.key)?;
-            if self.dead {
-                self.drop_value(acc);
-                return Ok(self.dummy(ty));
+            // A `try` in a later key or value may return early: the map and key built so far
+            // stay registered as temporaries until then.
+            if early {
+                self.temps.push(acc);
             }
-            let k = self.owned(k);
+            let k = self.expr(&en.key)?;
+            let k = if self.dead { k.v } else { self.owned(k) };
+            if early && !self.dead {
+                self.temps.push(k);
+            }
             let v = self.expr(&en.value)?;
+            if early {
+                self.unhold_temp(acc);
+                if !self.dead {
+                    self.unhold_temp(k);
+                }
+            }
             if self.dead {
-                self.drop_value(k);
-                self.drop_value(acc);
                 return Ok(self.dummy(ty));
             }
             let v = self.owned(v);
