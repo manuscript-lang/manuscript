@@ -32,14 +32,15 @@ fn present(input: ReadStream, max: Optional[Int] = none) Bool:
     return false
 
 type LineTailCleanup:
-    visits: List[Int]
+    marker: String
 
+# Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
     var fn close() Unit:
-        self.visits.append(3)
+        let written = filesystem().write_file(self.marker, "closed", true)
 
-fn with_cleanup(input: ReadStream, visits: List[Int]) Bool:
-    with resource = LineTailCleanup(visits):
+fn with_cleanup(var input: ReadStream, marker: String) Bool:
+    with resource = LineTailCleanup(marker):
         if let line = read_line(input):
             return line.is_some()
 
@@ -49,15 +50,12 @@ fn limit(var visits: List[Int]) Int:
     visits.append(1)
     return 100
 
-fn picked(input: ReadStream, var visits: List[Int]) ReadStream:
+fn picked(var visits: List[Int]) ReadStream:
     visits.append(2)
-    return input
+    return ReadStream(MemoryStream("a\n".to_bytes(), 0, false))
 
-fn reordered(input: ReadStream, var visits: List[Int]) Bool:
-    if let line = read_line(
-        max_bytes: limit(var visits),
-        input: picked(input, var visits)
-    ):
+fn reordered(var visits: List[Int]) Bool:
+    if let line = read_line(max_bytes: limit(var visits), input: picked(var visits)):
         return line.is_some()
 
     return false
@@ -78,14 +76,20 @@ test "presence retains custom errors and limits":
     present(input) | try expect_false
 
 test "presence retains written argument order and cleanup":
-    let source = MemoryStream("a\nb\n".to_bytes(), 0, false)
-    let input = ReadStream(source)
+    var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, false))
     var visits: List[Int] = []
-    reordered(input, var visits) | try expect_true
+    reordered(var visits) | try expect_true
     visits | try expect_equal(expected: [1, 2])
-    with_cleanup(input, visits) | try expect_true
-    with_cleanup(input, visits) | try expect_false
-    visits | try expect_equal(expected: [1, 2, 3, 3])
+    let fs = filesystem()
+
+    with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
+        let first = "{temporary.path()}/first"
+        let second = "{temporary.path()}/second"
+        with_cleanup(var input, first) | try expect_true
+        fs.read_file(first).is_ok() | try expect_true
+        fs.read_file(second).is_ok() | try expect_false
+        with_cleanup(var input, second) | try expect_false
+        fs.read_file(second).is_ok() | try expect_true
 
 test "presence and text reads share buffered consumption":
     let fs = filesystem()

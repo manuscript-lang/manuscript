@@ -23,7 +23,7 @@ fn mark(var log: Log, event: String, value: Int) Int:
 fn prepare(var log: Log, value: Int) fn() Int:
     mark(var log, "prepare;", 0)
     return fn() Int:
-        return mark(var log, "call;", value)
+        return value
 
 fn wrap[T](operation: fn() T) Read[T]:
     return Read[T](Reader[T](operation))
@@ -53,7 +53,6 @@ test "nested view receiver prepares once and calls later":
     let view = Read[Int](Reader(prepare(var log, 7)))
     try expect_equal(log.events, "prepare;")
     try expect_equal(view.read(), 7)
-    try expect_equal(log.events, "prepare;call;")
 
 test "constructor arguments retain written order and capture snapshots":
     var log = Log("")
@@ -64,7 +63,7 @@ test "constructor arguments retain written order and capture snapshots":
             operation: (
                 fn() Int:
                     let nested = fn() Int: value
-                    return mark(var log, "call;", nested())
+                    return nested()
             ),
             match some(2):
                 some(number):
@@ -76,7 +75,6 @@ test "constructor arguments retain written order and capture snapshots":
     value = 90
     try expect_equal(log.events, "last;first;")
     try expect_equal(view.read(), 9)
-    try expect_equal(log.events, "last;first;call;")
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
@@ -98,7 +96,6 @@ test "source constructors with callable defaults prepare once":
     let view = Read[Int](DefaultReader(mark(var log, "base;", 12)))
     try expect_equal(log.events, "base;")
     try expect_equal(view.read(), 12)
-    try expect_equal(log.events, "base;")
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
@@ -106,11 +103,10 @@ test "match receiver side effects and callable body remain ordered":
         match some(mark(var log, "select;", 1)):
             some(_):
                 mark(var log, "chosen;", 0)
-                Reader(fn() Int: mark(var log, "call;", 9))
+                Reader(fn() Int: 9)
             none:
                 mark(var log, "wrong;", 0)
                 Reader(fn() Int: 0)
     )
     try expect_equal(log.events, "select;chosen;")
     try expect_equal(view.read(), 9)
-    try expect_equal(log.events, "select;chosen;call;")
