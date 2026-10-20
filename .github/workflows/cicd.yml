@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       rust: ${{ steps.diff.outputs.rust }}
+      packages: ${{ steps.diff.outputs.packages }}
+      excluded: ${{ steps.diff.outputs.excluded }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,12 +40,21 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           rust=true
+          packages=all
+          excluded=
           if [ "$EVENT" = pull_request ]; then
-            if ! git diff --name-only "$BASE" "$GITHUB_SHA" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
+            files=$(git diff --name-only "$BASE" "$GITHUB_SHA")
+            if ! printf '%s\n' "$files" | grep -qvE '^(documentation/|website/|blog/|proposals/|skills/|extensions/|.*\.md$)'; then
               rust=false
             fi
+            # Pull requests test only the crates they touch and their dependents; pushes to
+            # main, merge groups and tags test everything.
+            packages=$(printf '%s\n' "$files" | python3 scripts/rust-affected.py)
+            excluded=$(printf '%s\n' "$files" | python3 scripts/rust-affected.py --complement)
           fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "excluded=$excluded" >> "$GITHUB_OUTPUT"
 
   # One job per platform runs everything for that platform in sequence, so a pull request
   # starts six Rust runners instead of dozens (the account runs 20 jobs at once). Tests
@@ -118,10 +129,22 @@ jobs:
           cargo clippy --workspace --all-targets -- -D warnings
       # nextest runs each test in its own process, so tests that share process-global
       # state (the runtime allocator, the environment) cannot interfere.
+      # Pull requests test the touched crates and their dependents (scripts/rust-affected.py).
       - name: Tests
+        env:
+          PACKAGES: ${{ needs.changes.outputs.packages }}
+          EXCLUDED: ${{ needs.changes.outputs.excluded }}
         run: |
-          cargo nextest run --workspace --locked
-          cargo test --workspace --doc --locked
+          scope=--workspace
+          doc_scope=--workspace
+          if [ "$PACKAGES" != all ]; then
+            scope=$(printf -- '-p %s ' $PACKAGES)
+            doc_scope="--workspace $(printf -- '--exclude %s ' $EXCLUDED)"
+          fi
+          # shellcheck disable=SC2086
+          cargo nextest run --locked $scope
+          # shellcheck disable=SC2086
+          cargo test --locked --doc $doc_scope
       - name: Frozen corpus against the Rust ms
         if: matrix.os == 'linux' && matrix.arch == 'amd64'
         run: make conform-rust
