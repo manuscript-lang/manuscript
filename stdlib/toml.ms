@@ -115,12 +115,9 @@ fn lookup(reader: Reader, id: Int, key: String) Optional[Node]:
 fn contains_key(reader: Reader, id: Int, key: String) Bool:
     return reader.entries.get(id).contains(key)
 
-# Adds an entry by taking the map out of its slot, so the update is in place.
+# Adds an entry to the table's map in place.
 fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
-    var current = reader.entries.get(id)
-    reader.entries.set(id, Map[String, Node]())
-    current.add(key, node)
-    reader.entries.set(id, current)
+    reader.entries[id].add(key, node)
 
 fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
     put(var reader, id, key, Node.TableArray(ids))

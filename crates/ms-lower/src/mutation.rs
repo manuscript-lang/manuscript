@@ -31,11 +31,35 @@ struct Edge {
     target: Target,
 }
 
-/// Finds the root local of a place expression (`a`, `a.b.c`).
+/// The receiver and index of an index read. `xs[i]` with a name or call as the bracket parses as
+/// `Apply` (a type application) until resolution shows it is an index.
+pub(crate) fn index_parts<'e>(hir: &ModuleHir, e: &'e Expr) -> Option<(&'e Expr, &'e Expr)> {
+    match &e.kind {
+        ExprKind::Index { left, index } => Some((left, index)),
+        ExprKind::Apply {
+            left,
+            value: Some(value),
+            ..
+        } if hir.info(e).native_str() == "index"
+            || matches!(hir.resolution(e), Resolution::Native(n) if n.as_str() == "index") =>
+        {
+            Some((left, value))
+        }
+        _ => None,
+    }
+}
+
+/// Finds the root local of a place expression (`a`, `a.b.c`, `a.b[i].c`).
 pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
     let mut cur = e;
-    while let ExprKind::Member { left, .. } = &cur.kind {
-        cur = left;
+    loop {
+        if let ExprKind::Member { left, .. } = &cur.kind {
+            cur = left;
+        } else if let Some((left, _)) = index_parts(hir, cur) {
+            cur = left;
+        } else {
+            break;
+        }
     }
     match hir.resolution(cur) {
         Resolution::Local(b) => Some(b.uid),

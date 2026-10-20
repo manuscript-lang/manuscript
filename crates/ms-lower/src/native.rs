@@ -1963,8 +1963,14 @@ impl<'a> FnLower<'a> {
     /// A variable or a field chain from one.
     pub fn is_place(&self, e: &Expr) -> bool {
         let mut cur = e;
-        while let ExprKind::Member { left, .. } | ExprKind::Index { left, .. } = &cur.kind {
-            cur = left;
+        loop {
+            if let ExprKind::Member { left, .. } = &cur.kind {
+                cur = left;
+            } else if let Some((left, _)) = crate::mutation::index_parts(&self.hir, cur) {
+                cur = left;
+            } else {
+                break;
+            }
         }
         matches!(&cur.kind, ExprKind::Name(_))
             && matches!(self.hir.resolution(cur), Resolution::Local(_))
