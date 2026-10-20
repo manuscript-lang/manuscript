@@ -1,0 +1,4 @@
+# Fixtures that pass on Linux and fail on Windows (make conform-rust adds this file on Windows hosts).
+# check: the "cannot find module ../x.ms" message names an unresolved <DIR>/.. on Windows; Linux collapses it.
+go-tests/internal-cli-testanalysisstandalonedirectoryboundariesandemp-3
+go-tests/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
