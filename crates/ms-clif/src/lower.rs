@@ -1687,7 +1687,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListSetU
             | Op::ListFill
             | Op::ListPush
-            | Op::ListDropLast => self.lower_list(f, inst),
+            | Op::ListDropLast
+            | Op::ListDropFirst => self.lower_list(f, inst),
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
@@ -2175,6 +2176,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 self.store_leaves(at, 0, &leaves, &v);
                 l
+            }
+            Op::ListDropFirst => {
+                let lt = f.ty(inst.args[0]);
+                let (e, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let nl = self.b.ins().iadd_imm_s(l[1], -1);
+                if self.g.m.needs_drop(e) {
+                    let old = self.load_leaves(l[0], 0, &leaves);
+                    self.drop_value(e, &old);
+                }
+                let src = self.b.ins().iadd_imm_s(l[0], size);
+                let bytes = self.b.ins().imul_imm_s(nl, size);
+                self.b
+                    .call_memmove(self.g.module.target_config(), l[0], src, bytes);
+                vec![l[0], nl, l[2]]
             }
             Op::ListDropLast => {
                 let lt = f.ty(inst.args[0]);
