@@ -270,7 +270,7 @@ pub enum Op {
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
-    RecNew, RecGet, RecSet, AltNew, AltTag, AltGet,
+    RecNew, RecGet, RecSet, AltNew, AltTag, AltGet, AltUnbox,
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListPush,
     // Optionals.
@@ -388,7 +388,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
-        Op::RecNew, Op::RecGet, Op::RecSet, Op::AltNew, Op::AltTag, Op::AltGet,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListPush,
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap,
@@ -451,6 +451,7 @@ impl Op {
             Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
             Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
             Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
+            Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, rc)),
             Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
             Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
             Op::ListLen => ("list.len", K::None, true, effects!()),
