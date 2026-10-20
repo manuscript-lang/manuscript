@@ -15,9 +15,9 @@ extern crate alloc;
 
 mod native;
 pub use native::{
-    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, FromAbi, Global, IdArray, IntoAbi, Mut, ObjCell,
-    ObjMut, ObjRef, Object, OptInt, Out, Own, RecList, Ref, Status, StatusCode, Str, StrArray,
-    StringList,
+    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, FromAbi, Global, IdArray, IntMap, IntoAbi, Mut,
+    ObjCell, ObjMut, ObjRef, Object, OptInt, Out, Own, RecList, Ref, Status, StatusCode, Str,
+    StrArray, StrMap, StringList, Text,
 };
 
 use alloc::vec::Vec;
@@ -106,6 +106,11 @@ pub unsafe fn str_ref<'a>(p: *const StrObj) -> &'a str {
 
 /// Creates an owned runtime string (+1).
 pub fn new_string(s: &str) -> *mut StrObj {
+    new_string_bytes(s.as_bytes())
+}
+
+/// Creates an owned runtime string (+1) from bytes the caller trusts to be UTF-8.
+pub fn new_string_bytes(s: &[u8]) -> *mut StrObj {
     // SAFETY: pointer and length describe `s`.
     unsafe { msrt_string_from_bytes(s.as_ptr(), s.len()) }
 }

@@ -7,19 +7,30 @@
 //! out-pointer; a record result (`-> out T`) is written through a trailing out-pointer and the
 //! shim returns nothing. This is the same layout the hand-written shims used.
 use crate::{
-    Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref, write_bytes,
+    Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, new_string_bytes, read_string_list,
+    str_ref, write_bytes,
 };
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
+use ms_rt_abi::MapVal;
 
 unsafe extern "C" {
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
     fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_alloc(size: usize) -> *mut u8;
     fn msrt_free(p: *mut u8);
+    fn msrt_map_new(out: *mut MapVal);
+    fn msrt_map_add(
+        m: *mut MapVal,
+        kd: *const TypeDesc,
+        vd: *const TypeDesc,
+        k: *mut u8,
+        v: *mut u8,
+    );
+    static msrt_desc_int: TypeDesc;
     fn msrt_bytes_drop(b: *mut VecVal);
     fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal);
     fn msrt_list_new(out: *mut VecVal);
@@ -209,6 +220,80 @@ impl StringList {
     pub fn to_vec(&self) -> Vec<&str> {
         // SAFETY: a `StringList` is only created by `new` or by the runtime inside a live record.
         unsafe { read_string_list(&raw const self.0) }
+    }
+}
+
+/// A string result held as bytes, for host text that is checked (or trusted) to be UTF-8 by the
+/// native rather than by the type.
+pub struct Text(pub Vec<u8>);
+
+impl IntoAbi for Text {
+    type Raw = *mut StrObj;
+    fn into_raw(self) -> *mut StrObj {
+        new_string_bytes(&self.0)
+    }
+}
+
+/// A `Map[String, String]` result.
+pub struct StrMap(pub Vec<(Vec<u8>, Vec<u8>)>);
+/// A `Map[String, Int]` result.
+pub struct IntMap(pub Vec<(Vec<u8>, i64)>);
+
+impl IntoAbi for StrMap {
+    type Raw = MapVal;
+    fn into_raw(self) -> MapVal {
+        build_map(self.0.iter().map(|(k, v)| (k, MapItem::Str(v))), false)
+    }
+}
+impl IntoAbi for IntMap {
+    type Raw = MapVal;
+    fn into_raw(self) -> MapVal {
+        build_map(self.0.iter().map(|(k, v)| (k, MapItem::Int(*v))), true)
+    }
+}
+
+enum MapItem<'a> {
+    Str(&'a [u8]),
+    Int(i64),
+}
+
+fn build_map<'a>(pairs: impl Iterator<Item = (&'a Vec<u8>, MapItem<'a>)>, ints: bool) -> MapVal {
+    let mut out = core::mem::MaybeUninit::<MapVal>::uninit();
+    // SAFETY: `msrt_map_new` initializes `out`; each slot passed to `msrt_map_add` holds one
+    // owned element that the map takes.
+    unsafe {
+        msrt_map_new(out.as_mut_ptr());
+        let vd: *const TypeDesc = if ints {
+            &raw const msrt_desc_int
+        } else {
+            &raw const msrt_desc_string
+        };
+        for (k, v) in pairs {
+            let mut key = new_string_bytes(k);
+            let kd = &raw const msrt_desc_string;
+            match v {
+                MapItem::Str(b) => {
+                    let mut val = new_string_bytes(b);
+                    msrt_map_add(
+                        out.as_mut_ptr(),
+                        kd,
+                        vd,
+                        (&raw mut key).cast(),
+                        (&raw mut val).cast(),
+                    );
+                }
+                MapItem::Int(mut i) => {
+                    msrt_map_add(
+                        out.as_mut_ptr(),
+                        kd,
+                        vd,
+                        (&raw mut key).cast(),
+                        (&raw mut i).cast(),
+                    );
+                }
+            }
+        }
+        out.assume_init()
     }
 }
 
