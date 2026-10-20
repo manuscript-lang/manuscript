@@ -64,9 +64,17 @@ fn on_path(name: &str) -> bool {
 fn driver_options(program: &str) -> &'static [&'static str] {
     if program.contains("clang") {
         if cfg!(target_arch = "aarch64") {
-            &["--target=aarch64-pc-windows-msvc", "-fms-runtime-lib=dll"]
+            &[
+                "--target=aarch64-pc-windows-msvc",
+                "-fms-runtime-lib=dll",
+                "-fuse-ld=lld",
+            ]
         } else {
-            &["--target=x86_64-pc-windows-msvc", "-fms-runtime-lib=dll"]
+            &[
+                "--target=x86_64-pc-windows-msvc",
+                "-fms-runtime-lib=dll",
+                "-fuse-ld=lld",
+            ]
         }
     } else {
         &[]
