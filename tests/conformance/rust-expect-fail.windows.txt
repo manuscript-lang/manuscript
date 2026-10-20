@@ -2,3 +2,5 @@
 # check: the "cannot find module ../x.ms" message names an unresolved <DIR>/.. on Windows; Linux collapses it.
 go-tests/internal-cli-testanalysisstandalonedirectoryboundariesandemp-3
 go-tests/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
+# test: redirected streams report Unsupported instead of NotTerminal (terminal port not done on Windows).
+e2e/stdlib/terminal

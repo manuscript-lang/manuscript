@@ -11,6 +11,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 extern crate alloc;
+extern crate std;
 
 pub mod civil;
 pub mod core_time;
@@ -313,31 +314,21 @@ pub unsafe extern "C-unwind" fn msstd_time_instant_equal(
     (l.tick == o.tick) as u8
 }
 
-#[repr(C)]
-struct Timespec {
-    tv_sec: i64,
-    tv_nsec: i64,
-}
-
-unsafe extern "C" {
-    fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
-    fn nanosleep(req: *const Timespec, rem: *mut Timespec) -> i32;
-}
-
-const CLOCK_REALTIME: i32 = 0;
-#[cfg(target_os = "macos")]
-const CLOCK_MONOTONIC: i32 = 6;
-#[cfg(not(target_os = "macos"))]
-const CLOCK_MONOTONIC: i32 = 1;
-
-fn read_clock(clock: i32) -> (i64, i64) {
-    let mut t = Timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: `t` is writable.
-    unsafe { clock_gettime(clock, &mut t) };
-    (t.tv_sec, t.tv_nsec)
+/// Seconds and nanoseconds since the Unix epoch; the nanoseconds stay in `0..1e9` before it too.
+fn wall_clock() -> (i64, i64) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => (d.as_secs() as i64, i64::from(d.subsec_nanos())),
+        Err(e) => {
+            let d = e.duration();
+            let nanos = i64::from(d.subsec_nanos());
+            if nanos == 0 {
+                (-(d.as_secs() as i64), 0)
+            } else {
+                (-(d.as_secs() as i64) - 1, 1_000_000_000 - nanos)
+            }
+        }
+    }
 }
 
 /// `time.clock().now()`: nanoseconds since the first reading in this process.
@@ -346,23 +337,16 @@ fn read_clock(clock: i32) -> (i64, i64) {
 /// `out` must be valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msstd_time_clock_now(out: *mut Instant) {
-    static START: core::sync::atomic::AtomicI64 = core::sync::atomic::AtomicI64::new(i64::MIN);
-    let (s, n) = read_clock(CLOCK_MONOTONIC);
-    let now = s * 1_000_000_000 + n;
-    let start = match START.compare_exchange(
-        i64::MIN,
-        now,
-        core::sync::atomic::Ordering::Relaxed,
-        core::sync::atomic::Ordering::Relaxed,
-    ) {
-        Ok(_) => now,
-        Err(start) => start,
-    };
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    let now = START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos() as i64;
     // SAFETY: caller contract.
     unsafe {
         *out = Instant {
             domain: MONOTONIC_DOMAIN,
-            tick: now - start,
+            tick: now,
         }
     };
 }
@@ -373,7 +357,7 @@ pub unsafe extern "C-unwind" fn msstd_time_clock_now(out: *mut Instant) {
 /// `out` must be valid.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msstd_time_wall_clock_now(out: *mut Timestamp) {
-    let (s, n) = read_clock(CLOCK_REALTIME);
+    let (s, n) = wall_clock();
     put(
         out,
         Ts {
@@ -402,21 +386,8 @@ pub extern "C-unwind" fn msstd_time_sleep(duration: i64) {
         }
         // Short slices bound the latency of a stop request that lands between the check and the sleep.
         let slice = remaining.min(50_000_000);
-        let req = Timespec {
-            tv_sec: slice / 1_000_000_000,
-            tv_nsec: slice % 1_000_000_000,
-        };
-        let mut rem = Timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        // SAFETY: both pointers are valid for the call.
-        let interrupted = unsafe { nanosleep(&req, &mut rem) } != 0;
-        let slept = if interrupted {
-            slice - (rem.tv_sec * 1_000_000_000 + rem.tv_nsec)
-        } else {
-            slice
-        };
+        std::thread::sleep(core::time::Duration::from_nanos(slice as u64));
+        let slept = slice;
         remaining -= slept;
     }
 }
