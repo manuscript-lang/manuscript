@@ -1,2 +1,0 @@
-# Fixtures that pass on Linux but fail on Windows, each with the reason. Seeded empty; the
-# Windows CI leg reports new failures as the unexpected list.
