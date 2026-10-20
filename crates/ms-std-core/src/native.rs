@@ -212,6 +212,15 @@ impl StringList {
     }
 }
 
+/// A bare `STATUS_*` byte as an error.
+pub struct StatusCode(pub u8);
+
+impl Status for StatusCode {
+    fn status(self) -> u8 {
+        self.0
+    }
+}
+
 /// An owned `Bytes` value stored inside a record, for [`abi_record!`].
 #[repr(transparent)]
 pub struct Bytes(VecVal);
@@ -800,7 +809,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
-        pub $($q)* extern "C" fn $name($($p: <$t as $crate::AbiType>::Raw),*) -> u8 {
+        pub $($q)* extern "C-unwind" fn $name($($p: <$t as $crate::AbiType>::Raw),*) -> u8 {
             fn body($($p: $t),*) -> Result<(), $err> $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
             match body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*) {
@@ -819,7 +828,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
-        pub $($q)* extern "C" fn $name(
+        pub $($q)* extern "C-unwind" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$ok as $crate::IntoAbi>::Raw,
         ) -> u8 {
@@ -846,7 +855,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
-        pub $($q)* extern "C" fn $name(
+        pub $($q)* extern "C-unwind" fn $name(
             $($p: <$t as $crate::AbiType>::Raw,)*
             out: *mut <$res as $crate::IntoAbi>::Raw,
         ) {
@@ -867,7 +876,7 @@ macro_rules! native {
         $(#[$m])*
         #[allow(unsafe_code, clippy::missing_safety_doc, clippy::too_many_arguments)]
         #[unsafe(no_mangle)]
-        pub $($q)* extern "C" fn $name(
+        pub $($q)* extern "C-unwind" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*
         ) -> <$ret as $crate::IntoAbi>::Raw {
             fn body($($p: $t),*) -> $ret $body
