@@ -5,7 +5,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Fail, native};
+use ms_std_core::{Fail, StringTable, native};
 
 native! {
     fn msrt_csv_parse(
@@ -16,9 +16,9 @@ native! {
         max_rows: i64,
         has_max_cells: bool,
         max_cells: i64,
-    ) -> Result<Vec<Vec<String>>, Fail> {
+    ) -> Result<StringTable, Fail> {
         crate::options(delimiter, line_ending).and_then(|o| {
-            crate::parse(
+            crate::parse_table(
                 text,
                 o,
                 has_max_rows.then_some(max_rows),
