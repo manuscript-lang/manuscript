@@ -1,6 +1,7 @@
 //! Lowers small programs and verifies the MIR.
 
-use ms_lower::{Options, load, lower_program};
+use ms_driver::{CheckRequest, check_graph, load_file};
+use ms_lower::{Options, lower_program};
 use std::path::PathBuf;
 
 fn lower(name: &str, source: &str) -> String {
@@ -8,9 +9,12 @@ fn lower(name: &str, source: &str) -> String {
     std::fs::create_dir_all(&dir).expect("dir");
     let path: PathBuf = dir.join("main.ms");
     std::fs::write(&path, source).expect("write");
-    let loaded = load::load(&path);
+    let loaded = check_graph(
+        load_file(&path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
     let _ = std::fs::remove_dir_all(&dir);
-    assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
     let program = loaded.program.expect("program");
     let module = lower_program(
         &program,
