@@ -1,33 +1,53 @@
 import {from_bytes, map, take, concat, tee, map_writer, digest} from "@std/streams.ms"
-import {ReadStream, WriteStream, read_all, copy} from "@std/io.ms"
+import {read_all, copy} from "@std/io.ms"
 import {CompressionFormat} from "@std/compress.ms"
 import {HashAlgorithm, sha256} from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import panic from "@std/faults.ms"
-import MemoryStream from "./support/streams.ms"
+import {filesystem} from "@std/fs.ms"
+import expect_ok from "@std/testing.ms"
 
 fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()
 
 test "flows compose stream transforms":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
-    let source = from_bytes("hello world".to_bytes(), 4)
-    let copied = source | map(upper) | take(8) | try copy(WriteStream(output))
-    if copied != 8: return panic("byte count")
-    if output.data != "HELLO WO".to_bytes(): return panic("pipeline output")
+    let fs = filesystem()
+
+    with temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
+        let path = "{temporary.path()}/pipeline.bin"
+        let output = (fs.open(path: path, flags: "w", mode: 420) | try expect_ok)
+        let source = from_bytes("hello world".to_bytes(), 4)
+        let copied = source | map(upper) | take(8) | try copy(output.writer())
+        output.close()
+        if copied != 8: return panic("byte count")
+        if (fs.read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
+            "pipeline output"
+        )
 
 test "concat tee and writer helpers":
-    let log = MemoryStream("".to_bytes(), 0, closed: false)
-    let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
-    let seen = tee(joined, WriteStream(log))
-    if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
-    if log.data != "abcd".to_bytes(): return panic("tee")
+    let fs = filesystem()
 
-    let sink = MemoryStream("".to_bytes(), 0, closed: false)
-    let writer = map_writer(WriteStream(sink), upper)
-    try writer.write("quiet")
-    try writer.write_bytes("!".to_bytes())
-    if sink.data != "QUIET!".to_bytes(): return panic("map_writer")
+    with temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
+        let log_path = "{temporary.path()}/tee.bin"
+        let log = (fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok)
+        let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
+        let seen = tee(joined, log.writer())
+        if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
+
+        log.close()
+        if (fs.read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
+            "tee"
+        )
+
+        let sink_path = "{temporary.path()}/writer.bin"
+        let sink = (fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok)
+        let writer = map_writer(sink.writer(), upper)
+        try writer.write("quiet")
+        try writer.write_bytes("!".to_bytes())
+        sink.close()
+        if (fs.read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
+            "map_writer"
+        )
 
 test "digest hashes a stream incrementally":
     let data = "stream me, please".to_bytes()

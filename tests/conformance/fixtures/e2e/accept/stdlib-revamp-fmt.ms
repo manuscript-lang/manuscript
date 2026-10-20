@@ -61,22 +61,23 @@ test "limits can be omitted or supplied":
     try expect_equal(repeated, "ababab")
     try expect_false("ab".repeat(3, 5).is_ok())
 
-type EmptyReader:
-    requested: Int
+type EchoReader:
+    unused: Int
 
-impl ReadStream for EmptyReader:
+impl ReadStream for EchoReader:
     var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
-        self.requested = max_bytes.get(0)
-        return ok(none)
+        let requested = max_bytes.get(0)
+        if requested == 1: return error(IoError.InvalidInput)
+
+        return ok(some(Bytes([requested])))
 
     fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
-    let reader = EmptyReader(-1)
-    let stream = ReadStream(reader)
-    let _omitted = stream.read()
-    try expect_equal(reader.requested, 0)
-    let _supplied = stream.read(8)
-    try expect_equal(reader.requested, 8)
-    let _line = read_line(stream)
-    try expect_equal(reader.requested, 1)
+    let stream = ReadStream(EchoReader(0))
+    let omitted: Result[Optional[Bytes], IoError] = stream.read()
+    try expect_equal(omitted, ok(some(Bytes([0]))))
+    let supplied: Result[Optional[Bytes], IoError] = stream.read(8)
+    try expect_equal(supplied, ok(some(Bytes([8]))))
+    let line = read_line(stream)
+    try expect_false(line.is_ok())

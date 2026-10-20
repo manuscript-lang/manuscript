@@ -17,6 +17,7 @@ mod fsinfo;
 mod fswalk;
 mod func;
 mod html;
+mod httpserve;
 mod iface;
 mod iterate;
 mod json;

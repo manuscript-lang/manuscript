@@ -1,0 +1,63 @@
+module "map_homes"
+extern @msrt_map_new() -> Map<int, int>
+extern @msrt_map_get(Map<int, int>, ptr, ptr, ptr, ptr) -> bool
+extern @msrt_map_add(ptr, ptr, ptr, ptr, ptr) -> unit
+extern @msrt_map_length(Map<int, int>) -> int
+extern @msrt_print_int(int)
+entry @main
+fn @count(%n: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %seven: int = iconst 7
+  %hundred: int = iconst 100
+  %a0: Map<int, int> = call.rt @msrt_map_new ()
+  %b0: Map<int, int> = call.rt @msrt_map_new ()
+  %kd: ptr = typedesc int
+  br loop(%zero, %a0, %b0)
+loop(%i: int, %a: own Map<int, int>, %b: own Map<int, int>):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %key: int = srem %i, %seven
+  %k: ptr = slot int
+  store %k, %key
+  %v: ptr = slot int
+  store %v, %one
+  %s: ptr = slot Map<int, int>
+  put %s, %a
+  %u: unit = call.rt @msrt_map_add (%s, %kd, %kd, %k, %v)
+  %a2: Map<int, int> = take Map<int, int> %s
+  %j: int = iadd %i, %one
+  %r: int = srem %i, %two
+  %even: bool = icmp.eq %r, %zero
+  br_if %even, loop(%j, %b, %a2), swap(%j, %a2, %b)
+swap(%j2: int, %x: own Map<int, int>, %y: own Map<int, int>):
+  %kk: int = iadd %j2, %hundred
+  %k2: ptr = slot int
+  store %k2, %kk
+  %v2: ptr = slot int
+  store %v2, %one
+  %s2: ptr = slot Map<int, int>
+  put %s2, %y
+  %u2: unit = call.rt @msrt_map_add (%s2, %kd, %kd, %k2, %v2)
+  %y2: Map<int, int> = take Map<int, int> %s2
+  br loop(%j2, %x, %y2)
+done:
+  %la: int = call.rt @msrt_map_length (%a)
+  %lb: int = call.rt @msrt_map_length (%b)
+  %big: int = imul %la, %hundred
+  %res: int = iadd %big, %lb
+  drop %a
+  drop %b
+  ret %res
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 30
+  %r: int = call @count (%n)
+  %u: unit = call.rt @msrt_print_int (%r)
+  %z: int = iconst 0
+  ret %z
+}

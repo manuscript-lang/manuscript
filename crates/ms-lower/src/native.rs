@@ -1066,6 +1066,14 @@ impl<'a> FnLower<'a> {
                 own: false,
             }));
         }
+        if m.receiver.is_std("ClientResponse") && name == "metadata" {
+            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
+                return Err(Error::new("ClientResponse is not a record"));
+            };
+            let r = self.borrow(recv);
+            let v = self.b.rec_get(rid, 0, r);
+            return Ok(Some(Val { v, own: false }));
+        }
         let field = match name.as_str() {
             "unix_seconds" => 0,
             "nanoseconds" => 1,

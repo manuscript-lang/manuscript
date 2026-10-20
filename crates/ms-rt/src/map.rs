@@ -6,7 +6,7 @@
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
 use crate::alloc;
-use crate::desc::{slot_copy, slot_drop, slot_eq, slot_hash};
+use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
 use ms_rt_abi::*;
 
@@ -60,7 +60,23 @@ fn align_up(n: usize, a: usize) -> usize {
     (n + a - 1) & !(a - 1)
 }
 
+#[inline(always)]
 fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
+    // 8-byte, 8-aligned keys and values (Int, Float, pointers) are the common case; a constant
+    // layout spares the alignment arithmetic on every lookup.
+    if kd.size == 8 && kd.align == 8 && vd.is_some_and(|v| v.size == 8 && v.align == 8) {
+        return Layout {
+            koff: 8,
+            voff: 16,
+            stride: 24,
+            ksize: 8,
+            vsize: 8,
+        };
+    }
+    layout_general(kd, vd)
+}
+
+fn layout_general(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
     let ka = (kd.align as usize).max(8);
     let koff = align_up(8, ka);
     let ksize = kd.size as usize;
@@ -129,6 +145,40 @@ unsafe fn find(m: &MapVal, kd: &TypeDesc, l: &Layout, key: *const u8, h: u64) ->
                 let p = slot(m, l, i);
                 if slot_hash_of(p) == h && keys_eq(kd, p.add(l.koff), key) {
                     return Some(i);
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// True for `Int` keys with 8-byte, 8-aligned values: slots are `{ hash, key, value }` at a
+/// constant 24-byte stride, so lookups need no descriptor arithmetic or equality calls.
+#[inline(always)]
+fn int_pair(kd: &TypeDesc, vd: Option<&TypeDesc>) -> bool {
+    kd.kind == KIND_INT && vd.is_some_and(|v| v.size == 8 && v.align == 8)
+}
+
+/// `find` specialised for [`int_pair`] maps; returns the slot pointer.
+#[inline(always)]
+unsafe fn find_int(m: &MapVal, key: i64) -> *mut u8 {
+    if m.len == 0 {
+        return core::ptr::null_mut();
+    }
+    // SAFETY: index and slots are consistent for a non-empty map.
+    unsafe {
+        let h = crate::string::mix(key as u64 ^ 0x9e37_79b9) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null_mut();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 24);
+                if *(p as *const u64) == h && *(p.add(8) as *const i64) == key {
+                    return p;
                 }
             }
             pos = (pos + 1) & m.mask;
@@ -222,6 +272,7 @@ pub unsafe fn contains_key(
 ///
 /// # Safety
 /// Slots are live values of the descriptors; `val` may be null for sets.
+#[inline(never)]
 pub unsafe fn insert(
     m: &mut MapVal,
     kd: &TypeDesc,
@@ -479,7 +530,16 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        insert(&mut *m, &*kd, opt(vd), key, val);
+        let (m, kd, vd) = (&mut *m, &*kd, opt(vd));
+        if int_pair(kd, vd) && vd.is_some_and(needs_no_drop) {
+            // Int keys and scalar values own nothing: overwrite an existing entry in place.
+            let p = find_int(m, *(key as *const i64));
+            if !p.is_null() {
+                *(p.add(16) as *mut u64) = *(val as *const u64);
+                return;
+            }
+        }
+        insert(m, kd, vd, key, val);
     }
 }
 
@@ -533,6 +593,10 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     // SAFETY: caller contract.
     unsafe {
         let (kd, m) = (&*kd, &*m);
+        if int_pair(kd, opt(vd)) {
+            let p = find_int(m, *(key as *const i64));
+            return if p.is_null() { p } else { p.add(16) };
+        }
         let l = layout(kd, opt(vd));
         match find(m, kd, &l, key, hash_key(kd, key)) {
             Some(i) => slot(m, &l, i).add(l.voff),
@@ -888,6 +952,50 @@ mod tests {
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
     use crate::testutil;
+
+    #[test]
+    fn int_pair_fast_paths() {
+        let _g = testutil::lock();
+        unsafe {
+            let d = &msrt_desc_int as *const TypeDesc;
+            let mut m = empty();
+            for round in 0..3i64 {
+                for i in 0..50i64 {
+                    let (mut k, mut v) = (i, round);
+                    msrt_map_add(
+                        &mut m,
+                        d,
+                        d,
+                        &mut k as *mut i64 as *mut u8,
+                        &mut v as *mut i64 as *mut u8,
+                    );
+                }
+            }
+            assert_eq!(m.len, 50);
+            let mut k = 7i64;
+            let p = msrt_map_get_ptr(&m, d, d, &k as *const i64 as *const u8);
+            assert_eq!(*(p as *const i64), 2);
+            assert!(remove(
+                &mut m,
+                &*d,
+                Some(&*d),
+                &k as *const i64 as *const u8
+            ));
+            assert!(msrt_map_get_ptr(&m, d, d, &k as *const i64 as *const u8).is_null());
+            let mut v = 9i64;
+            msrt_map_add(
+                &mut m,
+                d,
+                d,
+                &mut k as *mut i64 as *mut u8,
+                &mut v as *mut i64 as *mut u8,
+            );
+            assert_eq!(m.len, 50);
+            let p = msrt_map_get_ptr(&m, d, d, &k as *const i64 as *const u8);
+            assert_eq!(*(p as *const i64), 9);
+            drop_map(&mut m, &*d, Some(&*d));
+        }
+    }
 
     #[test]
     fn insertion_order_replace_remove_compact() {
