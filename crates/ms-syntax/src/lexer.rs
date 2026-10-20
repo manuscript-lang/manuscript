@@ -139,41 +139,9 @@ fn normalize_source(source: &str) -> (Cow<'_, str>, Vec<u32>) {
     (Cow::Owned(normalized), offsets)
 }
 
-/// Quotes a character, used for `%q` of characters in messages.
+/// Quotes a character for messages, escaping what is not printable.
 pub fn quote_rune(c: char) -> String {
-    let mut out = String::from("'");
-    match c {
-        '\'' => out.push_str("\\'"),
-        '\\' => out.push_str("\\\\"),
-        '\u{7}' => out.push_str("\\a"),
-        '\u{8}' => out.push_str("\\b"),
-        '\u{c}' => out.push_str("\\f"),
-        '\n' => out.push_str("\\n"),
-        '\r' => out.push_str("\\r"),
-        '\t' => out.push_str("\\t"),
-        '\u{b}' => out.push_str("\\v"),
-        c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
-        c if is_print(c) => out.push(c),
-        c if (c as u32) < 0x10000 => out.push_str(&format!("\\u{:04x}", c as u32)),
-        c => out.push_str(&format!("\\U{:08x}", c as u32)),
-    }
-    out.push('\'');
-    out
-}
-
-/// Approximation of Unicode printability (no unassigned-code-point table).
-fn is_print(c: char) -> bool {
-    let u = c as u32;
-    if u < 0x80 {
-        return (0x20..0x7f).contains(&u);
-    }
-    if c.is_control() || c.is_whitespace() {
-        return false;
-    }
-    !matches!(u,
-        0xad | 0x600..=0x605 | 0x61c | 0x6dd | 0x70f | 0x180e | 0x200b..=0x200f | 0x202a..=0x202e
-        | 0x2060..=0x206f | 0xfeff | 0xfff9..=0xfffb | 0xe000..=0xf8ff | 0xf0000..=0x10ffff
-        | 0xd800..=0xdfff | 0xe0001 | 0xe0020..=0xe007f)
+    format!("{c:?}")
 }
 
 impl Scanner<'_> {
@@ -740,7 +708,7 @@ impl Scanner<'_> {
                 depth -= 1;
                 if depth == 0 {
                     if self.text[start..self.offset - 1]
-                        .trim_matches(go_space)
+                        .trim_matches(char::is_whitespace)
                         .is_empty()
                     {
                         return self.fail("empty interpolation; put an expression between the braces, or write \\{ for a literal brace");
@@ -779,15 +747,6 @@ impl Scanner<'_> {
             _ => String::new(),
         }
     }
-}
-
-/// Unicode whitespace as trimmed by the lexer.
-pub fn go_space(c: char) -> bool {
-    matches!(
-        c,
-        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{85}' | '\u{a0}' | '\u{1680}' | '\u{2000}'
-            ..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
-    )
 }
 
 /// Explains the common foreign-syntax characters.
