@@ -1,12 +1,13 @@
 name: Rust distributions
 
 # Builds the Rust `ms` (with the ms-native runtime embedded) natively on a runner of each of
-# the six release targets, packages it, and runs the packaged binary on a hello project. The
-# Go distributions in release.yml stay the shipped ones until lowering reaches parity.
+# the six release targets, packages it, and runs the packaged binary on a hello project.
+# release.yml calls this workflow on a version tag and publishes its archives; there every
+# target gates. Pull requests keep the darwin and windows legs experimental until the ms-rt
+# ports land.
 
 on:
-  push:
-    tags: ['v*']
+  workflow_call:
   pull_request:
     paths:
       - 'crates/**'
@@ -33,9 +34,10 @@ jobs:
     name: ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    # The darwin and windows legs are experimental until the ms-rt ports land: their steps
-    # may fail without turning the check red, and each failure is surfaced as a warning.
-    continue-on-error: ${{ matrix.os != 'linux' }}
+    # Off a release tag the darwin and windows legs are experimental until the ms-rt ports
+    # land: their steps may fail without turning the check red, and each failure is surfaced
+    # as a warning. A release tag gates on all six targets.
+    continue-on-error: ${{ matrix.os != 'linux' && !startsWith(github.ref, 'refs/tags/v') }}
     strategy:
       fail-fast: false
       matrix:
@@ -64,11 +66,11 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build and package
         id: build
-        continue-on-error: ${{ matrix.os != 'linux' }}
+        continue-on-error: ${{ matrix.os != 'linux' && !startsWith(github.ref, 'refs/tags/v') }}
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
       - name: Run the packaged binary on a hello project
         id: smoke
-        continue-on-error: ${{ matrix.os != 'linux' }}
+        continue-on-error: ${{ matrix.os != 'linux' && !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           set -eu
           name="manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}"
@@ -84,7 +86,7 @@ jobs:
           cd "extracted distribution/$name/examples/hello"
           "../../$(basename "$ms")" run ms.toml
       - uses: actions/upload-artifact@v7
-        continue-on-error: ${{ matrix.os != 'linux' }}
+        continue-on-error: ${{ matrix.os != 'linux' && !startsWith(github.ref, 'refs/tags/v') }}
         with:
           name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
           path: |
