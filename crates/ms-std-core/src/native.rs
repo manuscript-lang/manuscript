@@ -6,7 +6,9 @@
 //! fallible native (`-> Result<T, E>`) returns the status byte and writes `T` through a trailing
 //! out-pointer; a record result (`-> out T`) is written through a trailing out-pointer and the
 //! shim returns nothing. This is the same layout the hand-written shims used.
-use crate::{Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref};
+use crate::{
+    Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, read_string_list, str_ref, write_bytes,
+};
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -18,6 +20,8 @@ unsafe extern "C" {
     fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_alloc(size: usize) -> *mut u8;
     fn msrt_free(p: *mut u8);
+    fn msrt_bytes_drop(b: *mut VecVal);
+    fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal);
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     fn msrt_list_drop(v: *mut VecVal, d: *const TypeDesc);
@@ -208,6 +212,26 @@ impl StringList {
     }
 }
 
+/// An owned `Bytes` value stored inside a record, for [`abi_record!`].
+#[repr(transparent)]
+pub struct Bytes(VecVal);
+
+impl Bytes {
+    pub fn new(b: &[u8]) -> Bytes {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_bytes` initializes `v`.
+        unsafe {
+            write_bytes(v.as_mut_ptr(), b);
+            Bytes(v.assume_init())
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        // SAFETY: a `Bytes` is only created by `new` or by the runtime inside a live record.
+        unsafe { bytes_ref(&raw const self.0) }
+    }
+}
+
 /// A type that may be a field of an [`abi_record!`]. `release` and `duplicate` are the
 /// drop and copy of the slot inside a runtime list or record.
 pub trait AbiSlot: Sized {
@@ -263,6 +287,21 @@ impl AbiSlot for Str {
         // SAFETY: caller contract.
         unsafe { msrt_retain(self.0.cast()) };
         Str(self.0)
+    }
+}
+
+impl AbiSlot for Bytes {
+    unsafe fn release(&mut self) {
+        // SAFETY: caller contract.
+        unsafe { msrt_bytes_drop(&raw mut self.0) }
+    }
+    unsafe fn duplicate(&self) -> Bytes {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: caller contract; `msrt_bytes_copy` initializes `v`.
+        unsafe {
+            msrt_bytes_copy(&raw const self.0, v.as_mut_ptr());
+            Bytes(v.assume_init())
+        }
     }
 }
 
