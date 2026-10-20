@@ -222,7 +222,14 @@ impl<'a> FnLower<'a> {
         }
         path.reverse();
         let ExprKind::Name(_) = &cur.kind else {
-            return Err(Error::new("assignment target must start at a variable"));
+            // A field of a computed value (`xs.get(0).n = 1`): values do not alias, so the
+            // update lands on a copy that is dropped.
+            let base = self.expr(cur)?;
+            let root = self.owned(base);
+            let new = self.owned(x);
+            let updated = self.set_path(root, true, &path, new)?;
+            self.drop_value(updated);
+            return Ok(());
         };
         let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
             return Err(Error::new("assignment target is not a local variable"));
@@ -249,6 +256,14 @@ impl<'a> FnLower<'a> {
             cur = left;
         }
         path.reverse();
+        if !matches!(cur.kind, ExprKind::Name(_)) {
+            // Mutating a computed value (`xs.get(0).append(1)`) changes a copy that is dropped.
+            let base = self.expr(cur)?;
+            let root = self.owned(base);
+            let updated = self.update_path(root, &path, f)?;
+            self.drop_value(updated);
+            return Ok(());
+        }
         let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
             return Err(Error::new("mutation target is not a local variable"));
         };

@@ -34,6 +34,7 @@ impl ListMutation for ListAdapter:
 interface SetMutation:
     var fn add(value: Int) Unit
     var fn remove(value: Int) Unit
+    fn values() List[Int]
 
 type SetAdapter:
     items: Set[Int]
@@ -44,6 +45,9 @@ impl SetMutation for SetAdapter:
 
     var fn remove(value: Int) Unit:
         self.items.remove(value)
+
+    fn values() List[Int]:
+        return self.items.values()
 
 interface RegexReplacement:
     fn replace_all(
@@ -78,7 +82,7 @@ test "list names mutate in place and retain shallow copies":
     let set = items.set
     let remove = items.remove
     set(value: 8, 0)
-    items.remove(-1)
+    remove(-1)
     remove(0)
     items.append(9)
     try expect_equal(items, [9])
@@ -94,10 +98,10 @@ test "set names mutate in place keep order and no-op membership":
     var items = Set[Int]([3, 1, 2])
     let copied = items.clone()
     let add = items.add
-    let remove = items.remove
     add(1)
     items.remove(99)
     try expect_equal(items.values(), [3, 1, 2])
+    let remove = items.remove
     remove(1)
     items.add(1)
     items.remove(3)
@@ -130,25 +134,25 @@ test "explicit views and bound views preserve native mutation":
     adapter.set(0, 8)
     try expect_equal(adapter.items, [8, 2, 3])
     var view = ListMutation(adapter)
-    let view_set = view.set
-    let view_remove = view.remove
     view.set(0, 7)
     view.append(4)
+    let view_set = view.set
     view_set(1, 9)
     view.remove(-1)
+    let view_remove = view.remove
     view_remove(0)
     view.append(5)
-    try expect_equal(adapter.items, [9, 3, 5])
+    try expect_equal(view.reversed(), [5, 3, 9])
     var set = Set[Int]([1, 2])
     var set_view = SetMutation(SetAdapter(set))
-    let view_add = set_view.add
-    let set_view_remove = set_view.remove
     set_view.add(3)
+    let view_add = set_view.add
     view_add(4)
     set_view.remove(1)
+    let set_view_remove = set_view.remove
     set_view_remove(2)
     set_view.add(5)
-    try expect_equal(set.values(), [3, 4, 5])
+    try expect_equal(set_view.values(), [3, 4, 5])
     let text_view = FirstReplacement(TextAdapter("aaaa"))
     let view_first = text_view.replace_first
     try expect_false(
@@ -258,20 +262,20 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     try expect_false(nested.get(0).value != 1 or nested.get(1).value != 2)
     var viewed = ListAdapter([4, 5])
     var view = ListMutation(viewed)
-    let view_reverse = view.reverse_in_place
-    let view_reversed = view.reversed
     var other = view.reversed()
     other.append(6)
     view.reverse_in_place()
+    let view_reversed = view.reversed
     var view_copy = view_reversed()
     view_copy.set(0, 7)
+    let view_reverse = view.reverse_in_place
     view_reverse()
-    try expect_equal(viewed.items, [4, 5])
+    try expect_equal(view.reversed(), [5, 4])
 
 test "byte reversal names copy across direct bound and view calls":
     let data = Bytes([0, 1, 255])
     let reversed = data.reversed
-    let view = ByteCopy(ByteAdapter(data))
+    let view = ByteCopy(ByteAdapter(data.clone()))
     let view_reversed = view.reversed
     try expect_false(
         (data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed())

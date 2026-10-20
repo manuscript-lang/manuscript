@@ -260,65 +260,6 @@ impl Cx {
         Ok(Some((f, iface)))
     }
 
-    /// A function `compare(x, y) -> Int` of a source type with an `impl Comparable`.
-    pub(crate) fn user_compare(
-        &mut self,
-        m: &mut Module,
-        t: MTy,
-    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
-        let key = format!("compare:{}", t.0);
-        if let Some(f) = self.helpers.get(&key) {
-            return Ok(Some(*f));
-        }
-        let Some(concrete) = self.source_tys.get(&t).cloned() else {
-            return Ok(None);
-        };
-        let Some(callee) = self.user_method(m, &concrete, "compare")? else {
-            return Ok(None);
-        };
-        let Some(other) = m.funcs[callee.index()].params.get(1).copied() else {
-            return Ok(None);
-        };
-        let TyKind::Iface(iface) = m.types.kind(other.ty).clone() else {
-            return Ok(None);
-        };
-        let vt = self.vtable_id(m, &concrete, iface)?;
-        let k = m.ifaces[iface.index()]
-            .methods
-            .iter()
-            .position(|s| s.name == "compare")
-            .ok_or_else(|| Error::new("interface without compare"))? as u32;
-        let p = Param {
-            ty: t,
-            mode: Mode::Borrow,
-        };
-        let mut b = FuncBuilder::new(m, "compare", vec![p, p], MTy::INT);
-        b.func_mut().linkage = Linkage::Internal;
-        let (x, y) = (b.params()[0], b.params()[1]);
-        // Both operands are boxed, so a `compare` that changes `self` writes back to its copy.
-        let mut boxed = Vec::new();
-        for v in [x, y] {
-            let copy = if b.m.needs_drop(t) {
-                b.emit(Op::Copy, &[v], Imm::None, Some(t)).expect("copy")
-            } else {
-                v
-            };
-            boxed.push(
-                b.emit(Op::IfaceNew, &[copy], Imm::Vtable(vt), Some(other.ty))
-                    .expect("iface"),
-            );
-        }
-        let r = b.call_method(iface, k, boxed[0], &boxed[1..]);
-        for v in boxed {
-            b.emit(Op::Drop, &[v], Imm::None, None);
-        }
-        b.ret(Some(r));
-        let f = b.into_func();
-        let id = m.add_func(f);
-        self.helpers.insert(key, id);
-        Ok(Some(id))
-    }
-
     /// The source-declared `hash` of `concrete` (an `impl Hashable`).
     pub(crate) fn user_hash(
         &mut self,

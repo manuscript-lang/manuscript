@@ -134,7 +134,7 @@ fn resolve_destination(dest: &[u8]) -> Result<Vec<u8>, Fail> {
         if parent == ancestor {
             return Err(Fail::invalid());
         }
-        suffix.push(path::base(&ancestor).to_vec());
+        suffix.push(path::base(&ancestor));
         ancestor = parent;
     }
     let mut real = ops::eval_symlinks(&ancestor).map_err(|e| Fail::errno(e, "lstat", &ancestor))?;
@@ -330,7 +330,7 @@ fn copy_check_destination(source: &[u8], dest: &[u8], follow: bool) -> Res<()> {
     {
         let parent =
             ops::eval_symlinks(&path::dir(source)).map_err(|e| Fail::errno(e, "lstat", source));
-        canonical = parent.map(|p| path::join(&p, path::base(source)));
+        canonical = parent.map(|p| path::join(&p, &path::base(source)));
     }
     let canonical = canonical?;
     let canonical_dest = resolve_destination(dest)?;
@@ -682,7 +682,7 @@ impl GlobState {
         self.remaining -= 1;
         let mut info = lstat(p)?;
         let rel = relative(root, p);
-        let name = path::base(p).to_vec();
+        let name = path::base(p);
         if core::str::from_utf8(&rel).is_err() || core::str::from_utf8(&name).is_err() {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
@@ -913,7 +913,7 @@ mod tests {
         let dest = path::join(&root, b"cp");
         let mut seen: Vec<String> = Vec::new();
         let mut filter = |s: &[u8], _d: &[u8]| {
-            seen.push(String::from_utf8_lossy(path::base(s)).into_owned());
+            seen.push(String::from_utf8_lossy(&path::base(s)).into_owned());
             path::base(s) != b"deep"
         };
         let mut o = options();

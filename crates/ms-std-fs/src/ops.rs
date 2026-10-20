@@ -165,7 +165,7 @@ fn nanos((s, n): (i64, i64)) -> (i64, i64) {
     (s + n.div_euclid(1_000_000_000), n.rem_euclid(1_000_000_000))
 }
 
-pub fn info_of(st: &sys::Stat, name: &[u8], birth: Option<(i64, i64)>) -> Info {
+pub fn info_of(st: &sys::Stat, name: &[u8]) -> Info {
     Info {
         name: name.to_vec(),
         size: st.size,
@@ -174,7 +174,7 @@ pub fn info_of(st: &sys::Stat, name: &[u8], birth: Option<(i64, i64)>) -> Info {
         modified: nanos(st.modified),
         accessed: nanos(st.accessed),
         changed: nanos(st.changed),
-        created: birth.map(nanos),
+        created: st.created.map(nanos),
         block_size: st.block_size,
         blocks: st.blocks,
         rdev: st.rdev,
@@ -190,11 +190,11 @@ pub fn stat(path: &[u8], follow: bool) -> Res<Info> {
     let p = cpath(path)?;
     let st = sys::stat(&p, follow)
         .map_err(|e| Fail::errno(e, if follow { "stat" } else { "lstat" }, path))?;
-    let name = path::stat_name(path);
-    if !valid_utf8(name) {
+    let name = path::base(path);
+    if !valid_utf8(&name) {
         return Err(Fail::status(STATUS_UNSUPPORTED));
     }
-    Ok(info_of(&st, name, sys::birth_time(&p, follow)))
+    Ok(info_of(&st, &name))
 }
 
 #[derive(Debug)]
@@ -247,39 +247,14 @@ pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
 // Directories, removal, links
 // ---------------------------------------------------------------------------
 
-fn mkdir_all(path: &[u8]) -> Result<(), (Errno, Vec<u8>)> {
-    let p = CPath::new(path).ok_or((sys::EINVAL, path.to_vec()))?;
-    match sys::stat(&p, true) {
-        Ok(st) if sys::is_dir(&st) => return Ok(()),
-        Ok(_) => return Err((sys::ENOTDIR, path.to_vec())),
-        Err(_) => {}
-    }
-    let mut i = path.len();
-    while i > 0 && path::is_sep(path[i - 1]) {
-        i -= 1;
-    }
-    let mut j = i;
-    while j > 0 && !path::is_sep(path[j - 1]) {
-        j -= 1;
-    }
-    if j > 1 {
-        mkdir_all(&path[..j - 1])?;
-    }
-    match sys::mkdir(&p, 0o700) {
-        Ok(()) => Ok(()),
-        Err(e) => match sys::stat(&p, false) {
-            Ok(st) if sys::is_dir(&st) => Ok(()),
-            _ => Err((e, path.to_vec())),
-        },
-    }
-}
-
 pub fn create_directory(path: &[u8], recursive: bool) -> Res<()> {
     let p = cpath(path)?;
-    if recursive {
-        return mkdir_all(path).map_err(|(e, at)| Fail::errno(e, "mkdir", &at));
-    }
-    sys::mkdir(&p, 0o700).map_err(|e| Fail::errno(e, "mkdir", path))
+    let made = if recursive {
+        sys::mkdir_all(&p, 0o700)
+    } else {
+        sys::mkdir(&p, 0o700)
+    };
+    made.map_err(|e| Fail::errno(e, "mkdir", path))
 }
 
 /// `removalPath`: refuses the working directory, its ancestors and the root, before touching anything.
@@ -298,7 +273,7 @@ fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
     if path::dir(&clean) == clean {
         return Err(Fail::invalid());
     }
-    while p.len() > path::volume_len(&p) + 1 && p.last().is_some_and(|&c| path::is_sep(c)) {
+    while p.len() > 1 && p.last().is_some_and(|&c| path::is_sep(c)) {
         p.pop();
     }
     let mut base = eval_symlinks(&cwd).map_err(|e| Fail::errno(e, "lstat", &cwd))?;
@@ -337,7 +312,7 @@ pub fn remove_tree(path: &[u8]) -> Res<()> {
     if !st.is_dir() {
         return sys::unlink(&p).map_err(|e| Fail::errno(e, "remove", path));
     }
-    sys::remove_tree(path).map_err(|(e, op, at)| Fail::errno(e, op, &at))
+    sys::remove_tree(&p).map_err(|e| Fail::errno(e, "remove", path))
 }
 
 pub fn remove(path: &[u8], recursive: bool) -> Res<()> {
@@ -375,100 +350,9 @@ pub fn hard_link(source: &[u8], destination: &[u8]) -> Res<()> {
     sys::link(&a, &b).map_err(|e| Fail::errno_paths(e, "link", &[source, destination]))
 }
 
-/// The index of the last separator in `dest` at or after `vol_len`, if any.
-fn last_sep(dest: &[u8], vol_len: usize) -> Option<usize> {
-    dest.iter()
-        .rposition(|&c| path::is_sep(c))
-        .filter(|&r| r >= vol_len)
-}
-
-/// `filepath.EvalSymlinks` (Go's `walkSymlinks`).
+/// `filepath.EvalSymlinks`: the canonical form of an existing path, resolving every link.
 pub fn eval_symlinks(original: &[u8]) -> Result<Vec<u8>, Errno> {
-    let mut path: Vec<u8> = original.to_vec();
-    let mut vol_len = path::volume_len(&path);
-    if vol_len < path.len() && path::is_sep(path[vol_len]) {
-        vol_len += 1;
-    }
-    let mut vol = path[..vol_len].to_vec();
-    let mut dest: Vec<u8> = vol.clone();
-    let mut links = 0;
-    let (mut start, mut end) = (vol_len, vol_len);
-    while start < path.len() {
-        start = end;
-        while start < path.len() && path::is_sep(path[start]) {
-            start += 1;
-        }
-        end = start;
-        while end < path.len() && !path::is_sep(path[end]) {
-            end += 1;
-        }
-        if end == start {
-            break;
-        }
-        let part = path[start..end].to_vec();
-        // A lone `.` can be a symbolic link on Windows; Unix skips it.
-        if part == b"." && cfg!(unix) {
-            continue;
-        }
-        if part == b".." {
-            match last_sep(&dest, vol_len) {
-                Some(r) if dest[r + 1..] != *b".." => dest.truncate(r),
-                _ => {
-                    if dest.len() > vol_len {
-                        dest.push(path::SEP);
-                    }
-                    dest.extend_from_slice(b"..");
-                }
-            }
-            continue;
-        }
-        if dest.len() > path::volume_len(&dest) && !dest.last().is_some_and(|&c| path::is_sep(c)) {
-            dest.push(path::SEP);
-        }
-        dest.extend_from_slice(&part);
-        let c = CPath::new(&dest).ok_or(sys::ENOENT)?;
-        let st = sys::stat(&c, false)?;
-        if !st.is_link() {
-            if !st.is_dir() && end < path.len() {
-                return Err(sys::ENOTDIR);
-            }
-            continue;
-        }
-        links += 1;
-        if links > 255 {
-            return Err(sys::ELOOP);
-        }
-        let link = sys::readlink(&c)?;
-        let mut next = link.clone();
-        next.extend_from_slice(&path[end..]);
-        path = next;
-        let v = path::volume_len(&link);
-        if v > 0 {
-            // A link to a drive or share names an absolute path.
-            let v = if v < link.len() && path::is_sep(link[v]) {
-                v + 1
-            } else {
-                v
-            };
-            vol = link[..v].to_vec();
-            dest = vol.clone();
-            end = vol.len();
-            vol_len = v;
-        } else if link.first().is_some_and(|&c| path::is_sep(c)) {
-            vol = link[..1].to_vec();
-            dest = vol.clone();
-            end = 1;
-            vol_len = 1;
-        } else {
-            match last_sep(&dest, vol_len) {
-                None => dest = vol.clone(),
-                Some(r) => dest.truncate(r),
-            }
-            end = 0;
-        }
-        start = end;
-    }
-    Ok(path::clean(&dest))
+    sys::canonicalize(&CPath::new(original).ok_or(sys::EINVAL)?)
 }
 
 pub fn canonicalize(path: &[u8]) -> Res<Vec<u8>> {

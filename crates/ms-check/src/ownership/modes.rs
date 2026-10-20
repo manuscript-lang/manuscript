@@ -233,12 +233,8 @@ fn native_method_modes(
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
 ) -> CallModes {
-    let name = method
-        .name()
-        .map(|n| n.as_str())
-        .unwrap_or(method.native.as_str());
     let receiver = &method.receiver;
-    let mutator = collection_mutation(receiver, name);
+    let mutator = collection_mutation(method);
     let callbacks_borrowed = runs_callbacks(receiver);
     let params = &method.ty.params;
     let arguments = (0..count)

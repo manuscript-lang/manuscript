@@ -1,0 +1,43 @@
+module "mul_const"
+extern @msrt_print_int(int)
+entry @main
+fn @times(%x: int, %k: int) -> int inline(never) {
+b0:
+  %r: int = imul.chk %x, %k
+  ret %r
+}
+fn @times_const3(%x: int) -> int inline(never) {
+b0:
+  %k: int = iconst 3
+  %r: int = imul.chk %k, %x
+  ret %r
+}
+fn @times_const8(%x: int) -> int inline(never) {
+b0:
+  %k: int = iconst 8
+  %r: int = imul.chk %x, %k
+  ret %r
+}
+fn @times_const5(%x: int) -> int inline(never) {
+b0:
+  %k: int = iconst 5
+  %r: int = imul.chk %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 3074457345618258602
+  %c: int = iconst -1152921504606846976
+  %d: int = iconst -1844674407370955161
+  %e: int = iconst 7
+  %r1: int = call @times_const3 (%a)
+  %r3: int = call @times_const8 (%c)
+  %r4: int = call @times_const5 (%d)
+  %r5: int = call @times_const5 (%e)
+  %p1: unit = call.rt @msrt_print_int (%r1)
+  %p2: unit = call.rt @msrt_print_int (%r3)
+  %p3: unit = call.rt @msrt_print_int (%r4)
+  %p4: unit = call.rt @msrt_print_int (%r5)
+  %z: int = iconst 0
+  ret %z
+}

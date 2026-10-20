@@ -4,7 +4,7 @@
 //! whole tree.
 //! Waiting polls in short slices, which lets a pending cancellation kill the tree and unwind.
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT, STATUS_UNAVAILABLE};
+use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
 use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
 use ms_std_rt::{cancel_pending, cancelled};
@@ -21,8 +21,23 @@ mod plat;
 #[path = "plat/windows.rs"]
 mod plat;
 
-pub use plat::{Child, now_ns, pipe, start};
-use plat::{set_nonblocking, sleep_ms, wait_io, would_block};
+pub use crate::spawn::{Child, start};
+pub use plat::pipe;
+
+/// Monotonic nanoseconds since the first call.
+pub fn now_ns() -> i64 {
+    static ORIGIN: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    ORIGIN
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos() as i64
+}
+use plat::{set_nonblocking, wait_io, would_block};
+
+/// Sleeps `ms` milliseconds.
+fn sleep_ms(ms: i64) {
+    std::thread::sleep(std::time::Duration::from_millis(ms.max(0) as u64));
+}
 
 /// A descriptor closed on drop.
 pub struct Fd(pub sys::Fd);

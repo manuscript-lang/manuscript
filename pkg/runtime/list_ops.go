@@ -134,6 +134,16 @@ func List_Pop[T any](_ *Execution, l *List[T]) Option[T] {
 	return Some(last)
 }
 
+// List_Shift removes and returns the first element.
+func List_Shift[T any](_ *Execution, l *List[T]) Option[T] {
+	if len(l.Items) == 0 {
+		return Option[T]{}
+	}
+	first := l.Items[0]
+	l.Items = l.Items[1:]
+	return Some(first)
+}
+
 // List_Set replaces the element at a possibly negative index.
 func List_Set[T any](_ *Execution, l *List[T], index int, value T) Unit {
 	i := relativeIndex(len(l.Items), index)

@@ -188,3 +188,14 @@ fn entries_keys_and_add_default_from_lower() {
     );
     assert!(mir.contains("msrt_map_contains"));
 }
+
+#[test]
+fn instant_arithmetic() {
+    let mir = lower(
+        "instant-arithmetic",
+        "import {clock} from \"@std/time.ms\"\n\nexport fn main() Int:\n    let a = clock().now()\n    let b = a + 5.seconds\n    let d = b - a\n    let c = b - 1.seconds\n    return d.to_nanoseconds() + c.difference(a).to_nanoseconds()\n",
+    );
+    assert!(mir.contains("msstd_time_instant_shift"));
+    assert!(mir.contains("msstd_time_instant_difference"));
+    assert!(mir.contains("msstd_time_instant_unshift"));
+}

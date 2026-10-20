@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "cannot find module ./support/streams.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file",
-        "position": {
-          "file": "streams.ms",
-          "line": 10,
-          "column": 1,
-          "offset": 583
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/streams.ms:10:1: resolution: cannot find module ./support/streams.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked streams.ms\n",
+      "stderr": ""
     }
   }
 }

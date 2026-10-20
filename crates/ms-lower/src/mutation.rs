@@ -114,8 +114,8 @@ impl Visitor for Mutations<'_> {
         }
         match &view.target {
             Resolution::Method(m) if !m.native.as_str().is_empty() => {
-                if let ExprKind::Member { left, name } = &c.kind
-                    && ms_check::effects::collection_mutation(&self.hir.ty(left), name.as_str())
+                if let ExprKind::Member { left, .. } = &c.kind
+                    && ms_check::effects::collection_mutation(m)
                 {
                     self.roots.extend(place_root(self.hir, left));
                 }
