@@ -83,7 +83,7 @@ func lintSharedCaptures(program *checker.Program) []LintFinding {
 					if info == nil || info.Method == nil || info.Method.Decl == nil {
 						return
 					}
-					if checker.CollectionMutation(info.Method.Receiver, info.Method.Decl.Name) {
+					if checker.CollectionMutation(info.Method) {
 						report(e.Left.Left, e.Pos)
 					}
 				},

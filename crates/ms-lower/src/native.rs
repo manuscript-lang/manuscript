@@ -986,7 +986,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::effects::collection_mutation(&m.receiver, &name) {
+        if ms_check::effects::collection_mutation(m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned(Val { v: b, own: false });
@@ -1692,7 +1692,14 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
+            "append"
+                | "set"
+                | "prepend"
+                | "insert"
+                | "remove"
+                | "pop"
+                | "shift"
+                | "reverse_in_place"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         if !is_list || runtime_only {
@@ -1783,7 +1790,8 @@ impl<'a> FnLower<'a> {
                 self.drop_value(old);
                 Ok((out, None))
             }
-            "pop" => {
+            "pop" | "shift" => {
+                let from_front = name == "shift";
                 let optty = self.b.m.types.opt(elem);
                 let n = self.b.list_len(old);
                 let zero = self.b.iconst(0);
@@ -1800,12 +1808,19 @@ impl<'a> FnLower<'a> {
                 let cur = self.b.use_var(acc);
                 let one = self.b.iconst(1);
                 let last = self.b.binop(Op::ISub, n, one);
-                let x = self.b.list_get(cur, last);
+                let at = if from_front { self.b.iconst(0) } else { last };
+                let x = self.b.list_get(cur, at);
                 let xo = self.owned(Val { v: x, own: false });
                 let some = self.b.opt_some(xo);
+                let placeholder = self.b.use_var(res);
+                self.drop_value(placeholder);
                 self.b.def_var(res, some);
                 let d2 = self.type_desc(elem);
-                let rest = self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?;
+                let rest = if from_front {
+                    self.call_runtime("msrt_list_drop_n", &[cur, d2, one], lt)?
+                } else {
+                    self.call_runtime("msrt_list_take", &[cur, d2, last], lt)?
+                };
                 self.drop_value(cur);
                 self.b.def_var(acc, rest);
                 self.b.br(join, &[]);
