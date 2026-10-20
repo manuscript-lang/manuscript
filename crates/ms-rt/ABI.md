@@ -307,6 +307,7 @@ behave per task.
 ```text
 msrt_task_spawn(entry: extern "C-unwind" fn(*mut u8), arg, flags: u32, stack_bytes: usize) -> u64
 msrt_task_yield()
+msrt_task_set_prepark(hook: Option<extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
@@ -314,6 +315,8 @@ msrt_task_cancel(handle: u64)
 msrt_task_current() -> u64
 msrt_task_count() -> usize
 ```
+
+`set_prepark` installs a hook every task runs just before it parks in `wait_fd` or `sleep`; the HTTP server uses it to hand the reactor role on from a handler that waits.
 
 `spawn` queues the task; it first runs when the caller parks or yields. `flags & 1` makes it
 detached: nobody joins it and a fault in it ends the process (exit 70, like any unguarded

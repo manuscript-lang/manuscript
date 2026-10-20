@@ -20,7 +20,7 @@ use alloc::string::String;
 use core_time::Ts;
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
 use ms_std_core::{StatusCode, Str, abi_record, native};
-use ms_std_rt::{cancel_pending, cancelled, fault, fault_fmt};
+use ms_std_rt::{fault, fault_fmt, poll_cancel, task_sleep};
 
 abi_record! {
     #[derive(Clone, Copy)]
@@ -248,7 +248,8 @@ native! {
         Timestamp { seconds, nanos }
     }
 
-    /// `time.sleep(duration)`: wakes early only to unwind a stop request.
+    /// `time.sleep(duration)`: parks the current task, so other tasks (server handlers) keep
+    /// running; wakes early only to unwind a stop request.
     safe fn msstd_time_sleep(duration: i64) -> () {
         if duration < 0 {
             fault_fmt(format_args!(
@@ -256,18 +257,8 @@ native! {
                 i64::MAX
             ));
         }
-        let mut remaining = duration;
-        loop {
-            if cancel_pending() {
-                cancelled();
-            }
-            if remaining <= 0 {
-                return;
-            }
-            // Short slices bound the latency of a stop request that lands between the check and
-            // the sleep.
-            remaining -= sys::sleep(remaining.min(50_000_000));
-        }
+        poll_cancel();
+        task_sleep(duration);
     }
 
     // ---- Timestamp ----

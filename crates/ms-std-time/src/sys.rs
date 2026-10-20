@@ -1,4 +1,4 @@
-//! The two OS clock calls behind `time.clock()`, `time.wall_clock()` and `time.sleep()`.
+//! The two OS clock calls behind `time.clock()`, and `time.wall_clock()`.
 #![allow(unsafe_code)]
 
 use core::sync::atomic::{AtomicI64, Ordering};
@@ -11,7 +11,6 @@ struct Timespec {
 
 unsafe extern "C" {
     fn clock_gettime(clock: i32, ts: *mut Timespec) -> i32;
-    fn nanosleep(req: *const Timespec, rem: *mut Timespec) -> i32;
 }
 
 const CLOCK_REALTIME: i32 = 0;
@@ -45,23 +44,4 @@ pub fn monotonic_since_start() -> i64 {
         Err(start) => start,
     };
     now - start
-}
-
-/// Sleeps up to `nanos` and returns how long it actually slept (less when a signal interrupts).
-pub fn sleep(nanos: i64) -> i64 {
-    let req = Timespec {
-        tv_sec: nanos / 1_000_000_000,
-        tv_nsec: nanos % 1_000_000_000,
-    };
-    let mut rem = Timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: both pointers are valid for the call.
-    let interrupted = unsafe { nanosleep(&req, &mut rem) } != 0;
-    if interrupted {
-        nanos - (rem.tv_sec * 1_000_000_000 + rem.tv_nsec)
-    } else {
-        nanos
-    }
 }

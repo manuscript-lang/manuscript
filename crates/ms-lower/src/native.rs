@@ -2721,6 +2721,9 @@ fn build_stream_method(
         };
         let ext = runtime_fn(b.m, sym, &[arg], MTy::UNIT);
         b.call_rt(ext, &[args[1]]);
+    } else if name == "flush" {
+        let ext = runtime_fn(b.m, "msrt_io_flush", &[], MTy::UNIT);
+        b.call_rt(ext, &[]);
     }
     match b.m.types.kind(ret).clone() {
         TyKind::Alt(a) => {

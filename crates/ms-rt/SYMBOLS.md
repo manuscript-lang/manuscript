@@ -164,6 +164,7 @@ msrt_int_to_string_radix(v: i64, radix: i64) -> *mut StrObj
 msrt_string_quote(s: *const StrObj) -> *mut StrObj
 msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -> u64
 msrt_task_yield()
+msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_current() -> u64
