@@ -621,17 +621,16 @@ fn is_cased(c: char) -> bool {
 }
 
 fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
-    let mut out = Vec::with_capacity(text.len());
     if text.is_ascii() {
-        for &b in text {
-            out.push(if upper {
-                b.to_ascii_uppercase()
-            } else {
-                b.to_ascii_lowercase()
-            });
+        let mut out = text.to_vec();
+        if upper {
+            out.make_ascii_uppercase();
+        } else {
+            out.make_ascii_lowercase();
         }
         return out;
     }
+    let mut out = Vec::with_capacity(text.len());
     let mut chars: Vec<char> = Vec::new();
     let mut i = 0;
     while i < text.len() {
