@@ -95,6 +95,18 @@ fn finish_info(mut i: Info) -> Info {
 impl Checker {
     /// Checks an expression against an expected type.
     pub(crate) fn expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
+        if let Some(x) = expected
+            && x.is_std("Optional")
+            && x.args.len() == 1
+            && !matches!(e.kind, ExprKind::Lambda(_))
+        {
+            let mut info = self.argument_expression(e, expected);
+            if let Some(w) = info.optional_argument.take() {
+                info.wrap_some = Some(w);
+                self.set_info(e, info.clone());
+            }
+            return info;
+        }
         let context = self.mismatch_context.take();
         let i = self.infer(e, expected);
         self.mismatch_context = context;

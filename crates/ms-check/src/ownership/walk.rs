@@ -639,10 +639,17 @@ impl Walker<'_> {
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
+            let remedy = if holder.as_str() == "for" {
+                format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else {
+                format!(
+                    "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
+                )
+            };
             self.error(
                 pos,
                 format!(
-                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, or take an independent value with `{shown}.{COPY}()`",
+                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, {remedy}",
                     bpos.line, bpos.column
                 ),
             );

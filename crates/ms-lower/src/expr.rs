@@ -29,6 +29,16 @@ impl<'a> FnLower<'a> {
     /// Lowers an expression, converting at an Error boundary the checker marked.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
         let x = self.expr_value(e)?;
+        let x = match self.hir.info(e).wrap_some {
+            Some(_) if !self.dead => {
+                let o = self.owned(x);
+                Val {
+                    v: self.b.opt_some(o),
+                    own: true,
+                }
+            }
+            _ => x,
+        };
         match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;

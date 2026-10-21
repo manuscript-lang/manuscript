@@ -48,4 +48,4 @@ See the [testing guide](testing.md) for more.
 ## Keep ownership visible
 
 - `with` keeps a file or connection open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
-- Assignment shares records and collections. `.clone()` copies the outer storage only; nested values stay shared.
+- Records and collections are values with one owner: passing one moves it at its last use, and `.clone()` makes an independent deep copy. Mutate through `var` bindings and `var` parameters only.

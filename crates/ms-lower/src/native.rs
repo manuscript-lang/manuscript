@@ -1373,6 +1373,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
         if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
+            && self.local(&b)?.slot.is_none()
         {
             return Ok((self.local(&b)?.var, false));
         }

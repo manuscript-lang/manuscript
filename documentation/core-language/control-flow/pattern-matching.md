@@ -5,7 +5,7 @@ weight = 3
 
 # Pattern matching
 
-`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Literals, guards, ranges, nested case patterns, and combined patterns are rejected.
+`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Guards, ranges, nested case patterns, and combined patterns are rejected. Literal arms are described in [matching literals](#matching-literals).
 
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
 
@@ -28,6 +28,20 @@ Nested `match` is an anti-pattern. Bind the outer payload with an early exit, pr
 - A two-arm `some`/`none` match on an `Optional` is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
 
 Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `get(default)`, `is_error`, or `err`.
+
+## Matching literals
+
+A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
+
+```manuscript
+fn name(count: Int) String:
+    match count:
+        0: return "none"
+        1: return "one"
+        _: return "many"
+```
+
+Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `else if`.
 
 ## Arm values
 

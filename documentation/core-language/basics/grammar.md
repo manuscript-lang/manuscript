@@ -182,7 +182,8 @@ ForStatement  = "for", Name, "in", Expression, Suite ;
 WithStatement = "with", Name, "=", Expression, Suite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
-MatchArm      = (CasePattern | "_"), ArmSuite ;
+MatchArm      = (CasePattern | LiteralPattern | "_"), ArmSuite ;
+LiteralPattern = [ "-" ], Number | String | "true" | "false" ;
 ArmSuite      = ":", (SimpleStatement | Expression
               | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
@@ -210,7 +211,7 @@ fn positive(value: Int) Bool:
 - `else` and `else if` start on their own line at the `if` header's indentation; inline and indented branches may mix. `elif` is not syntax.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; `if`, loops, and `with` are statements.
+- `match` is an expression even when discarded; loops and `with` are statements, and `if` is a statement except as `if c: a else: b` (an expression with a required `else`, chaining with `else if`).
 - Local type, implementation, import, test, and named function declarations are rejected; bind an anonymous function to a name.
 - `with` follows the [cleanup scopes](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
 

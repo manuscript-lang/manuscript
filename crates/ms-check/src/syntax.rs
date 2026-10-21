@@ -261,6 +261,8 @@ pub struct Info {
     pub arguments: Option<Vec<ArgSlot>>,
     /// Wraps this supplied argument once into this Optional.
     pub optional_argument: Option<Ty>,
+    /// Wraps this value once into this Optional where a binding, return, field or element expects it.
+    pub wrap_some: Option<Ty>,
     /// A compile-time Bool constant.
     pub folded: bool,
     /// Its value.

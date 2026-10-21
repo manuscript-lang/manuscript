@@ -1282,6 +1282,12 @@ impl<'a> Parser<'a> {
         let kind = if self.compound_assignment() {
             self.compound(t, e)?
         } else if self.take(Tok::Assign) {
+            if index_parts(&e).is_some() {
+                let value = self.expression(0)?;
+                let kind = self.index_set(e, value);
+                self.end()?;
+                return Ok(kind);
+            }
             let target = self.assign_target(t, e)?;
             let value = self.expression(0)?;
             StmtKind::Assign {
@@ -1323,6 +1329,49 @@ impl<'a> Parser<'a> {
         Ok(kind)
     }
 
+    /// `xs[i] = value` as the mutator call `xs.set(i, value)`.
+    fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
+        let (left, index) = match target.kind {
+            ExprKind::Index { left, index } => (left, index),
+            ExprKind::Apply {
+                left,
+                value: Some(index),
+                ..
+            } => (left, index),
+            _ => unreachable!("index target"),
+        };
+        let pos = target.pos;
+        let member = self.mk(
+            pos,
+            ExprKind::Member {
+                left,
+                name: Symbol::intern("set"),
+            },
+        );
+        let args = vec![
+            Argument {
+                pos: index.pos,
+                name: None,
+                value: *index,
+                mutable: false,
+            },
+            Argument {
+                pos: value.pos,
+                name: None,
+                value,
+                mutable: false,
+            },
+        ];
+        let call = self.mk(
+            pos,
+            ExprKind::Call {
+                callee: Box::new(member),
+                args,
+            },
+        );
+        StmtKind::Call(call)
+    }
+
     fn assign_target(&mut self, start: Token, e: Expr) -> PResult<AssignTarget> {
         match e.kind {
             ExprKind::Name(n) if n.as_str() != "self" && n.as_str() != "fixture" => Ok(AssignTarget::Name(n)),
@@ -1341,6 +1390,24 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        if let Some(copy) = &copy
+            && index_parts(&e).is_some()
+        {
+            self.at += 2;
+            let bop = arith_op(op.kind).expect("compound operator");
+            let right = self.expression(0)?;
+            let id = self.id();
+            let value = Expr {
+                id,
+                pos: op.pos,
+                kind: ExprKind::Binary {
+                    op: bop,
+                    left: Box::new(copy.clone()),
+                    right: Box::new(right),
+                },
+            };
+            return Ok(self.index_set(e, value));
+        }
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
             let text = op.kind.as_str();
@@ -1382,11 +1449,37 @@ impl<'a> Parser<'a> {
                 left: Box::new(self.clone_chain(left)),
                 name: *name,
             },
+            ExprKind::Index { left, index } => ExprKind::Index {
+                left: Box::new(self.clone_chain(left)),
+                index: Box::new(self.clone_chain(index)),
+            },
+            ExprKind::Apply { left, types, value } => ExprKind::Apply {
+                left: Box::new(self.clone_chain(left)),
+                types: types.iter().map(|t| self.clone_type(t)).collect(),
+                value: value.as_ref().map(|v| Box::new(self.clone_chain(v))),
+            },
             other => other.clone(),
         };
         Expr {
             id,
             pos: e.pos,
+            kind,
+        }
+    }
+
+    /// A single-name type with a fresh id (the type reading of an index name).
+    fn clone_type(&mut self, t: &TypeRef) -> TypeRef {
+        let id = self.id();
+        let kind = match &t.kind {
+            TypeKind::Named { name, args } => TypeKind::Named {
+                name: *name,
+                args: args.iter().map(|a| self.clone_type(a)).collect(),
+            },
+            other => other.clone(),
+        };
+        TypeRef {
+            id,
+            pos: t.pos,
             kind,
         }
     }
@@ -1810,10 +1903,8 @@ impl<'a> Parser<'a> {
                     }),
                 )
             }
+            Tok::If => self.if_expression(t)?,
             _ => {
-                if t.kind == Tok::If {
-                    return self.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'");
-                }
                 let before = if self.at > 1 {
                     self.tokens[self.at - 2].kind
                 } else {
@@ -2086,6 +2177,52 @@ impl<'a> Parser<'a> {
 
     // ---- match ----
 
+    /// `if c: a else: b` (also `else if`) as a match over the Bool `c`.
+    fn if_expression(&mut self, t: Token) -> PResult<Expr> {
+        let cond = self.expression(0)?;
+        self.need(Tok::Colon)?;
+        if self.kind() == Tok::Newline {
+            let at = self.peek();
+            return self.fail(at, "an if expression writes its branches on one line, 'if c: a else: b'; to run statements, use an if statement that assigns a 'var' or returns");
+        }
+        let then = self.expression(0)?;
+        if self.kind() != Tok::Else {
+            let at = self.peek();
+            return self.fail(at, "an if expression needs an else branch; write 'if c: a else: b', or use an if statement when no value is needed");
+        }
+        let else_token = self.peek();
+        self.at += 1;
+        let els = if self.kind() == Tok::If {
+            let nested = self.peek();
+            self.at += 1;
+            self.if_expression(nested)?
+        } else {
+            self.need(Tok::Colon)?;
+            self.expression(0)?
+        };
+        let mut arms = Vec::new();
+        for (value, branch, pos) in [(true, then, t.pos), (false, els, else_token.pos)] {
+            let path = self.mk(pos, ExprKind::Bool(value));
+            let id = self.id();
+            arms.push(Arm {
+                id,
+                pos,
+                path,
+                bindings: Vec::new(),
+                body: Vec::new(),
+                value: Some(branch),
+                from_if: true,
+            });
+        }
+        Ok(self.mk(
+            t.pos,
+            ExprKind::Match {
+                scrutinee: Box::new(cond),
+                arms,
+            },
+        ))
+    }
+
     fn match_arms(&mut self, header: Token) -> PResult<Vec<Arm>> {
         let mut arms: Vec<Arm> = Vec::new();
         self.need(Tok::Colon)?;
@@ -2101,15 +2238,13 @@ impl<'a> Parser<'a> {
             }
             let start = self.peek();
             let k = start.kind;
-            if matches!(k, Tok::Number | Tok::True | Tok::False) {
-                return self.fail(start, "literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare values with 'if x == 1:' and 'else if'");
-            }
-            if k == Tok::String {
-                return self.fail(start, "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead");
-            }
+            let literal = matches!(k, Tok::Number | Tok::True | Tok::False | Tok::String)
+                || (k == Tok::Minus && self.ahead(1).kind == Tok::Number);
             let mut bindings = Vec::new();
             let path;
-            if self.take(Tok::Underscore) {
+            if literal {
+                path = self.expression(0)?;
+            } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
             } else {
                 path = self.case_path()?;
@@ -2145,6 +2280,7 @@ impl<'a> Parser<'a> {
                 bindings,
                 body: Vec::new(),
                 value: None,
+                from_if: false,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);
@@ -2357,10 +2493,36 @@ impl<'a> Parser<'a> {
 /// Reports whether `e` is a name or member access over names.
 fn plain_chain(e: &Expr) -> bool {
     let mut e = e;
-    while let ExprKind::Member { left, .. } = &e.kind {
-        e = left;
+    loop {
+        match &e.kind {
+            ExprKind::Member { left, .. } => e = left,
+            ExprKind::Index { left, index } if plain_index(index) => e = left,
+            ExprKind::Apply {
+                left,
+                types,
+                value: Some(index),
+            } if types.len() == 1 && plain_index(index) => e = left,
+            _ => return matches!(e.kind, ExprKind::Name(_)),
+        }
     }
-    matches!(e.kind, ExprKind::Name(_))
+}
+
+/// The receiver and index of `left[index]`, however the bracket was parsed.
+fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
+    match &e.kind {
+        ExprKind::Index { left, index } => Some((left, index)),
+        ExprKind::Apply {
+            left,
+            types,
+            value: Some(index),
+        } if types.len() == 1 => Some((left, index)),
+        _ => None,
+    }
+}
+
+/// An index that can be evaluated twice without effect: a name or a number.
+fn plain_index(e: &Expr) -> bool {
+    matches!(e.kind, ExprKind::Name(_) | ExprKind::Number(_))
 }
 
 /// Spells a type's parameters as the arguments of its impl receiver.
