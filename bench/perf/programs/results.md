@@ -8,18 +8,18 @@ Median of 7 runs with alternating order; linux/amd64, four cores, Go 1.24.7, rus
 
 | operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| string_append_50k | 50000 | 5.51 | 4.90 | 1.47 | 1.25 | 1.12x | 3.74x | 4.42x |
-| read_line | 200000 | 102.49 | 89.26 | 69.95 | 65.31 | 1.15x | 1.47x | 1.57x |
-| map_put_get_8k | 16000 | 34.30 | 35.77 | 42.90 | 42.99 | 0.96x | 0.80x | 0.80x |
-| int_eq | 10000000 | 1.44 | 0.90 | 0.73 | 0.99 | 1.59x | 1.95x | 1.46x |
-| generic_call | 100000000 | 0.72 | 0.72 | 0.73 | 0.71 | 1.01x | 1.00x | 1.02x |
-| method_call | 100000000 | 0.72 | 0.64 | 1.59 | 1.80 | 1.13x | 0.45x | 0.40x |
-| try | 100000000 | 0.55 | 0.72 | 0.95 | 0.74 | 0.77x | 0.58x | 0.74x |
-| match | 100000000 | 2.61 | 2.14 | 1.38 | 1.97 | 1.22x | 1.89x | 1.32x |
-| builtin_length | 100000000 | 0.72 | 0.37 | 0.36 | 0.38 | 1.95x | 1.99x | 1.86x |
-| for_list | 100000000 | 1.12 | 0.73 | 0.33 | 0.52 | 1.53x | 3.38x | 2.17x |
+| string_append_50k | 50000 | 5.67 | 4.89 | 1.27 | 1.41 | 1.16x | 4.45x | 4.02x |
+| read_line | 200000 | 97.09 | 98.30 | 74.52 | 67.86 | 0.99x | 1.30x | 1.43x |
+| map_put_get_8k | 16000 | 39.59 | 41.21 | 45.50 | 46.77 | 0.96x | 0.87x | 0.85x |
+| int_eq | 10000000 | 1.28 | 1.42 | 0.76 | 1.03 | 0.90x | 1.69x | 1.24x |
+| generic_call | 100000000 | 0.75 | 0.80 | 0.77 | 0.85 | 0.94x | 0.98x | 0.88x |
+| method_call | 100000000 | 0.93 | 0.88 | 1.69 | 2.14 | 1.06x | 0.55x | 0.43x |
+| try | 100000000 | 0.77 | 0.73 | 0.98 | 0.79 | 1.05x | 0.79x | 0.97x |
+| match | 100000000 | 3.07 | 2.36 | 1.71 | 2.19 | 1.31x | 1.80x | 1.40x |
+| builtin_length | 100000000 | 0.86 | 0.43 | 0.41 | 0.46 | 2.00x | 2.09x | 1.86x |
+| for_list | 100000000 | 1.37 | 0.85 | 0.34 | 0.54 | 1.61x | 4.02x | 2.55x |
 
-Manuscript is faster than Go on 2 of 10 rows and within 1.25x on 5 more. int_eq, builtin_length and for_list are 1.5x to 2x slower: Go and LLVM vectorize or fold those loops, and Manuscript has overflow checks, no loop rotation and no hoisting. Rust is faster on most rows, and string_append is 3.7x faster there. Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
+Manuscript is faster than Go on 4 of 10 rows and within 1.25x on 3 more. match, builtin_length and for_list are 1.3x to 2x slower: Go and LLVM vectorize or fold those loops, and Manuscript has overflow checks, no loop rotation and no hoisting. Rust is faster on most rows, and string_append is 4x faster there. Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
 
 Everything below this line was measured on the earlier Go backend and is kept as history.
 
