@@ -671,7 +671,7 @@ impl Checker {
     /// own context (including empty lists and incomplete data constructors),
     /// then wraps only the supplied argument. Ordinary expression compatibility
     /// stays exact.
-    fn argument_expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
+    pub(crate) fn argument_expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
         let checked = self
             .checked_arguments
             .as_ref()

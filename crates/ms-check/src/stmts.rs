@@ -150,7 +150,7 @@ impl Checker {
             ),
             _ => self.expression(value, expected.as_ref()),
         };
-        let mut bound = info.t();
+        let mut bound = info.wrap_some.clone().unwrap_or_else(|| info.t());
         if let Some(exp) = &expected
             && self.p.diagnostics.len() > before
             && matches!(pattern.kind, PatternKind::Name(_))
