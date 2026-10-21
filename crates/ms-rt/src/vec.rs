@@ -423,27 +423,6 @@ pub unsafe extern "C-unwind" fn msrt_list_pop(
     }
 }
 
-/// Removes the first element into `out` (`Collections.shift`).
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_shift(
-    v: *mut VecVal,
-    d: *const TypeDesc,
-    out: *mut u8,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let (v, d) = (&mut *v, &*d);
-        if v.len == 0 {
-            return 0;
-        }
-        let size = d.size as usize;
-        core::ptr::copy_nonoverlapping(v.ptr, out, size);
-        core::ptr::copy(v.ptr.add(size), v.ptr, (v.len - 1) * size);
-        v.len -= 1;
-        1
-    }
-}
-
 fn index_fault(operation: &str, len: usize, index: i64) -> ! {
     if len == 0 {
         fault::fault_fmt(format_args!(

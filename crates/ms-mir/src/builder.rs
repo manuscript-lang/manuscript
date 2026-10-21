@@ -279,12 +279,6 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListDropLast, &[l], Imm::None, t)
     }
 
-    /// `list.dropfirst`: the list without its first element, which is dropped. The list must not be empty.
-    pub fn list_drop_first(&mut self, l: Value) -> Value {
-        let t = self.ty(l);
-        self.val(Op::ListDropFirst, &[l], Imm::None, t)
-    }
-
     // Optionals.
 
     /// `opt.some`.
