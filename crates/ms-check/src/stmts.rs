@@ -19,6 +19,26 @@ pub(crate) fn path_text(path: &Expr) -> Name {
     }
 }
 
+/// The identity of a literal match arm: its spelling, or `None` for anything else.
+fn literal_key(path: &Expr) -> Option<String> {
+    match &path.kind {
+        ExprKind::Number(n) => Some(n.to_string()),
+        ExprKind::Bool(b) => Some(b.to_string()),
+        ExprKind::Text(parts) => match parts.as_slice() {
+            [TextPart::Lit(s)] => Some(format!("{s:?}")),
+            _ => None,
+        },
+        ExprKind::Unary {
+            op: UnaryOp::Neg,
+            operand,
+        } => match &operand.kind {
+            ExprKind::Number(n) => Some(format!("-{n}")),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 impl Checker {
     pub(crate) fn info_of(&self, e: &Expr) -> Option<Info> {
         self.m().facts().info(e.id).cloned()
@@ -504,11 +524,14 @@ impl Checker {
         if t.id == "<invalid>" {
             return (false, false);
         }
+        if matches!(t.id.as_str(), "Int" | "String" | "Bool") {
+            return self.match_literals(pos, &t, arms, &info, body);
+        }
         if t.kind != Kind::Alternative {
             self.type_error(
                 pos,
                 format!(
-                    "match requires an alternative or contract view, found {t}; match on a type with cases, or use if/else"
+                    "match requires an alternative, contract view, Int, String or Bool, found {t}; match on a type with cases, or use if/else"
                 ),
             );
             return (true, false);
@@ -626,6 +649,61 @@ impl Checker {
                     list(&missing_cases(&all_cases, &seen), 12),
                     missing_arms(&all_cases, &seen)
                 ),
+            );
+        }
+        (!info.no_return && fall, info.breaks || breaks)
+    }
+
+    /// A `match` over Int, String or Bool: literal arms and a final `_`.
+    fn match_literals<'a>(
+        &mut self,
+        pos: Pos,
+        t: &Ty,
+        arms: &'a [Arm],
+        info: &Info,
+        body: &mut dyn FnMut(&mut Checker, &'a Arm) -> (bool, bool),
+    ) -> (bool, bool) {
+        let mut seen: HashSet<String> = HashSet::new();
+        let (mut fall, mut breaks, mut wildcard) = (false, false, false);
+        for (index, arm) in arms.iter().enumerate() {
+            self.set_arm_bindings(arm, Vec::new());
+            if path_text(&arm.path) == "_" {
+                if wildcard || index != arms.len() - 1 || (t.id == "Bool" && seen.len() == 2) {
+                    self.type_error(
+                        arm.pos,
+                        "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when values remain",
+                    );
+                }
+                wildcard = true;
+            } else if let Some(key) = literal_key(&arm.path) {
+                self.expression(&arm.path, Some(t));
+                if !seen.insert(key.clone()) || wildcard {
+                    self.type_error(
+                        arm.pos,
+                        format!("duplicate or unreachable pattern {key}; each value may be matched once and before any '_' arm"),
+                    );
+                }
+            } else {
+                self.type_error(
+                    arm.pos,
+                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final '_' arm; to bind or compare computed values use if/else"),
+                );
+            }
+            if !arm.bindings.is_empty() {
+                self.type_error(arm.pos, "a literal arm has no payload to bind");
+            }
+            let old = self.scope.clone();
+            self.scope = Scope::new(Some(old.clone()));
+            let (a, br) = body(self, arm);
+            fall = fall || a;
+            breaks = breaks || br;
+            self.scope = old;
+        }
+        let covered = wildcard || (t.id == "Bool" && seen.len() == 2);
+        if !covered {
+            self.type_error(
+                pos,
+                format!("non-exhaustive match on {t}; add a final '_' arm"),
             );
         }
         (!info.no_return && fall, info.breaks || breaks)

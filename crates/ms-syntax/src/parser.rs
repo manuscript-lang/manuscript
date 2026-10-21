@@ -2194,15 +2194,13 @@ impl<'a> Parser<'a> {
             }
             let start = self.peek();
             let k = start.kind;
-            if matches!(k, Tok::Number | Tok::True | Tok::False) {
-                return self.fail(start, "literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare values with 'if x == 1:' and 'else if'");
-            }
-            if k == Tok::String {
-                return self.fail(start, "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead");
-            }
+            let literal = matches!(k, Tok::Number | Tok::True | Tok::False | Tok::String)
+                || (k == Tok::Minus && self.ahead(1).kind == Tok::Number);
             let mut bindings = Vec::new();
             let path;
-            if self.take(Tok::Underscore) {
+            if literal {
+                path = self.expression(0)?;
+            } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(Symbol::intern("_")));
             } else {
                 path = self.case_path()?;
