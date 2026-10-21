@@ -1,23 +1,18 @@
-import WebSocketError from "@std/websocket.ms"
-import WebSocketOptions from "@std/websocket.ms"
-import WebSocket from "@std/websocket.ms"
-import TlsOptions from "@std/tls.ms"
-import HttpServerOptions from "@std/http.ms"
-import HttpExchange from "@std/http.ms"
-import HttpServer from "@std/http.ms"
-import HttpResponse from "@std/http.ms"
-import HttpRequest from "@std/http.ms"
+import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/http.ms"
-import HttpError from "@std/http.ms"
-import HttpClientOptions from "@std/http.ms"
+import Duration from "@std/time.ms"
 import HttpClient from "@std/http.ms"
+import HttpClientOptions from "@std/http.ms"
+import HttpError from "@std/http.ms"
+import HttpExchange from "@std/http.ms"
 import HttpHeaders from "@std/http.ms"
 import HttpMethod from "@std/http.ms"
-import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
+import HttpRequest from "@std/http.ms"
+import HttpResponse from "@std/http.ms"
+import HttpServer from "@std/http.ms"
+import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
-import TlsError from "@std/tls.ms"
-import TlsInfo from "@std/tls.ms"
+import Timestamp from "@std/time.ms"
 
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
@@ -313,3 +308,199 @@ export interface Network:
 
 # Returns network operations for the current host.
 export fn network() Network:
+
+# Errors returned when TLS configuration, certificates, or peer authentication fail.
+export type TlsError:
+    # A certificate limit is negative, a `server_name` is empty, or `tls_info` was requested on a connection that is not TLS.
+    case InvalidInput
+    # The PEM text is not a sequence of well-formed CERTIFICATE blocks, or a chain or roots argument holds no certificate.
+    case InvalidData
+    # The PEM text holds more certificates than `max_certificates`.
+    case LimitExceeded
+    # Chain verification failed: the chain does not lead to a supplied root, a certificate is expired or not yet valid at the supplied time, or the name does not match.
+    case AuthenticationFailed
+
+# Parsed certificate identity, validity range, and original DER bytes.
+export type CertificateInfo:
+    # The certificate subject as a distinguished-name string, such as `CN=example.com,O=Example`.
+    subject: String
+    # The issuing authority as a distinguished-name string, in the same format as `subject`.
+    issuer: String
+    # DNS subject alternative names in certificate order; empty when the certificate has none.
+    dns_names: List[String]
+    # Start of the validity period as a UTC Timestamp.
+    not_before: Timestamp
+    # End of the validity period as a UTC Timestamp.
+    not_after: Timestamp
+    # The certificate's binary DER encoding, as a copy independent of the PEM text.
+    der: Bytes
+
+# Negotiated TLS version, cipher, protocol, and peer certificate information.
+export type TlsInfo:
+    # Negotiated protocol version as its numeric wire code, such as 771 (0x0303) for TLS 1.2 or 772 (0x0304) for TLS 1.3.
+    version: Int
+    # Negotiated cipher suite as its numeric IANA identifier, such as 4865 (0x1301) for TLS_AES_128_GCM_SHA256.
+    cipher_suite: Int
+    # The application protocol both sides agreed on, or an empty string when none was negotiated.
+    alpn: String
+    # The peer's presented certificates as DER bytes, leaf first; empty when the peer sent none.
+    peer_certificates: List[Bytes]
+    # True when the peer's certificate chain was verified against the configured roots; false when no peer chain was verified.
+    verified: Bool
+
+# Client or server TLS settings, including roots, certificates, and ALPN protocols.
+export type TlsOptions:
+    # Host name a TLS client sends for server name indication and matches against the server certificate; it must be non-empty for `connect_tls_config`.
+    # HTTP and WebSocket clients take the name from the URL host and ignore this field, and servers do not use it.
+    server_name: String
+    # PEM certificates to trust. Clients use them instead of the system roots; servers use them to verify client certificates. An empty string selects the system roots; invalid PEM is rejected.
+    roots_pem: String
+    # PEM certificate chain this side presents, paired with `private_key_pem`. Servers must supply it; clients supply it only for mutual TLS.
+    certificate_pem: String
+    # PEM private key matching `certificate_pem`. Both must be set together and match, or setup fails.
+    private_key_pem: String
+    # Application-layer protocols to offer or accept, in preference order, such as `h2` or `http/1.1`. Each must be 1 through 255 bytes; empty disables negotiation.
+    alpn: List[String]
+    # Servers only: when true, a client must present a certificate that verifies against `roots_pem`. Setting it on a client configuration is rejected.
+    require_client_certificate: Bool
+
+# Parses PEM certificates and optionally limits the number returned.
+export fn parse_certificates(
+    pem: String,
+    max_certificates: Optional[Int] = none
+) Result[List[CertificateInfo], TlsError]:
+
+# Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
+export fn verify_certificates(
+    chain_pem: String,
+    roots_pem: String,
+    server_name: String,
+    now: Timestamp
+) Result[Unit, TlsError]:
+
+impl Error for TlsError:
+    # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
+    fn message() String:
+
+# Errors returned for malformed URL text, components, or query limits.
+export type UrlError:
+    # Constructed URL components or a supplied query-entry budget are invalid.
+    case InvalidInput
+    # URL text, escaped bytes, port syntax or a relative reference is invalid or unsupported.
+    case InvalidData
+    # The decoded query has more entries than its supplied budget permits.
+    case LimitExceeded
+
+# One decoded key and value in a URL query string.
+export type QueryEntry:
+    # Decoded query key; duplicate keys retain separate entries in input order.
+    key: String
+    # Decoded query value; a bare key has an empty value and plus decodes as a space.
+    value: String
+
+# Parsed URL components. A missing port is represented by `none`.
+export type Url:
+    # URL scheme, lowercased during parsing; native parse rejects missing schemes and opaque URLs.
+    scheme: String
+    # Lowercased hostname, excluding the port and IPv6 brackets; user information is rejected.
+    host: String
+    # Explicit numeric port in 0..65535, or none when the input has no port.
+    port: Optional[Int]
+    # Escaped path text, retaining escaped separators; format validates its percent escapes and UTF-8.
+    path: String
+    # Encoded query contents without the leading question mark; parse_query decodes individual entries.
+    query: String
+    # Decoded fragment contents without the leading hash mark.
+    fragment: String
+
+# Decodes one percent-encoded URL component. `+` is not treated as a space.
+export fn decode_component(text: String) Result[String, UrlError]:
+
+# Percent-encodes one URL component using UTF-8 bytes.
+export fn encode_component(text: String) String:
+
+# Formats URL components as an absolute hierarchical URL.
+# Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
+export fn format(value: Url) Result[String, UrlError]:
+
+# Encodes query entries as a query string.
+export fn format_query(entries: List[QueryEntry]) String:
+
+# Parses an absolute URL into its components.
+export fn parse(text: String) Result[Url, UrlError]:
+
+# Parses a query string, preserving duplicate keys and their input order.
+export fn parse_query(
+    text: String,
+    max_entries: Optional[Int] = none
+) Result[List[QueryEntry], UrlError]:
+
+# Resolves a relative reference against a base URL.
+export fn resolve(base: Url, reference: String) Result[Url, UrlError]:
+
+impl Error for UrlError:
+    # Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
+    fn message() String:
+
+# Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
+export type WebSocketError:
+    # A URL is not a `ws` or `wss` URL with a host and no user info, `max_message_bytes` is not positive, a header, subprotocol, or option is malformed, or a ping payload exceeds 125 bytes.
+    case InvalidInput
+    # A text message is not valid UTF-8, whether being sent or received.
+    case InvalidData
+    # A message is larger than `max_message_bytes`.
+    case LimitExceeded
+    # The network handle's restriction policy does not allow the host.
+    case PermissionDenied
+    # The socket or its network handle was closed, or an earlier read failure already ended the connection.
+    case Closed
+    # The connection attempt did not finish within `timeout`.
+    case Timeout
+    # Handshake, transport, or protocol failure, such as a refused connection or a rejected upgrade.
+    case Failed(
+        # Host-provided failure text; `message()` returns it verbatim, so it can name addresses.
+        message: String
+    )
+
+# A WebSocket connection. Send and receive byte messages with an explicit text flag.
+export interface WebSocket:
+    # Sends a normal-closure frame, waiting at most about 100 ms to write it, then closes the connection and waits for in-flight calls to stop.
+    # Safe to call repeatedly; later calls wait for the first.
+    fn close() Unit
+    # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
+    # It does not wait for the pong. Returns Closed on a closed socket.
+    fn ping(data: String) Result[Unit, WebSocketError]
+    # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
+    fn ping_bytes(data: Bytes) Result[Unit, WebSocketError]
+    # Waits for the next complete message and returns it, or none once the peer closes normally.
+    # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
+    fn receive() Result[Optional[WebSocketMessage], WebSocketError]
+    # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
+    fn send(data: String) Result[Unit, WebSocketError]
+    # Sends `data` as one message, a text frame when `text` is true and a binary frame (the default) otherwise.
+    # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
+    fn send_bytes(data: Bytes, text: Bool = false) Result[Unit, WebSocketError]
+    # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
+    fn subprotocol() String
+
+# A received message and whether its payload is UTF-8 text.
+export type WebSocketMessage:
+    # The message payload bytes; for a text message they are the UTF-8 encoding of the text.
+    data: Bytes
+    # True when the peer sent a text frame, which guarantees `data` is valid UTF-8; false for a binary frame.
+    text: Bool
+
+# WebSocket message, timeout, TLS, and per-message compression settings.
+export type WebSocketOptions:
+    # Largest message accepted or sent, in bytes. Must be positive; none sets no limit.
+    max_message_bytes: Optional[Int] = none
+    # Time budget for connecting and completing the opening handshake. none waits indefinitely and a negative duration is rejected.
+    timeout: Optional[Duration] = none
+    # TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
+    tls: TlsOptions
+    # When true, offers per-message compression during the handshake; it applies only if the peer agrees.
+    compression: Bool
+
+impl Error for WebSocketError:
+    # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `WebSocket: <reason>`.
+    fn message() String:

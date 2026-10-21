@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/http-paths.ms
 import {expect_ok} from "@std/testing.ms"
 import http_result from "./support/http.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import {headers, HttpMethod} from "@std/http.ms"
 import {text_headers, list_headers} from "./support/http.ms"
 import {
@@ -16,7 +16,7 @@ import {
     HttpHeaders
 } from "@std/http.ms"
 import network from "@std/net.ms"
-import TlsOptions from "@std/tls.ms"
+import TlsOptions from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:

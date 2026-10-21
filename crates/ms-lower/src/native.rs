@@ -28,13 +28,13 @@ const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
         false,
     ),
     (
-        "compress/format_compress",
+        "archive/format_compress",
         "msrt_compress_compress",
         "format",
         false,
     ),
     (
-        "compress/format_decompress",
+        "archive/format_decompress",
         "msrt_compress_decompress",
         "format",
         false,
@@ -103,6 +103,25 @@ fn is_higher_order(name: &str) -> bool {
 }
 
 /// The `module/name` of natives that bindings override with a bare name.
+/// The host-rule path functions that `fs` absorbed from the former `path` module.
+const PATH_FUNCTIONS: [&str; 15] = [
+    "basename",
+    "dirname",
+    "extension",
+    "is_absolute",
+    "join",
+    "normalize",
+    "relative",
+    "basename_without",
+    "resolve",
+    "parse",
+    "format",
+    "separator",
+    "delimiter",
+    "to_namespaced_path",
+    "matches_glob",
+];
+
 fn native_alias(native: &str) -> &str {
     match native {
         "sleep" => "time/sleep",
@@ -317,7 +336,10 @@ impl<'a> FnLower<'a> {
                 }
                 let result = self.emty(e)?;
                 self.at(e.pos);
-                if other.starts_with("path/") {
+                if other
+                    .strip_prefix("fs/")
+                    .is_some_and(|name| PATH_FUNCTIONS.contains(&name))
+                {
                     // The host-rule functions share the interface's entry points; the leading
                     // `windows` flag selects the host's rules.
                     let name = ct::n("windows");
@@ -354,7 +376,7 @@ impl<'a> FnLower<'a> {
                 | "math/max_of"
                 | "math/min_of"
                 | "time/duration"
-                | "errors/category"
+                | "core/category"
         ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
@@ -372,7 +394,7 @@ impl<'a> FnLower<'a> {
         if matches!(native, "math/max_of" | "math/min_of") {
             return self.extreme_of(native == "math/max_of", args, result);
         }
-        if native == "errors/category" {
+        if native == "core/category" {
             let cause = self.borrow(args[0].val);
             let cty = self.ty_of(cause);
             let f = self.cx.category_fn(self.b.m, cty, result);
@@ -780,8 +802,8 @@ impl<'a> FnLower<'a> {
             return self.hash_algorithm_call(sym, recv, &args, result);
         }
         if let Some(decode) = match native {
-            "compress/format_compress_stream" => Some(false),
-            "compress/format_decompress_stream" => Some(true),
+            "archive/format_compress_stream" => Some(false),
+            "archive/format_decompress_stream" => Some(true),
             _ => None,
         } {
             let result = self.emty(e)?;
@@ -809,7 +831,7 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &vals, *ret)?;
             return Ok(self.val(out, *ret == MTy::STR));
         }
-        if native == "errors/message" {
+        if native == "core/message" {
             let concrete = self.ety(recv_expr);
             let data = self.ty_of(recv.v);
             let f = self
@@ -1213,7 +1235,7 @@ impl<'a> FnLower<'a> {
             });
             return Ok(Val { v, own: true });
         }
-        if m.native.as_str() == "errors/message" {
+        if m.native.as_str() == "core/message" {
             let data = self.ty_of(recv.v);
             let f = self
                 .cx

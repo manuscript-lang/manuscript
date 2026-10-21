@@ -32,8 +32,8 @@
           "end": {
             "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-1.ms",
             "line": 4,
-            "column": 42,
-            "offset": 240
+            "column": 40,
+            "offset": 238
           },
           "replacement": ""
         }

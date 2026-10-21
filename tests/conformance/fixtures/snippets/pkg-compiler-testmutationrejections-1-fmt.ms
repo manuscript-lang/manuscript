@@ -3,7 +3,7 @@
 # conform: origin=pkg/compiler/mutation_test.go:11 TestMutationRejections
 import stdout from "@std/io.ms"
 import File from "@std/io.ms"
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 interface Read:
     fn get() Int
 type Val:

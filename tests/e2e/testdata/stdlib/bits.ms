@@ -15,7 +15,7 @@ import {
     wrapping_add,
     wrapping_subtract,
     wrapping_multiply
-} from "@std/bits.ms"
+} from "@std/math.ms"
 import {max_int, min_int} from "@std/math.ms"
 
 fn shift_too_far() Unit:

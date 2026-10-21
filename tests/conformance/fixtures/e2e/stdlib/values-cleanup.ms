@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
 import {expect_equal, expect_false, expect_not_equal, expect_ok, fail} from "@std/testing.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 import JsonError from "@std/json.ms"
 import filesystem from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"

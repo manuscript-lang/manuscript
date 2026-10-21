@@ -1,8 +1,8 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,optional,parser,records,sets,stdlib-errors,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/core-parity.ms
-import {TextError} from "@std/errors.ms"
-import panic from "@std/faults.ms"
+import {TextError} from "@std/core.ms"
+import panic from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import JsonLimits from "@std/json.ms"
 

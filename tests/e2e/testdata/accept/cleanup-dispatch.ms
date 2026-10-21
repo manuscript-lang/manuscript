@@ -1,6 +1,6 @@
 import {expect_equal, expect_fault} from "@std/testing.ms"
-import panic from "@std/faults.ms"
-import Closeable from "@std/cleanup.ms"
+import panic from "@std/core.ms"
+import Closeable from "@std/core.ms"
 
 interface OtherClose:
     fn close(flag: Bool) Int

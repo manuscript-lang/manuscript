@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 interface Show:
     fn show() String

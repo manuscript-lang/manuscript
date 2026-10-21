@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/path.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {posix, win32, PathError, dirname, basename_without} from "@std/path.ms"
+import {posix, win32, PathError, dirname, basename_without} from "@std/fs.ms"
 
 test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()

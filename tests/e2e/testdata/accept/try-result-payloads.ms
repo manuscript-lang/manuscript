@@ -1,6 +1,6 @@
 import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
-import TextError from "@std/errors.ms"
-import Closeable from "@std/cleanup.ms"
+import TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 
 type Failure:

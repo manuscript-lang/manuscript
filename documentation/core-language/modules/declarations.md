@@ -88,7 +88,7 @@ An `impl` in a source type's defining module is available wherever the type is u
 ## Standard-library imports
 
 ```manuscript
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 ```
 
 `@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.

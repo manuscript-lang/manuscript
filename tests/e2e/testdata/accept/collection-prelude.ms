@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 

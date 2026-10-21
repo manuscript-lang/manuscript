@@ -3,7 +3,7 @@
 # conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 import network from "@std/net.ms"
 import {HttpResponse} from "@std/http.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 fn use() Unit:
     let shared = Map[Int, Int]()

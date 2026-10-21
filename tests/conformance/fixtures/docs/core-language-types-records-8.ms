@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,match,modules,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=documentation/core-language/types/records.md:99
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 type Expr:
     case Num(value: Int)

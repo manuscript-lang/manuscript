@@ -335,7 +335,7 @@ impl Cx {
         concrete: &ct::Ty,
         data_ty: MTy,
     ) -> Result<ms_mir::ir::FuncId, Error> {
-        if native != "errors/message" {
+        if native != "core/message" {
             return Err(Error::new(format!("unsupported native method {native}")));
         }
         self.message_fn(m, &concrete.to_string(), data_ty)

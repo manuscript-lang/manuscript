@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
+import {Queue, PriorityQueue} from "@std/collections.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 

@@ -4,8 +4,8 @@ import {headers, HttpMethod} from "@std/http.ms"
 import {text_headers, list_headers} from "./support/http.ms"
 import network from "@std/net.ms"
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
-import {WebSocketOptions, WebSocketError} from "@std/websocket.ms"
-import TlsOptions from "@std/tls.ms"
+import {WebSocketOptions, WebSocketError} from "@std/net.ms"
+import TlsOptions from "@std/net.ms"
 
 fn tls_options() TlsOptions:
     return TlsOptions(

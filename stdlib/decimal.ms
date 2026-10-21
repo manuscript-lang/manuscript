@@ -1,4 +1,4 @@
-import NumberError from "@std/numbers.ms"
+import NumberError from "@std/math.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.
 export type RoundingMode:

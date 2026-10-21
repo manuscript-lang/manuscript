@@ -1,9 +1,9 @@
 # conform: tags=aliasing,closures,control-flow,generics,interfaces,interpolation,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Counter:
     value: Int = 0

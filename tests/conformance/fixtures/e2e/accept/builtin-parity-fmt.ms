@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/builtin-parity.ms
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import from_int from "@std/bigint.ms"
-import compile from "@std/regex.ms"
+import from_int from "@std/math.ms"
+import compile from "@std/string.ms"
 import {filled, range_by, map_from_entries} from "@std/collections.ms"
 import Bytes from "@std/bytes.ms"
-import NumberError from "@std/numbers.ms"
+import NumberError from "@std/math.ms"
 import StringError from "@std/string.ms"
 
 fn positive(value: Int) Bool:

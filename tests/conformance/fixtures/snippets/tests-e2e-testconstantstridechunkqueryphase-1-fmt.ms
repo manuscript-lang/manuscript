@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interfaces,lists,modules,parser,records,stdlib-cleanup,tier-stdlib
 # conform: phase=parse
 # conform: origin=tests/e2e/counter_chunk_test.go:18 TestConstantStrideChunkQueryPhase
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     visits: List[Int]

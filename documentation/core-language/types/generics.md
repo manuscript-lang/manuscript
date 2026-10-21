@@ -27,7 +27,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 
 Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
-`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/equality.ms`: bounds, parameter types, type arguments, explicit views (`Equal(value: x)`), and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
+`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, explicit views (`Equal(value: x)`), and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
 ```manuscript
 type Key:
@@ -101,7 +101,7 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
 fn first() Result[Int, TextError]: fail("empty")  # T = Int

@@ -1,6 +1,6 @@
 import {expect_equal} from "@std/testing.ms"
 import {HashAlgorithm, sha256, sha384, sha512, CryptoError} from "@std/crypto.ms"
-import {CompressionFormat, compress, decompress, CompressionError} from "@std/compress.ms"
+import {CompressionFormat, compress, decompress, CompressionError} from "@std/archive.ms"
 import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 

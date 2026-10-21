@@ -1,7 +1,7 @@
 import {expect_false} from "@std/testing.ms"
-import parse from "@std/bigint.ms"
-import BigInt from "@std/bigint.ms"
-import BigIntError from "@std/bigint.ms"
+import parse from "@std/math.ms"
+import BigInt from "@std/math.ms"
+import BigIntError from "@std/math.ms"
 
 fn verify_bigint() Result[Unit, Error]:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)

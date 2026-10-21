@@ -57,7 +57,7 @@ fn greeting(name: Optional[String]) String:
 ```
 
 ```manuscript
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 fn port(lookup: Result[Int, TextError]) Int:
     if let value = lookup:
         return value

@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/intentional_faults_test.go:28 TestIntentionalFaultContracts
 import {expect_contains, expect_fault} from "@std/testing.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 fn failed_initializer() Never:
     let impossible: Int = panic(message: "initializer cannot return")

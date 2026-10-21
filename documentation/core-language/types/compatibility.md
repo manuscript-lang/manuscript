@@ -41,7 +41,7 @@ There are no implicit numeric conversions, optional unwrapping, result wrapping,
 An expected type comes from an annotation, assignment target, return declaration, substituted parameter, record field, or alternative payload. It guides parenthesized expressions, list elements, constructor fields, and case payloads, and supplies missing type arguments for a uniquely identified `none`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type an expression already determines.
 
 ```manuscript
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 type Input:
     names: List[Optional[String]]
 
@@ -67,7 +67,7 @@ A list whose independently typed elements disagree is rejected.
 Operators and `try` do not pass an expected type back into their operands, which must determine their own types first.
 
 ```manuscript
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 fn known() Result[Int, TextError]:
     let number: Int = try Result[Int, TextError].ok(1)
     return ok(number)

@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/projects/signal/main.ms
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     label: String

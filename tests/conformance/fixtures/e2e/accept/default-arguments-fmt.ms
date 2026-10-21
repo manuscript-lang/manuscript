@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,lists,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/default-arguments.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 type Cell:

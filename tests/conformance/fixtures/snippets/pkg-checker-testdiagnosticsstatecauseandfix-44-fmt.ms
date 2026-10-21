@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=pkg/checker/hints_test.go:63 TestDiagnosticsStateCauseAndFix
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 type R:
     n: Int
 impl Closeable for R:

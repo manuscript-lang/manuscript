@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 
 interface Shape:
     fn area() Int

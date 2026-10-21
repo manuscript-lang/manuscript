@@ -1,4 +1,4 @@
-//! `@std/bigint.ms` natives. Symbols are `msstd_bigint_<name>`.
+//! `@std/math.ms` natives. Symbols are `msstd_bigint_<name>`.
 //!
 //! A `BigInt` is an immutable refcounted [`Big`] handle; operations return fresh handles.
 //! Fallible calls return a `STATUS_*` code and write `out` only on success; `to_int` returns

@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,lists,modules,mutation,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/try-statement.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal} from "@std/testing.ms"
 
 fn parse(n: Int) Result[Int, TextError]:

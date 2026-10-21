@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,lists,modules,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/pipe-flow.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn parse(text: String) Result[Int, TextError]:

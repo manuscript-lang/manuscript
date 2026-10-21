@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_true, fail} from "@std/testing.ms"
 
 fn identity[T](value: T) T:

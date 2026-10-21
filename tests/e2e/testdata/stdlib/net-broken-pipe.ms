@@ -1,5 +1,5 @@
 import {expect_ok} from "@std/testing.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import network from "@std/net.ms"
 import sleep from "@std/time.ms"
 

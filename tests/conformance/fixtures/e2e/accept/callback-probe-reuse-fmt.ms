@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/callback-probe-reuse.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)

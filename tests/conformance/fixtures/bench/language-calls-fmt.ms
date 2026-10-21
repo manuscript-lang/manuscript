@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=parse
 # conform: origin=bench/language/calls.ms
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 import range from "@std/collections.ms"
 
 fn add(a: Int, b: Int) Int: a + b
