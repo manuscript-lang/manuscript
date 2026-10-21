@@ -1,5 +1,5 @@
 //! Developer tool: run a source tool on standalone `.ms` files and print the
-//! output of the matching Go `ms` command, so the two can be diffed.
+//! output of the matching `ms` command, so the two can be diffed.
 //!
 //! ```text
 //! ms-tooling-dev lint FILE...

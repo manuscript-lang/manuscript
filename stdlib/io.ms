@@ -41,12 +41,12 @@ export interface ReadStream:
     fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
-# Buffering/flush depends on the implementation: native stdout/stderr are unbuffered (flush is a no-op),
+# Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
 # while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 export interface WriteStream:
     # Releases this implementation's write resource; close does not imply a successful flush.
     fn close() Unit
-    # Completes implementation-specific buffering or synchronization; native stdout/stderr use a no-op.
+    # Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
     # File-handle writers synchronize the file, and failures retain IoError identity.
     fn flush() Result[Unit, IoError]
     # Accepts the complete input on success; a source implementation may buffer until flush.

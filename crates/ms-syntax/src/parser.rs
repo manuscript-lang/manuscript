@@ -2044,6 +2044,11 @@ impl<'a> Parser<'a> {
             Ok(l) => l,
             Err(mut d) => {
                 d.pos = shift(d.pos);
+                d.end = d.end.map(shift);
+                if let Some(fix) = &mut d.fix {
+                    fix.pos = shift(fix.pos);
+                    fix.end = shift(fix.end);
+                }
                 d.message.push_str(&suffix);
                 return Err(d);
             }

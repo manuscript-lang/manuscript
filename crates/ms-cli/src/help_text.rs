@@ -30,8 +30,8 @@ Options:
   --version   Print the compiler version
 
 Native build levels:
-  --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>
-  Default: Release; profile defaults to RelWithDebInfo
+  --build-type <Debug|Release|MinSizeRel>
+  Default: Release
 
 Start with:
   ms init hello
@@ -83,7 +83,7 @@ Examples:
   ms lint src utilities.ms --json
 "#;
 
-pub const HELP_BUILD: &str = r#"Usage: ms build <file.ms|ms.toml> [--json] [-o output] [--build-type level] [--debug]
+pub const HELP_BUILD: &str = r#"Usage: ms build <file.ms|ms.toml> [--json] [-o output] [--build-type level]
 
 Build an application exporting main() Int as a native executable.
 Native builds link with the system C compiler driver (cc).
@@ -91,8 +91,7 @@ Native builds link with the system C compiler driver (cc).
 Options:
   -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)
   --json              Emit one versioned build result and artifact inventory
-  --debug             Alias for --build-type Debug
-  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -122,9 +121,8 @@ Arguments after -- are passed unchanged to the application; its exit status is r
 Native builds link with the system C compiler driver (cc).
 
 Options:
-  --debug               Alias for --build-type Debug
   --watch               Rebuild and restart after each saved source change
-  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -133,7 +131,7 @@ Examples:
   ms run main.ms --watch
 "#;
 
-pub const HELP_TEST: &str = r#"Usage: ms test <file.ms|ms.toml> [--json] [--filter text] [--timeout duration] [--build-type level] [--debug] [--watch] [-- program arguments]
+pub const HELP_TEST: &str = r#"Usage: ms test <file.ms|ms.toml> [--json] [--filter text] [--timeout duration] [--build-type level] [--watch] [-- program arguments]
 
 Build and execute test blocks in the module and its imported modules.
 Tests run with the project directory (or the test file's directory) as the working directory, so relative fixture paths resolve there.
@@ -152,15 +150,14 @@ Options:
   --fail-fast         Stop after the first failed test
   --repeat <count>     Run the selected tests count times
   --shuffle <seed>     Shuffle with a reproducible integer seed
-  --debug              Alias for --build-type Debug
   --watch              Rebuild and rerun after each saved source change
-  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
 Examples:
   ms test test.ms
-  ms test ms.toml --debug
+  ms test ms.toml --build-type Debug
   ms test ms.toml --filter "nick collisions" --timeout 10s
 "#;
 

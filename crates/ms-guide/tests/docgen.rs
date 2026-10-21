@@ -1,4 +1,4 @@
-//! Ports of `pkg/tooling/docgen/*_test.go`.
+//! Tests for documentation generation.
 
 use ms_guide::docgen::{
     DescriptionPolicy, DocumentationEntry, check_descriptions, description_key, inventory,

@@ -5,7 +5,7 @@ weight = 6
 
 # Why Manuscript
 
-Manuscript is a statically typed language built for the loop an agent runs: write, check, fix, verify, ship. It compiles through Cranelift to a native executable. Everything below is on main today.
+Manuscript is a statically typed language built for the loop an agent runs: write, check, fix, verify, ship. It compiles to a native executable. Everything below is on main today.
 
 ## A language with little to get wrong
 
