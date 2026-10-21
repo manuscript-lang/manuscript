@@ -1,0 +1,80 @@
+name: LLVM bundle
+
+# Builds the pinned static lld and LLVM libraries once per platform (see scripts/build-llvm-bundle.sh) and, on a manual
+# run with `publish`, attaches them with checksums to the release `llvm-<version>-r<revision>` that `ms` downloads at
+# build time. Pull requests that change the recipe build it without publishing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the assets to the llvm-<version>-r<revision> release
+        type: boolean
+        default: false
+      revision:
+        description: Bundle revision, bumped when the recipe changes without a version change
+        default: '1'
+  pull_request:
+    paths:
+      - scripts/build-llvm-bundle.sh
+      - scripts/llvm-version
+      - .github/workflows/llvm-bundle.yml
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
+          - { os: darwin, arch: amd64, runner: macos-15-intel }
+          - { os: darwin, arch: arm64, runner: macos-15 }
+          - { os: windows, arch: amd64, runner: windows-2025 }
+          - { os: windows, arch: arm64, runner: windows-11-arm }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
+      - name: Install Ninja
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update && sudo apt-get install -y ninja-build
+          elif [ "$RUNNER_OS" = macOS ]; then brew install ninja
+          else choco install ninja -y; fi
+      - name: Build
+        run: sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: llvm-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/llvm/*
+
+  publish:
+    needs: bundle
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="llvm-$(tr -d '[:space:]' < scripts/llvm-version)-r${{ inputs.revision }}"
+          gh release create "$tag" --title "$tag" --notes "Static lld and LLVM libraries for ms; see scripts/build-llvm-bundle.sh" assets/* \
+            || gh release upload "$tag" assets/* --clobber
