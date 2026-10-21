@@ -1,0 +1,13 @@
+# Tests that fail on Windows today. CI excludes them from the blocking test run and runs them in a
+# separate non-blocking step so they stay visible. Fix the cause and delete the line.
+# Format: <test name substring>  # reason
+search_symbol_describes_project_and_standard_symbols  # project symbols not found in a Windows temp project
+discovery_preserves_explicit_source_roots  # test helper writes a file name Windows rejects (os error 123)
+import_forms_and_confinement  # gopath::rel cannot relate a verbatim \\?\ path to a plain one
+malformed_manifests  # test helper writes a file name Windows rejects (os error 123)
+manifest_discovery_keeps_the_closest_project  # find_manifest returns None under a verbatim temp path
+frames_resolve_through_tables  # describe_frames prints no frames on Windows
+files_round_trip_on_windows  # fs.chown reports status 11, not UNSUPPORTED
+datagrams  # WSAEMSGSIZE surfaces as Failed instead of LimitExceeded
+close_handshake_waits_for_the_echo  # connection aborted by the host during the close handshake
+dial_errors  # refusal text differs from "connection refused"

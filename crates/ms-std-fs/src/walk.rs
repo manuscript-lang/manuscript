@@ -801,7 +801,11 @@ mod tests {
 
     fn texts(v: Vec<Vec<u8>>) -> Vec<String> {
         v.into_iter()
-            .map(|b| String::from_utf8(b).unwrap())
+            .map(|b| {
+                String::from_utf8(b)
+                    .unwrap()
+                    .replace(std::path::MAIN_SEPARATOR, "/")
+            })
             .collect()
     }
 
@@ -1012,7 +1016,7 @@ mod tests {
         let got = glob_entries(&root, &wide, None).unwrap();
         let names: Vec<String> = got
             .iter()
-            .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+            .map(|e| String::from_utf8_lossy(&e.path).replace(std::path::MAIN_SEPARATOR, "/"))
             .collect();
         assert_eq!(
             names,
