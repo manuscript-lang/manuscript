@@ -24,12 +24,12 @@ fn run() Result[Unit, Error]:
     let text = data.decode_utf8().get("")
     var valid = 0
     var malformed = 0
-    let classes = [0, 0, 0, 0, 0]
-    let latencies = List[Int]()
+    var classes = [0, 0, 0, 0, 0]
+    var latencies = List[Int]()
     var slowest = -1
     var slowest_text = ""
-    let levels = Map[String, Int]()
-    let stats = Map[String, Stat]()
+    var levels = Map[String, Int]()
+    var stats = Map[String, Stat]()
 
     for line in text.split("\n"):
         if line.trim().is_empty():
@@ -78,7 +78,7 @@ fn run() Result[Unit, Error]:
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
         stats.add(key: path, value: Stat(count: old.count + 1, total: old.total + lat))
 
-    let out = List[String]()
+    var out = List[String]()
     out.append("valid: {valid}")
     out.append("malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:

@@ -7,7 +7,7 @@ type Parser:
     div_zero: Bool
 
 # Skips blanks and returns the next character code, or 0 at the end of the line.
-fn peek(p: Parser) Int:
+fn peek(var p: Parser) Int:
     while p.pos < p.chars.length():
         let c = p.chars.get(p.pos)
         if c != 32 and c != 9:
@@ -17,8 +17,8 @@ fn peek(p: Parser) Int:
 
     return 0
 
-fn atom(p: Parser) Result[Int, TextError]:
-    let c = peek(p)
+fn atom(var p: Parser) Result[Int, TextError]:
+    let c = peek(var p)
 
     if c >= 48 and c <= 57:
         var value = 0
@@ -35,8 +35,8 @@ fn atom(p: Parser) Result[Int, TextError]:
 
     if c == 40:
         p.pos = p.pos + 1
-        let inner = try expr(p)
-        if peek(p) != 41:
+        let inner = try expr(var p)
+        if peek(var p) != 41:
             return error(TextError("syntax"))
 
         p.pos = p.pos + 1
@@ -44,24 +44,24 @@ fn atom(p: Parser) Result[Int, TextError]:
 
     return error(TextError("syntax"))
 
-fn unary(p: Parser) Result[Int, TextError]:
-    if peek(p) == 45:
+fn unary(var p: Parser) Result[Int, TextError]:
+    if peek(var p) == 45:
         p.pos = p.pos + 1
-        let v = try unary(p)
+        let v = try unary(var p)
         return ok(0 - v)
 
-    return atom(p)
+    return atom(var p)
 
-fn term(p: Parser) Result[Int, TextError]:
-    var value = try unary(p)
+fn term(var p: Parser) Result[Int, TextError]:
+    var value = try unary(var p)
 
     while true:
-        let op = peek(p)
+        let op = peek(var p)
         if op != 42 and op != 47:
             break
 
         p.pos = p.pos + 1
-        let right = try unary(p)
+        let right = try unary(var p)
 
         if op == 42:
             value = value * right
@@ -73,16 +73,16 @@ fn term(p: Parser) Result[Int, TextError]:
 
     return ok(value)
 
-fn expr(p: Parser) Result[Int, TextError]:
-    var value = try term(p)
+fn expr(var p: Parser) Result[Int, TextError]:
+    var value = try term(var p)
 
     while true:
-        let op = peek(p)
+        let op = peek(var p)
         if op != 43 and op != 45:
             break
 
         p.pos = p.pos + 1
-        let right = try term(p)
+        let right = try term(var p)
 
         if op == 43:
             value = value + right
@@ -92,11 +92,11 @@ fn expr(p: Parser) Result[Int, TextError]:
     return ok(value)
 
 fn evaluate(line: String) String:
-    let p = Parser(chars: line.scalar_values(), pos: 0, div_zero: false)
+    var p = Parser(chars: line.scalar_values(), pos: 0, div_zero: false)
 
-    match expr(p):
+    match expr(var p):
         ok(value):
-            if peek(p) != 0:
+            if peek(var p) != 0:
                 return "error: syntax"
             if p.div_zero:
                 return "error: division by zero"

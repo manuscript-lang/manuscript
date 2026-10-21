@@ -58,8 +58,8 @@ fn run() Result[Unit, Error]:
     let ctx = h.get(2).parse_int().get()
     let n = h.get(3).parse_int().get()
     let m = h.get(4).parse_int().get()
-    let a = List[String]()
-    let b = List[String]()
+    var a = List[String]()
+    var b = List[String]()
     var count = 0
 
     while count < n + m:
@@ -75,7 +75,7 @@ fn run() Result[Unit, Error]:
         count = count + 1
 
     let w = m + 1
-    let table = List[Int]()
+    var table = List[Int]()
     var cells = (n + 1) * w
 
     while cells > 0:
@@ -106,8 +106,8 @@ fn run() Result[Unit, Error]:
 
         i = i - 1
 
-    let kinds = List[Int]()
-    let texts = List[String]()
+    var kinds = List[Int]()
+    var texts = List[String]()
     i = 0
     var j = 0
 
@@ -134,7 +134,7 @@ fn run() Result[Unit, Error]:
             texts.append(b.get(j))
             j = j + 1
 
-    let changes = List[Int]()
+    var changes = List[Int]()
     var k = 0
 
     while k < kinds.length():
@@ -145,7 +145,7 @@ fn run() Result[Unit, Error]:
     if changes.is_empty():
         return ok(unit)
 
-    let out = StringBuilder()
+    var out = StringBuilder()
     out.append("--- {name_a}\n+++ {name_b}\n")
     var lo_change = changes.get(0)
     var prev = lo_change
