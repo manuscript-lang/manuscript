@@ -121,6 +121,7 @@ fn driver_options(program: &str) -> &'static [&'static str] {
                 "-fms-runtime-lib=dll",
                 "-fuse-ld=lld",
                 "-Wl,/debug:dwarf",
+                "-Wl,/opt:ref",
             ]
         } else {
             &[
@@ -128,6 +129,7 @@ fn driver_options(program: &str) -> &'static [&'static str] {
                 "-fms-runtime-lib=dll",
                 "-fuse-ld=lld",
                 "-Wl,/debug:dwarf",
+                "-Wl,/opt:ref",
             ]
         }
     } else {
@@ -137,10 +139,12 @@ fn driver_options(program: &str) -> &'static [&'static str] {
 
 #[cfg(not(windows))]
 fn driver_options(_program: &str) -> &'static [&'static str] {
+    // Drop runtime and standard-library code the program never reaches: the archive is one
+    // object per Rust codegen unit with a section per function, so unused pieces cost nothing.
     if cfg!(target_os = "macos") {
-        &["-g"]
+        &["-g", "-Wl,-dead_strip"]
     } else {
-        &[]
+        &["-Wl,--gc-sections"]
     }
 }
 
