@@ -27,19 +27,19 @@ linux/amd64, four cores, Go 1.24.7, rustc 1.99.1; median of 7, microseconds. `ru
 
 | kernel | go us | ms us | ms / go | rust us | rust / go | rust-checked us | rust-checked / go | ms / rust | ms / rust-checked |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| call_fib_36 | 86285 | 115973 | 1.34x | 48820 | 0.57x | 92794 | 1.08x | 2.38x | 1.25x |
-| dispatch_100M | 212249 | 265780 | 1.25x | 183479 | 0.86x | 186955 | 0.88x | 1.45x | 1.42x |
-| closure_100M | 35554 | 90729 | 2.55x | 0 | folded | 72345 | 2.03x | folded | 1.25x |
-| sort_1M | 215629 | 75530 | 0.35x | 40252 | 0.19x | 40223 | 0.19x | 1.88x | 1.88x |
-| text_1M | 76588 | 83004 | 1.08x | 34861 | 0.46x | 33849 | 0.44x | 2.38x | 2.45x |
-| strmap_10M | 159981 | 282057 | 1.76x | 238083 | 1.49x | 233666 | 1.46x | 1.18x | 1.21x |
-| errors_50M | 78319 | 106615 | 1.36x | 31706 | 0.40x | 54708 | 0.70x | 3.36x | 1.95x |
-| records_1M_x20 | 162676 | 260287 | 1.60x | 158435 | 0.97x | 148827 | 0.91x | 1.64x | 1.75x |
-| grid2d_500x20 | 8274 | 17602 | 2.13x | 17257 | 2.09x | 16484 | 1.99x | 1.02x | 1.07x |
-| struct_100M | 37095 | 73950 | 1.99x | 0 | folded | 0 | folded | folded | folded |
-| stack_20M | 573130 | 81060 | 0.14x | 61806 | 0.11x | 64556 | 0.11x | 1.31x | 1.26x |
-| optional_100M | 146312 | 153939 | 1.05x | 72776 | 0.50x | 103337 | 0.71x | 2.12x | 1.49x |
-| set_2M | 89968 | 84528 | 0.94x | 73818 | 0.82x | 79778 | 0.89x | 1.15x | 1.06x |
-| chars_1M | 514997 | 263121 | 0.51x | 0 | folded | 29417 | 0.06x | folded | 8.94x |
+| call_fib_36 | 83956 | 78521 | 0.94x | 46237 | 0.55x | 80076 | 0.95x | 1.70x | 0.98x |
+| dispatch_100M | 271557 | 202832 | 0.75x | 168734 | 0.62x | 162378 | 0.60x | 1.20x | 1.25x |
+| closure_100M | 60883 | 30605 | 0.50x | 0 | folded | 94742 | 1.56x | folded | 0.32x |
+| sort_1M | 237325 | 90073 | 0.38x | 51799 | 0.22x | 50791 | 0.21x | 1.74x | 1.77x |
+| text_1M | 93242 | 41786 | 0.45x | 40867 | 0.44x | 43759 | 0.47x | 1.02x | 0.95x |
+| strmap_10M | 234686 | 373563 | 1.59x | 299861 | 1.28x | 314420 | 1.34x | 1.25x | 1.19x |
+| errors_50M | 108320 | 60962 | 0.56x | 39332 | 0.36x | 68522 | 0.63x | 1.55x | 0.89x |
+| records_1M_x20 | 343329 | 265822 | 0.77x | 209559 | 0.61x | 232072 | 0.68x | 1.27x | 1.15x |
+| grid2d_500x20 | 10260 | 15131 | 1.47x | 20275 | 1.98x | 22813 | 2.22x | 0.75x | 0.66x |
+| struct_100M | 30535 | 0 | folded | 0 | folded | 0 | folded | folded | folded |
+| stack_20M | 645869 | 90412 | 0.14x | 74206 | 0.11x | 70301 | 0.11x | 1.22x | 1.29x |
+| optional_100M | 238762 | 122062 | 0.51x | 91899 | 0.38x | 128692 | 0.54x | 1.33x | 0.95x |
+| set_2M | 143916 | 125116 | 0.87x | 109548 | 0.76x | 110699 | 0.77x | 1.14x | 1.13x |
+| chars_1M | 732956 | 218194 | 0.30x | 0 | folded | 28645 | 0.04x | folded | 7.62x |
 
-Manuscript is faster than Go on sort, stack, set and chars; within 1.25x on fib, dispatch, text and optional; and 1.4x to 2.6x slower on closure, strmap, errors, records, grid2d and struct. Against Rust with overflow checks it is slower on all but a tie on grid2d, from 1.1x (set) to 2.5x (text) and 8.9x on chars, where Rust iterates bytes without decoding.
+Release build with LLVM. Manuscript is faster than Go on 12 of 14 rows (struct folds to a constant) and 1.5x to 1.6x slower on strmap and grid2d. Against Rust with overflow checks it is within 1.3x on all rows except sort (1.8x), strmap (1.2x) and chars (7.6x, where Rust iterates bytes without decoding); text_1M is level since split loops no longer build a list.
