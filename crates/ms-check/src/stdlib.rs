@@ -485,6 +485,14 @@ fn has_implementation(d: &DeclRef) -> bool {
     own || d.methods().iter().any(|m| !m.func.body.is_empty())
 }
 
+/// Whether any inherent `impl Type:` block in `module` has a method with a body.
+fn has_inherent_body(module: &Module) -> bool {
+    module.decls.iter().any(|d| {
+        matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()
+            && i.methods.iter().any(|m| !m.func.body.is_empty()))
+    })
+}
+
 fn load() -> Result<(), String> {
     let bindings = read_bindings()?;
     let mut modules: Vec<ModRef> = Vec::new();
@@ -492,6 +500,12 @@ fn load() -> Result<(), String> {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
         let parsed =
             ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))?;
+        // A module with implementation bodies is checked like user source, so its inherent
+        // methods take the same desugaring and become ordinary methods wherever the type is used.
+        if has_inherent_body(&parsed) {
+            modules.push(crate::load_module(&parsed));
+            continue;
+        }
         let decls = fold_inherent_impls(&parsed)?;
         let data = ModuleData::new(&parsed, decls, parsed.node_count);
         modules.push(Rc::new(data));

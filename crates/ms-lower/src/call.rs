@@ -502,6 +502,10 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let static_ty = self.ety(recv_expr);
         let want = self.mty(&static_ty)?;
+        let contract = m
+            .contract
+            .clone()
+            .ok_or_else(|| Error::new("contract call without a contract"))?;
         if !matches!(self.b.m.types.kind(want), TyKind::Iface(_)) {
             // A concrete receiver (a generic instance): call its implementation directly.
             let Some(im) = self.contract_impl(m, &static_ty) else {
@@ -512,6 +516,37 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     return self.derived_hash(recv);
+                }
+                // Built-in scalars order themselves; the argument arrives as a `Comparable` view.
+                if m.name().is_some_and(|n| n.as_str() == "compare")
+                    && contract.is_std("Comparable")
+                    && let [other] = view.arguments.as_slice()
+                {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    let a = self.borrow(recv);
+                    let other = self.expr(other.expr)?;
+                    if self.dead {
+                        return Ok(other);
+                    }
+                    let view_value = self.borrow(other);
+                    let data = self
+                        .b
+                        .emit(
+                            Op::IfaceData,
+                            &[view_value],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::PTR),
+                        )
+                        .expect("data");
+                    let b = self
+                        .b
+                        .emit(Op::Load, &[data], ms_mir::ir::Imm::Ty(want), Some(want))
+                        .expect("load");
+                    let r = self.order(want, &static_ty, a, b)?;
+                    return Ok(Val { v: r, own: false });
                 }
                 return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",

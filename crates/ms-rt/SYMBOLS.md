@@ -194,6 +194,7 @@ msrt_list_last_index_of( v: *const VecVal, d: *const TypeDesc, probe: *const u8,
 msrt_list_contains( v: *const VecVal, d: *const TypeDesc, probe: *const u8, ) -> u8
 msrt_list_prepend( v: *mut VecVal, d: *const TypeDesc, e: *const u8, )
 msrt_list_insert( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
+msrt_list_insert_copy( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
