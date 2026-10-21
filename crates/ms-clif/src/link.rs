@@ -1,8 +1,13 @@
-//! Linker driver: runs the system C compiler driver over the object and the runtime.
+//! Linker driver. Linux links with the bundled `lld` and musl (no C toolchain involved); macOS and
+//! Windows run the system C compiler driver over the object and the runtime.
 
 use crate::Error;
 use std::path::{Path, PathBuf};
+#[cfg(not(target_os = "linux"))]
 use std::process::Command;
+
+#[cfg(target_os = "linux")]
+mod bundled;
 
 /// Links `object` and the runtime static library into the executable `out`.
 pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
@@ -17,6 +22,16 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
 /// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
 /// for profilers or backtraces).
 pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
+    #[cfg(target_os = "linux")]
+    bundled::link(object, inputs, out, strip)?;
+    #[cfg(not(target_os = "linux"))]
+    system_link(object, inputs, out, strip)?;
+    place_executable(out)?;
+    emit_debug_companion(object, out)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn system_link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let (program, mut command) = driver();
     command.arg("-o").arg(out).arg(object).args(inputs);
     if strip && !cfg!(windows) {
@@ -39,8 +54,7 @@ pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Re
             o.status
         )));
     }
-    place_executable(out)?;
-    emit_debug_companion(object, out)
+    Ok(())
 }
 
 /// Native debug companion for an executable, where the platform uses one.
@@ -88,6 +102,7 @@ fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(not(target_os = "linux"))]
 /// The C compiler driver and a command to run it: `$MS_LINKER` when set, else the first of the
 /// platform's usual names on `PATH`.
 fn driver() -> (String, Command) {
@@ -96,7 +111,7 @@ fn driver() -> (String, Command) {
     (program, command)
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 fn default_driver() -> &'static str {
     "cc"
 }
@@ -146,15 +161,11 @@ fn driver_options(program: &str) -> &'static [&'static str] {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
 fn driver_options(_program: &str) -> &'static [&'static str] {
     // Drop runtime and standard-library code the program never reaches: the archive is one
     // object per Rust codegen unit with a section per function, so unused pieces cost nothing.
-    if cfg!(target_os = "macos") {
-        &["-g", "-Wl,-dead_strip"]
-    } else {
-        &["-Wl,--gc-sections"]
-    }
+    &["-g", "-Wl,-dead_strip"]
 }
 
 #[cfg(target_os = "macos")]
@@ -169,11 +180,6 @@ fn system_libraries() -> &'static [&'static str] {
         "-framework",
         "CoreFoundation",
     ]
-}
-
-#[cfg(not(any(windows, target_os = "macos")))]
-fn system_libraries() -> &'static [&'static str] {
-    &["-lm", "-lpthread", "-ldl"]
 }
 
 /// What the Rust runtime library needs from Windows (the list `rustc --print

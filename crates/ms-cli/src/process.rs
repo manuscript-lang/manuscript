@@ -8,7 +8,7 @@
 // The only FFI in the CLI: std has no signal API, so `signal`/`kill` come from libc.
 #![allow(unsafe_code)]
 
-use std::process::{Child, ExitStatus};
+use std::process::{Child, Command, ExitStatus};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, Instant};
 
@@ -20,6 +20,22 @@ unsafe extern "C" {
     fn signal(signum: i32, handler: usize) -> usize;
     #[cfg(unix)]
     fn kill(pid: i32, signum: i32) -> i32;
+}
+
+/// Spawns a program `ms` just linked. The linker runs in this process and holds its output open
+/// for writing while other threads may fork, so the exec can meet `ETXTBSY` until a fork child
+/// that still shares the descriptor execs; retry briefly instead of failing the run.
+pub fn spawn(command: &mut Command) -> std::io::Result<Child> {
+    let mut waited = Duration::ZERO;
+    loop {
+        match command.spawn() {
+            Err(e) if e.raw_os_error() == Some(26) && waited < Duration::from_secs(2) => {
+                std::thread::sleep(Duration::from_millis(5));
+                waited += Duration::from_millis(5);
+            }
+            result => return result,
+        }
+    }
 }
 
 /// Forwards `signum` to `child`. Windows has no `kill`, so the child is terminated instead.

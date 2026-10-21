@@ -77,10 +77,9 @@ pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String
     std::fs::write(&objp, obj).unwrap();
     let exe = d.join(tag);
     link(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
-    let out = Command::new(&exe)
-        .env("MSRT_LEAKCHECK", "1")
-        .output()
-        .expect("run");
+    let out = support::run_exe(&exe, |c| {
+        c.env("MSRT_LEAKCHECK", "1");
+    });
     let o = Outcome {
         stdout: String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
         code: out.status.code().unwrap_or(-1),
@@ -282,16 +281,27 @@ fn real_runtime() -> &'static PathBuf {
         command
             .current_dir(&root)
             .args(["build", "--release", "-p", "ms-rt"]);
+        // The bundled Linux linker links musl, so the runtime is a musl build.
+        let musl = format!("{}-unknown-linux-musl", std::env::consts::ARCH);
+        if cfg!(target_os = "linux") {
+            command.args(["--target", &musl]);
+            command.env(format!("CC_{}", musl.replace('-', "_")), "cc");
+        }
         let st = command
             .arg("--target-dir")
             .arg(&target)
             .status()
             .expect("cargo build ms-rt");
         assert!(st.success(), "building ms-rt failed");
-        target.join(if cfg!(windows) {
-            "release/ms_rt.lib"
+        let release = if cfg!(target_os = "linux") {
+            target.join(&musl).join("release")
         } else {
-            "release/libms_rt.a"
+            target.join("release")
+        };
+        release.join(if cfg!(windows) {
+            "ms_rt.lib"
+        } else {
+            "libms_rt.a"
         })
     })
 }
@@ -306,7 +316,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
     let d = dir();
     let objp = d.join(format!("{tag}.o"));
     std::fs::write(&objp, obj).unwrap();
-    let shim = d.join("printshim.o");
+    let shim = d.join(format!("{tag}-printshim.o"));
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
     let st = cc()
         .args(["-O1", "-c", "-o"])
@@ -318,7 +328,7 @@ fn run_real(src: &str, opt: bool, tag: &str) -> Outcome {
     let exe = d.join(tag);
     ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe)
         .unwrap_or_else(|e| panic!("{e}"));
-    let out = Command::new(&exe).output().expect("run");
+    let out = support::run_exe(&exe, |_| {});
     Outcome {
         stdout: String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),
         code: out.status.code().unwrap_or(-1),
@@ -375,7 +385,7 @@ b0:
     let d = dir();
     let objp = d.join("real_trace.o");
     std::fs::write(&objp, obj).unwrap();
-    let shim = d.join("printshim.o");
+    let shim = d.join("real_trace-printshim.o");
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
     assert!(
         cc().args(["-O1", "-c", "-o"])
@@ -387,7 +397,7 @@ b0:
     );
     let exe = d.join("real_trace");
     ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe).unwrap();
-    let out = Command::new(&exe).output().unwrap();
+    let out = support::run_exe(&exe, |_| {});
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("index"), "{err}");
     assert!(err.contains("inner") && err.contains("t.ms:12"), "{err}");
@@ -425,7 +435,7 @@ b0:
     let d = dir();
     let objp = d.join("inl_trace.o");
     std::fs::write(&objp, obj).unwrap();
-    let shim = d.join("printshim.o");
+    let shim = d.join("inl_trace-printshim.o");
     let c = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/rt/printshim.c");
     assert!(
         cc().args(["-O1", "-c", "-o"])
@@ -437,7 +447,7 @@ b0:
     );
     let exe = d.join("inl_trace");
     ms_clif::link::link_all(&objp, &[&shim, real_runtime()], &exe).unwrap();
-    let out = Command::new(&exe).output().unwrap();
+    let out = support::run_exe(&exe, |_| {});
     let err = String::from_utf8_lossy(&out.stderr);
     let at: Vec<&str> = err.lines().filter(|l| l.contains("  at ")).collect();
     assert_eq!(
@@ -841,7 +851,7 @@ b0:
     std::fs::write(&objp, compile(&m, &Options::default()).unwrap()).unwrap();
     let exe = d.join("inline-flags");
     link(&objp, real_runtime(), &exe).unwrap();
-    let out = Command::new(exe).output().unwrap();
+    let out = support::run_exe(&exe, |_| {});
     assert_eq!(out.status.code(), Some(70));
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -902,7 +912,7 @@ b0:
         );
         let exe = d.join(format!("real-callback-{opt_level}"));
         ms_clif::link::link_all(&obj, &[&shim, real_runtime()], &exe).unwrap();
-        let out = Command::new(exe).output().unwrap();
+        let out = support::run_exe(&exe, |_| {});
         assert_eq!(out.status.code(), Some(70));
         let err = String::from_utf8_lossy(&out.stderr);
         assert!(err.contains("callback.ms:12 in callback"), "{err}");

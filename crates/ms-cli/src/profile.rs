@@ -431,7 +431,7 @@ pub fn run_profile(
     } else {
         Stdio::inherit()
     });
-    let mut child = match command.spawn() {
+    let mut child = match crate::process::spawn(&mut command) {
         Ok(child) => child,
         Err(error) => {
             return fail(
@@ -787,7 +787,7 @@ The directory must be new. Native builds keep frame pointers, DWARF line tables 
 so perf record works on any ms build output; ms profile prints the command for this program.
 Profiling adds overhead. Measure normal execution separately.
 Arguments after -- go to the application; its exit status is returned.
-Builds link with the system C compiler driver (cc).
+Linux builds link with the linker bundled in ms; macOS and Windows use the system C compiler driver.
 
 Options:
   --out-dir <directory>    Bundle directory (default: ./profile)

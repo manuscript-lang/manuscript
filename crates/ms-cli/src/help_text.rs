@@ -41,7 +41,7 @@ Start with:
 Bare ms prints this help and exits successfully.
 Long options that take values also accept --flag=value.
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.
-Native builds link with the system C compiler driver (cc).
+Linux builds link with the linker bundled in ms; macOS and Windows use the system C compiler driver.
 MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
 "#;
 
@@ -86,7 +86,7 @@ Examples:
 pub const HELP_BUILD: &str = r#"Usage: ms build <file.ms|ms.toml> [--json] [-o output] [--build-type level]
 
 Build an application exporting main() Int as a native executable.
-Native builds link with the system C compiler driver (cc).
+Linux builds link with the linker bundled in ms; macOS and Windows use the system C compiler driver.
 
 Options:
   -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)
@@ -118,7 +118,7 @@ pub const HELP_RUN: &str = r#"Usage: ms run <file.ms|ms.toml> [options] [-- prog
 
 Build a temporary executable and run its exported main() Int.
 Arguments after -- are passed unchanged to the application; its exit status is returned.
-Native builds link with the system C compiler driver (cc).
+Linux builds link with the linker bundled in ms; macOS and Windows use the system C compiler driver.
 
 Options:
   --watch               Rebuild and restart after each saved source change
@@ -137,7 +137,7 @@ Build and execute test blocks in the module and its imported modules.
 Tests run with the project directory (or the test file's directory) as the working directory, so relative fixture paths resolve there.
 Each test prints RUN before it starts and PASS or FAIL after; a test that exceeds the timeout fails by name.
 Arguments after -- are passed to the test executable; its exit status is returned.
-Native builds link with the system C compiler driver (cc).
+Linux builds link with the linker bundled in ms; macOS and Windows use the system C compiler driver.
 
 Options:
   --json              Emit one versioned result; stdout is captured, stderr stays live (no --watch)

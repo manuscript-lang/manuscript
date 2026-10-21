@@ -3,7 +3,8 @@ name = "ms-clif"
 version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript native backend: lowers MIR to Cranelift, emits an object file, links with the system toolchain"
+description = "Manuscript native backend: lowers MIR to Cranelift, emits an object file, links it (the wild linker on Linux, the system toolchain elsewhere)"
+build = "build.rs"
 
 [dependencies]
 ms-mir = { path = "../ms-mir" }
@@ -15,6 +16,10 @@ cranelift-object = "=0.136.0"
 cranelift-native = "=0.136.0"
 target-lexicon = "0.13"
 gimli = { version = "=0.33.0", default-features = false, features = ["write", "std"] }
+
+# The Linux linker, run in-process; macOS and Windows still use the system toolchain.
+[target.'cfg(target_os = "linux")'.dependencies]
+libwild = { version = "=0.10.0", default-features = false }
 
 [lints]
 workspace = true

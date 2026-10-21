@@ -31,7 +31,8 @@ pub(super) fn run<L: Lower>(
     }
     // The child shares the terminal: flush what we have written first.
     let _ = io.stdout.flush();
-    let mut child = match Command::new(&executable).args(&request.arguments).spawn() {
+    let mut child = match crate::process::spawn(Command::new(&executable).args(&request.arguments))
+    {
         Ok(child) => child,
         Err(error) => {
             let _ = writeln!(io.stderr, "{error}");

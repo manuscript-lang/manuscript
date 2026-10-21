@@ -257,7 +257,12 @@ jobs:
           fi
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
-          "../../$(basename "$ms")" run ms.toml
+          if [ "$RUNNER_OS" = Linux ]; then
+            # Linux links with the bundled linker: nothing on PATH, no C toolchain.
+            env -i HOME="$HOME" PATH=/nonexistent "../../$(basename "$ms")" run ms.toml
+          else
+            "../../$(basename "$ms")" run ms.toml
+          fi
       - name: Preserve test artifacts
         if: always()
         uses: actions/upload-artifact@v7

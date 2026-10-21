@@ -253,7 +253,7 @@ b0:
         check_lines(&obj, &absolute, optimized);
         let exe = d.join(format!("lines-{optimized}{}", std::env::consts::EXE_SUFFIX));
         link(&obj, &runtime, &exe).unwrap();
-        let out = Command::new(&exe).output().unwrap();
+        let out = support::run_exe(&exe, |_| {});
         assert_eq!(out.status.code(), Some(0));
         assert_eq!(
             String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n"),

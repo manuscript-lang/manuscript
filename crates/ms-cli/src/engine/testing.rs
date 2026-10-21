@@ -395,14 +395,15 @@ impl Runner<'_> {
 
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
-        let spawned = Command::new(self.executable)
-            .arg(index.to_string())
-            .args(&self.options.program)
-            .current_dir(self.working)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
+        let spawned = crate::process::spawn(
+            Command::new(self.executable)
+                .arg(index.to_string())
+                .args(&self.options.program)
+                .current_dir(self.working)
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped()),
+        );
         let mut child = match spawned {
             Ok(child) => child,
             Err(error) => return Ran::Failed(error.to_string()),

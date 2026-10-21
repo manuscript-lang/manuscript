@@ -9,7 +9,7 @@ weight = 4
 
 ## Build and run
 
-`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. Linking generated programs needs a system C compiler driver (`cc`) on `PATH`. Nothing else is required: the native runtime (`ms-native`) is built and embedded by `ms-cli`'s build script.
+`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. `rust-toolchain.toml` also installs the musl targets that Linux programs link against. Building `ms` needs a C compiler (`ring` compiles C sources); linking programs on Linux needs none, while macOS and Windows still link with the system C compiler driver on `PATH`. Nothing else is required: the native runtime (`ms-native`) is built and embedded by `ms-cli`'s build script.
 
 ```sh
 cargo build --release --locked -p ms-cli
@@ -66,7 +66,7 @@ The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 - **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
 - **`ms emit` is not implemented.** The backend produces object code, not Go source.
-- **Linking uses host tools.** Unix builds use `cc`; macOS also needs `dsymutil` and writes `<output>.dSYM` beside the executable. Keep that bundle with the executable for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections. `MS_LINKER` overrides the compiler driver. A bundled linker is planned.
+- **Linking.** Linux links in-process with the wild linker over musl's startup files and libc (copied from the Rust toolchain by `crates/ms-clif/build.rs`) into static executables, and the runtime is built for the musl target. macOS builds use `cc` and also need `dsymutil` and writes `<output>.dSYM` beside the executable. Keep that bundle with the executable for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections. `MS_LINKER` overrides the compiler driver on those two platforms. A bundled linker for them is planned.
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
 - **No concurrency runtime.** Tasks are cooperative and single-threaded; cancellation exists for signals and shutdown only.
 - **Exit codes.** A fault exits 70, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.

@@ -25,7 +25,7 @@ weight = 1
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
 7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
-8. `ms-clif` emits object code and `ms-driver` links it with the embedded native runtime using the system C compiler driver.
+8. `ms-clif` emits object code and `ms-driver` links it with the embedded native runtime: Linux uses the bundled wild linker and musl, macOS and Windows the system C compiler driver.
 
 ## Know what each crate owns
 

@@ -123,7 +123,8 @@ pub(super) fn run<L: Lower>(
                         old.stop();
                     }
                     let _ = io.stdout.flush();
-                    match Command::new(&executable).args(&request.arguments).spawn() {
+                    match crate::process::spawn(Command::new(&executable).args(&request.arguments))
+                    {
                         Ok(child) => {
                             let _ = writeln!(
                                 io.stderr,

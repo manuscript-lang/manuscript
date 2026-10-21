@@ -42,6 +42,6 @@ if printf '%s\n' "$hugo_output" | grep -q 'extended' &&
 else
     printf 'MISSING Hugo Extended 0.146.7 or newer (book checks)\n'; failed=1
 fi
-if command -v cc >/dev/null 2>&1; then printf 'OK      C compiler (linking generated programs)\n';
-else printf 'MISSING C compiler (linking generated programs)\n'; failed=1; fi
+if command -v cc >/dev/null 2>&1; then printf 'OK      C compiler (building ms from source; running ms needs none on Linux)\n';
+else printf 'MISSING C compiler (building ms from source: ring)\n'; failed=1; fi
 exit "$failed"

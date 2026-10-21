@@ -9,7 +9,7 @@ This is the working contract for the parallel workstreams in [the proposal](../p
 3. **Faults** abort the process after running `with` cleanups in reverse order (a runtime cleanup stack, no frame unwinding in generated code). `ms test` runs each test in its own process invocation so a fault fails only that test. The 200,000-call depth limit is a per-call counter check that is elided for non-recursive call graphs.
 4. **No concurrency runtime.** The language has none today. Cancellation exists only for signals/shutdown: one global flag checked by runtime calls and I/O, not on loop back edges (atomic relaxed load).
 5. **Native tool: `ms profile`** replaces the debugger (the debugger and DAP are dropped). It captures sampling profiles of a native program (folded stacks, pprof-compatible output and a `perf` map file) using frame pointers plus a PC-to-source table. `perf record` works on any `ms build` output because the compiler keeps frame pointers and emits a perf map and DWARF line tables.
-6. **Linking** uses the system `cc`/`ld` for now; a bundled `lld` is a follow-up (tracked as a gap).
+6. **Linking.** Linux links in-process with the wild linker (`libwild`) over musl's startup files and libc, which `crates/ms-clif/build.rs` copies from the Rust toolchain: static executables, no C toolchain. Bundling `rust-lld` was rejected because it loads a 208 MB `libLLVM.so`. macOS and Windows still use the system `cc`/`clang` until a bundled linker lands there (see `proposals/bundled-linker.md`).
 
 ## Pipeline and crates (`crates/`)
 
