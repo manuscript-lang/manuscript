@@ -12,7 +12,8 @@ use std::path::Path;
 /// Writes `usr/lib/libSystem.tbd` and the two framework stubs under `sdk`.
 pub fn write(sdk: &Path, arch: &str, object: &Path, inputs: &[&Path]) -> Result<(), Error> {
     let mut defined = BTreeSet::new();
-    let mut undefined = BTreeSet::new();
+    // lld's own lazy-binding stubs import this, spelled without the usual leading underscore.
+    let mut undefined = BTreeSet::from(["dyld_stub_binder".to_string()]);
     for path in std::iter::once(&object).chain(inputs) {
         let bytes = std::fs::read(path)
             .map_err(|e| Error(format!("cannot read {}: {e}", path.display())))?;
