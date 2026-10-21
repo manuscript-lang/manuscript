@@ -457,6 +457,10 @@ mod process {
             // SAFETY: allocated above.
             unsafe { crate::alloc::free(b) };
         }
+        if !cfg!(target_os = "linux") {
+            assert_eq!(status, ms_rt_abi::STATUS_UNSUPPORTED);
+            return;
+        }
         assert_eq!(status, STATUS_OK);
         assert!(m.heap_used >= 64_000 && m.heap_total >= m.heap_used);
         assert!(m.resident > 0 && m.external >= 0);
@@ -469,10 +473,12 @@ mod process {
     #[test]
     fn watch_signals_through_the_abi() {
         let _g = lock();
+        // SIGUSR1 is 10 on Linux and 30 on macOS.
+        let usr1: i64 = if cfg!(target_os = "linux") { 10 } else { 30 };
         let list = {
             let mut v = empty();
             // SAFETY: `v` is writable.
-            unsafe { ms_std_rt::write_list(&[10i64], &mut v) };
+            unsafe { ms_std_rt::write_list(&[usr1], &mut v) };
             v
         };
         let mut h: *mut ms_std_core::ObjCell<ms_std_process::signals::Watcher> =
@@ -481,9 +487,9 @@ mod process {
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
             assert_eq!(msstd_process_watch_signals(&list, 0, 0, &mut h), STATUS_OK);
-            assert_eq!(raise(10), 0);
+            assert_eq!(raise(usr1 as i32), 0);
             assert_eq!(msstd_process_signal_next(h, &mut n), STATUS_OK);
-            assert_eq!(n, 10);
+            assert_eq!(n, usr1);
             msstd_process_signal_close(h);
             assert_eq!(
                 msstd_process_signal_next(h, &mut n),

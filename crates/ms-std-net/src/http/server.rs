@@ -1909,6 +1909,11 @@ pub(crate) mod tests {
         let addr = server.address().to_string();
         server.close().unwrap();
         assert!(server.is_closed());
+        // Linux refuses connections once the listener is shut down; macOS keeps queueing
+        // them until the listening descriptor itself closes with the server.
+        if !cfg!(target_os = "linux") {
+            drop(server);
+        }
         assert!(TcpStream::connect(&addr).is_err());
         net.close();
     }

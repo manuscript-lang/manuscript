@@ -591,8 +591,15 @@ mod tests {
             ms_rt_abi::STATUS_INVALID_INPUT
         );
         assert!(!working_directory().unwrap().is_empty());
-        assert!(resident_bytes().unwrap() > 0);
-        assert!(available_memory().unwrap() > 0);
+        if cfg!(target_os = "linux") {
+            assert!(resident_bytes().unwrap() > 0);
+            assert!(available_memory().unwrap() > 0);
+        } else {
+            assert_eq!(
+                resident_bytes().unwrap_err().status,
+                ms_rt_abi::STATUS_UNSUPPORTED
+            );
+        }
         assert_eq!(
             set_identity(b"nope", 0).unwrap_err().status,
             ms_rt_abi::STATUS_INVALID_INPUT
