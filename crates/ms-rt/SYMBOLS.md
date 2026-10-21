@@ -156,6 +156,8 @@ msrt_string_slice( s: *const StrObj, start: i64, end: i64, out: *mut *mut StrObj
 msrt_string_chars(s: *const StrObj, out: *mut VecVal)
 msrt_string_lines(s: *const StrObj, out: *mut VecVal)
 msrt_string_split( s: *const StrObj, sep: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, )
+msrt_string_split_iter( s: *mut StrObj, sep: *mut StrObj, has_max: u8, max: i64, ) -> *mut SplitIter
+msrt_split_next(it: *mut SplitIter) -> *mut StrObj
 msrt_string_scalar_values(s: *const StrObj, out: *mut VecVal)
 msrt_string_from_scalars( values: *const VecVal, out: *mut *mut StrObj, ) -> u8
 msrt_string_to_bytes(s: *const StrObj, out: *mut VecVal)

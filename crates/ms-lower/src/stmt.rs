@@ -9,13 +9,80 @@ use ms_syntax::ast::*;
 impl<'a> FnLower<'a> {
     /// Lowers statements until the position becomes unreachable.
     pub fn stmts(&mut self, body: &[Stmt]) -> Result<(), Error> {
-        for s in body {
+        let mut i = 0;
+        while i < body.len() {
             if self.dead {
                 break;
             }
-            self.stmt(s)?;
+            if let Some((gap, split, loop_body)) = self.split_then_loop(&body[i..]) {
+                // `let parts = text.split(..)` read only by a later `for`; what lies between
+                // them cannot affect the split.
+                for s in &body[i + 1..i + 1 + gap] {
+                    self.stmt(s)?;
+                }
+                let loop_stmt = &body[i + 1 + gap];
+                self.stmt_with_pos(loop_stmt, |this| this.for_stmt(loop_stmt, split, loop_body))?;
+                i += gap + 2;
+                continue;
+            }
+            self.stmt(&body[i])?;
+            i += 1;
         }
         Ok(())
+    }
+
+    /// `let name = <call>.split(..)`, then plain `let`s of literals, then `for x in name:` with
+    /// nothing else naming `name`: the number of statements between, the split call and the
+    /// loop body.
+    fn split_then_loop<'s>(&self, rest: &'s [Stmt]) -> Option<(usize, &'s Expr, &'s [Stmt])> {
+        let (first, after) = rest.split_first()?;
+        let StmtKind::Bind {
+            mutable: false,
+            pattern,
+            ty: None,
+            value,
+            ..
+        } = &first.kind
+        else {
+            return None;
+        };
+        let ExprKind::Call { callee, .. } = &value.kind else {
+            return None;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return None;
+        };
+        if name.as_str() != "split" {
+            return None;
+        }
+        let binding = self.hir.pattern_binding(pattern)?;
+        let gap = after.iter().take_while(|s| is_literal_bind(s)).count();
+        let (second, tail) = after[gap..].split_first()?;
+        let StmtKind::For { iter, body, .. } = &second.kind else {
+            return None;
+        };
+        let ms_check::hir::Resolution::Local(used) = self.hir.resolution(iter) else {
+            return None;
+        };
+        let unused =
+            |stmts: &[Stmt]| !crate::mutation::block_mentions(&self.hir, stmts, binding.uid);
+        (used.uid == binding.uid && unused(body) && unused(tail)).then_some((gap, value, body))
+    }
+
+    /// Runs `f` for statement `s` with the position bookkeeping of [`Self::stmt`].
+    fn stmt_with_pos(
+        &mut self,
+        s: &Stmt,
+        f: impl FnOnce(&mut Self) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let outer = self.stmt_pos.replace(s.pos);
+        self.at(s.pos);
+        let r = f(self);
+        self.stmt_pos = outer;
+        if let Some(p) = outer {
+            self.at(p);
+        }
+        r
     }
 
     /// A statement list in its own lexical scope.
@@ -641,6 +708,66 @@ impl<'a> FnLower<'a> {
             )
     }
 
+    /// `for piece in text.split(..)` over a piece iterator: no list, and a piece nothing else
+    /// holds is rewritten in place for the next one.
+    fn split_loop(
+        &mut self,
+        loop_var: &ms_check::types::BindingRef,
+        it: Val,
+        body: &[Stmt],
+    ) -> Result<(), Error> {
+        let var = self.bind_hidden(it);
+        let (header, body_b, done, exit) = (
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+        );
+        self.b.br(header, &[]);
+        self.enter(header);
+        let iter = self.b.use_var(var);
+        let opt = self.b.m.types.opt(MTy::STR);
+        let piece = self.call_runtime("msrt_split_next", &[iter], opt)?;
+        let more = self.b.opt_is_some(piece);
+        self.b.br_if(more, body_b, &[], done, &[]);
+        self.b.seal_block(body_b);
+        self.b.seal_block(done);
+        // The runtime hands out a counted reference to the piece; the end of the pieces is
+        // a null that still has to be released.
+        self.enter(done);
+        self.drop_value(piece);
+        self.b.br(exit, &[]);
+        self.enter(body_b);
+        let depth = self.scopes.len();
+        self.loops.push(LoopCtx {
+            brk: exit,
+            cont: header,
+            depth,
+            cont_used: false,
+            brk_used: false,
+        });
+        self.push_scope();
+        // The scope releases the counted piece on every way out of the body.
+        let held = self.bind_hidden(Val {
+            v: piece,
+            own: true,
+        });
+        let piece = self.b.use_var(held);
+        let e = self.b.opt_get(piece);
+        self.bind_local(loop_var, Val { v: e, own: false });
+        self.stmts(body)?;
+        self.pop_scope();
+        self.loops.pop();
+        if !self.dead {
+            self.b.br(header, &[]);
+        }
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.enter(exit);
+        self.pop_scope();
+        Ok(())
+    }
+
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let loop_var = self
             .hir
@@ -652,13 +779,19 @@ impl<'a> FnLower<'a> {
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
-                let it = self.expr(iter)?;
+                self.split_iter_for = Some(iter as *const Expr);
+                let it = self.expr(iter);
+                self.split_iter_for = None;
+                let it = it?;
                 if self.dead {
                     self.scopes.pop();
                     return Ok(());
                 }
                 let mut it = it;
                 let mut ity = self.ty_of(it.v);
+                if matches!(self.b.m.types.kind(ity), TyKind::Obj(n, _) if n == "SplitIter") {
+                    return self.split_loop(&loop_var, it, body);
+                }
                 if crate::mapset::is_map_or_set(self.b.m, ity) {
                     // A map yields its entries and a set its values, as a list snapshot.
                     let elem = self.mty(&loop_var.ty)?;
@@ -753,5 +886,19 @@ impl<'a> FnLower<'a> {
         self.enter(exit);
         self.pop_scope();
         Ok(())
+    }
+}
+
+/// `let`/`var` of a number, boolean or text without interpolation: evaluating it has no effect.
+fn is_literal_bind(s: &Stmt) -> bool {
+    let StmtKind::Bind { value, .. } = &s.kind else {
+        return false;
+    };
+    match &value.kind {
+        ExprKind::Number(_) | ExprKind::Bool(_) => true,
+        ExprKind::Text(parts) => parts
+            .iter()
+            .all(|p| matches!(p, ms_syntax::ast::TextPart::Lit(_))),
+        _ => false,
     }
 }
