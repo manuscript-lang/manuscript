@@ -44,10 +44,10 @@ jobs:
         with:
           shared-key: rust-dist-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Cache bundled lld
+      - name: Restore bundled lld
         id: lld
         if: runner.os != 'Windows'
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/llvm-bundle/install
           key: lld-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('scripts/build-llvm-bundle.sh', 'scripts/llvm-version') }}
@@ -57,6 +57,12 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update && sudo apt-get install -y ninja-build
           else brew install ninja; fi
           LLVM_WORK="$RUNNER_TEMP/llvm-bundle" sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}" lld
+      - name: Save bundled lld
+        if: runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/llvm-bundle/install
+          key: ${{ steps.lld.outputs.cache-primary-key }}
       - name: Point the build at lld
         if: runner.os != 'Windows'
         run: echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"

@@ -24,6 +24,10 @@ pub fn cc() -> Command {
 /// Links `object` with a C fixture runtime. The bundled linker has no libgcc, and on aarch64 musl's
 /// `printf` needs soft-float quad helpers; the Rust runtime carries them in its compiler-builtins,
 /// so fixture runtimes borrow the toolchain's copy.
+#[allow(
+    dead_code,
+    reason = "test crates sharing this module use different helpers"
+)]
 pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_clif::Error> {
     let builtins = builtins();
     let mut inputs = vec![runtime];
@@ -31,6 +35,10 @@ pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_
     ms_clif::link::link_all(object, &inputs, out)
 }
 
+#[allow(
+    dead_code,
+    reason = "test crates sharing this module use different helpers"
+)]
 fn builtins() -> Option<PathBuf> {
     if !cfg!(target_os = "linux") {
         return None;
