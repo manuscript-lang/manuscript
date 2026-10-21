@@ -22,31 +22,40 @@ impl Deque[T]:
 
     # Doubles the ring buffer, unwrapping values so the front lands at index 0.
     var fn grow() Unit:
-        let capacity = self.slots.length()
-        var next = capacity * 2
-        if capacity == 0:
+        var next = self.slots.length() * 2
+        if next == 0:
             next = 4
         var fresh: List[Optional[T]] = []
-        for index in range(0, next):
-            fresh.append(none)
         for index in range(0, self.size):
-            fresh.set(index, self.slots.get((self.start + index) % capacity))
+            fresh.append(self.slots.get(self.slot_of(index)))
+        for index in range(self.size, next):
+            fresh.append(none)
         self.slots = fresh
         self.start = 0
+
+    # Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
+    fn slot_of(offset: Int) Int:
+        let at = self.start + offset
+        let capacity = self.slots.length()
+        if at >= capacity:
+            return at - capacity
+
+        return at
 
     # Adds a value after the last one.
     var fn push_back(value: T) Unit:
         if self.size == self.slots.length():
             self.grow()
-        self.slots.set((self.start + self.size) % self.slots.length(), some(value))
+        self.slots.set(self.slot_of(self.size), some(value))
         self.size += 1
 
     # Adds a value before the first one.
     var fn push_front(value: T) Unit:
         if self.size == self.slots.length():
             self.grow()
-        let capacity = self.slots.length()
-        self.start = (self.start + capacity - 1) % capacity
+        if self.start == 0:
+            self.start = self.slots.length()
+        self.start -= 1
         self.slots.set(self.start, some(value))
         self.size += 1
 
@@ -57,7 +66,9 @@ impl Deque[T]:
 
         let value = self.slots.get(self.start)
         self.slots.set(self.start, none)
-        self.start = (self.start + 1) % self.slots.length()
+        self.start += 1
+        if self.start == self.slots.length():
+            self.start = 0
         self.size -= 1
         return value
 
@@ -66,7 +77,7 @@ impl Deque[T]:
         if self.size == 0:
             return none
 
-        let index = (self.start + self.size - 1) % self.slots.length()
+        let index = self.slot_of(self.size - 1)
         let value = self.slots.get(index)
         self.slots.set(index, none)
         self.size -= 1
@@ -84,7 +95,7 @@ impl Deque[T]:
         if self.size == 0:
             return none
 
-        return self.slots.get((self.start + self.size - 1) % self.slots.length())
+        return self.slots.get(self.slot_of(self.size - 1))
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
     # Negative indexes are out of range.
@@ -92,7 +103,7 @@ impl Deque[T]:
         if index < 0 or index >= self.size:
             return none
 
-        return self.slots.get((self.start + index) % self.slots.length())
+        return self.slots.get(self.slot_of(index))
 
     # Removes every value and releases the storage.
     var fn clear() Unit:
@@ -104,6 +115,6 @@ impl Deque[T]:
     fn to_list() List[T]:
         var out: List[T] = []
         for index in range(0, self.size):
-            if let value = self.slots.get((self.start + index) % self.slots.length()):
+            if let value = self.slots.get(self.slot_of(index)):
                 out.append(value)
         return out

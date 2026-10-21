@@ -13,8 +13,8 @@ export type SortedEntry[K: Comparable, V]:
 
 # A map kept in ascending key order, so lookups by position (first, last, floor, ceiling, range) are as cheap as lookups by key.
 # Keys use their Comparable order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
-# Written in Manuscript as a list of sorted chunks of at most 512 entries: get, contains, floor and ceiling take O(log n);
-# add and remove take O(log n) to find the spot plus a shift inside one 512-entry chunk, which stays well under a microsecond per operation up to millions of entries.
+# Written in Manuscript as a list of sorted chunks of at most 256 entries: get, contains, floor and ceiling take O(log n);
+# add and remove take O(log n) to find the spot plus a shift inside one 256-entry chunk, which stays well under a microsecond per operation up to millions of entries.
 # Assignment copies, so a copy is an independent map. Use Map when order does not matter; its operations are O(1).
 export type SortedMap[K: Comparable, V]:
     # Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.
@@ -120,7 +120,7 @@ impl SortedMap[K, V]:
         self.size += 1
         if at == self.key_chunks[c].length() - 1:
             self.refresh(c)
-        if self.key_chunks[c].length() > 512:
+        if self.key_chunks[c].length() > 256:
             self.split(c)
 
     # Splits chunk `c` into two halves.
