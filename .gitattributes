@@ -3,3 +3,6 @@
 *.ms text eol=lf
 *.toml text eol=lf
 tests/conformance/** text eol=lf
+# Everything else is text with LF too: tests compare byte offsets and sizes of fixtures,
+# recorded corpora and guide text, and git detects binary files on its own.
+* text=auto eol=lf

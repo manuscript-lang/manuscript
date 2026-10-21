@@ -8,6 +8,10 @@
 //! nesting up to the 100 000 level ceiling cannot overflow the native stack.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 pub mod ffi;

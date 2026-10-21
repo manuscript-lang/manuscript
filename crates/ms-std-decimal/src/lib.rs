@@ -5,6 +5,10 @@
 //! compute exactly and round half-even to 34 digits; magnitudes beyond `9.99...e6144` fault.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 #[cfg(feature = "ffi")]

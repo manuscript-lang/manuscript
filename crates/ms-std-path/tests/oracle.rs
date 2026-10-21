@@ -1,4 +1,6 @@
 //! Replays `tests/oracle/path.tsv`, a recorded corpus.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_path::*;
 
 fn bytes(tok: &str) -> Vec<u8> {

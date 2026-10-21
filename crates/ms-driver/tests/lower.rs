@@ -1,7 +1,9 @@
 //! Lowers small programs and verifies the MIR.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_driver::{CheckRequest, check_graph, load_file};
 use ms_lower::{Options, lower_program};
+use ms_rt as _;
 use std::path::PathBuf;
 
 fn lower(name: &str, source: &str) -> String {

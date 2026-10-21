@@ -832,7 +832,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
 ///
 /// # Safety
 /// Single threaded; paired with [`pop_trap_guard`] or a fault that leaves through it.
-#[cfg(all(windows, not(test)))]
+#[cfg(windows)]
 pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
     // SAFETY: single threaded runtime state.
     unsafe {
@@ -851,7 +851,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
 ///
 /// # Safety
 /// Single threaded.
-#[cfg(all(windows, not(test)))]
+#[cfg(windows)]
 pub(crate) unsafe fn pop_trap_guard() {
     // SAFETY: single threaded runtime state.
     unsafe {

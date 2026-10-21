@@ -120,7 +120,9 @@ fn raw_mode_decodes_input_and_restores_settings() {
     assert_eq!(next(raw, Some(20)).0, STATUS_NONE);
     raw.close();
     raw.close();
-    assert_eq!(pty.local_modes(), before);
+    // macOS raises PENDIN while it retypes input queued across a mode change.
+    let settled = |m: LocalModes| m.difference(LocalModes::PENDIN);
+    assert_eq!(settled(pty.local_modes()), settled(before));
     assert_eq!(next(raw, None).0, STATUS_CLOSED);
     assert_eq!(raw.size(), Err(STATUS_CLOSED));
     assert_eq!(raw.move_cursor(0, 0), STATUS_CLOSED);

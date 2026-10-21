@@ -1,6 +1,8 @@
 //! Replays `tests/oracle/crypto_asym.tsv`, a recorded corpus.
 //! Randomized operations (ECDSA, PSS, OAEP) are checked for success/failure parity only; their
 //! outputs are verified by the recorded Go signatures and ciphertexts instead.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_crypto::asym::*;
 use ms_std_crypto::{Alg, CryptoFail, digest};
 use std::collections::HashMap;

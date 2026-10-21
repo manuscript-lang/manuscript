@@ -748,6 +748,7 @@ esac
         run_names(arguments, &NAMES)
     }
 
+    #[cfg(unix)]
     fn run_names(arguments: &[&str], names: &[&str]) -> (i32, String, Document) {
         let directory = TempDir::create("ms-tests-unit-").unwrap();
         let executable = script(&directory.0);
@@ -812,6 +813,7 @@ esac
         assert!(json.contains("\"not_run\": 0"), "{json}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn selection_listing_and_fail_fast() {
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);

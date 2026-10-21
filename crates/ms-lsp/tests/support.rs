@@ -3,7 +3,9 @@
 
 #![allow(dead_code)]
 
+// Links the msrt_* runtime symbols.
 use ms_lsp::json::{self, Json, obj};
+use ms_rt as _;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 
@@ -230,10 +232,15 @@ pub fn canonical(value: &Json) -> String {
 /// completion); they change whenever the standard library does, so only their
 /// presence is recorded.
 fn snapshot_line(message: &Json) -> String {
-    let temp = std::env::temp_dir()
+    // Snapshots hold the URI spelling: forward slashes and a leading slash before a drive letter.
+    let mut temp = std::env::temp_dir()
         .to_string_lossy()
+        .replace('\\', "/")
         .trim_end_matches('/')
         .to_string();
+    if !temp.starts_with('/') {
+        temp.insert(0, '/');
+    }
     let pid = format!("-{}/", std::process::id());
     let text = canonical(message)
         .replace(&pid, "-PID/")

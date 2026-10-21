@@ -55,6 +55,7 @@ fn discovery_preserves_explicit_source_roots() {
     }
 }
 
+#[cfg(unix)]
 #[test]
 fn discovery_does_not_follow_directory_symlinks() {
     let dir = TempDir::new();
@@ -75,6 +76,7 @@ fn discovery_does_not_follow_directory_symlinks() {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn discovery_reports_traversal_errors() {
     let dir = TempDir::new();

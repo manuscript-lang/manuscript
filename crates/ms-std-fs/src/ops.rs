@@ -587,10 +587,15 @@ mod tests {
         );
         access(&f, 4).unwrap();
         assert_eq!(access(&f, 9).unwrap_err().status, STATUS_INVALID_INPUT);
-        assert_eq!(
-            chmod_link(&f, 0o600).unwrap_err().status,
-            STATUS_UNSUPPORTED
-        );
+        // Linux cannot change a link's own mode; macOS can.
+        if cfg!(target_os = "linux") {
+            assert_eq!(
+                chmod_link(&f, 0o600).unwrap_err().status,
+                STATUS_UNSUPPORTED
+            );
+        } else {
+            chmod_link(&f, 0o600).unwrap();
+        }
         assert!(stat_filesystem(&root).unwrap().block_size > 0);
         remove(&path::dir(&root), true).unwrap();
     }

@@ -15,3 +15,6 @@ ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-clif = { path = "../ms-clif" }
 ms-lower = { path = "../ms-lower" }
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt" }

@@ -30,8 +30,13 @@ impl TempDir {
 impl Drop for TempDir {
     fn drop(&mut self) {
         // Directories made unreadable by a test must be reopened first.
-        let _ =
-            std::fs::set_permissions(&self.0, std::os::unix::fs::PermissionsExt::from_mode(0o700));
+        #[cfg(unix)]
+        {
+            let _ = std::fs::set_permissions(
+                &self.0,
+                std::os::unix::fs::PermissionsExt::from_mode(0o700),
+            );
+        }
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }

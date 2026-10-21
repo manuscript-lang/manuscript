@@ -1,6 +1,8 @@
 //! Snapshot tests: scripted client sessions against this crate's server must
 //! produce the recorded messages.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+use ms_rt as _;
 mod support;
 
 use ms_lsp::json::obj;

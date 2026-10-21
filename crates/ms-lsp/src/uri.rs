@@ -122,6 +122,13 @@ fn escape_path(path: &str) -> String {
 /// The `file:` URI of an absolute path.
 pub fn file_uri(path: &str) -> String {
     let mut p = path.replace('\\', "/");
+    // `canonicalize` on Windows returns verbatim `\\?\` paths, which are not part of the name.
+    if let Some(rest) = p.strip_prefix("//?/UNC/") {
+        return format!("file://{}", escape_path(rest));
+    }
+    if let Some(rest) = p.strip_prefix("//?/") {
+        p = rest.to_string();
+    }
     if !p.starts_with('/') && p.as_bytes().get(1) == Some(&b':') {
         p.insert(0, '/');
     }
@@ -159,6 +166,11 @@ mod tests {
             assert_eq!(filename(&file_uri(path)), path, "{path}");
         }
         assert_eq!(file_uri("/tmp/a b.ms"), "file:///tmp/a%20b.ms");
+        assert_eq!(file_uri(r"\\?\D:\a\b.ms"), "file:///D:/a/b.ms");
+        assert_eq!(
+            file_uri(r"\\?\UNC\host\share\b.ms"),
+            "file://host/share/b.ms"
+        );
     }
 
     #[test]

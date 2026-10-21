@@ -28,3 +28,6 @@ windows-sys = { version = "0.61", features = [
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt" }

@@ -1,4 +1,6 @@
 //! Replays `tests/oracle/semver.tsv`, a recorded corpus.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_semver::*;
 
 fn text(tok: &str) -> String {

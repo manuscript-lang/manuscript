@@ -2,6 +2,8 @@
 //! link, run. Lowering from the typed HIR is a separate workstream, so the
 //! tests supply the MIR the lowering would produce.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+use ms_rt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

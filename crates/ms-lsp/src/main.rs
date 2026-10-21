@@ -2,6 +2,9 @@
 //! process supervises a worker copy of itself, so a checker fault restarts the
 //! worker instead of ending the editor session.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+#[cfg(test)]
+use ms_rt as _;
 use std::process::Command;
 
 fn main() {

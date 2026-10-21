@@ -421,10 +421,13 @@ mod tests {
         // The directory's own change is reported with the new entry, sorted by path.
         let got = names(w.wait().unwrap());
         assert_eq!(got.len(), 2);
-        assert!(!got[0].1 && got[1].0.ends_with("/b") && got[1].1);
+        assert!(!got[0].1 && (got[1].0.ends_with("/b") || got[1].0.ends_with("\\b")) && got[1].1);
         ops::remove(&path::join(&root, b"a"), false).unwrap();
         let got = names(w.wait().unwrap());
-        assert!(got.iter().any(|(p, r)| p.ends_with("/a") && *r));
+        assert!(
+            got.iter()
+                .any(|(p, r)| (p.ends_with("/a") || p.ends_with("\\a")) && *r)
+        );
         w.close();
         assert_eq!(w.wait().err().map(|f| f.status), Some(STATUS_CLOSED));
         let limited = Poll::new(&root, true, 10_000_000, 1);

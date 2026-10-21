@@ -1,6 +1,8 @@
 //! Replays `tests/oracle/compress.tsv`, a recorded corpus.
 //! Streams produced by Go must decode identically (including every error), and compress must
 //! accept and reject the same arguments; the encoded bytes themselves are implementation specific.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_compress::*;
 use ms_std_core::Fail;
 

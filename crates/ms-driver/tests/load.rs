@@ -1,5 +1,7 @@
 //! Module graph loading and checking over real files.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+use ms_rt as _;
 use std::path::{Path, PathBuf};
 
 use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};
