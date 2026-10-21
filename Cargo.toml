@@ -32,3 +32,9 @@ opt-level = 1
 opt-level = 1
 [profile.dev.package.cranelift-object]
 opt-level = 1
+
+# Cranelift 0.136.0 plus one change: the x64 backend branches directly on the overflow flag of
+# `sadd_overflow`, `ssub_overflow` and `usub_overflow` (as it already does for `uadd_overflow`
+# and the multiplies) instead of `seto`, `test`, `jne`. See vendor/cranelift-codegen/PATCH.md.
+[patch.crates-io]
+cranelift-codegen = { path = "vendor/cranelift-codegen" }

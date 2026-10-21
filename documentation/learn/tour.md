@@ -272,17 +272,17 @@ type Counter:
     value: Int
 
 impl Increment for Counter:
-    fn increment() Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
-fn reset(counter: Counter) Unit:
+fn reset(var counter: Counter) Unit:
     counter.value = 0
 
 test "counter behavior":
-    let counter = Counter(0)
+    var counter = Counter(0)
     counter.increment()
     try expect_equal(counter.value, 1)
-    reset(counter)
+    reset(var counter)
     try expect_equal(counter.value, 0)
 ```
 
@@ -296,11 +296,11 @@ type Counter:
     value: Int
 
 impl Counter:
-    fn increment() Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
 test "own methods":
-    let counter = Counter(0)
+    var counter = Counter(0)
     counter.increment()
     try expect_equal(counter.value, 1)
 ```

@@ -1,6 +1,7 @@
 import {bench_string} from "./strings.ms"
 import {bench_list} from "./lists.ms"
 import {bench_map_set} from "./maps.ms"
+import {bench_structures} from "./structures.ms"
 import {bench_json} from "./jsonbench.ms"
 import {bench_csv} from "./csvbench.ms"
 import {bench_binary} from "./binarybench.ms"
@@ -19,6 +20,7 @@ export fn main() Int:
     bench_string()
     bench_list()
     bench_map_set()
+    bench_structures()
     bench_json()
     bench_csv()
     bench_binary()

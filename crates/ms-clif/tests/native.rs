@@ -678,7 +678,7 @@ fn random_programs_agree() {
     let n: u64 = std::env::var("FUZZ_N")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(40);
+        .unwrap_or(400);
     let first: u64 = std::env::var("FUZZ_SEED")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -708,7 +708,7 @@ fn random_programs_agree() {
 }
 
 #[test]
-fn predicated_overflow_keeps_faults_sources_cleanup_and_check_options() {
+fn checked_overflow_keeps_faults_sources_cleanup_and_check_options() {
     for (n, (x, y, take, line)) in [
         (i64::MAX, 2, true, 10),
         (i64::MAX, i64::MAX, true, 10),
@@ -768,7 +768,7 @@ b0:
 "#
         );
         let mut m = module(&src);
-        assert!(ms_mir::opt::ifconv::run(&mut m));
+        ms_mir::opt::ifconv::run(&mut m);
         ms_mir::verify::verify_module(&m).unwrap();
         let prepared = ms_mir::print::print_module(&m);
         for opt_level in ["none", "speed"] {
@@ -807,7 +807,7 @@ b0:
 }
 
 #[test]
-fn predicated_overflow_retains_inline_frames_on_real_runtime() {
+fn checked_overflow_retains_inline_frames_on_real_runtime() {
     let src = r#"module "inline_flags"
 file 0 "inline_flags.ms"
 entry @main
@@ -833,7 +833,7 @@ b0:
 }
 "#;
     let mut m = module(src);
-    assert!(ms_mir::opt::ifconv::run(&mut m));
+    ms_mir::opt::ifconv::run(&mut m);
     ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::Speed, true);
     assert_eq!(m.funcs.len(), 1);
     let d = dir();
@@ -856,7 +856,7 @@ b0:
 
 /// A native callback boundary is the deliberate limit of Windows attribution.
 #[test]
-fn predicated_overflow_stops_at_native_callback_boundary() {
+fn checked_overflow_stops_at_native_callback_boundary() {
     let src = r#"module "callback_trace"
 file 0 "callback.ms"
 entry @main

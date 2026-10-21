@@ -2,6 +2,8 @@
 //! `ms profile` end to end with a fake build engine: the "executable" is a
 //! shell script that writes folded stacks to `$MS_PROFILE`.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+use ms_rt as _;
 use std::os::unix::fs::PermissionsExt;
 
 use ms_cli::backend::{Backend, BackendResult, BuildRequest, Io};

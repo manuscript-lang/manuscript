@@ -6,7 +6,7 @@
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
 use crate::alloc;
-use crate::desc::{slot_copy, slot_drop, slot_eq, slot_hash};
+use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
 use ms_rt_abi::*;
 
@@ -105,46 +105,113 @@ unsafe fn slot_hash_of(p: *mut u8) -> u64 {
     unsafe { *(p as *const u64) }
 }
 
-#[inline(always)]
-fn hash_key(kd: &TypeDesc, key: *const u8) -> u64 {
-    // SAFETY: the key slot is live.
-    unsafe {
-        if kd.kind == KIND_INT {
-            return crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) | LIVE;
-        }
-        slot_hash(kd, key) | LIVE
+/// Hash, equality and ownership of one key type, resolved once per call by [`keyed!`] so that
+/// each key kind gets its own inlined probe loop. `Dyn` is the descriptor-driven fallback for
+/// every other key type.
+trait KeyOps {
+    /// Hash of the key slot (without the `LIVE` bit).
+    unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64;
+    /// Equality of two live key slots.
+    unsafe fn eq(kd: &TypeDesc, stored: *const u8, key: *const u8) -> bool;
+}
+
+struct IntKey;
+struct StrKey;
+struct DynKey;
+
+impl KeyOps for IntKey {
+    #[inline(always)]
+    unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
+        // SAFETY: the key slot holds an `Int`.
+        unsafe { crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) }
+    }
+    #[inline(always)]
+    unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+        // SAFETY: both slots hold an `Int`.
+        unsafe { *(a as *const i64) == *(b as *const i64) }
     }
 }
 
-/// Key equality with `Int` keys (the common case) compared inline.
-#[inline(always)]
-unsafe fn keys_eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {
-    // SAFETY: both are live key slots of `kd`.
-    unsafe {
-        if kd.kind == KIND_INT {
-            return *(a as *const i64) == *(b as *const i64);
-        }
-        slot_eq(kd, a, b)
+impl KeyOps for StrKey {
+    #[inline(always)]
+    unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
+        // SAFETY: the key slot holds a live string.
+        unsafe { crate::string::hash_bytes(crate::string::bytes(*(key as *const *const StrObj))) }
     }
+    #[inline(always)]
+    unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+        // SAFETY: both slots hold live strings. A lookup of an inserted key hits the same object.
+        unsafe {
+            let (x, y) = (*(a as *const *const StrObj), *(b as *const *const StrObj));
+            x == y || crate::string::bytes(x) == crate::string::bytes(y)
+        }
+    }
+}
+
+impl KeyOps for DynKey {
+    #[inline(always)]
+    unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64 {
+        // SAFETY: the key slot is live.
+        unsafe { slot_hash(kd, key) }
+    }
+    #[inline(always)]
+    unsafe fn eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+        // SAFETY: both are live key slots of `kd`.
+        unsafe { slot_eq(kd, a, b) }
+    }
+}
+
+/// Runs `$body` with `$K` bound to the [`KeyOps`] of `$kd`'s key kind.
+macro_rules! keyed {
+    ($kd:expr, |$K:ident| $body:expr) => {
+        match $kd.kind {
+            KIND_INT => {
+                type $K = IntKey;
+                $body
+            }
+            KIND_STRING => {
+                type $K = StrKey;
+                $body
+            }
+            _ => {
+                type $K = DynKey;
+                $body
+            }
+        }
+    };
+}
+
+#[inline(always)]
+unsafe fn hash_key<K: KeyOps>(kd: &TypeDesc, key: *const u8) -> u64 {
+    // SAFETY: the key slot is live.
+    unsafe { K::hash(kd, key) | LIVE }
 }
 
 /// Finds the slot index of `key`.
-unsafe fn find(m: &MapVal, kd: &TypeDesc, l: &Layout, key: *const u8, h: u64) -> Option<usize> {
+#[inline(always)]
+unsafe fn find<K: KeyOps>(
+    m: &MapVal,
+    kd: &TypeDesc,
+    l: &Layout,
+    key: *const u8,
+    h: u64,
+) -> Option<usize> {
     if m.len == 0 {
         return None;
     }
     // SAFETY: index and slots are consistent for a non-empty map.
     unsafe {
+        let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
-            let e = *index_of(m).add(pos);
+            let e = *index.add(pos);
             if e == 0 {
                 return None;
             }
             if (e ^ h) >> 32 == 0 {
                 let i = (e as u32 - 1) as usize;
                 let p = slot(m, l, i);
-                if slot_hash_of(p) == h && keys_eq(kd, p.add(l.koff), key) {
+                if slot_hash_of(p) == h && K::eq(kd, p.add(l.koff), key) {
                     return Some(i);
                 }
             }
@@ -153,36 +220,23 @@ unsafe fn find(m: &MapVal, kd: &TypeDesc, l: &Layout, key: *const u8, h: u64) ->
     }
 }
 
-/// True for `Int` keys with 8-byte, 8-aligned values: slots are `{ hash, key, value }` at a
-/// constant 24-byte stride, so lookups need no descriptor arithmetic or equality calls.
+/// The slot holding `key`, or null.
 #[inline(always)]
-fn int_pair(kd: &TypeDesc, vd: Option<&TypeDesc>) -> bool {
-    kd.kind == KIND_INT && vd.is_some_and(|v| v.size == 8 && v.align == 8)
-}
-
-/// `find` specialised for [`int_pair`] maps; returns the slot pointer.
-#[inline(always)]
-unsafe fn find_int(m: &MapVal, key: i64) -> *mut u8 {
+unsafe fn find_slot<K: KeyOps>(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> *mut u8 {
     if m.len == 0 {
         return core::ptr::null_mut();
     }
-    // SAFETY: index and slots are consistent for a non-empty map.
+    // SAFETY: caller contract.
     unsafe {
-        let h = crate::string::mix(key as u64 ^ 0x9e37_79b9) | LIVE;
-        let index = index_of(m);
-        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
-        loop {
-            let e = *index.add(pos);
-            if e == 0 {
-                return core::ptr::null_mut();
-            }
-            if (e ^ h) >> 32 == 0 {
-                let p = m.slots.add((e as u32 - 1) as usize * 24);
-                if *(p as *const u64) == h && *(p.add(8) as *const i64) == key {
-                    return p;
-                }
-            }
-            pos = (pos + 1) & m.mask;
+        let l = layout(kd, vd);
+        match find::<K>(m, kd, &l, key, hash_key::<K>(kd, key)) {
+            Some(i) => slot(m, &l, i),
+            None => core::ptr::null_mut(),
         }
     }
 }
@@ -264,7 +318,7 @@ pub unsafe fn contains_key(
     key: *const u8,
 ) -> bool {
     // SAFETY: key slot live.
-    unsafe { find(m, kd, &layout(kd, vd), key, hash_key(kd, key)).is_some() }
+    unsafe { !keyed!(kd, |K| find_slot::<K>(m, kd, vd, key)).is_null() }
 }
 
 /// Inserts a new entry, consuming `key` and `val` (both slots are moved bitwise). If the key
@@ -282,14 +336,30 @@ pub unsafe fn insert(
     val: *mut u8,
 ) -> bool {
     // SAFETY: caller contract.
+    unsafe { keyed!(kd, |K| insert_k::<K>(m, kd, vd, key, val)) }
+}
+
+#[inline(always)]
+unsafe fn insert_k<K: KeyOps>(
+    m: &mut MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *mut u8,
+    val: *mut u8,
+) -> bool {
+    // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
-        let h = hash_key(kd, key);
-        if let Some(i) = find(m, kd, &l, key, h) {
+        let h = hash_key::<K>(kd, key);
+        if let Some(i) = find::<K>(m, kd, &l, key, h) {
             let p = slot(m, &l, i);
-            slot_drop(kd, key);
+            if !needs_no_drop(kd) {
+                slot_drop(kd, key);
+            }
             if let Some(vd) = vd {
-                slot_drop(vd, p.add(l.voff));
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, p.add(l.voff));
+                }
                 copy_slot(val, p.add(l.voff), l.vsize);
             }
             return false;
@@ -342,10 +412,21 @@ pub unsafe fn insert_unique(
 /// Removes `key` (borrowed); drops the stored key and value. Returns true if present.
 pub unsafe fn remove(m: &mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> bool {
     // SAFETY: caller contract.
+    unsafe { keyed!(kd, |K| remove_k::<K>(m, kd, vd, key)) }
+}
+
+#[inline(always)]
+unsafe fn remove_k<K: KeyOps>(
+    m: &mut MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> bool {
+    // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
-        let h = hash_key(kd, key);
-        let Some(i) = find(m, kd, &l, key, h) else {
+        let h = hash_key::<K>(kd, key);
+        let Some(i) = find::<K>(m, kd, &l, key, h) else {
             return false;
         };
         let p = slot(m, &l, i);
@@ -376,9 +457,8 @@ unsafe fn lookup(
 ) -> Option<*mut u8> {
     // SAFETY: caller contract.
     unsafe {
-        let l = layout(kd, vd);
-        let i = find(m, kd, &l, key, hash_key(kd, key))?;
-        Some(slot(m, &l, i))
+        let p = keyed!(kd, |K| find_slot::<K>(m, kd, vd, key));
+        (!p.is_null()).then_some(p)
     }
 }
 
@@ -531,16 +611,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let (m, kd, vd) = (&mut *m, &*kd, opt(vd));
-        if int_pair(kd, vd) && vd.is_some_and(|v| v.kind <= KIND_BOOL) {
-            // Int keys and scalar values own nothing: overwrite an existing entry in place.
-            let p = find_int(m, *(key as *const i64));
-            if !p.is_null() {
-                core::ptr::copy_nonoverlapping(val, p.add(16), 8);
-                return;
-            }
-        }
-        insert(m, kd, vd, key, val);
+        insert(&mut *m, &*kd, opt(vd), key, val);
     }
 }
 
@@ -580,12 +651,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
     key: *const u8,
 ) -> u8 {
     // SAFETY: caller contract.
-    unsafe {
-        if int_pair(&*kd, opt(vd)) {
-            return !find_int(&*m, *(key as *const i64)).is_null() as u8;
-        }
-        contains_key(&*m, &*kd, opt(vd), key) as u8
-    }
+    unsafe { contains_key(&*m, &*kd, opt(vd), key) as u8 }
 }
 
 /// Borrowed pointer to the value of `key`, or null.
@@ -597,31 +663,19 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     key: *const u8,
 ) -> *const u8 {
     // SAFETY: caller contract.
-    unsafe {
-        let (kd, m) = (&*kd, &*m);
-        if int_pair(kd, opt(vd)) {
-            let p = find_int(m, *(key as *const i64));
-            return if p.is_null() { p } else { p.add(16) };
-        }
-        get_ptr_general(m, kd, opt(vd), key)
-    }
+    unsafe { value_ptr(&*m, &*kd, opt(vd), key) }
 }
 
-/// `get_ptr` for keys and values the Int fast path does not cover. Kept out of line so the fast
-/// paths above keep a small frame.
-#[inline(never)]
-unsafe fn get_ptr_general(
-    m: &MapVal,
-    kd: &TypeDesc,
-    vd: Option<&TypeDesc>,
-    key: *const u8,
-) -> *const u8 {
+/// Borrowed pointer to the value of `key`, or null; one probe loop per key kind.
+#[inline(always)]
+unsafe fn value_ptr(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> *const u8 {
     // SAFETY: caller contract.
     unsafe {
-        let l = layout(kd, vd);
-        match find(m, kd, &l, key, hash_key(kd, key)) {
-            Some(i) => slot(m, &l, i).add(l.voff),
-            None => core::ptr::null(),
+        let p = keyed!(kd, |K| find_slot::<K>(m, kd, vd, key));
+        if p.is_null() {
+            p
+        } else {
+            p.add(layout(kd, vd).voff)
         }
     }
 }
@@ -637,21 +691,17 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let (kd, m) = (&*kd, &*m);
-        if int_pair(kd, opt(vd)) && opt(vd).is_some_and(|v| v.kind <= KIND_BOOL) {
-            // Scalar values are plain 8-byte words: copy without the descriptor dispatch.
-            let p = find_int(m, *(key as *const i64));
-            if p.is_null() {
-                return 0;
-            }
-            core::ptr::copy_nonoverlapping(p.add(16), out, 8);
-            return 1;
-        }
-        let p = get_ptr_general(m, kd, opt(vd), key);
+        let (kd, vd) = (&*kd, &*vd);
+        let p = value_ptr(&*m, kd, Some(vd), key);
         if p.is_null() {
             return 0;
         }
-        slot_copy(&*vd, p, out);
+        if vd.kind <= KIND_BOOL && vd.size == 8 {
+            // Scalar values are plain 8-byte words: copy without the descriptor dispatch.
+            core::ptr::copy_nonoverlapping(p, out, 8);
+        } else {
+            slot_copy(vd, p, out);
+        }
         1
     }
 }
@@ -1118,6 +1168,53 @@ mod tests {
             drop_map(&mut out, kd, None);
             drop_map(&mut a, kd, None);
             drop_map(&mut b, kd, None);
+            assert_eq!(crate::alloc::live_blocks(), before);
+        }
+    }
+    #[test]
+    fn string_to_int_fast_paths_overwrite_and_release() {
+        let _g = testutil::lock();
+        unsafe {
+            let (kd, vd) = (&msrt_desc_string, &msrt_desc_int);
+            let before = crate::alloc::live_blocks();
+            let mut m = empty();
+            for round in 0..3i64 {
+                for i in 0..200 {
+                    let mut k = from_bytes(std::format!("key-{i}").as_bytes());
+                    let mut v = round * 1000 + i;
+                    msrt_map_add(
+                        &mut m,
+                        kd,
+                        vd,
+                        &mut k as *mut _ as *mut u8,
+                        &mut v as *mut i64 as *mut u8,
+                    );
+                }
+            }
+            assert_eq!(m.len, 200);
+            for i in [0i64, 77, 199] {
+                // A different object with equal bytes finds the stored key.
+                let k = from_bytes(std::format!("key-{i}").as_bytes());
+                let kp = &k as *const _ as *const u8;
+                assert_eq!(msrt_map_contains(&m, kd, vd, kp), 1);
+                let mut out = 0i64;
+                assert_eq!(
+                    msrt_map_get(&m, kd, vd, kp, &mut out as *mut i64 as *mut u8),
+                    1
+                );
+                assert_eq!(out, 2000 + i);
+                slot_drop(kd, kp as *mut u8);
+            }
+            let missing = from_bytes(b"absent");
+            let mp = &missing as *const _ as *const u8;
+            assert_eq!(msrt_map_contains(&m, kd, vd, mp), 0);
+            let mut out = 0i64;
+            assert_eq!(
+                msrt_map_get(&m, kd, vd, mp, &mut out as *mut i64 as *mut u8),
+                0
+            );
+            slot_drop(kd, mp as *mut u8);
+            drop_map(&mut m, kd, Some(vd));
             assert_eq!(crate::alloc::live_blocks(), before);
         }
     }

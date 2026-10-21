@@ -22,25 +22,23 @@ ms build main.ms --build-type MinSizeRel -o small-program
 ms run main.ms --build-type Debug
 ```
 
-Use `Debug` for source stepping, `Release` for distribution, and `RelWithDebInfo` for optimized code investigation or profiles.
+Use `Debug` for source stepping, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 
-## Levels and native settings
+## Levels
 
-`build`, `run`, `test`, `debug`, and `profile` accept case-insensitive CMake-style names:
+`build`, `run`, `test`, and `profile` accept case-insensitive CMake-style names:
 
-| Level | Optimization | Debugging information | Native flags |
-| --- | --- | --- | --- |
-| `Debug` | Disabled, including inlining | Retained uncompressed, with local source paths | `-gcflags=all=-N -l` `-ldflags=-compressdwarf=false` |
-| `Release` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
-| `RelWithDebInfo` | Go's normal optimizer | Retained, with local source paths | No additional flags |
-| `MinSizeRel` | Go's normal optimizer | Symbol tables and DWARF stripped | `-trimpath -ldflags="-s -w"` |
+| Level | Optimization | Symbol table |
+| --- | --- | --- |
+| `Debug` | Disabled, including inlining | Kept |
+| `Release` | Speed | Kept, so profilers and backtraces show names |
+| `MinSizeRel` | Speed and size | Stripped |
 
-Go has no `-Os` equivalent, so `MinSizeRel` currently matches `Release` and promises no smaller binary. Stack traces remain available. Build levels never change language semantics.
+Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and standard-library code the program never reaches is dropped. On Linux x86_64 an empty program is about 0.45 MB and an HTTP server about 4.4 MB (before this, 1.8 MB and 7.7 MB). Build levels never change language semantics.
 
 ## Defaults and command behavior
 
-- Default is `Release`; `debug` always uses `Debug`; `profile` defaults to `RelWithDebInfo`.
-- `--debug` aliases `--build-type Debug` on `build`, `run`, and `test`.
-- Conflicting debug selections, repeated build types, unknown levels, and build-type flags on source-only commands are rejected before compilation.
+- The default is `Release`, including for `profile`.
+- Repeated build types, unknown levels, and build-type flags on source-only commands are rejected before compilation.
 - Flags after `--` go to the program.
 - Optimized debugging may skip or reorder source steps.

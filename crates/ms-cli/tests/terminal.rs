@@ -108,9 +108,10 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
         assert!(m >= 0);
         assert_eq!(libc::grantpt(m), 0);
         assert_eq!(libc::unlockpt(m), 0);
-        let mut name = [0 as libc::c_char; 128];
-        assert_eq!(libc::ptsname_r(m, name.as_mut_ptr(), name.len()), 0);
-        let s = libc::open(name.as_ptr(), libc::O_RDWR | libc::O_NOCTTY);
+        // `ptsname_r` is missing on macOS; the test thread is the only caller here.
+        let name = libc::ptsname(m);
+        assert!(!name.is_null());
+        let s = libc::open(name, libc::O_RDWR | libc::O_NOCTTY);
         assert!(s >= 0);
         assert_eq!(libc::ioctl(m, libc::TIOCSWINSZ, &winsize(24, 80)), 0);
         (File::from_raw_fd(m), OwnedFd::from_raw_fd(s))

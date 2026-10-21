@@ -215,7 +215,7 @@ impl Failure {
     }
 }
 
-/// `sourceDiagnostic` in Go: the JSON shape of one source diagnostic.
+/// The JSON shape of one source diagnostic.
 pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
     let position = |pos: Pos| Position {
         file: issue.file.to_string(),
@@ -267,7 +267,6 @@ pub(crate) fn compile<L: Lower>(
         graph,
         CheckRequest {
             entry: entry_required,
-            ..CheckRequest::default()
         },
     );
     let failure = |diagnostics: Vec<Diagnostic>, source_root: &str| Failure {
@@ -338,7 +337,6 @@ pub(crate) fn profile(kind: BuildType) -> ms_driver::Profile {
     match kind {
         BuildType::Debug => ms_driver::Profile::Debug,
         BuildType::Release => ms_driver::Profile::Release,
-        BuildType::RelWithDebInfo => ms_driver::Profile::RelWithDebInfo,
         BuildType::MinSizeRel => ms_driver::Profile::MinSizeRel,
     }
 }

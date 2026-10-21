@@ -1,0 +1,22 @@
+module "select_counter"
+entry @main
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  %one: int = iconst 1
+  %three: int = iconst 3
+  %n: int = iconst 1000
+  br loop(%z, %z)
+loop(%i: int, %hits: int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %r: int = srem %i, %three
+  %hit: bool = icmp.eq %r, %z
+  %h1: int = iadd %hits, %one
+  %next: int = select %hit, %h1, %hits
+  %i1: int = iadd %i, %one
+  br loop(%i1, %next)
+done:
+  ret %hits
+}

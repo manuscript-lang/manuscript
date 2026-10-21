@@ -39,6 +39,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         c |= fold(f);
         c |= known_alts(m, f);
         c |= phis(m, f);
+        c |= roundtrips(f);
         c |= branches(f);
         c |= cse(m, f);
         c |= dce(m, f);
@@ -498,6 +499,13 @@ fn fold(f: &mut Func) -> bool {
                     changed = true;
                 }
             }
+            // A fault guard whose condition is known false never fires.
+            if inst.op == Op::IntOverflowIf
+                && matches!(env.consts.get(&inst.args[0]), Some(K::B(false)))
+            {
+                changed = true;
+                continue;
+            }
             match rule(f, &mut env, &mut out, &inst) {
                 Act::Keep => {}
                 Act::Alias(v) => {
@@ -809,6 +817,96 @@ fn cse(m: &Module, f: &mut Func) -> bool {
     }
     apply_subst(f, &subst);
     true
+}
+
+// ---- in-place mutators -----------------------------------------------------
+
+/// Turns the move-out, call, move-back sequence lowering emits around a runtime mutator
+/// of a value held in memory (`a = take P; put S, a; call f(S); b = take S; put P, b`) into
+/// a call that mutates `P` directly. The temporary slot `S` exists only to hand the callee a
+/// pointer, and `P` is not touched in between, so the callee sees and leaves the same state.
+fn roundtrips(f: &mut Func) -> bool {
+    let uses = f.use_counts();
+    let mut changed = false;
+    for b in &mut f.blocks {
+        let mut i = 0;
+        while i < b.insts.len() {
+            if let Some(found) = find_roundtrip(&b.insts, i, &uses) {
+                let (put_in, call, take_out, put_back, slot) = found;
+                let p = b.insts[i].args[0];
+                for arg in &mut b.insts[call].args {
+                    if *arg == slot {
+                        *arg = p;
+                    }
+                }
+                for k in [put_back, take_out, put_in, i] {
+                    b.insts.remove(k);
+                }
+                changed = true;
+                continue;
+            }
+            i += 1;
+        }
+    }
+    changed
+}
+
+/// The instruction indexes of the sequence starting with the `take` at `at`:
+/// `(put into slot, call, take from slot, put back, slot)`.
+fn find_roundtrip(
+    insts: &[Inst],
+    at: usize,
+    uses: &[u32],
+) -> Option<(usize, usize, usize, usize, Value)> {
+    let first = &insts[at];
+    let (Op::Take, Some(a)) = (first.op, first.res) else {
+        return None;
+    };
+    let p = first.args[0];
+    if uses[a.index()] != 1 {
+        return None;
+    }
+    let put_in =
+        (at + 1..insts.len()).find(|&k| insts[k].op == Op::Put && insts[k].args[1] == a)?;
+    let slot = insts[put_in].args[0];
+    let ty = first.imm;
+    let def = insts[..put_in]
+        .iter()
+        .find(|d| d.res == Some(slot) && d.op == Op::Slot && d.imm == ty)?;
+    debug_assert!(def.args.is_empty());
+    if uses[slot.index()] != 3 {
+        return None;
+    }
+    let call = (put_in + 1..insts.len()).find(|&k| insts[k].args.contains(&slot))?;
+    if !matches!(insts[call].op, Op::CallRt)
+        || insts[call].args.iter().filter(|x| **x == slot).count() != 1
+    {
+        return None;
+    }
+    let take_out = (call + 1..insts.len()).find(|&k| insts[k].args.contains(&slot))?;
+    let (Op::Take, Some(b)) = (insts[take_out].op, insts[take_out].res) else {
+        return None;
+    };
+    if uses[b.index()] != 1 || insts[take_out].imm != ty {
+        return None;
+    }
+    let put_back = (take_out + 1..insts.len()).find(|&k| insts[k].args.contains(&b))?;
+    if insts[put_back].op != Op::Put || insts[put_back].args != [p, b] {
+        return None;
+    }
+    // The memory at `p` is touched by nothing else in the window, and nothing else
+    // in it can read or write through another pointer.
+    let window = &insts[at + 1..put_back];
+    for (k, w) in window.iter().enumerate() {
+        let k = at + 1 + k;
+        if k == put_in || k == call || k == take_out {
+            continue;
+        }
+        if w.args.contains(&p) || !w.op.info().effects.is_pure() {
+            return None;
+        }
+    }
+    Some((put_in, call, take_out, put_back, slot))
 }
 
 // ---- dead code -------------------------------------------------------------

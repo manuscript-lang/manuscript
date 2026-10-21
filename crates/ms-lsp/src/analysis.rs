@@ -146,8 +146,8 @@ impl Analysis {
             return Some(m);
         }
         let mut path = d.path();
-        if let Ok(canonical) = std::fs::canonicalize(&path) {
-            path = canonical.to_string_lossy().into_owned();
+        if let Ok(canonical) = ms_project::gopath::eval_symlinks(&path) {
+            path = canonical;
         }
         program
             .modules

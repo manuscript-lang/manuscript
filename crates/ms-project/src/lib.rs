@@ -1,10 +1,10 @@
 //! Manuscript project manifests and confined source-path resolution.
 //!
-//! This crate is a behavior-exact port of the Go package `pkg/project`. It has
+//! This crate owns project manifests, module paths and diagnostics. It has
 //! no dependency on parsing, checking or code generation. Paths are `String`s
 //! using Go's `path/filepath` lexical rules (see [`gopath`]), with native Windows
-//! volumes and separators. Unix error values render byte-for-byte like the Go
-//! ones, so existing diagnostics do not change.
+//! volumes and separators. Unix error values render in the established
+//! wording, so existing diagnostics do not change.
 //!
 //! Entry points:
 //!

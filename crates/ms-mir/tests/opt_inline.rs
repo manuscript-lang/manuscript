@@ -296,6 +296,37 @@ fn closures_and_methods_are_not_inline_candidates_and_survive() {
 }
 
 #[test]
+fn closures_built_where_they_are_called_are_inlined() {
+    let src = r#"module "closure"
+entry @main
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd.chk %x, %k
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 10
+  %f: fn(int) -> int = closure.new @add %k
+  %x: int = iconst 5
+  %r: int = call.ind (%f, %x)
+  drop %f
+  ret %r
+}
+"#;
+    let m = inlined(src);
+    assert!(!has_func(&m, "add"));
+    let ops: Vec<Op> = m.funcs[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter().map(|i| i.op))
+        .collect();
+    assert!(!ops.contains(&Op::CallInd) && !ops.contains(&Op::ClosureNew));
+    assert_eq!(outcome(&m).0, Ok(15));
+}
+
+#[test]
 fn removed_functions_renumber_every_reference() {
     let m = inlined(include_str!("fixtures-opt/dead.mir"));
     let main = m.entry.expect("entry kept");

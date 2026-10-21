@@ -16,3 +16,6 @@ jiff = { version = "0.2", default-features = false, features = ["std", "tz-syste
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt" }

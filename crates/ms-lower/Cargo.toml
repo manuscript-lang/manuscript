@@ -13,3 +13,6 @@ ms-std-decimal = { path = "../ms-std-decimal", default-features = false }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+ms-rt = { path = "../ms-rt" }

@@ -194,6 +194,7 @@ msrt_list_last_index_of( v: *const VecVal, d: *const TypeDesc, probe: *const u8,
 msrt_list_contains( v: *const VecVal, d: *const TypeDesc, probe: *const u8, ) -> u8
 msrt_list_prepend( v: *mut VecVal, d: *const TypeDesc, e: *const u8, )
 msrt_list_insert( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
+msrt_list_insert_copy( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
@@ -237,6 +238,7 @@ msrt_bytes_decode_utf8(b: *const VecVal) -> *mut StrObj
 msrt_bytes_append(b: *mut VecVal, value: i64)
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal)
 msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj)
+msrt_strbuilder_append_int(b: *mut VecVal, n: i64)
 msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj
 msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64

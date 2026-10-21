@@ -4,7 +4,7 @@ import {StringBuilder} from "@std/string.ms"
 import {parse, stringify, JsonValue} from "@std/json.ms"
 
 fn json_doc(count: Int) String:
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     sb.append("[")
 
     for i in range(0, count):

@@ -1,5 +1,7 @@
 //! Module graph loading and checking over real files.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+use ms_rt as _;
 use std::path::{Path, PathBuf};
 
 use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};
@@ -31,13 +33,7 @@ fn imports_are_loaded_before_their_importers() {
     assert!(graph.diagnostics.is_empty());
     assert_eq!(graph.entry, "main.ms");
     assert_eq!(graph.modules.len(), 2);
-    let checked = check_graph(
-        graph,
-        CheckRequest {
-            entry: true,
-            ..CheckRequest::default()
-        },
-    );
+    let checked = check_graph(graph, CheckRequest { entry: true });
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }
 
@@ -112,10 +108,7 @@ fn entry_diagnostics_keep_go_wording() {
     );
     let checked = check_graph(
         load_file(&entry, LoadOptions::default()),
-        CheckRequest {
-            entry: true,
-            ..CheckRequest::default()
-        },
+        CheckRequest { entry: true },
     );
     let issue = &checked.diagnostics[0];
     assert_eq!(

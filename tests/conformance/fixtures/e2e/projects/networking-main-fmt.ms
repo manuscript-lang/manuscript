@@ -100,7 +100,7 @@ fn exercise() Result[Unit, Error]:
             idle_timeout: 10.seconds,
             decompress: true,
             cookies: true,
-            tls: tls
+            tls: tls.clone()
         )
 
         with client = try network().http_client(options: client_options):

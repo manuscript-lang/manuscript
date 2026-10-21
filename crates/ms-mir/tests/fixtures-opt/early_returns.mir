@@ -1,0 +1,34 @@
+module "early_returns"
+entry @main
+fn @cmp(%a: int, %b: int) -> int {
+b0:
+  %lt: bool = icmp.lt %a, %b
+  br_if %lt, less(), rest()
+less:
+  %m: int = iconst -1
+  ret %m
+rest:
+  %gt: bool = icmp.gt %a, %b
+  br_if %gt, more(), same()
+more:
+  %p: int = iconst 1
+  ret %p
+same:
+  %z: int = iconst 0
+  ret %z
+}
+fn @main() -> int {
+b0:
+  %one: int = iconst 1
+  %two: int = iconst 2
+  %x: int = call @cmp (%one, %two)
+  %y: int = call @cmp (%two, %one)
+  %z: int = call @cmp (%two, %two)
+  %ten: int = iconst 10
+  %a: int = imul %x, %ten
+  %b: int = imul %y, %ten
+  %c: int = iadd %a, %b
+  %d: int = iadd %c, %z
+  %e: int = iadd %d, %ten
+  ret %e
+}

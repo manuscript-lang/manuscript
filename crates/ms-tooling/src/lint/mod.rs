@@ -1,4 +1,4 @@
-//! Advisory source hygiene findings (`pkg/tooling/lint*.go`). Checking owns
+//! Advisory source hygiene findings. Checking owns
 //! semantic errors; lint never changes behavior.
 
 mod bindings;

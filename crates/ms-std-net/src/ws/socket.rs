@@ -15,7 +15,7 @@ use super::frame::{
     self, DecodeError, Decoder, Event, OP_BINARY, OP_CLOSE, OP_PING, OP_PONG, OP_TEXT, code,
 };
 use crate::conn::Connection;
-use crate::error::{IoErr, WsErr};
+use crate::error::{IoErr, RESET_TEXT, WsErr};
 use crate::wait::Deadline;
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
@@ -474,6 +474,9 @@ impl Socket {
             match read {
                 Ok(Some(bytes)) => self.decoder.borrow_mut().push(&bytes),
                 Ok(None) => return Ok(()),
+                // A peer that closed its socket answers our close frame with a reset (Windows
+                // then drops the data it had already queued): the session is over either way.
+                Err(IoErr::Failed(m)) if m == RESET_TEXT => return Ok(()),
                 Err(e) if is_local_timeout(&e) => return Err(WsErr::Timeout),
                 Err(e) => return Err(Self::map_write(e, &WsErr::Timeout)),
             }

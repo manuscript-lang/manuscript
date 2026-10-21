@@ -1,5 +1,5 @@
-//! Reference documentation for the bundled standard library
-//! (`pkg/tooling/docgen`): Markdown pages, the structured JSON download, and
+//! Reference documentation for the bundled standard library:
+//! Markdown pages, the structured JSON download, and
 //! the description inventory and policy.
 
 use crate::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};

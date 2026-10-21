@@ -1,4 +1,6 @@
 //! Differential test against vectors produced by the Go matcher (see `golden/glob_gen_test.go.txt`).
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_path::glob::Glob;
 
 fn unhex(s: &str) -> String {

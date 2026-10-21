@@ -1,3 +1,4 @@
+#![cfg(unix)]
 //! `ms run --watch` and `ms test --watch` against the real binary: a saved change rebuilds and
 //! restarts, a broken edit keeps the old program, and Ctrl-C ends the watch with status 130.
 

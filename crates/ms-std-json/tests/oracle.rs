@@ -1,4 +1,6 @@
 //! Replays `tests/oracle/json.tsv`, a recorded corpus of parse, stringify and scalar cases.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_core::Fail;
 use ms_std_json::*;
 

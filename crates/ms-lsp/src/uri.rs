@@ -85,9 +85,31 @@ fn unescape(text: &str) -> Option<String> {
 /// The path of a `file:` URI; any other URI is its own name.
 pub fn filename(uri: &str) -> String {
     match parse(uri) {
-        Some(url) if url.scheme == "file" => url.path,
+        Some(url) if url.scheme == "file" => native_path(&url.host, url.path),
         _ => uri.to_string(),
     }
+}
+
+/// The host's spelling of a `file:` path: Windows names a drive `D:/dir`, not `/D:/dir`, and a
+/// URI host is a UNC server.
+fn native_path(host: &str, path: String) -> String {
+    if !cfg!(windows) {
+        return path;
+    }
+    if !host.is_empty() {
+        return format!("//{host}{path}");
+    }
+    drive_path(&path).map_or(path.clone(), str::to_string)
+}
+
+/// `D:/dir` for `/D:/dir`.
+fn drive_path(path: &str) -> Option<&str> {
+    let rest = path.strip_prefix('/')?;
+    let bytes = rest.as_bytes();
+    (bytes.first()?.is_ascii_alphabetic()
+        && bytes.get(1) == Some(&b':')
+        && matches!(bytes.get(2), None | Some(b'/')))
+    .then_some(rest)
 }
 
 /// Escapes a path as `url.URL.EscapedPath` does.
@@ -122,6 +144,13 @@ fn escape_path(path: &str) -> String {
 /// The `file:` URI of an absolute path.
 pub fn file_uri(path: &str) -> String {
     let mut p = path.replace('\\', "/");
+    // `canonicalize` on Windows returns verbatim `\\?\` paths, which are not part of the name.
+    if let Some(rest) = p.strip_prefix("//?/UNC/") {
+        return format!("file://{}", escape_path(rest));
+    }
+    if let Some(rest) = p.strip_prefix("//?/") {
+        p = rest.to_string();
+    }
     if !p.starts_with('/') && p.as_bytes().get(1) == Some(&b':') {
         p.insert(0, '/');
     }
@@ -159,6 +188,20 @@ mod tests {
             assert_eq!(filename(&file_uri(path)), path, "{path}");
         }
         assert_eq!(file_uri("/tmp/a b.ms"), "file:///tmp/a%20b.ms");
+        assert_eq!(file_uri(r"\\?\D:\a\b.ms"), "file:///D:/a/b.ms");
+        assert_eq!(
+            file_uri(r"\\?\UNC\host\share\b.ms"),
+            "file://host/share/b.ms"
+        );
+    }
+
+    #[test]
+    fn drive_letters_lose_the_leading_slash() {
+        assert_eq!(drive_path("/D:/a/b.ms"), Some("D:/a/b.ms"));
+        assert_eq!(drive_path("/D:"), Some("D:"));
+        assert_eq!(drive_path("/tmp/a.ms"), None);
+        assert_eq!(drive_path("/Dx:/a"), None);
+        assert_eq!(drive_path("D:/a"), None);
     }
 
     #[test]

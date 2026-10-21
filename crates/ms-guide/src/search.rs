@@ -1,4 +1,4 @@
-//! Fuzzy standard-library search (`pkg/tooling/guide/search.go`).
+//! Fuzzy standard-library search.
 
 use crate::api::standard_library;
 use crate::guide::{clip_text, first_line, short_name, std_path};

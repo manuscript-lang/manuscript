@@ -1,5 +1,5 @@
 //! Behavior of the diff parser, review ranking, report rendering and views
-//! over hand-built fact models. Differential coverage against the Go `ms`
+//! over hand-built fact models. Differential coverage against `ms`
 //! lives in `tests/differential.rs`.
 
 use ms_tooling::diff::{parse_diff, removed_content, reverse_apply};

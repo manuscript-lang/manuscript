@@ -109,6 +109,9 @@ mod tests {
         } else if cfg!(windows) {
             let windows = "COPYFILE_EXCL 1;COPYFILE_FICLONE 2;COPYFILE_FICLONE_FORCE 4;F_OK 0;O_APPEND 1024;O_CREAT 64;O_EXCL 128;O_RDONLY 0;O_RDWR 2;O_SYNC 4096;O_TRUNC 512;O_WRONLY 1;R_OK 4;W_OK 2;X_OK 1";
             assert_eq!(ours.join(";"), windows);
+        } else if cfg!(target_os = "macos") {
+            // macOS has no O_DIRECT or O_NOATIME.
+            assert_eq!(ours.len(), go.split(';').count() - 2);
         } else {
             assert_eq!(ours.len(), go.split(';').count());
         }

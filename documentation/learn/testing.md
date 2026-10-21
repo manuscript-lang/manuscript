@@ -79,7 +79,7 @@ ms pprof -top cpu.pprof
 - `--list` builds but never runs test bodies.
 - Each repetition starts a fresh root execution; globals and external fixtures stay shared. `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
-- Profiling covers the selected tests in one process; output paths must be new, and `--list` and `--watch` cannot combine with it. Profiled tests default to `RelWithDebInfo` (`--build-type` overrides).
+- Profiling covers the selected tests in one process; output paths must be new, and `--list` and `--watch` cannot combine with it. Profiled tests default to `Release` (`--build-type` overrides).
 
 All assertions return `Result`, so use `try`:
 
@@ -103,7 +103,7 @@ fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    fn before_each() Unit:
+    var fn before_each() Unit:
         self.count = 0
 
 test "increments":

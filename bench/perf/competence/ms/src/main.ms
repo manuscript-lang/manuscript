@@ -75,12 +75,6 @@ fn compare(left: Int, right: Int) Int:
     if left < right: return -1
     if left > right: return 1
 
-    timed("grid2d_500x20", fn() Int: return grid2d(500))
-    timed("struct_100M", fn() Int: return structs(100000000))
-    timed("stack_20M", fn() Int: return stack_ops(20000000))
-    timed("optional_100M", fn() Int: return optionals(100000000))
-    timed("set_2M", fn() Int: return sets(2000000))
-    timed("chars_1M", fn() Int: return chars(1000000))
     return 0
 
 fn sorting(n: Int) Int:

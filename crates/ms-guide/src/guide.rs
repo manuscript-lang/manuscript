@@ -1,5 +1,4 @@
 //! The language cheat sheet and bounded standard-library pages
-//! (`pkg/tooling/guide`).
 //!
 //! Every page is bounded so an agent can read it without flooding its context:
 //! the index and module pages list one line per item, a declaration page lists
@@ -55,7 +54,7 @@ pub(crate) fn first_line(doc: &str, limit: usize) -> String {
         let chars: Vec<char> = line.chars().collect();
         if chars.len() > limit {
             let head: String = chars[..limit - 1].iter().collect();
-            // The Go code indexes the rune slice with this byte offset.
+            // The cut is a byte offset into the rune slice; kept for stable output.
             let mut cut = head.rfind(' ').map_or(-1, |i| i as isize);
             if cut < (limit / 2) as isize {
                 cut = limit as isize - 1;

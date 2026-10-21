@@ -75,6 +75,7 @@ fn alias_diagnostic_key_and_value_locations() {
     }
 }
 
+#[cfg(unix)]
 #[test]
 fn alias_validation_is_sorted_and_confined() {
     let dir = TempDir::new();
@@ -114,6 +115,7 @@ fn alias_validation_is_sorted_and_confined() {
     assert!(error.to_string().contains("escapes project root"));
 }
 
+#[cfg(unix)]
 #[test]
 fn explicit_entry_keeps_canonical_symlink_extension() {
     let (dir, p) = fixture(MANIFEST);

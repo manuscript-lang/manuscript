@@ -1,5 +1,5 @@
 //! Detached documentation snapshots of importable modules
-//! (`pkg/checker/documentation*.go`): the bundled standard library, or the
+//! of the bundled standard library, or the
 //! exports of a checked program.
 
 use crate::render;

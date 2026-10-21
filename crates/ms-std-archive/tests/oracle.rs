@@ -1,6 +1,8 @@
 //! Replays `tests/oracle/archive.tsv`, a recorded corpus.
 //! Tar output must match byte for byte; zip output only has to match in status because the
 //! deflate payload differs from Go's encoder (the Rust-packed zip must round-trip instead).
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_archive::{Entry, Limits, pack, unpack};
 use ms_std_core::Fail;
 use std::collections::BTreeMap;

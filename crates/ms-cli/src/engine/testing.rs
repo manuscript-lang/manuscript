@@ -17,8 +17,7 @@
 //! its `RUN` and result lines; standard error passes through. Selection
 //! (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
 //! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here. Fixtures
-//! therefore run once per test, not once per module as in the Go
-//! implementation.
+//! therefore run once per test, not once per module.
 
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -749,6 +748,7 @@ esac
         run_names(arguments, &NAMES)
     }
 
+    #[cfg(unix)]
     fn run_names(arguments: &[&str], names: &[&str]) -> (i32, String, Document) {
         let directory = TempDir::create("ms-tests-unit-").unwrap();
         let executable = script(&directory.0);
@@ -813,6 +813,7 @@ esac
         assert!(json.contains("\"not_run\": 0"), "{json}");
     }
 
+    #[cfg(unix)]
     #[test]
     fn selection_listing_and_fail_fast() {
         let (status, text, _) = run_script(&["--list", "--match=pass|fail"]);

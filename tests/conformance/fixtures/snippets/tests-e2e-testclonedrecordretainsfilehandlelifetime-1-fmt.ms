@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
+# conform: tags=aliasing,control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
 import files from "@std/io.ms"

@@ -7,6 +7,6 @@ import panic from "@std/core.ms"
 fn use() Unit:
     let shared = Map[Int, Int]()
     let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
-        shared.add(key: 1, value: 2)
+        let seen = shared.length()
         return panic("unreached")
     )

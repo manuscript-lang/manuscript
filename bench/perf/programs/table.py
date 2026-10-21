@@ -20,6 +20,10 @@ SINK = [50_000, 63_992_000, 3_333_334, 4_999_999_950_000_000, 100_000_000,
         5_000_000_050_000_000, 633_333_333, 10_000_000_000, 49_999_950_000_000]
 
 
+VERSIONS = ("ms", "go", "rust", "rust-checked")
+TITLES = {"ms": "Manuscript", "go": "Go", "rust": "Rust", "rust-checked": "Rust, overflow checks"}
+
+
 def summarize(lines, repeats):
     if repeats < 1:
         raise ValueError("repeats must be positive")
@@ -28,7 +32,7 @@ def summarize(lines, repeats):
     sinks = defaultdict(int)
     for line in lines:
         parts = line.split()
-        if len(parts) < 2 or parts[0] not in ("ms", "go"):
+        if len(parts) < 2 or parts[0] not in VERSIONS:
             raise ValueError(f"invalid sample: {line.rstrip()}")
         version, name = parts[:2]
         if name == "#":
@@ -46,17 +50,24 @@ def summarize(lines, repeats):
             raise ValueError(f"incorrect work count or timing: {line.rstrip()}")
         samples[version, name].append(elapsed / count)
         pending[version].add(name)
-    for version in ("ms", "go"):
+    seen = [v for v in VERSIONS if sinks[v] or pending[v]]
+    if "ms" not in seen or "go" not in seen:
+        raise ValueError("expected ms and go samples")
+    for version in seen:
         if pending[version] or sinks[version] != repeats:
             raise ValueError(f"expected {repeats} complete {version} samples")
+    others = [v for v in seen if v not in ("ms", "go")]
     rows = []
     for name, count in OPS.items():
-        ms = statistics.median(samples["ms", name])
-        go = statistics.median(samples["go", name])
-        rows.append(f"| {name} | {count} | {ms:,.2f} | {go:,.2f} | {ms/go:,.2f}x |")
+        med = {v: statistics.median(samples[v, name]) for v in seen}
+        cells = [f"{med[v]:,.2f}" for v in ("ms", "go", *others)]
+        cells.append(f"{med['ms'] / med['go']:,.2f}x")
+        cells += [f"{med['ms'] / med[v]:,.2f}x" for v in others]
+        rows.append(f"| {name} | {count} | " + " | ".join(cells) + " |")
+    heads = [TITLES[v] for v in ("ms", "go", *others)] + ["ms / Go"] + [f"ms / {TITLES[v]}" for v in others]
     return (f"Median of {repeats} alternating runs; ns/op. Checksums and operation counts verified.\n\n"
-            "| operation | ops | Manuscript | Go | ratio |\n"
-            "|---|---:|---:|---:|---:|\n" + "\n".join(rows))
+            "| operation | ops | " + " | ".join(heads) + " |\n"
+            "|---|---:|" + "---:|" * len(heads) + "\n" + "\n".join(rows))
 
 
 if __name__ == "__main__":

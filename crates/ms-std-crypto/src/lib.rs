@@ -2,6 +2,10 @@
 //! PBKDF2, HKDF, AES-GCM/CTR/CBC and Ed25519, built on RustCrypto.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 pub mod ffi;

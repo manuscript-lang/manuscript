@@ -8,5 +8,5 @@ type Val:
     val: Int
 
 impl Counter for Val:
-    fn increment() Unit:
+    var fn increment() Unit:
         self.val = self.val + 1

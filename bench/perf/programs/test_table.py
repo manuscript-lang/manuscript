@@ -15,6 +15,11 @@ class TableTests(unittest.TestCase):
         self.assertIn("1.00x", result)
         self.assertIn("Checksums and operation counts verified", result)
 
+    def test_extra_versions_add_columns(self):
+        result = summarize(sample("ms") + sample("go") + sample("rust") + sample("rust-checked"), 1)
+        self.assertIn("| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |", result)
+        self.assertEqual(result.count("1.00x"), 3 * len(OPS))
+
     def test_rejects_invalid_evidence(self):
         valid = sample("ms") + sample("go")
         cases = [

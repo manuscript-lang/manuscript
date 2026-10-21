@@ -1,5 +1,7 @@
 //! Replays `tests/oracle/log.tsv`, a recorded corpus of log records.
 //! The wall clock is fixed at 0 here.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_log::*;
 
 fn text(tok: &str) -> String {

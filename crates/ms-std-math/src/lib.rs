@@ -5,6 +5,10 @@
 //! compiler through the element comparison.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 mod libm;
 
 use ms_std_core::native;

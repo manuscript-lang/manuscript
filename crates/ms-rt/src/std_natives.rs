@@ -332,6 +332,23 @@ mod fs_io {
         }
     }
 
+    // The native watcher is inotify; elsewhere `FileWatcher` falls back to polling.
+    #[cfg(not(target_os = "linux"))]
+    #[test]
+    fn native_file_watchers_are_unsupported_off_linux() {
+        let _g = lock();
+        let r = st("/tmp");
+        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        // SAFETY: valid runtime strings and a writable handle.
+        unsafe {
+            assert_eq!(
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("error"), &mut h),
+                ms_rt_abi::STATUS_UNSUPPORTED
+            );
+        }
+    }
+
+    #[cfg(target_os = "linux")]
     #[test]
     fn file_watchers_through_the_abi() {
         let _g = lock();
@@ -368,7 +385,9 @@ mod fs_io {
     #[test]
     fn io_streams_through_the_abi() {
         let _g = lock();
-        let path = st("/proc/self/stat");
+        let one_line = std::env::temp_dir().join(std::format!("msrt-io-{}", std::process::id()));
+        std::fs::write(&one_line, "one line\n").unwrap();
+        let path = st(one_line.to_str().unwrap());
         let mut h: *mut _ = core::ptr::null_mut();
         let mut chunk = VecVal {
             ptr: core::ptr::null_mut(),
@@ -393,6 +412,7 @@ mod fs_io {
             assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
             let err = msstd_io_standard(2);
             assert_eq!(msstd_io_flush(err), STATUS_OK);
+            std::fs::remove_file(&one_line).unwrap();
         }
     }
 }
@@ -437,22 +457,30 @@ mod process {
             // SAFETY: allocated above.
             unsafe { crate::alloc::free(b) };
         }
+        if !cfg!(any(target_os = "linux", windows)) {
+            assert_eq!(status, ms_rt_abi::STATUS_UNSUPPORTED);
+            return;
+        }
         assert_eq!(status, STATUS_OK);
         assert!(m.heap_used >= 64_000 && m.heap_total >= m.heap_used);
         assert!(m.resident > 0 && m.external >= 0);
     }
 
+    #[cfg(unix)]
     unsafe extern "C" {
         fn raise(sig: i32) -> i32;
     }
 
+    #[cfg(unix)]
     #[test]
     fn watch_signals_through_the_abi() {
         let _g = lock();
+        // SIGUSR1 is 10 on Linux and 30 on macOS.
+        let usr1: i64 = if cfg!(target_os = "linux") { 10 } else { 30 };
         let list = {
             let mut v = empty();
             // SAFETY: `v` is writable.
-            unsafe { ms_std_rt::write_list(&[10i64], &mut v) };
+            unsafe { ms_std_rt::write_list(&[usr1], &mut v) };
             v
         };
         let mut h: *mut ms_std_core::ObjCell<ms_std_process::signals::Watcher> =
@@ -461,9 +489,9 @@ mod process {
         // SAFETY: valid list, writable outputs and a live handle throughout.
         unsafe {
             assert_eq!(msstd_process_watch_signals(&list, 0, 0, &mut h), STATUS_OK);
-            assert_eq!(raise(10), 0);
+            assert_eq!(raise(usr1 as i32), 0);
             assert_eq!(msstd_process_signal_next(h, &mut n), STATUS_OK);
-            assert_eq!(n, 10);
+            assert_eq!(n, usr1);
             msstd_process_signal_close(h);
             assert_eq!(
                 msstd_process_signal_next(h, &mut n),
@@ -561,7 +589,7 @@ mod process {
             assert!(msstd_process_uptime() >= a && a >= 0);
             let mut cwd: *mut StrObj = core::ptr::null_mut();
             assert_eq!(msstd_process_working_directory(&mut cwd), STATUS_OK);
-            assert!(text(cwd).starts_with('/'));
+            assert!(!text(cwd).is_empty());
             assert_eq!(
                 msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x")),
                 STATUS_OK
@@ -579,7 +607,14 @@ mod process {
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
             assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), ("linux", true));
+            let os = if cfg!(target_os = "macos") {
+                "darwin"
+            } else if cfg!(windows) {
+                "windows"
+            } else {
+                "linux"
+            };
+            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), (os, true));
         }
     }
 }

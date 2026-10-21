@@ -1,7 +1,9 @@
 //! Lowers small programs and verifies the MIR.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_driver::{CheckRequest, check_graph, load_file};
 use ms_lower::{Options, lower_program};
+use ms_rt as _;
 use std::path::PathBuf;
 
 fn lower(name: &str, source: &str) -> String {
@@ -126,7 +128,7 @@ fn maps_and_sets() {
 fn methods_that_change_self_hand_it_back() {
     let mir = lower(
         "selfmut",
-        "interface Counter:\n    fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    let c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
+        "interface Counter:\n    var fn next() Int\ntype C:\n    n: Int\nimpl Counter for C:\n    var fn next() Int:\n        self.n += 1\n        return self.n\nexport fn main() Int:\n    var c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
     );
     assert!(mir.contains("call.method"));
     assert!(mir.contains("store "));
@@ -176,7 +178,7 @@ fn loop_variables_survive_a_removed_trivial_join() {
     // condition's join was being resolved once left a stale edge argument.
     let mir = lower(
         "joinloop",
-        "type Reader:\n    pos: Int\n\nfn peek(reader: Reader) String:\n    return \"a\"\n\nfn advance(var reader: Reader) String:\n    reader.pos += 1\n    return \"a\"\n\nfn run(var reader: Reader) Int:\n    var count = 0\n    while true:\n        var key = \"\"\n        while reader.pos < 3 and \"abc\".contains(peek(reader)):\n            key = key.concat(advance(reader))\n        if key == \"\": return 9\n        count += 1\n        if count > 2: return count\n    return 0\n\nexport fn main() Int:\n    return run(Reader(pos: 0))\n",
+        "type Reader:\n    pos: Int\n\nfn peek(reader: Reader) String:\n    return \"a\"\n\nfn advance(var reader: Reader) String:\n    reader.pos += 1\n    return \"a\"\n\nfn run(var reader: Reader) Int:\n    var count = 0\n    while true:\n        var key = \"\"\n        while reader.pos < 3 and \"abc\".contains(peek(reader)):\n            key = key.concat(advance(var reader))\n        if key == \"\": return 9\n        count += 1\n        if count > 2: return count\n    return 0\n\nexport fn main() Int:\n    var reader = Reader(pos: 0)\n    return run(var reader)\n",
     );
     assert!(mir.contains("fn @run"));
 }
@@ -185,7 +187,7 @@ fn loop_variables_survive_a_removed_trivial_join() {
 fn method_values_type_applications_and_callee_capture() {
     let mir = lower(
         "values",
-        "import stdout from \"@std/io.ms\"\n\nfn identity[T](value: T) T: value\n\nfn run(f: fn(value: Int) Int) Int: f(value: 1)\n\nexport fn main() Int:\n    let items = [4, 5]\n    let count = items.count\n    let lookup = items.get\n    let same = identity[Int]\n    var selected = same\n    let n = selected(match some(0):\n        some(_):\n            selected = fn(value: Int): value + 1\n            3\n        none: 3\n    )\n    let r = stdout().write(\"{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\\n\")\n    return 0\n",
+        "import stdout from \"@std/io.ms\"\n\nfn identity[T](value: T) T: value\n\nfn run(f: fn(value: Int) Int) Int: f(value: 1)\n\nexport fn main() Int:\n    let items = [4, 5]\n    let count = items.count\n    let lookup = items.get\n    let same = identity[Int]\n    var selected = identity[Int]\n    let n = selected(match some(0):\n        some(_):\n            selected = fn(value: Int): value + 1\n            3\n        none: 3\n    )\n    let r = stdout().write(\"{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("closure.new"));
 }
@@ -230,7 +232,7 @@ fn entries_keys_and_add_default_from_lower() {
 fn impl_method_inherits_contract_defaults_and_binds_with_a_changed_receiver() {
     let mir = lower(
         "inherited",
-        "import {Commands, Subprocess, CommandOutput, CommandError} from \"@std/process.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Duration from \"@std/time.ms\"\nimport {CsvOptions} from \"@std/csv.ms\"\n\ntype Capture:\n    calls: Int\n\nimpl Commands for Capture:\n    fn run(\n        program: String,\n        arguments: List[String],\n        input: Bytes,\n        max_output_bytes: Optional[Int],\n        timeout: Optional[Duration]\n    ) Result[CommandOutput, CommandError]:\n        self.calls += 1\n        return ok(CommandOutput(0, input, \"\".to_bytes()))\n\n    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:\n        return error(CommandError.Unavailable)\n\nexport fn main() Int:\n    var capture = Capture(0)\n    let bound = capture.run\n    let r = capture.run(\"x\", [])\n    let o = CsvOptions()\n    return 0\n",
+        "import {Commands, Subprocess, CommandOutput, CommandError} from \"@std/process.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Duration from \"@std/time.ms\"\nimport {CsvOptions} from \"@std/csv.ms\"\n\ntype Capture:\n    calls: Int\n\nimpl Commands for Capture:\n    var fn run(\n        program: String,\n        arguments: List[String],\n        input: Bytes,\n        max_output_bytes: Optional[Int],\n        timeout: Optional[Duration]\n    ) Result[CommandOutput, CommandError]:\n        self.calls += 1\n        return ok(CommandOutput(0, input, \"\".to_bytes()))\n\n    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:\n        return error(CommandError.Unavailable)\n\nexport fn main() Int:\n    var capture = Capture(0)\n    let bound = capture.run\n    let r = capture.run(\"x\", [])\n    let o = CsvOptions()\n    return 0\n",
     );
     assert!(mir.contains("msrt_string_to_bytes"));
 }
@@ -286,7 +288,7 @@ fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
 fn collection_builders_are_shared_handles() {
     let mir = lower(
         "shared-builders",
-        "import {ListBuilder} from \"@std/collections.ms\"\n\nexport fn main() Int:\n    let b = ListBuilder[Int]()\n    let c = b\n    b.append(1)\n    c.append(2)\n    return b.freeze().length()\n",
+        "import {ListBuilder} from \"@std/collections.ms\"\n\nexport fn main() Int:\n    var b = ListBuilder[Int]()\n    b.append(1)\n    b.append(2)\n    return b.freeze().length()\n",
     );
     assert!(mir.contains("shared.new"));
     assert!(mir.contains("shared.addr"));

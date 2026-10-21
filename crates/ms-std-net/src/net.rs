@@ -775,8 +775,9 @@ mod tests {
             r.dial_tcp("127.0.0.1:1", Deadline::none()),
             Err(NetErr::PermissionDenied)
         ));
+        // Windows retries the SYN for about two seconds before it reports a refusal.
         assert!(
-            matches!(n.dial_tcp("127.0.0.1:1", Deadline::after(Duration::from_secs(2))), Err(NetErr::Failed(m)) if m == "connection refused")
+            matches!(n.dial_tcp("127.0.0.1:1", Deadline::after(Duration::from_secs(10))), Err(NetErr::Failed(m)) if m == "connection refused")
         );
         assert!(matches!(
             n.dial_tcp("nonsense", Deadline::none()),

@@ -6,6 +6,10 @@
 //! through the `msstd_terminal_event_*` getters.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 #[cfg(unix)]
 extern crate std;

@@ -498,6 +498,15 @@ impl<'a> Fa<'a> {
             Op::ISub | Op::ISubChk if i.args[0] == p => {
                 self.constant(i.args[1]).and_then(|c| c.checked_neg())
             }
+            // A conditional step (`if c { p += k }` after if-conversion) steps by `k` or not at all.
+            Op::Select => {
+                let arm = |v: Value| if v == p { Some(0) } else { self.step_of(v, p) };
+                match (arm(i.args[1])?, arm(i.args[2])?) {
+                    (0, s) | (s, 0) if s != 0 => Some(s),
+                    (x, y) if x == y && x != 0 => Some(x),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
@@ -852,6 +861,19 @@ impl<'a> Fa<'a> {
                                 _ => Op::IMul,
                             };
                             out.push(Edit::Op(bi, ii, op));
+                        }
+                    }
+                    Op::IAddOverflow | Op::IMulOverflow => {
+                        let (Some(x), Some(y)) = (get(0), get(1)) else {
+                            continue;
+                        };
+                        let (lo, hi) = if inst.op == Op::IAddOverflow {
+                            (x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128)
+                        } else {
+                            corners(|a, b| a * b, x, y)
+                        };
+                        if fits(lo, hi) {
+                            out.push(Edit::Const(bi, ii, false));
                         }
                     }
                     Op::INegChk => {

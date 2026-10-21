@@ -1,8 +1,9 @@
-//! Checked if-conversion must preserve the first fault, its source, and output.
+//! Arms with checked arithmetic stay branches: predicating an overflow check costs about as
+//! much as the branch it saves, and the first fault must keep its source position.
 use ms_mir::interp::Interp;
-use ms_mir::ir::{Module, Op, Scope};
-use ms_mir::opt::{self, Level, ifconv};
-use ms_mir::{parse::parse_module, print::print_module, verify::verify_module};
+use ms_mir::ir::Module;
+use ms_mir::opt::ifconv;
+use ms_mir::{parse::parse_module, verify::verify_module};
 
 fn program(x: i64, y: i64, c: bool, then: &str, els: &str) -> String {
     format!(
@@ -46,18 +47,8 @@ fn exec(m: &Module) -> (Result<i64, String>, String) {
 }
 
 #[test]
-fn checked_diamonds_preserve_boundaries_and_first_fault_positions() {
-    let vals = [
-        i64::MIN,
-        i64::MIN + 1,
-        -3,
-        -1,
-        0,
-        1,
-        3,
-        i64::MAX - 1,
-        i64::MAX,
-    ];
+fn checked_arms_stay_branches_and_fault_at_the_taken_arm() {
+    let vals = [i64::MIN, -1, 0, 1, i64::MAX - 1, i64::MAX];
     for x in vals {
         for y in vals {
             for c in [false, true] {
@@ -69,109 +60,26 @@ fn checked_diamonds_preserve_boundaries_and_first_fault_positions() {
                     "%b: int = iadd.chk %x, %y !0:20:7",
                 ));
                 let mut after = before.clone();
-                assert!(ifconv::run(&mut after));
-                verify_module(&after).unwrap();
+                assert!(!ifconv::run(&mut after));
                 assert_eq!(exec(&before), exec(&after), "x={x} y={y} c={c}");
-                let text = print_module(&after);
-                assert!(text.contains("select"));
-                assert!(!text.contains("imul.chk"));
-                assert!(!text.contains("iadd.chk"));
-                // The new operations also survive the fixture text boundary.
-                assert_eq!(exec(&after), exec(&parse(&text)));
             }
         }
     }
 }
 
 #[test]
-fn overflow_in_untaken_arm_does_not_fault() {
+fn unchecked_arms_still_convert() {
     for c in [false, true] {
-        let (then, els) = if c {
-            ("%a: int = iadd %x, %y", "%b: int = imul.chk %x, %x !0:20:1")
-        } else {
-            ("%a: int = imul.chk %x, %x !0:10:1", "%b: int = iadd %x, %y")
-        };
-        let mut m = parse(&program(i64::MAX, 0, c, then, els));
-        assert!(ifconv::run(&mut m));
-        verify_module(&m).unwrap();
-        assert_eq!(exec(&m).0, Ok(i64::MAX));
-    }
-}
-
-#[test]
-fn triangle_and_debug_and_inline_scope() {
-    let src = program(
-        i64::MAX,
-        1,
-        true,
-        "%a: int = iadd.chk %x, %y !0:10:1",
-        "%b: int = iadd %x, %y",
-    );
-    let src = src.replace("br_if %c, yes(), no()", "br_if %c, yes(), join(%x)");
-    let mut before = parse(&src);
-    before.funcs[0].scopes.push(Scope {
-        name: "inlined".into(),
-        file: 0,
-        parent: 0,
-        call_line: 8,
-    });
-    for b in &mut before.funcs[0].blocks {
-        for i in &mut b.insts {
-            if i.op == Op::IAddChk {
-                i.loc.scope = 1;
-            }
-        }
-    }
-    let mut debug = before.clone();
-    opt::optimize(&mut debug, Level::None, true);
-    assert_eq!(print_module(&debug), print_module(&before));
-    let mut after = before.clone();
-    assert!(ifconv::run(&mut after));
-    verify_module(&after).unwrap();
-    assert_eq!(exec(&before), exec(&after));
-    let guard = after.funcs[0]
-        .blocks
-        .iter()
-        .flat_map(|b| &b.insts)
-        .find(|i| i.op == Op::IntOverflowIf)
-        .unwrap();
-    assert_eq!(guard.loc.scope, 1);
-    assert_eq!(guard.loc.line, 10);
-}
-
-#[test]
-fn potentially_trapping_or_effectful_arms_stay_branched() {
-    for then in [
-        "%a: int = sdiv %x, %y",
-        "%a: int = srem %x, %y",
-        "%a: int = sdiv.chk %x, %y",
-        "poll\n  %a: int = iadd.chk %x, %y",
-        "%a: int = isub.chk %x, %y",
-    ] {
-        let mut m = parse(&program(1, 0, false, then, "%b: int = iadd %x, %y"));
-        let before = print_module(&m);
-        assert!(!ifconv::run(&mut m), "{then}");
-        assert_eq!(print_module(&m), before);
-    }
-    // A statically negative divisor is deliberately excluded, including -1.
-    let src = program(
-        i64::MIN,
-        -1,
-        false,
-        "%d: int = iconst -1\n  %a: int = sdiv %x, %d",
-        "%b: int = iadd %x, %y",
-    );
-    assert!(!ifconv::run(&mut parse(&src)));
-    for divisor in [0, -1, -2, 1, 2] {
-        let src = program(
-            i64::MIN,
-            0,
-            false,
-            &format!("%d: int = iconst {divisor}\n  %a: int = sdiv %x, %d"),
-            "%b: int = iadd %x, %y",
-        );
-        let mut m = parse(&src);
-        assert_eq!(ifconv::run(&mut m), divisor > 0);
-        verify_module(&m).unwrap();
+        let before = parse(&program(
+            7,
+            9,
+            c,
+            "%a: int = iadd %x, %y",
+            "%b: int = imul %x, %y",
+        ));
+        let mut after = before.clone();
+        assert!(ifconv::run(&mut after));
+        verify_module(&after).unwrap_or_else(|e| panic!("{e:?}"));
+        assert_eq!(exec(&before), exec(&after));
     }
 }

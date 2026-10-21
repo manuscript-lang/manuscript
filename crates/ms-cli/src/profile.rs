@@ -11,7 +11,7 @@
 //! * `--out-dir <directory>`: the bundle directory (default `./profile`). It
 //!   must not exist; it is created, and removed again if the build fails.
 //! * `--top <n>`: rows in the text report (default 20).
-//! * `--build-type <level>`: default `RelWithDebInfo` (frame pointers and line
+//! * `--build-type <level>`: default `Release` (frame pointers and line
 //!   tables are present at every level; the level only changes optimization).
 //! * `--json`: print one versioned document instead of text. The program's own
 //!   standard output is captured into the document (`stdout`, or
@@ -793,8 +793,8 @@ Options:
   --out-dir <directory>    Bundle directory (default: ./profile)
   --top <n>                Rows in the text report (default 20)
   --json                   Emit one versioned result; capture stdout, keep stderr live
-  --build-type <level>  Debug, Release, RelWithDebInfo, or MinSizeRel (case-insensitive)
-  Default build type: RelWithDebInfo
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  Default build type: Release
   -h, --help  Show this help without executing the command
 
 Examples:
