@@ -1,0 +1,777 @@
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"codeActionProvider":{"codeActionKinds":["source.fixAll.manuscript","quickfix","source.organizeImports"]},"completionProvider":{"triggerCharacters":[".",":","/"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"inlayHintProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":true,"legend":{"tokenModifiers":[],"tokenTypes":["keyword","variable","number","string","comment","function","type","property","parameter","enumMember","typeParameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",",",":"]},"textDocumentSync":2,"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"manuscript","version":"0.1.0"}}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-completion-snippets-PID/main.ms","version":1}}
+#large
+{"id":3,"jsonrpc":"2.0","result":null}
+{"id":4,"jsonrpc":"2.0","result":[{"filterText":"import","insertTextFormat":1,"kind":14,"label":"import","sortText":"05_import","textEdit":{"newText":"import ","range":{"end":{"character":6,"line":0},"start":{"character":0,"line":0}}}}]}
+{"id":5,"jsonrpc":"2.0","result":null}
+{"id":6,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"Files","insertTextFormat":1,"kind":7,"label":"Files","sortText":"Files","textEdit":{"newText":"Files","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"ReadStream","insertTextFormat":1,"kind":7,"label":"ReadStream","sortText":"ReadStream","textEdit":{"newText":"ReadStream","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"WriteStream","insertTextFormat":1,"kind":7,"label":"WriteStream","sortText":"WriteStream","textEdit":{"newText":"WriteStream","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"files","insertTextFormat":1,"kind":3,"label":"files","sortText":"files","textEdit":{"newText":"files","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"stderr","insertTextFormat":1,"kind":3,"label":"stderr","sortText":"stderr","textEdit":{"newText":"stderr","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"stdin","insertTextFormat":1,"kind":3,"label":"stdin","sortText":"stdin","textEdit":{"newText":"stdin","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}},{"detail":"@std/io.ms","filterText":"stdout","insertTextFormat":1,"kind":3,"label":"stdout","sortText":"stdout","textEdit":{"newText":"stdout","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}]}
+{"id":7,"jsonrpc":"2.0","result":null}
+{"id":8,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"stdout","insertTextFormat":1,"kind":3,"label":"stdout","sortText":"stdout","textEdit":{"newText":"stdout","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}]}
+{"id":9,"jsonrpc":"2.0","result":null}
+#large
+{"id":11,"jsonrpc":"2.0","result":null}
+{"id":12,"jsonrpc":"2.0","result":[{"detail":"@std/streams.ms","filterText":"from_bytes","insertTextFormat":1,"kind":7,"label":"from_bytes","sortText":"from_bytes","textEdit":{"newText":"from_bytes from \"@std/streams.ms\"","range":{"end":{"character":18,"line":0},"start":{"character":14,"line":0}}}},{"detail":"@std/time.ms","filterText":"from_calendar","insertTextFormat":1,"kind":7,"label":"from_calendar","sortText":"from_calendar","textEdit":{"newText":"from_calendar from \"@std/time.ms\"","range":{"end":{"character":18,"line":0},"start":{"character":14,"line":0}}}},{"detail":"@std/bigint.ms","filterText":"from_int","insertTextFormat":1,"kind":7,"label":"from_int","sortText":"from_int","textEdit":{"newText":"from_int from \"@std/bigint.ms\"","range":{"end":{"character":18,"line":0},"start":{"character":14,"line":0}}}},{"detail":"@std/string.ms","filterText":"from_scalars","insertTextFormat":1,"kind":7,"label":"from_scalars","sortText":"from_scalars","textEdit":{"newText":"from_scalars from \"@std/string.ms\"","range":{"end":{"character":18,"line":0},"start":{"character":14,"line":0}}}},{"detail":"@std/collections.ms","filterText":"map_from_entries","insertTextFormat":1,"kind":7,"label":"map_from_entries","sortText":"map_from_entries","textEdit":{"newText":"map_from_entries from \"@std/collections.ms\"","range":{"end":{"character":18,"line":0},"start":{"character":14,"line":0}}}}]}
+{"id":13,"jsonrpc":"2.0","result":null}
+#large
+{"id":15,"jsonrpc":"2.0","result":null}
+#large
+{"id":17,"jsonrpc":"2.0","result":null}
+#large
+{"id":19,"jsonrpc":"2.0","result":null}
+{"id":20,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":0},"start":{"character":20,"line":0}}}}]}
+{"id":21,"jsonrpc":"2.0","result":null}
+{"id":22,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":0},"start":{"character":20,"line":0}}}}]}
+{"id":23,"jsonrpc":"2.0","result":null}
+{"id":24,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":0},"start":{"character":20,"line":0}}}}]}
+{"id":25,"jsonrpc":"2.0","result":null}
+{"id":26,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":0},"start":{"character":20,"line":0}}}}]}
+{"id":27,"jsonrpc":"2.0","result":null}
+{"id":28,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":0},"start":{"character":20,"line":0}}}}]}
+{"id":29,"jsonrpc":"2.0","result":null}
+{"id":30,"jsonrpc":"2.0","result":[]}
+{"id":31,"jsonrpc":"2.0","result":null}
+#large
+{"id":33,"jsonrpc":"2.0","result":null}
+{"id":34,"jsonrpc":"2.0","result":[{"filterText":"import","insertTextFormat":1,"kind":14,"label":"import","sortText":"05_import","textEdit":{"newText":"import ","range":{"end":{"character":6,"line":1},"start":{"character":0,"line":1}}}}]}
+{"id":35,"jsonrpc":"2.0","result":null}
+#large
+{"id":37,"jsonrpc":"2.0","result":null}
+{"id":38,"jsonrpc":"2.0","result":[{"detail":"@std/testing.ms","filterText":"expect_equal","insertTextFormat":1,"kind":3,"label":"expect_equal","sortText":"expect_equal","textEdit":{"newText":"expect_equal","range":{"end":{"character":20,"line":1},"start":{"character":8,"line":1}}}},{"detail":"@std/testing.ms","filterText":"expect_not_equal","insertTextFormat":1,"kind":3,"label":"expect_not_equal","sortText":"expect_not_equal","textEdit":{"newText":"expect_not_equal","range":{"end":{"character":20,"line":1},"start":{"character":8,"line":1}}}}]}
+{"id":39,"jsonrpc":"2.0","result":null}
+#large
+{"id":41,"jsonrpc":"2.0","result":null}
+{"id":42,"jsonrpc":"2.0","result":[{"detail":"@std/streams.ms","filterText":"from_bytes","insertTextFormat":1,"kind":7,"label":"from_bytes","sortText":"from_bytes","textEdit":{"newText":"from_bytes","range":{"end":{"character":26,"line":1},"start":{"character":22,"line":1}}}},{"detail":"@std/time.ms","filterText":"from_calendar","insertTextFormat":1,"kind":7,"label":"from_calendar","sortText":"from_calendar","textEdit":{"newText":"from_calendar","range":{"end":{"character":26,"line":1},"start":{"character":22,"line":1}}}},{"detail":"@std/bigint.ms","filterText":"from_int","insertTextFormat":1,"kind":7,"label":"from_int","sortText":"from_int","textEdit":{"newText":"from_int","range":{"end":{"character":26,"line":1},"start":{"character":22,"line":1}}}},{"detail":"@std/string.ms","filterText":"from_scalars","insertTextFormat":1,"kind":7,"label":"from_scalars","sortText":"from_scalars","textEdit":{"newText":"from_scalars","range":{"end":{"character":26,"line":1},"start":{"character":22,"line":1}}}},{"detail":"@std/collections.ms","filterText":"map_from_entries","insertTextFormat":1,"kind":7,"label":"map_from_entries","sortText":"map_from_entries","textEdit":{"newText":"map_from_entries","range":{"end":{"character":26,"line":1},"start":{"character":22,"line":1}}}}]}
+{"id":43,"jsonrpc":"2.0","result":null}
+#large
+{"id":45,"jsonrpc":"2.0","result":null}
+#large
+{"id":47,"jsonrpc":"2.0","result":null}
+#large
+{"id":49,"jsonrpc":"2.0","result":null}
+{"id":50,"jsonrpc":"2.0","result":[{"detail":"@std/terminal.ms","filterText":"@std/terminal.ms","insertTextFormat":1,"kind":17,"label":"@std/terminal.ms","sortText":"@std/terminal.ms","textEdit":{"newText":"@std/terminal.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}},{"detail":"@std/testing.ms","filterText":"@std/testing.ms","insertTextFormat":1,"kind":17,"label":"@std/testing.ms","sortText":"@std/testing.ms","textEdit":{"newText":"@std/testing.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}},{"detail":"@std/time.ms","filterText":"@std/time.ms","insertTextFormat":1,"kind":17,"label":"@std/time.ms","sortText":"@std/time.ms","textEdit":{"newText":"@std/time.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}},{"detail":"@std/tls.ms","filterText":"@std/tls.ms","insertTextFormat":1,"kind":17,"label":"@std/tls.ms","sortText":"@std/tls.ms","textEdit":{"newText":"@std/tls.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}},{"detail":"@std/toml.ms","filterText":"@std/toml.ms","insertTextFormat":1,"kind":17,"label":"@std/toml.ms","sortText":"@std/toml.ms","textEdit":{"newText":"@std/toml.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}}]}
+{"id":51,"jsonrpc":"2.0","result":null}
+{"id":52,"jsonrpc":"2.0","result":[{"detail":"@std/testing.ms","filterText":"@std/testing.ms","insertTextFormat":1,"kind":17,"label":"@std/testing.ms","sortText":"@std/testing.ms","textEdit":{"newText":"@std/testing.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}}]}
+{"id":53,"jsonrpc":"2.0","result":null}
+{"id":54,"jsonrpc":"2.0","result":[{"detail":"@std/testing.ms","filterText":"@std/testing.ms","insertTextFormat":1,"kind":17,"label":"@std/testing.ms","sortText":"@std/testing.ms","textEdit":{"newText":"@std/testing.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}}]}
+{"id":55,"jsonrpc":"2.0","result":null}
+{"id":56,"jsonrpc":"2.0","result":[{"detail":"@std/testing.ms","filterText":"@std/testing.ms","insertTextFormat":1,"kind":17,"label":"@std/testing.ms","sortText":"@std/testing.ms","textEdit":{"newText":"@std/testing.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}}]}
+{"id":57,"jsonrpc":"2.0","result":null}
+{"id":58,"jsonrpc":"2.0","result":[{"detail":"@std/testing.ms","filterText":"@std/testing.ms","insertTextFormat":1,"kind":17,"label":"@std/testing.ms","sortText":"@std/testing.ms","textEdit":{"newText":"@std/testing.ms","range":{"end":{"character":43,"line":1},"start":{"character":28,"line":1}}}}]}
+{"id":59,"jsonrpc":"2.0","result":null}
+{"id":60,"jsonrpc":"2.0","result":[]}
+{"id":61,"jsonrpc":"2.0","result":null}
+#large
+{"id":63,"jsonrpc":"2.0","result":null}
+{"id":64,"jsonrpc":"2.0","result":[]}
+{"id":65,"jsonrpc":"2.0","result":null}
+{"id":66,"jsonrpc":"2.0","result":[]}
+{"id":67,"jsonrpc":"2.0","result":null}
+{"id":68,"jsonrpc":"2.0","result":[]}
+{"id":69,"jsonrpc":"2.0","result":null}
+{"id":70,"jsonrpc":"2.0","result":[]}
+{"id":71,"jsonrpc":"2.0","result":null}
+{"id":72,"jsonrpc":"2.0","result":[]}
+{"id":73,"jsonrpc":"2.0","result":null}
+{"id":74,"jsonrpc":"2.0","result":[]}
+{"id":75,"jsonrpc":"2.0","result":null}
+{"id":76,"jsonrpc":"2.0","result":[]}
+{"id":77,"jsonrpc":"2.0","result":null}
+{"id":78,"jsonrpc":"2.0","result":[]}
+{"id":79,"jsonrpc":"2.0","result":null}
+{"id":80,"jsonrpc":"2.0","result":[]}
+{"id":81,"jsonrpc":"2.0","result":null}
+{"id":82,"jsonrpc":"2.0","result":[]}
+{"id":83,"jsonrpc":"2.0","result":null}
+#large
+{"id":85,"jsonrpc":"2.0","result":null}
+{"id":86,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import os_type from \"@std/system.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() String — @std/system.ms","documentation":{"kind":"markdown","value":"Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name."},"filterText":"os_type","insertTextFormat":2,"kind":3,"label":"os_type","sortText":"04_os_type","textEdit":{"newText":"os_type()$0","range":{"end":{"character":4,"line":4},"start":{"character":0,"line":4}}}},{"filterText":"type","insertTextFormat":2,"kind":14,"label":"type","sortText":"05_type","textEdit":{"newText":"type ${1:Name}:\n    ${0:field: String}","range":{"end":{"character":4,"line":4},"start":{"character":0,"line":4}}}}]}
+{"id":87,"jsonrpc":"2.0","result":null}
+#large
+{"id":89,"jsonrpc":"2.0","result":null}
+{"id":90,"jsonrpc":"2.0","result":[{"filterText":"Point","insertTextFormat":1,"kind":3,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point","range":{"end":{"character":10,"line":4},"start":{"character":5,"line":4}}}}]}
+{"id":91,"jsonrpc":"2.0","result":null}
+{"id":92,"jsonrpc":"2.0","result":[{"filterText":"","insertTextFormat":1,"kind":3,"label":"","sortText":"02_","textEdit":{"newText":"","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"Named","insertTextFormat":1,"kind":3,"label":"Named","sortText":"02_Named","textEdit":{"newText":"Named","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"Point","insertTextFormat":1,"kind":3,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"Shape","insertTextFormat":1,"kind":3,"label":"Shape","sortText":"02_Shape","textEdit":{"newText":"Shape","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"add","insertTextFormat":1,"kind":3,"label":"add","sortText":"02_add","textEdit":{"newText":"add","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"addition","insertTextFormat":1,"kind":3,"label":"addition","sortText":"02_addition","textEdit":{"newText":"addition","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"area","insertTextFormat":1,"kind":3,"label":"area","sortText":"02_area","textEdit":{"newText":"area","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"describe","insertTextFormat":1,"kind":3,"label":"describe","sortText":"02_describe","textEdit":{"newText":"describe","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"main","insertTextFormat":1,"kind":3,"label":"main","sortText":"02_main","textEdit":{"newText":"main","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"say","insertTextFormat":1,"kind":3,"label":"say","sortText":"02_say","textEdit":{"newText":"say","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"false","insertTextFormat":1,"kind":14,"label":"false","sortText":"05_false","textEdit":{"newText":"false","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"fn","insertTextFormat":1,"kind":14,"label":"fn","sortText":"05_fn","textEdit":{"newText":"fn","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"not","insertTextFormat":1,"kind":14,"label":"not","sortText":"05_not","textEdit":{"newText":"not","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"true","insertTextFormat":1,"kind":14,"label":"true","sortText":"05_true","textEdit":{"newText":"true","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"try","insertTextFormat":1,"kind":14,"label":"try","sortText":"05_try","textEdit":{"newText":"try","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}},{"filterText":"unit","insertTextFormat":1,"kind":14,"label":"unit","sortText":"05_unit","textEdit":{"newText":"unit","range":{"end":{"character":11,"line":4},"start":{"character":11,"line":4}}}}]}
+{"id":93,"jsonrpc":"2.0","result":null}
+#large
+{"id":95,"jsonrpc":"2.0","result":null}
+#large
+{"id":97,"jsonrpc":"2.0","result":null}
+#large
+{"id":99,"jsonrpc":"2.0","result":null}
+#large
+{"id":101,"jsonrpc":"2.0","result":null}
+#large
+{"id":103,"jsonrpc":"2.0","result":null}
+#large
+{"id":105,"jsonrpc":"2.0","result":null}
+#large
+{"id":107,"jsonrpc":"2.0","result":null}
+#large
+{"id":109,"jsonrpc":"2.0","result":null}
+{"id":110,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ln10 from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the natural logarithm of 10."},"filterText":"ln10","insertTextFormat":2,"kind":3,"label":"ln10","sortText":"04_ln10","textEdit":{"newText":"ln10()$0","range":{"end":{"character":14,"line":6},"start":{"character":13,"line":6}}}},{"additionalTextEdits":[{"newText":"import log10 from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(value: Float) Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the base-10 logarithm."},"filterText":"log10","insertTextFormat":2,"kind":3,"label":"log10","sortText":"04_log10","textEdit":{"newText":"log10(${1:value})$0","range":{"end":{"character":14,"line":6},"start":{"character":13,"line":6}}}},{"additionalTextEdits":[{"newText":"import log10e from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the base-10 logarithm of e."},"filterText":"log10e","insertTextFormat":2,"kind":3,"label":"log10e","sortText":"04_log10e","textEdit":{"newText":"log10e()$0","range":{"end":{"character":14,"line":6},"start":{"character":13,"line":6}}}}]}
+{"id":111,"jsonrpc":"2.0","result":null}
+#large
+{"id":113,"jsonrpc":"2.0","result":null}
+#large
+{"id":115,"jsonrpc":"2.0","result":null}
+{"id":116,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import os_type from \"@std/system.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() String — @std/system.ms","documentation":{"kind":"markdown","value":"Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name."},"filterText":"os_type","insertTextFormat":2,"kind":3,"label":"os_type","sortText":"04_os_type","textEdit":{"newText":"os_type()$0","range":{"end":{"character":4,"line":8},"start":{"character":0,"line":8}}}},{"filterText":"type","insertTextFormat":2,"kind":14,"label":"type","sortText":"05_type","textEdit":{"newText":"type ${1:Name}:\n    ${0:field: String}","range":{"end":{"character":4,"line":8},"start":{"character":0,"line":8}}}}]}
+{"id":117,"jsonrpc":"2.0","result":null}
+#large
+{"id":119,"jsonrpc":"2.0","result":null}
+{"id":120,"jsonrpc":"2.0","result":[]}
+{"id":121,"jsonrpc":"2.0","result":null}
+#large
+{"id":123,"jsonrpc":"2.0","result":null}
+#large
+{"id":125,"jsonrpc":"2.0","result":null}
+{"id":126,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ecdh_shared_secret from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(private_key: Bytes, peer_public_key: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public key.\nBoth keys must use the same curve (P-256, P-384, P-521 or X25519)."},"filterText":"ecdh_shared_secret","insertTextFormat":2,"kind":3,"label":"ecdh_shared_secret","sortText":"04_ecdh_shared_secret","textEdit":{"newText":"ecdh_shared_secret(private_key: ${1:private_key}, peer_public_key: ${2:peer_public_key})$0","range":{"end":{"character":8,"line":9},"start":{"character":4,"line":9}}}},{"additionalTextEdits":[{"newText":"import expect_false from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: Bool) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails unless actual is false."},"filterText":"expect_false","insertTextFormat":2,"kind":3,"label":"expect_false","sortText":"04_expect_false","textEdit":{"newText":"expect_false(${1:actual})$0","range":{"end":{"character":8,"line":9},"start":{"character":4,"line":9}}}}]}
+{"id":127,"jsonrpc":"2.0","result":null}
+#large
+{"id":129,"jsonrpc":"2.0","result":null}
+{"id":130,"jsonrpc":"2.0","result":[]}
+{"id":131,"jsonrpc":"2.0","result":null}
+{"id":132,"jsonrpc":"2.0","result":[]}
+{"id":133,"jsonrpc":"2.0","result":null}
+{"id":134,"jsonrpc":"2.0","result":[]}
+{"id":135,"jsonrpc":"2.0","result":null}
+{"id":136,"jsonrpc":"2.0","result":[]}
+{"id":137,"jsonrpc":"2.0","result":null}
+#large
+{"id":139,"jsonrpc":"2.0","result":null}
+#large
+{"id":141,"jsonrpc":"2.0","result":null}
+#large
+{"id":143,"jsonrpc":"2.0","result":null}
+#large
+{"id":145,"jsonrpc":"2.0","result":null}
+#large
+{"id":147,"jsonrpc":"2.0","result":null}
+{"id":148,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ecdh_shared_secret from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(private_key: Bytes, peer_public_key: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public key.\nBoth keys must use the same curve (P-256, P-384, P-521 or X25519)."},"filterText":"ecdh_shared_secret","insertTextFormat":2,"kind":3,"label":"ecdh_shared_secret","sortText":"04_ecdh_shared_secret","textEdit":{"newText":"ecdh_shared_secret(private_key: ${1:private_key}, peer_public_key: ${2:peer_public_key})$0","range":{"end":{"character":8,"line":10},"start":{"character":4,"line":10}}}},{"additionalTextEdits":[{"newText":"import expect_false from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: Bool) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails unless actual is false."},"filterText":"expect_false","insertTextFormat":2,"kind":3,"label":"expect_false","sortText":"04_expect_false","textEdit":{"newText":"expect_false(${1:actual})$0","range":{"end":{"character":8,"line":10},"start":{"character":4,"line":10}}}}]}
+{"id":149,"jsonrpc":"2.0","result":null}
+#large
+{"id":151,"jsonrpc":"2.0","result":null}
+{"id":152,"jsonrpc":"2.0","result":[]}
+{"id":153,"jsonrpc":"2.0","result":null}
+{"id":154,"jsonrpc":"2.0","result":[]}
+{"id":155,"jsonrpc":"2.0","result":null}
+{"id":156,"jsonrpc":"2.0","result":[]}
+{"id":157,"jsonrpc":"2.0","result":null}
+{"id":158,"jsonrpc":"2.0","result":[]}
+{"id":159,"jsonrpc":"2.0","result":null}
+#large
+{"id":161,"jsonrpc":"2.0","result":null}
+#large
+{"id":163,"jsonrpc":"2.0","result":null}
+#large
+{"id":165,"jsonrpc":"2.0","result":null}
+#large
+{"id":167,"jsonrpc":"2.0","result":null}
+#large
+{"id":169,"jsonrpc":"2.0","result":null}
+{"id":170,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ecdh_shared_secret from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(private_key: Bytes, peer_public_key: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public key.\nBoth keys must use the same curve (P-256, P-384, P-521 or X25519)."},"filterText":"ecdh_shared_secret","insertTextFormat":2,"kind":3,"label":"ecdh_shared_secret","sortText":"04_ecdh_shared_secret","textEdit":{"newText":"ecdh_shared_secret(private_key: ${1:private_key}, peer_public_key: ${2:peer_public_key})$0","range":{"end":{"character":8,"line":11},"start":{"character":4,"line":11}}}},{"additionalTextEdits":[{"newText":"import expect_false from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: Bool) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails unless actual is false."},"filterText":"expect_false","insertTextFormat":2,"kind":3,"label":"expect_false","sortText":"04_expect_false","textEdit":{"newText":"expect_false(${1:actual})$0","range":{"end":{"character":8,"line":11},"start":{"character":4,"line":11}}}}]}
+{"id":171,"jsonrpc":"2.0","result":null}
+#large
+{"id":173,"jsonrpc":"2.0","result":null}
+{"id":174,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import TemporaryDirectory from \"@std/fs.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"TemporaryDirectory — @std/fs.ms","documentation":{"kind":"markdown","value":"A temporary directory whose contents are removed when it is closed."},"filterText":"TemporaryDirectory","insertTextFormat":1,"kind":7,"label":"TemporaryDirectory","sortText":"04_TemporaryDirectory","textEdit":{"newText":"TemporaryDirectory","range":{"end":{"character":14,"line":11},"start":{"character":9,"line":11}}}}]}
+{"id":175,"jsonrpc":"2.0","result":null}
+#large
+{"id":177,"jsonrpc":"2.0","result":null}
+#large
+{"id":179,"jsonrpc":"2.0","result":null}
+{"id":180,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import NetworkInterface from \"@std/system.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NetworkInterface — @std/system.ms","documentation":{"kind":"markdown","value":"Address and link metadata for one host network interface."},"filterText":"NetworkInterface","insertTextFormat":1,"kind":7,"label":"NetworkInterface","sortText":"04_NetworkInterface","textEdit":{"newText":"NetworkInterface","range":{"end":{"character":9,"line":13},"start":{"character":0,"line":13}}}},{"filterText":"interface","insertTextFormat":2,"kind":14,"label":"interface","sortText":"05_interface","textEdit":{"newText":"interface ${1:Name}:\n    ${0:fn operation() Unit}","range":{"end":{"character":9,"line":13},"start":{"character":0,"line":13}}}}]}
+{"id":181,"jsonrpc":"2.0","result":null}
+#large
+{"id":183,"jsonrpc":"2.0","result":null}
+{"id":184,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import to_namespaced_path from \"@std/path.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(path: String) String — @std/path.ms","documentation":{"kind":"markdown","value":"Converts a path to the host's namespaced representation when applicable."},"filterText":"to_namespaced_path","insertTextFormat":2,"kind":3,"label":"to_namespaced_path","sortText":"04_to_namespaced_path","textEdit":{"newText":"to_namespaced_path(${1:path})$0","range":{"end":{"character":15,"line":13},"start":{"character":10,"line":13}}}}]}
+{"id":185,"jsonrpc":"2.0","result":null}
+#large
+{"id":187,"jsonrpc":"2.0","result":null}
+#large
+{"id":189,"jsonrpc":"2.0","result":null}
+#large
+{"id":191,"jsonrpc":"2.0","result":null}
+#large
+{"id":193,"jsonrpc":"2.0","result":null}
+{"id":194,"jsonrpc":"2.0","result":[]}
+{"id":195,"jsonrpc":"2.0","result":null}
+#large
+{"id":197,"jsonrpc":"2.0","result":null}
+#large
+{"id":199,"jsonrpc":"2.0","result":null}
+{"id":200,"jsonrpc":"2.0","result":[{"detail":"String","filterText":"String","insertTextFormat":1,"kind":7,"label":"String","sortText":"02_String","textEdit":{"newText":"String","range":{"end":{"character":21,"line":14},"start":{"character":15,"line":14}}}},{"additionalTextEdits":[{"newText":"import StringBuilder from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringBuilder — @std/string.ms","documentation":{"kind":"markdown","value":"Mutable builder for constructing a string without repeated intermediate copies."},"filterText":"StringBuilder","insertTextFormat":1,"kind":7,"label":"StringBuilder","sortText":"04_StringBuilder","textEdit":{"newText":"StringBuilder","range":{"end":{"character":21,"line":14},"start":{"character":15,"line":14}}}},{"additionalTextEdits":[{"newText":"import StringError from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringError — @std/string.ms","documentation":{"kind":"markdown","value":"Errors returned by Unicode scalar conversions and bounded string operations."},"filterText":"StringError","insertTextFormat":1,"kind":7,"label":"StringError","sortText":"04_StringError","textEdit":{"newText":"StringError","range":{"end":{"character":21,"line":14},"start":{"character":15,"line":14}}}}]}
+{"id":201,"jsonrpc":"2.0","result":null}
+#large
+{"id":203,"jsonrpc":"2.0","result":null}
+#large
+{"id":205,"jsonrpc":"2.0","result":null}
+{"id":206,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import wrapping_multiply from \"@std/bits.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(left: Int, right: Int) Int — @std/bits.ms","documentation":{"kind":"markdown","value":"Multiplies with two's-complement wraparound instead of faulting on overflow (JavaScript `Math.imul` at 64 bits)."},"filterText":"wrapping_multiply","insertTextFormat":2,"kind":3,"label":"wrapping_multiply","sortText":"04_wrapping_multiply","textEdit":{"newText":"wrapping_multiply(left: ${1:left}, right: ${2:right})$0","range":{"end":{"character":4,"line":16},"start":{"character":0,"line":16}}}},{"filterText":"impl","insertTextFormat":1,"kind":14,"label":"impl","sortText":"05_impl","textEdit":{"newText":"impl ","range":{"end":{"character":4,"line":16},"start":{"character":0,"line":16}}}}]}
+{"id":207,"jsonrpc":"2.0","result":null}
+#large
+{"id":209,"jsonrpc":"2.0","result":null}
+{"id":210,"jsonrpc":"2.0","result":[{"filterText":"Point","insertTextFormat":1,"kind":3,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point","range":{"end":{"character":10,"line":16},"start":{"character":5,"line":16}}}}]}
+{"id":211,"jsonrpc":"2.0","result":null}
+#large
+{"id":213,"jsonrpc":"2.0","result":null}
+#large
+{"id":215,"jsonrpc":"2.0","result":null}
+#large
+{"id":217,"jsonrpc":"2.0","result":null}
+#large
+{"id":219,"jsonrpc":"2.0","result":null}
+{"id":220,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import CompressionFormat from \"@std/compress.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"CompressionFormat — @std/compress.ms","documentation":{"kind":"markdown","value":"Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.\nExisting compress/decompress format: String calls remain available."},"filterText":"CompressionFormat","insertTextFormat":1,"kind":7,"label":"CompressionFormat","sortText":"04_CompressionFormat","textEdit":{"newText":"CompressionFormat","range":{"end":{"character":11,"line":17},"start":{"character":7,"line":17}}}},{"additionalTextEdits":[{"newText":"import NormalizationForm from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NormalizationForm — @std/string.ms","documentation":{"kind":"markdown","value":"The four Unicode normalization forms, selected without runtime string spelling errors."},"filterText":"NormalizationForm","insertTextFormat":1,"kind":7,"label":"NormalizationForm","sortText":"04_NormalizationForm","textEdit":{"newText":"NormalizationForm","range":{"end":{"character":11,"line":17},"start":{"character":7,"line":17}}}},{"additionalTextEdits":[{"newText":"import normalize from \"@std/path.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(path: String) String — @std/path.ms","documentation":{"kind":"markdown","value":"Normalizes separators and dot segments without accessing the filesystem."},"filterText":"normalize","insertTextFormat":2,"kind":3,"label":"normalize","sortText":"04_normalize","textEdit":{"newText":"normalize(${1:path})$0","range":{"end":{"character":11,"line":17},"start":{"character":7,"line":17}}}}]}
+{"id":221,"jsonrpc":"2.0","result":null}
+#large
+{"id":223,"jsonrpc":"2.0","result":null}
+#large
+{"id":225,"jsonrpc":"2.0","result":null}
+#large
+{"id":227,"jsonrpc":"2.0","result":null}
+#large
+{"id":229,"jsonrpc":"2.0","result":null}
+#large
+{"id":231,"jsonrpc":"2.0","result":null}
+{"id":232,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":14,"line":18},"start":{"character":8,"line":18}}}}]}
+{"id":233,"jsonrpc":"2.0","result":null}
+#large
+{"id":235,"jsonrpc":"2.0","result":null}
+{"id":236,"jsonrpc":"2.0","result":[{"detail":"Point","filterText":"self","insertTextFormat":1,"kind":6,"label":"self","sortText":"00_self","textEdit":{"newText":"self","range":{"end":{"character":19,"line":18},"start":{"character":15,"line":18}}}}]}
+{"id":237,"jsonrpc":"2.0","result":null}
+{"id":238,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}},{"detail":"fn() String","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}}]}
+{"id":239,"jsonrpc":"2.0","result":null}
+{"id":240,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}}]}
+{"id":241,"jsonrpc":"2.0","result":null}
+#large
+{"id":243,"jsonrpc":"2.0","result":null}
+{"id":244,"jsonrpc":"2.0","result":[{"detail":"Point","filterText":"self","insertTextFormat":1,"kind":6,"label":"self","sortText":"00_self","textEdit":{"newText":"self","range":{"end":{"character":28,"line":18},"start":{"character":24,"line":18}}}}]}
+{"id":245,"jsonrpc":"2.0","result":null}
+{"id":246,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}},{"detail":"fn() String","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}}]}
+{"id":247,"jsonrpc":"2.0","result":null}
+{"id":248,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}}]}
+{"id":249,"jsonrpc":"2.0","result":null}
+#large
+{"id":251,"jsonrpc":"2.0","result":null}
+{"id":252,"jsonrpc":"2.0","result":[{"detail":"Point","filterText":"self","insertTextFormat":1,"kind":6,"label":"self","sortText":"00_self","textEdit":{"newText":"self","range":{"end":{"character":37,"line":18},"start":{"character":33,"line":18}}}}]}
+{"id":253,"jsonrpc":"2.0","result":null}
+{"id":254,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}},{"detail":"fn() String","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}}]}
+{"id":255,"jsonrpc":"2.0","result":null}
+{"id":256,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}}]}
+{"id":257,"jsonrpc":"2.0","result":null}
+#large
+{"id":259,"jsonrpc":"2.0","result":null}
+{"id":260,"jsonrpc":"2.0","result":[{"detail":"Point","filterText":"self","insertTextFormat":1,"kind":6,"label":"self","sortText":"00_self","textEdit":{"newText":"self","range":{"end":{"character":46,"line":18},"start":{"character":42,"line":18}}}}]}
+{"id":261,"jsonrpc":"2.0","result":null}
+{"id":262,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}},{"detail":"fn() String","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}}]}
+{"id":263,"jsonrpc":"2.0","result":null}
+{"id":264,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}}]}
+{"id":265,"jsonrpc":"2.0","result":null}
+#large
+{"id":267,"jsonrpc":"2.0","result":null}
+#large
+{"id":269,"jsonrpc":"2.0","result":null}
+{"id":270,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import wrapping_multiply from \"@std/bits.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(left: Int, right: Int) Int — @std/bits.ms","documentation":{"kind":"markdown","value":"Multiplies with two's-complement wraparound instead of faulting on overflow (JavaScript `Math.imul` at 64 bits)."},"filterText":"wrapping_multiply","insertTextFormat":2,"kind":3,"label":"wrapping_multiply","sortText":"04_wrapping_multiply","textEdit":{"newText":"wrapping_multiply(left: ${1:left}, right: ${2:right})$0","range":{"end":{"character":4,"line":20},"start":{"character":0,"line":20}}}},{"filterText":"impl","insertTextFormat":1,"kind":14,"label":"impl","sortText":"05_impl","textEdit":{"newText":"impl ","range":{"end":{"character":4,"line":20},"start":{"character":0,"line":20}}}}]}
+{"id":271,"jsonrpc":"2.0","result":null}
+#large
+{"id":273,"jsonrpc":"2.0","result":null}
+{"id":274,"jsonrpc":"2.0","result":[{"detail":"Named","filterText":"Named","insertTextFormat":1,"kind":7,"label":"Named","sortText":"02_Named","textEdit":{"newText":"Named","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}},{"additionalTextEdits":[{"newText":"import to_namespaced_path from \"@std/path.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(path: String) String — @std/path.ms","documentation":{"kind":"markdown","value":"Converts a path to the host's namespaced representation when applicable."},"filterText":"to_namespaced_path","insertTextFormat":2,"kind":3,"label":"to_namespaced_path","sortText":"04_to_namespaced_path","textEdit":{"newText":"to_namespaced_path(${1:path})$0","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}}]}
+{"id":275,"jsonrpc":"2.0","result":null}
+#large
+{"id":277,"jsonrpc":"2.0","result":null}
+#large
+{"id":279,"jsonrpc":"2.0","result":null}
+#large
+{"id":281,"jsonrpc":"2.0","result":null}
+{"id":282,"jsonrpc":"2.0","result":[{"detail":"Point","documentation":{"kind":"markdown","value":"A point in the plane."},"filterText":"Point","insertTextFormat":2,"kind":7,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point(x: ${1:x})$0","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}},{"detail":"Point$methods","filterText":"Point$methods","insertTextFormat":1,"kind":7,"label":"Point$methods","sortText":"02_Point$methods","textEdit":{"newText":"Point$methods","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}}]}
+{"id":283,"jsonrpc":"2.0","result":null}
+#large
+{"id":285,"jsonrpc":"2.0","result":null}
+#large
+{"id":287,"jsonrpc":"2.0","result":null}
+#large
+{"id":289,"jsonrpc":"2.0","result":null}
+#large
+{"id":291,"jsonrpc":"2.0","result":null}
+{"id":292,"jsonrpc":"2.0","result":[]}
+{"id":293,"jsonrpc":"2.0","result":null}
+#large
+{"id":295,"jsonrpc":"2.0","result":null}
+#large
+{"id":297,"jsonrpc":"2.0","result":null}
+{"id":298,"jsonrpc":"2.0","result":[{"detail":"String","filterText":"String","insertTextFormat":1,"kind":7,"label":"String","sortText":"02_String","textEdit":{"newText":"String","range":{"end":{"character":21,"line":21},"start":{"character":15,"line":21}}}},{"additionalTextEdits":[{"newText":"import StringBuilder from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringBuilder — @std/string.ms","documentation":{"kind":"markdown","value":"Mutable builder for constructing a string without repeated intermediate copies."},"filterText":"StringBuilder","insertTextFormat":1,"kind":7,"label":"StringBuilder","sortText":"04_StringBuilder","textEdit":{"newText":"StringBuilder","range":{"end":{"character":21,"line":21},"start":{"character":15,"line":21}}}},{"additionalTextEdits":[{"newText":"import StringError from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringError — @std/string.ms","documentation":{"kind":"markdown","value":"Errors returned by Unicode scalar conversions and bounded string operations."},"filterText":"StringError","insertTextFormat":1,"kind":7,"label":"StringError","sortText":"04_StringError","textEdit":{"newText":"StringError","range":{"end":{"character":21,"line":21},"start":{"character":15,"line":21}}}}]}
+{"id":299,"jsonrpc":"2.0","result":null}
+#large
+{"id":301,"jsonrpc":"2.0","result":null}
+#large
+{"id":303,"jsonrpc":"2.0","result":null}
+{"id":304,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":14,"line":22},"start":{"character":8,"line":22}}}}]}
+{"id":305,"jsonrpc":"2.0","result":null}
+{"id":306,"jsonrpc":"2.0","result":[]}
+{"id":307,"jsonrpc":"2.0","result":null}
+{"id":308,"jsonrpc":"2.0","result":[]}
+{"id":309,"jsonrpc":"2.0","result":null}
+{"id":310,"jsonrpc":"2.0","result":[]}
+{"id":311,"jsonrpc":"2.0","result":null}
+#large
+{"id":313,"jsonrpc":"2.0","result":null}
+#large
+{"id":315,"jsonrpc":"2.0","result":null}
+#large
+{"id":317,"jsonrpc":"2.0","result":null}
+#large
+{"id":319,"jsonrpc":"2.0","result":null}
+#large
+{"id":321,"jsonrpc":"2.0","result":null}
+{"id":322,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import IpAddress from \"@std/net.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"IpAddress — @std/net.ms","documentation":{"kind":"markdown","value":"A validated numeric IPv4/IPv6 address without a port or zone."},"filterText":"IpAddress","insertTextFormat":1,"kind":7,"label":"IpAddress","sortText":"04_IpAddress","textEdit":{"newText":"IpAddress","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}},{"additionalTextEdits":[{"newText":"import ascii_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) Result[String, EncodingError] — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData."},"filterText":"ascii_decode","insertTextFormat":2,"kind":3,"label":"ascii_decode","sortText":"04_ascii_decode","textEdit":{"newText":"ascii_decode(${1:data})$0","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}},{"additionalTextEdits":[{"newText":"import base64_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(text: String, url_safe: Bool = ..., max_bytes: Optional[Int] = ...) Result[Bytes, EncodingError] — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet."},"filterText":"base64_decode","insertTextFormat":2,"kind":3,"label":"base64_decode","sortText":"04_base64_decode","textEdit":{"newText":"base64_decode(text: ${1:text})$0","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}},{"additionalTextEdits":[{"newText":"import latin1_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) String — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value."},"filterText":"latin1_decode","insertTextFormat":2,"kind":3,"label":"latin1_decode","sortText":"04_latin1_decode","textEdit":{"newText":"latin1_decode(${1:data})$0","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}},{"additionalTextEdits":[{"newText":"import wrapping_add from \"@std/bits.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(left: Int, right: Int) Int — @std/bits.ms","documentation":{"kind":"markdown","value":"Adds with two's-complement wraparound instead of faulting on overflow."},"filterText":"wrapping_add","insertTextFormat":2,"kind":3,"label":"wrapping_add","sortText":"04_wrapping_add","textEdit":{"newText":"wrapping_add(left: ${1:left}, right: ${2:right})$0","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}}]}
+{"id":323,"jsonrpc":"2.0","result":null}
+#large
+{"id":325,"jsonrpc":"2.0","result":null}
+#large
+{"id":327,"jsonrpc":"2.0","result":null}
+#large
+{"id":329,"jsonrpc":"2.0","result":null}
+#large
+{"id":331,"jsonrpc":"2.0","result":null}
+#large
+{"id":333,"jsonrpc":"2.0","result":null}
+#large
+{"id":335,"jsonrpc":"2.0","result":null}
+#large
+{"id":337,"jsonrpc":"2.0","result":null}
+#large
+{"id":339,"jsonrpc":"2.0","result":null}
+#large
+{"id":341,"jsonrpc":"2.0","result":null}
+#large
+{"id":343,"jsonrpc":"2.0","result":null}
+#large
+{"id":345,"jsonrpc":"2.0","result":null}
+#large
+{"id":347,"jsonrpc":"2.0","result":null}
+#large
+{"id":349,"jsonrpc":"2.0","result":null}
+#large
+{"id":351,"jsonrpc":"2.0","result":null}
+#large
+{"id":353,"jsonrpc":"2.0","result":null}
+#large
+{"id":355,"jsonrpc":"2.0","result":null}
+{"id":356,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import assert_not_equal from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: T, expected: T) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"TDD spelling of `expect_not_equal` with the same comparison and failure behavior."},"filterText":"assert_not_equal","insertTextFormat":2,"kind":3,"label":"assert_not_equal","sortText":"04_assert_not_equal","textEdit":{"newText":"assert_not_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}},{"additionalTextEdits":[{"newText":"import expect_not_equal from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: T, expected: T) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails when values are equal under ordinary Equal semantics."},"filterText":"expect_not_equal","insertTextFormat":2,"kind":3,"label":"expect_not_equal","sortText":"04_expect_not_equal","textEdit":{"newText":"expect_not_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}}]}
+{"id":357,"jsonrpc":"2.0","result":null}
+#large
+{"id":359,"jsonrpc":"2.0","result":null}
+#large
+{"id":361,"jsonrpc":"2.0","result":null}
+#large
+{"id":363,"jsonrpc":"2.0","result":null}
+{"id":364,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":10,"line":26},"start":{"character":4,"line":26}}}}]}
+{"id":365,"jsonrpc":"2.0","result":null}
+#large
+{"id":367,"jsonrpc":"2.0","result":null}
+{"id":368,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"total","insertTextFormat":1,"kind":6,"label":"total","sortText":"00_total","textEdit":{"newText":"total","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}},{"additionalTextEdits":[{"newText":"import assert_not_equal from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: T, expected: T) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"TDD spelling of `expect_not_equal` with the same comparison and failure behavior."},"filterText":"assert_not_equal","insertTextFormat":2,"kind":3,"label":"assert_not_equal","sortText":"04_assert_not_equal","textEdit":{"newText":"assert_not_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}},{"additionalTextEdits":[{"newText":"import expect_not_equal from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: T, expected: T) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails when values are equal under ordinary Equal semantics."},"filterText":"expect_not_equal","insertTextFormat":2,"kind":3,"label":"expect_not_equal","sortText":"04_expect_not_equal","textEdit":{"newText":"expect_not_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}}]}
+{"id":369,"jsonrpc":"2.0","result":null}
+#large
+{"id":371,"jsonrpc":"2.0","result":null}
+#large
+{"id":373,"jsonrpc":"2.0","result":null}
+#large
+{"id":375,"jsonrpc":"2.0","result":null}
+#large
+{"id":377,"jsonrpc":"2.0","result":null}
+#large
+{"id":379,"jsonrpc":"2.0","result":null}
+#large
+{"id":381,"jsonrpc":"2.0","result":null}
+#large
+{"id":383,"jsonrpc":"2.0","result":null}
+{"id":384,"jsonrpc":"2.0","result":[{"detail":"Shape","filterText":"Shape","insertTextFormat":1,"kind":7,"label":"Shape","sortText":"02_Shape","textEdit":{"newText":"Shape","range":{"end":{"character":13,"line":28},"start":{"character":8,"line":28}}}}]}
+{"id":385,"jsonrpc":"2.0","result":null}
+#large
+{"id":387,"jsonrpc":"2.0","result":null}
+#large
+{"id":389,"jsonrpc":"2.0","result":null}
+{"id":390,"jsonrpc":"2.0","result":[{"detail":"Shape","filterText":"Shape","insertTextFormat":1,"kind":7,"label":"Shape","sortText":"02_Shape","textEdit":{"newText":"Shape","range":{"end":{"character":20,"line":28},"start":{"character":15,"line":28}}}}]}
+{"id":391,"jsonrpc":"2.0","result":null}
+#large
+{"id":393,"jsonrpc":"2.0","result":null}
+#large
+{"id":395,"jsonrpc":"2.0","result":null}
+#large
+{"id":397,"jsonrpc":"2.0","result":null}
+#large
+{"id":399,"jsonrpc":"2.0","result":null}
+{"id":400,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import matches_glob from \"@std/path.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(path: String, pattern: String) Result[Bool, PathError] — @std/path.ms","documentation":{"kind":"markdown","value":"Tests a path against a glob pattern."},"filterText":"matches_glob","insertTextFormat":2,"kind":3,"label":"matches_glob","sortText":"04_matches_glob","textEdit":{"newText":"matches_glob(path: ${1:path}, pattern: ${2:pattern})$0","range":{"end":{"character":9,"line":29},"start":{"character":4,"line":29}}}},{"filterText":"match","insertTextFormat":1,"kind":14,"label":"match","sortText":"05_match","textEdit":{"newText":"match ","range":{"end":{"character":9,"line":29},"start":{"character":4,"line":29}}}}]}
+{"id":401,"jsonrpc":"2.0","result":null}
+#large
+{"id":403,"jsonrpc":"2.0","result":null}
+{"id":404,"jsonrpc":"2.0","result":[{"detail":"Shape","filterText":"shape","insertTextFormat":1,"kind":6,"label":"shape","sortText":"00_shape","textEdit":{"newText":"shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}},{"detail":"Shape","filterText":"Shape","insertTextFormat":1,"kind":7,"label":"Shape","sortText":"02_Shape","textEdit":{"newText":"Shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}}]}
+{"id":405,"jsonrpc":"2.0","result":null}
+#large
+{"id":407,"jsonrpc":"2.0","result":null}
+#large
+{"id":409,"jsonrpc":"2.0","result":null}
+{"id":410,"jsonrpc":"2.0","result":[]}
+{"id":411,"jsonrpc":"2.0","result":null}
+{"id":412,"jsonrpc":"2.0","result":[]}
+{"id":413,"jsonrpc":"2.0","result":null}
+{"id":414,"jsonrpc":"2.0","result":[]}
+{"id":415,"jsonrpc":"2.0","result":null}
+#large
+{"id":417,"jsonrpc":"2.0","result":null}
+#large
+{"id":419,"jsonrpc":"2.0","result":null}
+{"id":420,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":18,"line":31},"start":{"character":12,"line":31}}}}]}
+{"id":421,"jsonrpc":"2.0","result":null}
+#large
+{"id":423,"jsonrpc":"2.0","result":null}
+#large
+{"id":425,"jsonrpc":"2.0","result":null}
+{"id":426,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import sha384 from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) Bytes — @std/crypto.ms","documentation":{"kind":"markdown","value":"Returns the SHA-384 digest of the input."},"filterText":"sha384","insertTextFormat":2,"kind":3,"label":"sha384","sortText":"04_sha384","textEdit":{"newText":"sha384(${1:data})$0","range":{"end":{"character":28,"line":31},"start":{"character":27,"line":31}}}},{"additionalTextEdits":[{"newText":"import to_float32 from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(value: Float) Float — @std/math.ms","documentation":{"kind":"markdown","value":"Rounds to the nearest 32-bit floating-point value and widens it back to Float."},"filterText":"to_float32","insertTextFormat":2,"kind":3,"label":"to_float32","sortText":"04_to_float32","textEdit":{"newText":"to_float32(${1:value})$0","range":{"end":{"character":28,"line":31},"start":{"character":27,"line":31}}}},{"additionalTextEdits":[{"newText":"import win32 from \"@std/path.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() PathOperations — @std/path.ms","documentation":{"kind":"markdown","value":"Returns path operations using Windows separators and parsing rules."},"filterText":"win32","insertTextFormat":2,"kind":3,"label":"win32","sortText":"04_win32","textEdit":{"newText":"win32()$0","range":{"end":{"character":28,"line":31},"start":{"character":27,"line":31}}}}]}
+{"id":427,"jsonrpc":"2.0","result":null}
+#large
+{"id":429,"jsonrpc":"2.0","result":null}
+{"id":430,"jsonrpc":"2.0","result":[]}
+{"id":431,"jsonrpc":"2.0","result":null}
+{"id":432,"jsonrpc":"2.0","result":[]}
+{"id":433,"jsonrpc":"2.0","result":null}
+{"id":434,"jsonrpc":"2.0","result":[]}
+{"id":435,"jsonrpc":"2.0","result":null}
+#large
+{"id":437,"jsonrpc":"2.0","result":null}
+#large
+{"id":439,"jsonrpc":"2.0","result":null}
+{"id":440,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":18,"line":33},"start":{"character":12,"line":33}}}}]}
+{"id":441,"jsonrpc":"2.0","result":null}
+#large
+{"id":443,"jsonrpc":"2.0","result":null}
+#large
+{"id":445,"jsonrpc":"2.0","result":null}
+#large
+{"id":447,"jsonrpc":"2.0","result":null}
+#large
+{"id":449,"jsonrpc":"2.0","result":null}
+#large
+{"id":451,"jsonrpc":"2.0","result":null}
+{"id":452,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":18,"line":35},"start":{"character":12,"line":35}}}}]}
+{"id":453,"jsonrpc":"2.0","result":null}
+{"id":454,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ln10 from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the natural logarithm of 10."},"filterText":"ln10","insertTextFormat":2,"kind":3,"label":"ln10","sortText":"04_ln10","textEdit":{"newText":"ln10()$0","range":{"end":{"character":20,"line":35},"start":{"character":19,"line":35}}}},{"additionalTextEdits":[{"newText":"import log10 from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(value: Float) Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the base-10 logarithm."},"filterText":"log10","insertTextFormat":2,"kind":3,"label":"log10","sortText":"04_log10","textEdit":{"newText":"log10(${1:value})$0","range":{"end":{"character":20,"line":35},"start":{"character":19,"line":35}}}},{"additionalTextEdits":[{"newText":"import log10e from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the base-10 logarithm of e."},"filterText":"log10e","insertTextFormat":2,"kind":3,"label":"log10e","sortText":"04_log10e","textEdit":{"newText":"log10e()$0","range":{"end":{"character":20,"line":35},"start":{"character":19,"line":35}}}}]}
+{"id":455,"jsonrpc":"2.0","result":null}
+#large
+{"id":457,"jsonrpc":"2.0","result":null}
+#large
+{"id":459,"jsonrpc":"2.0","result":null}
+#large
+{"id":461,"jsonrpc":"2.0","result":null}
+#large
+{"id":463,"jsonrpc":"2.0","result":null}
+{"id":464,"jsonrpc":"2.0","result":[]}
+{"id":465,"jsonrpc":"2.0","result":null}
+#large
+{"id":467,"jsonrpc":"2.0","result":null}
+#large
+{"id":469,"jsonrpc":"2.0","result":null}
+#large
+{"id":471,"jsonrpc":"2.0","result":null}
+#large
+{"id":473,"jsonrpc":"2.0","result":null}
+{"id":474,"jsonrpc":"2.0","result":[{"detail":"Point","documentation":{"kind":"markdown","value":"A point in the plane."},"filterText":"Point","insertTextFormat":1,"kind":7,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point","range":{"end":{"character":20,"line":37},"start":{"character":15,"line":37}}}},{"detail":"Point$methods","filterText":"Point$methods","insertTextFormat":1,"kind":7,"label":"Point$methods","sortText":"02_Point$methods","textEdit":{"newText":"Point$methods","range":{"end":{"character":20,"line":37},"start":{"character":15,"line":37}}}}]}
+{"id":475,"jsonrpc":"2.0","result":null}
+#large
+{"id":477,"jsonrpc":"2.0","result":null}
+{"id":478,"jsonrpc":"2.0","result":[{"detail":"String","filterText":"String","insertTextFormat":1,"kind":7,"label":"String","sortText":"02_String","textEdit":{"newText":"String","range":{"end":{"character":28,"line":37},"start":{"character":22,"line":37}}}},{"additionalTextEdits":[{"newText":"import StringBuilder from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringBuilder — @std/string.ms","documentation":{"kind":"markdown","value":"Mutable builder for constructing a string without repeated intermediate copies."},"filterText":"StringBuilder","insertTextFormat":1,"kind":7,"label":"StringBuilder","sortText":"04_StringBuilder","textEdit":{"newText":"StringBuilder","range":{"end":{"character":28,"line":37},"start":{"character":22,"line":37}}}},{"additionalTextEdits":[{"newText":"import StringError from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringError — @std/string.ms","documentation":{"kind":"markdown","value":"Errors returned by Unicode scalar conversions and bounded string operations."},"filterText":"StringError","insertTextFormat":1,"kind":7,"label":"StringError","sortText":"04_StringError","textEdit":{"newText":"StringError","range":{"end":{"character":28,"line":37},"start":{"character":22,"line":37}}}}]}
+{"id":479,"jsonrpc":"2.0","result":null}
+#large
+{"id":481,"jsonrpc":"2.0","result":null}
+#large
+{"id":483,"jsonrpc":"2.0","result":null}
+#large
+{"id":485,"jsonrpc":"2.0","result":null}
+#large
+{"id":487,"jsonrpc":"2.0","result":null}
+#large
+{"id":489,"jsonrpc":"2.0","result":null}
+{"id":490,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"fn() String","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}]}
+{"id":491,"jsonrpc":"2.0","result":null}
+{"id":492,"jsonrpc":"2.0","result":[{"detail":"fn() Point","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}]}
+{"id":493,"jsonrpc":"2.0","result":null}
+{"id":494,"jsonrpc":"2.0","result":[{"detail":"fn() Int","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}]}
+{"id":495,"jsonrpc":"2.0","result":null}
+{"id":496,"jsonrpc":"2.0","result":[]}
+{"id":497,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"p.norm() Int","parameters":[]}]}}
+#large
+{"id":499,"jsonrpc":"2.0","result":null}
+#large
+{"id":501,"jsonrpc":"2.0","result":null}
+{"id":502,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":10,"line":39},"start":{"character":4,"line":39}}}}]}
+{"id":503,"jsonrpc":"2.0","result":null}
+{"id":504,"jsonrpc":"2.0","result":[]}
+{"id":505,"jsonrpc":"2.0","result":null}
+{"id":506,"jsonrpc":"2.0","result":[]}
+{"id":507,"jsonrpc":"2.0","result":null}
+{"id":508,"jsonrpc":"2.0","result":[]}
+{"id":509,"jsonrpc":"2.0","result":null}
+{"id":510,"jsonrpc":"2.0","result":[]}
+{"id":511,"jsonrpc":"2.0","result":null}
+{"id":512,"jsonrpc":"2.0","result":[]}
+{"id":513,"jsonrpc":"2.0","result":null}
+{"id":514,"jsonrpc":"2.0","result":[]}
+{"id":515,"jsonrpc":"2.0","result":null}
+{"id":516,"jsonrpc":"2.0","result":[]}
+{"id":517,"jsonrpc":"2.0","result":null}
+{"id":518,"jsonrpc":"2.0","result":[]}
+{"id":519,"jsonrpc":"2.0","result":null}
+{"id":520,"jsonrpc":"2.0","result":[]}
+{"id":521,"jsonrpc":"2.0","result":null}
+{"id":522,"jsonrpc":"2.0","result":[]}
+{"id":523,"jsonrpc":"2.0","result":null}
+{"id":524,"jsonrpc":"2.0","result":[]}
+{"id":525,"jsonrpc":"2.0","result":null}
+#large
+{"id":527,"jsonrpc":"2.0","result":null}
+#large
+{"id":529,"jsonrpc":"2.0","result":null}
+#large
+{"id":531,"jsonrpc":"2.0","result":null}
+{"id":532,"jsonrpc":"2.0","result":[{"filterText":"export","insertTextFormat":1,"kind":14,"label":"export","sortText":"05_export","textEdit":{"newText":"export ","range":{"end":{"character":6,"line":41},"start":{"character":0,"line":41}}}}]}
+{"id":533,"jsonrpc":"2.0","result":null}
+#large
+{"id":535,"jsonrpc":"2.0","result":null}
+#large
+{"id":537,"jsonrpc":"2.0","result":null}
+#large
+{"id":539,"jsonrpc":"2.0","result":null}
+{"id":540,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import NormalizationForm from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NormalizationForm — @std/string.ms","documentation":{"kind":"markdown","value":"The four Unicode normalization forms, selected without runtime string spelling errors."},"filterText":"NormalizationForm","insertTextFormat":1,"kind":7,"label":"NormalizationForm","sortText":"04_NormalizationForm","textEdit":{"newText":"NormalizationForm","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}},{"additionalTextEdits":[{"newText":"import max_int from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Int — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the largest Int."},"filterText":"max_int","insertTextFormat":2,"kind":3,"label":"max_int","sortText":"04_max_int","textEdit":{"newText":"max_int()$0","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}},{"additionalTextEdits":[{"newText":"import max_safe_integer from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Int — @std/math.ms","documentation":{"kind":"markdown","value":"Returns 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly."},"filterText":"max_safe_integer","insertTextFormat":2,"kind":3,"label":"max_safe_integer","sortText":"04_max_safe_integer","textEdit":{"newText":"max_safe_integer()$0","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}},{"additionalTextEdits":[{"newText":"import min_safe_integer from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Int — @std/math.ms","documentation":{"kind":"markdown","value":"Returns -(2^53 - 1)."},"filterText":"min_safe_integer","insertTextFormat":2,"kind":3,"label":"min_safe_integer","sortText":"04_min_safe_integer","textEdit":{"newText":"min_safe_integer()$0","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}},{"additionalTextEdits":[{"newText":"import remainder from \"@std/math.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(left: Float, right: Float) Float — @std/math.ms","documentation":{"kind":"markdown","value":"Returns the floating-point remainder of `left / right` with the sign of `left`, like Int `%` (C `fmod`), not the IEEE round-to-nearest remainder: `remainder(5.0, 3.0)` is 2.0. A zero `right` or infinite `left` gives NaN; an infinite `right` returns `left`."},"filterText":"remainder","insertTextFormat":2,"kind":3,"label":"remainder","sortText":"04_remainder","textEdit":{"newText":"remainder(left: ${1:left}, right: ${2:right})$0","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}}]}
+{"id":541,"jsonrpc":"2.0","result":null}
+#large
+{"id":543,"jsonrpc":"2.0","result":null}
+#large
+{"id":545,"jsonrpc":"2.0","result":null}
+#large
+{"id":547,"jsonrpc":"2.0","result":null}
+#large
+{"id":549,"jsonrpc":"2.0","result":null}
+#large
+{"id":551,"jsonrpc":"2.0","result":null}
+#large
+{"id":553,"jsonrpc":"2.0","result":null}
+#large
+{"id":555,"jsonrpc":"2.0","result":null}
+#large
+{"id":557,"jsonrpc":"2.0","result":null}
+{"id":558,"jsonrpc":"2.0","result":[{"detail":"Point","documentation":{"kind":"markdown","value":"A point in the plane."},"filterText":"Point","insertTextFormat":2,"kind":7,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point(x: ${1:x})$0","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}},{"detail":"Point$methods","filterText":"Point$methods","insertTextFormat":1,"kind":7,"label":"Point$methods","sortText":"02_Point$methods","textEdit":{"newText":"Point$methods","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}}]}
+{"id":559,"jsonrpc":"2.0","result":null}
+{"id":560,"jsonrpc":"2.0","result":[]}
+{"id":561,"jsonrpc":"2.0","result":null}
+{"id":562,"jsonrpc":"2.0","result":[]}
+{"id":563,"jsonrpc":"2.0","result":null}
+#large
+{"id":565,"jsonrpc":"2.0","result":null}
+{"id":566,"jsonrpc":"2.0","result":[]}
+{"id":567,"jsonrpc":"2.0","result":null}
+{"id":568,"jsonrpc":"2.0","result":[]}
+{"id":569,"jsonrpc":"2.0","result":null}
+#large
+{"id":571,"jsonrpc":"2.0","result":null}
+#large
+{"id":573,"jsonrpc":"2.0","result":null}
+#large
+{"id":575,"jsonrpc":"2.0","result":null}
+#large
+{"id":577,"jsonrpc":"2.0","result":null}
+#large
+{"id":579,"jsonrpc":"2.0","result":null}
+{"id":580,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import values from \"@std/bytes.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) List[Int] — @std/bytes.ms","documentation":{"kind":"markdown","value":"Returns a fresh mutable list of byte values in the range 0 through 255, like data.values()."},"filterText":"values","insertTextFormat":2,"kind":3,"label":"values","sortText":"04_values","textEdit":{"newText":"values(${1:data})$0","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}]}
+{"id":581,"jsonrpc":"2.0","result":null}
+#large
+{"id":583,"jsonrpc":"2.0","result":null}
+#large
+{"id":585,"jsonrpc":"2.0","result":null}
+#large
+{"id":587,"jsonrpc":"2.0","result":null}
+#large
+{"id":589,"jsonrpc":"2.0","result":null}
+#large
+{"id":591,"jsonrpc":"2.0","result":null}
+#large
+{"id":593,"jsonrpc":"2.0","result":null}
+#large
+{"id":595,"jsonrpc":"2.0","result":null}
+#large
+{"id":597,"jsonrpc":"2.0","result":null}
+#large
+{"id":599,"jsonrpc":"2.0","result":null}
+#large
+{"id":601,"jsonrpc":"2.0","result":null}
+{"id":602,"jsonrpc":"2.0","result":[{"detail":"List[Int]","filterText":"values","insertTextFormat":1,"kind":6,"label":"values","sortText":"00_values","textEdit":{"newText":"values","range":{"end":{"character":19,"line":44},"start":{"character":13,"line":44}}}}]}
+{"id":603,"jsonrpc":"2.0","result":null}
+#large
+{"id":605,"jsonrpc":"2.0","result":null}
+#large
+{"id":607,"jsonrpc":"2.0","result":null}
+{"id":608,"jsonrpc":"2.0","result":[{"detail":"fn(text: String) Result[Unit, Error]","filterText":"say","insertTextFormat":2,"kind":3,"label":"say","sortText":"02_say","textEdit":{"newText":"say(${1:text})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}},{"additionalTextEdits":[{"newText":"import ecdsa_verify from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return false."},"filterText":"ecdsa_verify","insertTextFormat":2,"kind":3,"label":"ecdsa_verify","sortText":"04_ecdsa_verify","textEdit":{"newText":"ecdsa_verify(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}},{"additionalTextEdits":[{"newText":"import rsa_decrypt from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected."},"filterText":"rsa_decrypt","insertTextFormat":2,"kind":3,"label":"rsa_decrypt","sortText":"04_rsa_decrypt","textEdit":{"newText":"rsa_decrypt(private_key: ${1:private_key}, hash: ${2:hash}, ciphertext: ${3:ciphertext})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}},{"additionalTextEdits":[{"newText":"import rsa_encrypt from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, message: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key."},"filterText":"rsa_encrypt","insertTextFormat":2,"kind":3,"label":"rsa_encrypt","sortText":"04_rsa_encrypt","textEdit":{"newText":"rsa_encrypt(public_key: ${1:public_key}, hash: ${2:hash}, message: ${3:message})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}},{"additionalTextEdits":[{"newText":"import rsa_verify from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PKCS1-v1_5 signature with a PKIX DER RSA public key."},"filterText":"rsa_verify","insertTextFormat":2,"kind":3,"label":"rsa_verify","sortText":"04_rsa_verify","textEdit":{"newText":"rsa_verify(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}},{"additionalTextEdits":[{"newText":"import rsa_verify_pss from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PSS signature produced with a digest-sized salt."},"filterText":"rsa_verify_pss","insertTextFormat":2,"kind":3,"label":"rsa_verify_pss","sortText":"04_rsa_verify_pss","textEdit":{"newText":"rsa_verify_pss(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}}]}
+{"id":609,"jsonrpc":"2.0","result":null}
+{"id":610,"jsonrpc":"2.0","result":[]}
+{"id":611,"jsonrpc":"2.0","result":null}
+{"id":612,"jsonrpc":"2.0","result":[]}
+{"id":613,"jsonrpc":"2.0","result":null}
+{"id":614,"jsonrpc":"2.0","result":[]}
+{"id":615,"jsonrpc":"2.0","result":null}
+{"id":616,"jsonrpc":"2.0","result":[]}
+{"id":617,"jsonrpc":"2.0","result":null}
+#large
+{"id":619,"jsonrpc":"2.0","result":null}
+#large
+{"id":621,"jsonrpc":"2.0","result":null}
+#large
+{"id":623,"jsonrpc":"2.0","result":null}
+#large
+{"id":625,"jsonrpc":"2.0","result":null}
+{"id":626,"jsonrpc":"2.0","result":[{"detail":"Result[T, E]","documentation":{"kind":"markdown","value":"Holds either a successful value (`ok`) or an expected failure (`error`)."},"filterText":"Result","insertTextFormat":1,"kind":7,"label":"Result","sortText":"02_Result","textEdit":{"newText":"Result","range":{"end":{"character":14,"line":46},"start":{"character":8,"line":46}}}}]}
+{"id":627,"jsonrpc":"2.0","result":null}
+#large
+{"id":629,"jsonrpc":"2.0","result":null}
+{"id":630,"jsonrpc":"2.0","result":[{"detail":"fn(a: Int, b: Int) Int","filterText":"add","insertTextFormat":2,"kind":3,"label":"add","sortText":"02_add","textEdit":{"newText":"add(a: ${1:a}, b: ${2:b})$0","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}},{"additionalTextEdits":[{"newText":"import IpAddress from \"@std/net.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"IpAddress — @std/net.ms","documentation":{"kind":"markdown","value":"A validated numeric IPv4/IPv6 address without a port or zone."},"filterText":"IpAddress","insertTextFormat":1,"kind":7,"label":"IpAddress","sortText":"04_IpAddress","textEdit":{"newText":"IpAddress","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}},{"additionalTextEdits":[{"newText":"import ascii_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) Result[String, EncodingError] — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData."},"filterText":"ascii_decode","insertTextFormat":2,"kind":3,"label":"ascii_decode","sortText":"04_ascii_decode","textEdit":{"newText":"ascii_decode(${1:data})$0","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}},{"additionalTextEdits":[{"newText":"import base64_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(text: String, url_safe: Bool = ..., max_bytes: Optional[Int] = ...) Result[Bytes, EncodingError] — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet."},"filterText":"base64_decode","insertTextFormat":2,"kind":3,"label":"base64_decode","sortText":"04_base64_decode","textEdit":{"newText":"base64_decode(text: ${1:text})$0","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}},{"additionalTextEdits":[{"newText":"import latin1_decode from \"@std/encoding.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(data: Bytes) String — @std/encoding.ms","documentation":{"kind":"markdown","value":"Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value."},"filterText":"latin1_decode","insertTextFormat":2,"kind":3,"label":"latin1_decode","sortText":"04_latin1_decode","textEdit":{"newText":"latin1_decode(${1:data})$0","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}},{"additionalTextEdits":[{"newText":"import wrapping_add from \"@std/bits.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(left: Int, right: Int) Int — @std/bits.ms","documentation":{"kind":"markdown","value":"Adds with two's-complement wraparound instead of faulting on overflow."},"filterText":"wrapping_add","insertTextFormat":2,"kind":3,"label":"wrapping_add","sortText":"04_wrapping_add","textEdit":{"newText":"wrapping_add(left: ${1:left}, right: ${2:right})$0","range":{"end":{"character":20,"line":46},"start":{"character":17,"line":46}}}}]}
+{"id":631,"jsonrpc":"2.0","result":null}
+{"id":632,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":2,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ${1:b}","range":{"end":{"character":22,"line":46},"start":{"character":21,"line":46}}}}]}
+{"id":633,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
+{"id":634,"jsonrpc":"2.0","result":[]}
+{"id":635,"jsonrpc":"2.0","result":null}
+#large
+{"id":637,"jsonrpc":"2.0","result":null}
+#large
+{"id":639,"jsonrpc":"2.0","result":null}
+{"id":640,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":10,"line":47},"start":{"character":4,"line":47}}}}]}
+{"id":641,"jsonrpc":"2.0","result":null}
+#large
+{"id":643,"jsonrpc":"2.0","result":null}
+{"id":644,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"result","insertTextFormat":1,"kind":6,"label":"result","sortText":"00_result","textEdit":{"newText":"result","range":{"end":{"character":17,"line":47},"start":{"character":11,"line":47}}}},{"detail":"Result[T, E]","documentation":{"kind":"markdown","value":"Holds either a successful value (`ok`) or an expected failure (`error`)."},"filterText":"Result","insertTextFormat":1,"kind":7,"label":"Result","sortText":"02_Result","textEdit":{"newText":"Result","range":{"end":{"character":17,"line":47},"start":{"character":11,"line":47}}}}]}
+{"id":645,"jsonrpc":"2.0","result":null}
+#large
+{"id":647,"jsonrpc":"2.0","result":null}
+#large
+{"id":649,"jsonrpc":"2.0","result":null}
+#large
+{"id":651,"jsonrpc":"2.0","result":null}
+#large
+{"id":653,"jsonrpc":"2.0","result":null}
+{"id":654,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import ecdsa_verify from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return false."},"filterText":"ecdsa_verify","insertTextFormat":2,"kind":3,"label":"ecdsa_verify","sortText":"04_ecdsa_verify","textEdit":{"newText":"ecdsa_verify(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":6,"line":49},"start":{"character":3,"line":49}}}},{"additionalTextEdits":[{"newText":"import rsa_decrypt from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected."},"filterText":"rsa_decrypt","insertTextFormat":2,"kind":3,"label":"rsa_decrypt","sortText":"04_rsa_decrypt","textEdit":{"newText":"rsa_decrypt(private_key: ${1:private_key}, hash: ${2:hash}, ciphertext: ${3:ciphertext})$0","range":{"end":{"character":6,"line":49},"start":{"character":3,"line":49}}}},{"additionalTextEdits":[{"newText":"import rsa_encrypt from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, message: Bytes) Result[Bytes, CryptoError] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key."},"filterText":"rsa_encrypt","insertTextFormat":2,"kind":3,"label":"rsa_encrypt","sortText":"04_rsa_encrypt","textEdit":{"newText":"rsa_encrypt(public_key: ${1:public_key}, hash: ${2:hash}, message: ${3:message})$0","range":{"end":{"character":6,"line":49},"start":{"character":3,"line":49}}}},{"additionalTextEdits":[{"newText":"import rsa_verify from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PKCS1-v1_5 signature with a PKIX DER RSA public key."},"filterText":"rsa_verify","insertTextFormat":2,"kind":3,"label":"rsa_verify","sortText":"04_rsa_verify","textEdit":{"newText":"rsa_verify(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":6,"line":49},"start":{"character":3,"line":49}}}},{"additionalTextEdits":[{"newText":"import rsa_verify_pss from \"@std/crypto.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(public_key: Bytes, hash: HashAlgorithm, data: Bytes, signature: Bytes) Bool — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PSS signature produced with a digest-sized salt."},"filterText":"rsa_verify_pss","insertTextFormat":2,"kind":3,"label":"rsa_verify_pss","sortText":"04_rsa_verify_pss","textEdit":{"newText":"rsa_verify_pss(public_key: ${1:public_key}, hash: ${2:hash}, data: ${3:data}, signature: ${4:signature})$0","range":{"end":{"character":6,"line":49},"start":{"character":3,"line":49}}}}]}
+{"id":655,"jsonrpc":"2.0","result":null}
+#large
+{"id":657,"jsonrpc":"2.0","result":null}
+#large
+{"id":659,"jsonrpc":"2.0","result":null}
+{"id":660,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import TextError from \"@std/errors.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"TextError — @std/errors.ms","documentation":{"kind":"markdown","value":"An error that carries only intentional text, for callers that have no domain error to return."},"filterText":"TextError","insertTextFormat":1,"kind":7,"label":"TextError","sortText":"04_TextError","textEdit":{"newText":"TextError","range":{"end":{"character":11,"line":49},"start":{"character":7,"line":49}}}},{"additionalTextEdits":[{"newText":"import object_text from \"@std/logcore.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(text: String) String — @std/logcore.ms","documentation":{"kind":"markdown","value":"Returns stringified JSON as an object text: an object is unchanged, anything else sits under `data`."},"filterText":"object_text","insertTextFormat":2,"kind":3,"label":"object_text","sortText":"04_object_text","textEdit":{"newText":"object_text(${1:text})$0","range":{"end":{"character":11,"line":49},"start":{"character":7,"line":49}}}}]}
+{"id":661,"jsonrpc":"2.0","result":null}
+#large
+{"id":663,"jsonrpc":"2.0","result":null}
+#large
+{"id":665,"jsonrpc":"2.0","result":null}
+{"id":666,"jsonrpc":"2.0","result":[{"detail":"String","filterText":"String","insertTextFormat":1,"kind":7,"label":"String","sortText":"02_String","textEdit":{"newText":"String","range":{"end":{"character":19,"line":49},"start":{"character":13,"line":49}}}},{"additionalTextEdits":[{"newText":"import StringBuilder from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringBuilder — @std/string.ms","documentation":{"kind":"markdown","value":"Mutable builder for constructing a string without repeated intermediate copies."},"filterText":"StringBuilder","insertTextFormat":1,"kind":7,"label":"StringBuilder","sortText":"04_StringBuilder","textEdit":{"newText":"StringBuilder","range":{"end":{"character":19,"line":49},"start":{"character":13,"line":49}}}},{"additionalTextEdits":[{"newText":"import StringError from \"@std/string.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"StringError — @std/string.ms","documentation":{"kind":"markdown","value":"Errors returned by Unicode scalar conversions and bounded string operations."},"filterText":"StringError","insertTextFormat":1,"kind":7,"label":"StringError","sortText":"04_StringError","textEdit":{"newText":"StringError","range":{"end":{"character":19,"line":49},"start":{"character":13,"line":49}}}}]}
+{"id":667,"jsonrpc":"2.0","result":null}
+#large
+{"id":669,"jsonrpc":"2.0","result":null}
+{"id":670,"jsonrpc":"2.0","result":[{"detail":"Result[T, E]","documentation":{"kind":"markdown","value":"Holds either a successful value (`ok`) or an expected failure (`error`)."},"filterText":"Result","insertTextFormat":2,"kind":7,"label":"Result","sortText":"02_Result","textEdit":{"newText":"Result[${1:T}, ${2:E}]","range":{"end":{"character":27,"line":49},"start":{"character":21,"line":49}}}}]}
+{"id":671,"jsonrpc":"2.0","result":null}
+#large
+{"id":673,"jsonrpc":"2.0","result":null}
+#large
+{"id":675,"jsonrpc":"2.0","result":null}
+{"id":676,"jsonrpc":"2.0","result":[{"detail":"Unit","filterText":"Unit","insertTextFormat":1,"kind":7,"label":"Unit","sortText":"02_Unit","textEdit":{"newText":"Unit","range":{"end":{"character":32,"line":49},"start":{"character":28,"line":49}}}}]}
+{"id":677,"jsonrpc":"2.0","result":null}
+#large
+{"id":679,"jsonrpc":"2.0","result":null}
+#large
+{"id":681,"jsonrpc":"2.0","result":null}
+#large
+{"id":683,"jsonrpc":"2.0","result":null}
+#large
+{"id":685,"jsonrpc":"2.0","result":null}
+#large
+{"id":687,"jsonrpc":"2.0","result":null}
+#large
+{"id":689,"jsonrpc":"2.0","result":null}
+#large
+{"id":691,"jsonrpc":"2.0","result":null}
+{"id":692,"jsonrpc":"2.0","result":[{"detail":"fn() WriteStream","documentation":{"kind":"markdown","value":"Returns the process standard-output stream."},"filterText":"stdout","insertTextFormat":2,"kind":3,"label":"stdout","sortText":"02_stdout","textEdit":{"newText":"stdout()$0","range":{"end":{"character":14,"line":50},"start":{"character":8,"line":50}}}},{"additionalTextEdits":[{"newText":"import stdout_transport from \"@std/log.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Transport — @std/log.ms","documentation":{"kind":"markdown","value":"Writes log records to the process standard-output stream."},"filterText":"stdout_transport","insertTextFormat":2,"kind":3,"label":"stdout_transport","sortText":"04_stdout_transport","textEdit":{"newText":"stdout_transport()$0","range":{"end":{"character":14,"line":50},"start":{"character":8,"line":50}}}}]}
+{"id":693,"jsonrpc":"2.0","result":null}
+{"id":694,"jsonrpc":"2.0","result":[]}
+{"id":695,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Returns the process standard-output stream."},"label":"try stdout() WriteStream","parameters":[]}]}}
+{"id":696,"jsonrpc":"2.0","result":[{"detail":"fn() Unit","documentation":{"kind":"markdown","value":"Releases this implementation's write resource; close does not imply a successful flush."},"filterText":"close","insertTextFormat":2,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close()$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn() Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"filterText":"flush","insertTextFormat":2,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush()$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn(data: String) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"filterText":"write","insertTextFormat":2,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn(data: Bytes) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete bytes on success, with the buffering rules of write."},"filterText":"write_bytes","insertTextFormat":2,"kind":2,"label":"write_bytes","sortText":"00_write_bytes","textEdit":{"newText":"write_bytes(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}}]}
+{"id":697,"jsonrpc":"2.0","result":null}
+{"id":698,"jsonrpc":"2.0","result":[{"detail":"fn(data: String) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"filterText":"write","insertTextFormat":2,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn(data: Bytes) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete bytes on success, with the buffering rules of write."},"filterText":"write_bytes","insertTextFormat":2,"kind":2,"label":"write_bytes","sortText":"00_write_bytes","textEdit":{"newText":"write_bytes(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}}]}
+{"id":699,"jsonrpc":"2.0","result":null}
+{"id":700,"jsonrpc":"2.0","result":[{"detail":"fn(data: String) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"filterText":"write","insertTextFormat":2,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}},{"detail":"fn(data: Bytes) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete bytes on success, with the buffering rules of write."},"filterText":"write_bytes","insertTextFormat":2,"kind":2,"label":"write_bytes","sortText":"00_write_bytes","textEdit":{"newText":"write_bytes(${1:data})$0","range":{"end":{"character":22,"line":50},"start":{"character":17,"line":50}}}}]}
+{"id":701,"jsonrpc":"2.0","result":null}
+{"id":702,"jsonrpc":"2.0","result":[]}
+{"id":703,"jsonrpc":"2.0","result":null}
+{"id":704,"jsonrpc":"2.0","result":[]}
+{"id":705,"jsonrpc":"2.0","result":null}
+{"id":706,"jsonrpc":"2.0","result":[]}
+{"id":707,"jsonrpc":"2.0","result":null}
+{"id":708,"jsonrpc":"2.0","result":[]}
+{"id":709,"jsonrpc":"2.0","result":null}
+{"id":710,"jsonrpc":"2.0","result":[]}
+{"id":711,"jsonrpc":"2.0","result":null}
+{"id":712,"jsonrpc":"2.0","result":[]}
+{"id":713,"jsonrpc":"2.0","result":null}
+#large
+{"id":715,"jsonrpc":"2.0","result":null}
+#large
+{"id":717,"jsonrpc":"2.0","result":null}
+{"id":718,"jsonrpc":"2.0","result":[{"filterText":"return","insertTextFormat":1,"kind":14,"label":"return","sortText":"05_return","textEdit":{"newText":"return ","range":{"end":{"character":10,"line":51},"start":{"character":4,"line":51}}}}]}
+{"id":719,"jsonrpc":"2.0","result":null}
+#large
+{"id":721,"jsonrpc":"2.0","result":null}
+{"id":722,"jsonrpc":"2.0","result":[{"detail":"fn() WriteStream","documentation":{"kind":"markdown","value":"Returns the process standard-output stream."},"filterText":"stdout","insertTextFormat":2,"kind":3,"label":"stdout","sortText":"02_stdout","textEdit":{"newText":"stdout()$0","range":{"end":{"character":17,"line":51},"start":{"character":11,"line":51}}}},{"additionalTextEdits":[{"newText":"import stdout_transport from \"@std/log.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Transport — @std/log.ms","documentation":{"kind":"markdown","value":"Writes log records to the process standard-output stream."},"filterText":"stdout_transport","insertTextFormat":2,"kind":3,"label":"stdout_transport","sortText":"04_stdout_transport","textEdit":{"newText":"stdout_transport()$0","range":{"end":{"character":17,"line":51},"start":{"character":11,"line":51}}}}]}
+{"id":723,"jsonrpc":"2.0","result":null}
+{"id":724,"jsonrpc":"2.0","result":[]}
+{"id":725,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Returns the process standard-output stream."},"label":"stdout() WriteStream","parameters":[]}]}}
+{"id":726,"jsonrpc":"2.0","result":[{"detail":"fn() Unit","documentation":{"kind":"markdown","value":"Releases this implementation's write resource; close does not imply a successful flush."},"filterText":"close","insertTextFormat":2,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close()$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}},{"detail":"fn() Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"filterText":"flush","insertTextFormat":2,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush()$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}},{"detail":"fn(data: String) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"filterText":"write","insertTextFormat":2,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write(${1:data})$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}},{"detail":"fn(data: Bytes) Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Accepts the complete bytes on success, with the buffering rules of write."},"filterText":"write_bytes","insertTextFormat":2,"kind":2,"label":"write_bytes","sortText":"00_write_bytes","textEdit":{"newText":"write_bytes(${1:data})$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}]}
+{"id":727,"jsonrpc":"2.0","result":null}
+{"id":728,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"filterText":"flush","insertTextFormat":2,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush()$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}]}
+{"id":729,"jsonrpc":"2.0","result":null}
+{"id":730,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, IoError]","documentation":{"kind":"markdown","value":"Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"filterText":"flush","insertTextFormat":2,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush()$0","range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}]}
+{"id":731,"jsonrpc":"2.0","result":null}
+{"id":732,"jsonrpc":"2.0","result":[]}
+{"id":733,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"label":"stdout().flush() Result[Unit, IoError]","parameters":[]}]}}
+#large
+{"id":735,"jsonrpc":"2.0","result":null}
+#large
+{"id":737,"jsonrpc":"2.0","result":null}
+#large
+{"id":739,"jsonrpc":"2.0","result":null}
+#large
+{"id":741,"jsonrpc":"2.0","result":null}
+{"id":742,"jsonrpc":"2.0","result":[]}
+{"id":743,"jsonrpc":"2.0","result":null}
+{"id":744,"jsonrpc":"2.0","result":[]}
+{"id":745,"jsonrpc":"2.0","result":null}
+{"id":746,"jsonrpc":"2.0","result":[]}
+{"id":747,"jsonrpc":"2.0","result":null}
+#large
+{"id":749,"jsonrpc":"2.0","result":null}
+#large
+{"id":751,"jsonrpc":"2.0","result":null}
+#large
+{"id":753,"jsonrpc":"2.0","result":null}
+#large
+{"id":755,"jsonrpc":"2.0","result":null}
+#large
+{"id":757,"jsonrpc":"2.0","result":null}
+{"id":758,"jsonrpc":"2.0","result":[{"detail":"fn(actual: T, expected: T) Result[Unit, Error]","documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"filterText":"expect_equal","insertTextFormat":2,"kind":3,"label":"expect_equal","sortText":"02_expect_equal","textEdit":{"newText":"expect_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":20,"line":54},"start":{"character":8,"line":54}}}},{"additionalTextEdits":[{"newText":"import expect_not_equal from \"@std/testing.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(actual: T, expected: T) Result[Unit, Error] — @std/testing.ms","documentation":{"kind":"markdown","value":"Fails when values are equal under ordinary Equal semantics."},"filterText":"expect_not_equal","insertTextFormat":2,"kind":3,"label":"expect_not_equal","sortText":"04_expect_not_equal","textEdit":{"newText":"expect_not_equal[${1:T}](actual: ${2:actual}, expected: ${3:expected})$0","range":{"end":{"character":20,"line":54},"start":{"character":8,"line":54}}}}]}
+{"id":759,"jsonrpc":"2.0","result":null}
+{"id":760,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"expected","insertTextFormat":2,"kind":6,"label":"expected","sortText":"00_expected","textEdit":{"newText":"expected: ${1:expected}","range":{"end":{"character":24,"line":54},"start":{"character":21,"line":54}}}}]}
+{"id":761,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
+{"id":762,"jsonrpc":"2.0","result":[]}
+{"id":763,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
+{"id":764,"jsonrpc":"2.0","result":[]}
+{"id":765,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
+{"id":766,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":2,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ${1:b}","range":{"end":{"character":26,"line":54},"start":{"character":25,"line":54}}}}]}
+{"id":767,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
+{"id":768,"jsonrpc":"2.0","result":[]}
+{"id":769,"jsonrpc":"2.0","result":null}
+{"id":770,"jsonrpc":"2.0","result":[]}
+{"id":771,"jsonrpc":"2.0","result":null}
+#large
+{"id":773,"jsonrpc":"2.0","result":null}
+#large
+{"id":775,"jsonrpc":"2.0","result":null}
+{"id":776,"jsonrpc":"2.0","result":null}

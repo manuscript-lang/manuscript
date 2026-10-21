@@ -1,22 +1,11 @@
-//! Scripted language-server sessions run against the Go oracle (`ms lsp`) and
-//! this crate's server, with the decoded messages compared.
+//! Scripted language-server sessions run against this crate's server, with the
+//! decoded messages compared to recorded snapshots in `tests/snapshots/`.
 
 #![allow(dead_code)]
 
 use ms_lsp::json::{self, Json, obj};
-use std::io::{Cursor, Write};
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-
-/// The built Go binary (`make build`), if present.
-pub fn oracle() -> Option<PathBuf> {
-    if let Ok(path) = std::env::var("MS_ORACLE") {
-        return Some(PathBuf::from(path));
-    }
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let binary = root.join("ms");
-    binary.is_file().then_some(binary)
-}
 
 /// A copy of the fixture tree in a fresh temporary directory.
 pub struct Workspace {
@@ -179,24 +168,6 @@ impl Script {
         bytes
     }
 
-    pub fn go(&self, binary: &Path) -> Vec<Json> {
-        let mut child = Command::new(binary)
-            .arg("lsp")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("spawn oracle");
-        let mut stdin = child.stdin.take().expect("stdin");
-        let input = self.frames();
-        let writer = std::thread::spawn(move || {
-            let _ = stdin.write_all(&input);
-        });
-        let output = child.wait_with_output().expect("oracle output");
-        let _ = writer.join();
-        decode(&output.stdout)
-    }
-
     pub fn rust(&self) -> Vec<Json> {
         let mut out = Vec::new();
         let _ = ms_lsp::serve(Cursor::new(self.frames()), &mut out);
@@ -254,33 +225,50 @@ pub fn canonical(value: &Json) -> String {
     }
 }
 
-/// Runs the script on both servers and compares every message; panics with the
-/// first difference. Returns the Rust messages.
-pub fn compare(name: &str, script: &Script) -> Vec<Json> {
-    let Some(binary) = oracle() else {
-        assert!(
-            std::env::var("MS_ORACLE_REQUIRED").is_err(),
-            "{name}: Go oracle missing; run `make build`"
-        );
-        eprintln!("{name}: skipped (no Go oracle; run `make build`)");
-        return script.rust();
-    };
-    let expected: Vec<Json> = script.go(&binary);
-    let actual: Vec<Json> = script.rust();
-    if let Ok(dir) = std::env::var("MS_LSP_DUMP") {
-        let write = |side: &str, messages: &[Json]| {
-            let text: Vec<String> = messages.iter().map(canonical).collect();
-            let _ = std::fs::write(format!("{dir}/{name}.{side}.jsonl"), text.join("\n"));
-        };
-        write("go", &expected);
-        write("rust", &actual);
+/// One snapshot line: the canonical message with the per-run temporary
+/// directory masked. Messages over 4 KiB are standard-library listings (global
+/// completion); they change whenever the standard library does, so only their
+/// presence is recorded.
+fn snapshot_line(message: &Json) -> String {
+    let temp = std::env::temp_dir()
+        .to_string_lossy()
+        .trim_end_matches('/')
+        .to_string();
+    let pid = format!("-{}/", std::process::id());
+    let text = canonical(message)
+        .replace(&pid, "-PID/")
+        .replace(&temp, "$TMP");
+    if text.len() > 4096 {
+        return "#large".to_string();
     }
+    text
+}
+
+/// Runs the script and compares every message with the snapshot
+/// `tests/snapshots/<name>.jsonl`; panics with the first differences. Set
+/// `UPDATE_SNAPSHOTS=1` to rewrite the snapshot after an intended change.
+/// Returns the messages.
+pub fn compare(name: &str, script: &Script) -> Vec<Json> {
+    let actual: Vec<Json> = script.rust();
+    let lines: Vec<String> = actual.iter().map(snapshot_line).collect();
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/snapshots")
+        .join(format!("{name}.jsonl"));
+    if std::env::var("UPDATE_SNAPSHOTS").is_ok() {
+        std::fs::create_dir_all(path.parent().unwrap()).expect("snapshot dir");
+        std::fs::write(&path, lines.join("\n") + "\n").expect("write snapshot");
+        return actual;
+    }
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|_| {
+        panic!("{name}: missing snapshot {path:?}; run with UPDATE_SNAPSHOTS=1")
+    });
+    let expected: Vec<&str> = text.lines().collect();
     let mut differences = Vec::new();
-    for index in 0..expected.len().max(actual.len()) {
-        let go = expected.get(index).map(canonical).unwrap_or_default();
-        let rust = actual.get(index).map(canonical).unwrap_or_default();
-        if go != rust {
-            let label = expected
+    for index in 0..expected.len().max(lines.len()) {
+        let want = expected.get(index).copied().unwrap_or_default();
+        let got = lines.get(index).map(String::as_str).unwrap_or_default();
+        if want != got {
+            let label = actual
                 .get(index)
                 .and_then(|m| m.get("id"))
                 .and_then(|id| id.as_i64())
@@ -288,7 +276,7 @@ pub fn compare(name: &str, script: &Script) -> Vec<Json> {
                 .cloned()
                 .unwrap_or_default();
             differences.push(format!(
-                "message {index} <- {label}\n  go:   {go}\n  rust: {rust}"
+                "message {index} <- {label}\n  want: {want}\n  got:  {got}"
             ));
         }
     }
