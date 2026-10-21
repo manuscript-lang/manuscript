@@ -33,6 +33,10 @@ pub fn run(m: &mut Module) -> bool {
             .filter_map(|i| i.res)
             .collect();
         let mut any = false;
+        if let Some(merged) = merge_returns(m, &f, &positive) {
+            f = merged;
+            any = true;
+        }
         while convert_one(m, &mut f, &positive) {
             any = true;
         }
@@ -43,6 +47,57 @@ pub fn run(m: &mut Module) -> bool {
         }
     }
     changed
+}
+
+/// Early returns of scalars (`if a < b { return -1 } if a > b { return 1 } return 0`) become one
+/// join with a block parameter so the diamonds above can turn into selects. Kept only when
+/// every return is absorbed: a partly converted function would just gain a jump.
+fn merge_returns(m: &Module, f: &Func, positive: &HashSet<Value>) -> Option<Func> {
+    let rets: Vec<usize> = f
+        .blocks
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| matches!(b.term, Term::Ret(Some(v)) if scalar(m, f, v)))
+        .map(|(i, _)| i)
+        .collect();
+    if rets.len() < 2 {
+        return None;
+    }
+    let condbrs = |g: &Func| {
+        g.blocks
+            .iter()
+            .filter(|b| matches!(b.term, Term::CondBr { .. }))
+            .count()
+    };
+    let mut g = f.clone();
+    let first = rets[0];
+    let ty = g.ty(match g.blocks[first].term {
+        Term::Ret(Some(v)) => v,
+        _ => return None,
+    });
+    let exit = g.new_block();
+    let p = g.new_value(ty);
+    g.blocks[exit.index()].params.push(BlockParam {
+        value: p,
+        mode: Mode::Borrow,
+    });
+    g.blocks[exit.index()].term = Term::Ret(Some(p));
+    g.blocks[exit.index()].term_loc = g.blocks[first].term_loc;
+    for &r in &rets {
+        let Term::Ret(Some(v)) = g.blocks[r].term else {
+            return None;
+        };
+        g.blocks[r].term = Term::Br(Target {
+            block: exit,
+            args: vec![v],
+        });
+    }
+    let before = condbrs(&g);
+    let mut any = false;
+    while convert_one(m, &mut g, positive) {
+        any = true;
+    }
+    (any && condbrs(&g) + rets.len() - 1 <= before).then_some(g)
 }
 
 /// An arm of the branch: either a real block hoisted into the head, or the join itself.

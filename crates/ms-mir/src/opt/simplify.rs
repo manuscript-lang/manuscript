@@ -499,6 +499,13 @@ fn fold(f: &mut Func) -> bool {
                     changed = true;
                 }
             }
+            // A fault guard whose condition is known false never fires.
+            if inst.op == Op::IntOverflowIf
+                && matches!(env.consts.get(&inst.args[0]), Some(K::B(false)))
+            {
+                changed = true;
+                continue;
+            }
             match rule(f, &mut env, &mut out, &inst) {
                 Act::Keep => {}
                 Act::Alias(v) => {

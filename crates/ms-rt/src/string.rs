@@ -335,7 +335,21 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 #[inline]
 pub unsafe fn equal(a: *const StrObj, b: *const StrObj) -> bool {
     // SAFETY: caller contract.
-    unsafe { a == b || bytes(a) == bytes(b) }
+    unsafe {
+        if a == b {
+            return true;
+        }
+        let n = (*a).len;
+        if n != (*b).len {
+            return false;
+        }
+        let (x, y) = (bytes(a), bytes(b));
+        if n <= 8 {
+            // Short keys and one-character comparisons: skip the memcmp call.
+            return (0..n).all(|i| *x.get_unchecked(i) == *y.get_unchecked(i));
+        }
+        x == y
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1128,6 +1142,21 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrObj, out: *mut Ve
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         let text = bytes(s);
+        if !text.is_empty() && text.is_ascii() {
+            // One shared static per ASCII character, so the list is filled without allocating
+            // or counting references (static objects have a huge count).
+            let n = text.len();
+            let p = alloc::alloc(n * 8) as *mut *mut StrObj;
+            for (k, &b) in text.iter().enumerate() {
+                *p.add(k) = ascii_char(b);
+            }
+            *out = VecVal {
+                ptr: p as _,
+                len: n,
+                cap: n,
+            };
+            return;
+        }
         let mut v = EMPTY_VEC;
         let mut i = 0;
         while i < text.len() {

@@ -99,6 +99,14 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
         }
         b.term.for_each_use(|v| uses[v.index()] += 1);
     }
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+        }
+    }
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -107,7 +115,9 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
-            if !matches!(m.types.kind(f.ty(v)), TyKind::Fn(..)) || alias[v.index()].is_some() {
+            let kind = m.types.kind(f.ty(v));
+            let is_str = matches!(kind, TyKind::Str);
+            if !(matches!(kind, TyKind::Fn(..)) || is_str) || alias[v.index()].is_some() {
                 continue;
             }
             let Some(j) = b.insts[i + 1..]
@@ -118,6 +128,9 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let span = &b.insts[i + 1..j];
+            if is_str && !str_source_stable(m, f, &defs, v, span) {
+                continue;
+            }
             let c_uses = span
                 .iter()
                 .map(|n| n.args.iter().filter(|a| **a == c).count() as u32)
@@ -159,6 +172,35 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
         }
     }
     true
+}
+
+/// Whether a string `v` stays alive and unchanged across `span`: a parameter or literal, or an
+/// element read out of a list that the span only borrows. Strings are immutable, so the only
+/// way the copy could differ from `v` is `v`'s owner releasing or replacing it.
+fn str_source_stable(
+    m: &Module,
+    f: &Func,
+    defs: &[Option<(usize, usize)>],
+    v: Value,
+    span: &[Inst],
+) -> bool {
+    let Some((db, di)) = defs[v.index()] else {
+        return true;
+    };
+    let def = &f.blocks[db].insts[di];
+    match def.op {
+        Op::StrLit => true,
+        Op::ListGet | Op::ListGetU | Op::ListGetNn => {
+            let root = def.args[0];
+            span.iter().all(|n| {
+                n.args
+                    .iter()
+                    .zip(arg_modes(m, n))
+                    .all(|(a, mode)| *a != root || mode == Mode::Borrow)
+            })
+        }
+        _ => false,
+    }
 }
 
 /// Turns `p = opt.get v; c = copy p; ...; drop v` into `c = opt.unbox v` when `v` is not
