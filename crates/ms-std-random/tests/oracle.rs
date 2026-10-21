@@ -1,5 +1,7 @@
 //! Replays `tests/oracle/random.tsv`, a recorded corpus.
 //! The entropy is a deterministic LCG stream (see `testEntropy` in `scripts/rs-oracle/random.go`).
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_random::*;
 
 struct Entropy {
