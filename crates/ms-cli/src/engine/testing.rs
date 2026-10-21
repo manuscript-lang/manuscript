@@ -17,8 +17,7 @@
 //! its `RUN` and result lines; standard error passes through. Selection
 //! (`--test=`, `--match=`, `--exclude=`, `--filter=`), `--repeat=`,
 //! `--shuffle=`, `--fail-fast` and `--timeout=` are applied here. Fixtures
-//! therefore run once per test, not once per module as in the Go
-//! implementation.
+//! therefore run once per test, not once per module.
 
 use std::io::Read;
 use std::process::{Command, Stdio};

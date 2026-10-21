@@ -1,4 +1,4 @@
-//! `ms fmt --drop-labels` (`pkg/tooling/redundant_labels.go`).
+//! `ms fmt --drop-labels`.
 
 use crate::gosort;
 use crate::walk::walk_module;

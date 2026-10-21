@@ -215,7 +215,7 @@ impl Failure {
     }
 }
 
-/// `sourceDiagnostic` in Go: the JSON shape of one source diagnostic.
+/// The JSON shape of one source diagnostic.
 pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
     let position = |pos: Pos| Position {
         file: issue.file.to_string(),

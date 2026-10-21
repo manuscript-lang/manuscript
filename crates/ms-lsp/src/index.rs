@@ -1,6 +1,6 @@
 //! The occurrence index: every resolved declaration and use in the checked
 //! modules, keyed so that references, rename and highlights group by identity
-//! across files (`sourceIndex` in the Go server).
+//! across files .
 
 use crate::analysis::Analysis;
 use crate::lexical::{self, Lexical};
