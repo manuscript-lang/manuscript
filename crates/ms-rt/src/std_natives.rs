@@ -332,6 +332,23 @@ mod fs_io {
         }
     }
 
+    // The native watcher is inotify; elsewhere `FileWatcher` falls back to polling.
+    #[cfg(not(target_os = "linux"))]
+    #[test]
+    fn native_file_watchers_are_unsupported_off_linux() {
+        let _g = lock();
+        let r = st("/tmp");
+        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        // SAFETY: valid runtime strings and a writable handle.
+        unsafe {
+            assert_eq!(
+                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("error"), &mut h),
+                ms_rt_abi::STATUS_UNSUPPORTED
+            );
+        }
+    }
+
+    #[cfg(target_os = "linux")]
     #[test]
     fn file_watchers_through_the_abi() {
         let _g = lock();
@@ -368,7 +385,9 @@ mod fs_io {
     #[test]
     fn io_streams_through_the_abi() {
         let _g = lock();
-        let path = st("/proc/self/stat");
+        let one_line = std::env::temp_dir().join(std::format!("msrt-io-{}", std::process::id()));
+        std::fs::write(&one_line, "one line\n").unwrap();
+        let path = st(one_line.to_str().unwrap());
         let mut h: *mut _ = core::ptr::null_mut();
         let mut chunk = VecVal {
             ptr: core::ptr::null_mut(),
@@ -393,6 +412,7 @@ mod fs_io {
             assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), ms_rt_abi::STATUS_CLOSED);
             let err = msstd_io_standard(2);
             assert_eq!(msstd_io_flush(err), STATUS_OK);
+            std::fs::remove_file(&one_line).unwrap();
         }
     }
 }
