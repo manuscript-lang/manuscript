@@ -1,4 +1,6 @@
 //! Replays `tests/oracle/html.tsv`, a recorded corpus.
+// Links the msrt_* runtime symbols the html crate releases through.
+use ms_rt as _;
 use ms_std_core::Fail;
 use ms_std_html::*;
 
