@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 
 /// Compile all fixture C code with the same host ABI and CRT as the linker.
 pub fn cc() -> Command {
@@ -23,22 +24,20 @@ pub fn cc() -> Command {
 
 /// Links `object` with a C fixture runtime. The bundled linker has no libgcc, and on aarch64 musl's
 /// `printf` needs soft-float quad helpers; the Rust runtime carries them in its compiler-builtins,
-/// so fixture runtimes borrow the toolchain's copy.
+/// so fixture runtimes borrow the toolchain's copy, without its debug info (which has ranges that
+/// fail `llvm-dwarfdump --verify` on the linked executable).
 #[allow(
     dead_code,
     reason = "test crates sharing this module use different helpers"
 )]
 pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_clif::Error> {
-    let builtins = builtins();
+    static BUILTINS: OnceLock<Option<PathBuf>> = OnceLock::new();
+    let builtins = BUILTINS.get_or_init(builtins);
     let mut inputs = vec![runtime];
     inputs.extend(builtins.as_deref());
     ms_clif::link::link_all(object, &inputs, out)
 }
 
-#[allow(
-    dead_code,
-    reason = "test crates sharing this module use different helpers"
-)]
 fn builtins() -> Option<PathBuf> {
     if !cfg!(target_os = "linux") {
         return None;
@@ -52,12 +51,29 @@ fn builtins() -> Option<PathBuf> {
         .join("lib/rustlib")
         .join(format!("{}-unknown-linux-musl", std::env::consts::ARCH))
         .join("lib");
-    std::fs::read_dir(lib)
+    let rlib = std::fs::read_dir(lib)
         .ok()?
         .flatten()
         .map(|entry| entry.path())
         .find(|path| {
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             name.starts_with("libcompiler_builtins") && name.ends_with(".rlib")
-        })
+        })?;
+    // Shared by every test process; staged under a private name and renamed so none sees a partial file.
+    let stripped = std::env::temp_dir().join(format!(
+        "ms-fixture-{}.a",
+        rlib.file_name()?.to_str()?.trim_end_matches(".rlib")
+    ));
+    if stripped.is_file() {
+        return Some(stripped);
+    }
+    let staged = stripped.with_extension(format!("{}.tmp", std::process::id()));
+    let done = Command::new("llvm-objcopy")
+        .arg("--strip-debug")
+        .arg(&rlib)
+        .arg(&staged)
+        .status()
+        .is_ok_and(|status| status.success())
+        && std::fs::rename(&staged, &stripped).is_ok();
+    Some(if done { stripped } else { rlib })
 }
