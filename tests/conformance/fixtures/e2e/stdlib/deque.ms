@@ -33,14 +33,18 @@ test "indexed reads follow the front":
 test "wraps around and grows past the first buffer":
     var d = Deque[Int]()
     var expected: List[Int] = []
+
     for i in range(0, 100):
         d.push_back(i)
         d.push_front(-i)
         expected.append(i)
         expected.prepend(-i)
+
         if i % 3 == 0:
-            try expect_equal(d.pop_front(), some(expected.shift().get()))
+            try expect_equal(d.pop_front(), some(expected.get(0)))
+            expected = expected.drop(1)
             try expect_equal(d.pop_back(), some(expected.pop().get()))
+
     try expect_equal(d.to_list(), expected)
 
 test "a copy is independent and clear empties":
