@@ -11,3 +11,9 @@ files_round_trip_on_windows  # fs.chown reports status 11, not UNSUPPORTED
 datagrams  # WSAEMSGSIZE surfaces as Failed instead of LimitExceeded
 close_handshake_waits_for_the_echo  # connection aborted by the host during the close handshake
 dial_errors  # refusal text differs from "connection refused"
+polling_reports_differences  # first poll after creating a file reports one event, not two, on NTFS
+broken_documents  # ms-lsp snapshot: missing-module path text differs on Windows
+completion_in_unfinished_code  # ms-lsp snapshot: import-path completion differs on Windows
+project_references_symbols_and_edits  # ms-lsp project mode reports "local imports require CompileFile" on Windows
+rename_actions_and_formatting  # ms-lsp prepareRename fails with os error 123 on Windows
+navigation_over_every_identifier  # ms-lsp references over imports differ on Windows
