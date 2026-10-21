@@ -4,14 +4,12 @@ The Go implementation (generated Go, Go runtime, Go toolchain bundling) has been
 
 ### The implementation is Rust and Cranelift under a value-semantics model
 
-Decision: on 2026-10-19 the owner directed moving the compiler, runtime, standard library, and tools off Go to Rust with Cranelift, under a value-semantics memory model: values have one owner and are dropped deterministically, `var` marks mutation, plain values copy and others move at their last use, and identity is explicit (`Shared`, `Weak`, `Arena`). The checked contract is in [the design contract](../crates/DESIGN.md) and [ownership notes](../crates/ms-check/OWNERSHIP.md); the [proposal](../proposals/rust-cranelift-backend.md) holds the plan and reasons. Parts of those documents still describe the Go oracle; it no longer exists, and the frozen conformance corpus is the behavior contract.
+Decision: the compiler, runtime, standard library, and tools use Rust with Cranelift under a value-semantics memory model. Values have one owner and are dropped deterministically; `var` marks mutation, plain values copy, and other values move at their last use into consuming positions. The current contract is in [the design contract](../crates/DESIGN.md) and [ownership notes](../crates/ms-check/OWNERSHIP.md).
 
-Verified (experiments, not the shipped toolchain): the same checked semantics in C ran 1.1x to 3.5x faster than the retired Go output, and a Cranelift spike compiled the kernels correctly in about 50 ms ([C baselines](../bench/perf/kernels/README.md#c-baselines-for-a-no-gc-backend), [spike](../experiments/cranelift-spike/README.md)). A non-atomic cancellation load is hoisted out of loops by Cranelift, and Cranelift 0.136's inliner mis-maps symbol global values.
-
-Verified: the spike's checker was unsound, so passing well-formed programs and valgrind-clean runs do not show a memory model is safe. Reassigning a `match` scrutinee inside an arm frees what the payload bindings borrow; copy-in/copy-out `var` parameters double-free under unwinding once a callee reallocates and then faults. Exclusivity must be lexical per borrowing construct and proven by a soundness corpus, not by happy-path programs.
+Verified: exclusivity must be enforced per borrowing construct and checked with both rejection cases and native execution. Well-formed programs and leak-free happy paths alone do not establish memory safety.
 
 Apply when: changing ownership, borrowing, drop elaboration, or argument passing in the checker, MIR, or runtime.
-Evidence: [ownership corpus](../crates/ms-check/tests/ownership.rs), [ownership notes](../crates/ms-check/OWNERSHIP.md), [proposal](../proposals/rust-cranelift-backend.md).
+Evidence: [ownership corpus](../crates/ms-check/tests/ownership.rs), [ownership notes](../crates/ms-check/OWNERSHIP.md).
 Verify: `cargo nextest run -p ms-check`, including the accept and reject ownership fixtures; add the rejected aliasing case before relaxing a rule.
 
 ### Generic instances resolve contract evidence in the instantiating module

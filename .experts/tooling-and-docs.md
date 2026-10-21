@@ -1,6 +1,6 @@
 # Tooling and documentation lessons
 
-The Go debugger (embedded Delve, DAP, scripted `ms debug`), `ms emit`, and Go toolchain bundling are gone. The native profiler `ms profile` replaced the debugger; lessons about those Go-era tools were removed with them.
+The Go debugger (embedded Delve, DAP, scripted `ms debug`) and Go toolchain bundling are gone. `ms emit` now prints MIR, not standalone Go source. The native profiler `ms profile` replaced the debugger; lessons about those Go-era tools were removed with them.
 
 ### Readable formatting needs paragraphs while retaining inline guards
 

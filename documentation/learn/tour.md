@@ -65,7 +65,7 @@ else:
 ```
 
 - List, Map, and Set need no import. Updates mutate in place.
-- Assignment shares a collection; `.clone()` makes a shallow copy.
+- Collections have one owner; `.clone()` makes a deep copy. Use `var` to mutate a collection.
 - Lookup returns an `Optional` (`some(value)` or `none`); `if let` binds a present value and `else` handles absence.
 
 ## Conditions and loops
@@ -227,7 +227,7 @@ tags.append("release")
 # tag_count() returns 2.
 ```
 
-Closures snapshot variable values when created, but captured collections and records stay shared. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed while the closure still uses them. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
 
 ## Pipe flows
 

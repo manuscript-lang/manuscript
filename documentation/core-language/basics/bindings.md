@@ -59,7 +59,7 @@ let {name, email: customer_email} = customer
 - Every local needs an initial value. The name is visible only after its initializer, so the initializer may use an outer binding of the same name.
 - Locals are visible in source order; module declaration signatures may refer forward.
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
-- Assignment targets a `var` or a record field such as `customer.name`, including through `let` bindings, parameters, and `self`. Parameters, `let` bindings, destructured names, and collection positions cannot be reassigned; collection methods update contents.
+- Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.
 
 ```manuscript
 fn example() Unit:
@@ -74,6 +74,6 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-Binding mutability and object mutation are separate: a `let` record still allows field updates. Assigning a record or collection copies it; `.clone()` makes an explicit deep copy.
+A `let` record or collection cannot be mutated. Plain values copy implicitly; other owned values move at their last use into consuming positions, while place bindings can borrow. `.clone()` makes an explicit deep copy; see [mutation and references](../types/references.md).
 
 Assignment does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup using an immutable binding. See [mutation and references](../types/references.md).

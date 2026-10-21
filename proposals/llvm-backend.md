@@ -1,6 +1,6 @@
 # Proposal: LLVM release backend (P4)
 
-Status: **reopened 2026-10-21** (see "Bundled release backend" below); previously **deferred.** The spike gate failed on `collatz`: hand-written LLVM IR (checked ops, atomic poll, `clang -O3`) ran in 355k us against 359k us for Cranelift, 1.0x. `nbody` (1.6x vs C) is the one candidate left; revisit if float-kernel performance becomes a priority. Proposal for the gate in [rust-cranelift-backend.md](rust-cranelift-backend.md) (P4: "a measured gap on real programs justifies LLVM or C emission from the same MIR"). Cranelift stays the default.
+Status: **reopened 2026-10-21** (see "Bundled release backend" below); previously **deferred.** The spike gate failed on `collatz`: hand-written LLVM IR (checked ops, atomic poll, `clang -O3`) ran in 355k us against 359k us for Cranelift, 1.0x. `nbody` (1.6x vs C) is the one candidate left; revisit if float-kernel performance becomes a priority. The gate is a measured gap on real programs that justifies LLVM or C emission from the same MIR. Cranelift stays the default.
 
 ## Problem
 

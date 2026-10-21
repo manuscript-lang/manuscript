@@ -86,7 +86,7 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 | --- | --- |
 | `String.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `StringError.OutOfRange`. |
 | `String.slice_scalars(start:, end:)` | Require `0 <= start <= end <= n` with no relative negative bounds; invalid bounds return `StringError.OutOfRange`. |
-| `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is a new shallow List with independent outer storage. |
+| `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is a new owned List with independent storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return `CollectionError.OutOfRange`; success is immutable Bytes that may share immutable storage. |
 
 Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.

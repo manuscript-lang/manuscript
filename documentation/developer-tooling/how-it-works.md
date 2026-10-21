@@ -5,22 +5,23 @@ weight = 0
 
 # How it works
 
-`ms` is one self-contained binary. It checks your program and compiles it to a native executable. No other language toolchain is needed.
+`ms` is one self-contained binary. It checks your program and compiles it to a native executable. Cranelift and the compiled runtime are embedded; linking requires host tools ([requirements](../contributing/rust-toolchain.md#differences-users-can-see)).
 
 ```text
-.ms source → parse → check → compile → native executable
+.ms source → parse → check (HIR) → lower (MIR) → Cranelift object code → link → executable
 ```
 
 1. **Parse and check.** Resolves imports, then checks types, control flow, cleanup, and effects. Errors stop here.
-2. **Compile.** `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
+2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift emits object code. `ms emit` prints MIR for inspection.
+3. **Link.** The host compiler driver links the object with the embedded runtime and native standard library. `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
 
 ## One binary
 
 `ms` also includes the formatter, linter, language server (`ms lsp`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Nothing is downloaded at build time.
 
-## Isolated from your machine
+## Runtime cache
 
-Caches live in the OS user cache directory; set `MANUSCRIPT_CACHE_DIR` to move them.
+The embedded runtime archive is extracted once and reused by later links. Executables are rebuilt each time; see [build caches](builds/incremental-compilation.md) for locations and overrides.
 
 ## Where to go next
 

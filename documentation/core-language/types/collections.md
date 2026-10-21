@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections are values: assignment copies, so two names never change one list, map, or set, and `.clone()` makes an explicit deep copy. (Several passages below still describe the earlier shared-reference model; where they differ, this rule and the [ownership notes](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) win.)
+Collections are owned values. Consuming uses move them at their last use; local place bindings and accessors can borrow them. `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
 
 `List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
@@ -86,19 +86,11 @@ values.append(3)
 # values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
 
-Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return new shallow copies (Bytes `reversed()` too).
+Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
 
 List `slice` returns `Result[List[T], CollectionError]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise `CollectionError.OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
-A List `for` loop or callback captures its backing slice and initial length once, with no copy:
-
-- In-place writes can change values read later in the traversal.
-- Append never extends it; reallocation leaves it on the original array.
-- Removal and shrinking shift elements without clearing the tail, so a running traversal may see shifted or repeated values, and removed references can linger in spare capacity.
-- `fill` and `copy_within` write the backing and can affect later visits.
-- `.clone()` first when you need stable storage.
-
-Map and Set loops and callbacks traverse a membership snapshot, so additions, removals, and replacements during the traversal are not seen.
+A collection loop or non-escaping callback borrows the receiver for the traversal. The checker rejects mutation, reassignment, or a move of that receiver while the borrow is live. To mutate the original while traversing independent data, make an explicit `.clone()` first.
 
 ### Naming and migration
 
@@ -124,7 +116,7 @@ Builder mutations return Unit; `freeze` returns the sealed result.
 
 ## Other collections
 
-The standard library adds collections written in Manuscript. Each is a value: assignment copies, and a copy is independent. Find exact signatures with `ms search_symbol <name>`.
+The standard library adds collections written in Manuscript. Each follows value ownership: use `.clone()` for an independent deep copy. Find exact signatures with `ms search_symbol <name>`.
 
 | Type | Use it for |
 | --- | --- |
@@ -194,7 +186,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
-Enumeration copies outer storage and keeps nested references. List callbacks use the captured slice above; Map and Set callbacks use snapshots.
+Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
@@ -225,11 +217,11 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
 ```
 
-Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filter` return fresh storage in insertion order, keeping references; predicates see a snapshot. Set `map` also uses a snapshot and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position. Callbacks run sequentially in the caller's context; faults and cancellation stop the traversal.
+Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filter` return fresh storage in insertion order, copying retained values; predicates borrow the receiver. Set `map` also borrows its receiver and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position. Callbacks run sequentially in the caller's context; faults and cancellation stop the traversal.
 
 ## Transforming Map keys and values
 
-`map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, visit a snapshot, and return fresh Map storage with shallow references. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
+`map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
 ```manuscript
 fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
@@ -238,7 +230,7 @@ fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
 
 ## Reducing and querying
 
-All of these visit a snapshot taken before the first callback, so callback mutation or clearing does not change what is visited.
+All of these borrow the receiver while callbacks run; mutating or clearing that receiver from a callback is rejected.
 
 - `fold` goes in insertion order; the step takes the accumulator, then the key/value or element, and returns the next accumulator of type `A`. An empty receiver returns the initial value. `fold_right` goes in reverse.
 - `find` stops at the first true predicate: a Set returns the element, a Map a fresh `MapEntry` (as in `entries()`; editing it does not update the Map). No match returns `none`. `find_last` searches from the end.

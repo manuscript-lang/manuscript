@@ -15,7 +15,7 @@ export type SortedEntry[K: Comparable, V]:
 # Keys use their Comparable order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
 # Written in Manuscript as a list of sorted chunks of at most 256 entries: get, contains, floor and ceiling take O(log n);
 # add and remove take O(log n) to find the spot plus a shift inside one 256-entry chunk, which stays well under a microsecond per operation up to millions of entries.
-# Assignment copies, so a copy is an independent map. Use Map when order does not matter; its operations are O(1).
+# Use clone() for an independent deep copy. Use Map when order does not matter; its operations are O(1).
 export type SortedMap[K: Comparable, V]:
     # Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.
     key_chunks: List[List[K]] = []
@@ -313,7 +313,7 @@ impl SortedMap[K, V]:
             operation(entry.key, entry.value)
 
 # A set kept in ascending order, with the same Comparable ordering and costs as SortedMap.
-# Members that compare equal are the same member. Assignment copies, so a copy is an independent set.
+# Members that compare equal are the same member. Use clone() for an independent deep copy.
 export type SortedSet[T: Comparable]:
     # Members as the keys of a map. Internal state: use the operations, not this field.
     members: SortedMap[T, Bool] = SortedMap[T, Bool]()

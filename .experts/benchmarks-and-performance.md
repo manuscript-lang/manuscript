@@ -15,15 +15,15 @@ Verify: `make agent-bench-check` (oracle plus unit tests) passes; every path in 
 Verified: results are only comparable on one machine and revision; record the commit and machine with the table, as the result files do. Use best-of-N or median of repeats, alternate before/after order, exclude build and warm-up, and require a deterministic checksum so a wrong program cannot look fast. Do not add a CI threshold.
 
 Apply when: claiming a speedup or regression.
-Evidence: [stdlib results](../bench/perf/stdlib/results.md), [program results](../bench/perf/programs/results.md), [native workload harness](../bench/language/README.md).
+Evidence: [program results](../bench/perf/programs/results.md).
 Verify: before/after run on the same host with `make stdlib-bench BENCHREPEATS=5 BENCHFILTER=<case>` or `bench/perf/programs/run.sh 7`.
 
 ### A win needs a baseline comparison, not just a smaller number
 
-Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution of each source operation. Checked arithmetic is language behavior, so a control that omits overflow checks diagnoses cost but does not change the baseline. Reject a candidate that moves a material gap into another workload, and retain its measurements. Prefer removing unobservable work and allocations over placement tuning. The Go-era measurements in the result files describe the retired implementation and its handwritten-Go baselines, which are no longer in the tree; do not cite them as evidence about the Rust backend.
+Verified: keep the raw hand-written baseline (the C controls in `bench/perf/kernels/c`) and distinguish logical work elimination from faster execution of each source operation. Checked arithmetic is language behavior, so a control that omits overflow checks diagnoses cost but does not change the baseline. Reject a candidate that moves a material gap into another workload, and retain its measurements. Prefer removing unobservable work and allocations over placement tuning.
 
 Apply when: optimizing a helper, a lowering path, or a runtime routine.
-Evidence: [program results](../bench/perf/programs/results.md), [kernel baselines](../bench/perf/kernels/README.md), [optimization notes](../bench/perf/programs/optimization-notes.md).
+Evidence: [program results](../bench/perf/programs/results.md), [kernel baselines](../bench/perf/kernels/README.md).
 Verify: time and allocation counts before and after on one machine; behavior tests unchanged.
 
 ### Consume library checksums and separate allocation phase from local cost
@@ -33,11 +33,3 @@ Verified: a returned checksum that the harness discards is not evidence that the
 Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown.
 Evidence: [stdlib validator](../bench/perf/compare_stdlib.py), [program measurements](../bench/perf/programs/results.md).
 Verify: balanced process order, identical tool flags and inputs, no simultaneous CPU work, raw samples plus source and binary hashes, and focused controls for regressions. Identical instructions can vary when relocated across alignment boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.
-
-### Tooling performance is measured per protocol request
-
-Verified: editor and CLI changes (lexical token reuse, shared analysis, rename indexes, source-line scans) are justified with request-level measurements recorded in `bench/tooling/`, including known invalidation blockers, not with whole-run timings. A claimed win needs a retained result file or a documented reason it cannot be kept.
-
-Apply when: optimizing LSP, formatter, or checker passes.
-Evidence: [tooling benchmarks](../bench/tooling/README.md), commit 12ef3b75.
-Verify: rerun the harness against the previous revision and compare medians.
