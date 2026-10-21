@@ -238,6 +238,7 @@ msrt_bytes_decode_utf8(b: *const VecVal) -> *mut StrObj
 msrt_bytes_append(b: *mut VecVal, value: i64)
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal)
 msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj)
+msrt_strbuilder_append_int(b: *mut VecVal, n: i64)
 msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj
 msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64

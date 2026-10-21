@@ -28,11 +28,101 @@ pub const GROWTH_SLACK: usize = 200;
 
 /// Runs the pass over the whole module; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
-    let mut changed = inline_calls(m);
+    let mut changed = specialize_sort_thunks(m);
+    changed |= inline_calls(m);
     changed |= inline_closures(m);
     changed |= strip_depth(m);
     changed |= remove_dead(m);
     changed
+}
+
+/// Gives each runtime sort whose comparator is a known closure a private copy of the generic
+/// `sort.cmp` thunk that calls the closure's code directly (and inlines it). The runtime then
+/// makes one indirect call per comparison instead of three.
+fn specialize_sort_thunks(m: &mut Module) -> bool {
+    let mut changed = false;
+    let mut made: HashMap<(FuncId, FuncId), FuncId> = HashMap::new();
+    for fi in 0..m.funcs.len() {
+        let mut known: HashMap<Value, FuncId> = HashMap::new();
+        let mut addrs: HashMap<Value, FuncId> = HashMap::new();
+        for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+            match (inst.op, inst.imm, inst.res) {
+                (Op::ClosureNew, Imm::Func(g), Some(r)) => {
+                    known.insert(r, g);
+                }
+                (Op::FuncAddr, Imm::Func(t), Some(r)) if m.funcs[t.index()].name == "sort.cmp" => {
+                    addrs.insert(r, t);
+                }
+                _ => {}
+            }
+        }
+        if addrs.is_empty() || known.is_empty() {
+            continue;
+        }
+        let mut edits: Vec<(Value, FuncId, FuncId)> = Vec::new();
+        for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+            if inst.op != Op::CallRt {
+                continue;
+            }
+            for w in inst.args.windows(2) {
+                if let (Some(&t), Some(&g)) = (addrs.get(&w[0]), known.get(&w[1])) {
+                    edits.push((w[0], t, g));
+                }
+            }
+        }
+        for (addr, t, g) in edits {
+            let spec = match made.get(&(t, g)) {
+                Some(s) => *s,
+                None => {
+                    let Some(thunk) = specialized_thunk(m, t, g) else {
+                        continue;
+                    };
+                    let s = m.add_func(thunk);
+                    made.insert((t, g), s);
+                    s
+                }
+            };
+            for inst in m.funcs[fi]
+                .blocks
+                .iter_mut()
+                .flat_map(|b| b.insts.iter_mut())
+            {
+                if inst.res == Some(addr) {
+                    inst.imm = Imm::Func(spec);
+                    changed = true;
+                }
+            }
+        }
+    }
+    changed
+}
+
+/// `thunk` with its closure parameter replaced by the raw environment pointer and the indirect
+/// call replaced by a direct call (inlined when small) of closure code `g`.
+fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
+    let code = &m.funcs[g.index()];
+    if !matches!(code.kind, FuncKind::Closure { .. }) || code.inline == InlineHint::Never {
+        return None;
+    }
+    let mut t = m.funcs[thunk.index()].clone();
+    t.name = format!("sort.cmp.{}", code.name);
+    t.params[0].ty = Ty::PTR;
+    let env = t.blocks[0].params[0].value;
+    t.values[env.index()] = Ty::PTR;
+    let (bi, ii) = t.blocks.iter().enumerate().find_map(|(bi, b)| {
+        b.insts
+            .iter()
+            .position(|i| i.op == Op::CallInd && i.args[0] == env)
+            .map(|ii| (bi, ii))
+    })?;
+    let call = &mut t.blocks[bi].insts[ii];
+    call.op = Op::Call;
+    call.imm = Imm::Func(g);
+    if code.inst_count() <= BASE_THRESHOLD {
+        let ret_own = m.needs_drop(code.ret);
+        inline_at(&mut t, bi, ii, code, ret_own);
+    }
+    Some(t)
 }
 
 /// Strongly connected components of the graph `adj`, callees (successors) first.
