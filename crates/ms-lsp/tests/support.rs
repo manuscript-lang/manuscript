@@ -22,8 +22,11 @@ impl Workspace {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures"),
             &root,
         );
+        // The project's spelling: Windows `canonicalize` yields a verbatim `\\?\` path.
+        let root = ms_project::gopath::eval_symlinks(root.to_str().expect("utf-8 temp dir"))
+            .expect("workspace");
         Workspace {
-            root: root.canonicalize().expect("workspace"),
+            root: PathBuf::from(root),
         }
     }
 
