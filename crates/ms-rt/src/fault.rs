@@ -392,7 +392,9 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
                         file = sc.file_off;
                     }
                 }
-                if (file, line, name) == last {
+                if line == 0 {
+                    // A thunk inlined into its caller has no position of its own.
+                } else if (file, line, name) == last {
                     repeated += 1;
                 } else {
                     if shown == MAX_FAULT_FRAMES {
