@@ -54,6 +54,7 @@ impl Deque[T]:
     var fn pop_front() Optional[T]:
         if self.size == 0:
             return none
+
         let value = self.slots.get(self.start)
         self.slots.set(self.start, none)
         self.start = (self.start + 1) % self.slots.length()
@@ -64,6 +65,7 @@ impl Deque[T]:
     var fn pop_back() Optional[T]:
         if self.size == 0:
             return none
+
         let index = (self.start + self.size - 1) % self.slots.length()
         let value = self.slots.get(index)
         self.slots.set(index, none)
@@ -74,12 +76,14 @@ impl Deque[T]:
     fn front() Optional[T]:
         if self.size == 0:
             return none
+
         return self.slots.get(self.start)
 
     # Returns the last value without removing it, or `none` when empty.
     fn back() Optional[T]:
         if self.size == 0:
             return none
+
         return self.slots.get((self.start + self.size - 1) % self.slots.length())
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
@@ -87,6 +91,7 @@ impl Deque[T]:
     fn at(index: Int) Optional[T]:
         if index < 0 or index >= self.size:
             return none
+
         return self.slots.get((self.start + index) % self.slots.length())
 
     # Removes every value and releases the storage.

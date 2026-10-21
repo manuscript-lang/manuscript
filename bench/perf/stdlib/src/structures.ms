@@ -10,6 +10,7 @@ fn ascending(left: Int, right: Int) Int:
         return -1
     if left > right:
         return 1
+
     return 0
 
 # Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
@@ -44,9 +45,11 @@ export fn bench_structures() Unit:
             n * 4,
             fn() Int:
                 var deque = Deque[Int]()
+
                 for i in range(0, n):
                     deque.push_back(i)
                     deque.push_front(i)
+
                 var total = 0
                 for i in range(0, n):
                     total += deque.pop_front().get(0) + deque.pop_back().get(0)
@@ -71,14 +74,18 @@ export fn bench_structures() Unit:
             fn() Int:
                 var map = SortedMap[Int, Int]()
                 var x = 1
+
                 for i in range(0, n):
                     x = (x * 1103515245 + 12345) % 2147483648
                     map.add(x, i)
+
                 var hits = 0
+
                 for i in range(0, n):
                     x = (x * 1103515245 + 12345) % 2147483648
                     if map.contains(x):
                         hits += 1
+
                 return hits + map.length()
         )
         bench(
@@ -86,8 +93,10 @@ export fn bench_structures() Unit:
             2000,
             fn() Int:
                 var list = range(0, n)
+
                 for i in range(0, 1000):
                     list.insert(n / 2, i)
                     list.remove(n / 2)
+
                 return list.length()
         )

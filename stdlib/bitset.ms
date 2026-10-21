@@ -24,13 +24,25 @@ impl BitSet:
     var fn remove(index: Int) Unit:
         if index < 0 or index / 64 >= self.words.length():
             return
+
         let word = index / 64
-        self.words.set(word, bit_and(self.words.get(word), bit_not(shift_left(1, index % 64))))
+        (
+            self
+            .words
+            .set(
+                word,
+                bit_and(
+                    self.words.get(word),
+                    bit_not(shift_left(1, index % 64))
+                )
+            )
+        )
 
     # Reports whether the index is a member; out-of-range indexes are not members.
     fn contains(index: Int) Bool:
         if index < 0 or index / 64 >= self.words.length():
             return false
+
         return bit_and(self.words.get(index / 64), shift_left(1, index % 64)) != 0
 
     # Returns the number of members.
@@ -59,25 +71,33 @@ impl BitSet:
         var word = start / 64
         if word >= self.words.length():
             return none
+
         var bits = bit_and(self.words.get(word), shift_left(-1, start % 64))
+
         while true:
             if bits != 0:
                 return some(word * 64 + trailing_zeros(bits))
+
             word += 1
             if word >= self.words.length():
                 return none
+
             bits = self.words.get(word)
+
         return none
 
     # Returns a new list of the members in ascending order.
     fn values() List[Int]:
         var out: List[Int] = []
+
         for word in range(0, self.words.length()):
             var bits = self.words.get(word)
+
             while bits != 0:
                 let low = trailing_zeros(bits)
                 out.append(word * 64 + low)
                 bits = bit_and(bits, bit_not(shift_left(1, low)))
+
         return out
 
     # Returns a new set of the members of either set.
@@ -102,6 +122,7 @@ impl BitSet:
         var count = self.words.length()
         if other.words.length() > count:
             count = other.words.length()
+
         for word in range(0, count):
             var left = 0
             if word < self.words.length():
@@ -117,6 +138,7 @@ impl BitSet:
             if mode == 3:
                 merged = bit_xor(left, right)
             out.append(merged)
+
         return BitSet(words: out)
 
     # Reports whether every member of this set is in `other`.
