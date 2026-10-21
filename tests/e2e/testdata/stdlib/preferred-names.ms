@@ -1,6 +1,6 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
-import {compile, Regex, RegexError} from "@std/regex.ms"
+import {compile, Regex, RegexError} from "@std/string.ms"
 
 interface ListMutation:
     var fn reverse_in_place() Unit

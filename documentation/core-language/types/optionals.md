@@ -30,7 +30,7 @@ There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs
 An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `Optional[T]` passes unchanged, including `none`.
 
 ```manuscript
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 
 let bounded = Queue[Int](capacity: 4)
 let unbounded = Queue[Int]()
@@ -106,7 +106,7 @@ A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms 
 - `ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
 - `ok_or_else[E: Error](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
-Omitting the cause yields the prelude `MissingValue` (from `@std/errors.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
+Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
 
 ```manuscript
 fn port_number(text: String) Result[Int, Error]:

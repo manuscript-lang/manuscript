@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 
 fn failure(result: Result[Version, SemverError]) Result[SemverError, Error]:

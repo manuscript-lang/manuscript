@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn halve(n: Int) Optional[Int]:

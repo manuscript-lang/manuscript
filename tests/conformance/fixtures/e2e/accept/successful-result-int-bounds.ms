@@ -1,8 +1,8 @@
 # conform: tags=closures,control-flow,interfaces,lists,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
-import Closeable from "@std/cleanup.ms"
-import TextError from "@std/errors.ms"
+import Closeable from "@std/core.ms"
+import TextError from "@std/core.ms"
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
 
 fn checked(n: Int) Result[Int, TextError]:

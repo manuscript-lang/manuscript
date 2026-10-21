@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {
     assert_equal,
     expect_close,

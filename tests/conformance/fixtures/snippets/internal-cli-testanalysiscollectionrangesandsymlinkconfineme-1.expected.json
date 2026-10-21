@@ -14,26 +14,26 @@
           "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 6,
           "column": 22,
-          "offset": 225
+          "offset": 223
         },
         "end": {
           "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
           "line": 6,
           "column": 26,
-          "offset": 229
+          "offset": 227
         },
         "fix": {
           "position": {
             "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 6,
             "column": 20,
-            "offset": 223
+            "offset": 221
           },
           "end": {
             "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 6,
             "column": 26,
-            "offset": 229
+            "offset": 227
           },
           "replacement": ""
         }

@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=bench/lowering/production.ms
 import range from "@std/collections.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     value: Int

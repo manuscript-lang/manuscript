@@ -1,9 +1,9 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, fail} from "@std/testing.ms"
 import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     label: String

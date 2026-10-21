@@ -2,13 +2,13 @@ import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
 import {headers, HttpMethod} from "@std/http.ms"
 import network from "@std/net.ms"
 import HttpError from "@std/http.ms"
-import WebSocketError from "@std/websocket.ms"
+import WebSocketError from "@std/net.ms"
 import IoError from "@std/io.ms"
 import HttpExchange from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
 import HttpClientOptions from "@std/http.ms"
-import TlsOptions from "@std/tls.ms"
-import WebSocketOptions from "@std/websocket.ms"
+import TlsOptions from "@std/net.ms"
+import WebSocketOptions from "@std/net.ms"
 
 fn websocket_error(cause: WebSocketError) HttpError:
     match cause:

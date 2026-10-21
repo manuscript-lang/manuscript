@@ -85,7 +85,7 @@ fn caller_evaluated_defaults() {
 fn match_closures_and_try() {
     let mir = lower(
         "match",
-        "import {TextError} from \"@std/errors.ms\"\n\ntype Shape:\n    case Circle(radius: Int)\n    case Dot\n\nfn area(s: Shape) Int:\n    return match s:\n        Shape.Circle(r): r * r\n        _: 0\n\nfn first(xs: List[Int]) Result[Int, TextError]:\n    let n = try parse(xs.length())\n    return ok(n)\n\nfn parse(n: Int) Result[Int, TextError]:\n    if n > 0:\n        return ok(n)\n    return error(TextError(text: \"empty\"))\n\nexport fn main() Int:\n    let doubled = [1, 2, 3].map(fn(x) Int: x * 2)\n    return area(Shape.Circle(doubled.length()))\n",
+        "import {TextError} from \"@std/core.ms\"\n\ntype Shape:\n    case Circle(radius: Int)\n    case Dot\n\nfn area(s: Shape) Int:\n    return match s:\n        Shape.Circle(r): r * r\n        _: 0\n\nfn first(xs: List[Int]) Result[Int, TextError]:\n    let n = try parse(xs.length())\n    return ok(n)\n\nfn parse(n: Int) Result[Int, TextError]:\n    if n > 0:\n        return ok(n)\n    return error(TextError(text: \"empty\"))\n\nexport fn main() Int:\n    let doubled = [1, 2, 3].map(fn(x) Int: x * 2)\n    return area(Shape.Circle(doubled.length()))\n",
     );
     assert!(mir.contains("switch"));
     assert!(mir.contains("closure.new"));
@@ -138,7 +138,7 @@ fn methods_that_change_self_hand_it_back() {
 fn try_after_an_owned_argument_releases_it() {
     lower(
         "tryargs",
-        "import {TextError} from \"@std/errors.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
+        "import {TextError} from \"@std/core.ms\"\n\nfn make(n: Int) Result[String, TextError]:\n    if n > 0:\n        return ok(\"x\")\n    return error(TextError(text: \"no\"))\n\nfn join(a: String, b: String) String:\n    return a + b\n\nfn both(n: Int) Result[String, TextError]:\n    return ok(join(a: try make(n), b: try make(n - 1)))\n\nexport fn main() Int:\n    return 0\n",
     );
 }
 
@@ -146,7 +146,7 @@ fn try_after_an_owned_argument_releases_it() {
 fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
     let mir = lower(
         "with",
-        "import Closeable from \"@std/cleanup.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
+        "import Closeable from \"@std/core.ms\"\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    fn close() Unit:\n        let x = self.n\n\nfn run[T: Closeable](r: T, early: Bool) Int:\n    with it = r:\n        if early:\n            return 1\n    return 2\n\nexport fn main() Int:\n    var i = 0\n    while i < 3:\n        with c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: true) + i\n",
     );
     assert!(mir.matches("call @Res.close").count() >= 4);
     assert!(mir.contains("cleanup.push"));
@@ -166,7 +166,7 @@ fn native_values_and_time() {
 fn error_values_print_their_dynamic_text_and_equal_uses_impls() {
     let mir = lower(
         "dyntext",
-        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/errors.ms\"\n\ntype Key:\n    id: Int\n    label: String\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.id == value.id\n            _: return false\n\nexport fn main() Int:\n    let e: Error = TextError(\"bad\")\n    let a = Key(id: 1, label: \"a\")\n    let b = Key(id: 1, label: \"b\")\n    let r = stdout().write(\"{e} {a == b}\\n\")\n    return 0\n",
+        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/core.ms\"\n\ntype Key:\n    id: Int\n    label: String\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.id == value.id\n            _: return false\n\nexport fn main() Int:\n    let e: Error = TextError(\"bad\")\n    let a = Key(id: 1, label: \"a\")\n    let b = Key(id: 1, label: \"b\")\n    let r = stdout().write(\"{e} {a == b}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("iface.is"));
     assert!(mir.contains("iface.new"));
@@ -214,7 +214,7 @@ fn lambdas_and_function_values_fill_omitted_defaults() {
 fn direct_call_with_try_default_runs_it_in_the_callee_frame() {
     let mir = lower(
         "trydefault",
-        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/errors.ms\"\n\nfn fail() Result[Int, TextError]: return error(TextError(\"no\"))\n\nfn get(value: Int = try fail()) Result[Int, TextError]: return ok(value)\n\nexport fn main() Int:\n    let r = stdout().write(\"{get(2).is_ok()} {get().is_ok()}\\n\")\n    return 0\n",
+        "import stdout from \"@std/io.ms\"\nimport {TextError} from \"@std/core.ms\"\n\nfn fail() Result[Int, TextError]: return error(TextError(\"no\"))\n\nfn get(value: Int = try fail()) Result[Int, TextError]: return ok(value)\n\nexport fn main() Int:\n    let r = stdout().write(\"{get(2).is_ok()} {get().is_ok()}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("call.ind"));
 }
@@ -252,7 +252,7 @@ fn instant_arithmetic() {
 fn error_category_tests_standard_error_tables() {
     let mir = lower(
         "category",
-        "import {category} from \"@std/errors.ms\"\nimport {IoError} from \"@std/io.ms\"\n\nexport fn main() Int:\n    let cause: Error = IoError.Closed\n    let c = category(cause)\n    return 0\n",
+        "import {category} from \"@std/core.ms\"\nimport {IoError} from \"@std/io.ms\"\n\nexport fn main() Int:\n    let cause: Error = IoError.Closed\n    let c = category(cause)\n    return 0\n",
     );
     assert!(mir.contains("iface.is"));
 }
@@ -271,7 +271,7 @@ fn try_in_a_literal_releases_the_elements_built_before_it() {
     // The verifier rejects an owned element, map, or key left unreleased on the early return.
     lower(
         "tryliteral",
-        "import {TextError} from \"@std/errors.ms\"\n\nfn bad() Result[String, Error]:\n    return error(TextError(\"no\"))\n\nfn list() Result[Int, Error]:\n    let xs = [\"a\", try bad(), \"c\"]\n    return ok(xs.length())\n\nfn nested() Result[Int, Error]:\n    let xs = [[\"a\"], [\"b\", try bad()]]\n    return ok(xs.length())\n\nfn map_value() Result[Int, Error]:\n    let m = {\"a\": \"x\", \"b\": try bad()}\n    return ok(m.length())\n\nfn map_key() Result[Int, Error]:\n    let m = {\"a\": \"x\", (try bad()): \"y\"}\n    return ok(m.length())\n\nexport fn main() Int:\n    let a = list()\n    let b = nested()\n    let c = map_value()\n    let d = map_key()\n    return 0\n",
+        "import {TextError} from \"@std/core.ms\"\n\nfn bad() Result[String, Error]:\n    return error(TextError(\"no\"))\n\nfn list() Result[Int, Error]:\n    let xs = [\"a\", try bad(), \"c\"]\n    return ok(xs.length())\n\nfn nested() Result[Int, Error]:\n    let xs = [[\"a\"], [\"b\", try bad()]]\n    return ok(xs.length())\n\nfn map_value() Result[Int, Error]:\n    let m = {\"a\": \"x\", \"b\": try bad()}\n    return ok(m.length())\n\nfn map_key() Result[Int, Error]:\n    let m = {\"a\": \"x\", (try bad()): \"y\"}\n    return ok(m.length())\n\nexport fn main() Int:\n    let a = list()\n    let b = nested()\n    let c = map_value()\n    let d = map_key()\n    return 0\n",
     );
 }
 

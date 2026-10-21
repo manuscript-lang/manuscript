@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:

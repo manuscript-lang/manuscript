@@ -4,7 +4,7 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import {PriorityQueue} from "@std/queues.ms"
+import {PriorityQueue} from "@std/collections.ms"
 
 type Key:
     id: Int

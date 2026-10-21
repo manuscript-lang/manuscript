@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Closeable from \"@std/cleanup.ms\"\n\ntype AggregateResource:\n    visits: List[Int]\n\nimpl Closeable for AggregateResource:\n    fn close() Unit:\n        self.visits.append(1)\n\ninterface AggregateCounter:\n    fn bump(by: Int) Int\n    fn lower(by: Int) Int\n\ntype AggregateCell:\n    total: Int\n\nimpl AggregateCounter for AggregateCell:\n    fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\n    fn lower(by: Int) Int:\n        self.total -= by\n        return self.total\n\nfn identity[T](value: T) T: return value\n"
+    "fmt": "import Closeable from \"@std/core.ms\"\n\ntype AggregateResource:\n    visits: List[Int]\n\nimpl Closeable for AggregateResource:\n    fn close() Unit:\n        self.visits.append(1)\n\ninterface AggregateCounter:\n    fn bump(by: Int) Int\n    fn lower(by: Int) Int\n\ntype AggregateCell:\n    total: Int\n\nimpl AggregateCounter for AggregateCell:\n    fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\n    fn lower(by: Int) Int:\n        self.total -= by\n        return self.total\n\nfn identity[T](value: T) T: return value\n"
   }
 }

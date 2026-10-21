@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import network from \"@std/net.ms\"\nimport {HttpResponse} from \"@std/http.ms\"\nimport panic from \"@std/faults.ms\"\n"
+    "fmt": "import network from \"@std/net.ms\"\nimport {HttpResponse} from \"@std/http.ms\"\nimport panic from \"@std/core.ms\"\n"
   }
 }

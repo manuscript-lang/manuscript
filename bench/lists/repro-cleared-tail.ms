@@ -1,4 +1,4 @@
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 export fn main() Int:
     var values = [1, 2, 3]

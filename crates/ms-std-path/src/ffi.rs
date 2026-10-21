@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/path.ms` (`msrt_path_*`). Every function takes `windows: u8` first,
+//! C ABI shims for `@std/fs.ms` (`msrt_path_*`). Every function takes `windows: u8` first,
 //! selecting POSIX (0) or Windows (1) rules; the host-rule functions pass the host's flag.
 //! `PathParts` is a record of five strings (`root, directory, base, extension, name`) at its
 //! natural layout; the runtime writes owned strings into it.

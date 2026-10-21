@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,modules,optional,stdlib-bytes,stdlib-faults,strings,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=documentation/core-language/basics/text-and-bytes.md:110
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 import Bytes from "@std/bytes.ms"
 

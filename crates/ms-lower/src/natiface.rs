@@ -25,14 +25,14 @@ pub(crate) const HANDLE_FUNCTIONS: &[(&str, &str, &str, i64)] = &[
     ("fs/filesystem", "fs", "", 0),
     ("process/commands", "process", "", 0),
     ("process/control", "process", "", 0),
-    ("system/system", "system", "", 0),
-    ("terminal/terminal", "terminal", "", 0),
+    ("process/system", "system", "", 0),
+    ("io/terminal", "terminal", "", 0),
     ("time/clock", "time", "", 0),
     ("time/wall_clock", "time", "", 0),
     // The rules are the table: `path_win` forwards with the Windows flag set.
     ("random/entropy", "random", "", 0),
-    ("path/posix", "path", "", 0),
-    ("path/win32", "path_win", "", 0),
+    ("fs/posix", "path", "", 0),
+    ("fs/win32", "path_win", "", 0),
     ("net/network", "net", "msrt_net_network", 0),
 ];
 

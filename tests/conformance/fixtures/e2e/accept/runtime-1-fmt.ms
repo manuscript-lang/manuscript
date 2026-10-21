@@ -1,7 +1,7 @@
 # conform: tags=decimal,faults,formatter,modules,parser,stdlib-decimal,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/runtime-1.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 

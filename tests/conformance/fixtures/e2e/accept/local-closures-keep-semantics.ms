@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,interpolation,lists,match,modules,mutation,optional,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn bump(factor: Int) Int:

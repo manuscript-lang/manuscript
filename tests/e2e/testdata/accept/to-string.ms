@@ -1,8 +1,8 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {fail} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 
 type Person:
     name: String

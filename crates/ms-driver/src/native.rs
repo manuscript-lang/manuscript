@@ -24,14 +24,33 @@ impl Profile {
                 options.opt_level = "none";
                 Level::None
             }
-            Profile::Release => Level::Speed,
+            Profile::Release => {
+                options.llvm = llvm_level("3");
+                Level::Speed
+            }
             Profile::MinSizeRel => {
                 options.opt_level = "speed_and_size";
+                options.llvm = llvm_level("s");
                 Level::Speed
             }
         };
         (level, options)
     }
+}
+
+/// LLVM optimization for release builds: used when a `clang` is available (`MS_LLVM_CC` names
+/// it) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to Cranelift.
+fn llvm_level(level: &'static str) -> Option<&'static str> {
+    // The line tables are rebuilt from ELF DWARF, so only Linux uses LLVM for now.
+    if !cfg!(target_os = "linux") || std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
+        return None;
+    }
+    let cc = std::env::var("MS_LLVM_CC").unwrap_or_else(|_| "clang".to_string());
+    let found = std::process::Command::new(cc)
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success());
+    found.then_some(level)
 }
 
 /// The runtime archive named by `MS_RT_LIB`, which replaces the one embedded in `ms`.

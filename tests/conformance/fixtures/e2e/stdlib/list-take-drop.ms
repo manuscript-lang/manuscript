@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,generics,lists,modules,mutation,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/list-take-drop.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 test "List take and drop copy prefix and remainder":

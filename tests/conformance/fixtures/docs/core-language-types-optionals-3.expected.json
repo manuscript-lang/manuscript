@@ -14,7 +14,7 @@
           "file": "core-language-types-optionals-3.ms",
           "line": 6,
           "column": 15,
-          "offset": 203
+          "offset": 208
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-types-optionals-3.ms",
           "line": 7,
           "column": 17,
-          "offset": 243
+          "offset": 248
         }
       }
     ],

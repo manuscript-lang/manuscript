@@ -1,9 +1,9 @@
 {
   "contract_methods": {
-    "Error/message": "errors/message"
+    "Error/message": "core/message"
   },
   "function_overrides": {
-    "@std/faults.ms/panic": "panic",
+    "@std/core.ms/panic": "panic",
     "@std/time.ms/sleep": "sleep"
   },
   "intrinsic_receivers": {
@@ -12,7 +12,7 @@
     "String": "StringOperations"
   },
   "native_types": {
-    "@std/bigint.ms/BigInt": "native",
+    "@std/math.ms/BigInt": "native",
     "@std/bytes.ms/Bytes": "native",
     "@std/bytes.ms/BytesBuilder": "native",
     "@std/collections.ms/List": "native",
@@ -27,9 +27,9 @@
     "@std/logcore.ms/LogState": "native",
     "@std/net.ms/Cidr": "native",
     "@std/net.ms/IpAddress": "native",
-    "@std/queues.ms/PriorityQueue": "native",
-    "@std/queues.ms/Queue": "native",
-    "@std/regex.ms/Regex": "native",
+    "@std/collections.ms/PriorityQueue": "native",
+    "@std/collections.ms/Queue": "native",
+    "@std/string.ms/Regex": "native",
     "@std/string.ms/StringBuilder": "native",
     "@std/time.ms/Duration": "native",
     "@std/time.ms/Instant": "native",

@@ -3,9 +3,9 @@
 # conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
-import from_int from "@std/bigint.ms"
-import {parse_int, NumberError} from "@std/numbers.ms"
+import {Queue, PriorityQueue} from "@std/collections.ms"
+import from_int from "@std/math.ms"
+import {parse_int, NumberError} from "@std/math.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 

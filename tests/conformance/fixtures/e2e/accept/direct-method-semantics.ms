@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,interfaces,lists,match,modules,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 interface Shape:

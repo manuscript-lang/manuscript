@@ -5,11 +5,11 @@ import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.m
 import range from "@std/collections.ms"
 import {parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode} from "@std/json.ms"
 import {timestamp, duration, clock, Timestamp, Duration, Instant} from "@std/time.ms"
-import {Url} from "@std/url.ms"
+import {Url} from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import {TextError} from "@std/errors.ms"
-import BigInt from "@std/bigint.ms"
+import {TextError} from "@std/core.ms"
+import BigInt from "@std/math.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interpolation,lists,modules,mutation,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/nested-try-returns-in-source-order.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:

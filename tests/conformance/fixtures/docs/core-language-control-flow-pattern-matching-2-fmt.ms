@@ -1,7 +1,7 @@
 # conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-errors,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 type Cents:
     case Valid(amount: Int)
     case Invalid

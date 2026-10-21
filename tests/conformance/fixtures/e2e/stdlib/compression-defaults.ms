@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/compression-defaults.ms
 import {expect_equal} from "@std/testing.ms"
-import {compress, decompress, CompressionFormat, CompressionError} from "@std/compress.ms"
+import {compress, decompress, CompressionFormat, CompressionError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forwarded[T](item: T) T: item

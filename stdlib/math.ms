@@ -165,3 +165,154 @@ export fn sqrt2() Float:
 
 # Returns the square root of 1/2.
 export fn sqrt_half() Float:
+
+# Errors returned for invalid numeric requests, malformed text, or out-of-range values.
+export type NumberError:
+    # A radix or digit-count argument is outside its documented range.
+    case InvalidInput
+    # The text does not match the numeric syntax, such as an empty string, stray characters, or digits invalid for the radix.
+    case InvalidData
+    # The text is well formed but the value does not fit, such as an integer beyond the platform's Int range or a float beyond the finite range.
+    case OutOfRange
+
+# Parses a decimal floating-point number using Manuscript's numeric syntax.
+export fn parse_float(text: String) Result[Float, NumberError]:
+
+# Parses an integer in a radix from 2 through 36.
+export fn parse_int(text: String, radix: Int) Result[Int, NumberError]:
+
+impl Error for NumberError:
+    # Returns the fixed diagnostic `number: <reason>`, such as `number: invalid data`, without echoing the input text.
+    fn message() String:
+
+# Returns the bitwise AND of two integers.
+export fn bit_and(left: Int, right: Int) Int:
+
+# Returns the bitwise OR of two integers.
+export fn bit_or(left: Int, right: Int) Int:
+
+# Returns the bitwise exclusive OR of two integers.
+export fn bit_xor(left: Int, right: Int) Int:
+
+# Returns the bitwise complement, so every bit of the two's-complement value flips.
+export fn bit_not(value: Int) Int:
+
+# Shifts bits toward the high end, discarding bits shifted out; `count` must be 0 through 63 or the call faults.
+export fn shift_left(value: Int, count: Int) Int:
+
+# Shifts bits toward the low end, filling with the sign bit (JavaScript `>>`); `count` must be 0 through 63 or the call faults.
+export fn shift_right(value: Int, count: Int) Int:
+
+# Shifts bits toward the low end, filling with zeros (JavaScript `>>>`); `count` must be 0 through 63 or the call faults.
+export fn shift_right_unsigned(value: Int, count: Int) Int:
+
+# Rotates the 64-bit pattern toward the high end; any `count` is reduced modulo 64.
+export fn rotate_left(value: Int, count: Int) Int:
+
+# Rotates the 64-bit pattern toward the low end; any `count` is reduced modulo 64.
+export fn rotate_right(value: Int, count: Int) Int:
+
+# Counts the set bits in the 64-bit pattern.
+export fn count_ones(value: Int) Int:
+
+# Counts the zero bits above the highest set bit; zero has 64.
+export fn leading_zeros(value: Int) Int:
+
+# Counts the zero bits below the lowest set bit; zero has 64.
+export fn trailing_zeros(value: Int) Int:
+
+# Adds with two's-complement wraparound instead of faulting on overflow.
+export fn wrapping_add(left: Int, right: Int) Int:
+
+# Subtracts with two's-complement wraparound instead of faulting on overflow.
+export fn wrapping_subtract(left: Int, right: Int) Int:
+
+# Multiplies with two's-complement wraparound instead of faulting on overflow (JavaScript `Math.imul` at 64 bits).
+export fn wrapping_multiply(left: Int, right: Int) Int:
+
+# Errors returned while parsing or converting arbitrary-precision integers.
+export type BigIntError:
+    # The radix is outside 2 through 36, `max_digits` is negative, or a division or remainder has a zero divisor.
+    case InvalidInput
+    # The text is not an optionally signed integer made only of digits valid in the radix.
+    case InvalidData
+    # The text exceeds `max_digits` after excluding at most one leading sign; this check precedes syntax validation.
+    case LimitExceeded
+
+# An arbitrary-precision signed integer with explicit arithmetic operations.
+export type BigInt:
+
+impl BigInt:
+    # Returns the exact sum; arbitrary precision means it cannot overflow.
+    fn add(other: BigInt) BigInt:
+
+    # Returns the exact difference `self - other`; it cannot overflow.
+    fn subtract(other: BigInt) BigInt:
+
+    # Returns the exact product; it cannot overflow, though very large operands take proportionally longer.
+    fn multiply(other: BigInt) BigInt:
+
+    # Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
+    # A zero divisor returns InvalidInput.
+    fn divide(other: BigInt) Result[BigInt, BigIntError]:
+
+    # Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
+    # A zero divisor returns InvalidInput.
+    fn remainder(other: BigInt) Result[BigInt, BigIntError]:
+
+    # Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
+    fn compare(other: BigInt) Int:
+
+    # Returns the bitwise AND using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
+    fn bit_and(other: BigInt) BigInt:
+
+    # Returns the bitwise OR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
+    fn bit_or(other: BigInt) BigInt:
+
+    # Returns the bitwise XOR using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
+    fn bit_xor(other: BigInt) BigInt:
+
+    # Returns the bitwise complement using infinite-width two's-complement semantics, so `bit_not(x)` equals `-x - 1`.
+    fn bit_not() BigInt:
+
+    # Returns the value with its sign flipped.
+    fn negate() BigInt:
+
+    # Returns the absolute value, which is never negative.
+    fn abs() BigInt:
+
+    # Returns -1, 0 or 1 as the value is negative, zero or positive.
+    fn sign() Int:
+
+    # Raises to a nonnegative `exponent`. A negative exponent returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    fn pow(exponent: Int) Result[BigInt, BigIntError]:
+
+    # Shifts left by `count` bits, multiplying by two to that power. A negative count returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    fn shift_left(count: Int) Result[BigInt, BigIntError]:
+
+    # Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns InvalidInput.
+    fn shift_right(count: Int) Result[BigInt, BigIntError]:
+
+    # Converts to the nearest Float, or infinity of the same sign when the magnitude exceeds the Float range.
+    fn to_float() Float:
+
+    # Returns the value as an Int when it fits in the platform's Int, or none when it is outside that range.
+    fn to_int() Optional[Int]:
+
+    # Formats the value in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    # A radix outside 2 through 36 is a programming fault.
+    fn to_string_radix(radix: Int) String:
+
+# Converts a machine-sized integer without loss.
+export fn from_int(value: Int) BigInt:
+
+# Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
+export fn parse(
+    text: String,
+    radix: Int,
+    max_digits: Optional[Int] = none
+) Result[BigInt, BigIntError]:
+
+impl Error for BigIntError:
+    # Returns the fixed diagnostic `big integer: <reason>`, such as `big integer: invalid input`, without echoing the input text.
+    fn message() String:

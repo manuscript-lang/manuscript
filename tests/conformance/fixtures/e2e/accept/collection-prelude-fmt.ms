@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,formatter,lists,maps,match,modules,mutation,numbers,optional,parser,records,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/collection-prelude.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import range from "@std/collections.ms"
 

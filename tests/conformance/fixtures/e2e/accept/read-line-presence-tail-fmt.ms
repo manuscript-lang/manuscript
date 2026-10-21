@@ -4,7 +4,7 @@
 import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import filesystem from "@std/fs.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 
 type MemoryStream:

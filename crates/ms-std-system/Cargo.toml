@@ -3,7 +3,7 @@ name = "ms-std-system"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript standard-library natives for @std/system (host details and priorities over rustix)"
+description = "Manuscript standard-library natives for @std/process (host details and priorities over rustix)"
 
 [lib]
 crate-type = ["rlib"]

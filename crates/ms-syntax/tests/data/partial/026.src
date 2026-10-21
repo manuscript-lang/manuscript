@@ -1,7 +1,7 @@
 import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
-import {basename, join, normalize} from "@std/path.ms"
-import {parse, encode_component} from "@std/url.ms"
+import {basename, join, normalize} from "@std/fs.ms"
+import {parse, encode_component} from "@std/net.ms"
 mport {sqrt, sin} from "@std/math.ms"
 
 export fn bench_path_url_math() Unit:

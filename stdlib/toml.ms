@@ -1,5 +1,5 @@
 # TOML 1.0 parser implemented in Manuscript.
-import {parse_int, parse_float} from "@std/numbers.ms"
+import {parse_int, parse_float} from "@std/math.ms"
 import {from_scalars, StringBuilder} from "@std/string.ms"
 import {log, sqrt} from "@std/math.ms"
 
