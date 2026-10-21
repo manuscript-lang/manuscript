@@ -3,7 +3,7 @@
 # conform: origin=pkg/tooling/lsp/mutation_test.go:11 TestFieldWritesAndClonesKeepEditorNavigation
 type Val:
     val: Int
-fn work(value: Val) Unit:
+fn work(var value: Val) Unit:
     let callback = fn() Unit:
         value.val = value.val + 1
     callback()

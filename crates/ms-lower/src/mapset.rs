@@ -176,6 +176,9 @@ impl<'a> FnLower<'a> {
         let text = decl.first().is_some_and(|p| p.ty.to_string() == "String");
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
+            (_, "insert") if matches!(self.b.m.types.kind(mt), TyKind::List(_)) => {
+                "msrt_list_insert_copy".to_string()
+            }
             (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
             // `BytesBuilder.concat` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
             (_, "concat") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),

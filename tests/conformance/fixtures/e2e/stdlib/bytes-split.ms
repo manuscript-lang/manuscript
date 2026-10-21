@@ -10,13 +10,13 @@ test "Bytes split is binary safe":
 
 test "Bytes split handles exact and nonoverlapping separators":
     let empty = Bytes([])
-    try expect_equal(Bytes([0, 7, 0]).split(Bytes([0])), [empty, Bytes([7]), empty])
-    try expect_equal(Bytes([0, 0]).split(Bytes([0])), [empty, empty, empty])
+    try expect_equal(Bytes([0, 7, 0]).split(Bytes([0])), [empty.clone(), Bytes([7]), empty.clone()])
+    try expect_equal(Bytes([0, 0]).split(Bytes([0])), [empty.clone(), empty.clone(), empty.clone()])
     try expect_equal(
         Bytes([255, 0, 9, 255, 0]).split(Bytes([255, 0])),
-        [empty, Bytes([9]), empty]
+        [empty.clone(), Bytes([9]), empty.clone()]
     )
-    try expect_equal(Bytes([1, 1, 1]).split(Bytes([1, 1])), [empty, Bytes([1])])
+    try expect_equal(Bytes([1, 1, 1]).split(Bytes([1, 1])), [empty.clone(), Bytes([1])])
     try expect_equal(Bytes([1]).split(Bytes([1, 2])), [Bytes([1])])
     try expect_equal(empty.split(Bytes([0])), [empty])
 
@@ -83,7 +83,7 @@ test "Bytes split returns independent List storage and immutable views":
     let data = Bytes([1, 0, 2])
     var first = data.split(Bytes([0]))
     let second = data.split(Bytes([0]))
-    let payload = first.get(0)
+    let payload = first.get(0).clone()
     let edited = payload.with_value(0, 99)
     var extracted = payload.values()
     extracted.set(0, 88)
@@ -99,7 +99,7 @@ test "Bytes split returns independent List storage and immutable views":
     try expect_equal(second, [Bytes([1]), Bytes([2])])
     let empty = Bytes([])
     var zero_parts = data.split(Bytes([0]), 0)
-    zero_parts.append(empty)
+    zero_parts.append(empty.clone())
     try expect_false(not (data.split(Bytes([0]), 0).is_empty()))
     var no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))

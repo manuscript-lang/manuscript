@@ -47,9 +47,6 @@ impl List[T]:
     # Removes and returns the last element in place, or none for an empty list.
     var fn pop() Optional[T]:
 
-    # Removes and returns the first element in place, or none for an empty list.
-    var fn shift() Optional[T]:
-
     # Replaces an element in place; negative indexes count from the end.
     # Invalid indexes fault.
     var fn set(index: Int, value: T) Unit:

@@ -1,6 +1,6 @@
 //! Generates the standard-library API reference (`scripts/docgen`).
 //!
-//! Flags mirror the Go tool: `-check` validates source documentation without
+//! Flags: `-check` validates source documentation without
 //! writing generated files, `-downloads` writes only the uncommitted API
 //! downloads (`website/static/stdlib.*`), and `-coverage <file>` writes the
 //! complete description inventory as JSON. `-artifacts <dir>` (default

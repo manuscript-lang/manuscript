@@ -49,13 +49,7 @@ pub(super) fn analyze_with(
     };
     let graph = load_editor_file(filename, LoadOptions::default(), &editor);
     let entry = entry && !graph.library && gopath::base(filename) == "ms.toml";
-    check_graph(
-        graph,
-        CheckRequest {
-            entry,
-            ..CheckRequest::default()
-        },
-    )
+    check_graph(graph, CheckRequest { entry })
 }
 
 /// The checked program, or the failure that stopped it.

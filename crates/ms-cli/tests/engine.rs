@@ -317,7 +317,7 @@ fn native_chains_copy_and_drop_iteratively() {
     let source = write(
         &dir,
         "main.ms",
-        "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\nfn build(n: Int) Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\nfn sum(l: Link, acc: Int) Int:\n    match l:\n        End:\n            return acc\n        More(r):\n            return sum(r, acc)\n        Tag(n, r):\n            return sum(r, acc + n)\n\nexport fn main() Int:\n    let a = build(100000)\n    let b = a\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
+        "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\nfn build(n: Int) Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\nfn sum(l: Link, acc: Int) Int:\n    match l:\n        End:\n            return acc\n        More(r):\n            return sum(r, acc)\n        Tag(n, r):\n            return sum(r, acc + n)\n\nexport fn main() Int:\n    let a = build(100000)\n    let b = a.clone()\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
     );
     let backend = RustBackend::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -332,7 +332,7 @@ fn native_list_element_places_update_the_list() {
     let source = write(
         &dir,
         "main.ms",
-        "type Cell:\n    n: Int\n    tag: String\n\nexport fn main() Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
+        "type Cell:\n    n: Int\n    tag: String\n\nexport fn main() Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells.clone()\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
     );
     let backend = RustBackend::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);

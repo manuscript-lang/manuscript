@@ -61,11 +61,11 @@ test "RSA malformed keys and signatures fail without faulting":
     let signature = try rsa_sign(private, HashAlgorithm.Sha256, data)
     let pss = try rsa_sign_pss(private, HashAlgorithm.Sha256, data)
 
-    for bytes in ["".to_bytes(), bad, private]:
+    for bytes in ["".to_bytes(), bad.clone(), private.clone()]:
         try expect_false(rsa_verify(bytes, HashAlgorithm.Sha256, data, signature))
         try expect_false(rsa_verify_pss(bytes, HashAlgorithm.Sha256, data, pss))
 
-    for bytes in ["".to_bytes(), bad, "truncated".to_bytes()]:
+    for bytes in ["".to_bytes(), bad.clone(), "truncated".to_bytes()]:
         try expect_false(rsa_verify(public, HashAlgorithm.Sha256, data, bytes))
         try expect_false(rsa_verify_pss(public, HashAlgorithm.Sha256, data, bytes))
 
@@ -74,7 +74,7 @@ test "RSA malformed keys and signatures fail without faulting":
     try expect_false(rsa_verify(public, HashAlgorithm.Sha256, data, pss))
     try expect_false(rsa_verify_pss(public, HashAlgorithm.Sha256, data, signature))
 
-    for key in [bad, public]:
+    for key in [bad.clone(), public]:
         try expect_equal(
             rsa_sign(key, HashAlgorithm.Sha256, data).err(),
             CryptoError.InvalidInput
@@ -141,15 +141,15 @@ test "RSA native function values preserve argument order and borrowed bytes":
     let decrypt = rsa_decrypt
     var calls: List[Int] = []
     let direct = try rsa_sign(
-        data: marked(var calls, 1, data),
+        data: marked(var calls, 1, data.clone()),
         hash: HashAlgorithm.Sha256,
-        private_key: marked(var calls, 2, private)
+        private_key: marked(var calls, 2, private.clone())
     )
     try expect_equal(calls, [1, 2])
     let signature = try sign_message(
-        data: marked(var calls, 3, data),
+        data: marked(var calls, 3, data.clone()),
         hash: HashAlgorithm.Sha256,
-        private_key: marked(var calls, 4, private)
+        private_key: marked(var calls, 4, private.clone())
     )
     try expect_equal(calls, [1, 2, 3, 4])
     try expect_equal(signature, direct)

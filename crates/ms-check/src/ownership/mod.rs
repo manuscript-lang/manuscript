@@ -20,7 +20,7 @@ pub use places::{Place, Step};
 use crate::hir::*;
 use crate::types::*;
 use classify::Classifier;
-use modes::{Key, Summary};
+use modes::{Key, Summaries};
 use ms_syntax::Diagnostic;
 use ms_syntax::ast::NodeId;
 use std::collections::{HashMap, HashSet};
@@ -157,8 +157,6 @@ pub struct Ownership {
     facts: HashMap<Key, CallableOwnership>,
     /// Rejected programs, in callable order.
     pub diagnostics: Vec<Diagnostic>,
-    /// The rejections inside callables that hold a mutable borrow.
-    pub borrow_diagnostics: Vec<Diagnostic>,
     /// Identities of the exclusive borrow bindings.
     pub exclusive: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
@@ -178,51 +176,32 @@ pub(crate) fn is_user_module(file: Name) -> bool {
     !file.as_str().starts_with("@std/")
 }
 
-/// Whether a user callable contains `if var` or a `var` binding of a part of another value.
-pub(crate) fn uses_mutable_borrow(program: &crate::checker::Program) -> bool {
-    use ms_syntax::ast::*;
-    struct Scan(bool);
-    impl ms_syntax::visit::Visitor for Scan {
-        fn stmt(&mut self, s: &Stmt) {
-            match &s.kind {
-                StmtKind::If {
-                    binding: Some(_),
-                    mutable: true,
-                    ..
-                } => self.0 = true,
-                StmtKind::Bind {
-                    mutable: true,
-                    value,
-                    ..
-                } if matches!(
-                    value.kind,
-                    ExprKind::Member { .. }
-                        | ExprKind::Index { .. }
-                        | ExprKind::Call { .. }
-                        | ExprKind::Apply { value: Some(_), .. }
-                ) =>
-                {
-                    self.0 = true
+impl Hir<'_> {
+    /// Records, for each interface operation, what its implementations may hand back.
+    /// Returns whether anything changed.
+    fn join_contracts(&self, summaries: &mut Summaries) -> bool {
+        let mut joined: HashMap<(Name, Name), modes::ResultOrigin> = HashMap::new();
+        for m in &self.program().methods {
+            let (Some(c), Some(f)) = (&m.contract, &m.decl) else {
+                continue;
+            };
+            let Some(s) = summaries.get(&(m.module, f.id())) else {
+                continue;
+            };
+            let entry = joined.entry((c.id, f.name())).or_default();
+            for slot in &s.result.slots {
+                if !entry.slots.contains(slot) {
+                    entry.slots.push(*slot);
                 }
-                _ => {}
             }
         }
-    }
-    let hir = program.hir();
-    hir.callables().iter().any(|c| {
-        if !is_user_module(c.module.file) {
+        if joined == summaries.contracts {
             return false;
         }
-        let mut scan = Scan(false);
-        match c.body() {
-            Body::Block(b) => ms_syntax::visit::walk_block(&mut scan, b),
-            Body::Expr(e) => ms_syntax::visit::walk_expr(&mut scan, e),
-        }
-        scan.0
-    })
-}
+        summaries.contracts = joined;
+        true
+    }
 
-impl Hir<'_> {
     /// Checks ownership rules and computes move, borrow and drop facts for
     /// every callable of the user's modules.
     pub fn ownership(&self) -> Ownership {
@@ -241,7 +220,7 @@ impl Hir<'_> {
             .iter()
             .map(|c| live::liveness(&modules[&c.module.file], c))
             .collect();
-        let mut summaries: HashMap<Key, Summary> = HashMap::new();
+        let mut summaries = Summaries::default();
         let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::new();
         let mut outcomes: Vec<walk::Outcome> = Vec::new();
         // Parameter modes and closure escapes feed each other, and both only
@@ -261,7 +240,7 @@ impl Hir<'_> {
                     escaped: &known,
                 });
                 if summaries.get(&key) != Some(&out.summary) {
-                    summaries.insert(key, out.summary.clone());
+                    summaries.decls.insert(key, out.summary.clone());
                     changed = true;
                 }
                 if out.escaped != known {
@@ -270,13 +249,15 @@ impl Hir<'_> {
                 }
                 outcomes.push(out);
             }
+            if self.join_contracts(&mut summaries) {
+                changed = true;
+            }
             if !changed {
                 break;
             }
         }
         let mut facts = HashMap::new();
         let mut diagnostics = Vec::new();
-        let mut borrow_diagnostics = Vec::new();
         let mut exclusive = HashSet::new();
         let mut getters = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
@@ -287,10 +268,7 @@ impl Hir<'_> {
                 .filter(|f| f.exclusive)
                 .map(|f| f.binding.uid)
                 .collect();
-            if !held.is_empty() {
-                borrow_diagnostics.extend(out.diagnostics.iter().cloned());
-                exclusive.extend(held);
-            }
+            exclusive.extend(held);
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);
             }
@@ -300,7 +278,6 @@ impl Hir<'_> {
         Ownership {
             facts,
             diagnostics,
-            borrow_diagnostics,
             exclusive,
             getters,
         }

@@ -4,7 +4,7 @@ import {StringBuilder} from "@std/string.ms"
 import {parse} from "@std/toml.ms"
 
 fn toml_doc(count: Int) String:
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     for i in range(0, count):
         sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.freeze()

@@ -1,5 +1,5 @@
-//! Differential tests: the same client session against the Go server and this
-//! crate's server must produce the same messages.
+//! Snapshot tests: scripted client sessions against this crate's server must
+//! produce the recorded messages.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_rt as _;

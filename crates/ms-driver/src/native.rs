@@ -11,7 +11,6 @@ use ms_mir::opt::{Level, optimize};
 pub enum Profile {
     Debug,
     Release,
-    RelWithDebInfo,
     MinSizeRel,
 }
 
@@ -25,7 +24,7 @@ impl Profile {
                 options.opt_level = "none";
                 Level::None
             }
-            Profile::Release | Profile::RelWithDebInfo => Level::Speed,
+            Profile::Release => Level::Speed,
             Profile::MinSizeRel => {
                 options.opt_level = "speed_and_size";
                 Level::Speed
@@ -92,7 +91,12 @@ pub fn build_executable(
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
-    let linked = ms_clif::link::link_all(&object_path, &[runtime], &staged);
+    let linked = ms_clif::link::link_with(
+        &object_path,
+        &[runtime],
+        &staged,
+        profile == Profile::MinSizeRel,
+    );
     let _ = std::fs::remove_file(&object_path);
     if let Err(error) = linked {
         cleanup();

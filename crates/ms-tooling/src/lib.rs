@@ -1,5 +1,5 @@
-//! Developer tooling over a checked program: a port of `pkg/tooling`. The Go
-//! implementation is the oracle; text and JSON output is byte-identical.
+//! Developer tooling over a checked program: text and JSON output is stable and
+//! covered by golden tests.
 
 pub mod collect;
 pub mod diagram;

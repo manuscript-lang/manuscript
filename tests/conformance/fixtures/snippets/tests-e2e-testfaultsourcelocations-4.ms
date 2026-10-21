@@ -6,11 +6,11 @@ interface Counter:
 type Cell:
     total: Int
 impl Counter for Cell:
-    fn bump(by: Int) Int:
+    var fn bump(by: Int) Int:
         self.total += by
         return self.total
 fn probe(value: Int) Int:
-    let cell = Cell(0)
+    var cell = Cell(0)
     cell.bump(value)
     cell.bump(1)
     return cell.total

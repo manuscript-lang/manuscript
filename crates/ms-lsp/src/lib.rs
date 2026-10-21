@@ -2,8 +2,8 @@
 //!
 //! [`serve`] speaks LSP over framed JSON-RPC. Every feature reads a checked
 //! [`ms_check::Program`] built by `ms-driver` from the open documents and the
-//! files they import; the Go server in `pkg/tooling/lsp` is the behavioural
-//! authority.
+//! files they import; the recorded protocol sessions in
+//! `tests/` are the behavioural reference.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 #[cfg(test)]

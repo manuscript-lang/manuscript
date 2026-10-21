@@ -5,7 +5,9 @@ import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    let _written = stdout().write(text)
+    # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
+    let _flushed = stdout().flush()
 
 type WorkerCleanup:
     label: String
@@ -20,7 +22,7 @@ type Server:
     closed: Bool = false
 
 impl Closeable for Server:
-    fn close() Unit:
+    var fn close() Unit:
         if self.closed:
             return
 
@@ -38,15 +40,15 @@ impl Closeable for Server:
 
 fn serve() Result[Unit, Error]:
     with signals = try control().watch_signals([2, 15]):
-        with listener = try network().listen("127.0.0.1:0"):
-            say("{listener.address()}\n")
+        let listener = try network().listen("127.0.0.1:0")
+        say("{listener.address()}\n")
+        let client = try listener.accept()
 
-            with client = try listener.accept():
-                with server = Server(listener: listener, client: client):
-                    with cleanup = WorkerCleanup(label: "worker"):
-                        say("ready\n")
-                        let _observed = signals.next()
-                        return ok(unit)
+        with server = Server(listener: listener, client: client):
+            with cleanup = WorkerCleanup(label: "worker"):
+                say("ready\n")
+                let _observed = signals.next()
+                return ok(unit)
 
 export fn main() Int:
     let served = serve()

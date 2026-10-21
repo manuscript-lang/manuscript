@@ -21,7 +21,7 @@ test "int map":
     try expect_true((lookup(m: m, key: 3) == "missing"))
     var total = 0
 
-    for entry in m:
+    for entry in m.clone():
         m.add(key: 10 + total, value: "x")
         total = total + 1
 

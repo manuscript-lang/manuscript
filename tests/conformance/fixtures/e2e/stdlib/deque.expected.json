@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "deque.ms::both ends push and pop",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "deque.ms::indexed reads follow the front",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "deque.ms::wraps around and grows past the first buffer",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "deque.ms::a copy is independent and clear empties",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "deque.ms::optional elements keep none distinct from absent",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN deque.ms::both ends push and pop\nPASS deque.ms::both ends push and pop\nRUN deque.ms::indexed reads follow the front\nPASS deque.ms::indexed reads follow the front\nRUN deque.ms::wraps around and grows past the first buffer\nPASS deque.ms::wraps around and grows past the first buffer\nRUN deque.ms::a copy is independent and clear empties\nPASS deque.ms::a copy is independent and clear empties\nRUN deque.ms::optional elements keep none distinct from absent\nPASS deque.ms::optional elements keep none distinct from absent\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

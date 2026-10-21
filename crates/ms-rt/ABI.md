@@ -75,7 +75,6 @@ recorded here before it is committed.)_
     consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
     `range`, `range_by`, `keys`, `join` build fresh owned results through `out`. Sorting is stable merge sort with the comparator thunk
     `extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64` (negative = before); `env` is the closure the compiler passes.
-    `msrt_list_shift` (Collections.shift) is O(n) (memmove) because a list has no head offset; queue-heavy programs should use `Queue`.
   - Bytes/BytesBuilder/StringBuilder share `VecVal`; `msrt_bytes_append/extend`, `msrt_strbuilder_append`; `msrt_strbuilder_freeze` **consumes** the builder.
   - Maps/Sets (`msrt_map_*`, `msrt_set_*`): insertion ordered; `msrt_map_add` consumes key and value (replacing keeps the original position),
     `msrt_map_get_ptr` returns a borrowed value pointer or null, `msrt_map_get` copies; set algebra builds fresh sets in left-operand order.

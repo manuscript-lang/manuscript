@@ -1,4 +1,4 @@
-//! Declaration-only source excerpts (`pkg/checker/documentation_syntax.go`):
+//! Declaration-only source excerpts:
 //! source names and order are kept, function bodies are omitted.
 
 use crate::source::Source;

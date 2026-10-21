@@ -21,7 +21,7 @@ impl ReadStream for Chunks:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
-            return ok(some(part))
+            return ok(some(part.clone()))
 
         if let cause = self.failure: return error(cause)
 
@@ -203,31 +203,31 @@ test "reader decodes a borrowed stream and leaves it open":
         ],
         none
     )
-    let events = try reader(ReadStream(source))
-    let first = (try next_event(events)).get()
-    let second = (try next_event(events)).get()
+    var events = try reader(ReadStream(source.clone()))
+    let first = (try next_event(var events)).get()
+    let second = (try next_event(var events)).get()
     try expect_false(first.data != "hello" or second.data != "2")
-    try expect_false((try next_event(events)).is_some())
-    try expect_false((try next_event(events)).is_some())
+    try expect_false((try next_event(var events)).is_some())
+    try expect_false((try next_event(var events)).is_some())
     try expect_false(source.closed)
 
 test "reader reports truncation limits and read failures":
-    let cut = try reader(ReadStream(stream(["data: a\n".to_bytes()], none)))
-    let truncated = next_event(cut)
+    var cut = try reader(ReadStream(stream(["data: a\n".to_bytes()], none)))
+    let truncated = next_event(var cut)
     try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
-    let big = try reader(
+    var big = try reader(
         ReadStream(stream(["data: abcdef\n\n".to_bytes()], none)),
         SseLimits(some(4))
     )
-    let limited = next_event(big)
+    let limited = next_event(var big)
     try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
-    let broken = try reader(
+    var broken = try reader(
         ReadStream(
             value: stream(["data: a\n\n".to_bytes()], some(IoError.Closed))
         )
     )
-    let _event = try next_event(broken)
-    let failed = next_event(broken)
+    let _event = try next_event(var broken)
+    let failed = next_event(var broken)
     try expect_false(failed.is_ok())
     try expect_equal(failed.err(), SseError.ReadFailed(IoError.Closed))
     try expect_false(reader(ReadStream(stream([], none)), chunk_bytes: some(0)).is_ok())

@@ -1,4 +1,4 @@
-//! Ports of `pkg/tooling/guide/{guide,search}_test.go`.
+//! Tests for the guide and search modules.
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_guide::{cheatsheet, format_matches, index, module_names, page, search, standard_library};

@@ -404,6 +404,31 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
     }
 }
 
+/// `insert` of a lent element: the list stores its own copy, and the caller keeps `e`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    index: i64,
+    e: *const u8,
+) {
+    // SAFETY: caller contract; the copy is a fresh slot that the insert takes over.
+    unsafe {
+        let mut copy = core::mem::MaybeUninit::<[u64; 8]>::uninit();
+        let size = (*d).size as usize;
+        let dst = if size <= 64 {
+            copy.as_mut_ptr() as *mut u8
+        } else {
+            alloc::alloc(size)
+        };
+        slot_copy(&*d, e, dst);
+        msrt_list_insert(v, d, index, dst);
+        if size > 64 {
+            alloc::free(dst);
+        }
+    }
+}
+
 /// Removes the last element into `out`; 0 when empty.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_pop(
@@ -419,27 +444,6 @@ pub unsafe extern "C-unwind" fn msrt_list_pop(
         }
         v.len -= 1;
         core::ptr::copy_nonoverlapping(elem(v, d, v.len), out, d.size as usize);
-        1
-    }
-}
-
-/// Removes the first element into `out` (`Collections.shift`).
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_shift(
-    v: *mut VecVal,
-    d: *const TypeDesc,
-    out: *mut u8,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let (v, d) = (&mut *v, &*d);
-        if v.len == 0 {
-            return 0;
-        }
-        let size = d.size as usize;
-        core::ptr::copy_nonoverlapping(v.ptr, out, size);
-        core::ptr::copy(v.ptr.add(size), v.ptr, (v.len - 1) * size);
-        v.len -= 1;
         1
     }
 }

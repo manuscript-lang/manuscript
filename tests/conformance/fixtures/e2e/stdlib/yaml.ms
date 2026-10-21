@@ -708,11 +708,11 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     )
     let list = (try items(root))
     list.length() | try expect_equal(expected: 3)
-    let first = (try entries(list.first().get()))
+    let first = (try entries(list.first().get().clone()))
     first.get("b").get() | try expect_equal(expected: YamlValue.NumberValue("2"))
-    (try items(list.get(1))).length() | try expect_equal(expected: 2)
+    (try items(list.get(1).clone())).length() | try expect_equal(expected: 2)
     (
-        (try entries(list.last().get())).get("d").get() | try expect_equal(
+        (try entries(list.last().get().clone())).get("d").get() | try expect_equal(
             expected: YamlValue.NumberValue("4")
         )
     )

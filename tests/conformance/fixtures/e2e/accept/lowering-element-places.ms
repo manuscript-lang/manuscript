@@ -49,7 +49,7 @@ test "field assignment and mutators through a variable element index":
 test "an eager get_or fallback is released when the key is present":
     var m = Map[String, List[Int]]()
     m.add(key: "k", value: [1, 2])
-    var got = m.get_or(key: "k", fallback: List[Int]())
+    var got = m.get_or(key: "k", fallback: List[Int]()).clone()
     got.append(3)
     try expect_equal(got, [1, 2, 3])
     try expect_equal(m.get_or(key: "k", fallback: List[Int]()), [1, 2])

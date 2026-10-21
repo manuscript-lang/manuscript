@@ -3,11 +3,11 @@
 
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
-use super::modes::{CallModes, Key, ParamMode, ResultOrigin, Slot, Summary, call_modes};
+use super::modes::{CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
-use ms_syntax::{Phase, Pos, visit};
+use ms_syntax::{DiagnosticFix, Phase, Pos, visit};
 use std::sync::Arc;
 
 struct Positions(HashMap<NodeId, Pos>);
@@ -28,7 +28,7 @@ pub struct Context<'a> {
     pub m: &'a ModuleHir,
     pub c: &'a Callable,
     pub classes: &'a Classifier,
-    pub summaries: &'a HashMap<Key, Summary>,
+    pub summaries: &'a Summaries,
     pub live: &'a Liveness,
     /// Lambdas known to escape, from the previous iteration.
     pub escaped: &'a HashSet<NodeId>,
@@ -133,6 +133,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         owned_return: false,
         lends: Vec::new(),
         getters: HashMap::new(),
+        let_pos: HashMap::new(),
+        used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
     };
     w.run();
     let declared = Summary::declared(&cx.c.func);
@@ -198,6 +200,37 @@ struct Walker<'a> {
     owned_return: bool,
     lends: Vec<Lend>,
     getters: HashMap<NodeId, Vec<Name>>,
+    /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
+    let_pos: HashMap<usize, Pos>,
+    /// Bindings that are read, changed or moved somewhere after their declaration.
+    used: HashSet<usize>,
+}
+
+/// A fix that inserts `text` at `pos`.
+fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
+    DiagnosticFix {
+        pos,
+        end: pos,
+        replacement: text.to_string(),
+    }
+}
+
+/// `pos` moved forward by `n` bytes on its line.
+fn forward(pos: Pos, n: usize) -> Pos {
+    Pos {
+        offset: pos.offset + n as u32,
+        line: pos.line,
+        column: pos.column + n as u32,
+    }
+}
+
+/// `pos` moved back by `n` bytes on its line.
+fn back(pos: Pos, n: u32) -> Pos {
+    Pos {
+        offset: pos.offset.saturating_sub(n),
+        line: pos.line,
+        column: pos.column.saturating_sub(n).max(1),
+    }
 }
 
 impl Walker<'_> {
@@ -226,7 +259,8 @@ impl Walker<'_> {
             self.declare(b, Role::SelfValue, perm, None, true);
         }
         if let Some(b) = &c.fixture {
-            self.declare(b, Role::Fixture, Perm::Immutable, None, false);
+            // The fixture is state the tests share and the hooks change.
+            self.declare(b, Role::Fixture, Perm::Mutable, None, false);
         }
         let mut positions = Positions(HashMap::new());
         match c.body() {
@@ -528,6 +562,18 @@ impl Walker<'_> {
         });
     }
 
+    /// Reports like `error`, with a machine-applicable fix.
+    fn error_fix(&mut self, pos: Pos, message: impl Into<String>, fix: DiagnosticFix) {
+        let message = message.into();
+        self.error(pos, message.clone());
+        if let Some(d) = self.diags.last_mut()
+            && d.pos == pos
+            && d.message == message
+        {
+            d.fix = Some(fix);
+        }
+    }
+
     fn at(&self, node: NodeId) -> String {
         self.positions
             .get(&node)
@@ -649,7 +695,10 @@ impl Walker<'_> {
     fn is_place(&self, e: &Expr) -> bool {
         match &e.kind {
             ExprKind::Name(_) => matches!(self.cx.m.resolution(e), Resolution::Local(_)),
-            ExprKind::Member { left, .. } => self.is_place(left),
+            // A bound method (`value.method` as a function value) is a new closure, not a part.
+            ExprKind::Member { left, .. } => {
+                self.cx.m.ty(e).kind != Kind::Function && self.is_place(left)
+            }
             ExprKind::Index { left, .. } => self.is_place(left),
             ExprKind::Apply {
                 left,
@@ -874,6 +923,9 @@ impl Walker<'_> {
             return;
         };
         let role = if mutable { Role::Var } else { Role::Let };
+        if !mutable {
+            self.let_pos.insert(b.uid, s.pos);
+        }
         let class = self.cx.classes.class(&b.ty);
         if mutable && class != Class::Copy && self.bind_getter(&b, role, pattern, value) {
             return;
@@ -1014,7 +1066,7 @@ impl Walker<'_> {
         if let Some(m) = self.meta.get_mut(&b.uid) {
             m.lambda = Some(value.id);
         }
-        if !escaping && !origins.is_empty() {
+        if !escaping && !origins.is_empty() && self.used.contains(&b.uid) {
             self.active.push(Borrow {
                 holder: b.uid,
                 holder_name: b.name,
@@ -1105,26 +1157,55 @@ impl Walker<'_> {
                     ),
                 );
             }
-            Perm::Immutable if receiver => self.error(
-                pos,
-                format!("cannot {what} `{text}`: this method does not change its receiver; declare it `var fn` to allow that"),
-            ),
-            Perm::Immutable if parameter.is_some() => self.error(
-                pos,
-                format!(
+            Perm::Immutable if receiver => {
+                let message = format!(
+                    "cannot {what} `{text}`: this method does not change its receiver; declare it `var fn` to allow that"
+                );
+                match self.cx.c.func.method() {
+                    Some(m) => self.error_fix(pos, message, insert_at(back(m.pos, 3), "var ")),
+                    None => self.error(pos, message),
+                }
+            }
+            Perm::Immutable if parameter.is_some() => {
+                let message = format!(
                     "cannot {what} `{text}`: parameter `{}` is not declared var; write `var {}: <Type>` in the signature and pass `var` at every call",
                     root.name, root.name
-                ),
-            ),
+                );
+                let declared = match (self.cx.c.func.method(), self.cx.c.func.func()) {
+                    (Some(m), _) => m.func.params.get(parameter.unwrap_or(0)).map(|p| p.pos),
+                    (None, Some(f)) => f.params.get(parameter.unwrap_or(0)).map(|p| p.pos),
+                    (None, None) => None,
+                };
+                match declared {
+                    Some(at) => self.error_fix(pos, message, insert_at(at, "var ")),
+                    None => self.error(pos, message),
+                }
+            }
             Perm::Immutable => {
                 let _ = role;
-                self.error(
-                    pos,
-                    format!(
-                        "cannot {what} `{text}`: `{}` is declared with let, which is immutable including its contents; declare it `var {}` to change it",
-                        root.name, root.name
-                    ),
+                let message = format!(
+                    "cannot {what} `{text}`: `{}` is declared with let, which is immutable including its contents; declare it `var {}` to change it",
+                    root.name, root.name
                 );
+                match self.let_pos.get(&root.uid).copied() {
+                    Some(at) => {
+                        let end = Pos {
+                            offset: at.offset + 3,
+                            line: at.line,
+                            column: at.column + 3,
+                        };
+                        self.error_fix(
+                            pos,
+                            message,
+                            DiagnosticFix {
+                                pos: at,
+                                end,
+                                replacement: "var".to_string(),
+                            },
+                        )
+                    }
+                    None => self.error(pos, message),
+                }
             }
         }
         self.check_change(pos, &info.resolved, what, &text, Some(root.uid));
@@ -1478,9 +1559,10 @@ impl Walker<'_> {
             return;
         }
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
-            self.error(
+            self.error_fix(
                 e.pos,
                 format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
+                insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
             );
             self.record(e.id, b, Access::Move);
             return;
@@ -1494,9 +1576,10 @@ impl Walker<'_> {
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error(
+            self.error_fix(
                 e.pos,
                 format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
+                insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
             );
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
@@ -1512,25 +1595,16 @@ impl Walker<'_> {
 
     fn projection(&mut self, e: &Expr, d: Demand) {
         if !self.is_place(e) {
-            // A part of a computed value.
+            // A part of a computed value. Copying a `Copy` part leaves the whole where it is.
+            let take = d == Demand::Consume
+                && self.class_of(e) != Class::Copy
+                && self.cx.m.ty(e).kind != Kind::Function;
             match &e.kind {
-                ExprKind::Member { left, .. } => self.expr(
-                    left,
-                    if d == Demand::Consume {
-                        Demand::Consume
-                    } else {
-                        Demand::Read
-                    },
-                ),
+                ExprKind::Member { left, .. } => {
+                    self.expr(left, if take { Demand::Consume } else { Demand::Read })
+                }
                 ExprKind::Index { left, index } => {
-                    self.expr(
-                        left,
-                        if d == Demand::Consume {
-                            Demand::Consume
-                        } else {
-                            Demand::Read
-                        },
-                    );
+                    self.expr(left, if take { Demand::Consume } else { Demand::Read });
                     self.expr(index, Demand::Read);
                 }
                 ExprKind::Apply { left, value, .. } => {
@@ -1589,13 +1663,19 @@ impl Walker<'_> {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let param = param_names.get(i).copied().unwrap_or_else(|| n("?"));
             match (mode, a.mutable) {
-                (ParamMode::Mutate, false) => self.error(
+                (ParamMode::Mutate, false) => self.error_fix(
                     a.value.pos,
                     format!("parameter `{param}` of `{name}` is declared var, so the call must say so; write `var {}`", self.expr_text(&a.value)),
+                    insert_at(a.value.pos, "var "),
                 ),
-                (ParamMode::Borrow | ParamMode::Consume, true) => self.error(
+                (ParamMode::Borrow | ParamMode::Consume, true) => self.error_fix(
                     a.value.pos,
                     format!("`{name}` does not change its parameter `{param}`; remove `var` from the argument"),
+                    DiagnosticFix {
+                        pos: back(a.value.pos, 4),
+                        end: a.value.pos,
+                        replacement: String::new(),
+                    },
                 ),
                 _ => {}
             }
@@ -1658,6 +1738,13 @@ impl Walker<'_> {
         // consumes it; only a result borrowed from a variable or part of one must stay in place.
         let on_place = receiver_expr.is_some_and(|r| self.is_place(r));
         if modes.accessor && on_place && d == Demand::Consume && self.class_of(e) != Class::Copy {
+            // Returning the part of a read-only parameter lends it to the caller.
+            let lent = self
+                .pure_origins(e)
+                .is_some_and(|origins| self.lend(e, &origins, None));
+            if lent {
+                return;
+            }
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
             self.error(
                 e.pos,
@@ -1889,6 +1976,12 @@ impl Walker<'_> {
                     };
                     self.mutate(e.pos, &info, "change");
                     facts.push((b.uid, CaptureMode::BorrowMut));
+                } else if class == Class::Copy {
+                    // A `Copy` value the closure only reads is copied into it.
+                    self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+                    self.record(e.id, b, Access::Copy);
+                    facts.push((b.uid, CaptureMode::Copy));
+                    continue;
                 } else {
                     self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Borrow);

@@ -27,7 +27,7 @@ Verify: multiline function parameters retain their original LF/CRLF positions, n
 Verified: resolve the nearest manifest before sharing analysis. A standalone file symlink can select a different source root and confinement error from its destination; a symlinked manifest retains its containing directory. Distinct URIs can decode to one filename with different requested text, so those overlays cannot share a checked result. Keep default and selected-module recovery separate, private completion repair uncached, and strict workspace graphs transient. Apply queued incremental ranges in order and publish the newest errors before request, close, and EOF barriers.
 
 Apply when: changing language-server analysis caching, workspaces, or scheduling.
-Evidence: [analysis](../crates/ms-lsp/src/analysis.rs), [workspace](../crates/ms-lsp/src/workspace.rs), [overlays](../crates/ms-project/src/overlay.rs), [differential tests](../crates/ms-lsp/tests/differential.rs).
+Evidence: [analysis](../crates/ms-lsp/src/analysis.rs), [workspace](../crates/ms-lsp/src/workspace.rs), [overlays](../crates/ms-project/src/overlay.rs), [snapshot tests](../crates/ms-lsp/tests/snapshots.rs).
 Verify: compare cached results with uncached analysis in both query orders.
 
 ### Standard declarations are source that tools must navigate
