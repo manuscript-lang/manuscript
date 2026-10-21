@@ -164,9 +164,8 @@ jobs:
       # linker leave those references unresolved. Distribution builds never use this flag.
       - name: Tests and doc tests
         if: matrix.full || matrix.tests
-        env:
-          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C link-arg=/FORCE:UNRESOLVED' || '' }}
         run: |
+          if [ "$RUNNER_OS" = Windows ]; then export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'; fi
           cargo build --workspace --tests --locked --keep-going
           cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
