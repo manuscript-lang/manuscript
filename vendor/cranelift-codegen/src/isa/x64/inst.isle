@@ -3881,10 +3881,20 @@
       (is_nonzero
        (is_second_result uadd @ (uadd_overflow (fits_in_64 ty) x y)))
       (if-let (first_result sum_value) uadd)
-      (let ((producer ProducesFlags (x64_add_with_flags_paired ty x y)))
+      (let ((producer ProducesFlags (x64_add_with_flags_paired ty x (gpr_or_simm32 y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer sum_value)
          (CC.B))))
+
+;; The second operand of a fused overflow check: an immediate or a register, never a
+;; memory operand. The instruction that produced the flags is still lowered on its own
+;; when its result has other uses, and a load cannot be folded into both.
+(decl gpr_no_load (Value) GprMem)
+(rule (gpr_no_load val) (gpr_to_gpr_mem (put_in_gpr val)))
+
+(decl gpr_or_simm32 (Value) GprMemImm)
+(rule 1 (gpr_or_simm32 (simm32_from_value imm)) imm)
+(rule 0 (gpr_or_simm32 val) (gpr_to_gpr_mem_imm (put_in_gpr val)))
 
 ;; The same for the signed and subtracting forms: `add`/`sub` set OF (signed) and CF
 ;; (unsigned borrow) themselves, so a `brif` on the flag needs no `seto`/`setb`.
@@ -3892,7 +3902,7 @@
       (is_nonzero
        (is_second_result sadd @ (sadd_overflow (fits_in_64 ty) x y)))
       (if-let (first_result sum_value) sadd)
-      (let ((producer ProducesFlags (x64_add_with_flags_paired ty x y)))
+      (let ((producer ProducesFlags (x64_add_with_flags_paired ty x (gpr_or_simm32 y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer sum_value)
          (CC.O))))
@@ -3901,7 +3911,7 @@
       (is_nonzero
        (is_second_result ssub @ (ssub_overflow (fits_in_64 ty) x y)))
       (if-let (first_result diff_value) ssub)
-      (let ((producer ProducesFlags (x64_sub_with_flags_paired ty x y)))
+      (let ((producer ProducesFlags (x64_sub_with_flags_paired ty x (gpr_or_simm32 y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer diff_value)
          (CC.O))))
@@ -3910,7 +3920,7 @@
       (is_nonzero
        (is_second_result usub @ (usub_overflow (fits_in_64 ty) x y)))
       (if-let (first_result diff_value) usub)
-      (let ((producer ProducesFlags (x64_sub_with_flags_paired ty x y)))
+      (let ((producer ProducesFlags (x64_sub_with_flags_paired ty x (gpr_or_simm32 y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer diff_value)
          (CC.B))))
@@ -3923,7 +3933,7 @@
       (is_nonzero
        (is_second_result umul @ (umul_overflow _ x y @ (value_type (ty_int_ref_16_to_64 ty)))))
       (if-let (first_result prod_value) umul)
-      (let ((producer ProducesFlags (x64_mul_lo_with_flags_paired ty false x y)))
+      (let ((producer ProducesFlags (x64_mul_lo_with_flags_paired ty false x (gpr_no_load y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer prod_value)
          (CC.O))))
@@ -3932,7 +3942,7 @@
       (is_nonzero
        (is_second_result umul @ (umul_overflow _ x y @ (value_type $I8))))
       (if-let (first_result prod_value) umul)
-      (let ((producer ProducesFlags (x64_mul8_with_flags_paired false x y)))
+      (let ((producer ProducesFlags (x64_mul8_with_flags_paired false x (gpr_no_load y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer prod_value)
          (CC.O))))
@@ -3941,7 +3951,7 @@
       (is_nonzero
        (is_second_result smul @ (smul_overflow _ x y @ (value_type (ty_int_ref_16_to_64 ty)))))
       (if-let (first_result prod_value) smul)
-      (let ((producer ProducesFlags (x64_mul_lo_with_flags_paired ty true x y)))
+      (let ((producer ProducesFlags (x64_mul_lo_with_flags_paired ty true x (gpr_no_load y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer prod_value)
          (CC.O))))
@@ -3950,7 +3960,7 @@
       (is_nonzero
        (is_second_result smul @ (smul_overflow _ x y @ (value_type $I8))))
       (if-let (first_result prod_value) smul)
-      (let ((producer ProducesFlags (x64_mul8_with_flags_paired true x y)))
+      (let ((producer ProducesFlags (x64_mul8_with_flags_paired true x (gpr_no_load y))))
         (CondResult.CC
          (produces_flags_opportunistic_def producer prod_value)
          (CC.O))))

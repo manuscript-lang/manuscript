@@ -678,7 +678,7 @@ fn random_programs_agree() {
     let n: u64 = std::env::var("FUZZ_N")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(40);
+        .unwrap_or(400);
     let first: u64 = std::env::var("FUZZ_SEED")
         .ok()
         .and_then(|v| v.parse().ok())

@@ -10,3 +10,11 @@ two instructions from every checked addition and subtraction on x86-64.
 
 Wired in through `[patch.crates-io]` in the workspace `Cargo.toml`. Drop the directory and the patch entry when
 a Cranelift release contains the same rules. The crate's own license is `LICENSE`.
+
+A second change fixes an assertion (`value_lowered_uses == 0` in `sink_inst`) that the flag fusion
+for `uadd`, `umul` and `smul` (and with this patch `sadd`, `ssub`, `usub`) can reach: the producing
+instruction may be lowered twice, once folded into the branch and once on its own, and each lowering
+tried to fold the same operand load into the arithmetic instruction. The fused and flags-unused rules
+now take their second operand as an immediate or a register (`gpr_or_simm32`, `gpr_no_load`). Manuscript's
+`random_programs_agree` test found it (26 of 1500 seeds; 6 failed before the patch because `imul.chk` already
+took the path).
