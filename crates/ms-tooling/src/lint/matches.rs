@@ -76,6 +76,9 @@ impl Visitor for Scan<'_> {
         let ExprKind::Match { scrutinee, arms } = &e.kind else {
             return;
         };
+        if !e.is_written_match() {
+            return;
+        }
         if self.depth > 0 {
             self.findings.push(finding(
                 "MSL107",
@@ -89,7 +92,7 @@ impl Visitor for Scan<'_> {
     }
 
     fn leave_expr(&mut self, e: &Expr) {
-        if matches!(e.kind, ExprKind::Match { .. }) {
+        if e.is_written_match() {
             self.depth -= 1;
         }
     }

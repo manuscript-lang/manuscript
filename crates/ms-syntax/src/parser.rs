@@ -1903,10 +1903,8 @@ impl<'a> Parser<'a> {
                     }),
                 )
             }
+            Tok::If => self.if_expression(t)?,
             _ => {
-                if t.kind == Tok::If {
-                    return self.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'");
-                }
                 let before = if self.at > 1 {
                     self.tokens[self.at - 2].kind
                 } else {
@@ -2179,6 +2177,48 @@ impl<'a> Parser<'a> {
 
     // ---- match ----
 
+    /// `if c: a else: b` (also `else if`) as a match over the Bool `c`.
+    fn if_expression(&mut self, t: Token) -> PResult<Expr> {
+        let cond = self.expression(0)?;
+        self.need(Tok::Colon)?;
+        let then = self.expression(0)?;
+        if self.kind() != Tok::Else {
+            let at = self.peek();
+            return self.fail(at, "an if expression needs an else branch; write 'if c: a else: b', or use an if statement when no value is needed");
+        }
+        let else_token = self.peek();
+        self.at += 1;
+        let els = if self.kind() == Tok::If {
+            let nested = self.peek();
+            self.at += 1;
+            self.if_expression(nested)?
+        } else {
+            self.need(Tok::Colon)?;
+            self.expression(0)?
+        };
+        let mut arms = Vec::new();
+        for (value, branch, pos) in [(true, then, t.pos), (false, els, else_token.pos)] {
+            let path = self.mk(pos, ExprKind::Bool(value));
+            let id = self.id();
+            arms.push(Arm {
+                id,
+                pos,
+                path,
+                bindings: Vec::new(),
+                body: Vec::new(),
+                value: Some(branch),
+                from_if: true,
+            });
+        }
+        Ok(self.mk(
+            t.pos,
+            ExprKind::Match {
+                scrutinee: Box::new(cond),
+                arms,
+            },
+        ))
+    }
+
     fn match_arms(&mut self, header: Token) -> PResult<Vec<Arm>> {
         let mut arms: Vec<Arm> = Vec::new();
         self.need(Tok::Colon)?;
@@ -2236,6 +2276,7 @@ impl<'a> Parser<'a> {
                 bindings,
                 body: Vec::new(),
                 value: None,
+                from_if: false,
             };
             self.value_arm(&mut arm)?;
             arms.push(arm);

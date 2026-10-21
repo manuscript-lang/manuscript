@@ -2,7 +2,7 @@
 //! fixture under `tests/` may opt out with a reason on the preceding line.
 
 use crate::skipped;
-use ms_syntax::ast::{Expr, ExprKind, Module};
+use ms_syntax::ast::{Expr, Module};
 use ms_syntax::parser::parse;
 use ms_syntax::visit::{Visitor, walk_decl};
 use std::sync::Arc;
@@ -106,7 +106,7 @@ fn nested_match_lines(module: &Module) -> Vec<usize> {
     }
     impl Visitor for Scan {
         fn expr(&mut self, e: &Expr) {
-            if matches!(e.kind, ExprKind::Match { .. }) {
+            if e.is_written_match() {
                 if self.depth > 0 {
                     self.lines.push(e.pos.line as usize);
                 }
@@ -114,7 +114,7 @@ fn nested_match_lines(module: &Module) -> Vec<usize> {
             }
         }
         fn leave_expr(&mut self, e: &Expr) {
-            if matches!(e.kind, ExprKind::Match { .. }) {
+            if e.is_written_match() {
                 self.depth -= 1;
             }
         }

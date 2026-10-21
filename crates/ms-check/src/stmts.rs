@@ -524,6 +524,13 @@ impl Checker {
         if t.id == "<invalid>" {
             return (false, false);
         }
+        if arms.first().is_some_and(|a| a.from_if) && t.id != "Bool" {
+            self.type_error(
+                pos,
+                format!("an if condition must be Bool, found {t}; compare explicitly, e.g. 'x != 0'"),
+            );
+            return (true, false);
+        }
         if matches!(t.id.as_str(), "Int" | "String" | "Bool") {
             return self.match_literals(pos, &t, arms, &info, body);
         }

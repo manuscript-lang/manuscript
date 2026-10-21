@@ -406,6 +406,13 @@ pub enum ExprKind {
     },
 }
 
+impl Expr {
+    /// A written `match`, not the Bool match an `if` expression stands for.
+    pub fn is_written_match(&self) -> bool {
+        matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))
+    }
+}
+
 /// A `key: value` map literal entry.
 #[derive(Debug, Clone)]
 pub struct MapEntry {
@@ -557,6 +564,8 @@ pub struct Arm {
     pub body: Vec<Stmt>,
     /// The arm's final expression; `None` yields `Unit`.
     pub value: Option<Expr>,
+    /// The arm is a branch of an `if` expression written `if c: a else: b`.
+    pub from_if: bool,
 }
 
 /// A payload binding in a match arm.
