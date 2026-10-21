@@ -1830,7 +1830,7 @@ fn callback() Unit:
     return values.map(transform: transform)
 fn search[T](values: List[T], value: T) Bool:
     return values.contains(value: value)
-resolution	2	19	64	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 45 members in totalfn wrong(data: Bytes) List[Bytes]:
+resolution	2	19	64	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 44 members in totalfn wrong(data: Bytes) List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	16	15	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn first() Unit:
     let values = parse	2	18	34	expected an expression, found end of line; write a value, name, call, or literal herelet value = result(fn():
@@ -2258,9 +2258,9 @@ fn probe() Int:
     return sum + values.length()
 fn wrong() Int:
     let values = [fn() Int: 1]
-    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; available starting with 'd': distinct, drop; 45 members in totalfn wrong() List[Int]:
+    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; available starting with 'd': distinct, drop; 44 members in totalfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, shift, slice, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -6325,15 +6325,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, shift, slice, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, shift, slice, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, shift, slice, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")

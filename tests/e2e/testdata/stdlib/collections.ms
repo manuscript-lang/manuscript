@@ -172,11 +172,6 @@ test "imported map add interoperates with with_entry":
     add("c", 4)
     try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])
 
-test "flatten concatenates and shift removes the first item":
+test "flatten concatenates lists":
     try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
     try expect_equal(flatten(List[List[Int]]()), List[Int]())
-    let values = [1, 2, 3]
-    try expect_equal(values.shift(), some(1))
-    try expect_equal(values, [2, 3])
-    let empty = List[Int]()
-    try expect_equal(empty.shift(), none)
