@@ -22,7 +22,10 @@ fn arm_case(path: &Expr) -> Option<String> {
 pub(crate) fn is_literal(path: &Expr) -> bool {
     match &path.kind {
         ExprKind::Number(_) | ExprKind::Text(_) | ExprKind::Bool(_) => true,
-        ExprKind::Unary { op: UnaryOp::Neg, operand } => matches!(operand.kind, ExprKind::Number(_)),
+        ExprKind::Unary {
+            op: UnaryOp::Neg,
+            operand,
+        } => matches!(operand.kind, ExprKind::Number(_)),
         _ => false,
     }
 }

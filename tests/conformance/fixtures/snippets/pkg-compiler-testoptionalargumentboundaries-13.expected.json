@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected Optional[Int], found Int (in entry 1 of the literal, whose entries share one type)",
-        "position": {
-          "file": "pkg-compiler-testoptionalargumentboundaries-13.ms",
-          "line": 5,
-          "column": 20,
-          "offset": 224
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-13.ms:5:20: type: expected Optional[Int], found Int (in entry 1 of the literal, whose entries share one type)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked pkg-compiler-testoptionalargumentboundaries-13.ms\n",
+      "stderr": ""
     }
   }
 }

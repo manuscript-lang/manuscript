@@ -64,6 +64,17 @@ fn tag_count() Int:
 # tag_count() returns 2.
 ```
 
+A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
+
+```manuscript
+fn total(values: List[Int]) Int:
+    var sum = 0
+    values.for_each(fn(value):
+        sum += value
+    )
+    return sum
+```
+
 A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
 
 ## Resource captures

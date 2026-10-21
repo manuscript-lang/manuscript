@@ -263,8 +263,14 @@ impl<'a> FnLower<'a> {
                 let o = self.owned(v);
                 let var = self.b.declare_var(ty, Mode::Own);
                 self.b.def_var(var, o);
-                self.locals
-                    .insert(binding.uid, crate::func::Local { var, ty, slot: None });
+                self.locals.insert(
+                    binding.uid,
+                    crate::func::Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
                 changed.push((j, var));
             } else {
                 self.bind_borrowed(&binding, v.v);

@@ -2181,6 +2181,10 @@ impl<'a> Parser<'a> {
     fn if_expression(&mut self, t: Token) -> PResult<Expr> {
         let cond = self.expression(0)?;
         self.need(Tok::Colon)?;
+        if self.kind() == Tok::Newline {
+            let at = self.peek();
+            return self.fail(at, "an if expression writes its branches on one line, 'if c: a else: b'; to run statements, use an if statement that assigns a 'var' or returns");
+        }
         let then = self.expression(0)?;
         if self.kind() != Tok::Else {
             let at = self.peek();

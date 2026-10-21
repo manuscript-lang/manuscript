@@ -446,7 +446,14 @@ impl<'a> FnLower<'a> {
             .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
-        self.locals.insert(binding.uid, Local { var, ty, slot: None });
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
         self.slotify(binding.uid);
         if owned {
             self.scopes.last_mut().expect("scope").push(binding.uid);
@@ -467,7 +474,13 @@ impl<'a> FnLower<'a> {
             .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(l.ty), Some(MTy::PTR))
             .expect("slot");
         self.move_into(ptr, v);
-        self.locals.insert(uid, Local { slot: Some(ptr), ..l });
+        self.locals.insert(
+            uid,
+            Local {
+                slot: Some(ptr),
+                ..l
+            },
+        );
     }
 
     /// The current value of a local, as a borrow.
@@ -513,7 +526,14 @@ impl<'a> FnLower<'a> {
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
     pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) {
         let uid = usize::MAX - self.locals.len();
-        self.locals.insert(uid, Local { var, ty, slot: None });
+        self.locals.insert(
+            uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
         if self.needs_drop(ty) {
             self.scopes.last_mut().expect("scope").push(uid);
         }
@@ -524,7 +544,14 @@ impl<'a> FnLower<'a> {
         let ty = self.ty_of(v);
         let var = self.b.declare_var(ty, Mode::Borrow);
         self.b.def_var(var, v);
-        self.locals.insert(binding.uid, Local { var, ty, slot: None });
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
     }
 
     pub fn local(&mut self, binding: &BindingRef) -> Result<Local, Error> {
@@ -654,7 +681,14 @@ impl<'a> FnLower<'a> {
                     .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
                 let x = self.move_out(v, ty);
                 self.b.def_var(var, x);
-                self.locals.insert(b.uid, Local { var, ty, slot: None });
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
                 self.slotify(b.uid);
                 self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
                 continue;
@@ -666,7 +700,14 @@ impl<'a> FnLower<'a> {
                 let var = self.b.declare_var(ty, Mode::Own);
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
-                self.locals.insert(b.uid, Local { var, ty, slot: None });
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
                 self.slotify(b.uid);
                 self.scopes.last_mut().expect("scope").push(b.uid);
             } else {

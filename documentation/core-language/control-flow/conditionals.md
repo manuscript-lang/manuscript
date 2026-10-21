@@ -42,7 +42,18 @@ fn classify(value: Int) String:
         return "positive"
 ```
 
-`if 1:` and `let result = if active: ...` are rejected. Select a result with an assigned `var` or explicit returns; the [return rules](../functions/declarations-and-calls.md#unit-and-never) require every reachable path to return.
+`if 1:` is rejected: the condition must be `Bool`.
+
+## If as an expression
+
+`if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
+
+```manuscript
+fn sign(value: Int) Int:
+    return if value < 0: -1 else if value == 0: 0 else: 1
+```
+
+The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 

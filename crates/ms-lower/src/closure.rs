@@ -28,9 +28,16 @@ impl FnLower<'_> {
         for b in &captures {
             if changed.contains(&b.uid) {
                 // The closure changes this variable: it shares the variable's storage.
-                let slot = self.locals.get(&b.uid).and_then(|l| l.slot).ok_or_else(|| {
-                    Error::new(format!("captured variable {} is not in memory", b.name))
-                })?;
+                let slot = self
+                    .locals
+                    .get(&b.uid)
+                    .and_then(|l| l.slot)
+                    .ok_or_else(|| {
+                        Error::new(format!(
+                        "a closure here cannot change the captured variable {}: a closure inside a parameter default can only read what it captures",
+                        b.name
+                    ))
+                    })?;
                 cap_tys.push(MTy::PTR);
                 cap_vals.push(slot);
                 continue;
@@ -1003,12 +1010,7 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     };
     let params = fl.b.params();
     let env = params[0];
-    let mutated = crate::mutation::mutated_locals(
-        &fl.hir,
-        ms_check::hir::Body::Block(&lam.body),
-        &fl.cx.callables,
-        &fl.cx.mutated,
-    );
+    let mutated = lambda_mutated(fl, lam);
     fl.slotted = slotted_in(fl, &lam.body);
     for (i, (b, t)) in job.captures.iter().zip(captures).enumerate() {
         let v =
@@ -1062,18 +1064,23 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     Ok(())
 }
 
+/// The locals a lambda's body changes.
+fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<usize> {
+    crate::mutation::mutated_locals(
+        &fl.hir,
+        ms_check::hir::Body::Block(&lam.body),
+        &fl.cx.callables,
+        &fl.cx.mutated,
+    )
+}
+
 /// The captured locals the lambda `lam` changes: they are shared by reference.
 fn lambda_changes(
     fl: &FnLower<'_>,
     lam: &Lambda,
     captures: &[ct::BindingRef],
 ) -> std::collections::HashSet<usize> {
-    let mutated = crate::mutation::mutated_locals(
-        &fl.hir,
-        ms_check::hir::Body::Block(&lam.body),
-        &fl.cx.callables,
-        &fl.cx.mutated,
-    );
+    let mutated = lambda_mutated(fl, lam);
     captures
         .iter()
         .map(|b| b.uid)
