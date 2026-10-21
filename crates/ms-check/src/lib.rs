@@ -68,11 +68,13 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         if options.ownership {
             let own = program.hir().ownership();
             program.exclusive_borrows = Rc::new(own.exclusive);
+            program.getter_borrows = Rc::new(own.getters);
             program.diagnostics.extend(own.diagnostics);
         } else if ownership::uses_mutable_borrow(&program) {
             // A mutable borrow changes what the program means, so its functions are always checked.
             let own = program.hir().ownership();
             program.exclusive_borrows = Rc::new(own.exclusive);
+            program.getter_borrows = Rc::new(own.getters);
             program.diagnostics.extend(own.borrow_diagnostics);
         }
     }

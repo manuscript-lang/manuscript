@@ -57,6 +57,20 @@ impl<'a> FnLower<'a> {
                 a.steps.push(AStep::Field(*name));
                 Ok(a)
             }
+            ExprKind::Call { callee, args } => {
+                let Some(fields) = self.cx.getters.get(&(self.hir.data.file, e.id)).cloned() else {
+                    return Err(Error::new(
+                        "a mutable borrow needs a field or element of a variable",
+                    ));
+                };
+                let arg = match (&callee.kind, self.hir.resolution(e)) {
+                    (ExprKind::Member { left, .. }, Resolution::Method(_)) => &**left,
+                    _ => &args[0].value,
+                };
+                let mut a = self.alias_chain(arg)?;
+                a.steps.extend(fields.into_iter().map(AStep::Field));
+                Ok(a)
+            }
             _ => {
                 let Some((left, index)) = crate::mutation::index_parts(&self.hir, e) else {
                     return Err(Error::new(
