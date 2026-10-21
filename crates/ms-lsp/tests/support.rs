@@ -253,7 +253,7 @@ fn snapshot_line(message: &Json) -> String {
 /// Returns the messages.
 pub fn compare(name: &str, script: &Script) -> Vec<Json> {
     let actual: Vec<Json> = script.rust();
-    let lines: Vec<String> = actual.iter().map(|m| snapshot_line(m)).collect();
+    let lines: Vec<String> = actual.iter().map(snapshot_line).collect();
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/snapshots")
         .join(format!("{name}.jsonl"));
