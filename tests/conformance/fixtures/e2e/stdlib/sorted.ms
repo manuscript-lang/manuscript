@@ -60,27 +60,33 @@ test "many random operations agree with Map":
     var sorted = SortedMap[Int, Int]()
     var plain = Map[Int, Int]()
     var seed = 7
+
     for step in range(0, 20000):
         seed = (seed * 1103515245 + 12345) % 2147483648
         let key = seed % 2000
+
         if seed % 4 == 0:
             sorted.remove(key)
             plain.remove(key)
         else:
             sorted.add(key, step)
             plain.add(key, step)
+
     try expect_equal(sorted.length(), plain.length())
     var previous = -1
+
     for entry in sorted.entries():
         try expect_true(entry.key > previous)
         try expect_equal(plain.get(entry.key), some(entry.value))
         previous = entry.key
+
     for key in range(0, 2000):
         try expect_equal(sorted.contains(key), plain.contains(key))
         var expected: Optional[Int] = none
         for candidate in sorted.keys():
             if candidate <= key:
                 expected = some(candidate)
+
         if let found = sorted.floor(key):
             try expect_equal(some(found.key), expected)
         else:
@@ -89,7 +95,7 @@ test "many random operations agree with Map":
 test "copies are independent":
     var a = SortedMap[Int, Int]()
     a.add(1, 1)
-    var b = a
+    var b = a.clone()
     b.add(2, 2)
     try expect_equal(a.keys(), [1])
     try expect_equal(b.keys(), [1, 2])
