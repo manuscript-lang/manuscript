@@ -399,9 +399,33 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
         reserve(v, d, 1);
         let size = d.size as usize;
         core::ptr::copy(elem(v, d, i), elem(v, d, i).add(size), (n - i) * size);
-        // `e` is lent by the caller, so the list stores its own copy.
-        slot_copy(d, e, elem(v, d, i));
+        core::ptr::copy_nonoverlapping(e, elem(v, d, i), size);
         v.len += 1;
+    }
+}
+
+/// `insert` of a lent element: the list stores its own copy, and the caller keeps `e`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    index: i64,
+    e: *const u8,
+) {
+    // SAFETY: caller contract; the copy is a fresh slot that the insert takes over.
+    unsafe {
+        let mut copy = core::mem::MaybeUninit::<[u64; 8]>::uninit();
+        let size = (*d).size as usize;
+        let dst = if size <= 64 {
+            copy.as_mut_ptr() as *mut u8
+        } else {
+            alloc::alloc(size)
+        };
+        slot_copy(&*d, e, dst);
+        msrt_list_insert(v, d, index, dst);
+        if size > 64 {
+            alloc::free(dst);
+        }
     }
 }
 
