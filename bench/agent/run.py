@@ -54,7 +54,7 @@ def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     peeked = tpath.exists() and any(m in tpath.read_text(errors="replace") for m in ("bench/agent/challenges", "hidden/cases.json"))
     g = grade(ch, lang, ws)
     sol = ws / lang["solution"]
-    if sol.is_file():
+    if sol.is_file() and harness.name != "oracle":
         (RESULTS / "sources").mkdir(parents=True, exist_ok=True)
         shutil.copy(sol, RESULTS / "sources" / f"{run_id}{sol.suffix}")
         g["llm_tokens"] = llm_tokens(sol.read_text(errors="replace"))
