@@ -76,7 +76,7 @@ pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String
     let objp = d.join(format!("{tag}.o"));
     std::fs::write(&objp, obj).unwrap();
     let exe = d.join(tag);
-    link(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
+    support::link_fixture(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
     let out = Command::new(&exe)
         .env("MSRT_LEAKCHECK", "1")
         .output()
