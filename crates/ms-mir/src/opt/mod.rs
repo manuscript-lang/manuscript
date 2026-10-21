@@ -19,6 +19,7 @@ use crate::ir::Module;
 pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
+pub mod optparam;
 pub mod range;
 pub mod simplify;
 pub mod strfuse;
@@ -63,7 +64,9 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     strfuse::run(m);
     check(m, "strfuse");
     for round in 0..3 {
-        let mut changed = simplify::run(m);
+        let mut changed = optparam::run(m);
+        check(m, "optparam");
+        changed |= simplify::run(m);
         check(m, "simplify");
         changed |= copyelim::run(m);
         check(m, "copyelim");

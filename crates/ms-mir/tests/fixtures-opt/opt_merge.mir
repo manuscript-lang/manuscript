@@ -1,0 +1,32 @@
+module "opt_merge"
+entry @main
+fn @pick(%i: int, %k: int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %none: opt<int> = opt.none
+  %r: int = srem %i, %k
+  %c: bool = icmp.ne %r, %zero
+  br_if %c, some(), join(%none)
+some:
+  %s: opt<int> = opt.some %i
+  br join(%s)
+join(%o: opt<int>):
+  %has: bool = opt.is_some %o
+  br_if %has, yes(), no()
+yes:
+  %v: int = opt.get %o
+  ret %v
+no:
+  ret %one
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 10
+  %b: int = iconst 5
+  %x: int = call @pick (%a, %b)
+  %c: int = iconst 7
+  %y: int = call @pick (%c, %b)
+  %t: int = iadd %x, %y
+  ret %t
+}

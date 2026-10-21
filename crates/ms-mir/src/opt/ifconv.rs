@@ -6,15 +6,16 @@
 //! C: pure insts; br J(y)         br J(p)
 //! ```
 //!
-//! Branchy loops with unpredictable conditions (`if x % 2 == 0 { x / 2 } else { 3 * x + 1 }`)
-//! pay a misprediction per iteration; the backend lowers `select` to a conditional move.
-//! Arms hold at most [`MAX_ARM`] total scalar instructions, including checked
-//! add/mul. Those checks become pure overflow flags and wrapping results with
-//! ordered, predicated fault guards at each original source position. This bounds
-//! expanded work to seventeen instructions per arm; profitability is workload-specific.
+//! Branchy loops with unpredictable conditions pay a misprediction per iteration; the backend
+//! lowers `select` to a conditional move. Arms hold at most [`MAX_ARM`] total scalar
+//! instructions and no checked arithmetic: predicating an overflow check costs about as much
+//! as the branch it saves (collatz_1M ran 30% slower with checked arms converted).
+//!
+//! Functions whose scalar early returns all fit (`if a < b { return -1 } ...`) are first
+//! merged into one join so comparators convert too.
 
 use crate::ir::*;
-use crate::types::{Ty, TyKind};
+use crate::types::TyKind;
 use std::collections::HashSet;
 
 /// Most instructions hoisted from one arm.
@@ -157,8 +158,6 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
         | Op::ISub
         | Op::IMul
         | Op::INeg
-        | Op::IAddChk
-        | Op::IMulChk
         | Op::IAddOverflow
         | Op::IMulOverflow
         | Op::And
@@ -185,70 +184,12 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
     }
 }
 
-/// Move an arm, replacing each faulting operation with a flag and wrapping
-/// result. Guards keep the original location (including inline scope), are
-/// masked by the arm condition, and retain their order within that arm.
-fn hoist(f: &mut Func, arm: &Arm, cond: Value, inverted: bool, out: &mut Vec<Inst>) {
+/// Move an arm's instructions into the head.
+fn hoist(f: &mut Func, arm: &Arm, out: &mut Vec<Inst>) {
     let Some(blk) = arm.block else {
         return;
     };
-    let original = std::mem::take(&mut f.blocks[blk].insts);
-    let mut guards = Vec::new();
-    let mut active = cond;
-    if inverted
-        && original
-            .iter()
-            .any(|i| matches!(i.op, Op::IAddChk | Op::IMulChk))
-    {
-        active = f.new_value(Ty::BOOL);
-        out.push(Inst {
-            op: Op::Not,
-            args: vec![cond],
-            imm: Imm::None,
-            res: Some(active),
-            loc: f.blocks[blk].term_loc,
-        });
-    }
-    for mut i in original {
-        if matches!(i.op, Op::IAddChk | Op::IMulChk) {
-            let flag = f.new_value(Ty::BOOL);
-            let masked = f.new_value(Ty::BOOL);
-            out.push(Inst {
-                op: if i.op == Op::IAddChk {
-                    Op::IAddOverflow
-                } else {
-                    Op::IMulOverflow
-                },
-                args: i.args.clone(),
-                imm: Imm::None,
-                res: Some(flag),
-                loc: i.loc,
-            });
-            i.op = if i.op == Op::IAddChk {
-                Op::IAdd
-            } else {
-                Op::IMul
-            };
-            out.push(i.clone());
-            out.push(Inst {
-                op: Op::And,
-                args: vec![active, flag],
-                imm: Imm::None,
-                res: Some(masked),
-                loc: i.loc,
-            });
-            guards.push(Inst {
-                op: Op::IntOverflowIf,
-                args: vec![masked],
-                imm: Imm::None,
-                res: None,
-                loc: i.loc,
-            });
-        } else {
-            out.push(i);
-        }
-    }
-    out.append(&mut guards);
+    out.append(&mut f.blocks[blk].insts);
     f.blocks[blk].term = Term::Unreachable;
 }
 
@@ -301,8 +242,8 @@ fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {
             }
             let loc = f.blocks[a].term_loc;
             let mut insts = Vec::new();
-            hoist(f, &ta, cond, false, &mut insts);
-            hoist(f, &ea, cond, true, &mut insts);
+            hoist(f, &ta, &mut insts);
+            hoist(f, &ea, &mut insts);
             let mut args = Vec::new();
             for (x, y) in ta.args.iter().zip(&ea.args) {
                 if x == y {
