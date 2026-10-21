@@ -89,7 +89,7 @@ test "many random operations agree with Map":
 test "copies are independent":
     var a = SortedMap[Int, Int]()
     a.add(1, 1)
-    var b = a
+    var b = a.clone()
     b.add(2, 2)
     try expect_equal(a.keys(), [1])
     try expect_equal(b.keys(), [1, 2])

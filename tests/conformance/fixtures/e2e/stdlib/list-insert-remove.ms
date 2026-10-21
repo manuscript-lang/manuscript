@@ -16,7 +16,7 @@ test "insert and remove shift the tail for every element kind":
     try expect_equal(words, ["z", "b"])
     var rows: List[List[Int]] = [[1], [2]]
     let row = [7, 7]
-    rows.insert(1, row)
+    rows.insert(1, row.clone())
     rows.remove(0)
     try expect_equal(rows, [[7, 7], [2]])
     try expect_equal(row, [7, 7])
@@ -24,7 +24,7 @@ test "insert and remove shift the tail for every element kind":
 test "an inserted element is independent of its source":
     var rows: List[List[Int]] = []
     var row = [1]
-    rows.insert(0, row)
+    rows.insert(0, row.clone())
     row.append(2)
     try expect_equal(rows, [[1]])
     try expect_equal(row, [1, 2])

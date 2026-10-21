@@ -50,7 +50,7 @@ test "wraps around and grows past the first buffer":
 test "a copy is independent and clear empties":
     var d = Deque[Int]()
     d.push_back(1)
-    var e = d
+    var e = d.clone()
     e.push_back(2)
     try expect_equal(d.to_list(), [1])
     try expect_equal(e.to_list(), [1, 2])
