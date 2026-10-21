@@ -158,8 +158,14 @@ jobs:
           cargo clippy --workspace --all-targets -- -D warnings
       # nextest runs each test in its own process, so tests that share process-global
       # state (the runtime allocator, the environment) cannot interfere.
+      # MSVC rejects a test binary whose crates reference msrt_* runtime symbols that only ms-rt
+      # defines, even when nothing calls them; ELF and Mach-O drop the unused code first. Crates
+      # that ms-rt itself depends on cannot link it back in, so test builds on Windows let the
+      # linker leave those references unresolved. Distribution builds never use this flag.
       - name: Tests and doc tests
         if: matrix.full || matrix.tests
+        env:
+          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C link-arg=/FORCE:UNRESOLVED' || '' }}
         run: |
           cargo build --workspace --tests --locked --keep-going
           cargo nextest run --workspace --locked --no-fail-fast

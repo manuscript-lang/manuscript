@@ -3,7 +3,7 @@
 //! worker instead of ending the editor session.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
-#[cfg(any(test, windows))]
+#[cfg(test)]
 use ms_rt as _;
 use std::process::Command;
 

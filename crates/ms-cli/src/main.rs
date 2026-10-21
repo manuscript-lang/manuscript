@@ -4,7 +4,7 @@
 //! Native builds (`build`, `run`, `test`, `profile`) run on the Rust pipeline.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
-#[cfg(any(test, windows))]
+#[cfg(test)]
 use ms_rt as _;
 use std::io::Write;
 

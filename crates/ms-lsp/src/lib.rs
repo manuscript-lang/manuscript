@@ -6,7 +6,7 @@
 //! authority.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
-#[cfg(any(test, windows))]
+#[cfg(test)]
 use ms_rt as _;
 pub mod actions;
 pub mod analysis;

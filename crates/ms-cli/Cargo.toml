@@ -32,8 +32,3 @@ ms-check = { path = "../ms-check" }
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = { version = "0.2", default-features = false }
-
-# The workspace-unified `ffi` feature of ms-std-decimal references msrt_* symbols that MSVC
-# resolves before discarding unused code.
-[target.'cfg(windows)'.dependencies]
-ms-rt = { path = "../ms-rt" }

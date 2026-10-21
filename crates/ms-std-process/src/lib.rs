@@ -7,10 +7,6 @@
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
 
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
 extern crate alloc;
 
 pub mod command;
