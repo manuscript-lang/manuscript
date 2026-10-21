@@ -1,5 +1,5 @@
 //! Source inspection: entities, call sites, locals and statements of a checked
-//! program (`pkg/tooling/inspect.go`). The `ms inspect` document and the
+//! program. The `ms inspect` document and the
 //! mermaid call graph are rendered from it; facts, views and diagrams read it
 //! through [`Inspection::rows`].
 
