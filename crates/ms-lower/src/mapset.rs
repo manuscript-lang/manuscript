@@ -6,11 +6,12 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
+use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::MapEntry;
+use ms_syntax::ast::{BinaryOp, Expr, ExprKind, MapEntry};
 
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
@@ -18,6 +19,157 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 impl<'a> FnLower<'a> {
+    /// `m.add(k, m.get(k).get(d) <op> x)` on an `Int`-valued map held in a local, as one probe
+    /// (`+`, `-` with the read on the left, `*`). The runtime finds or creates the entry with
+    /// `d` and the update reads and writes through the returned slot. `None` leaves the call to
+    /// the ordinary path: anything else about the shape, a used result, or an `x` that names the
+    /// map (it could change the entry before the read).
+    pub(crate) fn fused_update(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+    ) -> Result<Option<Val>, Error> {
+        if self.discard != Some(e as *const Expr as usize) || view.arguments.len() != 2 {
+            return Ok(None);
+        }
+        let declared: Vec<_> = m.ty.params.iter().map(|p| p.name).collect();
+        if declared.len() != 2
+            || view.arguments[0].slot.name != declared[0]
+            || view.arguments[1].slot.name != declared[1]
+        {
+            return Ok(None);
+        }
+        let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
+        let ExprKind::Binary { op, left, right } = &value.kind else {
+            return Ok(None);
+        };
+        let Resolution::Local(recv) = self.hir.resolution(recv_expr) else {
+            return Ok(None);
+        };
+        if !matches!(recv_expr.kind, ExprKind::Name(_)) {
+            return Ok(None);
+        }
+        let read_left = self.counter_read(left, recv.uid, recv_expr, key);
+        let (default, other) = match (read_left, op) {
+            (Some(d), BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul) => (d, &**right),
+            (None, BinaryOp::Add | BinaryOp::Mul) => {
+                match self.counter_read(right, recv.uid, recv_expr, key) {
+                    Some(d) => (d, &**left),
+                    None => return Ok(None),
+                }
+            }
+            _ => return Ok(None),
+        };
+        if crate::mutation::uses_of(&self.hir, other, recv.uid) != 0 {
+            return Ok(None);
+        }
+        let mt = self.emty(recv_expr)?;
+        let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
+            return Ok(None);
+        };
+        if n != "Map" || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
+            return Ok(None);
+        }
+        let read_is_left = read_left.is_some();
+        let k = self.expr(key)?;
+        if self.dead {
+            return Ok(Some(k));
+        }
+        let k = self.owned(k);
+        let x = self.expr(other)?;
+        if self.dead {
+            return Ok(Some(x));
+        }
+        let d = self.expr(default)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let op = *op;
+        let at = e.pos;
+        self.place_update(recv_expr, &mut |s, old| {
+            let slot = s.put_slot(old);
+            let ks = s.put_slot(k);
+            let ds = s.put_slot(d.v);
+            let p = s.call_runtime("msrt_map_slot", &[slot, kd, vd, ks, ds], MTy::PTR)?;
+            let cur =
+                s.b.emit(Op::Load, &[p], Imm::Ty(MTy::INT), Some(MTy::INT))
+                    .expect("load");
+            s.at(at);
+            let (l, r) = if read_is_left { (cur, x.v) } else { (x.v, cur) };
+            let o = match op {
+                BinaryOp::Add => Op::IAddChk,
+                BinaryOp::Sub => Op::ISubChk,
+                _ => Op::IMulChk,
+            };
+            let next = s.b.binop(o, l, r);
+            s.b.emit(Op::Store, &[p, next], Imm::None, None);
+            Ok(s.take_slot(slot, mt))
+        })?;
+        let u = self.b.unit();
+        Ok(Some(Val { v: u, own: false }))
+    }
+
+    /// The default `d` of `recv.get(key).get(d)` when `e` is exactly that read of the same
+    /// local map and an equal simple key, with `d` a number literal.
+    fn counter_read<'e>(
+        &self,
+        e: &'e Expr,
+        uid: usize,
+        recv_expr: &Expr,
+        key: &Expr,
+    ) -> Option<&'e Expr> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return None;
+        };
+        let ExprKind::Member { left: opt, name } = &callee.kind else {
+            return None;
+        };
+        let [d] = args.as_slice() else { return None };
+        if name.as_str() != "get"
+            || !matches!(d.value.kind, ExprKind::Number(_))
+            || d.name.is_some()
+        {
+            return None;
+        }
+        let ExprKind::Call {
+            callee: c2,
+            args: a2,
+        } = &opt.kind
+        else {
+            return None;
+        };
+        let ExprKind::Member {
+            left: map,
+            name: n2,
+        } = &c2.kind
+        else {
+            return None;
+        };
+        let [k2] = a2.as_slice() else { return None };
+        if n2.as_str() != "get" || k2.name.is_some() {
+            return None;
+        }
+        let same_map = matches!(map.kind, ExprKind::Name(_))
+            && matches!(self.hir.resolution(map), Resolution::Local(b) if b.uid == uid)
+            && self.ety(map).is_std("Map")
+            && self.ety(opt).is_std("Optional")
+            && self.ety(recv_expr).is_std("Map");
+        (same_map && self.same_key(&k2.value, key)).then_some(&d.value)
+    }
+
+    /// Whether two key expressions are the same local or the same number literal.
+    fn same_key(&self, a: &Expr, b: &Expr) -> bool {
+        match (&a.kind, &b.kind) {
+            (ExprKind::Name(_), ExprKind::Name(_)) => matches!(
+                (self.hir.resolution(a), self.hir.resolution(b)),
+                (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
+            ),
+            (ExprKind::Number(x), ExprKind::Number(y)) => x == y,
+            _ => false,
+        }
+    }
+
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         self.call_runtime("msrt_map_new", &[], ty)

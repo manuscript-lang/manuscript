@@ -348,6 +348,22 @@ unsafe fn insert_k<K: KeyOps>(
     val: *mut u8,
 ) -> bool {
     // SAFETY: caller contract.
+    unsafe { upsert_k::<K>(m, kd, vd, key, val, true).1 }
+}
+
+/// Finds `key` or appends it with `val`, consuming `key` (and `val` unless an existing value is
+/// kept). Returns the value slot and whether the entry is new. With `replace` an existing value
+/// is overwritten by `val`; without it the existing value stays and `val` is not consumed.
+#[inline(always)]
+unsafe fn upsert_k<K: KeyOps>(
+    m: &mut MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *mut u8,
+    val: *mut u8,
+    replace: bool,
+) -> (*mut u8, bool) {
+    // SAFETY: caller contract.
     unsafe {
         let l = layout(kd, vd);
         let h = hash_key::<K>(kd, key);
@@ -356,13 +372,13 @@ unsafe fn insert_k<K: KeyOps>(
             if !needs_no_drop(kd) {
                 slot_drop(kd, key);
             }
-            if let Some(vd) = vd {
+            if replace && let Some(vd) = vd {
                 if !needs_no_drop(vd) {
                     slot_drop(vd, p.add(l.voff));
                 }
                 copy_slot(val, p.add(l.voff), l.vsize);
             }
-            return false;
+            return (p.add(l.voff), false);
         }
         if m.used == m.cap {
             grow(m, &l);
@@ -384,7 +400,7 @@ unsafe fn insert_k<K: KeyOps>(
         *index_of(m).add(pos) = entry(h, m.used);
         m.used += 1;
         m.len += 1;
-        true
+        (p.add(l.voff), true)
     }
 }
 
@@ -612,6 +628,25 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
     // SAFETY: caller contract.
     unsafe {
         insert(&mut *m, &*kd, opt(vd), key, val);
+    }
+}
+
+/// The value slot of `key`, appending the entry with the 8-byte scalar at `default` when it is
+/// absent; `key` is consumed. One hash and probe serve a read-modify-write such as `m[k] += 1`:
+/// the caller loads, changes and stores through the returned pointer before the map is used again.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_slot(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *mut u8,
+    default: *mut u8,
+) -> *mut u8 {
+    // SAFETY: caller contract; the value type is an 8-byte scalar.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| upsert_k::<K>(m, kd, Some(vd), key, default, false)
+            .0)
     }
 }
 
@@ -1074,6 +1109,34 @@ mod tests {
             assert_eq!(m.len, 50);
             let p = msrt_map_get_ptr(&m, d, d, &k as *const i64 as *const u8);
             assert_eq!(*(p as *const i64), 9);
+            drop_map(&mut m, &*d, Some(&*d));
+        }
+    }
+
+    #[test]
+    fn slot_finds_or_creates_with_the_default() {
+        let _g = testutil::lock();
+        unsafe {
+            let d = &msrt_desc_int as *const TypeDesc;
+            let mut m = empty();
+            for round in 0..3i64 {
+                for i in 0..40i64 {
+                    let (mut k, mut def) = (i, 10i64);
+                    let p = msrt_map_slot(
+                        &mut m,
+                        d,
+                        d,
+                        &mut k as *mut i64 as *mut u8,
+                        &mut def as *mut i64 as *mut u8,
+                    ) as *mut i64;
+                    assert_eq!(*p, 10 + round);
+                    *p += 1;
+                }
+            }
+            assert_eq!(m.len, 40);
+            let k = 5i64;
+            let p = msrt_map_get_ptr(&m, d, d, &k as *const i64 as *const u8);
+            assert_eq!(*(p as *const i64), 13);
             drop_map(&mut m, &*d, Some(&*d));
         }
     }
