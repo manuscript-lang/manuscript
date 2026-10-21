@@ -1,6 +1,6 @@
 # Proposal: LLVM release backend (P4)
 
-Status: **deferred.** The spike gate failed on `collatz`: hand-written LLVM IR (checked ops, atomic poll, `clang -O3`) ran in 355k us against 359k us for Cranelift, 1.0x. `nbody` (1.6x vs C) is the one candidate left; revisit if float-kernel performance becomes a priority. Proposal for the gate in [rust-cranelift-backend.md](rust-cranelift-backend.md) (P4: "a measured gap on real programs justifies LLVM or C emission from the same MIR"). Cranelift stays the default.
+Status: **reopened 2026-10-21** (see "Bundled release backend" below); previously **deferred.** The spike gate failed on `collatz`: hand-written LLVM IR (checked ops, atomic poll, `clang -O3`) ran in 355k us against 359k us for Cranelift, 1.0x. `nbody` (1.6x vs C) is the one candidate left; revisit if float-kernel performance becomes a priority. Proposal for the gate in [rust-cranelift-backend.md](rust-cranelift-backend.md) (P4: "a measured gap on real programs justifies LLVM or C emission from the same MIR"). Cranelift stays the default.
 
 ## Problem
 
@@ -52,3 +52,25 @@ Stage 4 is capped: if debug info, perf map and fault-trace parity are not reacha
 - Text IR for large modules is slow to parse; acceptable for release builds, measured in stage 2.
 - Two backends double the surface for codegen bugs; mitigated by differential testing on shared MIR and running the conformance corpus under both.
 - Requires a system `clang`, a new prerequisite beyond `cc` for this flag only. Supported version: LLVM 18 or newer, tested in CI on Linux; macOS and Windows availability is unverified and must be settled (and added to `rust-toolchain.md`) before stage 1. Owner of the version policy: the backend thread.
+
+## Bundled release backend (2026-10-21)
+
+Owner direction: Release and MinSizeRel builds use LLVM `-O3`/`-Os`; Debug stays on Cranelift; `ms` stays self-sufficient (no host `clang` required). This supersedes the "system `clang`, flag only" shape above. The earlier gate result stands and still governs the work.
+
+### Facts checked in this checkout
+
+- No LLVM code exists. `ms-clif` is the only backend; `link.rs` shells out to `cc`, and Windows to `clang` plus `lld`. "Bundled linker" is still planned, not shipped.
+- The build host has LLVM 18 binaries and `clang` but no static libraries (`libLLVM*.a` absent), so linking LLVM into `ms` needs a source build or a prebuilt archive in CI. Neither is wired up.
+- Measured headroom: kernel geometric mean about 1.2x from hand-written C at `-O3` against Cranelift (table above), and the collatz spike was 1.0x. The large Rust gaps in `bench/perf/programs/results.md` (`string_append` 3.7x, `for_list` 3.4x) are runtime and MIR shape; some of `for_list` and `int_eq` is vectorization LLVM would add.
+
+### Plan
+
+0. **Evidence gate (before any bundling work).** Emit textual IR from current MIR for `collatz`, `nbody`, `sieve`, `matmul`, `life`, `trees`, with checks, polls, rc, and `-fno-...` parity, and compile with host `clang -O3`. Proceed only if the geometric mean is at least 1.2x faster than Cranelift and `for_list`/`int_eq` improve. If not, stop and record the numbers here.
+1. **`ms-llvm` crate** emitting IR through a vendored, pinned LLVM (C API via a small `unsafe` shim crate, like `ms-rt`), selected by build level. Reuses `ms_clif::layout` and the runtime ABI.
+2. **Bundling.** Statically link the LLVM optimizer and codegen for the host target plus `lld` as a library or sidecar; pinned version, built in CI, cached. Measure binary size and build time; the `ms` binary grows by tens of MB and CI by a source LLVM build.
+3. **Parity.** Conformance corpus under both backends, DWARF line tables, fault traces, profiling.
+4. **Measure** all 31 benchmarks against Go and Rust and update the performance docs with the numbers, whichever way they land.
+
+### Do-nothing case and risks
+
+Doing nothing leaves Cranelift at about 1.2x of C on kernels. The bundle costs a large binary, a long CI build, a license review (Apache-2.0 with LLVM exceptions), and a second backend to keep correct. Mitigation: stage 0 gate, differential testing on shared MIR, Debug stays on Cranelift.
