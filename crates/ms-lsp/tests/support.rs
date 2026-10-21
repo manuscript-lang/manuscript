@@ -226,8 +226,9 @@ pub fn canonical(value: &Json) -> String {
 }
 
 /// One snapshot line: the canonical message with the per-run temporary
-/// directory masked. Messages over 4 KiB are stored as `#<length>:<fnv1a hash>`
-/// to keep the snapshots small.
+/// directory masked. Messages over 4 KiB are standard-library listings (global
+/// completion); they change whenever the standard library does, so only their
+/// presence is recorded.
 fn snapshot_line(message: &Json) -> String {
     let temp = std::env::temp_dir()
         .to_string_lossy()
@@ -237,14 +238,10 @@ fn snapshot_line(message: &Json) -> String {
     let text = canonical(message)
         .replace(&pid, "-PID/")
         .replace(&temp, "$TMP");
-    if text.len() <= 4096 {
-        return text;
+    if text.len() > 4096 {
+        return "#large".to_string();
     }
-    let mut hash: u64 = 0xcbf29ce484222325;
-    for byte in text.bytes() {
-        hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
-    }
-    format!("#{}:{hash:016x}", text.len())
+    text
 }
 
 /// Runs the script and compares every message with the snapshot

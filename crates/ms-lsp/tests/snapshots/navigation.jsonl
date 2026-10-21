@@ -1152,12 +1152,12 @@
 {"id":1151,"jsonrpc":"2.0","result":[]}
 {"id":1152,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":27,"line":49},"start":{"character":21,"line":49}}}}
 {"id":1153,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":1},"start":{"character":12,"line":1}},"uri":"manuscript-stdlib:///result.ms"}]}
-#46060:432eb8de82fd4a13
+#large
 {"id":1155,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":1},"start":{"character":7,"line":1}},"uri":"manuscript-stdlib:///result.ms"}]}
 {"id":1156,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":27,"line":49},"start":{"character":21,"line":49}}}]}
 {"id":1157,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":27,"line":49},"start":{"character":21,"line":49}}}}
 {"id":1158,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":1},"start":{"character":12,"line":1}},"uri":"manuscript-stdlib:///result.ms"}]}
-#46060:af17da728420574c
+#large
 {"id":1160,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":1},"start":{"character":7,"line":1}},"uri":"manuscript-stdlib:///result.ms"}]}
 {"id":1161,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":27,"line":49},"start":{"character":21,"line":49}}}]}
 {"id":1162,"jsonrpc":"2.0","result":null}
@@ -1172,12 +1172,12 @@
 {"id":1171,"jsonrpc":"2.0","result":[]}
 {"id":1172,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nExpected failures share this explicitly implemented diagnostic contract.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":49},"start":{"character":34,"line":49}}}}
 {"id":1173,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///errors.ms"}]}
-#7899:df6fde20cbe20265
+#large
 {"id":1175,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":2},"start":{"character":7,"line":2}},"uri":"manuscript-stdlib:///errors.ms"}]}
 {"id":1176,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":39,"line":49},"start":{"character":34,"line":49}}}]}
 {"id":1177,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nExpected failures share this explicitly implemented diagnostic contract.\nA contract for expected failures that can provide a human-readable message."},"range":{"end":{"character":39,"line":49},"start":{"character":34,"line":49}}}}
 {"id":1178,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":2},"start":{"character":17,"line":2}},"uri":"manuscript-stdlib:///errors.ms"}]}
-#7899:d8a78397c394227c
+#large
 {"id":1180,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":2},"start":{"character":7,"line":2}},"uri":"manuscript-stdlib:///errors.ms"}]}
 {"id":1181,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":39,"line":49},"start":{"character":34,"line":49}}}]}
 {"id":1182,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ntry: Unit\n```"},"range":{"end":{"character":7,"line":50},"start":{"character":4,"line":50}}}}
@@ -1245,12 +1245,12 @@
 {"id":1244,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":14,"line":4},"start":{"character":8,"line":4}},"uri":"manuscript-stdlib:///log.ms"},{"range":{"end":{"character":14,"line":50},"start":{"character":8,"line":50}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":17,"line":51},"start":{"character":11,"line":51}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1245,"jsonrpc":"2.0","result":null}
 {"id":1246,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}},{"kind":2,"range":{"end":{"character":14,"line":50},"start":{"character":8,"line":50}}},{"kind":2,"range":{"end":{"character":17,"line":51},"start":{"character":11,"line":51}}}]}
-{"id":1247,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, IoError]\n```\n\nCompletes implementation-specific buffering or synchronization; native stdout/stderr use a no-op.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}
+{"id":1247,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, IoError]\n```\n\nCompletes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}
 {"id":1248,"jsonrpc":"2.0","result":[{"range":{"end":{"character":12,"line":50},"start":{"character":7,"line":50}},"uri":"manuscript-stdlib:///io.ms"}]}
 {"id":1249,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1250,"jsonrpc":"2.0","result":null}
 {"id":1251,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}]}
-{"id":1252,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, IoError]\n```\n\nCompletes implementation-specific buffering or synchronization; native stdout/stderr use a no-op.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}
+{"id":1252,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, IoError]\n```\n\nCompletes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.\nFile-handle writers synchronize the file, and failures retain IoError identity."},"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}}}}
 {"id":1253,"jsonrpc":"2.0","result":[{"range":{"end":{"character":12,"line":50},"start":{"character":7,"line":50}},"uri":"manuscript-stdlib:///io.ms"}]}
 {"id":1254,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":51},"start":{"character":20,"line":51}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1255,"jsonrpc":"2.0","result":null}

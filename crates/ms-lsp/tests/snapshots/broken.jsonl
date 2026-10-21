@@ -2,46 +2,46 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS3001","message":"expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"","range":{"end":{"character":21,"line":1},"start":{"character":20,"line":1}},"severity":1,"source":"manuscript"},{"code":"MS2001","message":"unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module","range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b0.ms","version":1}}
 {"id":2,"jsonrpc":"2.0","result":null}
 {"id":3,"jsonrpc":"2.0","result":null}
-#8817:ce501e731709902e
+#large
 {"id":5,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nbroken: fn() Int\n```"},"range":{"end":{"character":9,"line":0},"start":{"character":3,"line":0}}}}
 {"id":6,"jsonrpc":"2.0","result":[{"range":{"end":{"character":9,"line":0},"start":{"character":3,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b0.ms"}]}
-#7458:2682b655a6953e6a
+#large
 {"id":8,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nbroken: fn() Int\n```"},"range":{"end":{"character":9,"line":0},"start":{"character":3,"line":0}}}}
 {"id":9,"jsonrpc":"2.0","result":[{"range":{"end":{"character":9,"line":0},"start":{"character":3,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b0.ms"}]}
-#10568:a6eb04f55e9915ef
+#large
 {"id":11,"jsonrpc":"2.0","result":null}
 {"id":12,"jsonrpc":"2.0","result":null}
-#6331:1424dc16cc4ef23e
+#large
 {"id":14,"jsonrpc":"2.0","result":null}
 {"id":15,"jsonrpc":"2.0","result":null}
-#28434:a9fba1a4489c6aaa
+#large
 {"id":17,"jsonrpc":"2.0","result":null}
 {"id":18,"jsonrpc":"2.0","result":null}
-#10166:4d5117b15bdee3e2
+#large
 {"id":20,"jsonrpc":"2.0","result":null}
 {"id":21,"jsonrpc":"2.0","result":null}
-#44600:480bd2171c532c2d
+#large
 {"id":23,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nx: String\n```"},"range":{"end":{"character":9,"line":1},"start":{"character":8,"line":1}}}}
 {"id":24,"jsonrpc":"2.0","result":[{"range":{"end":{"character":9,"line":1},"start":{"character":8,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b0.ms"}]}
-#7683:050f574a54b7c56b
+#large
 {"id":26,"jsonrpc":"2.0","result":null}
 {"id":27,"jsonrpc":"2.0","result":null}
-#6331:04fbd8d79a267243
+#large
 {"id":29,"jsonrpc":"2.0","result":null}
 {"id":30,"jsonrpc":"2.0","result":null}
-#22909:2742f4a064d1a9b8
+#large
 {"id":32,"jsonrpc":"2.0","result":null}
 {"id":33,"jsonrpc":"2.0","result":null}
-#10403:0663057caf1d721b
+#large
 {"id":35,"jsonrpc":"2.0","result":null}
 {"id":36,"jsonrpc":"2.0","result":null}
-#71862:a9263caa5e2c8dd8
+#large
 {"id":38,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmissing: <invalid>\n```"},"range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}}}}
 {"id":39,"jsonrpc":"2.0","result":null}
-#7935:5393d30cf1bcb352
+#large
 {"id":41,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmissing: <invalid>\n```"},"range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}}}}
 {"id":42,"jsonrpc":"2.0","result":null}
-#24024:b6615f80b9406063
+#large
 {"id":44,"jsonrpc":"2.0","result":[{"detail":"fn() Int","kind":12,"name":"broken","range":{"end":{"character":18,"line":2},"start":{"character":0,"line":0}},"selectionRange":{"end":{"character":9,"line":0},"start":{"character":3,"line":0}}}]}
 {"id":45,"jsonrpc":"2.0","result":{"data":[0,0,2,0,0,0,3,6,5,0,0,9,3,1,0,1,4,3,0,0,0,4,1,1,0,0,3,6,1,0,0,9,1,2,0,1,4,6,0,0,0,7,7,1,0]}}
 {"id":46,"jsonrpc":"2.0","result":[{"endLine":2,"kind":"region","startLine":0}]}
@@ -50,25 +50,25 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"unterminated delimiter '(' opened at line 1:4; add the matching ')' before the end of the file","range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"severity":1,"source":"manuscript"},{"code":"MS2001","message":"declaration ok reuses a prelude constructor name; rename it, because ok always refers to the prelude case","range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b1.ms","version":1}}
 {"id":48,"jsonrpc":"2.0","result":null}
 {"id":49,"jsonrpc":"2.0","result":null}
-#9026:ec654267ad181b8e
+#large
 {"id":51,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nok: fn() Int\n```"},"range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}}}}
 {"id":52,"jsonrpc":"2.0","result":[{"range":{"end":{"character":2,"line":1},"start":{"character":0,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b1.ms"}]}
-#8818:acefc5a5528fe39e
+#large
 {"id":54,"jsonrpc":"2.0","result":null}
 {"id":55,"jsonrpc":"2.0","result":null}
-#7459:4f413f590e1b04cc
+#large
 {"id":57,"jsonrpc":"2.0","result":null}
 {"id":58,"jsonrpc":"2.0","result":null}
-#6312:00c03593cfdb0847
+#large
 {"id":60,"jsonrpc":"2.0","result":null}
 {"id":61,"jsonrpc":"2.0","result":null}
-#28381:5efd28287f126980
+#large
 {"id":63,"jsonrpc":"2.0","result":null}
 {"id":64,"jsonrpc":"2.0","result":null}
-#9979:6337519e555dabbf
+#large
 {"id":66,"jsonrpc":"2.0","result":null}
 {"id":67,"jsonrpc":"2.0","result":null}
-#71637:9914f5595255a982
+#large
 {"id":69,"jsonrpc":"2.0","result":[{"detail":"fn() Int","kind":12,"name":"ok","range":{"end":{"character":12,"line":2},"start":{"character":0,"line":1}},"selectionRange":{"end":{"character":0,"line":1},"start":{"character":0,"line":1}}}]}
 {"id":70,"jsonrpc":"2.0","result":{"data":[0,0,2,0,0,1,0,2,0,0,0,3,2,5,0,0,5,3,1,0,1,4,6,0,0,0,7,1,2,0]}}
 {"id":71,"jsonrpc":"2.0","result":[{"endLine":2,"kind":"region","startLine":1}]}
@@ -78,40 +78,40 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"unterminated delimiter '(' opened at line 4:13; add the matching ')' before the end of the file","range":{"end":{"character":0,"line":4},"start":{"character":0,"line":4}},"severity":1,"source":"manuscript"},{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":15,"line":3},"start":{"character":15,"line":3}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms","version":1}}
 {"id":73,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nT: T\n```"},"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}}}}
 {"id":74,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
-#9028:031c5ad396db1aff
+#large
 {"id":76,"jsonrpc":"2.0","result":null}
 {"id":77,"jsonrpc":"2.0","result":null}
-#10313:a0d888cf1b3a976b
+#large
 {"id":79,"jsonrpc":"2.0","result":null}
 {"id":80,"jsonrpc":"2.0","result":null}
-#7669:38be5d98a67f09b9
+#large
 {"id":82,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\na: Int\n```"},"range":{"end":{"character":5,"line":1},"start":{"character":4,"line":1}}}}
 {"id":83,"jsonrpc":"2.0","result":[{"range":{"end":{"character":5,"line":1},"start":{"character":4,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
-#10369:2222c158b768fdcd
+#large
 {"id":85,"jsonrpc":"2.0","result":null}
 {"id":86,"jsonrpc":"2.0","result":null}
-#7891:4cc0e07addef3f6b
+#large
 {"id":88,"jsonrpc":"2.0","result":null}
 {"id":89,"jsonrpc":"2.0","result":null}
-#60217:97136e411043ec37
+#large
 {"id":91,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nf: fn() T\n```"},"range":{"end":{"character":1,"line":2},"start":{"character":0,"line":2}}}}
 {"id":92,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":2},"start":{"character":0,"line":2}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
-#9021:9a55747b9a64e817
+#large
 {"id":94,"jsonrpc":"2.0","result":null}
 {"id":95,"jsonrpc":"2.0","result":null}
-#7662:25fd8529df4ba2eb
+#large
 {"id":97,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nT: T\n```"},"range":{"end":{"character":8,"line":2},"start":{"character":7,"line":2}}}}
 {"id":98,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b2.ms"}]}
-#6486:708570f0bd53fa30
+#large
 {"id":100,"jsonrpc":"2.0","result":null}
 {"id":101,"jsonrpc":"2.0","result":null}
-#10387:310224abdf35d7f6
+#large
 {"id":103,"jsonrpc":"2.0","result":null}
 {"id":104,"jsonrpc":"2.0","result":null}
-#71638:6b27f8e5e1cd10ce
+#large
 {"id":106,"jsonrpc":"2.0","result":null}
 {"id":107,"jsonrpc":"2.0","result":null}
-#7919:5efce2f480390220
+#large
 {"id":109,"jsonrpc":"2.0","result":null}
 {"id":110,"jsonrpc":"2.0","result":null}
 {"id":111,"jsonrpc":"2.0","result":[]}
@@ -125,34 +125,34 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1002","message":"indentation must be a multiple of four spaces, found 2; use 0 or 4","range":{"end":{"character":8,"line":1},"start":{"character":2,"line":1}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b3.ms","version":1}}
 {"id":116,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nf: fn(a: Int) Int\n```"},"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}}}}
 {"id":117,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b3.ms"}]}
-#8819:0ac41be2d44129dc
+#large
 {"id":119,"jsonrpc":"2.0","result":null}
 {"id":120,"jsonrpc":"2.0","result":null}
-#7460:f6a1cc68a440d0c4
+#large
 {"id":122,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\na: Int\n```"},"range":{"end":{"character":6,"line":0},"start":{"character":5,"line":0}}}}
 {"id":123,"jsonrpc":"2.0","result":[{"range":{"end":{"character":6,"line":0},"start":{"character":5,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b3.ms"}]}
-#7720:c4942e8a44ccb685
+#large
 {"id":125,"jsonrpc":"2.0","result":null}
 {"id":126,"jsonrpc":"2.0","result":null}
-#6313:4b6f74e8968f5221
+#large
 {"id":128,"jsonrpc":"2.0","result":null}
 {"id":129,"jsonrpc":"2.0","result":null}
-#28382:5ad3bedcb2967eac
+#large
 {"id":131,"jsonrpc":"2.0","result":null}
 {"id":132,"jsonrpc":"2.0","result":null}
-#6332:af1648170e5a7af1
+#large
 {"id":134,"jsonrpc":"2.0","result":null}
 {"id":135,"jsonrpc":"2.0","result":null}
-#28435:a11fbaaea9451457
+#large
 {"id":137,"jsonrpc":"2.0","result":null}
 {"id":138,"jsonrpc":"2.0","result":null}
-#10159:d1b52503c82e66e3
+#large
 {"id":140,"jsonrpc":"2.0","result":null}
 {"id":141,"jsonrpc":"2.0","result":null}
-#71520:f2fdce471053c739
+#large
 {"id":143,"jsonrpc":"2.0","result":null}
 {"id":144,"jsonrpc":"2.0","result":null}
-#7702:218e9b50863f1148
+#large
 {"id":146,"jsonrpc":"2.0","result":[{"detail":"fn(a: Int) Int","kind":12,"name":"f","range":{"end":{"character":10,"line":1},"start":{"character":0,"line":0}},"selectionRange":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}]}
 {"id":147,"jsonrpc":"2.0","result":{"data":[0,0,2,0,0,0,3,1,5,0,0,2,1,8,0,0,3,3,1,0,0,5,3,1,0,1,2,6,0,0,0,7,1,1,0]}}
 {"id":148,"jsonrpc":"2.0","result":[{"endLine":1,"kind":"region","startLine":0}]}
@@ -164,22 +164,22 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"a byte-order mark is not allowed; save the file as UTF-8 without BOM","range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b4.ms","version":1}}
 {"id":150,"jsonrpc":"2.0","result":null}
 {"id":151,"jsonrpc":"2.0","result":null}
-#7460:dc239678650dfca1
+#large
 {"id":153,"jsonrpc":"2.0","result":null}
 {"id":154,"jsonrpc":"2.0","result":null}
-#7460:2343da12a2fbe731
+#large
 {"id":156,"jsonrpc":"2.0","result":null}
 {"id":157,"jsonrpc":"2.0","result":null}
-#7485:9525602fd40d851d
+#large
 {"id":159,"jsonrpc":"2.0","result":null}
 {"id":160,"jsonrpc":"2.0","result":null}
-#60218:a8ed7d72b235da4c
+#large
 {"id":162,"jsonrpc":"2.0","result":null}
 {"id":163,"jsonrpc":"2.0","result":null}
-#9980:717d975cf2c8f803
+#large
 {"id":165,"jsonrpc":"2.0","result":null}
 {"id":166,"jsonrpc":"2.0","result":null}
-#71638:059bc0f89f6d6436
+#large
 {"id":168,"jsonrpc":"2.0","result":[]}
 {"id":169,"jsonrpc":"2.0","result":{"data":[0,1,2,0,0,0,3,1,5,0,0,4,3,1,0,1,4,6,0,0,0,7,1,2,0]}}
 {"id":170,"jsonrpc":"2.0","result":[{"endLine":1,"kind":"region","startLine":0}]}
@@ -192,22 +192,22 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS1000","message":"newlines and comments are not allowed inside interpolation; keep the expression on one line, or bind it to a name first and interpolate the name ('{' starts an interpolation; write \\{ and \\} for literal braces)","range":{"end":{"character":0,"line":2},"start":{"character":21,"line":1}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b5.ms","version":1}}
 {"id":172,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nf: fn() String\n```"},"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}}}}
 {"id":173,"jsonrpc":"2.0","result":[{"range":{"end":{"character":1,"line":0},"start":{"character":0,"line":0}},"uri":"file://$TMP/ms-lsp-broken-PID/b5.ms"}]}
-#8819:93df44bda35f11da
+#large
 {"id":175,"jsonrpc":"2.0","result":null}
 {"id":176,"jsonrpc":"2.0","result":null}
-#7460:83eca0913d16e021
+#large
 {"id":178,"jsonrpc":"2.0","result":null}
 {"id":179,"jsonrpc":"2.0","result":null}
-#6313:5be7b5edd146e63b
+#large
 {"id":181,"jsonrpc":"2.0","result":null}
 {"id":182,"jsonrpc":"2.0","result":null}
-#22869:2d049904b2ac3c07
+#large
 {"id":184,"jsonrpc":"2.0","result":null}
 {"id":185,"jsonrpc":"2.0","result":null}
-#10188:be08634c0fec9b27
+#large
 {"id":187,"jsonrpc":"2.0","result":null}
 {"id":188,"jsonrpc":"2.0","result":null}
-#71638:ed4b88e27f8b912a
+#large
 {"id":190,"jsonrpc":"2.0","result":null}
 {"id":191,"jsonrpc":"2.0","result":null}
 {"id":192,"jsonrpc":"2.0","result":[]}
@@ -227,10 +227,10 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS2002","message":"cannot find module ./nowhere.ms (looked for $TMP/ms-lsp-broken-PID/nowhere.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file","range":{"end":{"character":6,"line":0},"start":{"character":0,"line":0}},"severity":1,"source":"manuscript"},{"code":"MS2002","message":"module does not export nothing; ./nowhere.ms exports nothing; namespace imports are unsupported, so import individual exported declarations","range":{"end":{"character":14,"line":0},"start":{"character":7,"line":0}},"severity":1,"source":"manuscript"},{"code":"MS2001","message":"unknown binding nothing; declare it with 'let nothing = ...' before use, define 'fn nothing(...)', or import it from a module","range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-broken-PID/b6.ms","version":1}}
 {"id":200,"jsonrpc":"2.0","result":null}
 {"id":201,"jsonrpc":"2.0","result":null}
-#9023:5d0c5b7bdb55428f
+#large
 {"id":203,"jsonrpc":"2.0","result":null}
 {"id":204,"jsonrpc":"2.0","result":null}
-#16409:bc04d38a58caa0f5
+#large
 {"id":206,"jsonrpc":"2.0","result":null}
 {"id":207,"jsonrpc":"2.0","result":null}
 {"id":208,"jsonrpc":"2.0","result":[]}
@@ -239,10 +239,10 @@
 {"id":211,"jsonrpc":"2.0","result":[]}
 {"id":212,"jsonrpc":"2.0","result":null}
 {"id":213,"jsonrpc":"2.0","result":null}
-#105354:c5408cf2a0fb95b1
+#large
 {"id":215,"jsonrpc":"2.0","result":null}
 {"id":216,"jsonrpc":"2.0","result":null}
-#6045:a910d046cd069f74
+#large
 {"id":218,"jsonrpc":"2.0","result":null}
 {"id":219,"jsonrpc":"2.0","result":null}
 {"id":220,"jsonrpc":"2.0","result":[{"detail":"./main.ms","filterText":"./main.ms","insertTextFormat":1,"kind":17,"label":"./main.ms","sortText":"./main.ms","textEdit":{"newText":"./main.ms","range":{"end":{"character":33,"line":0},"start":{"character":21,"line":0}}}},{"detail":"./project/","filterText":"./project/","insertTextFormat":1,"kind":17,"label":"./project/","sortText":"./project/","textEdit":{"newText":"./project/","range":{"end":{"character":33,"line":0},"start":{"character":21,"line":0}}}}]}
@@ -254,28 +254,28 @@
 {"id":226,"jsonrpc":"2.0","result":[]}
 {"id":227,"jsonrpc":"2.0","result":null}
 {"id":228,"jsonrpc":"2.0","result":null}
-#8819:4d1d9d2f1701739f
+#large
 {"id":230,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nf: fn() Int\n```"},"range":{"end":{"character":4,"line":1},"start":{"character":3,"line":1}}}}
 {"id":231,"jsonrpc":"2.0","result":[{"range":{"end":{"character":4,"line":1},"start":{"character":3,"line":1}},"uri":"file://$TMP/ms-lsp-broken-PID/b6.ms"}]}
-#7460:8f84b90beeaef381
+#large
 {"id":233,"jsonrpc":"2.0","result":null}
 {"id":234,"jsonrpc":"2.0","result":null}
-#6313:97c907e4aecd5145
+#large
 {"id":236,"jsonrpc":"2.0","result":null}
 {"id":237,"jsonrpc":"2.0","result":null}
-#28382:6cc807d53a99fca9
+#large
 {"id":239,"jsonrpc":"2.0","result":null}
 {"id":240,"jsonrpc":"2.0","result":null}
-#10185:e25316540b7be20b
+#large
 {"id":242,"jsonrpc":"2.0","result":null}
 {"id":243,"jsonrpc":"2.0","result":null}
-#71638:9aceaea6ce319464
+#large
 {"id":245,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nnothing: <invalid>\n```"},"range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}}}}
 {"id":246,"jsonrpc":"2.0","result":null}
-#7716:b3ae2f0ff6257739
+#large
 {"id":248,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nnothing: <invalid>\n```"},"range":{"end":{"character":18,"line":2},"start":{"character":11,"line":2}}}}
 {"id":249,"jsonrpc":"2.0","result":null}
-#37763:13a5c0dcbc4f2cf8
+#large
 {"id":251,"jsonrpc":"2.0","result":[{"detail":"fn() Int","kind":12,"name":"f","range":{"end":{"character":20,"line":2},"start":{"character":0,"line":1}},"selectionRange":{"end":{"character":4,"line":1},"start":{"character":3,"line":1}}}]}
 {"id":252,"jsonrpc":"2.0","result":{"data":[0,0,6,0,0,0,7,7,1,0,0,8,4,1,0,0,5,14,3,0,1,0,2,0,0,0,3,1,5,0,0,4,3,1,0,1,4,6,0,0,0,7,7,1,0]}}
 {"id":253,"jsonrpc":"2.0","result":[{"endLine":2,"kind":"region","startLine":1}]}
