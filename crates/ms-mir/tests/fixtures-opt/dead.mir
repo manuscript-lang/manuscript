@@ -31,9 +31,11 @@ fn @main() -> int {
 b0:
   %k: int = iconst 10
   %f: fn(int) -> int = closure.new @add %k
+  br b1(%f)
+b1(%g: own fn(int) -> int):
   %x: int = iconst 5
-  %r: int = call.ind (%f, %x)
-  drop %f
+  %r: int = call.ind (%g, %x)
+  drop %g
   %h: int = call @helper (%r)
   %i: int = iconst 1
   %s: dyn Area = iface.new @v_int %i

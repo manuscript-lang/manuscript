@@ -7,10 +7,13 @@
 //! value once after its definition and loading it before each use outside every loop keeps
 //! the loop body to the values it computes with.
 //!
-//! A value qualifies when it is defined outside every loop, every use lies outside every
-//! loop, it is live into at least one loop header, and that header has more live values
-//! than the callee-saved registers can hold. Constants and addresses are skipped because
-//! they are rematerialized.
+//! A value qualifies when it is live into a loop header, is neither defined nor used in
+//! that loop, and the header has more live values than the callee-saved registers can
+//! hold. A use becomes a load when it runs no more often than that loop does: it is outside
+//! the loop and either outside every loop or in one that encloses it. Uses in other loops
+//! keep the register, where the value is hot. A value defined by an earlier loop (a list that
+//! was just built) is stored in that loop after each definition. Constants and addresses are
+//! skipped because they are rematerialized.
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
 use cranelift_codegen::dominator_tree::DominatorTree;
@@ -79,8 +82,7 @@ pub fn spill_loop_cold(func: &mut Function) {
     let domtree = DominatorTree::with_function(func, &cfg);
     let mut loops = LoopAnalysis::new();
     loops.compute(func, &cfg, &domtree);
-    let headers: Vec<Block> = loops.loops().map(|l| loops.loop_header(l)).collect();
-    if headers.is_empty() {
+    if loops.loops().next().is_none() {
         return;
     }
     let blocks: Vec<Block> = func.layout.blocks().collect();
@@ -90,20 +92,19 @@ pub fn spill_loop_cold(func: &mut Function) {
     // Definitions per block, and which results are cheap to recompute.
     let mut defs: Vec<Bits> = Vec::with_capacity(blocks.len());
     let mut remat = vec![false; nvals];
-    let mut in_loop_def = vec![false; nvals];
-    for &b in &blocks {
+    let mut def_block = vec![0usize; nvals];
+    for (i, &b) in blocks.iter().enumerate() {
         let mut bits = Bits::new(nvals);
-        let in_loop = loops.innermost_loop(b).is_some();
         for &p in func.dfg.block_params(b) {
             bits.set(p.index());
-            in_loop_def[p.index()] = in_loop;
+            def_block[p.index()] = i;
         }
         for inst in func.layout.block_insts(b) {
             let cheap = rematerialized(func, inst);
             for &r in func.dfg.inst_results(inst) {
                 bits.set(r.index());
                 remat[r.index()] = cheap;
-                in_loop_def[r.index()] = in_loop;
+                def_block[r.index()] = i;
             }
         }
         defs.push(bits);
@@ -111,13 +112,14 @@ pub fn spill_loop_cold(func: &mut Function) {
 
     // Liveness: upward-exposed uses per block, propagated to a fixpoint.
     let mut live_in: Vec<Bits> = Vec::with_capacity(blocks.len());
-    let mut loop_use = vec![false; nvals];
+    let mut use_blocks: Vec<Vec<usize>> = vec![Vec::new(); nvals];
     for (i, &b) in blocks.iter().enumerate() {
         let mut bits = Bits::new(nvals);
-        let in_loop = loops.innermost_loop(b).is_some();
         for inst in func.layout.block_insts(b) {
             for v in func.dfg.inst_values(inst) {
-                loop_use[v.index()] |= in_loop;
+                if use_blocks[v.index()].last() != Some(&i) {
+                    use_blocks[v.index()].push(i);
+                }
                 if !defs[i].get(v.index()) {
                     bits.set(v.index());
                 }
@@ -146,17 +148,24 @@ pub fn spill_loop_cold(func: &mut Function) {
         }
     }
 
-    // Values live into a crowded loop header and untouched by every loop.
-    let mut spill = vec![false; nvals];
+    // Values live into a crowded loop header and untouched by that loop.
+    let mut cold_for: Vec<Vec<ir::Block>> = vec![Vec::new(); nvals];
     let mut any = false;
-    for &h in &headers {
+    for l in loops.loops() {
+        let h = loops.loop_header(l);
         let live = &live_in[index[&h]];
         if live.count() < MIN_LIVE_AT_HEADER {
             continue;
         }
         for v in 0..nvals {
-            if live.get(v) && !loop_use[v] && !remat[v] && !in_loop_def[v] {
-                spill[v] = true;
+            if !live.get(v) || remat[v] || loops.is_in_loop(blocks[def_block[v]], l) {
+                continue;
+            }
+            if use_blocks[v]
+                .iter()
+                .all(|&u| !loops.is_in_loop(blocks[u], l))
+            {
+                cold_for[v].push(h);
                 any = true;
             }
         }
@@ -164,6 +173,18 @@ pub fn spill_loop_cold(func: &mut Function) {
     if !any {
         return;
     }
+    // A use becomes a load when it runs no more often than a loop the value is cold in: it
+    // is outside that loop and either outside every loop or in one that encloses it. A use in
+    // some other loop keeps the register, where the value is hot.
+    let reload = |v: usize, ub: Block| {
+        cold_for[v].iter().any(|&h| {
+            let cold = loops.innermost_loop(h).expect("a header is in its loop");
+            !loops.is_in_loop(ub, cold)
+                && loops
+                    .innermost_loop(ub)
+                    .is_none_or(|enclosing| loops.is_in_loop(h, enclosing))
+        })
+    };
 
     // Rewrite uses first (so the stores below keep the original value), then store after
     // each definition.
@@ -174,7 +195,7 @@ pub fn spill_loop_cold(func: &mut Function) {
             let used: Vec<Value> = {
                 let mut seen = Vec::new();
                 for v in func.dfg.inst_values(inst) {
-                    if spill[v.index()] && !seen.contains(&v) {
+                    if reload(v.index(), b) && !seen.contains(&v) {
                         seen.push(v);
                     }
                 }

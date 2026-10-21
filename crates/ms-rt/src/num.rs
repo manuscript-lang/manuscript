@@ -6,15 +6,28 @@ use std::io::Write;
 
 /// Formats `v` in decimal into `tmp`, returning the used tail.
 pub fn format_i64(v: i64, tmp: &mut [u8; 20]) -> &[u8] {
+    const PAIRS: &[u8; 200] = b"0001020304050607080910111213141516171819\
+2021222324252627282930313233343536373839\
+4041424344454647484950515253545556575859\
+6061626364656667686970717273747576777879\
+8081828384858687888990919293949596979899";
     let mut n = v.unsigned_abs();
     let mut i = tmp.len();
-    loop {
+    while n >= 100 {
+        let r = (n % 100) as usize * 2;
+        n /= 100;
+        i -= 2;
+        tmp[i] = PAIRS[r];
+        tmp[i + 1] = PAIRS[r + 1];
+    }
+    if n >= 10 {
+        let r = n as usize * 2;
+        i -= 2;
+        tmp[i] = PAIRS[r];
+        tmp[i + 1] = PAIRS[r + 1];
+    } else {
         i -= 1;
-        tmp[i] = b'0' + (n % 10) as u8;
-        n /= 10;
-        if n == 0 {
-            break;
-        }
+        tmp[i] = b'0' + n as u8;
     }
     if v < 0 {
         i -= 1;
@@ -51,6 +64,26 @@ pub fn format_radix(v: i64, radix: u32, out: &mut Vec<u8>) {
 
 /// `String.parse_int`: optional sign, ASCII digits only; overflow is `None`.
 pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+    let (neg, digits) = match text.first()? {
+        b'-' => (true, &text[1..]),
+        b'+' => (false, &text[1..]),
+        _ => (false, text),
+    };
+    if digits.is_empty() {
+        return None;
+    }
+    // Up to eighteen digits cannot overflow, so skip the per-digit checks.
+    if digits.len() <= 18 {
+        let mut acc = 0i64;
+        for &c in digits {
+            let d = c.wrapping_sub(b'0');
+            if d > 9 {
+                return None;
+            }
+            acc = acc * 10 + d as i64;
+        }
+        return Some(if neg { -acc } else { acc });
+    }
     core::str::from_utf8(text).ok()?.parse().ok()
 }
 
@@ -426,6 +459,36 @@ mod tests {
         assert_eq!(parse_int_decimal(b"-9223372036854775808"), Some(i64::MIN));
         assert_eq!(parse_int_decimal(b"9223372036854775808"), None);
         assert_eq!(parse_int_decimal(b"+12"), Some(12));
+        assert_eq!(
+            parse_int_decimal(b"999999999999999999"),
+            Some(999_999_999_999_999_999)
+        );
+        assert_eq!(
+            parse_int_decimal(b"-999999999999999999"),
+            Some(-999_999_999_999_999_999)
+        );
+        assert_eq!(parse_int_decimal(b"9223372036854775807"), Some(i64::MAX));
+        assert_eq!(parse_int_decimal(b"-"), None);
+        assert_eq!(parse_int_decimal(b"+-1"), None);
+        assert_eq!(parse_int_decimal(b"1 "), None);
+        let mut tmp = [0u8; 20];
+        for v in [
+            0,
+            9,
+            10,
+            99,
+            100,
+            101,
+            12345,
+            -1,
+            -10,
+            -100,
+            1_000_000,
+            i64::MAX,
+            i64::MIN + 1,
+        ] {
+            assert_eq!(format_i64(v, &mut tmp), v.to_string().as_bytes(), "{v}");
+        }
         assert_eq!(parse_int_decimal(b"1_0"), None);
         assert_eq!(parse_int_decimal(b""), None);
         assert_eq!(parse_int_radix(b"FF", 16), Ok(255));

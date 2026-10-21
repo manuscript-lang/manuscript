@@ -613,6 +613,11 @@ impl Datagrams {
                     }
                 }
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+                // Windows refuses a datagram longer than the buffer instead of truncating it
+                // (`WSAEMSGSIZE`); the datagram is discarded either way.
+                Err(e) if cfg!(windows) && e.raw_os_error() == Some(10040) => {
+                    return Err(NetErr::LimitExceeded);
+                }
                 Err(e) => {
                     return Err(if self.closed.get() {
                         NetErr::Closed

@@ -6,21 +6,24 @@
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
-MS=${MS:-$ROOT/ms}; GO=${GO:-$ROOT/toolchain/go/bin/go}; CC=${CC:-cc}; N=${1:-5}
+MS=${MS:-$ROOT/ms}; GO=${GO:-$ROOT/toolchain/go/bin/go}; CC=${CC:-cc}; RUSTC=${RUSTC:-rustc}; N=${1:-5}
 case "$N" in ''|*[!0-9]*|0) echo 'repeats must be a positive integer' >&2; exit 2;; esac
-MS=$(command -v "$MS"); GO=$(command -v "$GO"); CC=$(command -v "$CC")
+MS=$(command -v "$MS"); GO=$(command -v "$GO"); CC=$(command -v "$CC"); RUSTC=$(command -v "$RUSTC")
 case "$MS" in /*) ;; *) MS="$(pwd)/$MS";; esac
 case "$GO" in /*) ;; *) GO="$(pwd)/$GO";; esac
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT HUP INT TERM
-cp -r "$HERE/go" "$HERE/ms" "$W/"
+cp -r "$HERE/go" "$HERE/ms" "$HERE/rust" "$W/"
 (cd "$W/go" && CGO_ENABLED=0 "$GO" build -buildvcs=false -trimpath -ldflags="-s -w -buildid=" -o bench .)
+mkdir -p "$W/rust-checked"
+"$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rust/bench" "$W/rust/main.rs"
+"$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -C overflow-checks=on -o "$W/rust-checked/bench" "$W/rust/main.rs"
 (cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o bench >&2)
 CFLAGS="-O2 -std=c11 -ffp-contract=off"
 cc_build_named() { name=$1; src=$2; shift 2; mkdir -p "$W/$name" && "$CC" $CFLAGS "$@" "$src" -o "$W/$name/bench"; }
 cc_build_named c "$HERE/c/plain.c"
 cc_build_named c-ms "$HERE/c/ms.c"
-versions='go ms c c-ms'
+versions='go ms rust rust-checked c c-ms'
 if [ "${ABLATE:-0}" = 1 ]; then
   cc_build_named c-ms-no-poll "$HERE/c/ms.c" -DMS_NO_POLL
   cc_build_named c-ms-no-overflow "$HERE/c/ms.c" -DMS_NO_OVERFLOW
@@ -41,4 +44,4 @@ while [ "$i" -lt "$N" ]; do
   done
   i=$((i + 1))
 done
-python3 "$HERE/table.py" "$W/raw.txt"
+python3 "$HERE/../table.py" "$W/raw.txt"

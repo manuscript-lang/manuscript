@@ -889,6 +889,52 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
+/// [`merge_sort`] for slots that are plain machine words (`Int`, `Float`, pointers): the same
+/// stable result, with typed moves instead of calls to `memcpy` and a bidirectional merge.
+unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: CmpFn, env: *mut u8) {
+    // SAFETY: `items` and `buf` hold `n` slots each.
+    unsafe {
+        let less = |a: *const T, b: *const T| cmp(env, a as *const u8, b as *const u8) < 0;
+        if n <= 12 {
+            for i in 1..n {
+                let x = *items.add(i);
+                let mut j = i;
+                while j > 0 && less(&x, items.add(j - 1)) {
+                    *items.add(j) = *items.add(j - 1);
+                    j -= 1;
+                }
+                *items.add(j) = x;
+            }
+            return;
+        }
+        let mid = n / 2;
+        merge_sort_word(items, buf, mid, cmp, env);
+        merge_sort_word(items.add(mid), buf.add(mid), n - mid, cmp, env);
+        if !less(items.add(mid), items.add(mid - 1)) {
+            return;
+        }
+        // Merge from both ends at once: two independent chains hide the load-to-compare
+        // latency that limits a single merge. Every element is consumed exactly once whatever
+        // the comparator answers, because each step only takes from a cursor range that is
+        // still non-empty; a comparator that is not a total order just gives a poor order.
+        core::ptr::copy_nonoverlapping(items, buf, n);
+        let (mut l, mut le, mut r, mut re) = (0usize, mid, mid, n);
+        for k in 0..n / 2 {
+            let take_r = l == le || (r < re && less(buf.add(r), buf.add(l)));
+            *items.add(k) = *buf.add(if take_r { r } else { l });
+            r += take_r as usize;
+            l += !take_r as usize;
+            let take_l = re == r || (l < le && less(buf.add(re - 1), buf.add(le - 1)));
+            *items.add(n - 1 - k) = *buf.add(if take_l { le - 1 } else { re - 1 });
+            le -= take_l as usize;
+            re -= !take_l as usize;
+        }
+        if n % 2 == 1 {
+            *items.add(n / 2) = *buf.add(if l < le { l } else { r });
+        }
+    }
+}
+
 unsafe fn merge_sort(
     items: *mut u8,
     buf: *mut u8,
@@ -951,7 +997,11 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let buf = alloc::alloc(v.len * size.max(1));
-        merge_sort(v.ptr, buf, v.len, size, cmp, env);
+        if size == 8 {
+            merge_sort_word(v.ptr as *mut u64, buf as *mut u64, v.len, cmp, env);
+        } else {
+            merge_sort(v.ptr, buf, v.len, size, cmp, env);
+        }
         alloc::free(buf);
     }
 }
@@ -1445,11 +1495,34 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
     unsafe {
         let data = string::bytes(s);
         let v = &mut *b;
-        reserve(v, &desc::msrt_desc_bool, data.len());
-        if !data.is_empty() {
+        if v.len + data.len() > v.cap {
+            reserve(v, &desc::msrt_desc_bool, data.len());
+        }
+        // One byte (a character or punctuation) is the common append; a call to `memcpy`
+        // costs several times the store.
+        if data.len() == 1 {
+            *v.ptr.add(v.len) = data[0];
+        } else if !data.is_empty() {
             core::ptr::copy_nonoverlapping(data.as_ptr(), v.ptr.add(v.len), data.len());
         }
         v.len += data.len();
+    }
+}
+
+/// Appends the decimal text of `n`; the same bytes as appending `n.to_string()` without the
+/// temporary string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i64) {
+    // SAFETY: caller contract.
+    unsafe {
+        let mut tmp = [0u8; 20];
+        let digits = crate::num::format_i64(n, &mut tmp);
+        let v = &mut *b;
+        if v.len + digits.len() > v.cap {
+            reserve(v, &desc::msrt_desc_bool, digits.len());
+        }
+        core::ptr::copy_nonoverlapping(digits.as_ptr(), v.ptr.add(v.len), digits.len());
+        v.len += digits.len();
     }
 }
 
@@ -1486,6 +1559,76 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    unsafe extern "C-unwind" fn cmp_high(_env: *mut u8, a: *const u8, b: *const u8) -> i64 {
+        // SAFETY: the sort passes pointers to live word slots.
+        unsafe { ((*(a as *const u64) >> 32) as i64) - ((*(b as *const u64) >> 32) as i64) }
+    }
+
+    unsafe extern "C-unwind" fn cmp_noise(env: *mut u8, _a: *const u8, _b: *const u8) -> i64 {
+        // SAFETY: `env` is the test's xorshift state.
+        unsafe {
+            let s = &mut *(env as *mut u64);
+            *s ^= *s << 13;
+            *s ^= *s >> 7;
+            *s ^= *s << 17;
+            (*s % 3) as i64 - 1
+        }
+    }
+
+    #[test]
+    fn word_sort_is_stable_and_total_for_every_size() {
+        let mut seed = 0x2545_f491_4f6c_dd1du64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for n in 0..300usize {
+            for range in [3u64, 50, 1 << 20] {
+                // Key in the high half, original position in the low half.
+                let mut v: Vec<u64> = (0..n as u64)
+                    .map(|i| ((next() % range) << 32) | i)
+                    .collect();
+                let mut want = v.clone();
+                want.sort_by_key(|x| x >> 32);
+                let mut buf = vec![0u64; n];
+                // SAFETY: both buffers hold `n` words.
+                unsafe {
+                    merge_sort_word(
+                        v.as_mut_ptr(),
+                        buf.as_mut_ptr(),
+                        n,
+                        cmp_high,
+                        core::ptr::null_mut(),
+                    );
+                }
+                assert_eq!(v, want, "n={n} range={range}");
+            }
+        }
+    }
+
+    #[test]
+    fn word_sort_keeps_every_element_for_an_inconsistent_comparator() {
+        for n in 0..200usize {
+            let mut v: Vec<u64> = (0..n as u64).collect();
+            let mut buf = vec![0u64; n];
+            let mut state = 0x9e37_79b9_7f4a_7c15u64 ^ n as u64;
+            // SAFETY: both buffers hold `n` words; `state` outlives the call.
+            unsafe {
+                merge_sort_word(
+                    v.as_mut_ptr(),
+                    buf.as_mut_ptr(),
+                    n,
+                    cmp_noise,
+                    &mut state as *mut u64 as *mut u8,
+                );
+            }
+            v.sort();
+            assert_eq!(v, (0..n as u64).collect::<Vec<_>>(), "n={n}");
+        }
+    }
 
     #[test]
     fn find_int_matches_a_plain_scan() {

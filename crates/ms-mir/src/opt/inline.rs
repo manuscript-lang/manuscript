@@ -13,7 +13,7 @@ use crate::ir::{
     Mode, Module, Op, Scope, Target, Term, Value,
 };
 use crate::types::Ty;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Instruction count up to which an `Auto` callee is inlined.
 pub const BASE_THRESHOLD: usize = 60;
@@ -28,10 +28,101 @@ pub const GROWTH_SLACK: usize = 200;
 
 /// Runs the pass over the whole module; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
-    let mut changed = inline_calls(m);
+    let mut changed = specialize_sort_thunks(m);
+    changed |= inline_calls(m);
+    changed |= inline_closures(m);
     changed |= strip_depth(m);
     changed |= remove_dead(m);
     changed
+}
+
+/// Gives each runtime sort whose comparator is a known closure a private copy of the generic
+/// `sort.cmp` thunk that calls the closure's code directly (and inlines it). The runtime then
+/// makes one indirect call per comparison instead of three.
+fn specialize_sort_thunks(m: &mut Module) -> bool {
+    let mut changed = false;
+    let mut made: HashMap<(FuncId, FuncId), FuncId> = HashMap::new();
+    for fi in 0..m.funcs.len() {
+        let mut known: HashMap<Value, FuncId> = HashMap::new();
+        let mut addrs: HashMap<Value, FuncId> = HashMap::new();
+        for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+            match (inst.op, inst.imm, inst.res) {
+                (Op::ClosureNew, Imm::Func(g), Some(r)) => {
+                    known.insert(r, g);
+                }
+                (Op::FuncAddr, Imm::Func(t), Some(r)) if m.funcs[t.index()].name == "sort.cmp" => {
+                    addrs.insert(r, t);
+                }
+                _ => {}
+            }
+        }
+        if addrs.is_empty() || known.is_empty() {
+            continue;
+        }
+        let mut edits: Vec<(Value, FuncId, FuncId)> = Vec::new();
+        for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+            if inst.op != Op::CallRt {
+                continue;
+            }
+            for w in inst.args.windows(2) {
+                if let (Some(&t), Some(&g)) = (addrs.get(&w[0]), known.get(&w[1])) {
+                    edits.push((w[0], t, g));
+                }
+            }
+        }
+        for (addr, t, g) in edits {
+            let spec = match made.get(&(t, g)) {
+                Some(s) => *s,
+                None => {
+                    let Some(thunk) = specialized_thunk(m, t, g) else {
+                        continue;
+                    };
+                    let s = m.add_func(thunk);
+                    made.insert((t, g), s);
+                    s
+                }
+            };
+            for inst in m.funcs[fi]
+                .blocks
+                .iter_mut()
+                .flat_map(|b| b.insts.iter_mut())
+            {
+                if inst.res == Some(addr) {
+                    inst.imm = Imm::Func(spec);
+                    changed = true;
+                }
+            }
+        }
+    }
+    changed
+}
+
+/// `thunk` with its closure parameter replaced by the raw environment pointer and the indirect
+/// call replaced by a direct call (inlined when small) of closure code `g`.
+fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
+    let code = &m.funcs[g.index()];
+    if !matches!(code.kind, FuncKind::Closure { .. }) || code.inline == InlineHint::Never {
+        return None;
+    }
+    let mut t = m.funcs[thunk.index()].clone();
+    t.name = format!("sort.cmp.{}", code.name);
+    t.params[0].ty = Ty::PTR;
+    let env = t.blocks[0].params[0].value;
+    t.values[env.index()] = Ty::PTR;
+    let (bi, ii) = t.blocks.iter().enumerate().find_map(|(bi, b)| {
+        b.insts
+            .iter()
+            .position(|i| i.op == Op::CallInd && i.args[0] == env)
+            .map(|ii| (bi, ii))
+    })?;
+    let call = &mut t.blocks[bi].insts[ii];
+    call.op = Op::Call;
+    call.imm = Imm::Func(g);
+    if code.inst_count() <= BASE_THRESHOLD {
+        let ret_own = m.needs_drop(code.ret);
+        inline_at(&mut t, bi, ii, code, ret_own);
+    }
+    Some(t)
 }
 
 /// Strongly connected components of the graph `adj`, callees (successors) first.
@@ -342,6 +433,147 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
     });
     f.blocks[bi].term_loc = call.loc;
     cont.index()
+}
+
+/// Inlines `call.ind` of a closure built in the same function by `closure.new` when every
+/// capture is plain data: the body is copied in with `closure.cap` replaced by the captured
+/// value, and a closure left with no use but drops is deleted with them (a plain-data
+/// environment owns nothing, so ownership stays linear). Closures that capture owned
+/// values keep their indirect call.
+fn inline_closures(m: &mut Module) -> bool {
+    let mut changed = false;
+    for fi in 0..m.funcs.len() {
+        changed |= inline_closures_in(m, fi);
+    }
+    changed
+}
+
+fn inline_closures_in(m: &mut Module, fi: usize) -> bool {
+    let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
+    let mut grown = 0usize;
+    let mut changed = false;
+    let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
+    let mut known: HashMap<Value, (FuncId, Vec<Value>)> = HashMap::new();
+    for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+        if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
+            && inst.args.iter().all(|a| !m.needs_drop(m.funcs[fi].ty(*a)))
+        {
+            known.insert(r, (g, inst.args.clone()));
+        }
+    }
+    if known.is_empty() {
+        return false;
+    }
+    while let Some(bi) = work.pop() {
+        for ii in 0..m.funcs[fi].blocks[bi].insts.len() {
+            let inst = &m.funcs[fi].blocks[bi].insts[ii];
+            if inst.op != Op::CallInd {
+                continue;
+            }
+            let Some((g, caps)) = known.get(&inst.args[0]).cloned() else {
+                continue;
+            };
+            let gi = g.index();
+            let callee = &m.funcs[gi];
+            let size = callee.inst_count();
+            if gi == fi || callee.inline == InlineHint::Never || size > BASE_THRESHOLD {
+                continue;
+            }
+            if grown + size > budget {
+                continue;
+            }
+            let Some(body) = closure_body(&m.funcs[gi]) else {
+                continue;
+            };
+            grown += size;
+            let ret_own = m.needs_drop(body.ret);
+            let call = &mut m.funcs[fi].blocks[bi].insts[ii];
+            call.op = Op::Call;
+            call.imm = Imm::Func(g);
+            call.args = caps.into_iter().chain(call.args.drain(1..)).collect();
+            let cont = inline_at(&mut m.funcs[fi], bi, ii, &body, ret_own);
+            work.push(cont);
+            changed = true;
+            break;
+        }
+    }
+    if changed {
+        delete_unused_closures(m, fi, &known);
+    }
+    changed
+}
+
+/// A copy of closure code `f` as a plain function taking the captures before the
+/// arguments, or `None` when the environment is used in any way besides `closure.cap`.
+fn closure_body(f: &Func) -> Option<Func> {
+    let FuncKind::Closure { captures } = &f.kind else {
+        return None;
+    };
+    let mut c = f.clone();
+    let env = c.blocks[0].params[0].value;
+    let cap_params: Vec<Value> = captures.iter().map(|t| c.new_value(*t)).collect();
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    for b in &mut c.blocks {
+        b.insts.retain(|i| {
+            let (Op::ClosureCap, Imm::Idx(k), Some(r)) = (i.op, i.imm, i.res) else {
+                return true;
+            };
+            subst.insert(r, cap_params[k as usize]);
+            false
+        });
+    }
+    let mut env_used = false;
+    for b in &mut c.blocks {
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                *a = subst.get(a).copied().unwrap_or(*a);
+                env_used |= *a == env;
+            }
+        }
+        b.term.for_each_use_mut(|v| {
+            *v = subst.get(v).copied().unwrap_or(*v);
+            env_used |= *v == env;
+        });
+    }
+    if env_used {
+        return None;
+    }
+    let rest = c.blocks[0].params.split_off(1);
+    c.blocks[0].params = cap_params
+        .into_iter()
+        .map(|value| BlockParam {
+            value,
+            mode: Mode::Borrow,
+        })
+        .chain(rest)
+        .collect();
+    Some(c)
+}
+
+/// Deletes the `closure.new` of each known closure whose only remaining uses are drops.
+fn delete_unused_closures(m: &mut Module, fi: usize, known: &HashMap<Value, (FuncId, Vec<Value>)>) {
+    let f = &mut m.funcs[fi];
+    let mut used: HashSet<Value> = HashSet::new();
+    for b in &f.blocks {
+        for i in b.insts.iter().filter(|i| i.op != Op::Drop) {
+            used.extend(i.args.iter().copied());
+        }
+        b.term.for_each_use(|v| {
+            used.insert(v);
+        });
+    }
+    let dead: HashSet<Value> = known
+        .keys()
+        .filter(|v| !used.contains(v))
+        .copied()
+        .collect();
+    for b in &mut f.blocks {
+        b.insts.retain(|i| {
+            let new = i.op == Op::ClosureNew && i.res.is_some_and(|r| dead.contains(&r));
+            let drop = i.op == Op::Drop && dead.contains(&i.args[0]);
+            !(new || drop)
+        });
+    }
 }
 
 /// Removes depth accounting from functions that cannot be part of a recursive cycle.

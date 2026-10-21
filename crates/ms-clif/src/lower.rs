@@ -2,7 +2,7 @@
 
 use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, SHARED_VALUE, leaf_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
-use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
+use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
     self, BlockArg, FuncRef, GlobalValue, InstBuilder, InstructionData, MemFlagsData, Opcode,
     StackSlotData, StackSlotKind, TrapCode, Value, ValueDef, types,
@@ -1199,6 +1199,20 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.ins().return_(&[r32]);
     }
 
+    /// The negation of the boolean `c`, folding into the comparison that produced it.
+    fn negate(&mut self, c: Value) -> Value {
+        if let ValueDef::Result(i, _) = self.b.func.dfg.value_def(c)
+            && let InstructionData::IntCompare {
+                opcode: Opcode::Icmp,
+                args: [x, y],
+                cond,
+            } = self.b.func.dfg.insts[i]
+        {
+            return self.b.ins().icmp(cond.complement(), x, y);
+        }
+        self.b.ins().icmp_imm_s(IntCC::Equal, c, 0)
+    }
+
     fn lower_term(&mut self, f: &Func, t: &Term) {
         match t {
             Term::Br(tg) => {
@@ -1208,7 +1222,17 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.ins().jump(b, &args);
             }
             Term::CondBr { cond, then, els } => {
-                let c = self.vals[cond.index()][0];
+                let mut c = self.vals[cond.index()][0];
+                // Cranelift lays out the second successor first, so a loop test puts the
+                // exit there only if the body is the second one: swap to keep the body
+                // as the fall-through and the loop to one taken branch per iteration.
+                let swap = continues_loop(f, self.cur, then.block.index(), els.block.index());
+                let (then, els) = if swap {
+                    c = self.negate(c);
+                    (els, then)
+                } else {
+                    (then, els)
+                };
                 let (tb, ta) = self.target(then);
                 let (eb, ea) = self.target(els);
                 let (ts, es) = (self.edge_stores(then), self.edge_stores(els));
@@ -2416,4 +2440,32 @@ impl<'a, 'm> Lower<'a, 'm> {
             _ => false,
         }
     }
+}
+
+/// Whether `head` ends in a loop test whose `then` edge stays in the loop and whose `els`
+/// edge leaves it (`head` is reachable from `then` but not from `els`).
+fn continues_loop(f: &Func, head: usize, then: usize, els: usize) -> bool {
+    let has_back_edge = f.blocks.iter().enumerate().skip(head).any(|(_, b)| {
+        let mut hit = false;
+        b.term.for_each_target(|t| hit |= t.block.index() == head);
+        hit
+    });
+    has_back_edge && reaches(f, then, head) && !reaches(f, els, head)
+}
+
+fn reaches(f: &Func, from: usize, to: usize) -> bool {
+    let mut seen = vec![false; f.blocks.len()];
+    let mut stack = vec![from];
+    while let Some(b) = stack.pop() {
+        if b == to {
+            return true;
+        }
+        if std::mem::replace(&mut seen[b], true) {
+            continue;
+        }
+        f.blocks[b]
+            .term
+            .for_each_target(|t| stack.push(t.block.index()));
+    }
+    false
 }

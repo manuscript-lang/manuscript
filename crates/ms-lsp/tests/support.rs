@@ -22,8 +22,11 @@ impl Workspace {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures"),
             &root,
         );
+        // The project's spelling: Windows `canonicalize` yields a verbatim `\\?\` path.
+        let root = ms_project::gopath::eval_symlinks(root.to_str().expect("utf-8 temp dir"))
+            .expect("workspace");
         Workspace {
-            root: root.canonicalize().expect("workspace"),
+            root: PathBuf::from(root),
         }
     }
 
@@ -242,9 +245,13 @@ fn snapshot_line(message: &Json) -> String {
         temp.insert(0, '/');
     }
     let pid = format!("-{}/", std::process::id());
-    let text = canonical(message)
+    let mut text = canonical(message)
         .replace(&pid, "-PID/")
         .replace(&temp, "$TMP");
+    // Messages spell the directory as a path (`D:/...`), URIs with the leading slash.
+    if cfg!(windows) {
+        text = text.replace(&temp[1..], "$TMP");
+    }
     if text.len() > 4096 {
         return "#large".to_string();
     }

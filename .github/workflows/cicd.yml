@@ -165,23 +165,12 @@ jobs:
       - name: Tests and doc tests
         if: matrix.full || matrix.tests
         run: |
-          skip=()
           if [ "$RUNNER_OS" = Windows ]; then
             export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
-            # Known Windows failures run in the next, non-blocking step.
-            filter=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^$/d' scripts/windows-known-failures.txt | sed 's/.*/test(~&)/' | paste -sd'|' -)
-            skip=(-E "not ($filter)")
           fi
           cargo build --workspace --tests --locked --keep-going
-          cargo nextest run --workspace --locked --no-fail-fast "${skip[@]}"
+          cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
-      - name: Known Windows test failures (tracked, non-blocking)
-        if: runner.os == 'Windows' && matrix.tests
-        continue-on-error: true
-        run: |
-          export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
-          filter=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^$/d' scripts/windows-known-failures.txt | sed 's/.*/test(~&)/' | paste -sd'|' -)
-          cargo nextest run --workspace --locked --no-fail-fast -E "$filter"
       - name: MIR signed boundaries and fault semantics
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Build CLI for native source conformance

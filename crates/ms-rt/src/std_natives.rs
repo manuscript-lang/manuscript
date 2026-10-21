@@ -466,6 +466,7 @@ mod process {
         assert!(m.resident > 0 && m.external >= 0);
     }
 
+    #[cfg(unix)]
     unsafe extern "C" {
         fn raise(sig: i32) -> i32;
     }

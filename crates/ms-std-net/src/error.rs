@@ -275,6 +275,10 @@ impl From<NetErr> for WsErr {
     }
 }
 
+/// The text of a connection the peer reset or aborted (Windows reports a reset after a local
+/// write as an abort).
+pub const RESET_TEXT: &str = "connection reset by peer";
+
 /// Words a transport failure without host framing (`dial tcp ...: `) or bare
 /// sentinels such as `EOF`.
 pub fn describe_io_error(err: &io::Error) -> String {
@@ -282,7 +286,7 @@ pub fn describe_io_error(err: &io::Error) -> String {
     match err.kind() {
         UnexpectedEof => "connection closed before the exchange completed".to_string(),
         ConnectionRefused => "connection refused".to_string(),
-        ConnectionReset => "connection reset by peer".to_string(),
+        ConnectionReset | ConnectionAborted => RESET_TEXT.to_string(),
         BrokenPipe => "broken pipe".to_string(),
         _ => lowercase_os_text(err),
     }

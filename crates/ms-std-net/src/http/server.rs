@@ -546,7 +546,9 @@ pub struct Server {
     id: usize,
     me: Weak<Server>,
     pub(super) owner: Rc<Network>,
-    listener: socket2::Socket,
+    /// Dropped on close: macOS keeps queueing connections on a shut-down listener until the
+    /// descriptor itself closes.
+    listener: RefCell<Option<socket2::Socket>>,
     address: String,
     pub(super) limits: Limits,
     streaming: bool,
@@ -610,7 +612,7 @@ impl Server {
             id,
             me: me.clone(),
             owner: owner.clone(),
-            listener,
+            listener: RefCell::new(Some(listener)),
             address: local,
             limits: options.limits,
             streaming: options.streaming,
@@ -629,7 +631,12 @@ impl Server {
             .targets
             .borrow_mut()
             .insert(token, Target::Listener(Rc::downgrade(&server)));
-        if !reactor.add(server.listener.as_sock(), token, Ev::IN) {
+        let watched = server
+            .listener
+            .borrow()
+            .as_ref()
+            .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
+        if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
         }
@@ -700,9 +707,11 @@ impl Server {
             }
             st.closing = true;
         }
-        reactor.delete(self.listener.as_sock());
+        if let Some(listener) = self.listener.borrow_mut().take() {
+            reactor.delete(listener.as_sock());
+            let _ = listener.shutdown(std::net::Shutdown::Both);
+        }
         reactor.targets.borrow_mut().remove(&self.token);
-        let _ = self.listener.shutdown(std::net::Shutdown::Both);
         // Idle connections close now; the others after their current response.
         let conns: Vec<Rc<Conn>> = self.st.borrow().conns.values().cloned().collect();
         for conn in &conns {
@@ -749,7 +758,11 @@ impl Server {
 
     fn accept_all(&self, reactor: &Reactor) {
         loop {
-            match self.listener.accept() {
+            let accepted = match self.listener.borrow().as_ref() {
+                Some(listener) => listener.accept(),
+                None => break,
+            };
+            match accepted {
                 Ok((sock, _peer)) => {
                     if self.st.borrow().closing {
                         continue;
@@ -776,8 +789,11 @@ impl Server {
     /// polling it would spin the reactor while connections it could free sit unserved.
     fn pause_accept(&self, reactor: &Reactor) {
         let mut st = self.st.borrow_mut();
-        if st.accept_paused_until.is_none() && !st.closing {
-            reactor.delete(self.listener.as_sock());
+        if st.accept_paused_until.is_none()
+            && !st.closing
+            && let Some(listener) = self.listener.borrow().as_ref()
+        {
+            reactor.delete(listener.as_sock());
             st.accept_paused_until = Some(Instant::now() + ACCEPT_BACKOFF);
         }
     }
@@ -789,7 +805,9 @@ impl Server {
             return;
         }
         st.accept_paused_until = None;
-        reactor.add(self.listener.as_sock(), self.token, Ev::IN);
+        if let Some(listener) = self.listener.borrow().as_ref() {
+            reactor.add(listener.as_sock(), self.token, Ev::IN);
+        }
     }
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
@@ -1909,11 +1927,6 @@ pub(crate) mod tests {
         let addr = server.address().to_string();
         server.close().unwrap();
         assert!(server.is_closed());
-        // Linux refuses connections once the listener is shut down; macOS keeps queueing
-        // them until the listening descriptor itself closes with the server.
-        if !cfg!(target_os = "linux") {
-            drop(server);
-        }
         assert!(TcpStream::connect(&addr).is_err());
         net.close();
     }

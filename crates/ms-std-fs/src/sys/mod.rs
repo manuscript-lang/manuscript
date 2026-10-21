@@ -295,6 +295,10 @@ pub fn read_only(flags: i32) -> bool {
 /// The status an error code maps to (`classifyOS`), by the kind `std` gives it.
 pub fn classify(e: Errno) -> u8 {
     use io::ErrorKind::*;
+    // `std` leaves Windows `ERROR_NOT_SUPPORTED` uncategorized.
+    if e == UNSUPPORTED {
+        return ms_rt_abi::STATUS_UNSUPPORTED;
+    }
     match kind(e) {
         Unsupported => ms_rt_abi::STATUS_UNSUPPORTED,
         NotFound => ms_rt_abi::STATUS_NOT_FOUND,

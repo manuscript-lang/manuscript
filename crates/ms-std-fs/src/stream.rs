@@ -285,7 +285,7 @@ impl Stream {
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
             Some(v) => v,
         } as u64;
-        if let Some(i) = self.available().iter().position(|&c| c == b'\n')
+        if let Some(i) = find_newline(self.available())
             && line_length(&self.available()[..i]) < max
         {
             let line = self.available()[..i].to_vec();
@@ -302,7 +302,7 @@ impl Stream {
                     Some(c) => chunk = c,
                 }
             }
-            if let Some(i) = chunk.iter().position(|&c| c == b'\n') {
+            if let Some(i) = find_newline(&chunk) {
                 // An over-long line is dropped; the lines after it stay readable.
                 if i + 1 < chunk.len() {
                     self.pending = chunk[i + 1..].to_vec();
@@ -331,6 +331,24 @@ impl Drop for Stream {
         }
         let _ = self.close();
     }
+}
+
+/// Index of the first `\n`, scanning eight bytes per step.
+fn find_newline(buf: &[u8]) -> Option<usize> {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    const NL: u64 = LO * b'\n' as u64;
+    let (chunks, rest) = buf.as_chunks::<8>();
+    let mut at = 0;
+    for c in chunks {
+        let x = u64::from_le_bytes(*c) ^ NL;
+        let zero = x.wrapping_sub(LO) & !x & HI;
+        if zero != 0 {
+            return Some(at + (zero.trailing_zeros() / 8) as usize);
+        }
+        at += 8;
+    }
+    rest.iter().position(|&c| c == b'\n').map(|i| at + i)
 }
 
 /// The length of `line` without a trailing carriage return, which belongs to the line ending.
@@ -423,6 +441,29 @@ mod tests {
         assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"re");
         assert_eq!(input.read(None).unwrap().unwrap(), b"st");
         assert_eq!(input.read(None).unwrap(), None);
+    }
+
+    #[test]
+    fn find_newline_matches_a_plain_scan() {
+        for len in 0..40usize {
+            for at in 0..=len {
+                let mut buf = vec![b'a'; len];
+                if at < len {
+                    buf[at] = b'\n';
+                    if at + 3 < len {
+                        buf[at + 3] = b'\n';
+                    }
+                    if at > 0 {
+                        buf[at - 1] = 0x0b; // one below '\n' must not match
+                    }
+                }
+                assert_eq!(
+                    find_newline(&buf),
+                    buf.iter().position(|&c| c == b'\n'),
+                    "{buf:?}"
+                );
+            }
+        }
     }
 
     #[test]
