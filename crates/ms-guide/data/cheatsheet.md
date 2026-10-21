@@ -33,5 +33,5 @@ test "addition":
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `Error` is the common boundary (`.message()`). Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` (own) or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
-- Closures capture copies. `with f = try ...:` closes `f` at block end.
+- Closures may change captures; escaping ones own them. `with f = try ...:` closes `f` at block end.
 - Common rejects: reassigning a `let`; mixed list types; missing arguments; bare `none` without type context; odd indentation.

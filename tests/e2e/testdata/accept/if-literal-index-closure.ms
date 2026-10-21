@@ -18,6 +18,7 @@ fn maybe(n: Int) Optional[Int]:
 fn first_or(m: Optional[Int]) Int:
     if let v = m:
         return v
+
     return 0
 
 test "if expression":
