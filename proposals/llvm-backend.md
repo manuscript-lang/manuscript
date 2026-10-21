@@ -65,7 +65,7 @@ Owner direction: Release and MinSizeRel builds use LLVM `-O3`/`-Os`; Debug stays
 
 ### Plan
 
-0. **Evidence gate (before any bundling work).** Emit textual IR from current MIR for `collatz`, `nbody`, `sieve`, `matmul`, `life`, `trees`, with checks, polls, rc, and `-fno-...` parity, and compile with host `clang -O3`. Proceed only if the geometric mean is at least 1.2x faster than Cranelift and `for_list`/`int_eq` improve. If not, stop and record the numbers here.
+0. **Evidence gate (before any bundling work).** Emit textual IR from current MIR for `collatz`, `nbody`, `sieve`, `matmul`, `life`, `trees`, with checked arithmetic, polls, bounds checks and rc, and compile with host `clang -O3`. Proceed only if the geometric mean is at least 1.2x faster than Cranelift and `for_list`/`int_eq` improve. If not, stop and record the numbers here.
 1. **`ms-llvm` crate** emitting IR through a vendored, pinned LLVM (C API via a small `unsafe` shim crate, like `ms-rt`), selected by build level. Reuses `ms_clif::layout` and the runtime ABI.
 2. **Bundling.** Statically link the LLVM optimizer and codegen for the host target plus `lld` as a library or sidecar; pinned version, built in CI, cached. Measure binary size and build time; the `ms` binary grows by tens of MB and CI by a source LLVM build.
 3. **Parity.** Conformance corpus under both backends, DWARF line tables, fault traces, profiling.
