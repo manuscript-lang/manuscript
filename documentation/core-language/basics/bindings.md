@@ -76,4 +76,6 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 A `let` record or collection cannot be mutated. Plain values copy implicitly; other owned values move at their last use into consuming positions, while place bindings can borrow. `.clone()` makes an explicit deep copy; see [mutation and references](../types/references.md).
 
+`var x = place` is the exception: when the value is a field or element of another `var` (`var n = r.n`, `var xs = r.xs`, `var head = rows[0]`), `x` is a mutable borrow of that part for every type, so `n += 1` changes `r.n` just as `xs.append(1)` changes `r.xs`. To get an independent scalar, bind it with `let` first (`let start = r.n` then `var n = start`); to get an independent collection or record, use `.clone()`. A call result has no place to borrow, so `var n = f()` owns the value.
+
 Assignment does not close the previous resource or invalidate aliases. `with` registers a fixed resource for cleanup using an immutable binding. See [mutation and references](../types/references.md).

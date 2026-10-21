@@ -798,7 +798,8 @@ fn block_string(var context: Context, header: String, base: Int) Result[
         )
 
     var content_indent = base + explicit
-    var probe = context.index
+    let scan_start = context.index
+    var probe = scan_start
 
     if explicit == 0:
         var blank_indent = base + 1
@@ -922,7 +923,8 @@ fn block_value(
             remainder = remainder.trim_end()
             var joined = StringBuilder()
             joined.append(remainder)
-            var probe = context.index
+            let scan_start = context.index
+            var probe = scan_start
             var blanks = 0
 
             while probe < context.lines.length():

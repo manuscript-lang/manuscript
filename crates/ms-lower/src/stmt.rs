@@ -271,6 +271,14 @@ impl<'a> FnLower<'a> {
                     .hir
                     .assigned(value)
                     .ok_or_else(|| Error::new("assignment without target binding"))?;
+                if let Some(a) = self.aliases.get(&b.uid).cloned() {
+                    // A scalar borrow: the whole value is the origin's place.
+                    let mut new = Some(self.owned(x));
+                    return self.alias_update(&a, &[], &mut |s, old| {
+                        s.drop_value(old);
+                        Ok(new.take().expect("one update"))
+                    });
+                }
                 let l = self.local(&b)?;
                 let new = self.owned(x);
                 let old = self.local_take(&l);
