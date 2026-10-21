@@ -1,6 +1,10 @@
 //! `@std/html.ms` natives: HTML5 parsing and HTML escaping, with resource limits.
 #![no_std]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 mod atoms;

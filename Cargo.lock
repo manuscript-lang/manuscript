@@ -1047,6 +1047,7 @@ version = "0.0.0"
 dependencies = [
  "ms-check",
  "ms-mir",
+ "ms-rt",
  "ms-std-decimal",
  "ms-syntax",
 ]
@@ -1236,6 +1237,7 @@ name = "ms-std-fs"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
  "ms-std-path",
@@ -1257,6 +1259,7 @@ name = "ms-std-io"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
  "ms-std-fs",
@@ -1286,6 +1289,7 @@ dependencies = [
 name = "ms-std-math"
 version = "0.1.0"
 dependencies = [
+ "ms-rt",
  "ms-std-core",
 ]
 
@@ -1325,6 +1329,7 @@ name = "ms-std-process"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
  "ms-std-fs",
@@ -1358,6 +1363,7 @@ dependencies = [
 name = "ms-std-rt"
 version = "0.1.0"
 dependencies = [
+ "ms-rt",
  "ms-rt-abi",
 ]
 
@@ -1399,6 +1405,7 @@ name = "ms-std-time"
 version = "0.1.0"
 dependencies = [
  "jiff",
+ "ms-rt",
  "ms-rt-abi",
  "ms-std-core",
  "ms-std-rt",

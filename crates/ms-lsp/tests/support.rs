@@ -3,7 +3,9 @@
 
 #![allow(dead_code)]
 
+// Links the msrt_* runtime symbols.
 use ms_lsp::json::{self, Json, obj};
+use ms_rt as _;
 use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};

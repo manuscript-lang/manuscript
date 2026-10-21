@@ -222,6 +222,7 @@ fn unsaved_source_paths() {
     assert!(source_path(&p.root, &outside, &with(&outside)).is_err());
 }
 
+#[cfg(unix)]
 #[test]
 fn symlink_source_identity() {
     let (_dir, p) = fixture(MANIFEST);

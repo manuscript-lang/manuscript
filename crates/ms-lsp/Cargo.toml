@@ -18,3 +18,8 @@ ms-tooling = { path = "../ms-tooling" }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt" }
+
+# The workspace-unified `ffi` feature of ms-std-decimal references msrt_* symbols that MSVC
+# resolves before discarding unused code.
+[target.'cfg(windows)'.dependencies]
+ms-rt = { path = "../ms-rt" }

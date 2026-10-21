@@ -1,5 +1,7 @@
 //! Compares the timestamp logic with Go's `time` package (`tests/golden/gen.go` writes the vectors).
 //! `MS_TIME_GOLDEN=<file>` runs a larger set instead of the committed one.
+// Links the msrt_* runtime symbols.
+use ms_rt as _;
 use ms_std_time::core_time::{Ts, calendar, from_calendar, to_string};
 
 #[test]

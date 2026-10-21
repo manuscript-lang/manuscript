@@ -7,6 +7,10 @@
 // `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
 #![allow(clippy::unnecessary_cast)]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 pub mod consts;

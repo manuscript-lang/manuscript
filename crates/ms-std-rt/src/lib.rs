@@ -4,6 +4,10 @@
 // This crate is the C ABI boundary of the standard-library natives.
 #![allow(unsafe_code)]
 
+// Links the msrt_* runtime symbols into this crate's test binaries.
+#[cfg(test)]
+use ms_rt as _;
+
 extern crate alloc;
 
 use alloc::vec::Vec;
