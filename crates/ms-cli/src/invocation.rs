@@ -56,7 +56,6 @@ pub struct Invocation {
     pub output: String,
     pub format_check: bool,
     pub structured: bool,
-    pub debug: bool,
     pub watch: bool,
     pub build_type_name: String,
     pub build_type_set: bool,
@@ -160,7 +159,6 @@ fn parse_options(
                 }
                 return Ok(());
             }
-            "--debug" => inv.debug = true,
             "--watch" => inv.watch = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
@@ -168,7 +166,7 @@ fn parse_options(
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
-                        "--build-type requires a build type; use Debug, Release, RelWithDebInfo, or MinSizeRel",
+                        "--build-type requires a build type; use Debug, Release, or MinSizeRel",
                     ));
                 };
                 if inv.build_type_set {
@@ -351,7 +349,7 @@ pub struct Plan {
     pub build_type: BuildType,
 }
 
-fn invalid_flag(command: &str, format_check: bool, structured: bool, debug: bool) -> String {
+fn invalid_flag(command: &str, format_check: bool, structured: bool) -> String {
     if format_check && command != "fmt" {
         format!("--check is valid only for ms fmt, not ms {command}")
     } else if structured {
@@ -359,8 +357,6 @@ fn invalid_flag(command: &str, format_check: bool, structured: bool, debug: bool
             "--json is valid only for ms {}, not ms {command}",
             JSON_COMMANDS.join(", ")
         )
-    } else if debug {
-        format!("--debug is valid only for ms build, run, and test, not ms {command}")
     } else {
         format!("an option is not valid for ms {command}")
     }
@@ -480,19 +476,16 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
-    if (inv.format_check && command != "fmt")
-        || (inv.structured && !inv.is_one_of(JSON_COMMANDS))
-        || (inv.debug && !inv.is_one_of(&["build", "run", "test"]))
-    {
+    if (inv.format_check && command != "fmt") || (inv.structured && !inv.is_one_of(JSON_COMMANDS)) {
         return Err(usage_error(
             io,
             format!(
                 "{}; run 'ms help {command}' for the options this command accepts",
-                invalid_flag(&command, inv.format_check, inv.structured, inv.debug)
+                invalid_flag(&command, inv.format_check, inv.structured)
             ),
         ));
     }
-    let mut kind = match BuildType::parse(&inv.build_type_name) {
+    let kind = match BuildType::parse(&inv.build_type_name) {
         Ok(kind) => kind,
         Err(message) => {
             let _ = writeln!(io.stderr, "{message}");
@@ -506,17 +499,6 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
                 "--build-type requires build, run, test, or profile, not {command}; remove the flag"
             ),
         ));
-    }
-    if inv.debug {
-        if inv.build_type_set && kind != BuildType::Debug {
-            return Err(usage_error(
-                io,
-                "--debug requires build type Debug; remove --build-type or pass --build-type Debug",
-            ));
-        }
-        kind = BuildType::Debug;
-    } else if command == "profile" && !inv.build_type_set {
-        kind = BuildType::RelWithDebInfo;
     }
     Ok(Plan { build_type: kind })
 }
