@@ -5,7 +5,9 @@ import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    let _written = stdout().write(text)
+    # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
+    let _flushed = stdout().flush()
 
 type WorkerCleanup:
     label: String
