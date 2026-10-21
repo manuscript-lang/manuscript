@@ -864,6 +864,27 @@ const METHODS: &[MethodRow] = &[
         "msstd_process_subprocess_close",
         &[],
     ),
+    (
+        "process",
+        "ProcessControl",
+        "watch_signals",
+        "msstd_process_watch_signals",
+        &[],
+    ),
+    (
+        "process",
+        "SignalStream",
+        "next",
+        "msstd_process_signal_next",
+        &[],
+    ),
+    (
+        "process",
+        "SignalStream",
+        "close",
+        "msstd_process_signal_close",
+        &[],
+    ),
 ];
 
 /// The MIR type of a runtime handle object.
