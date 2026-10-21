@@ -110,7 +110,7 @@ fn main() {
     let stdin = std::io::stdin();
     let mut out = String::new();
     for (idx, line) in stdin.lock().lines().enumerate() {
-        let l = line.get();
+        let l = line.unwrap();
         if l.trim_matches(' ').is_empty() {
             continue;
         }
@@ -181,5 +181,5 @@ fn main() {
             }
         }
     }
-    std::io::stdout().write_all(out.as_bytes()).get();
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
 }

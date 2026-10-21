@@ -80,14 +80,14 @@ fn arity(name: String) Int:
 
     return 0
 
-fn place_order(w: Warehouse, t: List[String]) List[String]:
+fn place_order(var w: Warehouse, t: List[String]) List[String]:
     let id = t.get(1)
     if not valid_oid(id):
         return ["error: bad order id"]
     if w.orders.contains(id):
         return ["error: order {id} already exists"]
 
-    let items = List[Item]()
+    var items = List[Item]()
     var i = 2
 
     while i < t.length():
@@ -103,7 +103,7 @@ fn place_order(w: Warehouse, t: List[String]) List[String]:
 
         items.append(Item(sku: p.get(0), qty: q.get()))
 
-    let seen = Set[String]()
+    var seen = Set[String]()
 
     for it in items:
         if seen.contains(it.sku):
@@ -134,7 +134,7 @@ fn place_order(w: Warehouse, t: List[String]) List[String]:
     return ["ok {id} total={money(total)}"]
 
 fn report(w: Warehouse) List[String]:
-    let reserved = Map[String, Int]()
+    var reserved = Map[String, Int]()
     var placed = 0
     var shipped = 0
     var cancelled = 0
@@ -162,7 +162,7 @@ fn report(w: Warehouse) List[String]:
         else:
             cancelled = cancelled + 1
 
-    let out = List[String]()
+    var out = List[String]()
     let skus = (
         w
         .stock
@@ -180,7 +180,7 @@ fn report(w: Warehouse) List[String]:
     out.append("revenue={money(revenue)}")
     return out
 
-fn run_command(w: Warehouse, line: String) List[String]:
+fn run_command(var w: Warehouse, line: String) List[String]:
     let t = line.split(" ")
     let name = t.get(0)
     let want = arity(name)
@@ -216,7 +216,7 @@ fn run_command(w: Warehouse, line: String) List[String]:
         return ["ok"]
 
     if name == "order":
-        return place_order(w, t)
+        return place_order(var w, t)
     if name == "report":
         return report(w)
 
@@ -233,7 +233,9 @@ fn run_command(w: Warehouse, line: String) List[String]:
 
         for it in o.items:
             w.stock.add(key: it.sku, value: w.stock.get(it.sku).get() + it.qty)
-        o.status = "cancelled"
+        var upd = o.clone()
+        upd.status = "cancelled"
+        w.orders.add(key: id, value: upd)
         return ["ok"]
 
     if o.status == "shipped":
@@ -241,11 +243,13 @@ fn run_command(w: Warehouse, line: String) List[String]:
     if o.status == "cancelled":
         return ["error: order {id} is cancelled"]
 
-    o.status = "shipped"
+    var upd = o.clone()
+    upd.status = "shipped"
+    w.orders.add(key: id, value: upd)
     return ["ok"]
 
 fn run() Result[Unit, Error]:
-    let w = Warehouse(
+    var w = Warehouse(
         stock: Map[String, Int](),
         price: Map[String, Int](),
         orders: Map[String, Order]()
@@ -260,7 +264,7 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        for out in run_command(w, line):
+        for out in run_command(var w, line):
             try stdout().write("{out}\n")
 
     return stdout().flush()

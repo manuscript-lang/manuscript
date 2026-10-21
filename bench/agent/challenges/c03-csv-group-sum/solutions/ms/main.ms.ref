@@ -81,7 +81,7 @@ fn two_digits(n: Int) String:
     return "{n}"
 
 fn run() Result[Unit, Error]:
-    let totals = Map[String, Int]()
+    var totals = Map[String, Int]()
     var bad = 0
 
     while true:

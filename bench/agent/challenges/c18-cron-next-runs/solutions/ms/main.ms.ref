@@ -53,7 +53,7 @@ fn civil_from_days(days: Int) List[Int]:
     return [y, m, d]
 
 fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
-    let set = List[Bool]()
+    var set = List[Bool]()
     var i = 0
 
     while i <= hi:
@@ -195,7 +195,7 @@ fn run() Result[Unit, Error]:
             continue
 
         let count = count_opt.get()
-        let sets = List[List[Bool]]()
+        var sets = List[List[Bool]]()
         var bad = ""
         var i = 0
 
@@ -210,7 +210,7 @@ fn run() Result[Unit, Error]:
                 bad = names.get(i)
                 break
 
-            sets.append(s.get())
+            sets.append(s.get().clone())
             i = i + 1
 
         if not bad.is_empty():
@@ -222,7 +222,7 @@ fn run() Result[Unit, Error]:
         let doms = sets.get(2)
         let months = sets.get(3)
         let dows = sets.get(4)
-        let runs = List[String]()
+        var runs = List[String]()
         var k = 0
 
         while k <= 3000 and runs.length() < count:
