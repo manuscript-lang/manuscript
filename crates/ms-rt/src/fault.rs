@@ -1194,6 +1194,9 @@ mod tests {
         }
     }
 
+    // Windows walks the faulting thread's native CONTEXT, not a frame-pointer chain; the native
+    // fault-trace tests in ms-clif cover that walker.
+    #[cfg(not(windows))]
     #[test]
     fn frames_resolve_through_tables() {
         let _g = lock();

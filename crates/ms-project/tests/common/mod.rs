@@ -20,7 +20,10 @@ impl TempDir {
             COUNTER.fetch_add(1, Ordering::SeqCst)
         ));
         std::fs::create_dir_all(&dir).unwrap();
-        TempDir(std::fs::canonicalize(dir).unwrap())
+        // The project's own spelling: on Windows `canonicalize` yields a verbatim `\\?\` path, which
+        // rejects the `/` and `.` components these tests join onto it.
+        let dir = ms_project::gopath::eval_symlinks(dir.to_str().unwrap()).unwrap();
+        TempDir(PathBuf::from(dir))
     }
     pub fn path(&self) -> &str {
         self.0.to_str().unwrap()
@@ -45,7 +48,8 @@ pub fn write(root: &str, name: &str, source: &str) -> String {
     let path = Path::new(root).join(name);
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, source).unwrap();
-    path.to_str().unwrap().to_string()
+    // The project's spelling uses `/` on every host.
+    path.to_str().unwrap().replace('\\', "/")
 }
 
 pub fn join(a: &str, b: &str) -> String {
