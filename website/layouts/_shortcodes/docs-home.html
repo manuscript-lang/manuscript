@@ -25,7 +25,7 @@
     <li><strong>Reads top to bottom</strong><span><code>|</code> pipe flows, <code>try</code> inside a flow, <code>+=</code>, <code>range</code>, and bounds-proven <code>[]</code> indexing keep code flat and short.</span></li>
     <li><strong>Typed data in one call</strong><span><code>json.parse[T]</code> reads JSON straight into your records. Nominal types, generics, and explicit <code>impl</code> blocks keep boundaries clear.</span></li>
     <li><strong>Inspect what was built</strong><span><code>ms review</code> shows where a change matters and <code>ms diagram</code> draws call graphs from the checked source, deterministically.</span></li>
-    <li><strong>One binary, native result</strong><span>Lowers to typed Go and builds a standalone executable with a bundled toolchain. Nothing else to install.</span></li>
+    <li><strong>One binary, native result</strong><span>Compiles through Cranelift to a standalone native executable. Nothing else to install.</span></li>
     <li><strong>Cleanup that stays correct</strong><span><code>with</code> closes files and connections at block end, even on errors and cancellation.</span></li>
     <li><strong>Debug and profile on source</strong><span>An editor language server, a VS Code extension, a source-level debugger, and CPU, heap, and trace profiling, all on <code>.ms</code> lines.</span></li>
   </ul>

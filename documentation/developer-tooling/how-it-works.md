@@ -5,7 +5,7 @@ weight = 0
 
 # How it works
 
-`ms` is one self-contained binary. It checks your program and compiles it to a native executable with a bundled toolchain. You never install Go.
+`ms` is one self-contained binary. It checks your program and compiles it to a native executable with Cranelift. No other language toolchain is needed.
 
 ```text
 .ms source → parse → check → compile → native executable
@@ -16,13 +16,11 @@ weight = 0
 
 ## One binary
 
-`ms` also includes the formatter, linter, language server (`ms lsp`), debugger (`ms debug`), and profiling commands. The standard library matches your `ms` version. Nothing is downloaded at build time.
-
-macOS debugging still needs Apple's `debugserver` (Xcode command line tools).
+`ms` also includes the formatter, linter, language server (`ms lsp`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Nothing is downloaded at build time.
 
 ## Isolated from your machine
 
-Native commands ignore any Go installation on your machine. Caches live in the OS user cache directory; set `MANUSCRIPT_CACHE_DIR` to move them.
+Caches live in the OS user cache directory; set `MANUSCRIPT_CACHE_DIR` to move them.
 
 ## Where to go next
 

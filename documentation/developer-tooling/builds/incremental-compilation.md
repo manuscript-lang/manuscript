@@ -14,6 +14,6 @@ Rebuilds are fast because `ms` reuses the compiled runtime and replays the recor
 - Older versions wrote executables to a project `.ms-cache` or beside `-o` output. `ms` no longer reads or removes them, so delete any that remain.
 - `run --watch` and `test --watch` keep one process between rebuilds, so only the application is rebuilt.
 
-The first build is slower: it extracts the bundled toolchain and compiles the runtime once per build level.
+The first build at each build level is slower because it prepares the runtime for that level.
 
 See [project configuration](project-configuration.md) and [how it works](../how-it-works.md).
