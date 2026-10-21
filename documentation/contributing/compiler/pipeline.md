@@ -13,7 +13,7 @@ The checker builds typed HIR once and later stages read its facts, so lowering a
 | --- | --- | --- | --- |
 | Resolve modules | `ms-project`, `ms-driver` | Module identity, cycles, overlays | Module graph in dependency order |
 | Parse | `ms-syntax` | Layout, structure, positions | Syntax tree, strict or recovered |
-| Check | `ms-check` | Symbols, types, bounds, implementations, flow, captures, cleanup, effects | Typed HIR and diagnostics |
+| Check | `ms-check` | Symbols, types, bounds, implementations, flow, captures, cleanup, effects, ownership | Typed HIR and diagnostics |
 | Ownership | `ms-check` (`ownership`) | Moves, borrows, `var` modes, drops | Facts lowering reads |
 | Lower | `ms-lower` | Evaluation order, exit cleanup, defaults, call shape | MIR |
 | Optimize and verify | `ms-mir` | Inlining, copy elimination, range facts, verification | Optimized MIR |

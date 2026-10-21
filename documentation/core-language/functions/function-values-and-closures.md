@@ -5,7 +5,7 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures the bindings it uses by value.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure borrows or owns the bindings it captures.
 
 ```manuscript
 fn apply(value: Int, transform: fn(value: Int) Int) Int:
@@ -45,21 +45,13 @@ An anonymous function may omit parameter types when context supplies them (argum
 - A bound method value has the operation's function type with the receiver bound.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
-## Captures
+<a id="snapshot-captures"></a>
 
-A closure works on its own copy of each local it uses, so it never changes the outer variable. Assigning to a captured variable, or calling a mutator on a captured collection or field, is rejected; return the new value, or use a `for` loop:
+## Closure captures
 
-```manuscript
-fn make_headline() fn() String:
-    var subject = "Weekly update"
-    let headline = fn():
-        return subject
-    subject = "Launch announcement"
-    return headline
-# make_headline()() returns "Weekly update".
-```
+Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
-A closure that is only called in the function that made it borrows what it reads, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
+A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
 ```manuscript
 
@@ -72,7 +64,7 @@ fn tag_count() Int:
 # tag_count() returns 2.
 ```
 
-A closure that is returned or stored owns what it captures instead. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
+A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
 
 ## Resource captures
 

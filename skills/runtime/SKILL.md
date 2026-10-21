@@ -8,10 +8,10 @@ description: Implement or review Manuscript native execution, resources, cancell
 Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, `stdlib/bindings.json`, or lowering that changes execution. Read [runtime lessons](../../.experts/runtime.md), [cleanup](../../documentation/core-language/cleanup/_index.md).
 
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
-- Keep sharing, resource lifetime, and work lifetime separate. Passing references needs no sharing proof and does not extend resource lifetime. Explicit synchronization protects complete shared updates; local Queue has no implicit locks/waiting/close.
+- Keep value ownership and external resource lifetime separate. Borrowing does not extend a resource lifetime; moves and exclusive mutation must satisfy the checker. Do not carry shared-reference or synchronization assumptions from the retired runtime into native code.
 - Trace admission → acquisition → delivery → scope exit/cancellation → close. Cancelled undelivered acquisitions release resources; stale guards/aliases cannot access reused handles. Consult newer stdlib direction before retaining APIs scheduled for removal.
 - Exercise return/error/fault/cancellation/break/continue across cleanup scopes. Close does not deadlock callbacks or reentry.
-- Keep data mutable and cloning shallow; native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
+- Use ownership and borrowing from `crates/ms-check/OWNERSHIP.md`: mutation requires `var`, and `.clone()` makes a deep value copy (the current spelling of planned `.copy()`). Native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
 - Concurrency is intentionally absent from the language and standard library until it is redesigned from the ground up; do not add task, scheduler, lock, or channel APIs without a new user direction.
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.

@@ -4,7 +4,7 @@ import {bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zero
 
 # A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.
 # Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes fault, so the set never grows without bound by accident.
-# Written in Manuscript; assignment copies, so a copy is an independent set.
+# Written in Manuscript; clone() makes an independent copy.
 # Use it for visited marks, flags, and dense id sets; use Set for sparse or non-integer members.
 export type BitSet:
     # Bitmap words, 64 members each, grown on demand. Internal state: use the operations, not this field.

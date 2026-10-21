@@ -110,6 +110,20 @@ pub fn leaf_type(l: Leaf) -> ir::Type {
     }
 }
 
+/// A linker-safe spelling of a source name: `@` starts a symbol version, and other punctuation
+/// is not portable across object formats.
+fn sym_safe(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '$') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
 pub struct Gen<'m> {
     pub m: &'m Module,
     pub lay: Layouts<'m>,
@@ -137,6 +151,83 @@ pub struct Gen<'m> {
     pub desc_ids: HashMap<Ty, DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
+    /// Functions translated to LLVM IR instead of being compiled by Cranelift (release builds).
+    pub llvm: Option<crate::llvm_ir::LlvmModule>,
+    /// Source functions defined through [`Gen::llvm`], for the fault and profile tables.
+    pub llvm_funcs: Vec<LlvmFn>,
+}
+
+/// A source function compiled by LLVM.
+pub struct LlvmFn {
+    pub id: FuncId,
+    pub symbol: String,
+    pub name: String,
+    pub file: u32,
+    pub line: u32,
+}
+
+impl Gen<'_> {
+    /// Linkage of module-private data and functions: visible to the LLVM object when it is used.
+    pub fn private(&self) -> Linkage {
+        if self.llvm.is_some() {
+            Linkage::Export
+        } else {
+            Linkage::Local
+        }
+    }
+
+    /// Linkage of a function defined in this compile: LLVM-built functions are imported here.
+    pub fn func_linkage(&self, exported: bool) -> Linkage {
+        if self.opts.llvm.is_some() {
+            Linkage::Import
+        } else if exported {
+            Linkage::Export
+        } else {
+            Linkage::Local
+        }
+    }
+}
+
+struct ModuleSymbols<'a>(
+    &'a ObjectModule,
+    &'a [(u32, u32, u32)],
+    &'a [ms_mir::ir::Scope],
+);
+
+impl ModuleSymbols<'_> {
+    fn symbol_of(&self, id: FuncId) -> String {
+        self.0
+            .declarations()
+            .get_function_decl(id)
+            .linkage_name(id)
+            .into_owned()
+    }
+}
+
+impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
+    fn loc(&self, bits: u32) -> Option<(u32, u32, u32)> {
+        self.1.get(bits as usize).copied()
+    }
+
+    fn scope(&self, idx: u32) -> Option<(String, u32, u32, u32)> {
+        let sc = self.2.get((idx as usize).checked_sub(1)?)?;
+        Some((sc.name.clone(), sc.file, sc.parent, sc.call_line))
+    }
+
+    fn symbol(&self, namespace: u32, index: u32) -> String {
+        let decls = self.0.declarations();
+        if namespace == 0 {
+            decls
+                .get_function_decl(FuncId::from_u32(index))
+                .linkage_name(FuncId::from_u32(index))
+                .into_owned()
+        } else {
+            decls
+                .get_data_decl(DataId::from_u32(index))
+                .linkage_name(DataId::from_u32(index))
+                .into_owned()
+        }
+    }
 }
 
 /// Debug facts about one compiled function.
@@ -269,7 +360,7 @@ impl<'m> Gen<'m> {
         );
         let id = self
             .module
-            .declare_function(&name, Linkage::Local, &sig)
+            .declare_function(&name, self.func_linkage(false), &sig)
             .expect("declare glue");
         self.glue.insert((kind, ty), id);
         self.queue.push((kind, ty));
@@ -301,7 +392,7 @@ impl<'m> Gen<'m> {
         let name = format!("ms.desc.{}", self.desc_ids.len());
         let id = self
             .module
-            .declare_data(&name, Linkage::Local, false, false)
+            .declare_data(&name, self.private(), false, false)
             .expect("declare descriptor");
         self.desc_ids.insert(ty, id);
         let mem = self.lay.mem(ty);
@@ -382,7 +473,7 @@ impl<'m> Gen<'m> {
         bytes.push(0);
         let id = self
             .module
-            .declare_data(&format!("ms.str.{i}"), Linkage::Local, true, false)
+            .declare_data(&format!("ms.str.{i}"), self.private(), true, false)
             .expect("declare string");
         let mut d = DataDescription::new();
         d.define(bytes.into_boxed_slice());
@@ -442,6 +533,17 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         dbg: Vec::new(),
         tables: None,
         desc_ids: HashMap::new(),
+        llvm_funcs: Vec::new(),
+        llvm: opts.llvm.map(|_| {
+            let files = m
+                .files
+                .iter()
+                .map(|p| (!p.is_empty() && !p.contains('\0')).then(|| p.clone()))
+                .collect();
+            let cwd = std::env::current_dir()
+                .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
+            crate::llvm_ir::LlvmModule::new(files, cwd)
+        }),
     };
     for (i, f) in m.funcs.iter().enumerate() {
         let sig = g.func_sig(f);
@@ -453,19 +555,11 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         } else if exported {
             f.name.clone()
         } else {
-            format!("{}#{i}", f.name)
+            format!("{}#{i}", sym_safe(&f.name))
         };
         let id = g
             .module
-            .declare_function(
-                &name,
-                if exported {
-                    Linkage::Export
-                } else {
-                    Linkage::Local
-                },
-                &sig,
-            )
+            .declare_function(&name, g.func_linkage(exported), &sig)
             .map_err(|e| e.to_string())?;
         g.funcs.push(id);
     }
@@ -474,8 +568,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         let id = g
             .module
             .declare_data(
-                &format!("ms.global.{i}.{}", gl.name),
-                Linkage::Local,
+                &format!("ms.global.{i}.{}", sym_safe(&gl.name)),
+                g.private(),
                 true,
                 false,
             )
@@ -492,8 +586,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         let id = g
             .module
             .declare_data(
-                &format!("ms.vtable.{i}.{}", vt.name),
-                Linkage::Local,
+                &format!("ms.vtable.{i}.{}", sym_safe(&vt.name)),
+                g.private(),
                 false,
                 false,
             )
@@ -551,6 +645,16 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         }
         define(&mut g, &mut ctx, id, "glue")?;
     }
+    let triple = g.module.isa().triple().to_string();
+    let mut llvm_object = None;
+    if let Some(llvm) = g.llvm.take() {
+        let obj = crate::llvm_obj::compile(&llvm.finish(&triple), opts.llvm.unwrap_or("3"))?;
+        let image = obj.image()?;
+        let t = crate::llvm_tables::read(&image, &g.llvm_funcs, &m.files)?;
+        g.dbg = t.dbg;
+        g.scopes = t.scopes;
+        llvm_object = Some(obj);
+    }
     let tables = if g.m.entry.is_some() {
         Some(emit_tables(&mut g)?)
     } else {
@@ -561,6 +665,10 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     let mut product = g.module.finish();
     if let Some(t) = tables {
         relocate_tables(&mut product, &g.dbg, &t);
+    }
+    if let Some(obj) = llvm_object {
+        let clif = product.emit().map_err(|e| Error(e.to_string()))?;
+        return obj.merge(&clif);
     }
     crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
     product.emit().map_err(|e| Error(e.to_string()))
@@ -743,11 +851,42 @@ fn define_with(
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
-    if g.opts.opt_level != "none" {
-        crate::spill::spill_loop_cold(&mut ctx.func);
-    }
     if g.opts.dump_clif {
         eprintln!("; {name}\n{}", ctx.func.display());
+    }
+    if let Some(mut llvm) = g.llvm.take() {
+        let sym = ModuleSymbols(&g.module, &g.locs, &g.scopes).symbol_of(id);
+        let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
+            && !sym.contains('#')
+            && !sym.starts_with("ms.glue.");
+        let (display, fn_loc) = match source {
+            Some(f) if f.loc.file != u32::MAX => (f.name.as_str(), (f.loc.file, f.loc.line)),
+            Some(f) => (f.name.as_str(), (0, f.loc.line)),
+            None => (name, (0, 0)),
+        };
+        llvm.add_function(
+            &sym,
+            display,
+            fn_loc,
+            &ctx.func,
+            &ModuleSymbols(&g.module, &g.locs, &g.scopes),
+            !exported,
+        );
+        if let Some(f) = source {
+            g.llvm_funcs.push(LlvmFn {
+                id,
+                symbol: sym.clone(),
+                name: f.name.clone(),
+                file: f.loc.file,
+                line: f.loc.line,
+            });
+        }
+        g.llvm = Some(llvm);
+        g.module.clear_context(ctx);
+        return Ok(());
+    }
+    if g.opts.opt_level != "none" {
+        crate::spill::spill_loop_cold(&mut ctx.func);
     }
     g.module
         .define_function(id, ctx)
@@ -818,5 +957,8 @@ fn emit_main(
         l.lower_main(entry.index());
         l.finish();
     }
-    define(g, ctx, id, "main")
+    let llvm = g.llvm.take();
+    let r = define(g, ctx, id, "main");
+    g.llvm = llvm;
+    r
 }

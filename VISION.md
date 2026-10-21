@@ -23,10 +23,10 @@ Version 0.1 already delivers the core of this premise. The vision below is still
 - **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. Result types follow the parameter list with no arrow (`fn add(a: Int, b: Int) Int:`).
 - **Scoped cleanup.** `with` closes resources at block end, and cancellation and shutdown run cleanup deterministically.
 - **No concurrency yet.** Concurrency is intentionally absent until it can be designed from the ground up.
-- **One self-contained binary.** `ms` checks, formats, lints, tests, builds, profiles, and debugs, compiling to native code through Cranelift and linking with the system C compiler. Nothing else to install.
+- **One self-contained binary.** `ms` checks, formats, lints, tests, builds, and profiles. The Rust compiler lowers checked source to MIR and emits native object code through Cranelift; the runtime and standard library are embedded in `ms`. Linking uses host tools; see the [toolchain requirements](documentation/contributing/rust-toolchain.md#build-and-run).
 - **Structured evidence for agents.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol`, `ms guide`, `ms verify`, `ms review`, and `ms diagram` give deterministic views of a program and of a change.
-- **Editor and debugger support.** A language server, a VS Code extension, and a source-level debugger.
-- **A measured loop.** `agent-bench` runs the same challenges in Manuscript, Go, TypeScript, and Rust, and `bench/perf` compares generated code with hand-written Go and Rust.
+- **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables; there is no embedded debugger or debug adapter.
+- **A measured loop.** `agent-bench` runs the same challenges in Manuscript, Go, TypeScript, and Rust, and `bench/perf` compares native executables with hand-written Go and Rust baselines.
 
 Still ahead: a broader library ecosystem, external adapters, incremental frontend compilation, and the deployment story beyond a single binary.
 

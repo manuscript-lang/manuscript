@@ -11,9 +11,9 @@ Use a record for named fields, an alternative for a fixed set of cases, an inter
 | --- | --- |
 | [Records and nominal types](records.md) | Declare mutable fields and distinguish domain identifiers. |
 | [Alternatives](alternatives.md) | Represent a fixed set of possibilities with tagged cases. |
-| [Collections](collections.md) | Use mutable lists, maps, and sets with explicit shallow copies. |
+| [Collections](collections.md) | Use mutable lists, maps, and sets with explicit deep copies. |
 | [Optional values](optionals.md) | Represent absence explicitly with some and none. |
-| [Mutation and references](references.md) | Understand aliases, reassignment, and shallow copies. |
+| [Mutation and references](references.md) | Understand moves, borrows, reassignment, and deep copies. |
 | [Destructuring bindings](destructuring.md) | Unpack list positions and record fields. |
 | [Interfaces and implementations](contracts.md) | Implement interfaces with concrete or generic blocks and construct explicit contract views. |
 | [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |

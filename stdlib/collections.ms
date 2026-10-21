@@ -9,11 +9,11 @@ export type CollectionError:
 
 # An ordered mutable collection with indexing, iteration, and transformations.
 # Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
-# Generic forwarding retains the same List identity; clone and slice copy outer storage.
+# Lists are owned values; clone makes a deep copy and accessors can borrow elements.
 export type List[T]:
 
 impl List[T]:
-    # Returns a shallow copy with independent list storage.
+    # Returns a deep copy with independent list and nested value storage.
     fn clone() List[T]:
 
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
@@ -56,22 +56,22 @@ impl List[T]:
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
     var fn remove(index: Int) Unit:
 
-    # Returns a new shallow List containing [start, end); outer storage is independent.
+    # Returns a new owned List containing copies of the elements in [start, end).
     # Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return CollectionError.OutOfRange.
     fn slice(start: Int, end: Int) Result[List[T], CollectionError]:
 
-    # Copies the first min(count, length) elements into fresh shallow List storage.
+    # Copies the first min(count, length) elements into fresh owned List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
     fn take(count: Int) List[T]:
 
-    # Copies the remainder after min(count, length) into fresh shallow List storage.
+    # Copies the remainder after min(count, length) into fresh owned List storage.
     # Leaves the receiver unchanged; negative count is a programming fault.
     fn drop(count: Int) List[T]:
 
     # Reverses this list in place.
     var fn reverse_in_place() Unit:
 
-    # Returns a reversed shallow copy with independent outer storage; nested references remain shared.
+    # Returns an independent reversed copy, including nested values.
     fn reversed() List[T]:
 
     # Returns a new list sorted by negative/zero/positive comparator results.
@@ -95,7 +95,7 @@ impl List[T]:
     # Counts values satisfying the predicate, calling it once per element in order.
     fn count(predicate: fn(value: T) Bool) Int:
 
-    # Returns a new shallow List keeping each first equal element in order; elements require Equal.
+    # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal.
     fn distinct() List[T]:
 
     # Returns true when at least one value satisfies the predicate.
@@ -123,10 +123,9 @@ impl List[T]:
     # Reduces values from right to left, starting with `initial`.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) A) A:
 
-    # Replaces delete_count elements starting at start, mutating and returning this List.
+    # Replaces delete_count elements starting at start in place, consuming the replacement list and returning Unit.
     # Requires 0 <= start <= length and 0 <= delete_count <= length - start; invalid bounds fault without clamping.
-    # Replacement references stay shallow; using this same List as replacement stages its prior values.
-    # Shrinking retains prior values in spare backing capacity, following captured Go slice traversal.
+    # Removed elements are dropped; replacement elements move into the receiver. Overlapping receiver and replacement arguments are rejected.
     var fn splice(start: Int, delete_count: Int, replacement: List[T]) Unit:
 
     # Sets elements in [start, end) to `value` in place.
@@ -163,38 +162,38 @@ impl List[T]:
 export type Map[T: Hashable, U]:
 
 impl Map[T, U]:
-    # Returns a shallow copy with independent map storage.
+    # Returns a deep copy with independent map and nested value storage.
     fn clone() Map[T, U]:
 
     # Reports whether this map has no entries.
     fn is_empty() Bool:
 
-    # Copies matching entries in insertion order, retaining payload references.
-    # Callbacks traverse a snapshot even when they mutate the receiver.
+    # Copies matching entries and their nested values in insertion order.
+    # Callbacks borrow the receiver; mutating it during traversal is rejected.
     fn filter(predicate: fn(key: T, value: U) Bool) Map[T, U]:
 
-    # Transforms values in snapshot insertion order, retaining original keys.
-    # Returns independent outer storage with shallow key and result references.
+    # Transforms values in insertion order, retaining original keys.
+    # Returns owned storage with copied keys and owned results.
     fn map[W](transform: fn(key: T, value: U) W) Map[T, W]:
 
-    # Transforms keys in snapshot insertion order, retaining value references.
+    # Transforms keys in insertion order, copying values.
     # Equal outputs keep the first key/position and the last input value.
     fn map_keys[W: Hashable](transform: fn(key: T, value: U) W) Map[W, U]:
 
     # Returns the stored value or an eagerly evaluated fallback without inserting.
     fn get_or(key: T, fallback: U) U:
 
-    # Reduces an entry snapshot in insertion order, starting with initial.
+    # Reduces entries in insertion order, starting with initial.
     fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) A) A:
 
-    # Reduces an entry snapshot in reverse insertion order, starting with initial.
+    # Reduces entries in reverse insertion order, starting with initial.
     fn fold_right[A](initial: A, step: fn(accumulator: A, key: T, value: U) A) A:
 
-    # Returns the first matching entry as a fresh record with shallow references.
+    # Returns the first matching entry as an owned record containing copies of the key and value.
     fn find(predicate: fn(key: T, value: U) Bool) Optional[MapEntry[T, U]]:
 
-    # Searches a snapshot from the end, stopping at the last matching entry.
-    # Returns a fresh entry record retaining its original key/value references.
+    # Searches from the end, stopping at the last matching entry.
+    # Returns a fresh entry record containing copies of its key and value.
     fn find_last(predicate: fn(key: T, value: U) Bool) Optional[MapEntry[T, U]]:
 
     # Stops at the first matching entry; empty maps return false.
@@ -227,7 +226,7 @@ impl Map[T, U]:
     # Existing keys keep their position and key but take the value from `other`; new keys append in `other` order. `other` is unchanged.
     var fn merge(other: Map[T, U]) Unit:
 
-    # Calls operation(key:, value:) sequentially over an insertion-order membership snapshot.
+    # Calls operation(key:, value:) sequentially over the receiver in insertion order.
     fn for_each(operation: fn(key: T, value: U) Unit) Unit:
 
     # Reports whether an equal key is present, using the key type's Hashable implementation.
@@ -250,36 +249,36 @@ impl Map[T, U]:
 export type MapEntry[T: Hashable, U]:
     # The lookup identity of the pair; unique within its map under Hashable equality.
     key: T
-    # The payload stored for `key`; the reference is shared with the map, not copied.
+    # The payload stored for `key`; accessing this field can borrow from the entry.
     value: U
 
 # A mutable collection of unique values using explicit `Hashable` value semantics.
 export type Set[T: Hashable]:
 
 impl Set[T]:
-    # Copies outer storage, retaining element references and insertion order.
+    # Copies elements deeply into independent storage, retaining insertion order.
     fn clone() Set[T]:
 
     # Reports whether this set has no elements.
     fn is_empty() Bool:
 
-    # Copies matching elements in insertion order, retaining payload references.
-    # Callbacks traverse a snapshot even when they mutate the receiver.
+    # Copies matching elements and their nested values in insertion order.
+    # Callbacks borrow the receiver; mutating it during traversal is rejected.
     fn filter(predicate: fn(value: T) Bool) Set[T]:
 
-    # Transforms a snapshot into a fresh set, retaining the first equal result.
+    # Transforms elements into a fresh set, retaining the first equal result.
     fn map[U: Hashable](transform: fn(value: T) U) Set[U]:
 
-    # Reduces an element snapshot in insertion order, starting with initial.
+    # Reduces elements in insertion order, starting with initial.
     fn fold[A](initial: A, step: fn(accumulator: A, value: T) A) A:
 
-    # Reduces an element snapshot in reverse insertion order, starting with initial.
+    # Reduces elements in reverse insertion order, starting with initial.
     fn fold_right[A](initial: A, step: fn(accumulator: A, value: T) A) A:
 
     # Returns the original first matching element, or none.
     fn find(predicate: fn(value: T) Bool) Optional[T]:
 
-    # Searches a snapshot from the end, returning the original last matching element.
+    # Searches from the end, returning the original last matching element.
     fn find_last(predicate: fn(value: T) Bool) Optional[T]:
 
     # Stops at the first matching element; empty sets return false.
@@ -312,13 +311,13 @@ impl Set[T]:
     # Removes all values in place.
     var fn clear() Unit:
 
-    # Returns a shallow list of values in insertion order.
+    # Returns an owned list containing copies of values in insertion order.
     fn values() List[T]:
 
     # Returns a new list of [value, value] lists in insertion order.
     fn entries() List[List[T]]:
 
-    # Calls operation(value:) sequentially over an insertion-order membership snapshot.
+    # Calls operation(value:) sequentially over the receiver in insertion order.
     fn for_each(operation: fn(value: T) Unit) Unit:
 
     # Reports whether an equal value is present, using the element's Hashable implementation.
@@ -369,7 +368,7 @@ impl Error for CollectionError:
 export type ListBuilder[T]:
 
 impl ListBuilder[T]:
-    # Adds `value` to the end of the shared builder and returns Unit.
+    # Adds `value` to the end of the mutable builder and returns Unit.
     # A frozen builder faults.
     fn append(value: T) Unit:
 
@@ -385,7 +384,7 @@ impl MapBuilder[T, U]:
     # Later `add` calls fault.
     fn freeze() Map[T, U]:
 
-    # Inserts or replaces an entry in the shared builder; returns Unit like all builder mutations.
+    # Inserts or replaces an entry in the mutable builder; returns Unit like all builder mutations.
     # Replacement retains the original key and insertion position; a sealed builder faults.
     fn add(key: T, value: U) Unit:
 
@@ -397,7 +396,7 @@ impl SetBuilder[T]:
     # Later `add` calls fault.
     fn freeze() Set[T]:
 
-    # Adds a value to the shared builder; returns Unit like all builder mutations.
+    # Adds a value to the mutable builder; returns Unit like all builder mutations.
     # Equal values retain the first payload and position; a sealed builder faults.
     fn add(value: T) Unit:
 

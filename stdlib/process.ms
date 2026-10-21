@@ -151,9 +151,9 @@ export type ProcessInfo:
     executable: String
     # Live native argv including argv[0]; process.arguments() is the supplied startup tail without it.
     arguments: List[String]
-    # Operating system name in Go's naming, such as `linux`, `darwin`, or `windows`.
+    # Operating system name, such as `linux`, `darwin`, or `windows`.
     os: String
-    # Processor architecture in Go's naming, such as `amd64` or `arm64`.
+    # Processor architecture name, such as `amd64` or `arm64`.
     architecture: String
     # Real user id; -1 on Windows, where ids are not numeric.
     uid: Int
@@ -255,7 +255,7 @@ impl Error for CommandError:
 export fn commands() Commands:
 
 # Returns the host-supplied startup arguments, excluding the executable path.
-# Repeated calls share the same mutable list; mutations do not rewrite native argv.
+# Each call returns an owned list; mutations do not change later calls or native argv.
 export fn arguments() List[String]:
 
 # Returns controls and process information for the current process.

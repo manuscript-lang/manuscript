@@ -64,21 +64,21 @@ export fn headers() HttpHeaders:
 export type HttpResponseMetadata:
     # The received status; editing metadata leaves wire/body behavior unchanged.
     status: Int
-    # The shared mutable fields, with every repeated value retained.
+    # The header fields, with every repeated value retained.
     headers: HttpHeaders
     # The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the source does not report one.
     protocol: String = ""
 
 # Buffered response body with explicit common metadata access.
 export type ClientResponse:
-    # Current mutable metadata; replacing head detaches existing metadata aliases.
+    # Response metadata; changing it requires a mutable response and no live borrow of head.
     head: HttpResponseMetadata
     # The complete response payload within the supplied byte bound.
     body: Bytes
 
 impl ClientResponse:
-    # Returns current head without copying; record clone is shallow.
-    # Clone headers explicitly when separate mutable membership is needed.
+    # Borrows the current response metadata.
+    # Clone the result for an independent owned value, including its headers.
     fn metadata() HttpResponseMetadata:
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
