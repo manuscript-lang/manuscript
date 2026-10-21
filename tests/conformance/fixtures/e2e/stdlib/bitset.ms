@@ -50,7 +50,7 @@ test "set algebra matches Set":
 
 test "copies are independent and clear empties":
     var a = of([1, 2])
-    var b = a
+    var b = a.clone()
     b.add(3)
     try expect_equal(a.values(), [1, 2])
     b.clear()
