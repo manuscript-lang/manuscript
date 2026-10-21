@@ -17,10 +17,11 @@ out=$repository/dist/llvm
 mkdir -p "$work" "$out"
 cd "$work"
 
-# llvm's CMake expects the cmake and third-party trees next to the llvm source directory.
+# llvm's CMake expects the cmake and third-party trees next to the llvm source directory, and lld's Mach-O
+# linker includes libunwind's headers from ../libunwind/include.
 if [ ! -d llvm ]; then
     base=https://github.com/llvm/llvm-project/releases/download/llvmorg-$version
-    for part in llvm lld cmake third-party; do
+    for part in llvm lld cmake third-party libunwind; do
         curl --fail --location --retry 3 -sS -o "$part.tar.xz" "$base/$part-$version.src.tar.xz"
         mkdir -p "$part"
         tar -xf "$part.tar.xz" -C "$part" --strip-components=1
