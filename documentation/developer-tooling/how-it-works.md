@@ -5,7 +5,7 @@ weight = 0
 
 # How it works
 
-`ms` is one self-contained binary. It checks your program and compiles it to a native executable with Cranelift. No other language toolchain is needed.
+`ms` is one self-contained binary. It checks your program and compiles it to a native executable. No other language toolchain is needed.
 
 ```text
 .ms source → parse → check → compile → native executable

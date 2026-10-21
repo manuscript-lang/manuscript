@@ -12,7 +12,7 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 | --- | --- |
 | **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat code: `|` pipe flows, `try`, and exhaustive `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Fewer concepts means fewer first-draft errors and less to review. |
 | **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
-| **Native code without a second language to manage** | Source compiles through Cranelift to a native executable, linked with the host C compiler driver. The [performance benchmark](bench/perf/programs/results.md) compares generated code with hand-written Go; checked method calls are the largest gap and the current optimization target. |
+| **Native code without a second language to manage** | Source compiles to a native executable, linked with the host C compiler driver. The [performance benchmark](bench/perf/programs/results.md) compares generated code with hand-written Go; checked method calls are the largest gap and the current optimization target. |
 | **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, and profiler. The native runtime is embedded; the only external requirement is a C compiler driver for linking. |
 | **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
 
@@ -102,7 +102,7 @@ Version 0.1: working compiler, runtime, standard library, test runner, formatter
 
 ## Build from source
 
-Releases ship the Rust and Cranelift `ms`. To build it from a checkout, install [rustup](https://rustup.rs) and a system `cc`, then:
+Releases ship the Rust `ms`. To build it from a checkout, install [rustup](https://rustup.rs) and a system `cc`, then:
 
 ```sh
 cargo build --release --locked -p ms-cli
