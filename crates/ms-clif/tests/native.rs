@@ -299,11 +299,22 @@ fn real_runtime() -> &'static PathBuf {
         } else {
             target.join("release")
         };
-        release.join(if cfg!(windows) {
+        let name = if cfg!(windows) {
             "ms_rt.lib"
         } else {
             "libms_rt.a"
-        })
+        };
+        // Parallel test processes share this target directory and each cargo
+        // run briefly replaces the archive, so take a private copy to link.
+        let built = release.join(name);
+        let copy = std::env::temp_dir().join(format!("ms-rt-{}-{name}", std::process::id()));
+        for _ in 0..100 {
+            if std::fs::copy(&built, &copy).is_ok() {
+                return copy;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        panic!("cannot copy {}", built.display());
     })
 }
 
