@@ -3,7 +3,7 @@
 
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
-use super::modes::{CallModes, Key, ParamMode, Summary, call_modes};
+use super::modes::{CallModes, Key, ParamMode, ResultOrigin, Slot, Summary, call_modes};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
@@ -39,6 +39,16 @@ pub struct Outcome {
     pub diagnostics: Vec<Diagnostic>,
     pub summary: Summary,
     pub escaped: HashSet<NodeId>,
+    /// Calls bound with `var` as a mutable borrow of a field path of their argument.
+    pub getters: HashMap<NodeId, Vec<Name>>,
+}
+
+/// A `return` that hands back a part of a read-only parameter.
+struct Lend {
+    slot: Slot,
+    /// The fields from the parameter to the part, when it is a plain field path.
+    fields: Option<Vec<Name>>,
+    pos: Pos,
 }
 
 /// What an expression's value is used for.
@@ -118,9 +128,15 @@ pub fn analyze(cx: &Context) -> Outcome {
         mutated: Vec::new(),
         captured: Vec::new(),
         hidden: 0,
+        ret_expr: None,
+        ret_hit: false,
+        owned_return: false,
+        lends: Vec::new(),
+        getters: HashMap::new(),
     };
     w.run();
     let declared = Summary::declared(&cx.c.func);
+    let result = w.result_origin(&declared);
     let summary = Summary {
         receiver: match (declared.receiver, w.receiver_consumed()) {
             (ParamMode::Borrow, true) => ParamMode::Consume,
@@ -141,6 +157,7 @@ pub fn analyze(cx: &Context) -> Outcome {
                 }
             })
             .collect(),
+        result,
     };
     w.facts.parameters = summary.params.iter().map(|(_, m)| *m).collect();
     w.facts.receiver = cx.c.self_binding.as_ref().map(|_| summary.receiver);
@@ -149,6 +166,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         diagnostics: w.diags,
         summary,
         escaped: w.escaped,
+        getters: w.getters,
     }
 }
 
@@ -172,6 +190,14 @@ struct Walker<'a> {
     /// Variables each enclosing lambda captures, innermost last.
     captured: Vec<HashSet<usize>>,
     hidden: usize,
+    /// The expression being returned from the callable itself (not from a closure).
+    ret_expr: Option<NodeId>,
+    /// The expression being returned lent a part of a read-only parameter.
+    ret_hit: bool,
+    /// Some return gives back a value of its own.
+    owned_return: bool,
+    lends: Vec<Lend>,
+    getters: HashMap<NodeId, Vec<Name>>,
 }
 
 impl Walker<'_> {
@@ -210,8 +236,170 @@ impl Walker<'_> {
         self.positions = positions.0;
         match c.body() {
             Body::Block(body) => self.block(body),
-            Body::Expr(e) => self.expr(e, Demand::Consume),
+            Body::Expr(e) => self.returned(e),
         }
+    }
+
+    /// Evaluates a value handed back to the caller: it may lend a part of a read-only parameter.
+    fn returned(&mut self, e: &Expr) {
+        if !self.captured.is_empty() {
+            self.expr(e, Demand::Consume);
+            return;
+        }
+        let saved = (self.ret_expr, self.ret_hit);
+        self.ret_expr = Some(e.id);
+        self.ret_hit = false;
+        self.expr(e, Demand::Consume);
+        if !self.ret_hit {
+            self.owned_return = true;
+        }
+        (self.ret_expr, self.ret_hit) = saved;
+    }
+
+    /// The slot of a read-only parameter or receiver, which may lend its parts to a result.
+    fn slot_of(&self, root: usize) -> Option<Slot> {
+        let m = self.meta.get(&root)?;
+        if m.perm != Perm::Immutable {
+            return None;
+        }
+        if m.is_receiver {
+            return Some(Slot::Receiver);
+        }
+        let i = m.parameter?;
+        let declared = Summary::declared(&self.cx.c.func);
+        declared.params.get(i).map(|(n, _)| Slot::Param(*n))
+    }
+
+    /// The binding a slot names in this callable.
+    fn slot_binding(&self, slot: Slot) -> Option<&BindingRef> {
+        match slot {
+            Slot::Receiver => self.cx.c.self_binding.as_ref(),
+            Slot::Param(name) => {
+                let declared = Summary::declared(&self.cx.c.func);
+                let i = declared.params.iter().position(|(n, _)| *n == name)?;
+                self.cx.c.parameters.get(i)
+            }
+        }
+    }
+
+    /// What the callable's result borrows from, after all returns have been seen.
+    fn result_origin(&mut self, declared: &Summary) -> ResultOrigin {
+        let mut slots: Vec<Slot> = Vec::new();
+        let lends = std::mem::take(&mut self.lends);
+        let mut kept: Vec<&Lend> = Vec::new();
+        for l in &lends {
+            let consumed = self
+                .slot_binding(l.slot)
+                .is_some_and(|b| self.consumed.contains(&b.uid));
+            if consumed {
+                let what = match l.slot {
+                    Slot::Receiver => "self".to_string(),
+                    Slot::Param(n) => n.to_string(),
+                };
+                self.error(
+                    l.pos,
+                    format!("cannot return a part of `{what}`: this function also takes ownership of it; return an owned copy with `.{COPY}()`"),
+                );
+                continue;
+            }
+            kept.push(l);
+            if !slots.contains(&l.slot) {
+                slots.push(l.slot);
+            }
+        }
+        let _ = declared;
+        let plain = match kept.first() {
+            Some(first) if !self.owned_return => match &first.fields {
+                Some(f)
+                    if kept
+                        .iter()
+                        .all(|l| l.slot == first.slot && l.fields.as_ref() == Some(f)) =>
+                {
+                    Some((first.slot, f.clone()))
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        self.lends = lends;
+        ResultOrigin { slots, plain }
+    }
+
+    /// Records that `e` hands back parts of the read-only parameters `places` belong to.
+    /// Returns false when some place is not one.
+    fn lend(&mut self, e: &Expr, places: &[Place], fields: Option<Vec<Name>>) -> bool {
+        if self.ret_expr != Some(e.id) || !self.captured.is_empty() {
+            return false;
+        }
+        let slots: Option<Vec<Slot>> = places.iter().map(|o| self.slot_of(o.root)).collect();
+        let Some(slots) = slots else {
+            return false;
+        };
+        for slot in slots {
+            self.lends.push(Lend {
+                slot,
+                fields: fields.clone(),
+                pos: e.pos,
+            });
+        }
+        self.ret_hit = true;
+        true
+    }
+
+    /// The fields from a variable to a place written as a plain chain of them.
+    fn field_path(&self, e: &Expr) -> Option<Vec<Name>> {
+        match &e.kind {
+            ExprKind::Name(_) => Some(Vec::new()),
+            ExprKind::Member { left, name } => {
+                let mut f = self.field_path(left)?;
+                f.push(*name);
+                Some(f)
+            }
+            _ => None,
+        }
+    }
+
+    /// The argument expression a slot names in a call.
+    fn slot_arg<'e>(
+        &self,
+        slot: Slot,
+        call: &Expr,
+        callee: &'e Expr,
+        args: &'e [Argument],
+    ) -> Option<&'e Expr> {
+        match slot {
+            Slot::Receiver => match (&callee.kind, self.cx.m.resolution(call)) {
+                (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
+                _ => None,
+            },
+            Slot::Param(name) => {
+                let slots = self.cx.m.info(call).arguments.unwrap_or_default();
+                args.iter()
+                    .enumerate()
+                    .find(|(i, _)| slots.get(*i).is_some_and(|s| s.name == name))
+                    .map(|(_, a)| &a.value)
+            }
+        }
+    }
+
+    /// The places whose parts a call to a source getter hands back.
+    fn call_origins(&self, e: &Expr) -> Vec<Place> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return Vec::new();
+        };
+        let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+        let mut out = Vec::new();
+        for slot in &modes.origin.slots {
+            let Some(a) = self.slot_arg(*slot, e, callee, args) else {
+                continue;
+            };
+            if self.is_place(a) {
+                out.extend(self.pure_places(a).unwrap_or_default());
+            } else if let Some(o) = self.pure_origins(a) {
+                out.extend(o);
+            }
+        }
+        out
     }
 
     fn receiver_consumed(&self) -> bool {
@@ -559,7 +747,7 @@ impl Walker<'_> {
             StmtKind::Call(e) => self.expr(e, Demand::Discard),
             StmtKind::Return(e) => {
                 if let Some(e) = e {
-                    self.expr(e, Demand::Consume);
+                    self.returned(e);
                 }
             }
             StmtKind::Break | StmtKind::Continue => {}
@@ -687,6 +875,9 @@ impl Walker<'_> {
         };
         let role = if mutable { Role::Var } else { Role::Let };
         let class = self.cx.classes.class(&b.ty);
+        if mutable && class != Class::Copy && self.bind_getter(&b, role, pattern, value) {
+            return;
+        }
         if class != Class::Copy
             && let Some(origins) = self.projection_origins(value)
         {
@@ -758,6 +949,49 @@ impl Walker<'_> {
             None,
             false,
         );
+    }
+
+    /// `var x = f(place)` where `f` hands back a part of its argument: a mutable borrow when that
+    /// part is one plain field path, otherwise `x` owns a copy. False when `f` hands back nothing.
+    fn bind_getter(&mut self, b: &BindingRef, role: Role, pattern: &Pattern, value: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &value.kind else {
+            return false;
+        };
+        let modes = call_modes(self.cx.m, value, args, self.cx.summaries);
+        if modes.origin.slots.is_empty() {
+            return false;
+        }
+        let has_receiver = matches!(
+            (&callee.kind, self.cx.m.resolution(value)),
+            (ExprKind::Member { .. }, Resolution::Method(_))
+        );
+        if let Some((slot, fields)) = modes.origin.plain.clone()
+            && args.len() == usize::from(!has_receiver)
+            && let Some(arg) = self.slot_arg(slot, value, callee, args)
+            && self.is_place(arg)
+            && let Some((mut info, mut p)) = self.place(arg)
+        {
+            self.facts.calls.insert(value.id, modes);
+            for f in &fields {
+                p = p.then(Step::Field(*f));
+                info.text = format!("{}.{f}", info.text);
+            }
+            info.resolved = self.resolve(&p);
+            info.projection = true;
+            let before = self.diags.len();
+            self.mutate(pattern.pos, &info, "borrow mutably");
+            if self.diags.len() == before {
+                let parent = self.borrow_parent(&info.root);
+                self.getters.insert(value.id, fields);
+                self.declare_mut_borrow(b, role, info.resolved, pattern.pos, parent);
+            } else {
+                self.declare(b, role, Perm::Mutable, None, false);
+            }
+            return true;
+        }
+        self.expr(value, Demand::Read);
+        self.declare(b, role, Perm::Mutable, None, false);
+        true
     }
 
     fn expr_lambda_binding(&mut self, value: &Expr, b: &BindingRef, role: Role, mutable: bool) {
@@ -1070,7 +1304,8 @@ impl Walker<'_> {
         };
         let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
         if !modes.accessor {
-            return None;
+            let origins = self.call_origins(e);
+            return (!origins.is_empty()).then_some(origins);
         }
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
@@ -1088,7 +1323,8 @@ impl Walker<'_> {
             return None;
         };
         if !call_modes(self.cx.m, e, args, self.cx.summaries).accessor {
-            return None;
+            let origins = self.call_origins(e);
+            return (!origins.is_empty()).then_some(origins);
         }
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
@@ -1311,7 +1547,14 @@ impl Walker<'_> {
             return;
         };
         let class = self.class_of(e);
-        if d == Demand::Consume && class != Class::Copy {
+        let lent = d == Demand::Consume && class != Class::Copy && {
+            let direct = match (self.field_path(e), info.resolved.as_slice()) {
+                (Some(f), [only]) if only.root == info.root.uid => Some(f),
+                _ => None,
+            };
+            self.lend(e, &info.resolved, direct)
+        };
+        if d == Demand::Consume && class != Class::Copy && !lent {
             self.error(
                 e.pos,
                 format!(
@@ -1386,6 +1629,30 @@ impl Walker<'_> {
                 e.pos,
                 format!("`{name}` changes `{recv}` in place and its result cannot be used, because the collection has one owner; call it as a statement and keep using `{recv}`"),
             );
+        }
+        // A getter's result borrows from the arguments it came from.
+        if d == Demand::Consume && self.class_of(e) != Class::Copy {
+            let origins = self.call_origins(e);
+            if !origins.is_empty() && !self.lend(e, &origins, None) {
+                let mut roots: Vec<String> = Vec::new();
+                for o in &origins {
+                    let r = self.name_of(o.root).to_string();
+                    if !roots.contains(&r) {
+                        roots.push(r);
+                    }
+                }
+                let from = roots.join("`, `");
+                let msg = if self.ret_expr == Some(e.id) && self.captured.is_empty() {
+                    format!(
+                        "`{name}` returns a part of `{from}`, which this function does not lend: only a read-only parameter can; return an owned copy with `{name}(..).{COPY}()`"
+                    )
+                } else {
+                    format!(
+                        "`{name}` borrows its result from `{from}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"
+                    )
+                };
+                self.error(e.pos, msg);
+            }
         }
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
         // consumes it; only a result borrowed from a variable or part of one must stay in place.

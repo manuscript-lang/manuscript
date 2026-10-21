@@ -18,6 +18,24 @@ pub enum ParamMode {
     Consume,
 }
 
+/// An argument position of a source callable.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Slot {
+    /// The receiver of a method.
+    Receiver,
+    /// A parameter, by label.
+    Param(Name),
+}
+
+/// Where a call's result may come from: a read-only parameter whose part it returns.
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub struct ResultOrigin {
+    /// The parameters a returned part belongs to.
+    pub slots: Vec<Slot>,
+    /// Every return is this one path of fields below a single parameter.
+    pub plain: Option<(Slot, Vec<Name>)>,
+}
+
 /// The modes of a source callable.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Summary {
@@ -25,6 +43,8 @@ pub struct Summary {
     pub receiver: ParamMode,
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
+    /// What the result borrows from.
+    pub result: ResultOrigin,
 }
 
 impl Summary {
@@ -54,6 +74,7 @@ impl Summary {
                     )
                 })
                 .collect(),
+            result: ResultOrigin::default(),
         }
     }
 
@@ -83,6 +104,8 @@ pub struct CallModes {
     /// A source or native callee that runs its function arguments immediately
     /// and does not keep them.
     pub callbacks_borrowed: bool,
+    /// The source callee returns a part of these read-only arguments.
+    pub origin: ResultOrigin,
 }
 
 /// Resolves the modes of a call from its callee.
@@ -100,6 +123,7 @@ pub fn call_modes(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        origin: ResultOrigin::default(),
     };
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
@@ -168,6 +192,7 @@ fn from_summary(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        origin: summary.result,
     }
 }
 
@@ -200,6 +225,7 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
+                    origin: ResultOrigin::default(),
                 }
             }
             None => native_unknown(count),
@@ -215,6 +241,7 @@ fn native_unknown(count: usize) -> CallModes {
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: false,
+        origin: ResultOrigin::default(),
     }
 }
 
@@ -275,5 +302,6 @@ fn native_method_modes(
         accessor,
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
+        origin: ResultOrigin::default(),
     }
 }

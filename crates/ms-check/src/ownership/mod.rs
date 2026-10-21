@@ -14,7 +14,7 @@ mod places;
 mod walk;
 
 pub use classify::Class;
-pub use modes::{CallModes, ParamMode};
+pub use modes::{CallModes, ParamMode, ResultOrigin, Slot};
 pub use places::{Place, Step};
 
 use crate::hir::*;
@@ -161,6 +161,9 @@ pub struct Ownership {
     pub borrow_diagnostics: Vec<Diagnostic>,
     /// Identities of the exclusive borrow bindings.
     pub exclusive: HashSet<usize>,
+    /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
+    /// argument to the part they borrow.
+    pub getters: HashMap<(Name, NodeId), Vec<Name>>,
 }
 
 impl Ownership {
@@ -195,6 +198,7 @@ pub(crate) fn uses_mutable_borrow(program: &crate::checker::Program) -> bool {
                     value.kind,
                     ExprKind::Member { .. }
                         | ExprKind::Index { .. }
+                        | ExprKind::Call { .. }
                         | ExprKind::Apply { value: Some(_), .. }
                 ) =>
                 {
@@ -274,6 +278,7 @@ impl Hir<'_> {
         let mut diagnostics = Vec::new();
         let mut borrow_diagnostics = Vec::new();
         let mut exclusive = HashSet::new();
+        let mut getters = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
             let held: Vec<usize> = out
                 .facts
@@ -286,6 +291,9 @@ impl Hir<'_> {
                 borrow_diagnostics.extend(out.diagnostics.iter().cloned());
                 exclusive.extend(held);
             }
+            for (node, fields) in out.getters {
+                getters.insert((c.module.file, node), fields);
+            }
             diagnostics.extend(out.diagnostics);
             facts.insert((c.module.file, c.id()), out.facts);
         }
@@ -294,6 +302,7 @@ impl Hir<'_> {
             diagnostics,
             borrow_diagnostics,
             exclusive,
+            getters,
         }
     }
 }
