@@ -1,5 +1,26 @@
 # Manuscript vs handwritten Go
 
+## Latest: Rust `ms` (2026-10-20)
+
+Median of 5 alternating runs at 100M iterations for the loop rows; linux/amd64, four cores, Go 1.25. Checksums and operation counts verified. Ratios are Manuscript time over Go time, so below 1.00x is faster than Go.
+
+| operation | Manuscript ns/op | Go ns/op | ratio |
+|---|---:|---:|---:|
+| string_append_50k | 9.75 | 4.62 | 2.11x |
+| read_line | 118.88 | 116.27 | 1.02x |
+| map_put_get_8k | 37.17 | 41.52 | 0.90x |
+| int_eq | 2.29 | 1.38 | 1.65x |
+| generic_call | 1.36 | 0.69 | 1.98x |
+| method_call | 1.35 | 2.31 | 0.59x |
+| try | 1.93 | 0.62 | 3.10x |
+| match | 3.11 | 2.16 | 1.44x |
+| builtin_length | 2.16 | 0.64 | 3.35x |
+| for_list | 2.24 | 0.57 | 3.93x |
+
+Single-operation loops range from faster than Go to about 4x slower. Go inlines or vectorizes several of these loops, so those ratios are real code-generation gaps and the current optimization target. Whole-program kernels, which are closer to real code, are on par with Go: see [`../kernels/README.md`](../kernels/README.md).
+
+Everything below this line was measured on the earlier Go backend and is kept as history.
+
 All 10 complete workloads measure within about 9% of raw handwritten Go or faster
 in the final 30-trial run. Matching improves 3.41 to 1.76 ns/op versus Go's 1.65;
 try measures 0.60 versus 0.60. These are measured workload results, not a promise
