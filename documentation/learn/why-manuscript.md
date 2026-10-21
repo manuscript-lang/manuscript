@@ -34,7 +34,7 @@ The language server, VS Code extension, source-level debugger, and CPU, heap, an
 
 ## Measured, not claimed
 
-- [`bench/perf`](https://github.com/manuscript-lang/manuscript/tree/main/bench/perf) compares generated code with hand-written Go. Whole-program kernels run on par with Go (0.43x to 1.39x of its time; sieve, life, and trees are faster). Single-operation microbenchmarks range from faster to about 4x slower, and closing those gaps is the current optimization target.
+- [`bench/perf`](https://github.com/manuscript-lang/manuscript/tree/main/bench/perf) compares generated code with hand-written Go and Rust. Across 31 benchmarks Manuscript takes 0.26x to 2.6x of Go's time (faster on 8, within 1.25x on 8 more). Rust is usually faster, by 1.1x to 2x with overflow checks on and up to about 7x on vectorizable loops, because Manuscript checks Int overflow and has no loop rotation or hoisting yet. Both are measured, not promised.
 - [`bench/agent`](https://github.com/manuscript-lang/manuscript/tree/main/bench/agent) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. Manuscript currently trails the others on pass rate and cost; closing that gap is the point of the project.
 
 ## Try it
