@@ -112,7 +112,7 @@ fn exec(line: &str, st: &mut State) -> Vec<String> {
             }
             let mut total = 0;
             for (sku, q) in &items {
-                *st.stock.get_mut(sku).get() -= q;
+                *st.stock.get_mut(sku).unwrap() -= q;
                 let p = st.price[sku];
                 total += if *q >= 10 { (q * p * 90 + 50) / 100 } else { q * p };
             }
@@ -130,7 +130,7 @@ fn exec(line: &str, st: &mut State) -> Vec<String> {
                 }
                 o.status = "cancelled";
                 for (sku, q) in &o.items {
-                    *st.stock.get_mut(sku).get() += q;
+                    *st.stock.get_mut(sku).unwrap() += q;
                 }
                 return vec!["ok".into()];
             }
@@ -165,7 +165,7 @@ fn exec(line: &str, st: &mut State) -> Vec<String> {
                 .stock
                 .iter()
                 .map(|(sku, n)| {
-                    format!("{} stock={} price={} reserved={}", sku, n, money(st.price[sku]), reserved.get(sku.as_str()).copied().get(0))
+                    format!("{} stock={} price={} reserved={}", sku, n, money(st.price[sku]), reserved.get(sku.as_str()).copied().unwrap_or(0))
                 })
                 .collect();
             out.push(format!("orders placed={} shipped={} cancelled={}", placed, shipped, cancelled));
@@ -180,7 +180,7 @@ fn main() {
     let mut st = State::default();
     let mut out = String::new();
     for line in stdin.lock().lines() {
-        let l = line.get();
+        let l = line.unwrap();
         if l.trim_matches(' ').is_empty() {
             continue;
         }
@@ -189,5 +189,5 @@ fn main() {
             out.push('\n');
         }
     }
-    std::io::stdout().write_all(out.as_bytes()).get();
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
 }

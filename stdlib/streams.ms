@@ -70,7 +70,8 @@ impl ReadStream for LimitedStream:
         if self.remaining <= 0: return ok(none)
 
         let wanted = max_bytes.get(self.remaining)
-        var size = self.remaining
+        let available = self.remaining
+        var size = available
         if wanted < self.remaining: size = wanted
         let chunk = try self.input.read(some(size))
 
@@ -93,7 +94,8 @@ type ConcatStream:
 
 impl ReadStream for ConcatStream:
     var fn close() Unit:
-        var i = self.index
+        let first = self.index
+        var i = first
 
         while i < self.inputs.length():
             self.inputs[i].close()

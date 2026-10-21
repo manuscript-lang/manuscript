@@ -184,7 +184,7 @@ impl FnLower<'_> {
     /// current value.
     pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {
         let l = self.locals[&uid];
-        let v = self.b.use_var(l.var);
+        let v = self.local_get(&l);
         let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
         close_call(&mut self.b, &closer.kind, v, l.ty);
     }

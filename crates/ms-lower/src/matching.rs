@@ -18,12 +18,25 @@ fn arm_case(path: &Expr) -> Option<String> {
     }
 }
 
+/// Whether a match arm names a literal value instead of a case.
+pub(crate) fn is_literal(path: &Expr) -> bool {
+    match &path.kind {
+        ExprKind::Number(_) | ExprKind::Text(_) | ExprKind::Bool(_) => true,
+        ExprKind::Unary {
+            op: UnaryOp::Neg,
+            operand,
+        } => matches!(operand.kind, ExprKind::Number(_)),
+        _ => false,
+    }
+}
+
 impl FnLower<'_> {
     /// A variable that always holds the value of `e`, for use across blocks.
     /// The flag says the variable owns a hidden copy that must be dropped afterwards.
     pub fn hold(&mut self, e: &Expr) -> Result<Option<(ms_mir::builder::Var, bool)>, Error> {
         if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
             && !self.aliases.contains_key(&b.uid)
+            && self.locals.get(&b.uid).is_none_or(|l| l.slot.is_none())
         {
             return Ok(Some((self.local(&b)?.var, false)));
         }
@@ -60,6 +73,7 @@ impl FnLower<'_> {
         let s = self.b.use_var(sv);
         let sty = self.ty_of(s);
         let kind = self.b.m.types.kind(sty).clone();
+        let literal = sty == MTy::INT || sty == MTy::STR || sty == MTy::BOOL;
         let tag = match &kind {
             TyKind::Alt(_) => self.b.alt_tag(s),
             TyKind::Opt(_) => {
@@ -68,6 +82,7 @@ impl FnLower<'_> {
                 self.b.select(p, one, zero)
             }
             TyKind::Iface(_) => self.b.iconst(0),
+            _ if literal => self.b.iconst(0),
             _ => return Err(Error::new("match on this type is not supported yet")),
         };
         let join = self.b.new_block();
@@ -76,8 +91,15 @@ impl FnLower<'_> {
         let mut default: Option<Block> = None;
         let mut arm_cases: Vec<Option<usize>> = Vec::new();
         let by_type = matches!(kind, TyKind::Iface(_));
+        let mut tests: Vec<(Block, &Arm)> = Vec::new();
         for arm in arms {
             let blk = self.b.new_block();
+            if literal && is_literal(&arm.path) {
+                tests.push((blk, arm));
+                arm_cases.push(None);
+                blocks.push(blk);
+                continue;
+            }
             let case = match arm_case(&arm.path) {
                 _ if by_type => {
                     // A concrete type pattern on a contract value; `_` is the fallback.
@@ -117,7 +139,17 @@ impl FnLower<'_> {
             blocks.push(blk);
         }
         let fallback = default.unwrap_or_else(|| self.b.new_block());
-        if by_type {
+        if literal {
+            for (blk, arm) in &tests {
+                let lit = self.expr(&arm.path)?;
+                let eq = self.equal(sty, Val { v: s, own: false }, lit)?;
+                let next = self.b.new_block();
+                self.b.br_if(eq, *blk, &[], next, &[]);
+                self.b.seal_block(next);
+                self.b.switch_to(next);
+            }
+            self.b.br(fallback, &[]);
+        } else if by_type {
             self.type_tests(s, arms, &blocks, fallback)?;
         } else {
             self.b.switch(tag, &cases, fallback);

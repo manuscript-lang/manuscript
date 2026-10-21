@@ -75,3 +75,10 @@ fn touching_the_parent_of_a_getter_borrow_is_rejected() {
     assert_eq!(status, Some(1), "{text}");
     assert!(text.contains("cannot use `b.items` while `xs`"), "{text}");
 }
+
+#[test]
+fn var_of_a_scalar_part_writes_through() {
+    let (status, text) = run_ms(&["run", &fixture("scalar_borrows.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(text, "4 Optional.some(2) [11, 2, 3] 104\n");
+}

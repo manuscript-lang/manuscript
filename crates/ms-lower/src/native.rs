@@ -801,6 +801,12 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.hash_algorithm_call(sym, recv, &args, result);
         }
+        if native == "string/split" && self.split_iter_for == Some(e as *const Expr) {
+            // `for piece in text.split(..)`: pieces are produced one at a time.
+            self.split_iter_for = None;
+            let iter = self.b.m.types.obj("SplitIter", Vec::new());
+            return self.rt_method("msrt_string_split_iter", recv, &m.ty.params, &args, iter);
+        }
         if let Some(decode) = match native {
             "archive/format_compress_stream" => Some(false),
             "archive/format_decompress_stream" => Some(true),
@@ -1367,6 +1373,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(ms_mir::builder::Var, bool), Error> {
         if let Some(Resolution::Local(b)) = recv_expr.map(|r| self.hir.resolution(r))
             && !self.aliases.contains_key(&b.uid)
+            && self.local(&b)?.slot.is_none()
         {
             return Ok((self.local(&b)?.var, false));
         }

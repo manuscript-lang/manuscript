@@ -5,7 +5,7 @@ weight = 1
 
 # Records and nominal types
 
-A record groups named fields into one value. Fields are mutable, assignment copies the value (`.clone()` makes an explicit deep copy), and each declaration is a distinct nominal type.
+A record groups named fields into one value. Fields can change through a `var` receiver; plain records copy implicitly and other records follow move and borrow rules (`.clone()` makes an explicit deep copy), and each declaration is a distinct nominal type.
 
 ```manuscript
 type Customer:
@@ -51,7 +51,7 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Val:
     val: Int
@@ -61,7 +61,7 @@ impl Counter for Val:
         self.val = self.val + 1
 ```
 
-Field writes keep the declared type; the receiver evaluates once, before the new value. Assignment and closure capture copy; a function changes its caller's value only through a `var` parameter.
+Field writes keep the declared type; the receiver evaluates once, before the new value. Plain records copy; other records follow move and borrow rules. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
 
 `.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
 

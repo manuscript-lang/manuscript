@@ -42,7 +42,18 @@ fn classify(value: Int) String:
         return "positive"
 ```
 
-`if 1:` and `let result = if active: ...` are rejected. Select a result with an assigned `var` or explicit returns; the [return rules](../functions/declarations-and-calls.md#unit-and-never) require every reachable path to return.
+`if 1:` is rejected: the condition must be `Bool`.
+
+## If as an expression
+
+`if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
+
+```manuscript
+fn sign(value: Int) Int:
+    return if value < 0: -1 else if value == 0: 0 else: 1
+```
+
+The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 
@@ -64,7 +75,7 @@ fn port(lookup: Result[Int, TextError]) Int:
     return 8080
 ```
 
-`if var name = expression:` binds the payload as a mutable borrow of the value it came from (for example `if var entry = entries.get(key):` then `entry.count = entry.count + 1` changes the value in `entries`). The origin must be `var`, and nothing else may use it until the last use of `name`. The entry is changed in place, not copied. Supported on `get` of a map and on `first`, `last` and `get` of a list.
+`if var name = expression:` binds the payload as a mutable borrow of the value it came from (for example `if var entry = entries.get(key):` then `entry.count = entry.count + 1` changes the value in `entries`). The origin must be `var`, and nothing else may use it until the last use of `name`. The entry is changed in place, not copied, for scalar payloads too: `if var n = counts.get(key): n += 1` updates `counts`. Supported on `get` of a map and on `first`, `last` and `get` of a list.
 
 A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
 

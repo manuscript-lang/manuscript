@@ -854,7 +854,7 @@ impl FnLower<'_> {
                 TyKind::Obj(n, _) => {
                     matches!(
                         n.as_str(),
-                        "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr" | "LogGate"
+                        "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr" | "LogGate" | "SplitIter"
                     )
                 }
                 TyKind::Iface(_) => is_handle_return(&sig.ret),

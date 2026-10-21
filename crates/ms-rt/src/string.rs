@@ -1248,6 +1248,176 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
     }
 }
 
+/// The state of `for piece in text.split(separator)` that does not build the list.
+///
+/// The piece handed to the loop is owned by the iterator and rewritten in place for the
+/// next one when nothing else holds it (rc 1); a body that kept the piece gets a fresh one.
+#[repr(C)]
+pub struct SplitIter {
+    hdr: Obj,
+    src: *mut StrObj,
+    sep: *mut StrObj,
+    /// The current piece (a shared static for short ones), or null before the first.
+    cur: *mut StrObj,
+    /// Byte capacity of `cur` when it is a private allocation, else 0.
+    cap: usize,
+    pos: usize,
+    /// Pieces still allowed (`max_parts`).
+    left: usize,
+    done: bool,
+}
+
+unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
+    // SAFETY: `o` is a dead iterator that owns one reference to each string it holds.
+    unsafe {
+        let it = o as *mut SplitIter;
+        obj::release((*it).cur as *mut Obj);
+        obj::release((*it).src as *mut Obj);
+        obj::release((*it).sep as *mut Obj);
+        alloc::free(o as *mut u8);
+    }
+}
+
+/// Starts a split loop; the same fault as `split` for a negative `max_parts`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_split_iter(
+    s: *mut StrObj,
+    sep: *mut StrObj,
+    has_max: u8,
+    max: i64,
+) -> *mut SplitIter {
+    // SAFETY: caller passes live strings.
+    unsafe {
+        let mut left = usize::MAX;
+        if has_max != 0 {
+            if max < 0 {
+                fault::fault_fmt(format_args!(
+                    "split: max_parts must be nonnegative, found {max}"
+                ));
+            }
+            left = max as usize;
+        }
+        let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
+        (*it).src = retained(s);
+        (*it).sep = retained(sep);
+        (*it).cur = null_mut();
+        (*it).cap = 0;
+        (*it).pos = 0;
+        (*it).left = left;
+        (*it).done = false;
+        it
+    }
+}
+
+/// Makes the next piece current and returns a counted reference to it; null when the pieces
+/// are used up. The loop releases its reference before asking for the next piece, so a count
+/// of one then means the body kept nothing.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter) -> *mut StrObj {
+    // SAFETY: `it` is a live iterator.
+    unsafe {
+        let st = &mut *it;
+        if st.done || st.left == 0 {
+            return null_mut();
+        }
+        let (text, sepb) = (bytes(st.src), bytes(st.sep));
+        let piece: &[u8] = if sepb.is_empty() {
+            // Split after each scalar.
+            if st.pos >= text.len() {
+                st.done = true;
+                return null_mut();
+            }
+            let w = utf8::decode(&text[st.pos..]).1;
+            let p = &text[st.pos..st.pos + w];
+            st.pos += w;
+            p
+        } else {
+            let at = if let [c] = sepb {
+                memchr(*c, &text[st.pos..])
+            } else {
+                find(&text[st.pos..], sepb)
+            };
+            match at {
+                Some(n) => {
+                    let p = &text[st.pos..st.pos + n];
+                    st.pos += n + sepb.len();
+                    p
+                }
+                None => {
+                    st.done = true;
+                    &text[st.pos..]
+                }
+            }
+        };
+        st.left -= 1;
+        set_piece(st, piece);
+        retained(st.cur)
+    }
+}
+
+/// Copies `n` bytes; short copies avoid the call to `memcpy`.
+///
+/// # Safety
+/// The ranges must be valid for `n` bytes and must not overlap.
+#[inline(always)]
+unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: each branch reads and writes only inside the `n` bytes.
+    unsafe {
+        if (8..=16).contains(&n) {
+            let head = (src as *const u64).read_unaligned();
+            let tail = (src.add(n - 8) as *const u64).read_unaligned();
+            (dst as *mut u64).write_unaligned(head);
+            (dst.add(n - 8) as *mut u64).write_unaligned(tail);
+        } else if (4..8).contains(&n) {
+            let head = (src as *const u32).read_unaligned();
+            let tail = (src.add(n - 4) as *const u32).read_unaligned();
+            (dst as *mut u32).write_unaligned(head);
+            (dst.add(n - 4) as *mut u32).write_unaligned(tail);
+        } else if n > 16 || n == 0 {
+            core::ptr::copy_nonoverlapping(src, dst, n);
+        } else {
+            for i in 0..n {
+                *dst.add(i) = *src.add(i);
+            }
+        }
+    }
+}
+
+/// Stores `piece` as the iterator's current string.
+unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
+    // SAFETY: `st.cur` is null or a live string this iterator holds a reference to.
+    unsafe {
+        if piece.len() <= 1 && piece.first().is_none_or(|&b| b < 0x80) {
+            // Empty and one-byte ASCII pieces are shared statics.
+            obj::release(st.cur as *mut Obj);
+            st.cap = 0;
+            st.cur = from_bytes(piece);
+            return;
+        }
+        let cur = st.cur;
+        if st.cap >= piece.len() && !cur.is_null() && (*cur).hdr.rc == 1 {
+            // Nothing else holds it: rewrite in place.
+            let h = HINT.ptr();
+            if core::ptr::eq((*h).s, cur) {
+                (*h).s = core::ptr::null();
+            }
+            (*cur).len = piece.len();
+            (*cur).scalars = SCALARS_UNKNOWN;
+            copy_short(piece.as_ptr(), data_ptr(cur), piece.len());
+            *data_ptr(cur).add(piece.len()) = 0;
+            return;
+        }
+        obj::release(cur as *mut Obj);
+        let cap = piece.len().max(24);
+        let fresh = alloc_str(cap);
+        (*fresh).len = piece.len();
+        copy_short(piece.as_ptr(), data_ptr(fresh), piece.len());
+        *data_ptr(fresh).add(piece.len()) = 0;
+        st.cur = fresh;
+        st.cap = cap;
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrObj, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out; 8-byte elements.

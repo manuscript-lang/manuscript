@@ -240,3 +240,79 @@ fn optparam_splits_merged_constructors_into_a_flag_and_a_value() {
     assert_eq!(exec(&before), exec(&after));
     assert_eq!(exec(&after).0, Ok(8));
 }
+
+#[test]
+fn slotfuse_passes_the_field_to_the_mutator_without_a_slot() {
+    // Not under `fixtures-opt`: the interpreter cannot run the runtime calls.
+    let before = parse(BUILDER_APPEND);
+    let mut after = before.clone();
+    assert!(ms_mir::opt::slotfuse::run(&mut after));
+    verify_module(&after).unwrap_or_else(|e| panic!("{e:?}"));
+    // The freeze slot stays; the append's slot and both moves are gone.
+    assert_eq!(count(&before, "slot"), count(&after, "slot") + 1);
+    assert_eq!(count(&before, "take"), count(&after, "take") + 2);
+}
+
+const BUILDER_APPEND: &str = r#"module "main"
+file 0 "a.ms"
+record SB { sealed: bool, items: bytes }
+extern @msrt_list_new() -> bytes
+extern @msrt_fault_string(str) -> unit noreturn
+extern @msrt_strbuilder_append(ptr, str) -> unit
+extern @msrt_strbuilder_freeze(ptr) -> str
+extern @msrt_string_byte_length(str) -> int
+entry @main
+
+fn @main() -> int export {
+b0:
+  depth.enter
+  %0: bytes = call.rt @msrt_list_new ()
+  %1: bool = bconst false
+  %2: SB = rec.new SB %1, %0
+  %3: Shared<SB> = shared.new %2
+  %4: int = iconst 0
+  br b1(%4, %3)
+b1(%5: int, %6: own Shared<SB>):
+  %7: int = iconst 10
+  %8: bool = icmp.lt %5, %7
+  br_if %8, b2(), b5()
+b2():
+  %9: str = str "x"
+  %10: ptr = shared.addr %6
+  %11: ptr = ptr.field SB.sealed %10
+  %12: ptr = ptr.field SB.items %10
+  %13: bool = load bool %11
+  br_if %13, b3(), b4()
+b3():
+  %14: str = str "builder is sealed"
+  %15: unit = call.rt @msrt_fault_string (%14)
+  unreachable
+b4():
+  %16: bytes = take bytes %12
+  %17: ptr = slot bytes
+  put %17, %16
+  %18: unit = call.rt @msrt_strbuilder_append (%17, %9)
+  %19: bytes = take bytes %17
+  put %12, %19
+  %20: unit = unit
+  %21: int = iconst 1
+  %22: int = iadd.chk %5, %21
+  br b1(%22, %6)
+b5():
+  %23: ptr = shared.addr %6
+  %24: ptr = ptr.field SB.sealed %23
+  %25: ptr = ptr.field SB.items %23
+  %26: bool = bconst true
+  store %24, %26
+  %27: bytes = load bytes %25
+  %28: bytes = copy %27
+  %29: ptr = slot bytes
+  put %29, %28
+  %30: str = call.rt @msrt_strbuilder_freeze (%29)
+  %31: int = call.rt @msrt_string_byte_length (%30)
+  drop %30
+  drop %6
+  depth.leave
+  ret %31
+}
+"#;

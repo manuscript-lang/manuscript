@@ -1493,16 +1493,28 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj) {
     // SAFETY: caller contract.
     unsafe {
+        // One byte (a character or punctuation) is the common append and needs no call:
+        // this path keeps no registers live across a call, so it has no frame.
+        let v = &mut *b;
+        if (*s).len == 1 && v.len < v.cap {
+            *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
+            v.len += 1;
+            return;
+        }
+        append_slow(b, s);
+    }
+}
+
+#[inline(never)]
+unsafe fn append_slow(b: *mut VecVal, s: *const StrObj) {
+    // SAFETY: caller contract.
+    unsafe {
         let data = string::bytes(s);
         let v = &mut *b;
         if v.len + data.len() > v.cap {
             reserve(v, &desc::msrt_desc_bool, data.len());
         }
-        // One byte (a character or punctuation) is the common append; a call to `memcpy`
-        // costs several times the store.
-        if data.len() == 1 {
-            *v.ptr.add(v.len) = data[0];
-        } else if !data.is_empty() {
+        if !data.is_empty() {
             core::ptr::copy_nonoverlapping(data.as_ptr(), v.ptr.add(v.len), data.len());
         }
         v.len += data.len();

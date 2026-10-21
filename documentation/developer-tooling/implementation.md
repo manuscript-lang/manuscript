@@ -44,11 +44,12 @@ Project lint covers every reachable local module. [Library projects](builds/proj
 ```sh
 ms check ms.toml --json
 ms inspect ms.toml -o inspection.json
+ms emit ms.toml -o main.mir
 ms diagram ms.toml
 ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no native toolchain. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`.
+These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`.
 
 ```sh
 ms diagram ms.toml --view effects --entity save
@@ -124,7 +125,6 @@ Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which pri
 Targets, imported diagnostics, and documented modules are deduplicated and ordered by displayed path and position. Paths inside the invocation directory are relative; others are canonical absolute paths.
 
 - `check` and `lint` continue after an error and return 1 for any failed selection, source error, or finding. Their `format: 1` JSON collects all diagnostics. Empty selections succeed with empty arrays. Usage errors return 2.
-- `doc` checks every input before writing the combined reference. On any error it returns 1, reports on stderr, and leaves stdout and an existing output file untouched. `--stdlib` takes no inputs. If one module has conflicting API snapshots across input graphs, `doc` rejects it; select one input or a manifest defining one graph.
 
 ## Machine-readable native results
 
@@ -209,8 +209,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
-| MSL104 | Discarded `Result`: handle with `match`, propagate with `try`, or bind `let _ignored = operation()`. See [Result handling](../core-language/errors/results.md) |
-| MSL105 | Captured mutation in a known concurrent callback (HTTP server handlers); advisory, not a race-freedom proof. Keep per-request state local |
+| MSL104 | Discarded `Result`: handle with `if let`, propagate with `try`, or bind `let _ignored = operation()`. See [Result handling](../core-language/errors/results.md) |
 | MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |

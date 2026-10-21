@@ -639,10 +639,17 @@ impl Walker<'_> {
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
+            let remedy = if holder.as_str() == "for" {
+                format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else {
+                format!(
+                    "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
+                )
+            };
             self.error(
                 pos,
                 format!(
-                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, or take an independent value with `{shown}.{COPY}()`",
+                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, {remedy}",
                     bpos.line, bpos.column
                 ),
             );
@@ -927,10 +934,11 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
-        if mutable && class != Class::Copy && self.bind_getter(&b, role, pattern, value) {
+        if mutable && self.bind_getter(&b, role, pattern, value) {
             return;
         }
-        if class != Class::Copy
+        // A `let` of a scalar copies; a `var` borrows its place whatever the type.
+        if (mutable || class != Class::Copy)
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.
@@ -946,6 +954,10 @@ impl Walker<'_> {
                         // Already reported; an owned binding avoids a cascade.
                         self.declare(&b, role, Perm::Mutable, None, false);
                     }
+                } else if class == Class::Copy {
+                    // A scalar computed by a call has no place to borrow; the binding owns it.
+                    self.expr(value, Demand::Read);
+                    self.declare(&b, role, Perm::Mutable, None, false);
                 } else {
                     let text = self.expr_text(value);
                     self.expr(value, Demand::Read);
@@ -1108,6 +1120,8 @@ impl Walker<'_> {
         };
         match m.perm {
             Perm::Mutable => {}
+            // A scalar borrow is a name for its place: assigning writes through.
+            Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
                 pos,
                 format!("cannot assign to parameter `{name}`: it is not declared var; write `var {name}: <Type>` in the signature and `var` at every call"),
@@ -1278,13 +1292,12 @@ impl Walker<'_> {
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
-        let class = self.cx.classes.class(&b.ty);
         let named = self.root_name(value);
         let root = named.and_then(|n| match self.cx.m.resolution(n) {
             Resolution::Local(r) => Some((r, n.id)),
             _ => None,
         });
-        let (Some((root, root_node)), false) = (root, source.owned || class == Class::Copy) else {
+        let (Some((root, root_node)), false) = (root, source.owned) else {
             self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
             return;
         };

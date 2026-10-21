@@ -9,7 +9,7 @@ use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::Pos;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// An evaluated operand: the SSA value and whether it is an owned temporary.
@@ -25,6 +25,8 @@ pub(crate) struct Val {
 pub(crate) struct Local {
     pub var: Var,
     pub ty: MTy,
+    /// The address of the variable's storage when a closure changes it through a reference.
+    pub slot: Option<Value>,
 }
 
 /// A changed parameter: the slot address it arrives in and leaves through.
@@ -76,8 +78,12 @@ pub(crate) struct FnLower<'a> {
     pub fixture: Option<crate::fixture::Hooks>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
+    /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
+    pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
+    /// Locals a closure of this body changes: they live in memory so the closure shares them.
+    pub slotted: HashSet<usize>,
 }
 
 impl Cx {
@@ -309,10 +315,12 @@ impl<'a> FnLower<'a> {
             ret_ty,
             counts_depth: false,
             var_slots: Vec::new(),
+            slotted: HashSet::new(),
             discard: None,
             stmt_pos: None,
             fixture: None,
             err_slot: None,
+            split_iter_for: None,
             aliases: HashMap::new(),
         }
     }
@@ -441,9 +449,67 @@ impl<'a> FnLower<'a> {
             .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
         let v = self.owned(x);
         self.b.def_var(var, v);
-        self.locals.insert(binding.uid, Local { var, ty });
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
+        self.slotify(binding.uid);
         if owned {
             self.scopes.last_mut().expect("scope").push(binding.uid);
+        }
+    }
+
+    /// Moves the local `uid` into memory when a closure changes it, so the closure shares it.
+    pub fn slotify(&mut self, uid: usize) {
+        if !self.slotted.contains(&uid) {
+            return;
+        }
+        let Some(l) = self.locals.get(&uid).copied() else {
+            return;
+        };
+        let v = self.b.use_var(l.var);
+        let ptr = self
+            .b
+            .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(l.ty), Some(MTy::PTR))
+            .expect("slot");
+        self.move_into(ptr, v);
+        self.locals.insert(
+            uid,
+            Local {
+                slot: Some(ptr),
+                ..l
+            },
+        );
+    }
+
+    /// The current value of a local, as a borrow.
+    pub fn local_get(&mut self, l: &Local) -> Value {
+        match l.slot {
+            Some(p) => self
+                .b
+                .emit(Op::Load, &[p], ms_mir::ir::Imm::Ty(l.ty), Some(l.ty))
+                .expect("load"),
+            None => self.b.use_var(l.var),
+        }
+    }
+
+    /// Moves the value out of a local, which must be stored to again.
+    pub fn local_take(&mut self, l: &Local) -> Value {
+        match l.slot {
+            Some(p) => self.move_out(p, l.ty),
+            None => self.b.use_var(l.var),
+        }
+    }
+
+    /// Stores an owned value into a local; the old value is not dropped.
+    pub fn local_put(&mut self, l: &Local, v: Value) {
+        match l.slot {
+            Some(p) => self.move_into(p, v),
+            None => self.b.def_var(l.var, v),
         }
     }
 
@@ -463,7 +529,14 @@ impl<'a> FnLower<'a> {
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
     pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) {
         let uid = usize::MAX - self.locals.len();
-        self.locals.insert(uid, Local { var, ty });
+        self.locals.insert(
+            uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
         if self.needs_drop(ty) {
             self.scopes.last_mut().expect("scope").push(uid);
         }
@@ -474,7 +547,14 @@ impl<'a> FnLower<'a> {
         let ty = self.ty_of(v);
         let var = self.b.declare_var(ty, Mode::Borrow);
         self.b.def_var(var, v);
-        self.locals.insert(binding.uid, Local { var, ty });
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
     }
 
     pub fn local(&mut self, binding: &BindingRef) -> Result<Local, Error> {
@@ -490,7 +570,7 @@ impl<'a> FnLower<'a> {
             return self.alias_read(&a);
         }
         let l = self.local(binding)?;
-        let v = self.b.use_var(l.var);
+        let v = self.local_get(&l);
         Ok(Val { v, own: false })
     }
 
@@ -509,7 +589,7 @@ impl<'a> FnLower<'a> {
                 }
                 let l = self.locals[uid];
                 if self.needs_drop(l.ty) {
-                    let v = self.b.use_var(l.var);
+                    let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
                 }
             }
@@ -552,8 +632,8 @@ impl<'a> FnLower<'a> {
         }
         let v = value.map(|x| self.owned(x));
         for slot in self.var_slots.clone() {
-            let var = self.locals[&slot.uid].var;
-            let x = self.b.use_var(var);
+            let l = self.locals[&slot.uid];
+            let x = self.local_take(&l);
             self.move_into(slot.ptr, x);
         }
         // The temporaries stay registered: a conditional return leaves the others running.
@@ -581,6 +661,9 @@ impl<'a> FnLower<'a> {
             .cloned()
             .collect();
         let vars = self.cx.var_positions(c);
+        if let ms_check::hir::Body::Block(stmts) = c.body() {
+            self.slotted = crate::closure::slotted_in(self, stmts);
+        }
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
             ms_check::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
@@ -601,7 +684,15 @@ impl<'a> FnLower<'a> {
                     .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
                 let x = self.move_out(v, ty);
                 self.b.def_var(var, x);
-                self.locals.insert(b.uid, Local { var, ty });
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
+                self.slotify(b.uid);
                 self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
                 continue;
             }
@@ -612,7 +703,15 @@ impl<'a> FnLower<'a> {
                 let var = self.b.declare_var(ty, Mode::Own);
                 let o = self.owned(Val { v, own: false });
                 self.b.def_var(var, o);
-                self.locals.insert(b.uid, Local { var, ty });
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
+                self.slotify(b.uid);
                 self.scopes.last_mut().expect("scope").push(b.uid);
             } else {
                 self.bind_borrowed(b, v);

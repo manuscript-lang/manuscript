@@ -5,7 +5,7 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures snapshots of the bindings it uses.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure borrows or owns the bindings it captures.
 
 ```manuscript
 fn apply(value: Int, transform: fn(value: Int) Int) Int:
@@ -45,21 +45,11 @@ An anonymous function may omit parameter types when context supplies them (argum
 - A bound method value has the operation's function type with the receiver bound.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
-## Snapshot captures
+<a id="snapshot-captures"></a>
 
-A closure remembers the current value of each local binding it uses:
+## Closure captures
 
-```manuscript
-fn make_headline() fn() String:
-    var subject = "Weekly update"
-    let headline = fn():
-        return subject
-    subject = "Launch announcement"
-    return headline
-# make_headline()() returns "Weekly update".
-```
-
-Reassignment changes the local binding, not the captured value. Assigning to a captured outer binding is rejected.
+Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
 A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
@@ -72,6 +62,17 @@ fn tag_count() Int:
         return tags.length()
     return count()
 # tag_count() returns 2.
+```
+
+A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
+
+```manuscript
+fn total(values: List[Int]) Int:
+    var sum = 0
+    values.for_each(fn(value):
+        sum += value
+    )
+    return sum
 ```
 
 A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.

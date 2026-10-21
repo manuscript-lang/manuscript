@@ -46,11 +46,11 @@ fn parse(line: &str) -> Option<(String, u128)> {
 
 fn main() {
     let mut data = String::new();
-    std::io::stdin().read_to_string(&mut data).get();
+    std::io::stdin().read_to_string(&mut data).unwrap();
     let mut totals: BTreeMap<String, u128> = BTreeMap::new();
     let mut bad = 0;
     for raw in data.split('\n') {
-        let line = raw.strip_suffix('\r').get(raw);
+        let line = raw.strip_suffix('\r').unwrap_or(raw);
         if line.trim().is_empty() {
             continue;
         }

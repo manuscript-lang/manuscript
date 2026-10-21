@@ -19,8 +19,8 @@ let inferred = some(1)  # Optional[Int]
 let explicit = Optional[String].none
 # Rejected: no type determines the absent payload.
 let unknown = none
-# Rejected: bindings still require explicit wrapping.
-let wrong: Optional[String] = "Ada"
+# Wrapped: an annotated binding expects an Optional.
+let wrapped: Optional[String] = "Ada"
 ```
 
 There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs from `Optional[Int]`. `Result[T, E]` likewise needs both arguments determined, possibly from the expected type. See [compatibility and expected types](compatibility.md).
@@ -41,7 +41,7 @@ let unbounded = Queue[Int]()
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: Optional[T]) Optional[T]` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
 - An `Optional[T]` parameter is still required unless it has a default or a library omission permission.
-- Bindings, assignments, returns, defaults, and collection elements need explicit wrapping. A user-defined `Optional` gets no wrapping.
+- The same wrapping applies wherever an `Optional[T]` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Optional[Int] = 3`). A user-defined `Optional` gets no wrapping.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 

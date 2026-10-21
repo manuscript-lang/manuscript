@@ -6,13 +6,13 @@
 # its tests access the shared concrete instance as fixture, and after_all closes its server.
 export interface TestHooks:
     # Runs once after the fixture factory and before the file's selected tests.
-    fn before_all() Unit
+    var fn before_all() Unit
     # Runs before each selected test execution, including repetitions.
-    fn before_each() Unit
+    var fn before_each() Unit
     # Runs after each test attempt, including before_each failure, skip, or assertion failure.
-    fn after_each() Unit
+    var fn after_each() Unit
     # Runs once after selected tests finish or stop; also runs when before_all fails.
-    fn after_all() Unit
+    var fn after_all() Unit
 
 # Fails unless actual is true.
 export fn expect_true(actual: Bool) Result[Unit, Error]:

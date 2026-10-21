@@ -43,14 +43,14 @@ fn validate(rows: List[List[Int]]) String:
     return ""
 
 fn solve(rows: List[List[Int]]) String:
-    let problem = validate(rows)
+    let problem = validate(rows.clone())
     if not problem.is_empty():
         return problem
 
     let height = rows.length()
     let width = rows.get(0).length()
-    let flat = List[Int]()
-    let dist = List[Int]()
+    var flat = List[Int]()
+    var dist = List[Int]()
     var start = 0
 
     for row in rows:
@@ -61,7 +61,7 @@ fn solve(rows: List[List[Int]]) String:
             dist.append(-1)
 
     dist.set(start, 0)
-    let queue = List[Int]()
+    var queue = List[Int]()
     queue.append(start)
     var head = 0
     let dr = [1, -1, 0, 0]
@@ -93,7 +93,7 @@ fn solve(rows: List[List[Int]]) String:
     return "no path"
 
 fn run() Result[Unit, Error]:
-    let rows = List[List[Int]]()
+    var rows = List[List[Int]]()
 
     while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)

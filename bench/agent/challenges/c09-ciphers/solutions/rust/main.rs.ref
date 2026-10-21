@@ -47,7 +47,7 @@ fn solve_line(line: &str) -> String {
         if digits.is_empty() || digits.len() > 7 || !digits.bytes().all(|b| b.is_ascii_digit()) {
             return "error: bad key".into();
         }
-        let mut k: i32 = digits.parse().get();
+        let mut k: i32 = digits.parse().unwrap();
         if neg {
             k = -k;
         }
@@ -64,12 +64,12 @@ fn main() {
     let stdin = std::io::stdin();
     let mut out = String::new();
     for line in stdin.lock().lines() {
-        let line = line.get();
+        let line = line.unwrap();
         if line.trim_matches(' ').is_empty() {
             continue;
         }
         out.push_str(&solve_line(&line));
         out.push('\n');
     }
-    std::io::stdout().write_all(out.as_bytes()).get();
+    std::io::stdout().write_all(out.as_bytes()).unwrap();
 }

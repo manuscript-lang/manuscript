@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=documentation/core-language/types/records.md:52
 interface Counter:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Val:
     val: Int

@@ -9,7 +9,7 @@ fn is_lower(c: Int) Bool:
 
 # Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
 fn transform(text: String, keys: List[Int], sign: Int) String:
-    let out = List[Int]()
+    var out = List[Int]()
     var i = 0
 
     for c in text.scalar_values():
@@ -91,7 +91,7 @@ fn solve_line(line: String) String:
     if key.is_empty():
         return "error: bad key"
 
-    let keys = List[Int]()
+    var keys = List[Int]()
 
     for c in key.scalar_values():
         if is_upper(c):

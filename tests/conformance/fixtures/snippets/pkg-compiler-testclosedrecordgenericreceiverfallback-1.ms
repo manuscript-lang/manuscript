@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/record_bounds_test.go:80 TestClosedRecordGenericReceiverFallback
 interface Counter:
-    fn bump(by: Int) Int
+    var fn bump(by: Int) Int
 type Cell[T]:
     total: Int
 impl Counter for Cell[T]:

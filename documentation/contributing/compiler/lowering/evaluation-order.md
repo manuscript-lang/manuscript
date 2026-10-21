@@ -8,7 +8,7 @@ weight = 95
 Lowered code must evaluate arguments in the order the caller wrote them, even when named arguments differ from declaration order.
 
 - Consume the checker's resolved argument names (positional, named, mixed), evaluate each in written order, then place the values by parameter position. Preserve short-circuiting.
-- Closure construction snapshots captures without running bodies.
+- Closure construction borrows or moves captures according to ownership facts without running bodies.
 - List elements evaluate left to right; an existing list argument evaluates once.
 - Destructuring evaluates its initializer once and extracts bindings in pattern order, keeping each type.
 - A `with` initializer evaluates once and registers the object's resolved `close` before the next checkpoint. Later alias assignment does not change that receiver.

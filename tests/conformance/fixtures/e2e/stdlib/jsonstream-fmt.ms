@@ -15,7 +15,7 @@ fn texts(values: List[JsonValue]) Result[List[String], Error]:
 
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
 fn decode(input: Bytes, size: Int) Result[List[String], Error]:
-    let reader = try decoder()
+    var reader = try decoder()
     var result: List[String] = []
     var offset = 0
 
@@ -44,7 +44,7 @@ test "JSON decoder reports truncated and malformed input":
     let invalid: Result[List[JsonValue], JsonError] = error(JsonError.InvalidData)
 
     for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
-        let reader = try decoder()
+        var reader = try decoder()
         let fed = reader.feed("{text} ".to_bytes())
 
         if text == "\{\"a\":[1" or text == "\"open":
@@ -56,21 +56,21 @@ test "JSON decoder reports truncated and malformed input":
 test "JSON decoder rejects invalid UTF-8 and stays failed":
     let invalid: Result[List[JsonValue], JsonError] = error(JsonError.InvalidData)
     let closed: Result[List[JsonValue], JsonError] = error(JsonError.InvalidInput)
-    let reader = try decoder()
+    var reader = try decoder()
     let bad = "\"a\"".to_bytes()
     try expect_equal(reader.feed(bad.with_value(1, 255)), invalid)
     try expect_equal(reader.feed("1 ".to_bytes()), invalid)
-    let ended = try decoder()
+    var ended = try decoder()
     let _values = try ended.finish()
     try expect_equal(ended.feed("1 ".to_bytes()), closed)
     try expect_equal(ended.finish(), closed)
 
 test "JSON decoder applies per-value budgets":
     let limited: Result[List[JsonValue], JsonError] = error(JsonError.LimitExceeded)
-    let bytes = try decoder(JsonLimits(5))
+    var bytes = try decoder(JsonLimits(5))
     try expect_not_equal(bytes.feed("[1,2]".to_bytes()), limited)
     try expect_equal(bytes.feed("[1,2,3]".to_bytes()), limited)
-    let depth = try decoder(JsonLimits(max_depth: 2))
+    var depth = try decoder(JsonLimits(max_depth: 2))
     try expect_equal(depth.feed("[[[".to_bytes()), limited)
     let negative = decoder(JsonLimits(max_values: -1))
     try expect_false(not negative.is_error())

@@ -36,24 +36,24 @@ export type IoError:
 # A readable byte stream. Each read returns a chunk or `none` at end of stream.
 export interface ReadStream:
     # Releases this implementation's read resource; ownership of underlying handles is implementation-defined.
-    fn close() Unit
+    var fn close() Unit
     # Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
     # A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
 # while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 export interface WriteStream:
     # Releases this implementation's write resource; close does not imply a successful flush.
-    fn close() Unit
+    var fn close() Unit
     # Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
     # File-handle writers synchronize the file, and failures retain IoError identity.
-    fn flush() Result[Unit, IoError]
+    var fn flush() Result[Unit, IoError]
     # Accepts the complete input on success; a source implementation may buffer until flush.
-    fn write(data: String) Result[Unit, IoError]
+    var fn write(data: String) Result[Unit, IoError]
     # Accepts the complete bytes on success, with the buffering rules of write.
-    fn write_bytes(data: Bytes) Result[Unit, IoError]
+    var fn write_bytes(data: Bytes) Result[Unit, IoError]
 
 # Copies bytes until end of input or the supplied byte limit; returns bytes copied.
 export fn copy(
