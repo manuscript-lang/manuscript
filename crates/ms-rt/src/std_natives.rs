@@ -470,6 +470,7 @@ mod process {
         fn raise(sig: i32) -> i32;
     }
 
+    #[cfg(unix)]
     #[test]
     fn watch_signals_through_the_abi() {
         let _g = lock();
