@@ -5,7 +5,7 @@ weight = 6
 
 # Why Manuscript
 
-Manuscript is a statically typed language built for the loop an agent runs: write, check, fix, verify, ship. It lowers to Go and builds a native executable. Everything below is on main today.
+Manuscript is a statically typed language built for the loop an agent runs: write, check, fix, verify, ship. It compiles through Cranelift to a native executable. Everything below is on main today.
 
 ## A language with little to get wrong
 
@@ -30,7 +30,7 @@ The language server, VS Code extension, source-level debugger, and CPU, heap, an
 
 ## One binary, native result
 
-`ms` is the compiler, formatter, linter, test runner, language server, debugger, and profiler. Download it and run; the Go toolchain is bundled. Rebuilds reuse a shared runtime workspace, and no executable cache means a stale binary never runs.
+`ms` is the compiler, formatter, linter, test runner, language server, and profiler. Download it and run; there is no separate toolchain to install. No executable cache means a stale binary never runs.
 
 ## Measured, not claimed
 

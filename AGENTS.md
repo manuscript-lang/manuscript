@@ -1,6 +1,6 @@
 # Repository guidance
 
-Manuscript is a statically typed language implemented in Go. Source `.ms` files are parsed and checked, then lowered to Go for native execution.
+Manuscript is a statically typed, natively compiled language implemented in Rust. Source `.ms` files are parsed and checked, then compiled through Cranelift to native executables.
 
 ## Start each session
 
