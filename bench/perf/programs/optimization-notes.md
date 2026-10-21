@@ -186,3 +186,11 @@ both directions, repeated/nested entry, resets and continue. Shape tests disting
 optimized literal starts from fallback controls. Constant-start assembly confirms
 the separate tick disappears; the isolated length loop improved about 20%.
 The retained dynamic-start controls show approximately unchanged throughput.
+
+## Tried and rejected (round 3)
+
+- Hoisting `a.get(i)` out of the inner matmul loop: about 8%, not worth a loop-invariant pass.
+- If-converting checked arithmetic arms (predicated overflow guards): collatz 395 to 520 ms. Removed.
+- Threading known `Result` constructors through joins (errors_50M) and compare-chain switch lowering: fewer instructions, same time.
+
+Remaining gaps against Rust with overflow checks need LLVM-class work: auto-vectorization (life 6.7x, matmul 2.8x), interprocedural constant folding (closure, struct), and better register allocation (nbody, errors).

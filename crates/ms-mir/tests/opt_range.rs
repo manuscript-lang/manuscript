@@ -227,3 +227,16 @@ fn select_step_keeps_a_loop_counter_bounded() {
     assert_eq!(exec(&before), exec(&after));
     assert_eq!(exec(&after).0, Ok(334));
 }
+
+#[test]
+fn optparam_splits_merged_constructors_into_a_flag_and_a_value() {
+    let src = std::fs::read_to_string(dir("fixtures-opt").join("opt_merge.mir")).expect("fixture");
+    let before = parse(&src);
+    let mut after = before.clone();
+    assert!(ms_mir::opt::optparam::run(&mut after));
+    verify_module(&after).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(count(&after, "opt.is_some"), 0);
+    assert_eq!(count(&after, "opt.get"), 0);
+    assert_eq!(exec(&before), exec(&after));
+    assert_eq!(exec(&after).0, Ok(8));
+}
