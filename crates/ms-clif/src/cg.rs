@@ -137,6 +137,45 @@ pub struct Gen<'m> {
     pub desc_ids: HashMap<Ty, DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
+    /// Functions translated to LLVM IR instead of being compiled by Cranelift (release builds).
+    pub llvm: Option<crate::llvm_ir::LlvmModule>,
+}
+
+impl Gen<'_> {
+    /// Linkage of module-private data and functions: visible to the LLVM object when it is used.
+    pub fn private(&self) -> Linkage {
+        if self.llvm.is_some() { Linkage::Export } else { Linkage::Local }
+    }
+
+    /// Linkage of a function defined in this compile: LLVM-built functions are imported here.
+    pub fn func_linkage(&self, exported: bool) -> Linkage {
+        if self.llvm.is_some() {
+            Linkage::Import
+        } else if exported {
+            Linkage::Export
+        } else {
+            Linkage::Local
+        }
+    }
+}
+
+struct ModuleSymbols<'a>(&'a ObjectModule);
+
+impl ModuleSymbols<'_> {
+    fn symbol_of(&self, id: FuncId) -> String {
+        self.0.declarations().get_function_decl(id).linkage_name(id).into_owned()
+    }
+}
+
+impl crate::llvm_ir::Symbols for ModuleSymbols<'_> {
+    fn symbol(&self, namespace: u32, index: u32) -> String {
+        let decls = self.0.declarations();
+        if namespace == 0 {
+            decls.get_function_decl(FuncId::from_u32(index)).linkage_name(FuncId::from_u32(index)).into_owned()
+        } else {
+            decls.get_data_decl(DataId::from_u32(index)).linkage_name(DataId::from_u32(index)).into_owned()
+        }
+    }
 }
 
 /// Debug facts about one compiled function.
@@ -269,7 +308,7 @@ impl<'m> Gen<'m> {
         );
         let id = self
             .module
-            .declare_function(&name, Linkage::Local, &sig)
+            .declare_function(&name, self.func_linkage(false), &sig)
             .expect("declare glue");
         self.glue.insert((kind, ty), id);
         self.queue.push((kind, ty));
@@ -301,7 +340,7 @@ impl<'m> Gen<'m> {
         let name = format!("ms.desc.{}", self.desc_ids.len());
         let id = self
             .module
-            .declare_data(&name, Linkage::Local, false, false)
+            .declare_data(&name, self.private(), false, false)
             .expect("declare descriptor");
         self.desc_ids.insert(ty, id);
         let mem = self.lay.mem(ty);
@@ -382,7 +421,7 @@ impl<'m> Gen<'m> {
         bytes.push(0);
         let id = self
             .module
-            .declare_data(&format!("ms.str.{i}"), Linkage::Local, true, false)
+            .declare_data(&format!("ms.str.{i}"), self.private(), true, false)
             .expect("declare string");
         let mut d = DataDescription::new();
         d.define(bytes.into_boxed_slice());
@@ -442,6 +481,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         dbg: Vec::new(),
         tables: None,
         desc_ids: HashMap::new(),
+        llvm: opts.llvm.map(|_| Default::default()),
     };
     for (i, f) in m.funcs.iter().enumerate() {
         let sig = g.func_sig(f);
@@ -459,11 +499,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
             .module
             .declare_function(
                 &name,
-                if exported {
-                    Linkage::Export
-                } else {
-                    Linkage::Local
-                },
+                g.func_linkage(exported),
                 &sig,
             )
             .map_err(|e| e.to_string())?;
@@ -475,7 +511,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
             .module
             .declare_data(
                 &format!("ms.global.{i}.{}", gl.name),
-                Linkage::Local,
+                g.private(),
                 true,
                 false,
             )
@@ -493,7 +529,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
             .module
             .declare_data(
                 &format!("ms.vtable.{i}.{}", vt.name),
-                Linkage::Local,
+                g.private(),
                 false,
                 false,
             )
@@ -551,16 +587,22 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         }
         define(&mut g, &mut ctx, id, "glue")?;
     }
-    let tables = if g.m.entry.is_some() {
+    let tables = if g.m.entry.is_some() && g.llvm.is_none() {
         Some(emit_tables(&mut g)?)
     } else {
         None
     };
     emit_main(&mut g, &mut ctx, &mut fctx)?;
     let endian = g.module.isa().endianness();
+    let triple = g.module.isa().triple().to_string();
     let mut product = g.module.finish();
     if let Some(t) = tables {
         relocate_tables(&mut product, &g.dbg, &t);
+    }
+    if let Some(llvm) = g.llvm.take() {
+        let clif = product.emit().map_err(|e| Error(e.to_string()))?;
+        let level = opts.llvm.unwrap_or("3");
+        return crate::llvm_obj::build(&llvm.finish(&triple), &clif, level);
     }
     crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
     product.emit().map_err(|e| Error(e.to_string()))
@@ -743,11 +785,21 @@ fn define_with(
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
     }
-    if g.opts.opt_level != "none" {
-        crate::spill::spill_loop_cold(&mut ctx.func);
-    }
     if g.opts.dump_clif {
         eprintln!("; {name}\n{}", ctx.func.display());
+    }
+    if let Some(mut llvm) = g.llvm.take() {
+        let sym = ModuleSymbols(&g.module).symbol_of(id);
+        let exported = g.module.declarations().get_function_decl(id).linkage == Linkage::Import
+            && !sym.contains('#')
+            && !sym.starts_with("ms.glue.");
+        llvm.add_function(&sym, &ctx.func, &ModuleSymbols(&g.module), !exported, &[]);
+        g.llvm = Some(llvm);
+        g.module.clear_context(ctx);
+        return Ok(());
+    }
+    if g.opts.opt_level != "none" {
+        crate::spill::spill_loop_cold(&mut ctx.func);
     }
     g.module
         .define_function(id, ctx)
@@ -818,5 +870,8 @@ fn emit_main(
         l.lower_main(entry.index());
         l.finish();
     }
-    define(g, ctx, id, "main")
+    let llvm = g.llvm.take();
+    let r = define(g, ctx, id, "main");
+    g.llvm = llvm;
+    r
 }
