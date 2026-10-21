@@ -92,7 +92,12 @@ pub fn build_executable(
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
-    let linked = ms_clif::link::link_all(&object_path, &[runtime], &staged);
+    let linked = ms_clif::link::link_with(
+        &object_path,
+        &[runtime],
+        &staged,
+        profile == Profile::MinSizeRel,
+    );
     let _ = std::fs::remove_file(&object_path);
     if let Err(error) = linked {
         cleanup();
