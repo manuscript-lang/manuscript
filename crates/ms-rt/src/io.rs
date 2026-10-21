@@ -52,6 +52,39 @@ pub unsafe extern "C-unwind" fn msrt_io_write_stderr(s: *mut StrObj) {
     write_stderr(unsafe { crate::string::bytes(s) });
 }
 
+/// The last failure built by a test assertion: its message and source position.
+static TEST_SITE: std::sync::Mutex<Option<(Vec<u8>, Vec<u8>)>> = std::sync::Mutex::new(None);
+
+/// Remembers where the assertion failure carrying `message` was built.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_site(message: *mut StrObj, site: *mut StrObj) {
+    // SAFETY: caller passes live strings.
+    let entry = unsafe {
+        (
+            crate::string::bytes(message).to_vec(),
+            crate::string::bytes(site).to_vec(),
+        )
+    };
+    if let Ok(mut slot) = TEST_SITE.lock() {
+        *slot = Some(entry);
+    }
+}
+
+/// Writes `  at <position>` to stderr when `message` is the last recorded assertion failure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_test_site_report(message: *mut StrObj) {
+    // SAFETY: caller passes a live string.
+    let message = unsafe { crate::string::bytes(message) };
+    let Ok(slot) = TEST_SITE.lock() else { return };
+    if let Some((recorded, site)) = slot.as_ref()
+        && recorded == message
+    {
+        let mut line = b"\n  at ".to_vec();
+        line.extend_from_slice(site);
+        write_stderr(&line);
+    }
+}
+
 /// The bytes of a live byte vector.
 ///
 /// # Safety

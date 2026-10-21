@@ -1,0 +1,1 @@
+error parse 2:8:24 "'export' appears twice; write it once before the declaration"

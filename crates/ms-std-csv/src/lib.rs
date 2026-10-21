@@ -8,7 +8,7 @@ pub mod ffi;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::Fail;
+use ms_std_core::{Fail, StringTable};
 
 /// Validated `CsvOptions`.
 #[derive(Clone, Copy, Debug)]
@@ -49,146 +49,169 @@ fn budget(max: Option<i64>) -> Result<usize, Fail> {
     }
 }
 
+/// A line of the input without its terminator; a CRLF terminator counts as one newline.
+struct Line {
+    start: usize,
+    end: usize,
+    /// Whether a newline ended the line (false only for the last line of input).
+    ended: bool,
+}
+
 struct Lines<'a> {
     text: &'a [u8],
     at: usize,
 }
 
-impl<'a> Lines<'a> {
-    /// Next line with a CRLF terminator folded to LF; `None` at end of input.
-    fn next(&mut self) -> Option<Vec<u8>> {
+impl Lines<'_> {
+    /// Next line; `None` at end of input.
+    fn next(&mut self) -> Option<Line> {
         if self.at >= self.text.len() {
             return None;
         }
-        let rest = &self.text[self.at..];
-        let (mut line, ended) = match rest.iter().position(|&b| b == b'\n') {
-            Some(i) => (rest[..=i].to_vec(), true),
-            None => (rest.to_vec(), false),
+        let start = self.at;
+        let rest = &self.text[start..];
+        let (mut end, ended) = match rest.iter().position(|&b| b == b'\n') {
+            Some(i) => {
+                self.at = start + i + 1;
+                (start + i, true)
+            }
+            None => {
+                self.at = self.text.len();
+                (self.text.len(), false)
+            }
         };
-        self.at += line.len();
-        if !ended && line.last() == Some(&b'\r') {
-            line.pop();
+        if end > start && self.text[end - 1] == b'\r' {
+            end -= 1;
         }
-        let n = line.len();
-        if n >= 2 && line[n - 2] == b'\r' && line[n - 1] == b'\n' {
-            line[n - 2] = b'\n';
-            line.pop();
-        }
-        Some(line)
+        Some(Line { start, end, ended })
     }
 }
 
-fn nl_len(b: &[u8]) -> usize {
-    usize::from(b.last() == Some(&b'\n'))
+struct Reader<'a> {
+    src: &'a str,
+    lines: Lines<'a>,
+    comma: u8,
+    out: StringTable,
 }
 
-/// Reads one record; `Ok(None)` at end of input.
-fn read_record(lines: &mut Lines, comma: u8) -> Result<Option<Vec<String>>, Fail> {
-    let mut line = loop {
-        match lines.next() {
-            None => return Ok(None),
-            Some(l) if l.len() == nl_len(&l) => continue,
-            Some(l) => break l,
-        }
-    };
-    let mut buf: Vec<u8> = Vec::new();
-    let mut ends: Vec<usize> = Vec::new();
-    let mut at = 0usize; // consumed prefix of `line`
-    loop {
-        let rest = &line[at..];
-        if rest.first() != Some(&b'"') {
-            let i = rest.iter().position(|&b| b == comma);
-            let field = match i {
-                Some(i) => &rest[..i],
-                None => &rest[..rest.len() - nl_len(rest)],
-            };
-            if field.contains(&b'"') {
-                return Err(Fail::InvalidData);
+impl Reader<'_> {
+    fn push(&mut self, from: usize, to: usize) -> Result<(), Fail> {
+        // Offsets sit next to ASCII delimiters, so a miss means malformed input rather than a
+        // split character.
+        self.out
+            .push_str(self.src.get(from..to).ok_or(Fail::InvalidData)?);
+        Ok(())
+    }
+
+    fn end_cell(&mut self) {
+        self.out.end_cell();
+    }
+
+    /// Reads one record into the table, returning its cell count; `Ok(None)` at end of input.
+    fn record(&mut self) -> Result<Option<usize>, Fail> {
+        let mut line = loop {
+            match self.lines.next() {
+                None => return Ok(None),
+                Some(l) if l.start == l.end => continue,
+                Some(l) => break l,
             }
-            buf.extend_from_slice(field);
-            ends.push(buf.len());
-            match i {
-                Some(i) => {
-                    at += i + 1;
-                    continue;
-                }
-                None => break,
-            }
-        }
-        at += 1;
+        };
+        let first = self.out.cells();
+        let mut at = line.start; // consumed prefix of the line
         loop {
-            let rest = &line[at..];
-            match rest.iter().position(|&b| b == b'"') {
-                Some(i) => {
-                    buf.extend_from_slice(&rest[..i]);
-                    at += i + 1;
-                    let after = &line[at..];
-                    match after.first() {
-                        Some(b'"') => {
-                            buf.push(b'"');
-                            at += 1;
-                        }
-                        Some(&c) if c == comma => {
-                            at += 1;
-                            ends.push(buf.len());
-                            break;
-                        }
-                        _ if after.len() == nl_len(after) => {
-                            ends.push(buf.len());
-                            return finish(buf, ends).map(Some);
-                        }
-                        _ => return Err(Fail::InvalidData),
+            let body = &self.lines.text[at..line.end];
+            if body.first() != Some(&b'"') {
+                let i = body.iter().position(|&b| b == self.comma);
+                let field = &body[..i.unwrap_or(body.len())];
+                if field.contains(&b'"') {
+                    return Err(Fail::InvalidData);
+                }
+                self.push(at, at + field.len())?;
+                self.end_cell();
+                match i {
+                    Some(i) => {
+                        at += i + 1;
+                        continue;
                     }
+                    None => break,
                 }
-                None if !rest.is_empty() => {
-                    buf.extend_from_slice(rest);
-                    line = match lines.next() {
-                        Some(l) => l,
-                        None => return Err(Fail::InvalidData),
-                    };
-                    at = 0;
+            }
+            at += 1;
+            loop {
+                let body = &self.lines.text[at..line.end];
+                match body.iter().position(|&b| b == b'"') {
+                    Some(i) => {
+                        self.push(at, at + i)?;
+                        at += i + 1;
+                        match self.lines.text[at..line.end].first() {
+                            Some(b'"') => {
+                                self.out.push_str("\"");
+                                at += 1;
+                            }
+                            Some(&c) if c == self.comma => {
+                                at += 1;
+                                self.end_cell();
+                                break;
+                            }
+                            None => {
+                                self.end_cell();
+                                return Ok(Some(self.out.cells() - first));
+                            }
+                            _ => return Err(Fail::InvalidData),
+                        }
+                    }
+                    None if line.ended => {
+                        // The quoted field continues on the next line.
+                        self.push(at, line.end)?;
+                        self.out.push_str("\n");
+                        line = self.lines.next().ok_or(Fail::InvalidData)?;
+                        at = line.start;
+                    }
+                    None => return Err(Fail::InvalidData),
                 }
-                None => return Err(Fail::InvalidData),
             }
         }
+        Ok(Some(self.out.cells() - first))
     }
-    finish(buf, ends).map(Some)
 }
 
-fn finish(buf: Vec<u8>, ends: Vec<usize>) -> Result<Vec<String>, Fail> {
-    let text = String::from_utf8(buf).map_err(|_| Fail::InvalidData)?;
-    let mut out = Vec::with_capacity(ends.len());
-    let mut prev = 0;
-    for e in ends {
-        out.push(String::from(&text[prev..e]));
-        prev = e;
+/// Parses CSV into a table. The row and cell budgets are strict limits, not truncation.
+pub fn parse_table(
+    text: &str,
+    opts: Options,
+    max_rows: Option<i64>,
+    max_cells: Option<i64>,
+) -> Result<StringTable, Fail> {
+    let rows_budget = budget(max_rows)?;
+    let cells_budget = budget(max_cells)?;
+    let mut reader = Reader {
+        src: text,
+        lines: Lines {
+            text: text.as_bytes(),
+            at: 0,
+        },
+        comma: opts.delimiter,
+        out: StringTable::default(),
+    };
+    let mut cells = 0usize;
+    while let Some(count) = reader.record()? {
+        if reader.out.row_count() >= rows_budget || count > cells_budget - cells {
+            return Err(Fail::LimitExceeded);
+        }
+        cells += count;
+        reader.out.end_row();
     }
-    Ok(out)
+    Ok(reader.out)
 }
 
-/// Parses CSV into rows. The row and cell budgets are strict limits, not truncation.
+/// Parses CSV into rows.
 pub fn parse(
     text: &str,
     opts: Options,
     max_rows: Option<i64>,
     max_cells: Option<i64>,
 ) -> Result<Vec<Vec<String>>, Fail> {
-    let rows_budget = budget(max_rows)?;
-    let cells_budget = budget(max_cells)?;
-    let mut lines = Lines {
-        text: text.as_bytes(),
-        at: 0,
-    };
-    let mut rows: Vec<Vec<String>> = Vec::new();
-    let mut cells = 0usize;
-    while let Some(record) = read_record(&mut lines, opts.delimiter)? {
-        if rows.len() >= rows_budget || record.len() > cells_budget - cells {
-            return Err(Fail::LimitExceeded);
-        }
-        cells += record.len();
-        rows.push(record);
-    }
-    Ok(rows)
+    parse_table(text, opts, max_rows, max_cells).map(StringTable::into_rows)
 }
 
 fn field_needs_quotes(field: &str, delim: u8) -> bool {

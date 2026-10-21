@@ -56,6 +56,7 @@ export type YamlError:
     case LimitExceeded
 
 # Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
+# Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
     max_bytes: Optional[Int] = none
@@ -80,6 +81,7 @@ type Context:
     limits: YamlLimits
     values: Int
     anchors: Map[String, YamlValue]
+    sizes: Map[String, Int]
 
 type Flow:
     chars: List[String]
@@ -88,11 +90,44 @@ type Flow:
     context: Context
     delimited: Bool
 
+# Limits applied when `parse` is called without any: deep nesting and alias expansion are
+# the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
+fn default_limits() YamlLimits:
+    return YamlLimits(max_depth: some(10000), max_values: some(1000000))
+
 fn within(value: Int, limit: Optional[Int]) Bool:
     if let maximum = limit:
         return value <= maximum
 
     return true
+
+# Number of containers and leaves in a value, excluding keys.
+fn tree_size(value: YamlValue) Int:
+    var total = 1
+
+    match value:
+        ArrayValue(values):
+            for item in values: total += tree_size(item)
+        ObjectValue(values):
+            for entry in values: total += tree_size(entry.value)
+        _: unit
+
+    return total
+
+# Records an anchor and the size of its value so aliases can be charged before they are copied.
+fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
+    context.anchors.add(name, value)
+    context.sizes.add(name, tree_size(value))
+
+# Counts an alias expansion against the value budget before the aliased value is copied, so
+# nested aliases cannot grow exponentially ahead of the limit.
+fn charge(var context: Context, size: Int) Result[Unit, YamlError]:
+    context.values += size
+    if not within(context.values, context.limits.max_values): return error(
+        YamlError.LimitExceeded
+    )
+
+    return ok(unit)
 
 fn count(var context: Context, depth: Int) Result[Unit, YamlError]:
     if not within(depth, context.limits.max_depth): return error(
@@ -380,12 +415,15 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
         let name = try anchor_name(var flow)
         flow.context.values -= 1
         let value = try flow_value(var flow, depth, key: false)
-        flow.context.anchors.add(name, value)
+        define_anchor(var flow.context, name, value)
         return ok(value)
 
     if c == "*":
         advance(var flow)
-        if let value = try anchor_name(var flow) | flow.context.anchors.get:
+        let name = try anchor_name(var flow)
+        if let size = flow.context.sizes.get(name):
+            try charge(var flow.context, size)
+        if let value = flow.context.anchors.get(name):
             return ok(value)
 
         return error(flow_invalid(flow, "unknown or recursive alias"))
@@ -712,7 +750,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
             index: context.index,
             limits: context.limits,
             values: context.values,
-            anchors: context.anchors
+            anchors: context.anchors,
+            sizes: context.sizes
         ),
         delimited: false
     )
@@ -722,6 +761,7 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
 
     context.values = flow.context.values
     context.anchors = flow.context.anchors
+    context.sizes = flow.context.sizes
     return ok(result)
 
 fn block_string(var context: Context, header: String, base: Int) Result[
@@ -943,7 +983,7 @@ fn block_value(
         else:
             try count(var context, depth)
 
-    if anchor != "": context.anchors.add(anchor, result)
+    if anchor != "": define_anchor(var context, anchor, result)
     return ok(result)
 
 fn pad(width: Int) String:
@@ -1208,7 +1248,7 @@ export fn parse(
     text: String,
     limits: Optional[YamlLimits] = none
 ) Result[YamlValue, YamlError]:
-    var options = YamlLimits()
+    var options = default_limits()
     if let value = limits:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
@@ -1246,7 +1286,8 @@ export fn parse(
         index: 0,
         limits: options,
         values: 0,
-        anchors: Map[String, YamlValue]()
+        anchors: Map[String, YamlValue](),
+        sizes: Map[String, Int]()
     )
     # split's synthetic terminal empty line is not scalar content.
     if normalized.ends_with("\n"): context.lines.remove(context.lines.length() - 1)

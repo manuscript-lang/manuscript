@@ -63,6 +63,8 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
         let line = b.call_rt(cat, &[marker, message]);
         let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::UNIT);
         b.call_rt(write, &[line]);
+        let site = runtime_fn(b.m, "msrt_test_site_report", &[MTy::STR], MTy::UNIT);
+        b.call_rt(site, &[message]);
         for v in [line, message, r] {
             b.emit(Op::Drop, &[v], Imm::None, None);
         }

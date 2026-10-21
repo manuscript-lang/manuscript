@@ -13,6 +13,7 @@ pub mod link;
 mod cg;
 mod dwarf;
 mod lower;
+mod spill;
 
 use ms_mir::ir::Module;
 

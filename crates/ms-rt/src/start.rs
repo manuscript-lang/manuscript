@@ -1,6 +1,6 @@
 //! Process entry: tables, signals, the main thread with its large stack, exit status.
 use crate::alloc;
-use crate::fault::{self, PENDING_SIGNAL, STACK_HI, STACK_LO, TABLES};
+use crate::fault::{self, PENDING_SIGNAL, STACK_LO, TABLES};
 use crate::global::Global;
 use crate::string;
 use crate::sys;
@@ -8,7 +8,7 @@ use core::ffi::c_void;
 use core::sync::atomic::Ordering;
 use ms_rt_abi::{MAX_MAIN_EXIT, Tables, VecVal};
 
-/// Stack of the thread that runs `main` (the 200,000-call depth limit must be reachable).
+/// Stack of the thread that runs `main` (deep recursion has to fit).
 const STACK_SIZE: usize = 1 << 30;
 #[cfg(unix)]
 const GUARD: usize = 1 << 16;
@@ -182,8 +182,7 @@ mod os {
                 fault::fatal(b"cannot allocate the main stack");
             }
             sys::guard(stack, GUARD);
-            *STACK_LO.ptr() = stack as usize + GUARD;
-            *STACK_HI.ptr() = stack as usize + STACK_SIZE;
+            fault::set_stack_bounds(stack as usize + GUARD, stack as usize + STACK_SIZE);
             let mut attr = core::mem::zeroed::<sys::pthread_attr_buf>();
             sys::pthread_attr_init(&mut attr);
             sys::pthread_attr_setstack(&mut attr, stack.add(GUARD).cast(), STACK_SIZE - GUARD);
@@ -231,8 +230,7 @@ mod os {
         // SAFETY: see `run_main`; the bounds are written before any other code reads them.
         unsafe {
             let (lo, hi) = sys::stack_limits();
-            *STACK_LO.ptr() = lo;
-            *STACK_HI.ptr() = hi;
+            fault::set_stack_bounds(lo, hi);
             crate::profile::attach_runtime_thread();
             run_main();
         }

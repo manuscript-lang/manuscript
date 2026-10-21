@@ -94,11 +94,12 @@ impl Checker {
             }
             StmtKind::If {
                 binding,
+                mutable,
                 cond,
                 body,
                 else_body,
             } => match binding {
-                Some(p) => self.check_if_let(p, cond, body, else_body),
+                Some(p) => self.check_if_let(p, *mutable, cond, body, else_body),
                 None => self.check_if(cond, body, else_body),
             },
             StmtKind::While { cond, body } => self.check_while(cond, body),
@@ -303,6 +304,7 @@ impl Checker {
     fn check_if_let(
         &mut self,
         pattern: &Pattern,
+        mutable: bool,
         cond: &Expr,
         body: &[Stmt],
         else_body: &[Stmt],
@@ -323,7 +325,7 @@ impl Checker {
         }
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
-        self.pattern(pattern, &payload, false, Some(cond));
+        self.pattern(pattern, &payload, mutable, Some(cond));
         let (a, ab) = self.block(body, true);
         self.scope = old;
         let (mut b, mut bb) = (true, false);

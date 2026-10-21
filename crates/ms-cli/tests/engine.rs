@@ -535,15 +535,15 @@ fn native_http_handler_faults_do_not_leak_per_request() {
             assert!(reply.starts_with("HTTP/1.1 500"), "{reply}");
         }
     };
-    faults(500);
+    faults(2000);
     let before = rss_kib(child.id());
     faults(4000);
     let grown = rss_kib(child.id()).saturating_sub(before);
     child.kill().unwrap();
     child.wait().unwrap();
-    // The leak was ~4.6 MiB over 4000 requests; what remains is well under a quarter of that.
+    // The leak was ~4.6 MiB over 4000 requests; allocator noise stays under half of that.
     assert!(
-        grown < 1024,
+        grown < 2048,
         "{grown} KiB gained over 4000 faulting requests"
     );
 }

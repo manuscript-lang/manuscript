@@ -75,10 +75,10 @@ native! {
         matches!(d.nodes[id as usize], Node::Bool(true))
     }
 
-    fn msrt_json_text(d: ObjRef<Doc>, id: u32) -> String {
-        match &d.nodes[id as usize] {
-            Node::Number(s) | Node::Str(s) => s.clone(),
-            _ => String::new(),
+    fn msrt_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
+        match &d.0.nodes[id as usize] {
+            Node::Number(s) | Node::Str(s) => s,
+            _ => "",
         }
     }
 
@@ -99,10 +99,10 @@ native! {
         }
     }
 
-    fn msrt_json_key(d: ObjRef<Doc>, id: u32, i: i64) -> String {
-        match &d.nodes[id as usize] {
-            Node::Object(v) => v[i as usize].0.clone(),
-            _ => String::new(),
+    fn msrt_json_key(d: ObjRef<'_, Doc>, id: u32, i: i64) -> &str {
+        match &d.0.nodes[id as usize] {
+            Node::Object(v) => &v[i as usize].0,
+            _ => "",
         }
     }
 

@@ -53,6 +53,8 @@ msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut *mut ms_rt_abi::StrObj, ) -> u8
 msrt_io_write_stdout(s: *mut StrObj)
 msrt_io_write_stderr(s: *mut StrObj)
+msrt_test_site(message: *mut StrObj, site: *mut StrObj)
+msrt_test_site_report(message: *mut StrObj)
 msrt_io_write_bytes_stdout(v: *const VecVal)
 msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
@@ -193,7 +195,6 @@ msrt_list_contains( v: *const VecVal, d: *const TypeDesc, probe: *const u8, ) ->
 msrt_list_prepend( v: *mut VecVal, d: *const TypeDesc, e: *const u8, )
 msrt_list_insert( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
-msrt_list_shift( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
 msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc)

@@ -18,7 +18,7 @@ Every Manuscript type has one word-level representation: `Int` is `i64`, `Float`
 ## Source locations and fault frames
 
 - Generated code keeps frame pointers and DWARF line tables, so a fault reports source frames without per-call bookkeeping.
-- The call depth limit is a per-call counter check that is elided for non-recursive call graphs.
+- The recursion limit is a stack-pointer comparison on entry, elided for non-recursive call graphs.
 
 ## Defaults belong to the callee
 

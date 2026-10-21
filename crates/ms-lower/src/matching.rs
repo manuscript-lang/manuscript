@@ -22,7 +22,9 @@ impl FnLower<'_> {
     /// A variable that always holds the value of `e`, for use across blocks.
     /// The flag says the variable owns a hidden copy that must be dropped afterwards.
     pub fn hold(&mut self, e: &Expr) -> Result<Option<(ms_mir::builder::Var, bool)>, Error> {
-        if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e)) {
+        if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
+            && !self.aliases.contains_key(&b.uid)
+        {
             return Ok(Some((self.local(&b)?.var, false)));
         }
         let x = self.expr(e)?;

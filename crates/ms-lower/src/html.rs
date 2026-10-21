@@ -285,11 +285,23 @@ impl FnLower<'_> {
             .iter()
             .find(|a| a.name.as_str() == "limits")
             .map(|a| a.val);
+        // Whether a limits record was supplied: absent limits get the runtime's defaults.
+        let has_limits = match limits {
+            None => self.b.bconst(false),
+            Some(l) => {
+                let lv = self.borrow(l);
+                if matches!(self.b.m.types.kind(self.ty_of(lv)), TyKind::Opt(_)) {
+                    self.b.opt_is_some(lv)
+                } else {
+                    self.b.bconst(true)
+                }
+            }
+        };
         let flat = self.jlimits(limits)?;
         let tree_ty = self.b.m.types.obj("HtmlTree", Vec::new());
         let tree_slot = self.jslot(tree_ty);
         let root_slot = self.jslot(MTy::INT);
-        let mut vals = vec![text];
+        let mut vals = vec![text, has_limits];
         vals.extend(flat);
         vals.push(tree_slot);
         vals.push(root_slot);

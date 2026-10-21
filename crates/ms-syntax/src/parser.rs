@@ -1,7 +1,7 @@
 //! The strict parser, producing a [`Module`] or the first diagnostic.
 
 use crate::ast::*;
-use crate::diag::{Diagnostic, Phase};
+use crate::diag::{Diagnostic, DiagnosticFix, Phase};
 use crate::lexer::{PResult, lex};
 use crate::pos::Pos;
 use crate::symbol::Symbol;
@@ -88,6 +88,9 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         ")" => "; close the parenthesis, separating items with commas".into(),
         "]" => "; close the bracket, separating items with commas".into(),
         "}" => "; close the brace, separating items with commas".into(),
+        "(" if found == Tok::Lt => {
+            "; type parameters use square brackets, e.g. fn identity[T](value: T) T:".into()
+        }
         "(" => "; a call or parameter list starts with '('".into(),
         "from" => {
             if found == Tok::Comma {
@@ -96,9 +99,17 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; imports read: import name from \"path.ms\"".into()
             }
         }
+        "in" => "; loops read: for item in items:".into(),
+        "=" if found == Tok::Newline => {
+            "; every let/var binding needs an initial value, e.g. var count: Int = 0".into()
+        }
         "NAME" => {
-            if found == Tok::Case {
+            if found == Tok::SelfKw {
+                "; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the body".into()
+            } else if found == Tok::Case {
                 "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type".into()
+            } else if found == Tok::LParen {
+                "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
             } else if found.as_str() == found_text {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -109,6 +120,57 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "INDENT" => "; indent the block body by four spaces under its header".into(),
         _ => String::new(),
     }
+}
+
+/// Declaration words from other languages: the message and the Manuscript
+/// spelling to replace the word with, when there is one.
+fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static str>)> {
+    if t.kind == Tok::Var {
+        return Some(("module level holds only 'let' constants; keep mutable state in a 'var' inside a fn, or in a field of a type".into(), None));
+    }
+    if t.kind != Tok::Name {
+        return None;
+    }
+    let (replacement, advice) = match text {
+        "function" | "def" | "func" | "fun" | "sub" => (
+            Some("fn"),
+            "declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
+        ),
+        "class" | "struct" | "record" | "data" => (
+            Some("type"),
+            "declare a record with 'type Name:' and 'field: Type' lines, then add methods in 'impl Name:'",
+        ),
+        "enum" | "union" | "variant" | "sealed" => (
+            Some("type"),
+            "declare alternatives with 'type Name:' and one 'case Variant' or 'case Variant(field: Type)' line each",
+        ),
+        "trait" | "protocol" | "abstract" => (
+            Some("interface"),
+            "declare a contract with 'interface Name:' and method signatures, then implement it with 'impl Name for Type:'",
+        ),
+        "const" | "val" | "final" => (
+            Some("let"),
+            "write 'let NAME = value' for a module constant",
+        ),
+        "pub" | "public" => (
+            Some("export"),
+            "write 'export' before the declaration to make it visible to other modules",
+        ),
+        "use" | "require" | "include" | "using" | "from" => (
+            Some("import"),
+            "imports read: import {name} from \"path.ms\"",
+        ),
+        "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
+        | "module" => (
+            None,
+            "there is no such modifier; top level holds only import, let, fn, type, interface, impl, and test, optionally prefixed by export",
+        ),
+        _ => return None,
+    };
+    Some((
+        format!("'{text}' is not a Manuscript declaration keyword; {advice}"),
+        replacement,
+    ))
 }
 
 fn binary_op(kind: Tok) -> Option<BinaryOp> {
@@ -209,6 +271,13 @@ impl<'a> Parser<'a> {
         if self.speculative > 0 {
             return Err(self.dummy());
         }
+        if k == Tok::Colon && t.kind == Tok::LBrace {
+            return self.fail_fix(
+                t,
+                "expected ':', found '{'; blocks are not braced: end the header with ':', indent the body four spaces on the following lines, and remove the closing '}'",
+                ":",
+            );
+        }
         let msg = format!(
             "expected {}, found {}{}",
             describe_kind(k.as_str()),
@@ -237,6 +306,47 @@ impl<'a> Parser<'a> {
             d.end = Some(t.end);
         }
         Err(Box::new(d))
+    }
+    /// Fails on `t` with a machine-applicable replacement of exactly its range.
+    fn fail_fix<T>(&self, t: Token, message: impl Into<String>, replacement: &str) -> PResult<T> {
+        self.fail_fix_range(t, t, message, replacement)
+    }
+    /// Fails on `first` with a replacement of the range `first.pos..last.end`.
+    fn fail_fix_range<T>(
+        &self,
+        first: Token,
+        last: Token,
+        message: impl Into<String>,
+        replacement: &str,
+    ) -> PResult<T> {
+        let mut d = Diagnostic::parse(self.file, first.pos, message);
+        if last.end.line > 0 {
+            d.end = Some(last.end);
+            d.fix = Some(DiagnosticFix {
+                pos: first.pos,
+                end: last.end,
+                replacement: replacement.to_string(),
+            });
+        }
+        Err(Box::new(d))
+    }
+    /// The colon after a parameter or field name; a missing one is usually a
+    /// type written directly after the name.
+    fn need_name_colon(&mut self, name: Token) -> PResult<()> {
+        let t = self.peek();
+        if t.kind == Tok::Name && self.speculative == 0 {
+            let at = Token {
+                pos: name.end,
+                end: name.end,
+                ..name
+            };
+            let msg = format!(
+                "expected ':' between '{}' and its type; parameters and fields are written name: Type",
+                self.text(name)
+            );
+            return self.fail_fix(at, msg, ":");
+        }
+        self.need(Tok::Colon).map(|_| ())
     }
     fn newlines(&mut self) {
         while self.take(Tok::Newline) {}
@@ -295,10 +405,30 @@ impl<'a> Parser<'a> {
             return self.fail(t, "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses");
         }
         if t.kind == Tok::Amp {
-            return self.fail(t, "'&&' is not an operator; write 'and' for logical and");
+            return self.and_and(t);
         }
+        if t.kind == Tok::Arrow || (t.kind == Tok::Assign && self.ahead(1).kind == Tok::Gt) {
+            return self.fail(
+                t,
+                "there is no arrow function; anonymous functions are written fn(x: Int) Int: x + 1",
+            );
+        }
+        let hint = match t.kind {
+            Tok::If => {
+                "; there is no inline conditional expression: declare 'var name = ...' and assign it in each branch of an if/else, or use 'match'"
+            }
+            Tok::Comma => {
+                "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line"
+            }
+            Tok::LBrace => {
+                "; '{' does not open a block: end the header with ':' and indent the body (an interface method is just its signature)"
+            }
+            _ => {
+                "; put one statement per line, and join operands with an operator or a comma inside brackets"
+            }
+        };
         let msg = format!(
-            "expected end of statement, found {}; put one statement per line, and join operands with an operator or a comma inside brackets",
+            "expected end of statement, found {}{hint}",
             describe(self.src, t)
         );
         self.fail(t, msg)
@@ -424,8 +554,8 @@ impl<'a> Parser<'a> {
                 let mut default = None;
                 if self.take(Tok::Colon) {
                     ty = Some(self.typ()?);
-                } else if !inferred {
-                    self.need(Tok::Colon)?;
+                } else if !inferred || self.kind() == Tok::Name {
+                    self.need_name_colon(name)?;
                 }
                 if self.take(Tok::Assign) {
                     if !defaults {
@@ -470,6 +600,14 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
         if self.take(Tok::LBracket) {
             args = self.type_args()?;
+        }
+        let lt = self.peek();
+        if lt.kind == Tok::Lt
+            && self.speculative == 0
+            && lt.pos.offset == self.previous().end.offset
+            && args.is_empty()
+        {
+            return self.fail(lt, format!("type arguments use square brackets, not angle brackets; write {full}[T] instead of {full}<T>"));
         }
         let id = self.id();
         Ok(TypeRef {
@@ -764,6 +902,19 @@ impl<'a> Parser<'a> {
             }
             Tok::Type | Tok::Interface => return self.type_declaration(token),
             _ => {
+                if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
+                    return match replacement {
+                        Some(r) => self.fail_fix(token, msg, r),
+                        None => self.fail(token, msg),
+                    };
+                }
+                if token.kind == Tok::Export {
+                    return self.fail_fix(
+                        token,
+                        "'export' appears twice; write it once before the declaration",
+                        "",
+                    );
+                }
                 let msg = format!(
                     "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
                     describe(self.src, token)
@@ -864,7 +1015,7 @@ impl<'a> Parser<'a> {
                 methods.push(m);
             } else {
                 let fname = self.need(Tok::Name)?;
-                self.need(Tok::Colon)?;
+                self.need_name_colon(fname)?;
                 let ty = self.typ()?;
                 let mut default = None;
                 if self.take(Tok::Assign) {
@@ -1056,7 +1207,10 @@ impl<'a> Parser<'a> {
             Tok::If => {
                 self.at += 1;
                 let mut binding = None;
-                if self.take(Tok::Let) {
+                let mut mutable = false;
+                if self.kind() == Tok::Let || self.kind() == Tok::Var {
+                    mutable = self.kind() == Tok::Var;
+                    self.at += 1;
                     let pat = self.pattern()?;
                     if !matches!(pat.kind, PatternKind::Name(_)) {
                         return self.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch");
@@ -1077,6 +1231,7 @@ impl<'a> Parser<'a> {
                 }
                 StmtKind::If {
                     binding,
+                    mutable,
                     cond,
                     body,
                     else_body,
@@ -1147,7 +1302,12 @@ impl<'a> Parser<'a> {
                         "throw" | "raise" | "catch" => {
                             return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'"));
                         }
-                        "elif" => return self.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch"),
+                        "elif" | "elseif" => return self.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch"),
+                        "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"),
+                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")),
+                        "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
+                        "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
+                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly")),
                         _ => {}
                     }
                 }
@@ -1378,7 +1538,7 @@ impl<'a> Parser<'a> {
                 break;
             }
             if op.kind == Tok::Amp {
-                return self.fail(op, "'&&' is not an operator; write 'and' for logical and");
+                return self.and_and(op);
             }
             if op.kind == Tok::Pipe {
                 if min > 0 {
@@ -1435,13 +1595,30 @@ impl<'a> Parser<'a> {
         Ok(e)
     }
 
+    /// `&&` (two `&` tokens) where `and` was meant.
+    fn and_and<T>(&self, first: Token) -> PResult<T> {
+        let last = if self.ahead(1).kind == Tok::Amp && self.ahead(1).pos.offset == first.end.offset
+        {
+            self.ahead(1)
+        } else {
+            first
+        };
+        self.fail_fix_range(
+            first,
+            last,
+            "'&&' is not an operator; write 'and' for logical and",
+            "and",
+        )
+    }
+
     /// Parses one `| step` after `lhs` and desugars it to the ordinary
     /// expression the step names (see the module docs of [`crate::ast`]).
     fn pipe(&mut self, lhs: Expr) -> PResult<Expr> {
         self.at += 1;
         if self.kind() == Tok::Pipe {
             let t = self.peek();
-            return self.fail(t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step");
+            let first = self.previous();
+            return self.fail_fix_range(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
         }
         let try_tok = self.peek();
         let tried = self.take(Tok::Try);
@@ -1637,8 +1814,36 @@ impl<'a> Parser<'a> {
                 if t.kind == Tok::If {
                     return self.fail(t, "'if' is a statement, not an expression; declare 'var name = ...' and assign it in each branch, or use 'match'");
                 }
+                let before = if self.at > 1 {
+                    self.tokens[self.at - 2].kind
+                } else {
+                    Tok::Eof
+                };
+                let hint = match (t.kind, before) {
+                    (Tok::Else, _) => {
+                        "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body"
+                    }
+                    (Tok::Colon, Tok::Try) => {
+                        "'try' is a prefix on a call, not a block: write 'try f(x)' to unwrap a Result or return its error, and 'if let' to handle failure locally"
+                    }
+                    (Tok::Star, Tok::Slash) => {
+                        "'/*' does not start a comment; comments start with '#'"
+                    }
+                    (Tok::Slash, Tok::Slash) => {
+                        "'//' does not start a comment; comments start with '#'"
+                    }
+                    (Tok::Gt, Tok::Lt) => "'<>' is not an operator; write '!=' for inequality",
+                    (Tok::Star, Tok::Star) => {
+                        "there is no '**' power operator; multiply explicitly or call a function from @std/math.ms"
+                    }
+                    (Tok::Comma | Tok::RParen, Tok::Colon) => {
+                        "a label before ':' needs a value, e.g. count: 1"
+                    }
+                    (Tok::Comma, _) => "remove the extra comma or add the missing value before it",
+                    _ => "write a value, name, call, or literal here",
+                };
                 let msg = format!(
-                    "expected an expression, found {}; write a value, name, call, or literal here",
+                    "expected an expression, found {}; {hint}",
                     describe(self.src, t)
                 );
                 return self.fail(t, msg);
@@ -1656,6 +1861,10 @@ impl<'a> Parser<'a> {
                 if self.kind() == Tok::Dot {
                     let t = self.peek();
                     return self.fail(t, "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result");
+                }
+                if self.kind() == Tok::Number {
+                    let t = self.peek();
+                    return self.fail(t, "a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2");
                 }
                 let name = self.need(Tok::Name)?;
                 e = self.mk(
@@ -1835,6 +2044,11 @@ impl<'a> Parser<'a> {
             Ok(l) => l,
             Err(mut d) => {
                 d.pos = shift(d.pos);
+                d.end = d.end.map(shift);
+                if let Some(fix) = &mut d.fix {
+                    fix.pos = shift(fix.pos);
+                    fix.end = shift(fix.end);
+                }
                 d.message.push_str(&suffix);
                 return Err(d);
             }

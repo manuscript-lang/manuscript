@@ -12,6 +12,12 @@ fn data(dir: &str) -> PathBuf {
         .join(dir)
 }
 
+/// `UPDATE_GOLDEN=1 cargo test` rewrites the recorded diagnostics instead of
+/// comparing, after a deliberate message change.
+fn update_golden() -> bool {
+    std::env::var_os("UPDATE_GOLDEN").is_some()
+}
+
 fn sorted(dir: &Path, ext: &str) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap()
@@ -113,6 +119,10 @@ fn parse_diagnostics_match_go() {
                     quote(&d.message)
                 ),
             };
+            if update_golden() {
+                std::fs::write(path.with_extension("expected"), format!("{got}\n")).unwrap();
+                continue;
+            }
             assert_eq!(got, want.trim_end(), "{}", path.display());
         }
     });
@@ -155,6 +165,10 @@ fn recovery_matches_go() {
                 );
             }
             got += &dump_module(&module);
+            if update_golden() {
+                std::fs::write(path.with_extension("expected"), &got).unwrap();
+                continue;
+            }
             assert_eq!(got, want, "{}", path.display());
         }
     });

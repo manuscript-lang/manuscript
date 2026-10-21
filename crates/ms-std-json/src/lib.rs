@@ -105,12 +105,38 @@ enum Frame {
     Array(Vec<NodeId>),
     Object {
         entries: Vec<(String, NodeId)>,
-        keys: BTreeSet<String>,
+        /// Every key so far, built once the object outgrows [`LINEAR_KEYS`] members.
+        keys: Option<BTreeSet<String>>,
         pending: String,
     },
 }
 
+/// Objects up to this many members detect duplicate keys by comparing against the earlier
+/// members; larger ones keep a set so the check stays logarithmic.
+const LINEAR_KEYS: usize = 16;
+
+/// Whether `key` repeats a member of `entries`, the members stored so far.
+fn duplicate_key(
+    entries: &[(String, NodeId)],
+    keys: &mut Option<BTreeSet<String>>,
+    key: &str,
+) -> bool {
+    if let Some(set) = keys {
+        return !set.insert(String::from(key));
+    }
+    if entries.iter().any(|e| e.0 == key) {
+        return true;
+    }
+    if entries.len() >= LINEAR_KEYS {
+        let mut set: BTreeSet<String> = entries.iter().map(|e| e.0.clone()).collect();
+        set.insert(String::from(key));
+        *keys = Some(set);
+    }
+    false
+}
+
 struct Scanner<'a> {
+    src: &'a str,
     text: &'a [u8],
     pos: usize,
     count: usize,
@@ -184,6 +210,19 @@ impl Scanner<'_> {
     /// Reads a quoted string starting at the opening quote.
     fn string(&mut self) -> Option<String> {
         self.pos += 1;
+        // Most strings have no escapes: copy the run up to the closing quote in one piece.
+        let run = self.text[self.pos..]
+            .iter()
+            .position(|&c| c == b'"' || c == b'\\' || c < 0x20);
+        if let Some(n) = run
+            && self.text[self.pos + n] == b'"'
+        {
+            // `src` is valid UTF-8 and the run ends at an ASCII quote, so only the start needs
+            // checking to be a character boundary.
+            let s = self.src.get(self.pos..self.pos + n)?;
+            self.pos += n + 1;
+            return Some(String::from(s));
+        }
         let mut out: Vec<u8> = Vec::new();
         while let Some(&c) = self.text.get(self.pos) {
             match c {
@@ -284,7 +323,7 @@ impl Scanner<'_> {
                     if !self.number() {
                         return None;
                     }
-                    let text = String::from_utf8(self.text[start..self.pos].to_vec()).ok()?;
+                    let text = String::from(self.src.get(start..self.pos)?);
                     self.push(Node::Number(text))
                 }
                 b'[' | b'{' => {
@@ -307,10 +346,9 @@ impl Scanner<'_> {
                         continue 'value;
                     } else {
                         let pending = self.member_key()?;
-                        let keys = BTreeSet::from([pending.clone()]);
                         stack.push(Frame::Object {
                             entries: Vec::new(),
-                            keys,
+                            keys: None,
                             pending,
                         });
                         continue 'value;
@@ -351,8 +389,14 @@ impl Scanner<'_> {
                 }
                 if matches!(stack.last(), Some(Frame::Object { .. })) {
                     let key = self.member_key()?;
-                    if let Some(Frame::Object { keys, pending, .. }) = stack.last_mut() {
-                        if !keys.insert(key.clone()) {
+                    if let Some(Frame::Object {
+                        entries,
+                        keys,
+                        pending,
+                    }) = stack.last_mut()
+                    {
+                        // The previous member was just stored, so `entries` holds every earlier key.
+                        if duplicate_key(entries, keys, &key) {
                             return None;
                         }
                         *pending = key;
@@ -374,10 +418,12 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
     if text.len() > max_bytes {
         return Err(Fail::LimitExceeded);
     }
-    if !unicode_valid(text.as_bytes()) {
+    // Surrogate escapes only exist in text that has a backslash.
+    if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) {
         return Err(Fail::InvalidData);
     }
     let mut p = Scanner {
+        src: text,
         text: text.as_bytes(),
         pos: 0,
         count: 0,
@@ -404,6 +450,7 @@ pub fn number_text_valid(s: &str) -> bool {
         return false;
     }
     let mut p = Scanner {
+        src: s,
         text: s.as_bytes(),
         pos: 0,
         count: 0,

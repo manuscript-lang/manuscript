@@ -136,6 +136,10 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
+    /// Bindings that are exclusive borrows of another place.
+    pub exclusive: Rc<std::collections::HashSet<usize>>,
+    /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
+    pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
 }
 
 impl Cx {
@@ -165,6 +169,8 @@ impl Cx {
             contracts: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
+            exclusive: program.exclusive_borrows.clone(),
+            getters: program.getter_borrows.clone(),
         }
     }
 

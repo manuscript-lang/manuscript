@@ -1686,7 +1686,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListSetNn
             | Op::ListSetU
             | Op::ListFill
-            | Op::ListPush => self.lower_list(f, inst),
+            | Op::ListPush
+            | Op::ListDropLast => self.lower_list(f, inst),
             Op::OptSome => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
@@ -1991,26 +1992,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::DepthEnter => {
-                let d = self.g.rt_data("msrt_call_depth");
+                let d = self.g.rt_data("msrt_stack_limit");
                 let addr = self.data_addr(d);
-                let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm_s(n, 1);
-                self.b.ins().store(flags(), n1, addr, 0);
-                let over = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::SignedGreaterThan, n1, 200_000);
+                let limit = self.b.ins().load(types::I64, flags(), addr, 0);
+                let sp = self.b.ins().get_stack_pointer(types::I64);
+                let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
                 self.fault_if(over, "msrt_fault_depth", vec![]);
                 vec![]
             }
-            Op::DepthLeave => {
-                let d = self.g.rt_data("msrt_call_depth");
-                let addr = self.data_addr(d);
-                let n = self.b.ins().load(types::I64, flags(), addr, 0);
-                let n1 = self.b.ins().iadd_imm_s(n, -1);
-                self.b.ins().store(flags(), n1, addr, 0);
-                vec![]
-            }
+            Op::DepthLeave => vec![],
             Op::CleanupPush => {
                 let Imm::Func(c) = inst.imm else {
                     unreachable!()
@@ -2185,6 +2175,19 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 self.store_leaves(at, 0, &leaves, &v);
                 l
+            }
+            Op::ListDropLast => {
+                let lt = f.ty(inst.args[0]);
+                let (e, leaves, size) = self.elem_info(lt);
+                let l = self.a(inst, 0);
+                let nl = self.b.ins().iadd_imm_s(l[1], -1);
+                if self.g.m.needs_drop(e) {
+                    let off = self.b.ins().imul_imm_s(nl, size);
+                    let at = self.b.ins().iadd(l[0], off);
+                    let old = self.load_leaves(at, 0, &leaves);
+                    self.drop_value(e, &old);
+                }
+                vec![l[0], nl, l[2]]
             }
             Op::ListPush => {
                 let lt = f.ty(inst.args[0]);

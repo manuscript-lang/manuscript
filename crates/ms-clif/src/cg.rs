@@ -86,7 +86,7 @@ const RT: &[(&str, &str, &str)] = &[
 /// Runtime data symbols: `(name, is_writable)`.
 const RT_DATA: &[(&str, bool)] = &[
     ("msrt_cancel_flag", false),
-    ("msrt_call_depth", true),
+    ("msrt_stack_limit", true),
     ("msrt_desc_int", false),
     ("msrt_desc_float", false),
     ("msrt_desc_bool", false),
@@ -742,6 +742,9 @@ fn define_with(
         for func_ref in addresses {
             ctx.func.dfg.ext_funcs[func_ref].colocated = false;
         }
+    }
+    if g.opts.opt_level != "none" {
+        crate::spill::spill_loop_cold(&mut ctx.func);
     }
     if g.opts.dump_clif {
         eprintln!("; {name}\n{}", ctx.func.display());

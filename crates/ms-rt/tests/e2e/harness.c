@@ -22,7 +22,7 @@ extern void msrt_io_write_stdout(void *s);
 extern void msrt_fault(const char *p, size_t n) __attribute__((noreturn));
 extern size_t msrt_cleanup_push(void (*f)(void *), void *arg);
 extern int64_t msrt_string_length(void *s);
-extern int64_t msrt_call_depth;
+extern uintptr_t msrt_stack_limit;
 extern void msrt_fault_depth(void) __attribute__((noreturn));
 extern void msrt_args(VecVal *out);
 extern uint8_t msrt_guard_call(void (*code)(void *), void *data, void **msg_out);
@@ -54,11 +54,9 @@ __attribute__((noinline)) int64_t busy(void) {
 }
 
 static int64_t deep(int64_t n) {
-    msrt_call_depth += 1;
-    if (msrt_call_depth > 200000) msrt_fault_depth();
-    int64_t r = n == 0 ? 0 : deep(n - 1) + 1;
-    msrt_call_depth -= 1;
-    return r;
+    char marker;
+    if ((uintptr_t)&marker < msrt_stack_limit) msrt_fault_depth();
+    return n == 0 ? 0 : deep(n - 1) + 1;
 }
 
 static void faulting_request(void *data) {
@@ -95,7 +93,6 @@ static int64_t guard_mode(void) {
     void *msg = 0;
     if (msrt_guard_call(nested_request, &n, &msg) != 1 || n != 7 || !msg) return 13;
     msrt_io_write_stdout(msg);
-    if (msrt_call_depth != 0) return 14;
     msrt_cleanup_run(base);
     puts("guards ok");
     return 0;
@@ -193,7 +190,6 @@ static int64_t tasks_mode(void) {
     for (int i = 0; i < 200; i++) many[i] = msrt_task_spawn(yielder, (void *)0, 0, 0);
     for (int i = 0; i < 200; i++) msrt_task_join(many[i], 0);
     if (msrt_task_count() != 1) return 20;
-    if (msrt_call_depth != 0) return 21;
     puts("tasks ok");
     return 0;
 }
@@ -234,7 +230,7 @@ static int64_t entry(void) {
     }
     if (!strcmp(mode, "badexit")) return 200;
     if (!strcmp(mode, "deep")) { deep(199990); return 0; }
-    if (!strcmp(mode, "toodeep")) { deep(300000); return 0; }
+    if (!strcmp(mode, "toodeep")) { deep(100000000); return 0; }
     if (!strcmp(mode, "args")) {
         VecVal v; msrt_args(&v);
         printf("%zu\n", v.len);

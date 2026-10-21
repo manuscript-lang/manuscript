@@ -264,6 +264,71 @@ impl IntoAbi for Text {
     }
 }
 
+/// A `List[List[String]]` result built in one buffer, so a parser allocates per table rather than
+/// per cell. Cell `i` is `data[ends[i - 1]..ends[i]]`; row `r` owns the cells after the previous
+/// row's end up to `rows[r]`.
+#[derive(Default)]
+pub struct StringTable {
+    data: String,
+    ends: Vec<usize>,
+    rows: Vec<usize>,
+}
+
+impl StringTable {
+    /// Appends text to the cell being built.
+    pub fn push_str(&mut self, text: &str) {
+        self.data.push_str(text);
+    }
+
+    /// Closes the cell being built.
+    pub fn end_cell(&mut self) {
+        self.ends.push(self.data.len());
+    }
+
+    /// Closes the row of cells closed since the previous row.
+    pub fn end_row(&mut self) {
+        self.rows.push(self.ends.len());
+    }
+
+    /// Cells closed so far.
+    pub fn cells(&self) -> usize {
+        self.ends.len()
+    }
+
+    pub fn row_count(&self) -> usize {
+        self.rows.len()
+    }
+
+    /// The rows as lists of cell text.
+    pub fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &str>> {
+        let mut cell = 0;
+        self.rows.iter().map(move |&end| {
+            let first = cell;
+            cell = end;
+            (first..end).map(move |i| {
+                let from = if i == 0 { 0 } else { self.ends[i - 1] };
+                &self.data[from..self.ends[i]]
+            })
+        })
+    }
+
+    pub fn into_rows(self) -> Vec<Vec<String>> {
+        self.rows().map(|r| r.map(String::from).collect()).collect()
+    }
+}
+
+impl IntoAbi for StringTable {
+    type Raw = VecVal;
+    fn into_raw(self) -> VecVal {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: `write_string_matrix` initializes `v`.
+        unsafe {
+            crate::write_string_matrix(v.as_mut_ptr(), self.rows());
+            v.assume_init()
+        }
+    }
+}
+
 /// A `Map[String, String]` result.
 pub struct StrMap(pub Vec<(Vec<u8>, Vec<u8>)>);
 /// A `Map[String, Int]` result.

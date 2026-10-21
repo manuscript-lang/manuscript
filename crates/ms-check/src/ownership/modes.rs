@@ -18,6 +18,24 @@ pub enum ParamMode {
     Consume,
 }
 
+/// An argument position of a source callable.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Slot {
+    /// The receiver of a method.
+    Receiver,
+    /// A parameter, by label.
+    Param(Name),
+}
+
+/// Where a call's result may come from: a read-only parameter whose part it returns.
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub struct ResultOrigin {
+    /// The parameters a returned part belongs to.
+    pub slots: Vec<Slot>,
+    /// Every return is this one path of fields below a single parameter.
+    pub plain: Option<(Slot, Vec<Name>)>,
+}
+
 /// The modes of a source callable.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Summary {
@@ -25,6 +43,8 @@ pub struct Summary {
     pub receiver: ParamMode,
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
+    /// What the result borrows from.
+    pub result: ResultOrigin,
 }
 
 impl Summary {
@@ -54,6 +74,7 @@ impl Summary {
                     )
                 })
                 .collect(),
+            result: ResultOrigin::default(),
         }
     }
 
@@ -67,6 +88,21 @@ impl Summary {
 
 /// Identity of a source callable: its module file and declaration or method node.
 pub type Key = (Name, NodeId);
+
+/// The summaries of every source callable, and what each interface operation may hand back.
+#[derive(Default)]
+pub struct Summaries {
+    pub decls: HashMap<Key, Summary>,
+    /// By interface id and operation name: the union over the implementations.
+    pub contracts: HashMap<(Name, Name), ResultOrigin>,
+}
+
+impl std::ops::Deref for Summaries {
+    type Target = HashMap<Key, Summary>;
+    fn deref(&self) -> &Self::Target {
+        &self.decls
+    }
+}
 
 /// The modes of one call.
 #[derive(Clone, Debug)]
@@ -83,6 +119,8 @@ pub struct CallModes {
     /// A source or native callee that runs its function arguments immediately
     /// and does not keep them.
     pub callbacks_borrowed: bool,
+    /// The source callee returns a part of these read-only arguments.
+    pub origin: ResultOrigin,
 }
 
 /// Resolves the modes of a call from its callee.
@@ -90,7 +128,7 @@ pub fn call_modes(
     m: &ModuleHir,
     call: &Expr,
     args: &[Argument],
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
 ) -> CallModes {
     let slots = m.info(call).arguments.unwrap_or_default();
     let label = |i: usize| slots.get(i).map(|s| s.name);
@@ -100,6 +138,7 @@ pub fn call_modes(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        origin: ResultOrigin::default(),
     };
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
@@ -145,7 +184,7 @@ pub fn call_modes(
 }
 
 fn from_summary(
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
     module: Name,
     func: &FuncRef,
     count: usize,
@@ -168,11 +207,12 @@ fn from_summary(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        origin: summary.result,
     }
 }
 
 fn method_modes(
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
     method: &MethodRef,
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
@@ -200,6 +240,14 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
+                    // The union over the implementations of what each hands back.
+                    origin: method
+                        .contract
+                        .as_ref()
+                        .zip(method.name())
+                        .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
+                        .cloned()
+                        .unwrap_or_default(),
                 }
             }
             None => native_unknown(count),
@@ -215,6 +263,7 @@ fn native_unknown(count: usize) -> CallModes {
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: false,
+        origin: ResultOrigin::default(),
     }
 }
 
@@ -275,5 +324,6 @@ fn native_method_modes(
         accessor,
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
+        origin: ResultOrigin::default(),
     }
 }

@@ -12,7 +12,7 @@
 typedef struct Obj { uint64_t rc; void (*drop)(struct Obj *); } Obj;
 
 uint8_t msrt_cancel_flag = 0;
-int64_t msrt_call_depth = 0;
+uintptr_t msrt_stack_limit = 0;
 int64_t msrt_live_allocs = 0;
 
 #define MAX_CLEANUPS 256
@@ -137,7 +137,7 @@ void msrt_index_fault(int64_t i, int64_t n) {
   die(buf, (size_t)k);
 }
 void msrt_fault_unwrap_none(void) { die("unwrap of none", 14); }
-void msrt_fault_depth(void) { die("call depth limit exceeded (200000 nested calls)", 47); }
+void msrt_fault_depth(void) { die("stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead", 153); }
 void msrt_cancelled(void) { fflush(stdout); run_cleanups(); exit(130); }
 
 size_t msrt_cleanup_push(void (*f)(uint8_t *), uint8_t *arg) {

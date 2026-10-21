@@ -1,0 +1,1 @@
+error parse 1:1:0 "'class' is not a Manuscript declaration keyword; declare a record with 'type Name:' and 'field: Type' lines, then add methods in 'impl Name:'"

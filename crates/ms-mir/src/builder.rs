@@ -85,6 +85,11 @@ impl<'m> FuncBuilder<'m> {
         self.loc = loc;
     }
 
+    /// The source location attached to emitted instructions.
+    pub fn loc(&self) -> Loc {
+        self.loc
+    }
+
     /// The current block.
     pub fn current(&self) -> Block {
         self.cur
@@ -266,6 +271,12 @@ impl<'m> FuncBuilder<'m> {
     pub fn list_push(&mut self, l: Value, v: Value) -> Value {
         let t = self.ty(l);
         self.val(Op::ListPush, &[l, v], Imm::None, t)
+    }
+
+    /// `list.droplast`: the list without its last element, which is dropped. The list must not be empty.
+    pub fn list_drop_last(&mut self, l: Value) -> Value {
+        let t = self.ty(l);
+        self.val(Op::ListDropLast, &[l], Imm::None, t)
     }
 
     // Optionals.

@@ -37,6 +37,6 @@ Unfamiliar term? Follow its link for exact rules.
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
 | [Host](contributing/runtime-conventions.md#host-escalation) | The runtime entry point that runs a CLI application or handles HTTP requests. |
 | [Typed IR](contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
-| [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into generated Go while preserving their behavior. |
+| [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into native code while preserving their behavior. |
 | [Conformance](contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |
 | Normative | Defines a required rule. Other explanations and examples must agree with it. |

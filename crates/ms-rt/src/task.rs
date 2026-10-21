@@ -564,7 +564,7 @@ unsafe fn reactor_wait() {
                 break;
             }
             if timeout_ms < 0 && s.fd_waiting == 0 {
-                fault::fault(b"deadlock: every task is waiting and nothing can wake them");
+                fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
             }
             let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
             let Some(n) = crate::poller::wait(poller_fd(), timeout_ms, &mut ready) else {
@@ -629,8 +629,7 @@ extern "C" fn task_main() -> ! {
         #[cfg(windows)]
         {
             let (lo, hi) = sys::stack_limits();
-            *fault::STACK_LO.ptr() = lo;
-            *fault::STACK_HI.ptr() = hi;
+            fault::set_stack_bounds(lo, hi);
         }
         after_switch();
         let mut s = sched();

@@ -75,7 +75,6 @@ recorded here before it is committed.)_
     consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
     `range`, `range_by`, `keys`, `join` build fresh owned results through `out`. Sorting is stable merge sort with the comparator thunk
     `extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64` (negative = before); `env` is the closure the compiler passes.
-    `msrt_list_shift` (Collections.shift) is O(n) (memmove) because a list has no head offset; queue-heavy programs should use `Queue`.
   - Bytes/BytesBuilder/StringBuilder share `VecVal`; `msrt_bytes_append/extend`, `msrt_strbuilder_append`; `msrt_strbuilder_freeze` **consumes** the builder.
   - Maps/Sets (`msrt_map_*`, `msrt_set_*`): insertion ordered; `msrt_map_add` consumes key and value (replacing keeps the original position),
     `msrt_map_get_ptr` returns a borrowed value pointer or null, `msrt_map_get` copies; set algebra builds fresh sets in left-operand order.
@@ -243,7 +242,7 @@ build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
 ```text
 msrt_fault(msg: *const u8, len: usize) -> !          message bytes are copied
 msrt_fault_string(msg: *mut StrObj) -> !
-msrt_fault_depth() -> !                              "call depth limit exceeded (200000 nested calls)"
+msrt_fault_depth() -> !                              "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead"
 msrt_index_fault(index: i64, length: i64) -> !       "index I out of range for length N; pass a default: get(index:, default: ...)"
 msrt_fault_unwrap_none() -> !   msrt_fault_result_get() -> !   msrt_fault_result_err() -> !
 msrt_fault_int_overflow() -> !  msrt_fault_div_zero() -> !  msrt_fault_rem_zero() -> !  msrt_fault_div_overflow(a, b) -> !
@@ -266,9 +265,11 @@ and exits 70. Generated code must keep frame pointers (rbp / x29 chains) and mus
 not tail-call away frames; the runtime is built with `-C force-frame-pointers=yes`
 (`.cargo/config.toml`). Frames outside `FuncTable` are skipped.
 
-**Call depth.** `msrt_call_depth: i64`. Recursive-cycle functions do
-`depth += 1; if depth > 200000 { msrt_fault_depth() }` on entry and `depth -= 1` on
-every normal return. **Cancellation.** `msrt_cancel_flag: u8` becomes the signal
+**Call depth.** `msrt_stack_limit: usize`, the lowest stack address recursion may
+reach (stack base plus a reserve of an eighth, 64 KiB to 1 MiB, and recursion may use at most the top 256 MiB of the stack; 0 = no
+limit). Recursive-cycle functions do `if sp < msrt_stack_limit { msrt_fault_depth() }`
+on entry; there is no work on return. After the fault the limit drops into the reserve so
+cleanups can run. **Cancellation.** `msrt_cancel_flag: u8` becomes the signal
 number after SIGINT/SIGTERM (unless shielded). Loops and calls poll it (relaxed load)
 and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 143
 (SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
@@ -282,7 +283,7 @@ run LIFO shielded from cancellation.
 **Guarded calls.** `msrt_guard_call(code: extern "C-unwind" fn(*mut u8), data: *mut u8,
 msg_out: *mut *mut StrObj) -> u8` runs `code(data)` as an isolated request and returns
 0 when it returns normally. A fault inside it (user fault, call-depth limit, runtime
-fault) runs the cleanups pushed since entry LIFO, shielded, restores the call depth,
+fault) runs the cleanups pushed since entry LIFO, shielded, restores the stack limit,
 cancel shield and equality-cycle state, and returns 1 with the fault report (message
 plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_out`
 (owned by the caller; may be null to discard). A stop request that reaches
@@ -301,7 +302,7 @@ parallelism and no preemption, so the allocator, reference counts and every othe
 global stay non-atomic; a task runs until it parks or yields. This is a runtime facility for
 natives (an HTTP server running handlers concurrently); the language has no concurrency
 surface. Each task has its own stack (default 256 MiB of address space, committed lazily, 64 KiB
-guard), cleanup stack, guard stack, call depth, equality-cycle state and cancellation request;
+guard), cleanup stack, guard stack, stack limit, equality-cycle state and cancellation request;
 the runtime swaps them on every switch, so faults, `with` cleanups and `msrt_guard_call`
 behave per task.
 
@@ -362,7 +363,7 @@ Inline fast paths the code generator may open-code (part of the ABI):
    negative index, default, or `msrt_index_fault`).
 3. List push: `if len < cap { store at ptr + len*size; len += 1 } else msrt_list_push*`.
 4. Lengths: `StrObj.len @16`, `VecVal.len @8`, `MapVal.len @16`.
-5. Call-depth counter and cancel-flag polling.
+5. Stack-limit check and cancel-flag polling.
 6. Checked `Int` arithmetic via overflow flags, calling `msrt_fault_int_overflow`.
 7. `Optional` presence tests and payload loads.
 
@@ -371,7 +372,7 @@ Inline fast paths the code generator may open-code (part of the ABI):
 `msrt_start(main_fn: extern "C" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32`
 is called from the C `main` the compiler emits. It installs tables and signal
 handlers, starts the profiler when requested, runs `main_fn` on a dedicated thread
-with a 1 GiB stack (so the 200,000-call limit is reachable), validates the exit
+with a 1 GiB stack, validates the exit
 code (`0..=125`, else the Go fault message), flushes stdout and returns the status.
 `msrt_args(out: *mut VecVal)` fills a `List[String]` (argv[1..]).
 

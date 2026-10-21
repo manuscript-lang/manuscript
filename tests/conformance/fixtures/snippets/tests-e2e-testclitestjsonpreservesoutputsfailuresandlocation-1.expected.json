@@ -18,7 +18,13 @@
           "index": 1,
           "name": "tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails",
           "status": "failed",
-          "failure": "expected failure"
+          "failure": "expected failure\n  at tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5",
+          "position": {
+            "file": "tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms",
+            "line": 12,
+            "column": 5,
+            "offset": 0
+          }
         },
         {
           "index": 2,
@@ -36,7 +42,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
+      "stdout": "RUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nPASS fake test\nuser stdout\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::first=pass\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails\nFAIL tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::second=fails: expected failure\n  at tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms:12:5\nRUN tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\nPASS tests-e2e-testclitestjsonpreservesoutputsfailuresandlocation-1.ms::third=after\n3 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [
@@ -60,6 +66,11 @@
       "tests[].failure",
       "tests[].index",
       "tests[].name",
+      "tests[].position",
+      "tests[].position.column",
+      "tests[].position.file",
+      "tests[].position.line",
+      "tests[].position.offset",
       "tests[].status"
     ],
     "stderr": "user stderr\n"

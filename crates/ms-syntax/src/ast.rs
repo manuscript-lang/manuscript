@@ -656,10 +656,12 @@ pub enum StmtKind {
     Break,
     /// `continue`
     Continue,
-    /// `if [let name =] cond:` with optional `else`.
+    /// `if [let|var name =] cond:` with optional `else`.
     If {
         /// `if let name = value` binding pattern (always a plain name).
         binding: Option<Pattern>,
+        /// `if var name = value`: the binding is an exclusive borrow of the payload.
+        mutable: bool,
         /// Condition, or the Optional value of `if let`.
         cond: Expr,
         /// Then-branch.
