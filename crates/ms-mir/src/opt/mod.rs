@@ -22,6 +22,7 @@ pub mod inline;
 pub mod optparam;
 pub mod range;
 pub mod simplify;
+pub mod slotfuse;
 pub mod strfuse;
 
 /// Optimization level.
@@ -63,6 +64,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "inline");
     strfuse::run(m);
     check(m, "strfuse");
+    slotfuse::run(m);
+    check(m, "slotfuse");
     for round in 0..3 {
         let mut changed = optparam::run(m);
         check(m, "optparam");

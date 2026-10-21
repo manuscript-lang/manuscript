@@ -116,8 +116,31 @@ fn class_of(size: usize) -> usize {
 }
 
 /// Allocates `size` bytes (16-byte aligned, uninitialised). Faults on exhaustion.
+///
+/// A recycled small block is the common case. It is handled here without a call, so the
+/// compiled function needs no frame; everything else is in [`alloc_slow`].
 #[inline]
 pub fn alloc(size: usize) -> *mut u8 {
+    // SAFETY: single threaded access to the allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    if size <= MAX_SMALL && s.initialized {
+        let class = class_of(size.max(1));
+        let head = s.free[class];
+        if !head.is_null() {
+            // SAFETY: free blocks store the next pointer in their first word.
+            s.free[class] = unsafe { *(head as *mut *mut u8) };
+            #[cfg(any(test, feature = "stats"))]
+            {
+                s.live += 1;
+            }
+            return head;
+        }
+    }
+    alloc_slow(size)
+}
+
+#[inline(never)]
+fn alloc_slow(size: usize) -> *mut u8 {
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &mut *STATE.ptr() };
     if size <= MAX_SMALL {
