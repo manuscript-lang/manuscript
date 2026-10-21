@@ -599,7 +599,14 @@ mod process {
             let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
             assert_eq!(msstd_process_info(info.as_mut_ptr()), STATUS_OK);
             let i = info.assume_init();
-            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), ("linux", true));
+            let os = if cfg!(target_os = "macos") {
+                "darwin"
+            } else if cfg!(windows) {
+                "windows"
+            } else {
+                "linux"
+            };
+            assert_eq!((text(i.os.as_ptr()).as_str(), i.pid > 0), (os, true));
         }
     }
 }
