@@ -8,10 +8,18 @@ repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repository"
 
 stats_target="${LEAK_TARGET_DIR:-$repository/target/leak-stats}"
-CARGO_TARGET_DIR="$stats_target" cargo build --release --locked -q -p ms-native --features ms-rt/stats
+# Linux programs link statically against musl, so the counting runtime is a musl build too.
+release=release
+target=
+if [ "$(uname -s)" = Linux ]; then
+    target="$(uname -m)-unknown-linux-musl"
+    release="$target/release"
+    export "CC_$(echo "$target" | tr - _)=${CC:-cc}"
+fi
+CARGO_TARGET_DIR="$stats_target" cargo build --release --locked -q -p ms-native --features ms-rt/stats ${target:+--target "$target"}
 cargo build --release --locked -q -p ms-cli
 ms="$repository/target/release/ms"
-MS_RT_LIB="$stats_target/release/libms_native.a"
+MS_RT_LIB="$stats_target/$release/libms_native.a"
 export MS_RT_LIB
 
 if [ "$#" -eq 0 ]; then

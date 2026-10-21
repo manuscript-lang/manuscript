@@ -5,6 +5,10 @@ pub fn cc() -> Command {
     let program =
         std::env::var("CC").unwrap_or_else(|_| if cfg!(windows) { "clang" } else { "cc" }.into());
     let mut command = Command::new(program);
+    if cfg!(target_os = "linux") {
+        // The bundled linker links musl, which has no fortified `*_chk` entry points.
+        command.arg("-D_FORTIFY_SOURCE=0");
+    }
     if cfg!(windows) {
         command.arg(if cfg!(target_arch = "aarch64") {
             "--target=aarch64-pc-windows-msvc"

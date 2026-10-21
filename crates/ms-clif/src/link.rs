@@ -1,8 +1,14 @@
-//! Linker driver: runs the system C compiler driver over the object and the runtime.
+//! Linker driver. Linux and macOS run the `lld` bundled in `ms` (Linux over musl, macOS over
+//! generated SDK stubs), so no C toolchain is involved; Windows still runs the system C compiler
+//! driver over the object and the runtime.
 
 use crate::Error;
 use std::path::{Path, PathBuf};
+#[cfg(windows)]
 use std::process::Command;
+
+#[cfg(unix)]
+mod lld;
 
 /// Links `object` and the runtime static library into the executable `out`.
 pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
@@ -17,11 +23,18 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
 /// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
 /// for profilers or backtraces).
 pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
+    #[cfg(unix)]
+    lld::link(object, inputs, out, strip)?;
+    #[cfg(windows)]
+    system_link(object, inputs, out, strip)?;
+    place_executable(out)?;
+    emit_debug_companion(object, out)
+}
+
+#[cfg(windows)]
+fn system_link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let (program, mut command) = driver();
     command.arg("-o").arg(out).arg(object).args(inputs);
-    if strip && !cfg!(windows) {
-        command.arg("-Wl,-s");
-    }
     command.args(system_libraries());
     command.args(driver_options(&program));
     let o = command
@@ -39,8 +52,7 @@ pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Re
             o.status
         )));
     }
-    place_executable(out)?;
-    emit_debug_companion(object, out)
+    Ok(())
 }
 
 /// Native debug companion for an executable, where the platform uses one.
@@ -70,12 +82,16 @@ fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
     }
     let companion = debug_companion_path(out).expect("macOS companion");
     let tool = "dsymutil";
-    let o = Command::new(&tool)
+    let o = std::process::Command::new(tool)
         .arg(out)
         .arg("-o")
         .arg(&companion)
-        .output()
-        .map_err(|e| Error(format!("cannot run {tool}: {e}")))?;
+        .output();
+    // Without `dsymutil` (no Xcode tools) the executable still runs; it just has no source lines.
+    let o = match o {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        other => other.map_err(|e| Error(format!("cannot run {tool}: {e}")))?,
+    };
     if !o.status.success() {
         return Err(Error(format!(
             "{tool} failed: {}",
@@ -88,17 +104,13 @@ fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(windows)]
 /// The C compiler driver and a command to run it: `$MS_LINKER` when set, else the first of the
 /// platform's usual names on `PATH`.
 fn driver() -> (String, Command) {
     let program = std::env::var("MS_LINKER").unwrap_or_else(|_| default_driver().to_string());
     let command = Command::new(&program);
     (program, command)
-}
-
-#[cfg(not(windows))]
-fn default_driver() -> &'static str {
-    "cc"
 }
 
 /// `clang` links Windows objects through the MSVC or LLVM linker and takes the same
@@ -144,36 +156,6 @@ fn driver_options(program: &str) -> &'static [&'static str] {
     } else {
         &[]
     }
-}
-
-#[cfg(not(windows))]
-fn driver_options(_program: &str) -> &'static [&'static str] {
-    // Drop runtime and standard-library code the program never reaches: the archive is one
-    // object per Rust codegen unit with a section per function, so unused pieces cost nothing.
-    if cfg!(target_os = "macos") {
-        &["-g", "-Wl,-dead_strip"]
-    } else {
-        &["-Wl,--gc-sections"]
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn system_libraries() -> &'static [&'static str] {
-    // TLS reaches the system trust store through Security.framework.
-    &[
-        "-lm",
-        "-lpthread",
-        "-ldl",
-        "-framework",
-        "Security",
-        "-framework",
-        "CoreFoundation",
-    ]
-}
-
-#[cfg(not(any(windows, target_os = "macos")))]
-fn system_libraries() -> &'static [&'static str] {
-    &["-lm", "-lpthread", "-ldl"]
 }
 
 /// What the Rust runtime library needs from Windows (the list `rustc --print

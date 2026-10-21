@@ -282,16 +282,27 @@ fn real_runtime() -> &'static PathBuf {
         command
             .current_dir(&root)
             .args(["build", "--release", "-p", "ms-rt"]);
+        // The bundled Linux linker links musl, so the runtime is a musl build.
+        let musl = format!("{}-unknown-linux-musl", std::env::consts::ARCH);
+        if cfg!(target_os = "linux") {
+            command.args(["--target", &musl]);
+            command.env(format!("CC_{}", musl.replace('-', "_")), "cc");
+        }
         let st = command
             .arg("--target-dir")
             .arg(&target)
             .status()
             .expect("cargo build ms-rt");
         assert!(st.success(), "building ms-rt failed");
-        target.join(if cfg!(windows) {
-            "release/ms_rt.lib"
+        let release = if cfg!(target_os = "linux") {
+            target.join(&musl).join("release")
         } else {
-            "release/libms_rt.a"
+            target.join("release")
+        };
+        release.join(if cfg!(windows) {
+            "ms_rt.lib"
+        } else {
+            "libms_rt.a"
         })
     })
 }
