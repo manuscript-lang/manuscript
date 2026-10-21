@@ -58,15 +58,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # `full`: format, clippy, every crate's tests and doc tests. `corpus`: the frozen
+          # `full`: format, clippy, every crate's tests and doc tests. `tests`: the same tests and doc tests without format and clippy. `corpus`: the frozen
           # conformance corpus against the Rust ms on this platform. Failures shared with
           # Linux are in tests/conformance/expect-fail.txt; platform-only ones go in
           # tests/conformance/expect-fail.<os>.txt with a reason.
           - { os: linux, arch: amd64, runner: ubuntu-24.04, full: true, corpus: true }
           - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
           - { os: darwin, arch: amd64, runner: macos-15-intel }
-          - { os: darwin, arch: arm64, runner: macos-15, corpus: true }
-          - { os: windows, arch: amd64, runner: windows-2025, corpus: true }
+          - { os: darwin, arch: arm64, runner: macos-15, tests: true, corpus: true }
+          - { os: windows, arch: amd64, runner: windows-2025, tests: true, corpus: true }
           - { os: windows, arch: arm64, runner: windows-11-arm }
     defaults:
       run:
@@ -87,7 +87,7 @@ jobs:
           shared-key: rust-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - uses: taiki-e/install-action@v2
-        if: matrix.full
+        if: matrix.full || matrix.tests
         with:
           tool: nextest
       - name: Select native Windows Rust host and MSVC linker
@@ -159,7 +159,7 @@ jobs:
       # nextest runs each test in its own process, so tests that share process-global
       # state (the runtime allocator, the environment) cannot interfere.
       - name: Tests and doc tests
-        if: matrix.full
+        if: matrix.full || matrix.tests
         run: |
           cargo nextest run --workspace --locked
           cargo test --workspace --doc --locked
