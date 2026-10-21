@@ -1,0 +1,34 @@
+{"id":1,"jsonrpc":"2.0","result":{"capabilities":{"codeActionProvider":{"codeActionKinds":["source.fixAll.manuscript","quickfix","source.organizeImports"]},"completionProvider":{"triggerCharacters":[".",":","/"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"inlayHintProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":true,"legend":{"tokenModifiers":[],"tokenTypes":["keyword","variable","number","string","comment","function","type","property","parameter","enumMember","typeParameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",",",":"]},"textDocumentSync":2,"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"manuscript","version":"0.1.0"}}}
+{"error":{"code":-32700,"message":"invalid JSON"},"id":null,"jsonrpc":"2.0"}
+{"error":{"code":-32600,"message":"invalid request"},"id":null,"jsonrpc":"2.0"}
+{"error":{"code":-32600,"message":"invalid request"},"id":null,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"invalid parameters"},"id":10,"jsonrpc":"2.0"}
+{"error":{"code":-32601,"message":"method not supported"},"id":"str-id","jsonrpc":"2.0"}
+{"id":11,"jsonrpc":"2.0","result":null}
+{"id":2,"jsonrpc":"2.0","result":[]}
+{"error":{"code":-32602,"message":"document is not open"},"id":3,"jsonrpc":"2.0"}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
+#4295:4fcb96c3f6ec1969
+{"error":{"code":-32602,"message":"unknown standard-library module"},"id":5,"jsonrpc":"2.0"}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"manuscript-stdlib:///io.ms","version":1}}
+{"id":6,"jsonrpc":"2.0","result":null}
+{"id":7,"jsonrpc":"2.0","result":null}
+{"id":8,"jsonrpc":"2.0","result":[]}
+#11029:061deca96e43d73d
+{"id":10,"jsonrpc":"2.0","result":null}
+{"id":11,"jsonrpc":"2.0","result":null}
+{"id":12,"jsonrpc":"2.0","result":[]}
+#38320:4992282b66aed3d8
+{"id":14,"jsonrpc":"2.0","result":null}
+{"id":15,"jsonrpc":"2.0","result":null}
+{"id":16,"jsonrpc":"2.0","result":[]}
+{"id":17,"jsonrpc":"2.0","result":[]}
+{"id":18,"jsonrpc":"2.0","result":null}
+{"id":19,"jsonrpc":"2.0","result":null}
+{"id":20,"jsonrpc":"2.0","result":[]}
+{"id":21,"jsonrpc":"2.0","result":[]}
+{"id":22,"jsonrpc":"2.0","result":{"data":[0,0,6,0,0,0,7,5,6,0,0,6,4,1,0,0,5,15,3,0,3,0,6,0,0,0,7,9,0,0,0,10,4,6,0,2,4,2,0,0,0,3,5,5,0,0,8,4,1,0,3,4,2,0,0,0,3,4,5,0,0,5,9,1,0,0,11,8,6,0,0,9,3,1,0,0,7,4,1,0,0,6,6,6,0,0,7,8,6,0,0,9,5,6,0,0,8,7,6,0,4,0,6,0,0,0,7,9,0,0,0,10,5,6,0,2,4,2,0,0,0,3,4,5,0,0,5,4,1,0,0,6,6,1,0,0,8,6,6,0,0,7,4,6,0,0,6,7,6,0,3,0,6,0,0,0,7,4,0,0,0,5,7,6,0,2,4,4,0,0,0,5,6,9,0,2,4,4,0,0,0,5,12,9,0,2,4,4,0,0,0,5,11,9,0,2,4,4,0,0,0,5,11,9,0,2,4,4,0,0,0,5,13,9,0,2,4,4,0,0,0,5,6,9,0,2,8,7,1,0,0,9,6,1,0,4,0,6,0,0,0,7,9,0,0,0,10,10,6,0,2,4,2,0,0,0,3,5,5,0,0,8,4,1,0,3,4,2,0,0,0,3,4,5,0,0,5,9,1,0,0,11,8,6,0,0,9,3,1,0,0,7,4,1,0,0,6,6,6,0,0,7,8,6,0,0,9,5,6,0,0,8,7,6,0,5,0,6,0,0,0,7,9,0,0,0,10,11,6,0,2,4,2,0,0,0,3,5,5,0,0,8,4,1,0,3,4,2,0,0,0,3,5,5,0,0,8,6,6,0,0,7,4,1,0,0,6,7,6,0,2,4,2,0,0,0,3,5,5,0,0,6,4,1,0,0,6,6,1,0,0,8,6,6,0,0,7,4,1,0,0,6,7,6,0,2,4,2,0,0,0,3,11,5,0,0,12,4,1,0,0,6,5,6,0,0,7,6,6,0,0,7,4,1,0,0,6,7,6,0,3,0,6,0,0,0,7,2,0,0,0,3,4,5,0,1,4,5,1,0,0,7,10,6,0,1,4,6,1,0,0,8,11,6,0,1,4,9,1,0,0,11,8,6,0,0,9,3,1,0,0,7,4,1,0,1,2,6,6,0,0,7,3,1,0,0,5,7,6,0,3,0,6,0,0,0,7,2,0,0,0,3,8,5,0,1,4,5,1,0,0,7,10,6,0,1,4,9,1,0,0,11,8,6,0,0,9,3,1,0,0,7,4,1,0,1,2,6,6,0,0,7,5,6,0,0,7,7,6,0,3,0,6,0,0,0,7,2,0,0,0,3,9,5,0,1,4,5,1,0,0,7,10,6,0,1,4,9,1,0,0,11,8,6,0,0,9,3,1,0,0,7,4,1,0,1,2,6,6,0,0,7,8,6,0,0,9,6,1,0,0,9,7,6,0,2,0,4,0,0,0,5,5,6,0,0,6,3,0,0,0,4,7,6,0,2,4,2,0,0,0,3,7,5,0,0,10,6,1,0,3,0,6,0,0,0,7,2,0,0,0,3,5,5,0,0,8,10,6,0,3,0,6,0,0,0,7,2,0,0,0,3,6,5,0,0,9,11,6,0,3,0,6,0,0,0,7,2,0,0,0,3,6,5,0,0,9,11,6,0,3,0,6,0,0,0,7,2,0,0,0,3,5,5,0,0,8,5,6,0]}}
+#5958:e4a541852c4a4b58
+{"id":24,"jsonrpc":"2.0","result":[]}
+{"id":25,"jsonrpc":"2.0","result":null}
