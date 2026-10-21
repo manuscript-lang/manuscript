@@ -34,7 +34,7 @@ Use `Debug` for source stepping, `Release` for optimized code and profiles, and 
 | `Release` | Speed | Kept, so profilers and backtraces show names |
 | `MinSizeRel` | Speed and size | Stripped |
 
-Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and standard-library code the program never reaches is dropped. Build levels never change language semantics.
+Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and standard-library code the program never reaches is dropped. On Linux x86_64 an empty program is about 0.45 MB and an HTTP server about 4.4 MB (before this, 1.8 MB and 7.7 MB). Build levels never change language semantics.
 
 ## Defaults and command behavior
 
