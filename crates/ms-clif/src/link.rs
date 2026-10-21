@@ -11,8 +11,17 @@ pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
 
 /// Like [`link`] with several runtime inputs (objects or static libraries), in order.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
+    link_with(object, inputs, out, false)
+}
+
+/// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
+/// for profilers or backtraces).
+pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let (program, mut command) = driver();
     command.arg("-o").arg(out).arg(object).args(inputs);
+    if strip && !cfg!(windows) {
+        command.arg("-Wl,-s");
+    }
     command.args(system_libraries());
     command.args(driver_options(&program));
     let o = command
@@ -60,7 +69,7 @@ fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
         return Ok(());
     }
     let companion = debug_companion_path(out).expect("macOS companion");
-    let tool = std::env::var("MS_DSYMUTIL").unwrap_or_else(|_| "dsymutil".into());
+    let tool = "dsymutil";
     let o = Command::new(&tool)
         .arg(out)
         .arg("-o")
@@ -121,6 +130,7 @@ fn driver_options(program: &str) -> &'static [&'static str] {
                 "-fms-runtime-lib=dll",
                 "-fuse-ld=lld",
                 "-Wl,/debug:dwarf",
+                "-Wl,/opt:ref",
             ]
         } else {
             &[
@@ -128,6 +138,7 @@ fn driver_options(program: &str) -> &'static [&'static str] {
                 "-fms-runtime-lib=dll",
                 "-fuse-ld=lld",
                 "-Wl,/debug:dwarf",
+                "-Wl,/opt:ref",
             ]
         }
     } else {
@@ -137,10 +148,12 @@ fn driver_options(program: &str) -> &'static [&'static str] {
 
 #[cfg(not(windows))]
 fn driver_options(_program: &str) -> &'static [&'static str] {
+    // Drop runtime and standard-library code the program never reaches: the archive is one
+    // object per Rust codegen unit with a section per function, so unused pieces cost nothing.
     if cfg!(target_os = "macos") {
-        &["-g"]
+        &["-g", "-Wl,-dead_strip"]
     } else {
-        &[]
+        &["-Wl,--gc-sections"]
     }
 }
 

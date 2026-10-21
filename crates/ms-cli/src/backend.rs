@@ -46,7 +46,6 @@ pub type BackendResult = Result<i32, BackendError>;
 pub enum BuildType {
     Debug,
     Release,
-    RelWithDebInfo,
     MinSizeRel,
 }
 
@@ -55,7 +54,6 @@ impl BuildType {
         match self {
             BuildType::Debug => "Debug",
             BuildType::Release => "Release",
-            BuildType::RelWithDebInfo => "RelWithDebInfo",
             BuildType::MinSizeRel => "MinSizeRel",
         }
     }
@@ -65,10 +63,12 @@ impl BuildType {
         if name.is_empty() {
             return Ok(BuildType::Release);
         }
-        [BuildType::Debug, BuildType::Release, BuildType::RelWithDebInfo, BuildType::MinSizeRel]
+        [BuildType::Debug, BuildType::Release, BuildType::MinSizeRel]
             .into_iter()
             .find(|kind| kind.as_str().eq_ignore_ascii_case(name))
-            .ok_or_else(|| format!("unknown build type {name:?}; expected Debug, Release, RelWithDebInfo, or MinSizeRel"))
+            .ok_or_else(|| {
+                format!("unknown build type {name:?}; expected Debug, Release, or MinSizeRel")
+            })
     }
 }
 

@@ -3,7 +3,7 @@
 
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
-use super::modes::{CallModes, Key, ParamMode, ResultOrigin, Slot, Summary, call_modes};
+use super::modes::{CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
@@ -28,7 +28,7 @@ pub struct Context<'a> {
     pub m: &'a ModuleHir,
     pub c: &'a Callable,
     pub classes: &'a Classifier,
-    pub summaries: &'a HashMap<Key, Summary>,
+    pub summaries: &'a Summaries,
     pub live: &'a Liveness,
     /// Lambdas known to escape, from the previous iteration.
     pub escaped: &'a HashSet<NodeId>,

@@ -371,12 +371,9 @@ fn string_list_matches_vec_model(seed: u64) {
                 }
                 8 => {
                     crate::obj::release(e as *mut Obj);
-                    let mut out: *mut StrObj = core::ptr::null_mut();
-                    let got = msrt_list_shift(&mut v, d, &mut out as *mut _ as *mut u8) != 0;
-                    assert_eq!(got, n > 0);
-                    if got {
-                        assert_eq!(text(out), model.remove(0));
-                        crate::obj::release(out as *mut Obj);
+                    if n > 0 {
+                        msrt_list_remove(&mut v, d, 0);
+                        model.remove(0);
                     }
                 }
                 9 => {

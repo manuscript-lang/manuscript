@@ -727,13 +727,6 @@ impl<'m> Interp<'m> {
                 Rc::make_mut(&mut l).push(v);
                 set!(Val::List(l));
             }
-            Op::ListDropFirst => {
-                let Val::List(mut l) = arg(f, regs, a[0], true, m) else {
-                    return Err(Raw::internal("list.dropfirst on a non-list"));
-                };
-                Rc::make_mut(&mut l).remove(0);
-                set!(Val::List(l));
-            }
             Op::ListDropLast => {
                 let Val::List(mut l) = arg(f, regs, a[0], true, m) else {
                     return Err(Raw::internal("list.droplast on a non-list"));

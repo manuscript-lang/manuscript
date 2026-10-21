@@ -5,7 +5,7 @@ weight = 89
 
 # Type checking and source contracts
 
-The type checker decides whether source obeys Manuscript's rules before Go is generated. Being representable in Go does not make a use legal.
+The type checker decides whether source obeys Manuscript's rules before code is generated. Being representable in the backend does not make a use legal.
 
 ## Required checks
 

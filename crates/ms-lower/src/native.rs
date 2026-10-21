@@ -205,33 +205,6 @@ impl<'a> FnLower<'a> {
                 self.at(e.pos);
                 self.map_from_entries(args[0].val, result)
             }
-            // `shift(values)` removes the first item of the caller's list.
-            "collections/shift" => {
-                let arg = view
-                    .arguments
-                    .first()
-                    .ok_or_else(|| Error::new("shift without a list"))?
-                    .expr;
-                let result = self.emty(e)?;
-                if !self.is_place(arg) {
-                    let x = self.expr(arg)?;
-                    if self.dead {
-                        return Ok(x);
-                    }
-                    let old = self.owned(x);
-                    let (new, r) = self.mutate_list("shift", old, &[])?;
-                    self.drop_value(new);
-                    return r.ok_or_else(|| Error::new("shift yields the first item"));
-                }
-                let mut shifted = None;
-                self.place_update(arg, &mut |s, old| {
-                    let (new, r) = s.mutate_list("shift", old, &[])?;
-                    shifted = r;
-                    Ok(new)
-                })?;
-                let _ = result;
-                shifted.ok_or_else(|| Error::new("shift yields the first item"))
-            }
             "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
                 // The digest of the `HashAlgorithm` case of that name.
                 let args = self.native_args(view)?;
@@ -1961,14 +1934,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append"
-                | "set"
-                | "prepend"
-                | "insert"
-                | "remove"
-                | "pop"
-                | "shift"
-                | "reverse_in_place"
+            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
@@ -2061,8 +2027,7 @@ impl<'a> FnLower<'a> {
                 self.drop_value(old);
                 Ok((out, None))
             }
-            "pop" | "shift" => {
-                let from_front = name == "shift";
+            "pop" => {
                 let optty = self.b.m.types.opt(elem);
                 let n = self.b.list_len(old);
                 let zero = self.b.iconst(0);
@@ -2079,18 +2044,13 @@ impl<'a> FnLower<'a> {
                 let cur = self.b.use_var(acc);
                 let one = self.b.iconst(1);
                 let last = self.b.binop(Op::ISub, n, one);
-                let at = if from_front { self.b.iconst(0) } else { last };
-                let x = self.b.list_get(cur, at);
+                let x = self.b.list_get(cur, last);
                 let xo = self.owned(Val { v: x, own: false });
                 let some = self.b.opt_some(xo);
                 let placeholder = self.b.use_var(res);
                 self.drop_value(placeholder);
                 self.b.def_var(res, some);
-                let rest = if from_front {
-                    self.b.list_drop_first(cur)
-                } else {
-                    self.b.list_drop_last(cur)
-                };
+                let rest = self.b.list_drop_last(cur);
                 self.b.def_var(acc, rest);
                 self.b.br(join, &[]);
                 self.b.seal_block(join);
