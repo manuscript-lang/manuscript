@@ -76,6 +76,8 @@ pub(crate) struct FnLower<'a> {
     pub fixture: Option<crate::fixture::Hooks>,
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
+    /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
+    pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
 }
@@ -313,6 +315,7 @@ impl<'a> FnLower<'a> {
             stmt_pos: None,
             fixture: None,
             err_slot: None,
+            split_iter_for: None,
             aliases: HashMap::new(),
         }
     }
