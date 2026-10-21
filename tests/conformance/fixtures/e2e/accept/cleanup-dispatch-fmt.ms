@@ -6,10 +6,10 @@ import panic from "@std/core.ms"
 import Closeable from "@std/core.ms"
 
 interface OtherClose:
-    fn close(flag: Bool) Int
+    var fn close(flag: Bool) Int
 
 interface Disposable:
-    fn close() Unit
+    var fn close() Unit
 
 type Resource:
     closed: Int

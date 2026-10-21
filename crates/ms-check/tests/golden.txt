@@ -3942,8 +3942,8 @@ fn indirect(callback: fn() Unit) Unit:
 resolution	2	8	47	module does not export Queue; unknown standard module @std/queues.ms
 resolution	5	12	102	unknown type Queue; add: import Queue from "@std/collections.ms"
 resolution	7	6	119	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	15	5	263	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unit
-type	23	9	447	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unittype State:
+type	15	5	263	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
+type	23	9	447	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unittype State:
     count: Int
 fn increment(state: State) Int:
     state.count = state.count + 1
@@ -6458,7 +6458,7 @@ export fn main() Int:
 resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
 resolution	13	15	288	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	6	6	101	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	10	5	205	with requires an explicit Closeable implementation or a contract declaring close() Unit; Watch has none, so add 'impl Closeable for Watch:' with fn close() Unit
+type	10	5	205	with requires an explicit Closeable implementation or a contract declaring close() Unit; Watch has none, so add 'impl Closeable for Watch:' with var fn close() Unit
 resolution	13	34	307	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module
 resolution	15	19	355	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module
 resolution	15	36	372	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module
@@ -6745,7 +6745,7 @@ test "runner continues with fresh roots after faults":
 resolution	2	8	42	module does not export Closeable; unknown standard module @std/cleanup.ms
 resolution	4	9	131	module does not export Queue; unknown standard module @std/queues.ms
 resolution	14	6	367	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	19	5	524	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unit
+type	19	5	524	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
 resolution	20	16	575	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	32	17	904	unknown binding Queue; add: import Queue from "@std/collections.ms"import filesystem from "@std/fs.ms"
 import {expect_true, fail} from "@std/testing.ms"
@@ -6794,7 +6794,7 @@ fn make_fixture() State:
     return State(7)
 impl TestHooks for State:
 test "one":
-    let hooks = TestHooks(value: fixture)
+    var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
 import {TestHooks, expect_equal, expect_ok} from "@std/testing.ms"

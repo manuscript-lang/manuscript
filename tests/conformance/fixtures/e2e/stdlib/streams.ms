@@ -44,7 +44,7 @@ test "concat tee and writer helpers":
 
         let sink_path = "{temporary.path()}/writer.bin"
         let sink = (fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok)
-        let writer = map_writer(sink.writer(), upper)
+        var writer = map_writer(sink.writer(), upper)
         try writer.write("quiet")
         try writer.write_bytes("!".to_bytes())
         sink.close()

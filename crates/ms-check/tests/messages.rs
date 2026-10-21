@@ -54,3 +54,13 @@ fn match_and_member_errors_list_the_fix() {
     );
     assert!(got.contains("available: add,"), "{got}");
 }
+
+#[test]
+fn impl_cannot_mutate_what_the_interface_does_not() {
+    let source = "interface Sink:\n    fn put(x: Int) Unit\ntype Buf:\n    n: Int\nimpl Sink for Buf:\n    var fn put(x: Int) Unit:\n        self.n = x\nexport fn main() Int:\n    return 0\n";
+    let got = first_message(source);
+    assert!(
+        got.starts_with("implementation of put is declared var fn but Sink declares it fn"),
+        "{got}"
+    );
+}

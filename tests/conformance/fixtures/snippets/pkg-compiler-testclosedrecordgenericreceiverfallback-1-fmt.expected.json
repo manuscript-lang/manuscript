@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Counter:\n    fn bump(by: Int) Int\n\ntype Cell[T]:\n    total: Int\n\nimpl Counter for Cell[T]:\n    fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn probe() Int:\n    let cell = Cell[String](0)\n    var i = 0\n\n    while i < 1000:\n        cell.bump(1)\n        i += 1\n\n    return cell.total\n"
+    "fmt": "interface Counter:\n    var fn bump(by: Int) Int\n\ntype Cell[T]:\n    total: Int\n\nimpl Counter for Cell[T]:\n    var fn bump(by: Int) Int:\n        self.total += by\n        return self.total\n\nfn probe() Int:\n    var cell = Cell[String](0)\n    var i = 0\n\n    while i < 1000:\n        cell.bump(1)\n        i += 1\n\n    return cell.total\n"
   }
 }

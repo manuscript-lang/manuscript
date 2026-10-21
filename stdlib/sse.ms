@@ -42,10 +42,10 @@ export type SseLimits:
 export interface SseDecoder:
     # Decodes one chunk and returns the events it completed, in order.
     # An error is final for the decoder, which returns it again on later calls.
-    fn feed(chunk: Bytes) Result[List[SseEvent], SseError]
+    var fn feed(chunk: Bytes) Result[List[SseEvent], SseError]
     # Ends the stream. A stream with no partial line and no unfinished event ends cleanly;
     # otherwise the result is Truncated and the unfinished event is never dispatched.
-    fn finish() Result[Unit, SseError]
+    var fn finish() Result[Unit, SseError]
     # Returns the latest valid `retry:` value in milliseconds, or none if the stream sent none.
     fn retry() Optional[Int]
 

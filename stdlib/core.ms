@@ -61,7 +61,7 @@ export fn panic(message: String) Never:
 export interface Closeable:
     # Releases the implementation's resource state; with calls this on every scope exit.
     # Cleanup runs during return, expected errors, faults, and cancellation too.
-    fn close() Unit
+    var fn close() Unit
 
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:

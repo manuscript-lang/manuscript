@@ -4,7 +4,7 @@
 import expect_equal from "@std/testing.ms"
 
 interface Increment:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Counter:
     value: Int

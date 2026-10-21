@@ -13,11 +13,11 @@ export interface JsonDecoder:
     # Adds a chunk and returns every value it completes, in order; the list is empty when
     # the chunk ends inside a value. An error discards values completed earlier in the same
     # chunk, and the decoder stays failed and returns that error again. Returns `InvalidInput` after `finish()`.
-    fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]
+    var fn feed(chunk: Bytes) Result[List[JsonValue], JsonError]
     # Signals end of input and returns a final unterminated scalar, if any. Input that
     # ends inside a string, array, or object returns `InvalidData`. The decoder rejects
     # later calls with `InvalidInput`.
-    fn finish() Result[List[JsonValue], JsonError]
+    var fn finish() Result[List[JsonValue], JsonError]
 
 # Creates a decoder. `limits` applies to each value separately: `max_bytes` counts the
 # value's UTF-8 bytes, `max_depth` its nesting, and `max_values` its parsed values, and

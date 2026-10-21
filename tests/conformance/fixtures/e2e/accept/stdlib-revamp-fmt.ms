@@ -74,7 +74,7 @@ impl ReadStream for EchoReader:
     fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
-    let stream = ReadStream(EchoReader(0))
+    var stream = ReadStream(EchoReader(0))
     let omitted: Result[Optional[Bytes], IoError] = stream.read()
     try expect_equal(omitted, ok(some(Bytes([0]))))
     let supplied: Result[Optional[Bytes], IoError] = stream.read(8)
