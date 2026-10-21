@@ -14,6 +14,7 @@ mod cg;
 mod dwarf;
 pub mod llvm_ir;
 mod llvm_obj;
+mod llvm_tables;
 mod lower;
 mod spill;
 

@@ -854,6 +854,74 @@ b0:
     );
 }
 
+/// Release builds hand functions to LLVM; fault traces keep the source frames of functions it
+/// inlines, and the program behaves as under Cranelift.
+#[test]
+fn llvm_release_keeps_fault_frames_and_results() {
+    if !cfg!(target_os = "linux")
+        || !Command::new("clang")
+            .arg("--version")
+            .output()
+            .is_ok_and(|o| o.status.success())
+    {
+        return;
+    }
+    let src = r#"module "llvm_frames"
+file 0 "llvm_frames.ms"
+entry @main
+fn @choose(%x: int, %c: bool) -> int !0:2:1 {
+b0:
+  %two: int = iconst 2
+  br_if %c, yes(), no()
+yes:
+  %a: int = imul.chk %x, %two !0:10:3
+  br join(%a)
+no:
+  %b: int = iconst 0
+  br join(%b)
+join(%r: int):
+  ret %r
+}
+fn @main() -> int !0:20:1 {
+b0:
+  %x: int = iconst 9223372036854775807
+  %c: bool = bconst true
+  %r: int = call @choose(%x, %c) !0:21:5
+  ret %r
+}
+"#;
+    let d = dir();
+    let mut results = Vec::new();
+    for (tag, llvm) in [("clif", None), ("llvm", Some("3"))] {
+        let m = module(src);
+        let opts = Options {
+            llvm,
+            ..Options::default()
+        };
+        let objp = d.join(format!("llvm-frames-{tag}.o"));
+        std::fs::write(&objp, compile(&m, &opts).unwrap()).unwrap();
+        let exe = d.join(format!("llvm-frames-{tag}"));
+        link(&objp, real_runtime(), &exe).unwrap();
+        let out = Command::new(exe).output().unwrap();
+        results.push((
+            out.status.code(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        ));
+    }
+    assert_eq!(results[1].0, Some(70), "{}", results[1].1);
+    assert_eq!(results[0], results[1]);
+    assert!(
+        results[1].1.contains("llvm_frames.ms:10 in choose"),
+        "{}",
+        results[1].1
+    );
+    assert!(
+        results[1].1.contains("llvm_frames.ms:21 in main"),
+        "{}",
+        results[1].1
+    );
+}
+
 /// A native callback boundary is the deliberate limit of Windows attribution.
 #[test]
 fn predicated_overflow_stops_at_native_callback_boundary() {
