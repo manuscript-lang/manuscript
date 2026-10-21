@@ -89,6 +89,21 @@ impl Summary {
 /// Identity of a source callable: its module file and declaration or method node.
 pub type Key = (Name, NodeId);
 
+/// The summaries of every source callable, and what each interface operation may hand back.
+#[derive(Default)]
+pub struct Summaries {
+    pub decls: HashMap<Key, Summary>,
+    /// By interface id and operation name: the union over the implementations.
+    pub contracts: HashMap<(Name, Name), ResultOrigin>,
+}
+
+impl std::ops::Deref for Summaries {
+    type Target = HashMap<Key, Summary>;
+    fn deref(&self) -> &Self::Target {
+        &self.decls
+    }
+}
+
 /// The modes of one call.
 #[derive(Clone, Debug)]
 pub struct CallModes {
@@ -113,7 +128,7 @@ pub fn call_modes(
     m: &ModuleHir,
     call: &Expr,
     args: &[Argument],
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
 ) -> CallModes {
     let slots = m.info(call).arguments.unwrap_or_default();
     let label = |i: usize| slots.get(i).map(|s| s.name);
@@ -169,7 +184,7 @@ pub fn call_modes(
 }
 
 fn from_summary(
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
     module: Name,
     func: &FuncRef,
     count: usize,
@@ -197,7 +212,7 @@ fn from_summary(
 }
 
 fn method_modes(
-    summaries: &HashMap<Key, Summary>,
+    summaries: &Summaries,
     method: &MethodRef,
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
@@ -225,7 +240,14 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
-                    origin: ResultOrigin::default(),
+                    // The union over the implementations of what each hands back.
+                    origin: method
+                        .contract
+                        .as_ref()
+                        .zip(method.name())
+                        .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
+                        .cloned()
+                        .unwrap_or_default(),
                 }
             }
             None => native_unknown(count),
