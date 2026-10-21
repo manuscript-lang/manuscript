@@ -61,7 +61,7 @@ test "rebinding the list inside the loop selects the new storage":
 
     while i < 3:
         total += values.get(i)
-        values = other
+        values = other.clone()
         i += 1
 
     try expect_equal(total, 1 + 20 + 30)
@@ -83,7 +83,7 @@ test "nested loops share one cached list":
     try expect_equal(total, 10)
 
 test "an out of range read or write inside a cached loop faults":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     let read = try expect_fault(
         fn():
             var i = 0

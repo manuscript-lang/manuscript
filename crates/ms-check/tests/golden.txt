@@ -24,7 +24,7 @@ fn use() Unit:
         shared.add(key: 1, value: 2)
         return panic("unreached")
     )
-# Doubles a number.
+type	6	68	228	this closure changes captured `shared`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `shared`# Doubles a number.
 export fn double(value: Int) Int:
     return value * 2
 
@@ -739,7 +739,14 @@ fn poll_nested(log: List[Int], start: Int) Unit:
             log.append(i)
             i += 1
         outer += 1
-
+type	4	9	98	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	10	9	224	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	18	13	402	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	25	9	546	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	31	9	666	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	41	9	877	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	47	9	1001	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
+type	57	13	1212	cannot change `log`: parameter `log` is not declared var; write `var log: <Type>` in the signature and pass `var` at every call
 //line generated.go:1
 type pollProbeContext struct {
     pollcontext.Context
@@ -1105,7 +1112,8 @@ resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queues.ms
             counts.add(key: "a", value: n)
         none:
             names.append("x")
-fn f(xs: List[Int], o: Optional[Int]) Unit:
+type	4	13	126	cannot change `counts`: parameter `counts` is not declared var; write `var counts: <Type>` in the signature and pass `var` at every call
+type	6	13	183	cannot change `names`: parameter `names` is not declared var; write `var names: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Optional[Int]) Unit:
     var n = 0
     match o:
         some(v):
@@ -1114,7 +1122,8 @@ resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queues.ms
         none:
             n = 2
     xs.append(n)
-fn f(xs: List[Int], o: Optional[Int]) Unit:
+type	6	13	118	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call
+type	9	5	181	cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every callfn f(xs: List[Int], o: Optional[Int]) Unit:
     let r = match o:
         some(v):
             xs.set(index: 0, value: v)
@@ -2338,7 +2347,7 @@ fn probe() Int:
     let values = Map[Int, Int]()
     values.add(1, 2)
     return values.get(1).get()
-type Key:
+type	3	5	53	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change ittype Key:
     value: Int
 impl Equal for Key:
     fn equals(other: Equal) Bool: true
@@ -2349,7 +2358,8 @@ fn probe() Int:
     values.add(Key(1), 10)
     values.add(Key(2), 20)
     return values.length()
-fn lookup[T: Hashable](key: T, value: T) T:
+type	9	5	181	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
+type	10	5	208	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itfn lookup[T: Hashable](key: T, value: T) T:
     let values = Map[T, T]()
     values.add(key, value)
     return values.get(key).get()
@@ -2357,7 +2367,8 @@ fn probe() Int:
     let number = lookup[Int](1, 2)
     let text = lookup[String]("one", "two")
     return number
-var i = 0
+type	3	5	77	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
+type	3	16	88	`key` is moved here but used again at 4:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last usevar i = 0
     let captured = match some(0):
         some(n):
             i = start
@@ -2673,7 +2684,8 @@ impl Counter for Cell:
         self.total -= by
         return self.total
 fn take(value: Cell) Int: return value.total
-let cell = Cell(0)
+type	8	14	158	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that
+type	11	14	236	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatlet cell = Cell(0)
     let peer = Cell(0)parse	2	5	23	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet cell = Cell(0)
     var sum = 0parse	2	5	23	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet cell = Cell(0)
     let alias = cellparse	2	5	23	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet cell = Cell(0)
@@ -2715,7 +2727,7 @@ fn probe() Int:
         cell.bump(1)
         i += 1
     return cell.total
-fn count[T](value: T) Int:
+type	7	14	138	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatfn count[T](value: T) Int:
     let cell = Cell(0)
     var i = 0
     while i < 1000:
@@ -3170,7 +3182,7 @@ fn work(counter: Counter) List[Int]:
             none: 0
         , value, counter.value, advance(counter)
     ]
-export let LIMIT = 10
+type	5	13	76	cannot change `counter.value`: parameter `counter` is not declared var; write `var counter: <Type>` in the signature and pass `var` at every callexport let LIMIT = 10
 let NAMES: List[String] = ["a"]
 fn f(record: Box) Int:
     var total = 12
@@ -3787,7 +3799,8 @@ fn run() Unit:
     Sequential().start(fn():
         values.append(1)
     )
-import network from "@std/net.ms"
+type	10	9	239	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
+type	9	24	225	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itimport network from "@std/net.ms"
 import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
@@ -3880,7 +3893,7 @@ fn nested(resource: Resource) Unit:
 
 fn indirect(callback: fn() Unit) Unit:
     callback()
-type State:
+type	23	21	459	this closure would move `resource` out of the variable it captured, but a closure can run more than once; return `resource.clone()` insteadtype State:
     count: Int
 fn increment(state: State) Int:
     state.count = state.count + 1
@@ -3890,7 +3903,7 @@ type Options:
     count: Int = increment(state)
 fn construct(state: State) Options:
     return Options(state: state)
-fn text[T](value: T) String:
+type	4	11	69	cannot change `state.count`: parameter `state` is not declared var; write `var state: <Type>` in the signature and pass `var` at every callfn text[T](value: T) String:
     return value.to_string()
 fn helper() Int: 1
 let (
@@ -4887,7 +4900,7 @@ fn work(client: HttpClient) Unit:
 parse	3	12	83	expected a name, found '|'; '|' is a reserved word and cannot be used as a name from "@std/time.ms"
 fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found 1; use 0 or 4fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) Unit:
     entries.add("a", 1)
-fn use(entries: Map[String, Int]) Unit:
+type	2	5	81	cannot change `entries`: parameter `entries` is not declared var; write `var entries: <Type>` in the signature and pass `var` at every callfn use(entries: Map[String, Int]) Unit:
     entries.ad|
 parse	2	16	55	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn use(entries: Map[String, Int]) Unit:
     entries.add(key: "a", value: |
@@ -5088,7 +5101,8 @@ fn work(value: Val) Unit:
     let copy = value.clone()
     let list = [copy]
     list.clone().append(value)
-import ListBuilder from "@std/collections.ms"
+type	5	15	93	cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call
+type	4	20	68	cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every callimport ListBuilder from "@std/collections.ms"
 import system from "@std/system.ms"
 fn length(values: List[Int]) Int:
     return values.length()
@@ -5694,7 +5708,7 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-fn %s(visits: List[Int], scoped: Bool) String:
+type	7	14	183	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow thatfn %s(visits: List[Int], scoped: Bool) String:
     let b = StringBuilder()
     var i = 0
     if scoped:
@@ -5725,7 +5739,8 @@ fn probe() String:
         b.append("x")
         i += 1
     return b.freeze()
-fn probe() Int:
+type	6	9	131	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change it
+type	8	12	171	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change itfn probe() Int:
     let values = [parse	2	19	34	unterminated delimiter '[' opened at line 2:18; add the matching ']' before the end of the file
    type queryFaultContext struct {context.Context}
    func (queryFaultContext) Err() error {rt.Raise("query fault");return nil}
@@ -5876,7 +5891,9 @@ impl AggregateCounter for AggregateCell:
         self.total -= by
         return self.total
 fn identity[T](value: T) T: return value
-fn %s(visits: List[Int], scoped: Bool) Int:
+type	6	14	158	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow that
+type	14	14	369	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that
+type	17	14	447	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatfn %s(visits: List[Int], scoped: Bool) Int:
     %s
     var i = %d
     if scoped:
@@ -5916,7 +5933,7 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-fn probe%d(visits: List[Int]) Int:
+type	6	14	140	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow thatfn probe%d(visits: List[Int]) Int:
     var sum = 0
     var i = %d
     with resource = Resource(visits):
@@ -6066,7 +6083,7 @@ fn probe(value: Int) Int:
     return cell.total
 export fn main() Int:
     return probe(9223372036854775807)
-import {read_line, ReadStream, stdin} from "@std/io.ms"
+type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport {read_line, ReadStream, stdin} from "@std/io.ms"
 fn limit() Int:
     return 1 / 0
 fn probe(input: ReadStream) Bool:
@@ -6313,11 +6330,11 @@ test "unimported":
     let values = [1, 2]
     values.insert(3, 9)
     return values.length()
-export fn main() Int:
+type	3	5	50	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itexport fn main() Int:
     let values = [1, 2]
     values.insert(-3, 9)
     return values.length()
-export fn main() Int:
+type	3	5	50	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itexport fn main() Int:
     let insert = [1].insert
     insert(index: 5, value: 9)
     return 0
@@ -6509,7 +6526,8 @@ export fn main() Int:
         _:
             return 2
 
-test %q:
+type	25	33	558	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
+type	27	10	624	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
     let minimum = duration(-9223372036854775808)
     let maximum = duration(9223372036854775807)
     let divide = minimum.divide
@@ -6647,7 +6665,8 @@ test "negative replace limit faults":
 
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")
-import filesystem from "@std/fs.ms"
+type	28	18	813	cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it
+type	29	5	834	cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change itimport filesystem from "@std/fs.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 test "fixture next to the manifest":
@@ -6682,7 +6701,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-import {TestHooks, expect_equal} from "@std/testing.ms"
+type	16	14	441	cannot change `self.value`: this method does not change its receiver; declare it `var fn` to allow thatimport {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()

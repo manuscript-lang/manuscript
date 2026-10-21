@@ -36,7 +36,7 @@ test "HTML parses nested elements attributes entities and comments":
     let doc = try parse(
         "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
     )
-    let div = body_nodes(doc).get(0)
+    let div = body_nodes(doc.clone()).get(0)
 
     match div:
         Element(tag, namespace, attributes, items):
@@ -74,21 +74,21 @@ test "HTML parses nested elements attributes entities and comments":
 test "HTML recovers unclosed tags and inserts document and table structure":
     let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
-    let entries = children(nodes.get(0))
+    let entries = children(nodes.get(0).clone())
     try expect_false(
         (
             entries.length() != 2
-            or text_content(entries.get(0)) != "one"
-            or text_content((entries.get(1))) != "two"
+            or text_content(entries.get(0).clone()) != "one"
+            or text_content((entries.get(1).clone())) != "two"
         )
     )
 
-    match children(nodes.get(1)).get(0):
+    match children(nodes.get(1).clone()).get(0):
         Element(tag, _, _, _):
             try expect_equal(tag, "tbody")
         _: return fail("expected tbody")
 
-    try expect_equal(text_content(nodes.get(1)), "cell")
+    try expect_equal(text_content(nodes.get(1).clone()), "cell")
     let empty = try parse("")
     try expect_equal(children(children(empty).get(0)).length(), 2)
 
@@ -107,12 +107,12 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
         )
     )
     try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
-    let body = children(children(nodes.get(2)).get(1))
+    let body = children(children(nodes.get(2).clone()).get(1))
 
     let svg_items = match body.get(0):
         Element(tag, namespace, _, items):
             try expect_false(tag != "svg" or namespace != "svg")
-            items
+            items.clone()
         _: return fail("expected SVG")
 
     match svg_items.get(0):
@@ -129,7 +129,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
             )
         _: return fail("expected SVG anchor")
 
-    try expect_equal(text_content(body.get(1)), "if (a < b) x = '&amp;';")
+    try expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")
 
 test "HTML honors optional byte depth and node limits":
     let empty = try parse("")

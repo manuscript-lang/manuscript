@@ -23,7 +23,7 @@ test "string map":
     try expect_true((lookup(m: m, key: "") == 9))
     var seen = 0
 
-    for entry in m:
+    for entry in m.clone():
         m.add(key: "x{seen}", value: seen)
         seen = seen + 1
 

@@ -3,7 +3,7 @@
 # conform: origin=pkg/tooling/effects_test.go:73 TestEffectsIncludeRecordDefaults
 type State:
     count: Int
-fn increment(state: State) Int:
+fn increment(var state: State) Int:
     state.count = state.count + 1
     return state.count
 type Options:

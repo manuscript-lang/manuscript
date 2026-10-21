@@ -8,7 +8,7 @@ export fn bench_string() Unit:
         "string.append_builder",
         100000,
         fn() Int:
-            let sb = StringBuilder()
+            var sb = StringBuilder()
             for i in range(0, 100000):
                 sb.append("x")
             return sb.freeze().byte_length()

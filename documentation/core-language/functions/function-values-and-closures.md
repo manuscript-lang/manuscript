@@ -61,20 +61,20 @@ fn make_headline() fn() String:
 
 Reassignment changes the local binding, not the captured value. Assigning to a captured outer binding is rejected.
 
-A captured record or collection is the same object, so changes stay visible:
+A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
 ```manuscript
 
 fn tag_count() Int:
     var tags = ["docs"]
+    tags.append("release")
     let count = fn():
         return tags.length()
-    tags.append("release")
     return count()
 # tag_count() returns 2.
 ```
 
-Use `.clone()` before capturing for independent storage; nested references stay shared. A bound method keeps its receiver by the same rules.
+A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
 
 ## Resource captures
 

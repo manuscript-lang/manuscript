@@ -4,7 +4,7 @@ import {StringBuilder} from "@std/string.ms"
 import {parse, stringify, YamlValue} from "@std/yaml.ms"
 
 fn yaml_doc(count: Int) String:
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     for i in range(0, count):
         sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
     return sb.freeze()

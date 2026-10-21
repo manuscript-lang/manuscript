@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
 # conform: phase=run
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 import {TextError} from "@std/errors.ms"

@@ -30,8 +30,6 @@ impl Checked {
 pub struct CheckRequest {
     /// Require the entry to export `main() Int` (executables, not tests).
     pub entry: bool,
-    /// Also enforce the value-semantics ownership rules.
-    pub ownership: bool,
 }
 
 /// Check the graph and, for executables, validate the entry point.
@@ -57,7 +55,6 @@ pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<
         graph.modules,
         graph.imports,
         CheckOptions {
-            ownership: request.ownership,
             scope_marker: scope_marker.map(str::to_string),
             ..CheckOptions::default()
         },

@@ -4,7 +4,7 @@ import {StringBuilder} from "@std/string.ms"
 import {parse, escape, unescape} from "@std/html.ms"
 
 fn html_doc(count: Int) String:
-    let sb = StringBuilder()
+    var sb = StringBuilder()
     sb.append("<div>")
     for i in range(0, count):
         sb.append("<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")

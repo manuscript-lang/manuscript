@@ -29,7 +29,7 @@ impl ReadStream for Chunks:
         return ok(some(chunk.to_bytes()))
 
 fn echo(request: HttpRequest) HttpResponse:
-    return HttpResponse(status: 200, headers: headers(), body: request.body)
+    return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
 
 test "request_stream uploads each chunk of a ReadStream":
     with server = try network().serve("127.0.0.1:0", echo):

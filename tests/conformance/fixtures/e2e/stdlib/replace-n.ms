@@ -29,11 +29,13 @@ fn forward[T](value: T) T: value
 test "bound typed and generic calls retain the required count and captured receiver":
     var text = "aaaa"
     let replace = text.replace_n
+    let typed_source = text.replace_n
+    let generic_source = text.replace_n
     text = "zzzz"
     try expect_equal(replace("a", "b", 2), "bbaa")
-    let typed: fn(old: String, new: String, max_replacements: Int) String = replace
+    let typed: fn(old: String, new: String, max_replacements: Int) String = typed_source
     try expect_equal(typed("a", "b", 3), "bbba")
-    let generic = forward(replace)
+    let generic = forward(generic_source)
     try expect_equal(generic("a", "b", 1), "baaa")
     try expect_equal("aaaa".replace_first("a", "b", 2), "bbaa")
     try expect_equal("aaaa".replace("a", "b", none), "baaa")
