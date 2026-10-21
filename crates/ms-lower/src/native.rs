@@ -1462,6 +1462,11 @@ impl<'a> FnLower<'a> {
         let result_mty = self.emty(e)?;
         let hands_back = !discarded
             && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
+        if name == "add"
+            && let Some(done) = self.fused_update(e, view, m, recv_expr)?
+        {
+            return Ok(done);
+        }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
