@@ -9,9 +9,10 @@
 //!
 //! A value qualifies when it is live into a loop header, is neither defined nor used in
 //! that loop, and the header has more live values than the callee-saved registers can
-//! hold. Every use outside a loop that contains the definition becomes a load. A value
-//! defined by an earlier loop (a list that was just built) is stored in that loop after
-//! each definition; uses inside that loop keep the register. Constants and addresses are
+//! hold. A use becomes a load when it runs no more often than that loop does: it is outside
+//! the loop and either outside every loop or in one that encloses it. Uses in other loops
+//! keep the register, where the value is hot. A value defined by an earlier loop (a list that
+//! was just built) is stored in that loop after each definition. Constants and addresses are
 //! skipped because they are rematerialized.
 
 use cranelift_codegen::cursor::{Cursor, FuncCursor};
@@ -147,19 +148,8 @@ pub fn spill_loop_cold(func: &mut Function) {
         }
     }
 
-    // Values live into a crowded loop header and untouched by that loop. Uses that sit in
-    // a loop not containing the definition would turn into per-iteration loads, so such a
-    // value is left alone.
-    let enclosing = |b: Block| {
-        let mut chain = Vec::new();
-        let mut next = loops.innermost_loop(b);
-        while let Some(l) = next {
-            chain.push(l);
-            next = loops.loop_parent(l);
-        }
-        chain
-    };
-    let mut spill = vec![false; nvals];
+    // Values live into a crowded loop header and untouched by that loop.
+    let mut cold_for: Vec<Vec<ir::Block>> = vec![Vec::new(); nvals];
     let mut any = false;
     for l in loops.loops() {
         let h = loops.loop_header(l);
@@ -168,19 +158,14 @@ pub fn spill_loop_cold(func: &mut Function) {
             continue;
         }
         for v in 0..nvals {
-            if !live.get(v) || remat[v] || spill[v] {
+            if !live.get(v) || remat[v] || loops.is_in_loop(blocks[def_block[v]], l) {
                 continue;
             }
-            if loops.is_in_loop(blocks[def_block[v]], l) {
-                continue;
-            }
-            let around_def = enclosing(blocks[def_block[v]]);
-            let cold = use_blocks[v].iter().all(|&u| {
-                let ub = blocks[u];
-                !loops.is_in_loop(ub, l) && enclosing(ub).iter().all(|x| around_def.contains(x))
-            });
-            if cold {
-                spill[v] = true;
+            if use_blocks[v]
+                .iter()
+                .all(|&u| !loops.is_in_loop(blocks[u], l))
+            {
+                cold_for[v].push(h);
                 any = true;
             }
         }
@@ -188,6 +173,18 @@ pub fn spill_loop_cold(func: &mut Function) {
     if !any {
         return;
     }
+    // A use becomes a load when it runs no more often than a loop the value is cold in: it
+    // is outside that loop and either outside every loop or in one that encloses it. A use in
+    // some other loop keeps the register, where the value is hot.
+    let reload = |v: usize, ub: Block| {
+        cold_for[v].iter().any(|&h| {
+            let cold = loops.innermost_loop(h).expect("a header is in its loop");
+            !loops.is_in_loop(ub, cold)
+                && loops
+                    .innermost_loop(ub)
+                    .is_none_or(|enclosing| loops.is_in_loop(h, enclosing))
+        })
+    };
 
     // Rewrite uses first (so the stores below keep the original value), then store after
     // each definition.
@@ -198,10 +195,7 @@ pub fn spill_loop_cold(func: &mut Function) {
             let used: Vec<Value> = {
                 let mut seen = Vec::new();
                 for v in func.dfg.inst_values(inst) {
-                    let direct = loops
-                        .innermost_loop(blocks[def_block[v.index()]])
-                        .is_some_and(|dl| loops.is_in_loop(b, dl));
-                    if spill[v.index()] && !direct && !seen.contains(&v) {
+                    if reload(v.index(), b) && !seen.contains(&v) {
                         seen.push(v);
                     }
                 }

@@ -2,19 +2,19 @@
 
 `programs/` measures one operation per loop and several of its results come from proofs that fit those exact loops. These kernels are ordinary programs written the way a user would write them (no attempt to match a compiler proof), each compared with hand-written Go that uses a slice, struct or map directly. Every sample must report the same checksum. Reproduce with `MS=./ms sh bench/perf/kernels/run.sh 5`; compare only runs from the same machine.
 
-Reference run of the Rust `ms` on main at ac1a253e (2026-10-20; Go 1.25, linux/amd64, four cores; microseconds; raw output in the project's benchmark notes):
+Reference run of the Rust `ms` after #929 (2026-10-21; linux/amd64, four cores, Go 1.24.7, rustc 1.99.1; median of 7, microseconds). "Rust" is the same algorithms hand-written with `Vec`/`HashMap` at `opt-level=3`; "Rust, overflow checks" adds `-C overflow-checks=on`. Ratios are Manuscript over the other language.
 
-| kernel | Go | Manuscript | Manuscript / Go |
-|---|---:|---:|---:|
-| sieve_5M | 81467 | 35226 | 0.43x |
-| nbody_200k | 13552 | 15413 | 1.14x |
-| life_128x128_50 | 59829 | 32191 | 0.54x |
-| matmul_200 | 13704 | 17889 | 1.31x |
-| trees_d16_x20 | 72311 | 46793 | 0.65x |
-| collatz_1M | 263187 | 366737 | 1.39x |
-| map_count_2M | 24682 | 33877 | 1.37x |
+| kernel | go us | ms us | ms / go | rust us | rust / go | rust-checked us | rust-checked / go | ms / rust | ms / rust-checked |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| sieve_5M | 65103 | 34489 | 0.53x | 28759 | 0.44x | 31085 | 0.48x | 1.20x | 1.11x |
+| nbody_200k | 10669 | 12798 | 1.20x | 7215 | 0.68x | 7193 | 0.67x | 1.77x | 1.78x |
+| life_128x128_50 | 59680 | 25339 | 0.42x | 3682 | 0.06x | 3821 | 0.06x | 6.88x | 6.63x |
+| matmul_200 | 12589 | 24130 | 1.92x | 7775 | 0.62x | 8141 | 0.65x | 3.10x | 2.96x |
+| trees_d16_x20 | 47521 | 52737 | 1.11x | 33392 | 0.70x | 35932 | 0.76x | 1.58x | 1.47x |
+| collatz_1M | 306569 | 443024 | 1.45x | 191533 | 0.62x | 304039 | 0.99x | 2.31x | 1.46x |
+| map_count_2M | 27199 | 36135 | 1.33x | 26064 | 0.96x | 27717 | 1.02x | 1.39x | 1.30x |
 
-Manuscript is faster than hand-written Go on sieve, life and trees and within 1.4x on the rest. The sections below were measured on the earlier Go backend and are kept for the cost analysis, not as current numbers.
+Manuscript is faster than hand-written Go on sieve and life, and between 1.1x and 1.9x slower on the rest (matmul worst). It is 1.1x to 1.8x slower than Rust with overflow checks on sieve, nbody, trees, collatz and map_count, and 3x to 6.6x slower on matmul and life, where LLVM vectorizes. The sections below were measured on the earlier Go backend and are kept for the cost analysis, not as current numbers.
 
 ## Where the remaining time goes
 

@@ -1445,8 +1445,14 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
     unsafe {
         let data = string::bytes(s);
         let v = &mut *b;
-        reserve(v, &desc::msrt_desc_bool, data.len());
-        if !data.is_empty() {
+        if v.len + data.len() > v.cap {
+            reserve(v, &desc::msrt_desc_bool, data.len());
+        }
+        // One byte (a character or punctuation) is the common append; a call to `memcpy`
+        // costs several times the store.
+        if data.len() == 1 {
+            *v.ptr.add(v.len) = data[0];
+        } else if !data.is_empty() {
             core::ptr::copy_nonoverlapping(data.as_ptr(), v.ptr.add(v.len), data.len());
         }
         v.len += data.len();

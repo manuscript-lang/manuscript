@@ -1,23 +1,25 @@
 # Manuscript vs handwritten Go
 
-## Latest: Rust `ms` (2026-10-20)
+## Latest: Rust `ms` (2026-10-21)
 
-Median of 5 alternating runs at 100M iterations for the loop rows; linux/amd64, four cores, Go 1.25. Checksums and operation counts verified. Ratios are Manuscript time over Go time, so below 1.00x is faster than Go.
+Median of 7 runs with alternating order; linux/amd64, four cores, Go 1.24.7, rustc 1.99.1 (`-C opt-level=3 -C codegen-units=1`). Checksums and operation counts verified. Ratios are Manuscript time over the other language's time, so below 1.00x is faster than it.
 
-| operation | Manuscript ns/op | Go ns/op | ratio |
-|---|---:|---:|---:|
-| string_append_50k | 9.75 | 4.62 | 2.11x |
-| read_line | 118.88 | 116.27 | 1.02x |
-| map_put_get_8k | 37.17 | 41.52 | 0.90x |
-| int_eq | 2.29 | 1.38 | 1.65x |
-| generic_call | 1.36 | 0.69 | 1.98x |
-| method_call | 1.35 | 2.31 | 0.59x |
-| try | 1.93 | 0.62 | 3.10x |
-| match | 3.11 | 2.16 | 1.44x |
-| builtin_length | 2.16 | 0.64 | 3.35x |
-| for_list | 2.24 | 0.57 | 3.93x |
+**Read the Rust columns with the caveats.** Manuscript checks Int overflow and list bounds; Go and Rust (release) check only bounds. "Rust, overflow checks" is the same source built with `-C overflow-checks=on`, the closest like-for-like. "folded" means LLVM folded the loop to a constant, so no time is reported; the Go and Manuscript columns still do the work.
 
-Single-operation loops range from faster than Go to about 4x slower. Go inlines or vectorizes several of these loops, so those ratios are real code-generation gaps and the current optimization target. Whole-program kernels, which are closer to real code, are on par with Go: see [`../kernels/README.md`](../kernels/README.md).
+| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| string_append_50k | 50000 | 5.51 | 4.90 | 1.47 | 1.25 | 1.12x | 3.74x | 4.42x |
+| read_line | 200000 | 102.49 | 89.26 | 69.95 | 65.31 | 1.15x | 1.47x | 1.57x |
+| map_put_get_8k | 16000 | 34.30 | 35.77 | 42.90 | 42.99 | 0.96x | 0.80x | 0.80x |
+| int_eq | 10000000 | 1.44 | 0.90 | 0.73 | 0.99 | 1.59x | 1.95x | 1.46x |
+| generic_call | 100000000 | 0.72 | 0.72 | 0.73 | 0.71 | 1.01x | 1.00x | 1.02x |
+| method_call | 100000000 | 0.72 | 0.64 | 1.59 | 1.80 | 1.13x | 0.45x | 0.40x |
+| try | 100000000 | 0.55 | 0.72 | 0.95 | 0.74 | 0.77x | 0.58x | 0.74x |
+| match | 100000000 | 2.61 | 2.14 | 1.38 | 1.97 | 1.22x | 1.89x | 1.32x |
+| builtin_length | 100000000 | 0.72 | 0.37 | 0.36 | 0.38 | 1.95x | 1.99x | 1.86x |
+| for_list | 100000000 | 1.12 | 0.73 | 0.33 | 0.52 | 1.53x | 3.38x | 2.17x |
+
+Manuscript is faster than Go on 2 of 10 rows and within 1.25x on 5 more. int_eq, builtin_length and for_list are 1.5x to 2x slower: Go and LLVM vectorize or fold those loops, and Manuscript has overflow checks, no loop rotation and no hoisting. Rust is faster on most rows, and string_append is 3.7x faster there. Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
 
 Everything below this line was measured on the earlier Go backend and is kept as history.
 
