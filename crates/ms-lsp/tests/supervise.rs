@@ -1,7 +1,9 @@
 //! A worker that dies mid-session is replaced; unanswered requests fail with
 //! an internal error and the open documents are replayed.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_lsp::json::{self, Json, obj};
+use ms_rt as _;
 use std::io::Read;
 use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender, channel};

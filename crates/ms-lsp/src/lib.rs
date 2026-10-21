@@ -5,6 +5,9 @@
 //! files they import; the Go server in `pkg/tooling/lsp` is the behavioural
 //! authority.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+#[cfg(test)]
+use ms_rt as _;
 pub mod actions;
 pub mod analysis;
 pub mod completion;

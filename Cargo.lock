@@ -987,6 +987,7 @@ dependencies = [
  "ms-lsp",
  "ms-mir",
  "ms-project",
+ "ms-rt",
  "ms-syntax",
  "ms-tooling",
  "regex",
@@ -1023,6 +1024,7 @@ dependencies = [
  "ms-lower",
  "ms-mir",
  "ms-project",
+ "ms-rt",
  "ms-syntax",
 ]
 
@@ -1057,6 +1059,7 @@ dependencies = [
  "ms-driver",
  "ms-json",
  "ms-project",
+ "ms-rt",
  "ms-syntax",
  "ms-tooling",
 ]

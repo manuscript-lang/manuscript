@@ -8,6 +8,9 @@
 //! The command line (`ms-cli`) owns arguments, output formats and exit
 //! statuses; this crate owns everything between a file name and an executable.
 
+// Links the msrt_* runtime symbols that the standard-library crates reference.
+#[cfg(test)]
+use ms_rt as _;
 pub mod compile;
 pub mod load;
 pub mod lower;

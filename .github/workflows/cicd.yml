@@ -161,6 +161,7 @@ jobs:
       - name: Tests and doc tests
         if: matrix.full || matrix.tests
         run: |
+          cargo test --workspace --no-run --locked --keep-going
           cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
       - name: MIR signed boundaries and fault semantics

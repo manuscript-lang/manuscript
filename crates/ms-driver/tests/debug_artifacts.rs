@@ -1,6 +1,8 @@
 //! Source attribution must survive the actual staged build and object cleanup.
+// Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_driver::{Profile, build_executable};
 use ms_mir::parse::parse_module;
+use ms_rt as _;
 use std::path::Path;
 use std::process::Command;
 
