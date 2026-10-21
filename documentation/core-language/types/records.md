@@ -97,7 +97,7 @@ Records and alternatives may refer to themselves or each other directly, with no
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 type Expr:
     case Num(value: Int)
@@ -118,7 +118,7 @@ A linked record ends with an absent successor; a link owns its successor, so a c
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 type Node:
     value: Int

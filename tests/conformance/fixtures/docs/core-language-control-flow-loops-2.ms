@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=documentation/core-language/control-flow/loops.md:26
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 test "sum indexes":
     var total = 0

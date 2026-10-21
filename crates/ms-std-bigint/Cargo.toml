@@ -3,7 +3,7 @@ name = "ms-std-bigint"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Native implementation of @std/bigint.ms"
+description = "Native implementation of @std/math.ms"
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }

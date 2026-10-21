@@ -34,14 +34,8 @@ fn render(module: &ApiModule, for_site: bool) -> String {
     let mut b = format!("# {path}\n\n");
     if path == "prelude" {
         b += "Names available in every module; no import required.\n\n";
-    } else if matches!(
-        path,
-        "@std/optional.ms" | "@std/result.ms" | "@std/equality.ms"
-    ) {
-        b += "These names are available in the prelude; no import required.\n\n";
-        b += "Explicit imports of these prelude declarations are rejected; remove them from the import.\n\n";
-    } else if path == "@std/errors.ms" {
-        b += "`Error` and `MissingValue` are prelude declarations; explicit imports of them are rejected.\n\n";
+    } else if path == "@std/core.ms" {
+        b += "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
     } else if path == "@std/collections.ms" {
         b += "`List`, `Map`, `Set`, `CollectionError`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n";

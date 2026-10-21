@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,formatter,generics,interfaces,maps,match,modules,optional,parser,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/recursive-types.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 
 type Expr:

@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/try-result-payloads.ms
 import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
-import TextError from "@std/errors.ms"
-import Closeable from "@std/cleanup.ms"
+import TextError from "@std/core.ms"
+import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 
 type Failure:

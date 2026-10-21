@@ -14,7 +14,7 @@
           "file": "core-language-types-compatibility-2.ms",
           "line": 8,
           "column": 13,
-          "offset": 299
+          "offset": 297
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-types-compatibility-2.ms",
           "line": 10,
           "column": 39,
-          "offset": 404
+          "offset": 402
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "core-language-types-compatibility-2.ms",
           "line": 11,
           "column": 39,
-          "offset": 448
+          "offset": 446
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "core-language-types-compatibility-2.ms",
           "line": 13,
           "column": 18,
-          "offset": 569
+          "offset": 567
         }
       }
     ],

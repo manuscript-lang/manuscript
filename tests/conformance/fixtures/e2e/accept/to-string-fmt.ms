@@ -1,11 +1,11 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,decimal,formatter,generics,interfaces,interpolation,lists,maps,modules,optional,parser,records,sets,stdlib-bytes,stdlib-decimal,stdlib-errors,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/to-string.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {fail} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 
 type Person:
     name: String

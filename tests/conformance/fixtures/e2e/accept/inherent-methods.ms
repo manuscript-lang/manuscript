@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,generics,interfaces,match,modules,records,stdlib-faults,strings,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/inherent-methods.ms
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 interface Show:
     fn show() String

@@ -1,5 +1,5 @@
 import {expect_equal} from "@std/testing.ms"
-import {compress, decompress, CompressionError} from "@std/compress.ms"
+import {compress, decompress, CompressionError} from "@std/archive.ms"
 import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 

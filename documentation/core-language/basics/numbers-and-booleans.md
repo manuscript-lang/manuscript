@@ -93,7 +93,7 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 #### Scale rounding and fixed places
 
-`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/numbers.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
+`round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/math.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
 
 The default `mode` is `RoundingMode.HalfEven`; import `RoundingMode` from `@std/decimal.ms` for others:
 
@@ -113,7 +113,7 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import Decimal from "@std/decimal.ms"
-import NumberError from "@std/numbers.ms"
+import NumberError from "@std/math.ms"
 import expect_equal from "@std/testing.ms"
 
 fn amount_text() Result[String, NumberError]:

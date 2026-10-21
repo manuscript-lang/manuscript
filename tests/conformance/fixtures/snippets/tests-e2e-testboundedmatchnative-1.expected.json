@@ -14,7 +14,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 16,
           "column": 15,
-          "offset": 510
+          "offset": 507
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 16,
           "column": 34,
-          "offset": 529
+          "offset": 526
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 18,
           "column": 19,
-          "offset": 577
+          "offset": 574
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 18,
           "column": 36,
-          "offset": 594
+          "offset": 591
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 18,
           "column": 53,
-          "offset": 611
+          "offset": 608
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 20,
           "column": 8,
-          "offset": 657
+          "offset": 654
         }
       },
       {
@@ -80,7 +80,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 22,
           "column": 8,
-          "offset": 748
+          "offset": 745
         }
       },
       {
@@ -91,7 +91,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
           "column": 16,
-          "offset": 843
+          "offset": 840
         }
       },
       {
@@ -102,7 +102,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 28,
           "column": 16,
-          "offset": 936
+          "offset": 933
         }
       }
     ],

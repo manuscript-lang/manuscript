@@ -6,13 +6,13 @@ import control from "@std/process.ms"
 import arguments from "@std/process.ms"
 import entropy from "@std/random.ms"
 import filesystem from "@std/fs.ms"
-import system from "@std/system.ms"
+import system from "@std/process.ms"
 import wall_clock from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
-import posix from "@std/path.ms"
-import win32 from "@std/path.ms"
+import posix from "@std/fs.ms"
+import win32 from "@std/fs.ms"
 
 fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:

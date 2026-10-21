@@ -118,8 +118,8 @@ fn source_declarations_reach_documentation() {
 fn mixed_prelude_module_import_guidance() {
     for (path, guidance) in [
         (
-            "@std/errors.ms",
-            "`Error` and `MissingValue` are prelude declarations",
+            "@std/core.ms",
+            "`Error`, `MissingValue`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
         ),
         (
             "@std/collections.ms",

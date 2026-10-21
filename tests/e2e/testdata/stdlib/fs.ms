@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_ok, fail} from "@std/testing.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import {filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry} from "@std/fs.ms"
 import {files, read_all, IoError} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
-import {system} from "@std/system.ms"
+import {system} from "@std/process.ms"
 import IpFamily from "@std/net.ms"
 
 test "network interfaces describe each address and include a loopback":

@@ -1,4 +1,4 @@
-//! `@std/url.ms` natives, built on the byte-oriented parser in [`gourl`].
+//! `@std/net.ms` natives, built on the byte-oriented parser in [`gourl`].
 #![no_std]
 
 extern crate alloc;
@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use gourl::{S, Url};
 use ms_std_core::Fail;
 
-/// The `Url` record of `@std/url.ms`.
+/// The `Url` record of `@std/net.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Components {
     pub scheme: String,

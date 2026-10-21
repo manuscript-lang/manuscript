@@ -9,10 +9,10 @@ A programming fault means an assumption the code relies on has failed. For inval
 
 ## Invariant checks
 
-Check an invariant with `if` and `return`; import `panic` from `@std/faults.ms` to raise a fault when it fails.
+Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.
 
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 fn discount_validated(price: Decimal, percent: Decimal) Decimal:
     if price <= 0d:

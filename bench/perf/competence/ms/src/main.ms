@@ -1,7 +1,7 @@
 import {stdout} from "@std/io.ms"
 import {clock} from "@std/time.ms"
 import {StringBuilder} from "@std/string.ms"
-import {parse_int} from "@std/numbers.ms"
+import {parse_int} from "@std/math.ms"
 
 interface Shape:
     fn area() Int

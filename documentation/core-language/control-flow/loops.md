@@ -25,7 +25,7 @@ fn sum(values: List[Int]) Int:
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import range from "@std/collections.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 test "sum indexes":
     var total = 0
@@ -41,7 +41,7 @@ Use `while` with a counter for other steps or computed exits:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 test "five iterations":
     var index = 0

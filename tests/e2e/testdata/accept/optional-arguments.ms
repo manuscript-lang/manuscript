@@ -1,6 +1,6 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 
 fn number(value: Optional[Int] = none) Int: value.get(-1)
 

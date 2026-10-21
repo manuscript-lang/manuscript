@@ -1,4 +1,4 @@
-//! `@std/regex.ms` natives, on top of the
+//! `@std/string.ms` natives, on top of the
 //! `regex` crate; see [`translate`] for the dialect differences that are bridged.
 #![no_std]
 

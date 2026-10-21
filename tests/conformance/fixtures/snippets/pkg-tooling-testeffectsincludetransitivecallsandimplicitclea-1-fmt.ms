@@ -1,8 +1,8 @@
 # conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,stdlib-queues,tier-stdlib,with-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
-import Closeable from "@std/cleanup.ms"
-import Queue from "@std/queues.ms"
+import Closeable from "@std/core.ms"
+import Queue from "@std/collections.ms"
 
 type Resource:
     state: Queue[Int]

@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import Queue from "@std/queues.ms"
+import Queue from "@std/collections.ms"
 
 test "omitted capacity creates an unbounded queue":
     let queue = Queue[Int]()

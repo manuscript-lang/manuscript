@@ -43,7 +43,7 @@ pub enum HttpErr {
     Failed(String),
 }
 
-/// `WebSocketError` of `@std/websocket.ms`.
+/// `WebSocketError` of `@std/net.ms`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WsErr {
     InvalidInput,
@@ -55,7 +55,7 @@ pub enum WsErr {
     Failed(String),
 }
 
-/// `TlsError` of `@std/tls.ms`.
+/// `TlsError` of `@std/net.ms`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TlsErr {
     InvalidInput,

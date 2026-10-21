@@ -36,6 +36,25 @@ const RENAMED: [(&str, &str); 6] = [
     ("collections/filled", "msrt_list_filled"),
 ];
 
+/// Runtime symbols keep the names of the modules each module absorbed.
+const ABSORBED: [(&str, &[&str]); 10] = [
+    (
+        "core",
+        &[
+            "errors", "faults", "cleanup", "optional", "result", "equality",
+        ],
+    ),
+    ("math", &["numbers", "bits", "bigint"]),
+    ("io", &["terminal"]),
+    ("fs", &["path"]),
+    ("process", &["system"]),
+    ("net", &["tls", "url", "websocket"]),
+    ("collections", &["queues"]),
+    ("string", &["regex"]),
+    ("bytes", &["binary"]),
+    ("archive", &["compress"]),
+];
+
 /// The runtime symbol implementing the native function `native` (`module/name`).
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
     // Exports whose runtime name predates the `<module>_<name>` scheme.
@@ -45,9 +64,13 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
     let (module, name) = native.split_once('/')?;
     // The list functions of `collections` share the runtime's `list` entry points.
     let alias = (module == "collections").then(|| format!("msrt_list_{name}"));
-    ["msrt", "msstd"]
+    let absorbed = ABSORBED
         .iter()
-        .map(|prefix| format!("{prefix}_{module}_{name}"))
+        .find(|(m, _)| *m == module)
+        .map_or(&[][..], |(_, old)| *old);
+    std::iter::once(module)
+        .chain(absorbed.iter().copied())
+        .flat_map(|m| ["msrt", "msstd"].map(|prefix| format!("{prefix}_{m}_{name}")))
         .chain(alias)
         .find(|sym| rt_sig(sym).is_some())
 }

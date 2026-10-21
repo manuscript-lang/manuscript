@@ -1,4 +1,4 @@
-//! `@std/terminal` natives. Symbols are `msstd_terminal_<name>`.
+//! `@std/io` natives. Symbols are `msstd_terminal_<name>`.
 //!
 //! `capabilities()` and `size()` cross as one getter per record field (`size` also has a
 //! `_status` call first). `raw_mode` returns a handle whose operations are the

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type TextError; add: import TextError from \"@std/errors.ms\"",
+        "message": "unknown type TextError; add: import TextError from \"@std/core.ms\"",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinference-1.ms",
           "line": 5,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:29: resolution: unknown type TextError; add: import TextError from \"@std/errors.ms\"\n<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:42: resolution: unknown binding fail; add: import fail from \"@std/testing.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:29: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:42: resolution: unknown binding fail; add: import fail from \"@std/testing.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

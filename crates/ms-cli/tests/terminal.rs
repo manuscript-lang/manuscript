@@ -8,7 +8,7 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const PROGRAM: &str = r#"import {terminal, TerminalEvent, EraseRegion} from "@std/terminal.ms"
+const PROGRAM: &str = r#"import {terminal, TerminalEvent, EraseRegion} from "@std/io.ms"
 import {stdout} from "@std/io.ms"
 import {duration} from "@std/time.ms"
 

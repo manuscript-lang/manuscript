@@ -28,7 +28,7 @@ recorded here before it is committed.)_
   clone mode string and entry/byte budgets (`i64::MAX` = unlimited). Callbacks are `extern "C-unwind"` thunks with a captured `env`: strings
   passed to them are borrowed for the call (the runtime releases its copies afterwards), `copy`'s returns non-zero to keep an entry and
   `glob_entries`' returns non-zero to exclude it. `msstd_fs_constants` returns the open-flag and mode constants as parallel name/value lists.
-  Glob matching lives in `ms-std-path::glob` (shared with `@std/path`) (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
+  Glob matching lives in `ms-std-path::glob` (shared with `@std/fs`) (Go `pkg/runtime` semantics: braces, extglobs, `**`, dotfile rules).
 - **v2.5 (`ms-std-process`).** `msstd_process_*` covers process control and child processes. `STATUS_TIMEOUT` (13) and `STATUS_OUTPUT_LIMIT` (14)
   join the table for `CommandError`. `Map[String, String]` crosses as two parallel string lists (`environment`, `replace`). `command_run` takes
   the arguments, input bytes, optional limit and optional timeout and returns `CommandOut` (exit code, stdout, stderr); `command_spawn` returns a

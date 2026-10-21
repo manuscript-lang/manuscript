@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/binary.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/binary.ms"
+import {read_integer, write_integer, read_float, write_float, BinaryError} from "@std/bytes.ms"
 import Bytes from "@std/bytes.ms"
 
 test "binary integer boundaries and both byte orders":

@@ -1,4 +1,4 @@
-//! `@std/errors.ms` `category`: the shared category of a standard error case. Each standard
+//! `@std/core.ms` `category`: the shared category of a standard error case. Each standard
 //! error type that has been turned into an `Error` value gets a test; a case answers with the
 //! category of its own name.
 

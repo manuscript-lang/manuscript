@@ -5,7 +5,7 @@ weight = 3
 
 # Implementing Closeable
 
-Import `Closeable` from `@std/cleanup.ms` to name or implement it. `with` checks the identity of this standard contract; an unrelated same-named interface does not qualify.
+Import `Closeable` from `@std/core.ms` to name or implement it. `with` checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
 ```manuscript
 interface Closeable:

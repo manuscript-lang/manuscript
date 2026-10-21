@@ -8,9 +8,9 @@ weight = 8
 - `Equal`: values can be compared with `==` and `!=`. Records of the same type are equal when all fields are equal, not only when they are the same object.
 - `Hashable`: a lookup code for map keys and set elements, which also require `Equal`. The hash finds the entry; equality resolves collisions.
 
-Both are prelude interfaces from `@std/equality.ms`; importing them is rejected. They are independent of sharing and resource lifetime.
+Both are prelude interfaces from `@std/core.ms`; importing them is rejected. They are independent of sharing and resource lifetime.
 
-`Comparable` (also in `@std/equality.ms`) orders values for `math.max`, `min`, `max_of`, and `min_of`. It does not imply `Equal`: Float orders NaN above every value yet NaN != NaN. Make `compare` return zero exactly when `equals` is true.
+`Comparable` (also in `@std/core.ms`) orders values for `math.max`, `min`, `max_of`, and `min_of`. It does not imply `Equal`: Float orders NaN above every value yet NaN != NaN. Make `compare` return zero exactly when `equals` is true.
 
 ```manuscript
 interface Equal:

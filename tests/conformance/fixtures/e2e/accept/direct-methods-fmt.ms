@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-methods.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal} from "@std/testing.ms"
 
 type Counter:

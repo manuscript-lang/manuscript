@@ -1,4 +1,4 @@
-//! `@std/bits`: integer bit operations. Shifts fault outside 0 through 63; rotations take
+//! `@std/math`: integer bit operations. Shifts fault outside 0 through 63; rotations take
 //! the count modulo 64; the wrapping operations never fault.
 
 use crate::fault::fault_fmt;

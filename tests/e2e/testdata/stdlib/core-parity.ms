@@ -1,5 +1,5 @@
-import {TextError} from "@std/errors.ms"
-import panic from "@std/faults.ms"
+import {TextError} from "@std/core.ms"
+import panic from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 import JsonLimits from "@std/json.ms"
 

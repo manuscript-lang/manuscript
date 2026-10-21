@@ -7,10 +7,10 @@ import IoError from "@std/io.ms"
 import Listener from "@std/net.ms"
 import NetworkError from "@std/net.ms"
 import ReadStream from "@std/io.ms"
-import TlsOptions from "@std/tls.ms"
-import WebSocket from "@std/websocket.ms"
-import WebSocketError from "@std/websocket.ms"
-import WebSocketOptions from "@std/websocket.ms"
+import TlsOptions from "@std/net.ms"
+import WebSocket from "@std/net.ms"
+import WebSocketError from "@std/net.ms"
+import WebSocketOptions from "@std/net.ms"
 
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
