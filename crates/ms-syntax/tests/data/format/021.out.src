@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {parse, from_int, BigInt, BigIntError} from "@std/bigint.ms"
+import {parse, from_int, BigInt, BigIntError} from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)

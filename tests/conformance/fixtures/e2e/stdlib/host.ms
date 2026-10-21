@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/host.ms
 import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
 import arguments from "@std/process.ms"
-import {system, endianness, end_of_line, os_type, dev_null} from "@std/system.ms"
+import {system, endianness, end_of_line, os_type, dev_null} from "@std/process.ms"
 import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
 import {read_line} from "@std/io.ms"
 

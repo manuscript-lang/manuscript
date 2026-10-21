@@ -3,7 +3,7 @@ name = "ms-std-regex"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Native implementation of @std/regex.ms (Go regexp syntax over the regex crate)"
+description = "Native implementation of @std/string.ms (Go regexp syntax over the regex crate)"
 
 [dependencies]
 regex = { version = "1", default-features = false, features = ["unicode-case", "unicode-gencat", "unicode-script", "unicode-perl", "unicode-bool", "unicode-age", "unicode-segment", "perf-inline", "perf-literal", "perf-onepass", "perf-backtrack", "perf-dfa"] }

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,lists,modules,mutation,optional,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 fn describe(name: Optional[String]) String:

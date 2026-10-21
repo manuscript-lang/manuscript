@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,match,modules,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/testing.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {
     assert_equal,
     expect_close,

@@ -1,5 +1,5 @@
-import Closeable from "@std/cleanup.ms"
-import TextError from "@std/errors.ms"
+import Closeable from "@std/core.ms"
+import TextError from "@std/core.ms"
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
 
 fn checked(n: Int) Result[Int, TextError]:

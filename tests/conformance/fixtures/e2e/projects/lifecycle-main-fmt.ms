@@ -1,12 +1,12 @@
 # conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, fail} from "@std/testing.ms"
 import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     label: String

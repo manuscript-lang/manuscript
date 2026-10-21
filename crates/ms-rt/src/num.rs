@@ -311,7 +311,7 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
 }
 
 // ---------------------------------------------------------------------------
-// Exported natives: `@std/numbers` and the Int / Float receiver operations
+// Exported natives: `@std/math` and the Int / Float receiver operations
 // ---------------------------------------------------------------------------
 
 /// `Numbers.parse_int(text, radix)`: status, with the value written to `out` only on success.

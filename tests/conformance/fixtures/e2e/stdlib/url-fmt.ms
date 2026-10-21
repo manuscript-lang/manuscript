@@ -13,7 +13,7 @@ import {
     QueryEntry,
     Url,
     UrlError
-} from "@std/url.ms"
+} from "@std/net.ms"
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")

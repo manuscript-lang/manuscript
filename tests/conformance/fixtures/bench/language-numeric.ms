@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/language/numeric.ms
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 import range from "@std/collections.ms"
 
 export fn main() Int:

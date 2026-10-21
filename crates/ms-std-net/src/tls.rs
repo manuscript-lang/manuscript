@@ -110,7 +110,7 @@ fn blocks_labeled(text: &str, wanted: impl Fn(&str) -> bool) -> Vec<Vec<u8>> {
 
 // -------------------------------------------------------------------- Options
 
-/// Explicit TLS settings (`TlsOptions` of `@std/tls.ms`).
+/// Explicit TLS settings (`TlsOptions` of `@std/net.ms`).
 #[derive(Clone, Debug, Default)]
 pub struct TlsOptions {
     pub server_name: String,

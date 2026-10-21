@@ -73,7 +73,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 `to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
     return outcome.to_optional()
 ```

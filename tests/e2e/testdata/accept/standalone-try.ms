@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 
 type State:

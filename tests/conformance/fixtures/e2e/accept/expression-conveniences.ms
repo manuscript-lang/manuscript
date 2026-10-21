@@ -1,9 +1,9 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/expression-conveniences.ms
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Counter:
     count: Int

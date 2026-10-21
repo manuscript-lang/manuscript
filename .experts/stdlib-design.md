@@ -15,7 +15,7 @@ Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` pa
 Decision: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. `[]` returns `T` and faults out of range; `get(index, default)` on List, String, and Bytes returns `T` or the default; `at()` is removed (#669). `Optional.get(default)` and `Result.get(default)` replace `unwrap`/`unwrap_or` (a missing default on none/error still faults), `Result.or_else` replaces `unwrap_or_else`, and `Result.err()` replaces `unwrap_error`. Optional keeps a lazy `or_else`; there is no eager/lazy pair on the same type.
 
 Apply when: designing any fallible read, lookup, or conversion.
-Evidence: [Optional](../stdlib/optional.ms), [Result](../stdlib/result.ms), commits f7a3f26a and 040f6321, [collection rules](../documentation/core-language/types/collections.md).
+Evidence: [Optional](../stdlib/core.ms), [Result](../stdlib/core.ms), commits f7a3f26a and 040f6321, [collection rules](../documentation/core-language/types/collections.md).
 Verify: out-of-range `[]` faults, `get(i, default: x)` returns `x`, and no `unwrap*` or `at` declaration remains (`ms search_symbol unwrap`).
 
 ### Fallible APIs return domain errors that implement Error
@@ -23,7 +23,7 @@ Verify: out-of-range `[]` faults, `get(i, default: x)` returns `x`, and no `unwr
 Decision: `Result[T, E: Error]`; plain text uses the flat record `TextError("message")` (one `text` field, not a one-case alternative); domain packages define their own error types with `impl Error`. No `Result[T, String]` anywhere, including docs and fixtures.
 
 Apply when: writing a Result-returning API, example, or test.
-Evidence: [errors.ms](../stdlib/errors.ms), [result.ms](../stdlib/result.ms), commit fd5b0bf9; see also the Result bound entry in [language.md](language.md).
+Evidence: [core.ms](../stdlib/core.ms), [core.ms](../stdlib/core.ms), commit fd5b0bf9; see also the Result bound entry in [language.md](language.md).
 Verify: `Result[Int, String]` is rejected; `TextError("x").text == "x"`.
 
 ### Text in, bytes by explicit sibling

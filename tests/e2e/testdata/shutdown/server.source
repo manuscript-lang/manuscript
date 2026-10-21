@@ -1,4 +1,4 @@
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
 import {network, Listener, Connection} from "@std/net.ms"
 import control from "@std/process.ms"

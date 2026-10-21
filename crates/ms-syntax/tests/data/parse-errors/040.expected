@@ -1,1 +1,1 @@
-error parse 20:18:564 "match requires at least one arm; add a case pattern or '_' arm under the header"
+error parse 20:18:562 "match requires at least one arm; add a case pattern or '_' arm under the header"

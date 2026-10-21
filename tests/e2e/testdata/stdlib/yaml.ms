@@ -1,6 +1,6 @@
 import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
 import from_scalars from "@std/string.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import range from "@std/collections.ms"
 import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
 

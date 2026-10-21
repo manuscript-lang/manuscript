@@ -1,6 +1,6 @@
 import {expect_ok} from "@std/testing.ms"
 import {headers, HttpRequest, HttpResponse} from "@std/http.ms"
-import TextError from "@std/errors.ms"
+import TextError from "@std/core.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 

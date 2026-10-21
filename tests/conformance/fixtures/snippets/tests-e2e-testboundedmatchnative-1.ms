@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,faults,interfaces,modules,mutation,records,stdlib-cleanup,tier-stdlib,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 type Count:
     total: Int
 type Watch:

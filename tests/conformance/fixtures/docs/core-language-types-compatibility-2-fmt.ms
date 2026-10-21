@@ -1,7 +1,7 @@
 # conform: tags=formatter,lists,modules,optional,parser,records,stdlib-errors,strings,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/compatibility.md:43
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 type Input:
     names: List[Optional[String]]
 

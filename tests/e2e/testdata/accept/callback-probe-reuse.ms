@@ -1,4 +1,4 @@
-import {TextError} from "@std/errors.ms"
+import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
 
 fn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)

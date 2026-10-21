@@ -1,4 +1,4 @@
-//! Natives for `@std/tls.ms` and the TLS entry points of `@std/net.ms`.
+//! Natives for `@std/net.ms` and the TLS entry points of `@std/net.ms`.
 
 use super::{ConnH, ListenerH, NetH, report};
 use crate::error::{Status as _, TlsErr};

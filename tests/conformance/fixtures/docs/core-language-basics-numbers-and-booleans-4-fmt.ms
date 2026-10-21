@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/basics/numbers-and-booleans.md:114
 import Decimal from "@std/decimal.ms"
-import NumberError from "@std/numbers.ms"
+import NumberError from "@std/math.ms"
 import expect_equal from "@std/testing.ms"
 
 fn amount_text() Result[String, NumberError]:

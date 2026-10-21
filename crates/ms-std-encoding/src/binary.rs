@@ -1,4 +1,4 @@
-//! Natives for `@std/binary.ms`: fixed-width integers and binary64 floats in either byte order.
+//! Natives for `@std/bytes.ms`: fixed-width integers and binary64 floats in either byte order.
 //! Symbols are `msrt_binary_<function>`; fallible ones return a status byte and write the ok value
 //! through `out` only on success.
 

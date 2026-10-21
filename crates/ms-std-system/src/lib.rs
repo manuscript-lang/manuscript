@@ -1,4 +1,4 @@
-//! `@std/system` natives. Symbols are `msstd_system_<name>`.
+//! `@std/process` natives. Symbols are `msstd_system_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
 //! `STATUS_FAILED` the text comes from `msstd_system_failure_message`. A record result crosses as

@@ -3,7 +3,7 @@ import {arguments, control} from "@std/process.ms"
 import {stdin, stdout, stderr} from "@std/io.ms"
 import {clock, wall_clock} from "@std/time.ms"
 import entropy from "@std/random.ms"
-import system from "@std/system.ms"
+import system from "@std/process.ms"
 import network from "@std/net.ms"
 
 fn check_services() Result[Unit, Error]:

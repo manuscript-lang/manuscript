@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,lists,maps,modules,mutation,optional,parser,stdlib-faults,strings,testing,tier-stdlib
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/collections.md:187
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 
 fn positives(values: List[Int]) List[Int]:

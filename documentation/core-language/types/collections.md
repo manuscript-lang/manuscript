@@ -191,7 +191,7 @@ Enumeration returns owned results. Callbacks borrow the receiver for the travers
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 
 fn positives(values: List[Int]) List[Int]:

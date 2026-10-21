@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=bench/language/life.ms
 import {filled, range} from "@std/collections.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 fn make_cells() List[Int]:
     if let values = filled(0, 16384): return values

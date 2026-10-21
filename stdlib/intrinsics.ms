@@ -1,6 +1,6 @@
 # Source locations for the fixed intrinsic receiver operations.
 import StringError from "@std/string.ms"
-import NumberError from "@std/numbers.ms"
+import NumberError from "@std/math.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 

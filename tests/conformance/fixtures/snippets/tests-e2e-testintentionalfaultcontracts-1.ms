@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/intentional_faults_test.go:12 TestIntentionalFaultContracts
 import {expect_equal} from "@std/testing.ms"
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 fn positive(value: Int) Int:
     if value > 0:

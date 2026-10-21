@@ -108,7 +108,7 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 `parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 import Bytes from "@std/bytes.ms"
 

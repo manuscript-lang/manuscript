@@ -9,10 +9,10 @@ A conformance test checks a rule by observing a program.
 
 Core-language fixtures in `tests/e2e/testdata/accept/` (`cl-*.ms`) hold independent accepted modules and rejected variants for grammar, operators, inference, contracts, and control flow; their parse, resolution, and type outcomes are authoritative.
 
-Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic` from `@std/faults.ms` and return `panic(message: ...)` on failure; a bare `return` passes a `Unit` test. Control fake I/O and virtual clocks around runtime transitions.
+Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic` from `@std/core.ms` and return `panic(message: ...)` on failure; a bare `return` passes a `Unit` test. Control fake I/O and virtual clocks around runtime transitions.
 
 ```manuscript
-import panic from "@std/faults.ms"
+import panic from "@std/core.ms"
 
 test "checked decrement":
     let value = 3

@@ -15,7 +15,8 @@ fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
     fail()
-import network from "@std/net.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	23	63	unknown type TextError; add: import TextError from "@std/core.ms"import network from "@std/net.ms"
 import { HttpResponse } from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn use() Unit:
@@ -24,7 +25,8 @@ fn use() Unit:
         shared.add(key: 1, value: 2)
         return panic("unreached")
     )
-type	6	68	228	this closure changes captured `shared`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `shared`# Doubles a number.
+resolution	3	8	85	module does not export panic; unknown standard module @std/faults.ms
+resolution	8	16	306	unknown binding panic; add: import panic from "@std/core.ms"# Doubles a number.
 export fn double(value: Int) Int:
     return value * 2
 
@@ -188,7 +190,8 @@ export fn main() Int:
 test "arithmetic":
     if not (2 + 3 == 5):
         return panic(message: "arithmetic failed")
-fn value%d(x: Int) Int: return x + 1
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	5	16	95	unknown binding panic; add: import panic from "@std/core.ms"fn value%d(x: Int) Int: return x + 1
 parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('export fn value() Int: return 3
 export fn other() Int: return 4
 test "value":
@@ -206,7 +209,8 @@ type	5	12	66	expected String, found Int (in the return value); Int does not conv
 import panic from "@std/faults.ms"
 test "never execute":
     return panic("check executed code")
-test "valid":
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"test "valid":
     let n = 1
 
 fn broken() Int: return "bad"
@@ -336,7 +340,8 @@ test "list":
     let values = [1, 2]
     if not (values.length() == 2):
         return panic(message: "check failed")
-interface Read[T]:
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	6	16	123	unknown binding panic; add: import panic from "@std/core.ms"interface Read[T]:
     fn get() Int
 type Pair[A, B]:
     left: A
@@ -363,7 +368,8 @@ impl Read for Box[fn(right: Int) Int]:
 test "opaque":
     let queue = Queue[Int](capacity: 1)
     let capacity = queue.capacity
-resolution	4	26	115	member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peekinterface Same[V]:
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
+resolution	3	17	66	unknown binding Queue; add: import Queue from "@std/collections.ms"interface Same[V]:
     fn same(other: V) Bool
 type Box[T: Equal]:
     value: T
@@ -461,7 +467,8 @@ fn old(value: Read & Equal) Unit:
     let resource = Closeable(value: queue)parse	2	5	40	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport Queue from "@std/queues.ms"
 import Closeable from "@std/cleanup.ms"
 fn invalid() Unit:
-    import panic from "@std/faults.ms"
+    resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
+resolution	2	8	42	module does not export Closeable; unknown standard module @std/cleanup.msimport panic from "@std/faults.ms"
 
 fn positive(value: Int) Int:
     if value > 0:
@@ -478,7 +485,9 @@ test "return contracts":
         return panic("check failed")
 
     discard(1)
-import panic from "@std/faults.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	7	9	122	unknown binding panic; add: import panic from "@std/core.ms"
+type	3	1	36	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import panic from "@std/faults.ms"
 
 fn failed_initializer() Never:
     let _impossible: Int = panic("initializer cannot return")
@@ -489,7 +498,9 @@ fn returned_failure() Int:
 fn endless() Int:
     while true:
         continue
-fn optional(value: Int = 1) Int: return value
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	28	94	unknown binding panic; add: import panic from "@std/core.ms"
+type	3	1	36	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)fn optional(value: Int = 1) Int: return value
 fn required(value: Int) Int: return value
 fn call(x: Optional[Int]) Int:
     let chosen = match x:
@@ -561,7 +572,8 @@ fn explicit() Unit:
 type Override:
     received: Bool
 impl FileSystem for Override:
-resolution	4	6	74	unknown type FileSystem; add: import FileSystem from "@std/fs.ms"test "filesystem concrete overrides and interface defaults":
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	6	74	unknown type FileSystem; add: import FileSystem from "@std/fs.ms"test "filesystem concrete overrides and interface defaults":
     let item = Override(false)
     let view = FileSystem(item)
 resolution	2	16	76	unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...)', or import it from a module
@@ -813,7 +825,8 @@ fn forward[T](item: T) T: item
 import panic from "@std/faults.ms"
 export fn main() Int:
     return panic(message: "profile failure")
-import { duration, sleep } from "@std/time.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import { duration, sleep } from "@std/time.ms"
 import stdout from "@std/io.ms"
 export fn main() Int:
     stdout().write(data: "ready\n")
@@ -904,7 +917,9 @@ fn first() Unit:
 import {TextError} from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, Missing]: fail("empty")
-resolution	3	24	140	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import ittype Failure:
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	39	79	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	3	24	140	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import ittype Failure:
     code: Int
 impl Error for Failure:
     fn message() String: "failure"
@@ -1079,12 +1094,14 @@ fn f() Int:
 fn f() Int:
     panic = 2
     return 0
-type	3	5	51	cannot assign to imported function panic; assignment targets are 'var' bindings and record fieldsimport Queue from "@std/queues.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	3	5	51	unknown binding panic; add: import panic from "@std/core.ms"import Queue from "@std/queues.ms"
 fn f(q: Queue[Int]) Int:
     q.capacity = 5
     return q.capacity
-resolution	3	7	66	member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek
-resolution	4	14	92	member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peekinterface I:
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
+resolution	2	9	43	unknown type Queue; add: import Queue from "@std/collections.ms"
+type	3	7	66	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'interface I:
     fn n() Int
 type Pair[A, B]:
     a: A
@@ -1106,7 +1123,7 @@ fn f() Int:
     let n = Queue[Int]()
     return 0
 resolution	2	13	24	unknown binding SetBuilder; add: import SetBuilder from "@std/collections.ms"
-resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queues.ms"fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) Unit:
+resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/collections.ms"fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) Unit:
     match found:
         some(n):
             counts.add(key: "a", value: n)
@@ -1229,7 +1246,7 @@ export fn bare() Int:
     return cuont
 resolution	2	12	33	unknown binding cuont; did you mean 'count'?fn f() Unit:
     return panic(message: "x")
-resolution	2	12	24	unknown binding panic; add: import panic from "@std/faults.ms"fn f() Int:
+resolution	2	12	24	unknown binding panic; add: import panic from "@std/core.ms"fn f() Int:
     return missing
 resolution	2	12	23	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a modulefn f(x: Strin) Unit:
     return
@@ -1333,7 +1350,7 @@ fn f() Int:
 type	3	12	37	x is not a function (it has type Int); only functions and methods can be called, so remove the (...) or call a function insteadimport nope from "@std/faults.ms"
 fn f() Unit:
     return
-resolution	1	8	7	module does not export nope; @std/faults.ms exports: panic; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from "@std/faults.ms"'fn f() Int:
+resolution	1	8	7	module does not export nope; unknown standard module @std/faults.msfn f() Int:
     let x: Int = 3.5
     let y = x + 1
     return y
@@ -1341,7 +1358,8 @@ fn f() Unit:
 fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
-resolution	3	45	99	unknown type HttpMethod; add: import HttpMethod from "@std/http.ms"type Choice[T]:
+resolution	1	8	7	module does not export PriorityQueue; unknown standard module @std/queues.ms
+resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections.ms"type Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int], o: Optional[Int]) Int:
@@ -1410,7 +1428,9 @@ fn f() Int:
     with x = mk():
         return 1
     return 0
-type	10	5	187	with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'export type MoneyError:
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	4	6	64	unknown type Closeable; add: import Closeable from "@std/core.ms"
+type	10	5	187	with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'export type MoneyError:
     case Invalid
 export fn parse_cents() Int: 0
 export fn format_cents() String: "0"
@@ -1429,7 +1449,8 @@ impl Missing for S:
     return resultparse	2	5	55	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport {TextError} from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]:
-    type	3	1	117	reachable fallthrough in function returning Result[Int, TextError]; end every path with 'return <Result[Int, TextError]>' (or make the last branch return)fn collect[T, U](items: List[T], step: fn(value: T) Result[List[U], MissingError]) Result[List[U], MissingError]:
+    resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	39	79	unknown type TextError; add: import TextError from "@std/core.ms"fn collect[T, U](items: List[T], step: fn(value: T) Result[List[U], MissingError]) Result[List[U], MissingError]:
     return step(items.get(0))
 fn first() Unit:
     let result = collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))
@@ -1440,7 +1461,8 @@ resolution	4	80	240	unknown type MissingError; declare it with 'type MissingErro
 type	5	26	293	expected Int, found String (in the initializer of 'unrelated')import {TextError} from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: fail[Int]("empty")
-fn convert[T, U](value: T) Optional[U]: none
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	39	79	unknown type TextError; add: import TextError from "@std/core.ms"fn convert[T, U](value: T) Optional[U]: none
 fn first() Unit:
     let value = convert(1)
 type	3	17	78	cannot infer type argument U for convert; write convert[Int, U](...) with an explicit type for U; call arguments and the expected result must determine every type parameterfn broken(value: Missing) Unit: return
@@ -1523,37 +1545,37 @@ let Y = X + X
     return parse(text)
 resolution	1	27	26	unknown type JsonValue; add: import JsonValue from "@std/json.ms"
 resolution	1	38	37	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	12	60	unknown binding parse; add: import parse from "@std/bigint.ms"type Request:
+resolution	2	12	60	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
 resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	90	unknown binding parse; add: import parse from "@std/bigint.ms"type Request:
+resolution	4	12	90	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse(text)
 resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	90	unknown binding parse; add: import parse from "@std/bigint.ms"type Request:
+resolution	4	12	90	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request = try parse[Request](text)
     return ok(request)
 resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	23	101	unknown binding parse; add: import parse from "@std/bigint.ms"type Request:
+resolution	4	23	101	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request: Request = try parse(text)
     return ok(request)
 resolution	3	36	67	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	32	110	unknown binding parse; add: import parse from "@std/bigint.ms"fn f[T](text: String) Result[T, JsonError]:
+resolution	4	32	110	unknown binding parse; add: import parse from "@std/csv.ms"fn f[T](text: String) Result[T, JsonError]:
     return parse[T](text)
 resolution	1	33	32	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	2	12	55	unknown binding parse; add: import parse from "@std/bigint.ms"type Request:
+resolution	2	12	55	unknown binding parse; add: import parse from "@std/csv.ms"type Request:
     callback: fn() Int
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
 resolution	3	36	72	unknown type JsonError; add: import JsonError from "@std/json.ms"
-resolution	4	12	95	unknown binding parse; add: import parse from "@std/bigint.ms"type Expr:
+resolution	4	12	95	unknown binding parse; add: import parse from "@std/csv.ms"type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Optional[Expr])
@@ -1886,7 +1908,8 @@ interface Read:
     fn get() Int
 impl Read for Box[Int]:
     fn get() Int: self.value
-let value = result(fn():
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	4	40	225	unknown type TextError; add: import TextError from "@std/core.ms"let value = result(fn():
         let n = try checked()
         return ok(n)
     )parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn example() Unit:
@@ -1926,7 +1949,8 @@ fn wrong() Unit:
 resolution	3	35	94	unknown or non-nullary alternative case Sha257 of HashAlgorithm; cases: Md5, Sha1, Sha224, Sha256, Sha384, Sha3_256, Sha3_384, Sha3_512, Sha512 (cases with payloads need call syntax)import CompressionFormat from "@std/compress.ms"
 fn wrong() Unit:
     let format = CompressionFormat.GZip
-resolution	3	36	101	unknown or non-nullary alternative case GZip of CompressionFormat; cases: Deflate, Gzip, Zlib (cases with payloads need call syntax)import ArchiveFormat from "@std/archive.ms"
+resolution	1	8	7	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	3	18	83	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"import ArchiveFormat from "@std/archive.ms"
 fn wrong() Unit:
     let format = ArchiveFormat.TAR
 resolution	3	32	92	unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)import HashAlgorithm from "@std/crypto.ms"
@@ -1940,7 +1964,8 @@ fn choose(algorithm: HashAlgorithm) Unit:
     return unit
 fn wrong() Unit:
     choose(CompressionFormat.Gzip)
-type	6	30	196	expected HashAlgorithm, found CompressionFormat (in argument 'algorithm' of choose)type Other:
+resolution	2	8	50	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"type Other:
     case OutOfRange
 fn other() Other: Other.OutOfRange
 fn standard() CollectionError: CollectionError.OutOfRange
@@ -1953,7 +1978,11 @@ import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
 fn text_error(message: String) TextError: TextError(message)
-type Other:
+resolution	2	9	113	module does not export ErrorCategory; unknown standard module @std/errors.ms
+resolution	2	24	128	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	35	139	module does not export category; unknown standard module @std/errors.ms
+resolution	6	32	315	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	6	43	326	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 fn get() Other: OutOfRange
 resolution	3	17	48	ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRangetype ListEntry[T]:
@@ -1999,7 +2028,9 @@ fn get() Other: Missing(1)
 resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport {compress, CompressionFormat, CompressionError} from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-let encode = forward(compress)
+resolution	1	9	8	module does not export compress; unknown standard module @std/compress.ms
+resolution	1	19	18	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	1	38	37	module does not export CompressionError; unknown standard module @std/compress.mslet encode = forward(compress)
     encode("".to_bytes(), "gzip")parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = compress
     encode("".to_bytes(), "gzip")parse	2	5	129	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode = forward(CompressionFormat.Gzip.compress)
     encode("".to_bytes())parse	2	5	58	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = CompressionFormat.Gzip.compress
@@ -2012,7 +2043,11 @@ fn explicit() Unit:
     CompressionFormat.Gzip.compress(data, 6)
     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
-let initial = Mode.Idle
+resolution	1	9	8	module does not export compress; unknown standard module @std/compress.ms
+resolution	1	19	18	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	4	5	114	unknown binding compress; add: import compress from "@std/archive.ms"
+resolution	7	5	240	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
+type	8	57	337	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindinglet initial = Mode.Idle
 
 type Mode:
     case Idle
@@ -2046,8 +2081,11 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail
 fn consume(value: Optional[Int]) Unit: return
-fn first() Unit:
-    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; add: import TextError from "@std/errors.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	8	48	module does not export panic; unknown standard module @std/faults.ms
+resolution	3	39	114	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	10	30	477	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
+    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; add: import TextError from "@std/core.ms"
 resolution	2	42	58	unknown binding fail; add: import fail from "@std/testing.ms"fn first() Unit:
     let callback: fn() Optional[Int] = fn(): absent()resolution	2	46	62	unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...)', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
 fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
@@ -2069,7 +2107,7 @@ fn first() Unit:
     callback = required
     callback()resolution	3	40	91	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module
 type	5	5	166	missing argument value: Int in call to callback; add 'value: <Int>'fn first() Unit:
-    let value: fn(message: String) Result[Int, TextError] = failresolution	2	48	64	unknown type TextError; add: import TextError from "@std/errors.ms"
+    let value: fn(message: String) Result[Int, TextError] = failresolution	2	48	64	unknown type TextError; add: import TextError from "@std/core.ms"
 resolution	2	61	77	unknown binding fail; add: import fail from "@std/testing.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or_else(cause)type	2	70	106	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest
 type	2	59	95	String does not satisfy Error; pass a type that already implements it
@@ -2293,7 +2331,8 @@ impl Closeable for Box[T]:
         return
 export fn loaded() Int:
     return 1
-resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
     fn get() Int:
         return 0
 resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[T] for Box[T]:
@@ -2448,7 +2487,7 @@ type Val:
 impl Read for Val:
     fn get() Int:
         return self.val
-fn f(value: Val) Unit:
+resolution	3	8	69	module does not export Queue; unknown standard module @std/queues.msfn f(value: Val) Unit:
     value.val = true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
@@ -2492,9 +2531,9 @@ fn f(socket: Connection) Unit:
     socket.clone()
 resolution	3	12	79	unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytesfn f(queue: Queue[Int]) Unit:
     queue.clone()
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queues.ms"fn f(queue: Queue[Int]) Unit:
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queues.ms"
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections.ms"
 type	2	11	40	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn number(value: Optional[Int]) Int: return value.get()
 fn call() Int: return type	2	16	71	bare return requires Unit; this function returns Int, so write 'return <value>'fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f("wrong")
@@ -2815,7 +2854,9 @@ fn optional[T](r: Optional[Result[T, Error]]) Unit: return
 fn convert[T, U](r: Result[T, Error]) Optional[U]: none
 fn apply[T, U](r: Result[T, Error], callback: fn(value: T) U) U: callback(h(r))
 fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r
-fn first() Int:
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	8	48	module does not export panic; unknown standard module @std/faults.ms
+resolution	23	26	591	unknown binding panic; did you mean 'pair'?fn first() Int:
     let r: Result[Int, Error] = f()
     return h(r)resolution	2	33	48	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module
 resolution	3	12	63	unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...)', or import it from a modulefn bounded[T: Equal](r: Result[T, Error]) Unit: return
@@ -2950,11 +2991,13 @@ fn tail(value: Result[parse	2	23	61	unterminated delimiter '[' opened at line 2
 fn tail(value: Result[Int, TextError]) Result[Int, TextError]:
     let output = try value
     return ok(output)
-import TextError from "@std/errors.ms"
+resolution	1	8	7	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	28	66	unknown type TextError; add: import TextError from "@std/core.ms"import TextError from "@std/errors.ms"
 fn tail(value: Result[Int, TextError]) Result[Int, Error]:
     let output = try value
     return ok(output)
-.ms"
+resolution	1	8	7	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	28	66	unknown type TextError; add: import TextError from "@std/core.ms".ms"
 fn check() Unit:
     let decoded = parse(text: "a: 1")
 parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn operation() Result[Unit, Error]: ok(unit)
@@ -3443,7 +3486,8 @@ test "bad":
 test "text":
     if not ("{1}" == "1"):
         return panic(message: "check failed")
-type Item:
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	5	16	91	unknown binding panic; add: import panic from "@std/core.ms"type Item:
     value: Int
 fn use(value: Int) Unit:
     return
@@ -3805,7 +3849,7 @@ import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
     let values = [0]
-    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
+resolution	3	8	104	module does not export panic; unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -3826,7 +3870,8 @@ fn named(state: Queue[Int], value: Int = read(state)) Int:
 fn nested(state: Queue[Int]) Unit:
     let callback = fn(value: Int = read(state)) Int:
         return value
-diff --git a/src/a.ms b/src/a.ms
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
+resolution	2	16	50	unknown type Queue; add: import Queue from "@std/collections.ms"diff --git a/src/a.ms b/src/a.ms
 index 111..222 100644
 --- a/src/a.ms
 +++ b/src/a.ms
@@ -3893,7 +3938,12 @@ fn nested(resource: Resource) Unit:
 
 fn indirect(callback: fn() Unit) Unit:
     callback()
-type	23	21	459	this closure would move `resource` out of the variable it captured, but a closure can run more than once; return `resource.clone()` insteadtype State:
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	2	8	47	module does not export Queue; unknown standard module @std/queues.ms
+resolution	5	12	102	unknown type Queue; add: import Queue from "@std/collections.ms"
+resolution	7	6	119	unknown type Closeable; add: import Closeable from "@std/core.ms"
+type	15	5	263	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unit
+type	23	9	447	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unittype State:
     count: Int
 fn increment(state: State) Int:
     state.count = state.count + 1
@@ -4277,14 +4327,14 @@ resolution	4	12	81	unknown binding tagged_detail; declare it with 'let tagged_de
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/path.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/fs.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...)', or import it from a modulefn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
 
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/path.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/fs.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...)', or import it from a modulefn f() Bool:
     return active or allowed and remaining > 0
 resolution	2	12	24	unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module
@@ -4319,7 +4369,7 @@ resolution	8	9	162	unknown binding run; declare it with 'let run = ...' before u
             return 0
         error(_):
             return 1
-resolution	2	19	49	unknown binding parse; add: import parse from "@std/bigint.ms"
+resolution	2	19	49	unknown binding parse; add: import parse from "@std/csv.ms"
 resolution	5	18	158	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...)', or import it from a module
 resolution	6	19	195	unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...)', or import it from a module
 resolution	7	11	220	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...)', or import it from a modulefn process(input: String) Int:
@@ -4335,7 +4385,7 @@ resolution	7	11	220	unknown binding save; declare it with 'let save = ...' befor
             return 0
         error(_):
             return 1
-resolution	2	19	49	unknown binding parse; add: import parse from "@std/bigint.ms"
+resolution	2	19	49	unknown binding parse; add: import parse from "@std/csv.ms"
 resolution	6	18	159	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...)', or import it from a module
 resolution	7	19	196	unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...)', or import it from a module
 resolution	9	11	222	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...)', or import it from a modulefn work(enabled: Bool) Int:
@@ -4711,11 +4761,11 @@ fn answer() Item:
     match parse("1"):
         ok(value): return 1
         error(e): return 2
-resolution	2	11	27	unknown binding parse; add: import parse from "@std/bigint.ms"fn answer() Int:
+resolution	2	11	27	unknown binding parse; add: import parse from "@std/csv.ms"fn answer() Int:
     match parse("1"):
         ok(value): return value
         error(_): return 2
-resolution	2	11	27	unknown binding parse; add: import parse from "@std/bigint.ms"fn answer() Int:
+resolution	2	11	27	unknown binding parse; add: import parse from "@std/csv.ms"fn answer() Int:
     let items = [1, 2, 3]
     return items.length()
 export fn answer() Int:
@@ -5108,7 +5158,8 @@ fn length(values: List[Int]) Int:
     return values.length()
 fn os_name() String:
     return system().info().os
-fn label(value: Int) String:
+resolution	2	8	53	module does not export system; unknown standard module @std/system.ms; did you mean '@std/bytes.ms'?
+resolution	6	12	175	unknown binding system; add: import system from "@std/process.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -5160,7 +5211,8 @@ fn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()
 fn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
 import MissingValue from "@std/errors.ms" # keep
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
-resolution	1	8	7	redundant prelude import MissingValue; remove MissingValue from this import and use its prelude declaration directlyimport List from "@std/collections.ms" # keep
+resolution	1	8	7	module does not export MissingValue; unknown standard module @std/errors.ms
+resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationimport List from "@std/collections.ms" # keep
 fn count() Int: List[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport {ListBuilder, List} from "@std/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
@@ -5380,7 +5432,7 @@ fn use[T](value: Optional[Box[T]]) T:
     match value:
         some(Box): return Box.value
         none: return panic(message: "empty")
-resolution	6	22	138	unknown binding panic; add: import panic from "@std/faults.ms"type Flag:
+resolution	6	22	138	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
     case Ready
 fn use(value: Optional[Int]) Int:
     let Flag = 2
@@ -5398,7 +5450,7 @@ fn use() Int:
     match value:
         some(Value): return Value
         none: return panic(message: "empty")
-resolution	4	22	105	unknown binding panic; add: import panic from "@std/faults.ms"type Failure:
+resolution	4	22	105	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5524,7 +5576,8 @@ export fn run() Int:
 import {TextError} from "@std/errors.ms"
 export fn load(n: Int) Result[Int, TextError]:
     return ok(n)
-export fn load(n: Int) Result[Int, Error]:
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	36	76	unknown type TextError; add: import TextError from "@std/core.ms"export fn load(n: Int) Result[Int, Error]:
     return ok(n)
 fn one() Int:
     return 1
@@ -5585,7 +5638,8 @@ test "fails":
 
 test "after":
     return unit
-import panic from "@std/faults.ms"
+resolution	2	8	49	module does not export panic; unknown standard module @std/faults.ms
+resolution	9	12	236	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
 import filesystem from "@std/fs.ms"
 export fn other() Int: return 4
 test "source":
@@ -5594,7 +5648,8 @@ test "source":
         if data.length() != 7: return panic("wrong fixture size")
     else:
         return panic("library fixture cwd changed")
-import {parse, CsvOptions} from "@std/csv.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	5	29	146	unknown binding panic; add: import panic from "@std/core.ms"import {parse, CsvOptions} from "@std/csv.ms"
 import {base64_encode, base64_decode} from "@std/encoding.ms"
 import commands from "@std/process.ms"
 import filesystem from "@std/fs.ms"
@@ -5708,7 +5763,8 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-type	7	14	183	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow thatfn %s(visits: List[Int], scoped: Bool) String:
+resolution	2	8	50	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	5	6	125	unknown type Closeable; add: import Closeable from "@std/core.ms"fn %s(visits: List[Int], scoped: Bool) String:
     let b = StringBuilder()
     var i = 0
     if scoped:
@@ -5872,7 +5928,8 @@ export fn main() Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)
     return 0
-import Closeable from "@std/cleanup.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	12	52	unknown type TextError; add: import TextError from "@std/core.ms"import Closeable from "@std/cleanup.ms"
 type AggregateResource:
     visits: List[Int]
 impl Closeable for AggregateResource:
@@ -5891,9 +5948,8 @@ impl AggregateCounter for AggregateCell:
         self.total -= by
         return self.total
 fn identity[T](value: T) T: return value
-type	6	14	158	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow that
-type	14	14	369	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that
-type	17	14	447	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatfn %s(visits: List[Int], scoped: Bool) Int:
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	4	6	91	unknown type Closeable; add: import Closeable from "@std/core.ms"fn %s(visits: List[Int], scoped: Bool) Int:
     %s
     var i = %d
     if scoped:
@@ -5933,7 +5989,8 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-type	6	14	140	cannot change `self.visits`: this method does not change its receiver; declare it `var fn` to allow thatfn probe%d(visits: List[Int]) Int:
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.ms"fn probe%d(visits: List[Int]) Int:
     var sum = 0
     var i = %d
     with resource = Resource(visits):
@@ -6068,7 +6125,8 @@ fn chain(n: Int) Result[Int, TextError]:
     return ok(value)
 export fn main() Int:
     return chain(9223372036854775807).get()
-interface Counter:
+resolution	1	8	7	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	32	70	unknown type TextError; add: import TextError from "@std/core.ms"interface Counter:
     fn bump(by: Int) Int
 type Cell:
     total: Int
@@ -6113,24 +6171,28 @@ fn deep(value: Result[Int, TextError]) Int:
     return value.get()
 export fn main() Int:
     return deep(error(TextError("expected failure")))
-import {TextError} from "@std/errors.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	28	68	unknown type TextError; add: import TextError from "@std/core.ms"import {TextError} from "@std/errors.ms"
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     let extract = value.err
     return extract().text.scalar_length()
-import {TextError} from "@std/errors.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	3	28	90	unknown type TextError; add: import TextError from "@std/core.ms"import {TextError} from "@std/errors.ms"
 fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     return value.map(crash).get()
-import {TextError} from "@std/errors.ms"
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	5	28	137	unknown type TextError; add: import TextError from "@std/core.ms"import {TextError} from "@std/errors.ms"
 fn crash(cause: TextError) Int:
     return 1 / 0
 export fn main() Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))
     return value.or_else(crash)
-fn crash(key: String, value: Int) Bool:
+resolution	1	9	8	module does not export TextError; unknown standard module @std/errors.ms
+resolution	2	17	57	unknown type TextError; add: import TextError from "@std/core.ms"fn crash(key: String, value: Int) Bool:
     return 1 / value == 0
 export fn main() Int:
     let value: Map[String, Int] = {"a": 0}
@@ -6154,7 +6216,8 @@ test "several checks":
     let good = 2 + 3
     if good == 5:
         panic("last check failed")
-fn zero() Int:
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	5	9	105	unknown binding panic; add: import panic from "@std/core.ms"fn zero() Int:
     return 0
 export fn main() Int:
     return (1 /
@@ -6271,7 +6334,9 @@ fn discard(value: Int) Unit:
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
     discard(value: 1) | try expect_equal(expected: unit)
-import {expect_contains, expect_fault} from "@std/testing.ms"
+resolution	2	8	52	module does not export panic; unknown standard module @std/faults.ms
+resolution	8	9	167	unknown binding panic; add: import panic from "@std/core.ms"
+type	4	1	81	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import {expect_contains, expect_fault} from "@std/testing.ms"
 import panic from "@std/faults.ms"
 
 fn failed_initializer() Never:
@@ -6299,11 +6364,14 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-import {expect_contains, expect_fault} from "@std/testing.ms"
+resolution	2	8	69	module does not export panic; unknown standard module @std/faults.ms
+resolution	5	27	155	unknown binding panic; add: import panic from "@std/core.ms"
+type	4	1	98	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)import {expect_contains, expect_fault} from "@std/testing.ms"
 import panic from "@std/faults.ms"
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(fn(): panic("boom")), "boom")
-interface Read:
+resolution	2	8	69	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	48	192	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
     fn read() Int
 type Reader:
     operation: fn() Int
@@ -6358,7 +6426,8 @@ fn run() Int:
 
 test "fault":
     run()
-import Closeable from "@std/cleanup.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	36	85	unknown binding panic; add: import panic from "@std/core.ms"import Closeable from "@std/cleanup.ms"
 type Count:
     total: Int
 type Watch:
@@ -6386,7 +6455,10 @@ export fn main() Int:
         i += 1
     if sum != 2033: return 4
     return 0
-resolution	13	15	288	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	13	15	288	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	6	6	101	unknown type Closeable; add: import Closeable from "@std/core.ms"
+type	10	5	205	with requires an explicit Closeable implementation or a contract declaring close() Unit; Watch has none, so add 'impl Closeable for Watch:' with fn close() Unit
 resolution	13	34	307	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module
 resolution	15	19	355	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module
 resolution	15	36	372	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module
@@ -6552,7 +6624,9 @@ export fn main() Int:
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) Int: left - right
-test %q:
+resolution	2	9	58	module does not export Queue; unknown standard module @std/queues.ms
+resolution	2	16	65	module does not export PriorityQueue; unknown standard module @std/queues.ms
+resolution	3	8	109	module does not export from_int; unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
@@ -6586,11 +6660,13 @@ test "continues":
 
 export fn main() Int:
     return panic("check must not execute main")
-import panic from "@std/faults.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	12	69	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
 
 test "check must not execute tests":
     return panic("check must not execute tests")
-fn number() Int: return 1
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	4	12	84	unknown binding panic; add: import panic from "@std/core.ms"fn number() Int: return 1
 type Node:
     next: Optional[Node]
 export fn main() Int:
@@ -6665,8 +6741,13 @@ test "negative replace limit faults":
 
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")
-type	28	18	813	cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it
-type	29	5	834	cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change itimport filesystem from "@std/fs.ms"
+resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
+resolution	2	8	42	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	4	9	131	module does not export Queue; unknown standard module @std/queues.ms
+resolution	14	6	367	unknown type Closeable; add: import Closeable from "@std/core.ms"
+type	19	5	524	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with fn close() Unit
+resolution	20	16	575	unknown binding panic; add: import panic from "@std/core.ms"
+resolution	32	17	904	unknown binding Queue; add: import Queue from "@std/collections.ms"import filesystem from "@std/fs.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 test "fixture next to the manifest":
@@ -6701,7 +6782,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-type	16	14	441	cannot change `self.value`: this method does not change its receiver; declare it `var fn` to allow thatimport {TestHooks, expect_equal} from "@std/testing.ms"
+resolution	3	8	107	module does not export panic; unknown standard module @std/faults.msimport {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()

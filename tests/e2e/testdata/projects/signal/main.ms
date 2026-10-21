@@ -1,6 +1,6 @@
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"
-import Closeable from "@std/cleanup.ms"
+import Closeable from "@std/core.ms"
 
 type Resource:
     label: String
