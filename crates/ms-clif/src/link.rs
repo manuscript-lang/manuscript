@@ -11,8 +11,17 @@ pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
 
 /// Like [`link`] with several runtime inputs (objects or static libraries), in order.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
+    link_with(object, inputs, out, false)
+}
+
+/// Like [`link_all`]; `strip` also drops the symbol table (smallest executable, no symbol names
+/// for profilers or backtraces).
+pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let (program, mut command) = driver();
     command.arg("-o").arg(out).arg(object).args(inputs);
+    if strip && !cfg!(windows) {
+        command.arg("-Wl,-s");
+    }
     command.args(system_libraries());
     command.args(driver_options(&program));
     let o = command
