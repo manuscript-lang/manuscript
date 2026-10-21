@@ -12,6 +12,9 @@ pub mod link;
 
 mod cg;
 mod dwarf;
+pub mod llvm_ir;
+mod llvm_obj;
+mod llvm_tables;
 mod lower;
 mod spill;
 
@@ -29,6 +32,9 @@ pub struct Options {
     pub opt_level: &'static str,
     /// Dump Cranelift IR of every function to stderr.
     pub dump_clif: bool,
+    /// Release builds: optimize functions with LLVM at this level (`"3"` or `"s"`) instead of
+    /// compiling them with Cranelift. Profiles and fault traces carry no source lines.
+    pub llvm: Option<&'static str>,
 }
 
 impl Default for Options {
@@ -38,6 +44,7 @@ impl Default for Options {
             poll: true,
             opt_level: "speed",
             dump_clif: false,
+            llvm: None,
         }
     }
 }

@@ -20,6 +20,12 @@ fn main() {
             "--no-poll" => opts.poll = false,
             "--dump-clif" => opts.dump_clif = true,
             "--no-opt" => optimize = false,
+            "--llvm" => {
+                opts.llvm = match args.next().as_deref() {
+                    Some("s") => Some("s"),
+                    _ => Some("3"),
+                }
+            }
             "--opt" => {
                 opts.opt_level = match args.next().as_deref() {
                     Some("none") => "none",
