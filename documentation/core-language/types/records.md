@@ -51,7 +51,7 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Val:
     val: Int

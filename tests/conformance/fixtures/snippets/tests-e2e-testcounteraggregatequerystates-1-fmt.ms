@@ -11,8 +11,8 @@ impl Closeable for AggregateResource:
         self.visits.append(1)
 
 interface AggregateCounter:
-    fn bump(by: Int) Int
-    fn lower(by: Int) Int
+    var fn bump(by: Int) Int
+    var fn lower(by: Int) Int
 
 type AggregateCell:
     total: Int

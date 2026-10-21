@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/fault_locations_test.go:47 TestFaultSourceLocations
 interface Counter:
-    fn bump(by: Int) Int
+    var fn bump(by: Int) Int
 
 type Cell:
     total: Int

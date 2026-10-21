@@ -317,6 +317,26 @@ impl Checker {
                     );
                 }
             }
+            let declared_mutating = |op: &Operation| {
+                let f = op.decl.as_ref()?;
+                Some(f.decl.methods().get(f.index?)?.mutating)
+            };
+            if let Some(contract_mutates) = ops
+                .iter()
+                .find(|op| op.name == method.func.name)
+                .and_then(declared_mutating)
+                && method.mutating
+                && !contract_mutates
+            {
+                let (have, want) = ("var fn", "fn");
+                self.type_error(
+                    method.pos,
+                    format!(
+                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
+                        method.func.name
+                    ),
+                );
+            }
             if !found {
                 self.type_error(
                     method.pos,
@@ -816,7 +836,7 @@ impl Checker {
             );
         }
         format!(
-            "with requires an explicit Closeable implementation or a contract declaring close() Unit; {name} has none, so add 'impl Closeable for {name}:' with fn close() Unit"
+            "with requires an explicit Closeable implementation or a contract declaring close() Unit; {name} has none, so add 'impl Closeable for {name}:' with var fn close() Unit"
         )
     }
 

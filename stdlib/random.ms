@@ -16,7 +16,7 @@ export type RandomError:
 export interface Entropy:
     # Returns exactly `count` unpredictable bytes, with `count` from 0 through 16 MiB (16777216).
     # A negative or larger count returns InvalidInput; a source failure returns Failed. The operating system source observes task cancellation between 64 KiB chunks.
-    fn bytes(count: Int) Result[Bytes, RandomError]
+    var fn bytes(count: Int) Result[Bytes, RandomError]
 
 # Returns a secure integer at least `min` and below `max_exclusive` when supplied.
 export fn secure_int(

@@ -13,6 +13,6 @@ fn make_fixture() State:
     return State(7)
 impl TestHooks for State:
 test "one":
-    let hooks = TestHooks(value: fixture)
+    var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)

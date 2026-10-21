@@ -73,7 +73,7 @@ test "presence keeps custom EOF empty CRLF and following text":
 
 test "presence retains custom errors and limits":
     let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
-    let input = ReadStream(source)
+    var input = ReadStream(source)
     present(input, 2) | try expect_false
     input.close()
     present(input) | try expect_false

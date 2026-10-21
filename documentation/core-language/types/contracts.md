@@ -32,7 +32,7 @@ impl Increment for Offset:
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. Operations and methods declare no generic parameters of their own.
+After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. Operations and methods declare no generic parameters of their own.
 
 ```manuscript
 # Rejected: amount does not match the contract's value label.

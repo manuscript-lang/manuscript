@@ -83,7 +83,7 @@ type Ranked:
     unexpected: List[Int] = []
 
 impl Comparable for Ranked:
-    var fn compare(other: Comparable) Int:
+    fn compare(other: Comparable) Int:
         match other:
             Ranked(value):
                 if self.rank < value.rank: return -9223372036854775808
@@ -91,7 +91,6 @@ impl Comparable for Ranked:
 
                 return 0
             _:
-                self.unexpected.append(1)
                 return 0
 
 test "extrema use comparator signs without negating Int minimum":
