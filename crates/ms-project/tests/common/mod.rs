@@ -48,7 +48,8 @@ pub fn write(root: &str, name: &str, source: &str) -> String {
     let path = Path::new(root).join(name);
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
     std::fs::write(&path, source).unwrap();
-    path.to_str().unwrap().to_string()
+    // The project's spelling uses `/` on every host.
+    path.to_str().unwrap().replace('\\', "/")
 }
 
 pub fn join(a: &str, b: &str) -> String {

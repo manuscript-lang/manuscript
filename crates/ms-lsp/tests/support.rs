@@ -245,9 +245,13 @@ fn snapshot_line(message: &Json) -> String {
         temp.insert(0, '/');
     }
     let pid = format!("-{}/", std::process::id());
-    let text = canonical(message)
+    let mut text = canonical(message)
         .replace(&pid, "-PID/")
         .replace(&temp, "$TMP");
+    // Messages spell the directory as a path (`D:/...`), URIs with the leading slash.
+    if cfg!(windows) {
+        text = text.replace(&temp[1..], "$TMP");
+    }
     if text.len() > 4096 {
         return "#large".to_string();
     }
