@@ -23,6 +23,15 @@ RESULTS = ROOT / "results"
 WRITE_LOCK = threading.Lock()
 
 
+def llm_tokens(text):
+    """Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); None without tiktoken."""
+    try:
+        import tiktoken
+    except ImportError:
+        return None
+    return len(tiktoken.get_encoding("o200k_base").encode(text, disallowed_special=()))
+
+
 def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     run_id = uuid.uuid4().hex[:10]
     base = Path(tempfile.mkdtemp(prefix="agent-bench-"))
@@ -44,6 +53,11 @@ def run_one(ch, lang_id, lang, harness, model, timeout_s, keep, out_file, tag):
     tpath = transcripts / f"{run_id}.log"
     peeked = tpath.exists() and any(m in tpath.read_text(errors="replace") for m in ("bench/agent/challenges", "hidden/cases.json"))
     g = grade(ch, lang, ws)
+    sol = ws / lang["solution"]
+    if sol.is_file():
+        (RESULTS / "sources").mkdir(parents=True, exist_ok=True)
+        shutil.copy(sol, RESULTS / "sources" / f"{run_id}{sol.suffix}")
+        g["llm_tokens"] = llm_tokens(sol.read_text(errors="replace"))
     rec = {
         "run_id": run_id, "ts": int(time.time()), "tag": tag,
         "challenge": ch.id, "category": ch.category, "tier": ch.tier,
