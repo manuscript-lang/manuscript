@@ -34,7 +34,7 @@ entry = "./src/main.ms"
 | Command | Behavior |
 | --- | --- |
 | `ms check <ms.toml>` | Check all source modules and discovered tests; validate entry when present |
-| `ms build <ms.toml>` | Check, generate Go, and build the executable; requires entry |
+| `ms build <ms.toml>` | Check, lower to MIR, generate native object code, and link the executable; requires entry |
 | `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
 
@@ -43,7 +43,7 @@ entry = "./src/main.ms"
 - Discovery skips hidden directories (such as `.ms-cache`), `vendor`, `node_modules`, and directory symlinks. Entries and imports are always followed.
 - Files outside the source directory are checked only if imported, the entry, or tests.
 - `ms check file.ms` checks that file and its imports only.
-- `check`, `lint`, and `doc` also take several targets; see [analysis input selection](../implementation.md#selecting-independent-analysis-inputs).
+- `check` and `lint` also take several targets; see [analysis input selection](../implementation.md#selecting-independent-analysis-inputs).
 
 ## Library projects and copied dependencies
 
@@ -55,7 +55,7 @@ name = "graph"
 source = "src"
 ```
 
-`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, `debug`, and `profile` need an executable entry: add `entry = "src/main.ms"` and export `fn main() Int`.
+`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, and `profile` need an executable entry: add `entry = "src/main.ms"` and export `fn main() Int`.
 
 To share library code today, copy its sources into each consuming project, for example `src/graph/`, and use relative imports or an alias:
 
@@ -95,7 +95,7 @@ For an import in `src/main.ms`, the first path resolves to `src/domain/customers
 
 Paths are normalized and symlinks resolved to one canonical file identity per build, so importing a file by relative path, file alias, or directory alias yields one module and cycle checks cannot be bypassed. Build metadata records paths relative to the project root.
 
-- Application paths, source directories, aliases, adapter manifests, and interface modules must resolve inside the project root after symlink resolution; escapes are compile errors.
+- Application paths, source directories, aliases, and interface modules must resolve inside the project root after symlink resolution; escapes are compile errors.
 - `@std/...` resolves only inside the pinned standard library, which cannot import application modules.
 - Interfaces may use intrinsic types and import standard declarations or other interfaces, never application modules.
 - Changes to source roots, entry, aliases, or the standard-library distribution change the module graph and build cache identity.

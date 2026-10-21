@@ -5,7 +5,7 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures snapshots of the bindings it uses.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure borrows or owns the bindings it captures.
 
 ```manuscript
 fn apply(value: Int, transform: fn(value: Int) Int) Int:
@@ -45,21 +45,11 @@ An anonymous function may omit parameter types when context supplies them (argum
 - A bound method value has the operation's function type with the receiver bound.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
-## Snapshot captures
+<a id="snapshot-captures"></a>
 
-A closure remembers the current value of each local binding it uses:
+## Closure captures
 
-```manuscript
-fn make_headline() fn() String:
-    var subject = "Weekly update"
-    let headline = fn():
-        return subject
-    subject = "Launch announcement"
-    return headline
-# make_headline()() returns "Weekly update".
-```
-
-Reassignment changes the local binding, not the captured value. Assigning to a captured outer binding is rejected.
+Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
 A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 

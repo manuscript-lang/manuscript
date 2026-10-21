@@ -13,11 +13,11 @@ After checking, the program is stored as typed IR holding the facts code generat
 | Argument names and parameters | Keep resolved labels, parameter mapping, and written evaluation order |
 | Lists | Keep element types |
 | Destructuring | Keep shapes, field bindings, extraction order |
-| Closure environments | Record snapshot captures and receiver references |
+| Closure environments | Record borrowed or owned captures and receiver places |
 | `with` and cleanup scopes | Resolve `close()` and unwind exited scopes |
 | Effects and host boundaries | Derive host/service relationships and diagrams |
 | Source locations | Map generated behavior to source |
 
-There are no ownership-transfer instructions or affine states.
+`Hir::ownership()` records move, borrow, mutation, and drop facts for lowering. It rejects use after move and overlapping borrows before code generation; see the [ownership contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 
 See [pipeline](pipeline.md), [evaluation lowering](../lowering/evaluation-order.md), and [metadata](../../../developer-tooling/debugging/metadata.md).

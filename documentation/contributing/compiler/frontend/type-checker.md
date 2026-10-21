@@ -9,7 +9,7 @@ The type checker decides whether source obeys Manuscript's rules before code is 
 
 ## Required checks
 
-Accept source per the [normative grammar](../../../core-language/basics/grammar.md), then resolve names and check [compatibility](../../../core-language/types/compatibility.md). Each rejection must name the violated source rule; Go acceptance is no substitute.
+Accept source per the [normative grammar](../../../core-language/basics/grammar.md), then resolve names and check [compatibility](../../../core-language/types/compatibility.md). Each rejection must name the violated source rule; backend acceptance is no substitute.
 
 | Source rule | Checker responsibility |
 | --- | --- |

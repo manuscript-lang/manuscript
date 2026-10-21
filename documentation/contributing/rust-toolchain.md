@@ -48,7 +48,7 @@ Under Miri the allocator takes its arena from the heap in place of `mmap` (and i
 | --- | --- |
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics |
-| `ms-mir` | HIR lowering, ownership elaboration, optimizer, verifier |
+| `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
 | `ms-clif` | MIR to Cranelift object code, line tables, perf map |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
@@ -65,7 +65,7 @@ The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these 
 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 - **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
-- **`ms emit` is not implemented.** The backend produces object code, not Go source.
+- **`ms emit` prints MIR.** Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered intermediate code. Native builds compile MIR to object code through Cranelift.
 - **Linking uses host tools.** Unix builds use `cc`; macOS also needs `dsymutil` and writes `<output>.dSYM` beside the executable. Keep that bundle with the executable for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections. `MS_LINKER` overrides the compiler driver. A bundled linker is planned.
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
 - **No concurrency runtime.** Tasks are cooperative and single-threaded; cancellation exists for signals and shutdown only.

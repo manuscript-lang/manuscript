@@ -22,7 +22,7 @@ ms build main.ms --build-type MinSizeRel -o small-program
 ms run main.ms --build-type Debug
 ```
 
-Use `Debug` for source stepping, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
+Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 
 ## Levels
 
@@ -41,4 +41,4 @@ Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and 
 - The default is `Release`, including for `profile`.
 - Repeated build types, unknown levels, and build-type flags on source-only commands are rejected before compilation.
 - Flags after `--` go to the program.
-- Optimized debugging may skip or reorder source steps.
+- Optimized code may reorder or remove source operations. DWARF provides file/line lookup, without variable, type, or inline-frame information; see [native debugging](../debugging/debugger-integration.md).

@@ -8,7 +8,7 @@ import Decimal from "@std/decimal.ms"
 interface ValueOperations:
     fn to_string() String
 
-# Data values have a shallow clone returning the concrete receiver type.
+# Data values have a deep clone returning the concrete receiver type.
 interface CloneOperations[T]:
     fn clone() T
 

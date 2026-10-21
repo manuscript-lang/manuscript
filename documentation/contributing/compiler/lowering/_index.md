@@ -9,7 +9,7 @@ Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and ve
 
 ## Typed values
 
-Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, records and alternatives are heap objects with a 16-byte header, and `List[T]` stores elements inline in the layout of `T`. There is no universal value type or boxing; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
+Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, records flatten their fields, alternatives use a tag and payload (boxed when recursive), and `List[T]` is an owned `{ ptr, len, cap }` value with inline elements. There is no universal value type or boxing; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
 
 - `ms-lower` consumes the checked HIR and ownership facts and builds MIR; native standard calls use the `msrt_` and `msstd_` symbols in `crates/ms-rt/ABI.md`.
 - `ms-mir` verifies every module it produces and has a text format and interpreter for tests.
@@ -27,7 +27,7 @@ Every Manuscript type has one word-level representation: `Int` is `i64`, `Float`
 
 ## Equality and keys
 
-Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `clone` entries emitted by the compiler.
+Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `copy` entries emitted by the compiler.
 
 ## Implementation scope
 

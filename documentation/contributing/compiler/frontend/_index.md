@@ -5,7 +5,7 @@ weight = 1
 
 # Parsing and checking
 
-Before generating Go, the compiler checks names, types, scopes, and captures, and records the facts in a typed intermediate representation (typed IR).
+Before native code generation, `ms-check` checks names, types, scopes, captures, cleanup, and ownership, and records the facts in typed HIR. `ms-lower` lowers that HIR to MIR for optimization, verification, and Cranelift code generation.
 
 - [Compilation pipeline](pipeline.md): from project loading to native executable.
 - [Type checking and source contracts](type-checker.md)
