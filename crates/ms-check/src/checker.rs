@@ -77,9 +77,6 @@ pub struct CheckOptions {
     pub scope_marker: Option<String>,
     /// The bundled standard source module being checked for the shared cache.
     pub bundled: Option<Name>,
-    /// Also enforce the value-semantics ownership rules (`ownership` module)
-    /// once the program type checks. Off by default.
-    pub ownership: bool,
 }
 
 /// The concrete fixture injected into tests of a module.
@@ -111,7 +108,7 @@ pub struct Program {
     /// Identities handed out while checking.
     pub serial: usize,
     /// Bindings that are exclusive (`var`) borrows of another value, for lowering. Filled when
-    /// the ownership pass ran (requested, or because a function uses a mutable borrow).
+    /// the ownership pass ran (every program that type checks).
     pub exclusive_borrows: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `exclusive_borrows`.

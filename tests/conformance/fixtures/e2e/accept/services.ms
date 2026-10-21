@@ -9,17 +9,17 @@ import BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
 test "sealed builders":
-    let list = ListBuilder[Int]()
+    var list = ListBuilder[Int]()
     list.append(1)
     list.append(2)
     try expect_equal(list.freeze(), [1, 2])
     try expect_equal(list.freeze(), [1, 2])
-    let map = MapBuilder[String, Int]()
+    var map = MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
     let expected: Optional[Int] = some(2)
     try expect_equal(map.freeze().get("a"), expected)
-    let set = SetBuilder[Int]()
+    var set = SetBuilder[Int]()
     set.add(3)
     set.add(3)
     try expect_equal(set.freeze().length(), 1)

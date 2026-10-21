@@ -16,10 +16,7 @@ fn diagnostics(source: &str) -> Vec<(u32, String)> {
     let program = ms_check::check(
         vec![ms_check::load_module(&module)],
         ImportMap::default(),
-        CheckOptions {
-            ownership: true,
-            ..CheckOptions::default()
-        },
+        CheckOptions::default(),
     );
     program
         .diagnostics

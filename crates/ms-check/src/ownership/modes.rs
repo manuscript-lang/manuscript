@@ -158,19 +158,23 @@ pub fn call_modes(
                     from_summary(summaries, s.module, &func, args.len(), label, None)
                 }
                 None => {
-                    // A native function keeps function arguments it is given.
+                    // A native function keeps function arguments it is given, except the
+                    // testing helpers, which run them at once.
+                    let runs_now = s.module.as_str() == "@std/testing.ms";
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())
                             .map(|i| {
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
-                                    Some(p) if p.ty.kind == Kind::Function => ParamMode::Consume,
+                                    Some(p) if p.ty.kind == Kind::Function && !runs_now => {
+                                        ParamMode::Consume
+                                    }
                                     _ => ParamMode::Borrow,
                                 }
                             })
                             .collect(),
-                        callbacks_borrowed: false,
+                        callbacks_borrowed: runs_now,
                         ..borrow_all(None)
                     }
                 }

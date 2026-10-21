@@ -38,7 +38,7 @@ export fn bench_binary() Unit:
         "bytes.builder",
         100000,
         fn() Int:
-            let bb = BytesBuilder()
+            var bb = BytesBuilder()
             for j in range(0, 100000):
                 bb.append(j % 256)
             return bb.freeze().length()

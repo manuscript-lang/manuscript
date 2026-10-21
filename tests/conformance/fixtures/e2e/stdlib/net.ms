@@ -1,4 +1,4 @@
-# conform: tags=faults,modules,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,faults,modules,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
 import {expect_equal, expect_error, expect_false} from "@std/testing.ms"

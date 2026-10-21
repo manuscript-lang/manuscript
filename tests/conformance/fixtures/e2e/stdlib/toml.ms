@@ -88,7 +88,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     )
     let array = (try items(root.get("array").get()))
     array.length() | try expect_equal(expected: 3)
-    let person = (try entries(array.get(2)))
+    let person = (try entries(array.get(2).clone()))
     (
         person.get("name").get() | try expect_equal(
             expected: TomlValue.StringValue("Ada")
@@ -304,7 +304,7 @@ test "TOML long strings parse and stringify in linear time":
     let long = repeated(text: "x\\n", count: 150000)
     let expected = repeated(text: "x\n", count: 150000)
     let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
-    let table = (try entries(root))
+    let table = (try entries(root.clone()))
     (table.get("a").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
     (table.get("b").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
     let text = (stringify(value: root) | try expect_ok)
@@ -316,7 +316,7 @@ test "TOML stringify rejects invalid date-time text":
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
         var table = Map[String, TomlValue]()
         table.add("x", TomlValue.DateTimeValue(text))
-        try expect_equal(stringify(TomlValue.TableValue(table)), invalid)
+        try expect_equal(stringify(TomlValue.TableValue(table.clone())), invalid)
         var nested = Map[String, TomlValue]()
         nested.add("a", TomlValue.ArrayValue([TomlValue.TableValue(table)]))
         try expect_equal(stringify(TomlValue.TableValue(nested)), invalid)

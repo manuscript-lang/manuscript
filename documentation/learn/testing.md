@@ -103,7 +103,7 @@ fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    fn before_each() Unit:
+    var fn before_each() Unit:
         self.count = 0
 
 test "increments":

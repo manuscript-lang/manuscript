@@ -7,10 +7,10 @@ type Counter:
     value: Int
 
 impl Counter:
-    fn increment() Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
 test "own methods":
-    let counter = Counter(0)
+    var counter = Counter(0)
     counter.increment()
     try expect_equal(counter.value, 1)

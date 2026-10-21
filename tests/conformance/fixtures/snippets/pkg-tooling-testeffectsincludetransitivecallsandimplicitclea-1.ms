@@ -22,9 +22,10 @@ fn transitive(resource: Resource) Unit:
     direct(resource: resource)
 
 fn nested(resource: Resource) Unit:
-    let callback = fn() Unit:
-        with item = resource:
+    let callback = fn(item: Resource) Unit:
+        with held = item:
             return
+    callback(resource)
 
 fn indirect(callback: fn() Unit) Unit:
     callback()

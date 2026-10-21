@@ -1,6 +1,6 @@
 # Ownership (value semantics)
 
-`Hir::ownership()` enforces the value-semantics memory model of `crates/DESIGN.md` (decision 1) and exposes the moves, drops and borrows lowering needs. It is opt-in for diagnostics (`CheckOptions.ownership`, `ms-check-dev --ownership`); it runs only on programs that already type check.
+`Hir::ownership()` enforces the value-semantics memory model of `crates/DESIGN.md` (decision 1) and exposes the moves, drops and borrows lowering needs. It runs on every program that type checks, and its rejections are diagnostics. Rejections carry mechanical fixes (`--json`). Conformance fixtures tagged `aliasing` rely on shared mutation and stay outside the Rust gate.
 
 ```rust
 let own = program.hir().ownership();
