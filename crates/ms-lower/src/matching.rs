@@ -24,6 +24,7 @@ impl FnLower<'_> {
     pub fn hold(&mut self, e: &Expr) -> Result<Option<(ms_mir::builder::Var, bool)>, Error> {
         if let (ExprKind::Name(_), Resolution::Local(b)) = (&e.kind, self.hir.resolution(e))
             && !self.aliases.contains_key(&b.uid)
+            && self.locals.get(&b.uid).is_none_or(|l| l.slot.is_none())
         {
             return Ok(Some((self.local(&b)?.var, false)));
         }

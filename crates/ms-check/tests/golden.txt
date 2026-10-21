@@ -3844,7 +3844,6 @@ fn run() Unit:
         values.append(1)
     )
 type	10	9	239	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
-type	9	24	225	this closure changes captured `values`, but a closure works on its own copy of what it captures, so the change would be lost; have the closure return a new value or use a `for` loop instead of changing `values`
 type	9	24	225	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itimport network from "@std/net.ms"
 import { HttpResponse, HttpServerOptions } from "@std/http.ms"
 import panic from "@std/faults.ms"
@@ -5153,7 +5152,6 @@ fn work(value: Val) Unit:
     let list = [copy]
     list.clone().append(value)
 type	5	15	93	cannot change `value.val`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every call
-type	4	20	68	this closure changes captured `value`, but a closure works on its own copy of what it captures, so the change would be lost; have the closure return a new value or use a `for` loop instead of changing `value`
 type	4	20	68	cannot change `value`: parameter `value` is not declared var; write `var value: <Type>` in the signature and pass `var` at every callimport ListBuilder from "@std/collections.ms"
 import system from "@std/system.ms"
 fn length(values: List[Int]) Int:

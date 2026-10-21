@@ -1955,18 +1955,13 @@ impl Walker<'_> {
                 .get(&b.uid)
                 .map(|m| m.class)
                 .unwrap_or(Class::Move);
-            if changed {
-                let why = if escaping {
-                    "so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing"
-                } else {
-                    "but a closure works on its own copy of what it captures, so the change would be lost; have the closure return a new value or use a `for` loop instead of changing"
-                };
-                self.error(
-                    e.pos,
-                    format!("this closure changes captured `{0}`, {why} `{0}`", b.name),
-                );
-            }
             if escaping {
+                if changed {
+                    self.error(
+                        e.pos,
+                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
+                    );
+                }
                 if class == Class::Copy {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));

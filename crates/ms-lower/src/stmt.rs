@@ -206,8 +206,8 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("assignment without target binding"))?;
                 let l = self.local(&b)?;
                 let new = self.owned(x);
-                let old = self.b.use_var(l.var);
-                self.b.def_var(l.var, new);
+                let old = self.local_take(&l);
+                self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {
                     self.drop_value(old);
                 }
@@ -272,10 +272,10 @@ impl<'a> FnLower<'a> {
             });
         }
         let l = self.local(&binding)?;
-        let root = self.b.use_var(l.var);
+        let root = self.local_take(&l);
         let new = self.owned(x);
         let updated = self.set_path(root, true, &path, new)?;
-        self.b.def_var(l.var, updated);
+        self.local_put(&l, updated);
         Ok(())
     }
 
@@ -335,9 +335,9 @@ impl<'a> FnLower<'a> {
             return self.alias_update(&a, &fields, f);
         }
         let l = self.local(&binding)?;
-        let root = self.b.use_var(l.var);
+        let root = self.local_take(&l);
         let updated = self.update_path(root, &path, f)?;
-        self.b.def_var(l.var, updated);
+        self.local_put(&l, updated);
         Ok(())
     }
 

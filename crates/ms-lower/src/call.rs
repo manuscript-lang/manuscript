@@ -264,7 +264,7 @@ impl<'a> FnLower<'a> {
                 let var = self.b.declare_var(ty, Mode::Own);
                 self.b.def_var(var, o);
                 self.locals
-                    .insert(binding.uid, crate::func::Local { var, ty });
+                    .insert(binding.uid, crate::func::Local { var, ty, slot: None });
                 changed.push((j, var));
             } else {
                 self.bind_borrowed(&binding, v.v);

@@ -100,10 +100,10 @@ impl FnLower<'_> {
         let v = self.b.call(fid, &[slot]);
         self.drop_if_owned(v);
         let updated = self.move_out(slot, ty);
-        let var = self.local(binding)?.var;
-        let old = self.b.use_var(var);
+        let l = self.local(binding)?;
+        let old = self.local_take(&l);
         self.drop_value(old);
-        self.b.def_var(var, updated);
+        self.local_put(&l, updated);
         Ok(())
     }
 

@@ -202,12 +202,6 @@ impl Checker {
                         ),
                     );
                 }
-                if b.function != self.function {
-                    self.type_error(
-                        s.pos,
-                        "cannot assign a captured binding; closures cannot reassign outer variables, so return the new value or keep state in a record field",
-                    );
-                }
                 let i = self.expression(value, Some(&b.ty));
                 (!i.no_return, i.breaks)
             }

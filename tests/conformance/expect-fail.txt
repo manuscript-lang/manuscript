@@ -10,10 +10,3 @@ snippets/tests-e2e-testdurationunitpropertysourceframes-1
 snippets/tests-e2e-testmutationaliasesretainsplicefaults-1
 snippets/tests-e2e-testpreferrednamesretainfaults-1
 snippets/tests-e2e-testreplacenretainsnegativefaultsandframes-1
-# check: closures work on their own copy of captured variables, so mutating a capture is rejected (it would be lost at runtime).
-bench/lists-program
-e2e/accept/cl-18
-e2e/accept/list-items-cache
-e2e/accept/map-set-and-sort-callbacks-keep-semantics
-snippets/pkg-tooling-lsp-testfieldwritesandcloneskeepeditornavigation-1
-snippets/pkg-tooling-testconcurrentcapturelintdoesnotguessmethodnames-1

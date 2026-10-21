@@ -161,9 +161,9 @@ impl<'a> FnLower<'a> {
         let mut steps = a.steps.clone();
         steps.extend(fields.iter().map(|n| AStep::Field(*n)));
         let l = self.local(&a.root)?;
-        let root = self.b.use_var(l.var);
+        let root = self.local_take(&l);
         let updated = self.update_steps(root, &steps, f)?;
-        self.b.def_var(l.var, updated);
+        self.local_put(&l, updated);
         Ok(())
     }
 
