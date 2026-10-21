@@ -227,7 +227,7 @@ tags.append("release")
 # tag_count() returns 2.
 ```
 
-Closures snapshot variable values when created, but captured collections and records stay shared. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+A closure works on its own copy of what it captures and cannot change the outer variable. See [closure captures](../core-language/functions/function-values-and-closures.md#captures).
 
 ## Pipe flows
 

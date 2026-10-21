@@ -5,7 +5,7 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures snapshots of the bindings it uses.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure captures the bindings it uses by value.
 
 ```manuscript
 fn apply(value: Int, transform: fn(value: Int) Int) Int:
@@ -45,9 +45,9 @@ An anonymous function may omit parameter types when context supplies them (argum
 - A bound method value has the operation's function type with the receiver bound.
 - An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
 
-## Snapshot captures
+## Captures
 
-A closure remembers the current value of each local binding it uses:
+A closure works on its own copy of each local it uses, so it never changes the outer variable. Assigning to a captured variable, or calling a mutator on a captured collection or field, is rejected; return the new value, or use a `for` loop:
 
 ```manuscript
 fn make_headline() fn() String:
@@ -59,9 +59,7 @@ fn make_headline() fn() String:
 # make_headline()() returns "Weekly update".
 ```
 
-Reassignment changes the local binding, not the captured value. Assigning to a captured outer binding is rejected.
-
-A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
+A closure that is only called in the function that made it borrows what it reads, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
 ```manuscript
 
@@ -74,7 +72,7 @@ fn tag_count() Int:
 # tag_count() returns 2.
 ```
 
-A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
+A closure that is returned or stored owns what it captures instead. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules.
 
 ## Resource captures
 

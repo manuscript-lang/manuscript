@@ -11,7 +11,7 @@ On scope exit, `with` cleanup closes inner resources before outer ones. Another 
 2. Call registered `close()` methods in reverse registration/nesting order.
 3. Deliver the pending return/error, unless cleanup selected a programming fault; otherwise propagate the selected fault or cancellation.
 
-A cleanup fault suppresses a pending return or domain error; the unreturned value is garbage collected, not closed. Resource factories remain responsible for resources acquired but never delivered.
+A cleanup fault suppresses a pending return or domain error; the unreturned value is dropped, not closed. Resource factories remain responsible for resources acquired but never delivered.
 
 Returned references do not bypass cleanup: a file registered in the exiting scope is already closed when the caller receives it. There is no ownership transfer.
 

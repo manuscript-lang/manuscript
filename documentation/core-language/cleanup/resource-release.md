@@ -5,7 +5,7 @@ weight = 2
 
 # Closing a resource
 
-Files, sockets, stream bodies, and transactions hold external handles released through `close()` or `with`; their memory is garbage collected. They implement `Closeable`.
+Files, sockets, stream bodies, and transactions hold external handles released through `close()` or `with`; their memory is freed when the owner is dropped. They implement `Closeable`.
 
 | Object | Automatic close behavior |
 | --- | --- |

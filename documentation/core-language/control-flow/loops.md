@@ -76,7 +76,7 @@ test "sum even indexes":
 
 ## Iterable types and binding
 
-The iterable is evaluated once. A List traversal keeps its original slice and length without copying: later element writes are visible, appends are not. Map and Set snapshot their membership. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
+The iterable is evaluated once and borrowed for the loop, so the body cannot change it (iterate over `.clone()` to change the original). The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |

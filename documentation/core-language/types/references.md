@@ -9,16 +9,16 @@ Records, lists, maps, sets, and alternatives are values. Assigning, passing, sto
 
 ## Reassignment
 
-- Reassigning a `var` replaces its value; it does not close the old object or affect other references. A `let` cannot be reassigned.
+- Reassigning a `var` replaces its value; it does not close the old object. A `let` cannot be reassigned.
 - A `with` binding is immutable and registers the initialized object itself; reassigning another variable cannot change which `close()` runs. Closing early is fine because `close()` is idempotent.
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
-- Closures snapshot a local's value at creation; they share no mutable cells.
+- A closure works on its own copy of what it captures; it shares no mutable cells and cannot change outer variables.
 
 See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [using with](../cleanup/scopes.md).
 
 ## Data copies
 
-`.clone()` is a deep copy of nested values. Opaque handles have no built-in clone and are never copied. See [mutation and cloning](records.md#mutation-and-cloning).
+`.clone()` is a deep copy of nested values. Opaque handles have no built-in clone and are never copied. A value has one owner and moves at its last use, so a clone is needed only to keep using the original after passing it on. See [mutation and cloning](records.md#mutation-and-cloning).
 
 ## References inside other values
 
@@ -32,9 +32,9 @@ Records, alternatives, collections, and closures may hold resource references. S
 
 ## Memory and open resources
 
-The garbage collector reclaims memory; releasing a file, socket, or other external resource is separate. Use `close()` or a `with` block.
+Memory is released when the owner of a value goes out of scope; releasing a file, socket, or other external resource is separate. Use `close()` or a `with` block.
 
-A reference keeps memory reachable, not the resource open. Once one reference closes it, all others see it closed. Dropping a reference, closure, or work ID closes nothing.
+A reference does not keep the resource open. Once one reference closes it, all others see it closed. Dropping a reference, closure, or work ID closes nothing.
 
 ## Returning a resource
 
@@ -45,6 +45,6 @@ A factory can return an open resource for its caller's `with`. A resource return
 | Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
 | Returns a resource registered in a local `with` block | A reference to the resource after that block has closed it. |
 
-Using a closed resource raises its runtime closed-state error. The compiler does not catch every missing `with`, and Manuscript has no move or ownership transfer.
+Using a closed resource raises its runtime closed-state error. The compiler does not catch every missing `with`.
 
 See [Closeable](../cleanup/closeable.md), [using with](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

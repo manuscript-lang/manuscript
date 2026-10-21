@@ -639,10 +639,17 @@ impl Walker<'_> {
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
+            let remedy = if holder.as_str() == "for" {
+                format!("iterate over a copy instead: `for ... in {shown}.{COPY}()`")
+            } else {
+                format!(
+                    "or give `{holder}` its own value by ending its initializer with `.{COPY}()`"
+                )
+            };
             self.error(
                 pos,
                 format!(
-                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, or take an independent value with `{shown}.{COPY}()`",
+                    "cannot {what} `{shown}` while `{holder}` borrows it ({why}, at {}:{}); finish using `{holder}` before this, {remedy}",
                     bpos.line, bpos.column
                 ),
             );
@@ -1948,13 +1955,18 @@ impl Walker<'_> {
                 .get(&b.uid)
                 .map(|m| m.class)
                 .unwrap_or(Class::Move);
+            if changed {
+                let why = if escaping {
+                    "so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing"
+                } else {
+                    "but a closure works on its own copy of what it captures, so the change would be lost; have the closure return a new value or use a `for` loop instead of changing"
+                };
+                self.error(
+                    e.pos,
+                    format!("this closure changes captured `{0}`, {why} `{0}`", b.name),
+                );
+            }
             if escaping {
-                if changed {
-                    self.error(
-                        e.pos,
-                        format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
-                    );
-                }
                 if class == Class::Copy {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));

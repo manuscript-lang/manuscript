@@ -1382,11 +1382,37 @@ impl<'a> Parser<'a> {
                 left: Box::new(self.clone_chain(left)),
                 name: *name,
             },
+            ExprKind::Index { left, index } => ExprKind::Index {
+                left: Box::new(self.clone_chain(left)),
+                index: Box::new(self.clone_chain(index)),
+            },
+            ExprKind::Apply { left, types, value } => ExprKind::Apply {
+                left: Box::new(self.clone_chain(left)),
+                types: types.iter().map(|t| self.clone_type(t)).collect(),
+                value: value.as_ref().map(|v| Box::new(self.clone_chain(v))),
+            },
             other => other.clone(),
         };
         Expr {
             id,
             pos: e.pos,
+            kind,
+        }
+    }
+
+    /// A single-name type with a fresh id (the type reading of an index name).
+    fn clone_type(&mut self, t: &TypeRef) -> TypeRef {
+        let id = self.id();
+        let kind = match &t.kind {
+            TypeKind::Named { name, args } => TypeKind::Named {
+                name: *name,
+                args: args.iter().map(|a| self.clone_type(a)).collect(),
+            },
+            other => other.clone(),
+        };
+        TypeRef {
+            id,
+            pos: t.pos,
             kind,
         }
     }
@@ -2357,10 +2383,23 @@ impl<'a> Parser<'a> {
 /// Reports whether `e` is a name or member access over names.
 fn plain_chain(e: &Expr) -> bool {
     let mut e = e;
-    while let ExprKind::Member { left, .. } = &e.kind {
-        e = left;
+    loop {
+        match &e.kind {
+            ExprKind::Member { left, .. } => e = left,
+            ExprKind::Index { left, index } if plain_index(index) => e = left,
+            ExprKind::Apply {
+                left,
+                types,
+                value: Some(index),
+            } if types.len() == 1 && plain_index(index) => e = left,
+            _ => return matches!(e.kind, ExprKind::Name(_)),
+        }
     }
-    matches!(e.kind, ExprKind::Name(_))
+}
+
+/// An index that can be evaluated twice without effect: a name or a number.
+fn plain_index(e: &Expr) -> bool {
+    matches!(e.kind, ExprKind::Name(_) | ExprKind::Number(_))
 }
 
 /// Spells a type's parameters as the arguments of its impl receiver.

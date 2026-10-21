@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections are values: assignment copies, so two names never change one list, map, or set, and `.clone()` makes an explicit deep copy. (Several passages below still describe the earlier shared-reference model; where they differ, this rule and the [ownership notes](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) win.)
+Collections are values: assignment copies, so two names never change one list, map, or set, and `.clone()` makes an explicit deep copy. See the [ownership notes](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 
 `List`, `Map`, `Set`, `CollectionError`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `MissingValue`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
@@ -90,15 +90,7 @@ Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `re
 
 List `slice` returns `Result[List[T], CollectionError]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise `CollectionError.OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
-A List `for` loop or callback captures its backing slice and initial length once, with no copy:
-
-- In-place writes can change values read later in the traversal.
-- Append never extends it; reallocation leaves it on the original array.
-- Removal and shrinking shift elements without clearing the tail, so a running traversal may see shifted or repeated values, and removed references can linger in spare capacity.
-- `fill` and `copy_within` write the backing and can affect later visits.
-- `.clone()` first when you need stable storage.
-
-Map and Set loops and callbacks traverse a membership snapshot, so additions, removals, and replacements during the traversal are not seen.
+A `for` loop or callback borrows the collection: changing it (or a `var` alias of it) while the loop runs is rejected, so no traversal sees a partly changed collection. Iterate over `.clone()` when the body must change the original.
 
 ### Naming and migration
 
@@ -194,7 +186,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
-Enumeration copies outer storage and keeps nested references. List callbacks use the captured slice above; Map and Set callbacks use snapshots.
+Enumeration returns new lists holding copies of the entries.
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 

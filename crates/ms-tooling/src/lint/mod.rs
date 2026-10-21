@@ -2,7 +2,6 @@
 //! semantic errors; lint never changes behavior.
 
 mod bindings;
-mod captures;
 mod matches;
 mod patterns;
 mod results;
@@ -82,7 +81,6 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
     for module in program.modules.iter().filter(|m| !m.is_standard()) {
         bindings::lint(program, module, &mut findings);
         results::lint(module, &mut findings);
-        captures::lint(module, &mut findings);
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }
