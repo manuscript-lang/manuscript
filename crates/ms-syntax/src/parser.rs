@@ -1282,6 +1282,12 @@ impl<'a> Parser<'a> {
         let kind = if self.compound_assignment() {
             self.compound(t, e)?
         } else if self.take(Tok::Assign) {
+            if index_parts(&e).is_some() {
+                let value = self.expression(0)?;
+                let kind = self.index_set(e, value);
+                self.end()?;
+                return Ok(kind);
+            }
             let target = self.assign_target(t, e)?;
             let value = self.expression(0)?;
             StmtKind::Assign {
@@ -1323,6 +1329,49 @@ impl<'a> Parser<'a> {
         Ok(kind)
     }
 
+    /// `xs[i] = value` as the mutator call `xs.set(i, value)`.
+    fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
+        let (left, index) = match target.kind {
+            ExprKind::Index { left, index } => (left, index),
+            ExprKind::Apply {
+                left,
+                value: Some(index),
+                ..
+            } => (left, index),
+            _ => unreachable!("index target"),
+        };
+        let pos = target.pos;
+        let member = self.mk(
+            pos,
+            ExprKind::Member {
+                left,
+                name: Symbol::intern("set"),
+            },
+        );
+        let args = vec![
+            Argument {
+                pos: index.pos,
+                name: None,
+                value: *index,
+                mutable: false,
+            },
+            Argument {
+                pos: value.pos,
+                name: None,
+                value,
+                mutable: false,
+            },
+        ];
+        let call = self.mk(
+            pos,
+            ExprKind::Call {
+                callee: Box::new(member),
+                args,
+            },
+        );
+        StmtKind::Call(call)
+    }
+
     fn assign_target(&mut self, start: Token, e: Expr) -> PResult<AssignTarget> {
         match e.kind {
             ExprKind::Name(n) if n.as_str() != "self" && n.as_str() != "fixture" => Ok(AssignTarget::Name(n)),
@@ -1341,6 +1390,24 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        if let Some(copy) = &copy
+            && index_parts(&e).is_some()
+        {
+            self.at += 2;
+            let bop = arith_op(op.kind).expect("compound operator");
+            let right = self.expression(0)?;
+            let id = self.id();
+            let value = Expr {
+                id,
+                pos: op.pos,
+                kind: ExprKind::Binary {
+                    op: bop,
+                    left: Box::new(copy.clone()),
+                    right: Box::new(right),
+                },
+            };
+            return Ok(self.index_set(e, value));
+        }
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
             let text = op.kind.as_str();
@@ -2394,6 +2461,19 @@ fn plain_chain(e: &Expr) -> bool {
             } if types.len() == 1 && plain_index(index) => e = left,
             _ => return matches!(e.kind, ExprKind::Name(_)),
         }
+    }
+}
+
+/// The receiver and index of `left[index]`, however the bracket was parsed.
+fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
+    match &e.kind {
+        ExprKind::Index { left, index } => Some((left, index)),
+        ExprKind::Apply {
+            left,
+            types,
+            value: Some(index),
+        } if types.len() == 1 => Some((left, index)),
+        _ => None,
     }
 }
 
