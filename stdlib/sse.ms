@@ -239,7 +239,8 @@ fn reconnect(var decoder: Decoder, value: String) Unit:
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
-        var name = decoder.event_type
+        let current = decoder.event_type
+        var name = current
         if name == "": name = "message"
         events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id))
 
