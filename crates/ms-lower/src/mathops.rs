@@ -12,7 +12,13 @@ use ms_mir::types::{Ty as MTy, TyKind};
 
 impl FnLower<'_> {
     /// `-1`, `0` or `1` as `a` orders before, with or after `b`.
-    fn order(&mut self, t: MTy, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
+    pub(crate) fn order(
+        &mut self,
+        t: MTy,
+        concrete: &ct::Ty,
+        a: Value,
+        b: Value,
+    ) -> Result<Value, Error> {
         if t == MTy::INT {
             let (lt, gt) = (self.b.icmp(Cc::Lt, a, b), self.b.icmp(Cc::Gt, a, b));
             let (one, zero, minus) = (self.b.iconst(1), self.b.iconst(0), self.b.iconst(-1));

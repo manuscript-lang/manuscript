@@ -1971,7 +1971,9 @@ impl<'a> FnLower<'a> {
                 | "reverse_in_place"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
-        if !is_list || runtime_only {
+        // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
+        let in_place = matches!(name, "insert" | "remove");
+        if !is_list || runtime_only || in_place {
             return self.mutate_rt(name, old, decl, args, copy_result, result_ty);
         }
         let (new, r) = self.mutate_list(name, old, args)?;

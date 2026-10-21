@@ -399,7 +399,8 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
         reserve(v, d, 1);
         let size = d.size as usize;
         core::ptr::copy(elem(v, d, i), elem(v, d, i).add(size), (n - i) * size);
-        core::ptr::copy_nonoverlapping(e, elem(v, d, i), size);
+        // `e` is lent by the caller, so the list stores its own copy.
+        slot_copy(d, e, elem(v, d, i));
         v.len += 1;
     }
 }
