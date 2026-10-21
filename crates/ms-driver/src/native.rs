@@ -11,7 +11,6 @@ use ms_mir::opt::{Level, optimize};
 pub enum Profile {
     Debug,
     Release,
-    RelWithDebInfo,
     MinSizeRel,
 }
 
@@ -25,7 +24,7 @@ impl Profile {
                 options.opt_level = "none";
                 Level::None
             }
-            Profile::Release | Profile::RelWithDebInfo => Level::Speed,
+            Profile::Release => Level::Speed,
             Profile::MinSizeRel => {
                 options.opt_level = "speed_and_size";
                 Level::Speed

@@ -69,7 +69,7 @@ fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
         return Ok(());
     }
     let companion = debug_companion_path(out).expect("macOS companion");
-    let tool = std::env::var("MS_DSYMUTIL").unwrap_or_else(|_| "dsymutil".into());
+    let tool = "dsymutil";
     let o = Command::new(&tool)
         .arg(out)
         .arg("-o")
