@@ -75,7 +75,12 @@ fn cargo_crates() -> Result<Vec<(String, String, String)>, String> {
         .ok_or("cargo metadata: no packages")?;
     let mut crates = Vec::new();
     for package in packages {
-        if package.get("source").is_none_or(Json::is_null) {
+        // Registry crates and the vendored copies under `vendor/`; workspace members are ours.
+        let vendored = package
+            .get("manifest_path")
+            .and_then(Json::as_str)
+            .is_some_and(|path| path.contains("/vendor/"));
+        if package.get("source").is_none_or(Json::is_null) && !vendored {
             continue;
         }
         let field = |key: &str| {
