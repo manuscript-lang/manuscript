@@ -69,6 +69,10 @@ fn main() {
             // The CRT objects carry line tables for code the program never shows in a debugger.
             if DEBUG_INFO.contains(&name) {
                 strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
+                // Import objects in an archive make the tool reject the whole file: strip member by member.
+                if has_line_tables(&to) {
+                    strip_members(&to);
+                }
             }
             assert_no_line_tables(&to, name);
             names.push(name);
@@ -101,26 +105,76 @@ fn main() {
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
 }
 
-/// Fails the build if `file` still carries DWARF line tables, naming what remains.
-fn assert_no_line_tables(file: &Path, name: &str) {
-    let objdump = mingw().join("bin/llvm-objdump");
-    let Ok(output) = Command::new(&objdump)
+/// The number of DWARF line-table sections left in `file`, or `None` when llvm-objdump cannot be run.
+fn line_tables(file: &Path) -> Option<usize> {
+    let output = Command::new(mingw().join("bin/llvm-objdump"))
         .arg("--section-headers")
         .arg(file)
         .output()
-    else {
-        println!(
-            "cargo:warning=cannot run {} to check {name}",
-            objdump.display()
-        );
-        return;
-    };
+        .ok()?;
     let text = String::from_utf8_lossy(&output.stdout);
-    let left = text.lines().filter(|l| l.contains(".debug_line")).count();
+    Some(text.lines().filter(|l| l.contains(".debug_line")).count())
+}
+
+fn has_line_tables(file: &Path) -> bool {
+    line_tables(file).is_some_and(|n| n > 0)
+}
+
+/// Fails the build if `file` still carries DWARF line tables, naming what remains.
+fn assert_no_line_tables(file: &Path, name: &str) {
+    let left = line_tables(file).unwrap_or(0);
     assert!(
         left == 0,
         "{name} still has {left} .debug_line sections after stripping"
     );
+}
+
+/// Strips an archive one member at a time and rebuilds it in the original order. Members that are not
+/// plain objects (the short import objects in `libucrt.a`) are kept as they are.
+fn strip_members(archive: &Path) {
+    let bin = mingw().join("bin");
+    let dir = archive.with_extension("members");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("create the member directory");
+    let run = |program: &str, args: &[&std::ffi::OsStr]| {
+        Command::new(bin.join(program))
+            .args(args)
+            .current_dir(&dir)
+            .status()
+            .is_ok_and(|status| status.success())
+    };
+    let listing = Command::new(bin.join("llvm-ar"))
+        .arg("t")
+        .arg(archive)
+        .output()
+        .expect("run llvm-ar");
+    let members: Vec<String> = String::from_utf8_lossy(&listing.stdout)
+        .lines()
+        .map(str::to_string)
+        .collect();
+    assert!(
+        run("llvm-ar", &["x".as_ref(), archive.as_os_str()]),
+        "cannot unpack {}",
+        archive.display()
+    );
+    for member in &members {
+        // Import objects are not objects to llvm-strip; the failure leaves them untouched.
+        run(
+            "llvm-strip",
+            &["--strip-debug".as_ref(), std::ffi::OsStr::new(member)],
+        );
+    }
+    let rebuilt = archive.with_extension("rebuilt");
+    let _ = std::fs::remove_file(&rebuilt);
+    let mut args: Vec<&std::ffi::OsStr> = vec!["rcs".as_ref(), rebuilt.as_os_str()];
+    args.extend(members.iter().map(|m| std::ffi::OsStr::new(m.as_str())));
+    assert!(
+        run("llvm-ar", &args),
+        "cannot rebuild {}",
+        archive.display()
+    );
+    std::fs::rename(&rebuilt, archive).expect("replace the stripped archive");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// `MS_MINGW`, else the llvm-mingw tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`.
