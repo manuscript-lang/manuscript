@@ -477,6 +477,46 @@ fn streamed_response_larger_than_the_window() {
 }
 
 #[test]
+fn two_streams_wait_on_one_connection() {
+    // Both handlers outrun the default 64 KiB windows and wait at once.
+    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let addr = server.address().to_string();
+    let bodies = with_client(move || {
+        let mut c = Client::connect(&addr, Settings::default());
+        let ids = [c.get("/stream"), c.get("/stream")];
+        let mut bodies = [Vec::new(), Vec::new()];
+        let mut done = [false; 2];
+        let mut seen = 0;
+        loop {
+            while seen < c.events.len() {
+                let event = c.events[seen].clone();
+                seen += 1;
+                let (sid, data, end) = match event {
+                    Event::Data {
+                        id,
+                        data,
+                        end_stream,
+                    } => (id, data, end_stream),
+                    Event::Reset { id, code } => panic!("stream {id} reset with code {code}"),
+                    _ => continue,
+                };
+                let i = ids.iter().position(|&id| id == sid).unwrap();
+                c.core.release(sid, data.len());
+                bodies[i].extend_from_slice(&data);
+                done[i] |= end;
+            }
+            if done == [true; 2] {
+                return bodies;
+            }
+            assert!(c.pull(), "connection closed before the responses");
+        }
+    });
+    for body in bodies {
+        assert_eq!(body.len(), 100 * 4096);
+    }
+}
+
+#[test]
 fn streaming_upload_and_protocol() {
     let (_net, server) = start(Box::new(Streamer), true, limits());
     let addr = server.address().to_string();

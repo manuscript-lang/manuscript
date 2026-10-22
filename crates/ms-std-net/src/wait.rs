@@ -106,10 +106,7 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
         Interest::Read => 1,
         Interest::Write => 2,
     };
-    let timeout = deadline
-        .remaining()
-        .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
-    let got = rt::wait_fd(fd, events, timeout);
+    let got = rt::wait_fd(fd, events, timeout_ns(deadline));
     if got & 16 != 0 {
         rt::cancelled();
     }
@@ -118,6 +115,29 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     } else {
         Wait::Ready
     }
+}
+
+/// Parks until `token` is posted or the deadline passes. Faults with the runtime's
+/// cancellation when a stop was requested.
+pub fn wait_token(token: &rt::Token, deadline: Deadline) -> Wait {
+    rt::check_cancel();
+    crate::http::server::give_up_reactor_role();
+    let got = token.park(timeout_ns(deadline));
+    if got & 16 != 0 {
+        rt::cancelled();
+    }
+    if got == 0 {
+        Wait::Ready
+    } else {
+        Wait::TimedOut
+    }
+}
+
+/// The runtime's timeout for `deadline`: nanoseconds left, or -1 for none.
+fn timeout_ns(deadline: Deadline) -> i64 {
+    deadline
+        .remaining()
+        .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64)
 }
 
 /// Longest a polling wait sleeps before it re-checks the cancel flag.
