@@ -8,15 +8,16 @@
 //!
 //! Buffered responses are handed to the stream state and flushed by the reactor
 //! as the peer's windows open. Streaming exchanges write response bodies
-//! themselves and, when a window or the socket is full, pump the connection
-//! (`h2_wait`) until it drains.
+//! themselves and, when a window or the socket is full, park (`h2_wait`) until
+//! the reactor makes progress on the connection. The reactor is the socket's only
+//! reader and waiter, so any number of streams can wait at once.
 
 use super::*;
 use crate::error::{IoErr, WsErr};
 use crate::h2::{self, Event, Header, error_code};
 use crate::http::exchange::ExSt;
 use crate::sys::Ev;
-use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::wait::{Deadline, Wait, wait_token};
 use crate::ws::handshake;
 
 /// Receive window per stream and for the connection.
@@ -103,6 +104,8 @@ pub(in crate::http) struct H2Conn {
     streams: HashMap<u32, H2Stream>,
     queue: VecDeque<u32>,
     goaway: bool,
+    /// Tokens of handlers parked in `h2_wait`, posted when the reactor serves the connection.
+    waiters: Vec<u64>,
 }
 
 impl H2Conn {
@@ -119,6 +122,7 @@ impl H2Conn {
             streams: HashMap::new(),
             queue: VecDeque::new(),
             goaway: false,
+            waiters: Vec::new(),
         }
     }
 
@@ -240,6 +244,14 @@ fn with_h2<R>(conn: &Conn, f: impl FnOnce(&mut H2Conn) -> R) -> Option<R> {
     st.h2.as_mut().map(|h| f(h))
 }
 
+/// Wakes the handlers parked in `h2_wait` on this connection.
+pub(super) fn wake_waiters(conn: &Conn) {
+    let waiters = with_h2(conn, |h| std::mem::take(&mut h.waiters)).unwrap_or_default();
+    for id in waiters {
+        rt::post(id);
+    }
+}
+
 // -------------------------------------------------------------------- output
 
 enum Drain {
@@ -342,6 +354,7 @@ impl Server {
             }
         }
         self.h2_pump_out(conn, reactor);
+        wake_waiters(conn);
         (more, total > 0)
     }
 
@@ -395,42 +408,21 @@ impl Server {
     pub(super) fn h2_sweep(&self, conn: &Rc<Conn>, reactor: &Reactor, now: Instant) {
         if with_h2(conn, |h| h.expire(now)).unwrap_or(false) {
             self.h2_pump_out(conn, reactor);
+            wake_waiters(conn);
         }
     }
 
-    /// Waits until the socket is ready, then pumps the connection. `false` when
-    /// the deadline passed or the connection is gone.
-    pub(in crate::http) fn h2_wait(
-        &self,
-        conn: &Rc<Conn>,
-        reactor: &Reactor,
-        deadline: Deadline,
-    ) -> bool {
-        let (io, write) = {
-            let st = conn.st.borrow();
-            (
-                st.io.clone(),
-                st.out_pos < st.outbuf.len() || st.flush_pending,
-            )
-        };
-        let Some(io) = io else { return false };
-        // The TLS layer may already hold frames that no readiness event will
-        // announce; consume them before blocking.
-        let (more, progressed) = self.h2_serve_counted(conn, reactor);
-        if more || progressed {
-            while self.h2_serve(conn, reactor) {}
-            return true;
-        }
-        let interest = if write {
-            Interest::Write
-        } else {
-            Interest::Read
-        };
-        if wait_fd(io.fd(), interest, deadline) == Wait::TimedOut {
+    /// Parks until the reactor next serves the connection: frames arrived, output
+    /// drained, a stream expired, or the connection closed. `false` when the deadline
+    /// passed or the connection is gone.
+    pub(in crate::http) fn h2_wait(&self, conn: &Rc<Conn>, deadline: Deadline) -> bool {
+        let token = rt::Token::new();
+        if with_h2(conn, |h| h.waiters.push(token.id())).is_none() {
             return false;
         }
-        while self.h2_serve(conn, reactor) {}
-        true
+        let got = wait_token(&token, deadline);
+        with_h2(conn, |h| h.waiters.retain(|&w| w != token.id()));
+        got == Wait::Ready
     }
 
     // ----------------------------------------------------------------- events
@@ -889,7 +881,7 @@ impl Exchange {
                 Got::End => return Ok(None),
                 Got::Broken => return Err(IoErr::failed("unexpected EOF")),
                 Got::Wait => {
-                    if !self.server.h2_wait(&self.conn, &self.reactor, deadline) {
+                    if !self.server.h2_wait(&self.conn, deadline) {
                         return Err(timed_out());
                     }
                 }
@@ -941,7 +933,7 @@ impl Exchange {
         let mut rest = data;
         while !rest.is_empty() {
             while self.h2_unsent() > OUT_HOLD {
-                if !self.server.h2_wait(&self.conn, &self.reactor, deadline) {
+                if !self.server.h2_wait(&self.conn, deadline) {
                     return Err(timed_out());
                 }
             }
@@ -951,7 +943,7 @@ impl Exchange {
             };
             rest = &rest[n..];
             self.server.h2_pump_out(&self.conn, &self.reactor);
-            if !rest.is_empty() && !self.server.h2_wait(&self.conn, &self.reactor, deadline) {
+            if !rest.is_empty() && !self.server.h2_wait(&self.conn, deadline) {
                 return Err(timed_out());
             }
         }
