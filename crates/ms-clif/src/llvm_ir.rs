@@ -37,6 +37,8 @@ pub struct LlvmModule {
     data: BTreeMap<String, ()>,
     /// Symbols defined in this module.
     defined: Vec<String>,
+    /// Per function in `body` order: where its text ends, and the `declare` other chunks use.
+    spans: Vec<(usize, String)>,
 }
 
 /// Line-table metadata under construction.
@@ -173,6 +175,7 @@ impl LlvmModule {
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
             defined: Vec::new(),
+            spans: Vec::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
@@ -882,25 +885,69 @@ impl LlvmModule {
         // Allocas must sit in the entry block, right after its label.
         let (first, rest) = text.split_once('\n').expect("entry label");
         let vis = if hidden { "hidden " } else { "" };
+        let ret = ret_ty(&f.signature.returns);
         let header = format!(
-            "define {vis}{} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
-            ret_ty(&f.signature.returns),
+            "define {vis}{ret} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
             params.join(", ")
         );
+        let types: Vec<&str> = params
+            .iter()
+            .map(|p| p.split(" %").next().unwrap_or(p))
+            .collect();
+        let declare = format!("declare {vis}{ret} @\"{name}\"({})", types.join(", "));
         self.body.push_str(&header);
         self.body.push_str(first);
         self.body.push('\n');
         self.body.push_str(&allocas);
         self.body.push_str(rest);
         self.body.push_str("}\n\n");
+        self.spans.push((self.body.len(), declare));
         self.defined.push(name.to_string());
     }
 
     /// The finished module text.
     pub fn finish(&self, triple: &str) -> String {
+        self.render(triple, 0..self.spans.len())
+    }
+
+    /// The module as up to `n` independently optimizable pieces of similar size, each defining a
+    /// run of consecutive functions and declaring the rest. Calls between pieces are not inlined,
+    /// so callers split only modules large enough that parallel compilation pays for that.
+    pub fn finish_chunks(&self, triple: &str, n: usize) -> Vec<String> {
+        let total = self.body.len().max(1);
+        let mut ranges = Vec::new();
+        let mut start = 0;
+        for k in 1..=n {
+            let target = total * k / n;
+            let end = self
+                .spans
+                .partition_point(|(end, _)| *end < target)
+                .max(start);
+            let end = if k == n {
+                self.spans.len()
+            } else {
+                (end + 1).min(self.spans.len())
+            };
+            if end > start {
+                ranges.push(start..end);
+                start = end;
+            }
+        }
+        ranges.into_iter().map(|r| self.render(triple, r)).collect()
+    }
+
+    /// The module text defining only the functions `range` selects.
+    fn render(&self, triple: &str, range: std::ops::Range<usize>) -> String {
+        let at = |i: usize| if i == 0 { 0 } else { self.spans[i - 1].0 };
         let mut s = String::new();
         let _ = writeln!(s, "target triple = \"{triple}\"");
-        s.push_str(&self.body);
+        s.push_str(&self.body[at(range.start)..at(range.end)]);
+        for (i, (_, declare)) in self.spans.iter().enumerate() {
+            if !range.contains(&i) {
+                s.push_str(declare);
+                s.push('\n');
+            }
+        }
         for (name, decl) in &self.decls {
             if !self.defined.contains(name) {
                 s.push_str(decl);

@@ -7,12 +7,16 @@ use std::path::{Path, PathBuf};
 mod lld;
 #[cfg(unix)]
 pub(crate) use lld::llvm_tools;
+pub use lld::prune_siblings;
 
 /// Windows links with the system toolchain and has no bundled LLVM tools.
 #[cfg(not(unix))]
 pub(crate) fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
+
+#[cfg(target_os = "linux")]
+pub(crate) use lld::merge_objects;
 
 /// Links `object` and the runtime static library into the executable `out`.
 pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {

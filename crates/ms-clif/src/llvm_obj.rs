@@ -4,6 +4,7 @@ use crate::Error;
 use crate::link::llvm_tools;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Whether release builds can use LLVM: the tools are embedded in `ms` or named by `MS_LLVM_TOOLS`.
 pub fn available() -> bool {
@@ -40,19 +41,9 @@ impl Drop for LlvmObject {
 
 /// Optimizes and assembles `ir` at `-O<level>`.
 pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "ms-llvm-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    ));
-    std::fs::create_dir_all(&dir).map_err(|e| Error(format!("create {}: {e}", dir.display())))?;
-    let (ll, obj) = (dir.join("m.ll"), dir.join("llvm.o"));
-    let this = LlvmObject {
-        dir: dir.clone(),
-        obj: obj.clone(),
-    };
+    let this = scratch()?;
+    let dir = this.dir.clone();
+    let (ll, obj) = (dir.join("m.ll"), this.obj.clone());
     std::fs::write(&ll, ir).map_err(|e| Error(e.to_string()))?;
     if std::env::var_os("MS_KEEP_LL").is_some() {
         let _ = std::fs::copy(&ll, "ms-keep.ll");
@@ -81,6 +72,44 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         .arg(&obj);
     run(llc, "llc (LLVM code generator)")?;
     Ok(this)
+}
+
+fn scratch() -> Result<LlvmObject, Error> {
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+    let dir: PathBuf = std::env::temp_dir().join(format!(
+        "ms-llvm-{}-{}",
+        std::process::id(),
+        COUNT.fetch_add(1, Ordering::Relaxed)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| Error(format!("create {}: {e}", dir.display())))?;
+    let obj = dir.join("llvm.o");
+    Ok(LlvmObject { dir, obj })
+}
+
+/// Compiles each module of `irs` on its own thread and merges the objects into one, so the
+/// result stands in for a single module's object.
+pub fn compile_all(irs: &[String], level: &str) -> Result<LlvmObject, Error> {
+    if let [ir] = irs {
+        return compile(ir, level);
+    }
+    let parts: Vec<Result<LlvmObject, Error>> = std::thread::scope(|scope| {
+        let jobs: Vec<_> = irs
+            .iter()
+            .map(|ir| scope.spawn(move || compile(ir, level)))
+            .collect();
+        jobs.into_iter()
+            .map(|job| {
+                job.join()
+                    .unwrap_or_else(|_| Err(Error("LLVM worker panicked".into())))
+            })
+            .collect()
+    });
+    let parts = parts.into_iter().collect::<Result<Vec<_>, _>>()?;
+    let merged = scratch()?;
+    let inputs: Vec<&Path> = parts.iter().map(|p| p.path()).collect();
+    crate::link::merge_objects(&inputs, &merged.obj)?;
+    Ok(merged)
 }
 
 impl LlvmObject {

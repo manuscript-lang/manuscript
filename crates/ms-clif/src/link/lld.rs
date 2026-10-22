@@ -83,6 +83,7 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     };
     static STAGED: AtomicUsize = AtomicUsize::new(0);
     std::fs::create_dir_all(&dir).map_err(failed)?;
+    let mut fresh = false;
     for (name, gz) in TOOLS {
         // The marker file records that the unpacked tool is complete.
         let done = dir.join(format!("{name}.ok"));
@@ -106,6 +107,10 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
             let _ = std::fs::remove_file(&staged);
             failed(e)
         })?;
+        fresh = true;
+    }
+    if fresh {
+        prune_siblings(&dir);
     }
     Ok(Some(dir))
 }
@@ -142,6 +147,41 @@ pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<
     Err(Error(format!(
         "linking failed ({}); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:\n{detail}",
         o.status
+    )))
+}
+
+/// Removes the sibling cache entries of `entry` (older `ms` builds' unpacked tools), so the cache
+/// holds one version instead of growing by about 240 MB per release. A build of another version
+/// still running keeps its open files; a later one unpacks again.
+pub fn prune_siblings(entry: &Path) {
+    let Some(parent) = entry.parent() else { return };
+    let Ok(listing) = std::fs::read_dir(parent) else {
+        return;
+    };
+    for sibling in listing.flatten() {
+        if sibling.path() != entry {
+            let _ = std::fs::remove_dir_all(sibling.path());
+        }
+    }
+}
+
+/// Merges relocatable objects into one (`ld -r`), keeping sections, symbols and DWARF.
+#[cfg(target_os = "linux")]
+pub fn merge_objects(inputs: &[&Path], out: &Path) -> Result<(), Error> {
+    let dir = extract()?;
+    let o = Command::new(dir.join(LLD))
+        .args(["-flavor", "gnu", "-r", "-o"])
+        .arg(out)
+        .args(inputs)
+        .output()
+        .map_err(|e| Error(format!("cannot run the bundled linker: {e}")))?;
+    if o.status.success() {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "merging LLVM objects failed ({}):\n{}",
+        o.status,
+        String::from_utf8_lossy(&o.stderr).trim_end()
     )))
 }
 
@@ -314,6 +354,7 @@ fn extract() -> Result<PathBuf, Error> {
             }
         }
     }
+    prune_siblings(&dir);
     Ok(dir)
 }
 
@@ -345,3 +386,21 @@ fn cache_root() -> PathBuf {
 
 #[cfg(target_os = "macos")]
 mod macos_stubs;
+
+#[cfg(test)]
+mod tests {
+    use super::prune_siblings;
+
+    #[test]
+    fn pruning_keeps_only_the_current_entry() {
+        let root = std::env::temp_dir().join(format!("ms-prune-{}", std::process::id()));
+        for name in ["current", "old-a", "old-b"] {
+            std::fs::create_dir_all(root.join(name)).unwrap();
+            std::fs::write(root.join(name).join("tool"), b"x").unwrap();
+        }
+        prune_siblings(&root.join("current"));
+        assert!(root.join("current").join("tool").is_file());
+        assert!(!root.join("old-a").exists() && !root.join("old-b").exists());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+}

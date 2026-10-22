@@ -37,6 +37,8 @@ pub fn embedded() -> Result<PathBuf, String> {
         let _ = std::fs::remove_file(&staged);
         failed("write", e)
     })?;
+    // Archives of other `ms` versions are dead weight once this one is in place.
+    ms_driver::prune_siblings(&directory);
     Ok(path)
 }
 

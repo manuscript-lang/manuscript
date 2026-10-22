@@ -646,7 +646,8 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     let triple = g.module.isa().triple().to_string();
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
-        let obj = crate::llvm_obj::compile(&llvm.finish(&triple), opts.llvm.unwrap_or("3"))?;
+        let irs = llvm.finish_chunks(&triple, llvm_chunks(llvm.body.len()));
+        let obj = crate::llvm_obj::compile_all(&irs, opts.llvm.unwrap_or("3"))?;
         let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files)?;
         g.dbg = t.dbg;
         g.scopes = t.scopes;
@@ -674,6 +675,18 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         object: product.emit().map_err(|e| Error(e.to_string()))?,
         llvm: None,
     })
+}
+
+/// How many modules to split the LLVM functions into so `opt` and `llc` run in parallel. Small
+/// programs stay whole to keep cross-function inlining; splitting needs the bundled linker's
+/// relocatable merge, which is available on Linux.
+fn llvm_chunks(ir_bytes: usize) -> usize {
+    const MIN_CHUNK: usize = 1 << 20;
+    if !cfg!(target_os = "linux") {
+        return 1;
+    }
+    let cores = std::thread::available_parallelism().map_or(1, |n| n.get());
+    (ir_bytes / MIN_CHUNK).clamp(1, cores.min(16))
 }
 
 fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
