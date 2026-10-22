@@ -242,19 +242,9 @@ impl<'a> FnLower<'a> {
         let mt = self.ty_of(map);
         let (kd, vd) = self.map_descs(mt)?;
         let vd = vd.ok_or_else(|| Error::new("a keyed borrow needs a map"))?;
-        let kty = match self.b.m.types.kind(mt).clone() {
-            TyKind::Obj(_, a) => a[0],
-            _ => return Err(Error::new("a keyed borrow needs a map")),
-        };
         let k = self.b.use_var(key);
-        // The lookup lends a copy of the key, taken back afterwards.
-        let probe = self.owned(Val { v: k, own: false });
-        let kslot = self.put_slot(probe);
-        let ptr = self.call_runtime("msrt_map_get_ptr", &[map, kd, vd, kslot], MTy::PTR)?;
-        if self.needs_drop(kty) {
-            let back = self.take_slot(kslot, kty);
-            self.drop_value(back);
-        }
-        Ok(ptr)
+        // The lookup only reads the key, so it lends the key itself.
+        let kslot = self.lend_slot(k);
+        self.call_runtime("msrt_map_get_ptr", &[map, kd, vd, kslot], MTy::PTR)
     }
 }
