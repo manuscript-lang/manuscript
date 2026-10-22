@@ -889,23 +889,70 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
     let func = job.sym.decl.as_ref().and_then(|d| d.func());
     let mut args = fl.thunk_native_args(job.sym.module, func, &job.params, &params[1..])?;
     let ret = fl.ret_ty;
-    if matches!(job.native.as_str(), "json/parse" | "json/stringify") {
-        // Generic natives with their own lowering: the type argument comes from the instance.
-        fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
-        let have = fl.mty(&job.result)?;
-        let r = if job.native == "json/parse" {
-            let t = job.result.args.first().cloned();
-            let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
-            fl.json_parse(&t, have, &args)?
-        } else {
-            let value = job.params.iter().find(|p| p.name.as_str() == "value");
-            let t = value.map(|p| p.ty.clone());
-            let t = t.ok_or_else(|| Error::new("stringify without a value"))?;
-            fl.json_stringify(t, have, &args)?
-        };
-        let out = fl.fit_ty(r, &job.result, ret)?;
-        fl.emit_return(Some(out));
-        return Ok(());
+    match job.native.as_str() {
+        "json/parse" | "json/stringify" => {
+            // Generic natives with their own lowering: the type argument comes from the instance.
+            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
+            let have = fl.mty(&job.result)?;
+            let r = if job.native == "json/parse" {
+                let t = job.result.args.first().cloned();
+                let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
+                fl.json_parse(&t, have, &args)?
+            } else {
+                let value = job.params.iter().find(|p| p.name.as_str() == "value");
+                let t = value.map(|p| p.ty.clone());
+                let t = t.ok_or_else(|| Error::new("stringify without a value"))?;
+                fl.json_stringify(t, have, &args)?
+            };
+            let out = fl.fit_ty(r, &job.result, ret)?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        "html/parse" => {
+            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
+            let node = job.result.args.first().cloned();
+            let node = node.ok_or_else(|| Error::new("parse without a node type"))?;
+            let out = fl.html_parse(&node, ret, &args)?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        "random/secure_int" | "random/uuid_v4" | "random/float" | "random/shuffle"
+        | "random/choice" => {
+            let out = fl.random_with(&job.native, &args, ret)?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        "io/stdout" | "io/stderr" => {
+            let out = fl.std_stream(ret, job.native == "io/stderr")?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        "time/clock" | "time/wall_clock" => {
+            let out = fl.time_clock(ret, job.native == "time/wall_clock")?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        "io/read_all" | "io/copy" => {
+            fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
+            let kind = if job.native == "io/copy" {
+                crate::streamloop::Loop::Copy
+            } else {
+                crate::streamloop::Loop::ReadAll
+            };
+            let out = fl.stream_with(kind, &args, ret)?;
+            fl.emit_return(Some(out));
+            return Ok(());
+        }
+        other => {
+            let handle = crate::natiface::HANDLE_FUNCTIONS
+                .iter()
+                .find(|f| f.0 == other);
+            if let Some(&(_, module, make, constant)) = handle {
+                let out = fl.handle_interface(&job.result, ret, module, make, constant)?;
+                fl.emit_return(Some(out));
+                return Ok(());
+            }
+        }
     }
     let out = fl.native_call(&job.native, &job.params, &args, ret)?;
     fl.emit_return(Some(out));

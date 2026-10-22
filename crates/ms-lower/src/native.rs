@@ -225,60 +225,35 @@ impl<'a> FnLower<'a> {
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
                 self.at(e.pos);
                 let rty = self.emty(e)?;
-                self.html_parse(e, rty, &args)
-            }
-            "collections/map_from_entries" => {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                self.map_from_entries(args[0].val, result)
-            }
-            "crypto/sha256" | "crypto/sha384" | "crypto/sha512" => {
-                // The digest of the `HashAlgorithm` case of that name.
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::BYTES));
-                }
-                let data = args
+                let node = self
+                    .ety(e)
+                    .args
                     .first()
-                    .ok_or_else(|| Error::new("a digest without data"))?;
-                let data = self.borrow(data.val);
-                let alg = match native {
-                    "crypto/sha256" => 3,
-                    "crypto/sha384" => 4,
-                    _ => 5,
-                };
-                let alg = self.b.iconst(alg);
-                let sym = "msrt_crypto_digest";
-                let sig = crate::rtcall::rt_sig(sym)
-                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-                self.at(e.pos);
-                self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES)
+                    .cloned()
+                    .ok_or_else(|| Error::new("parse without a node type"))?;
+                self.html_parse(&node, rty, &args)
             }
-            "crypto/derive_key" => {
-                // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
+            "collections/map_from_entries"
+            | "crypto/sha256"
+            | "crypto/sha384"
+            | "crypto/sha512"
+            | "crypto/derive_key" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
                 }
-                let mut vals = vec![self.b.iconst(3)];
-                for a in &args {
-                    vals.push(self.borrow(a.val));
-                }
-                let sym = "msrt_crypto_derive_key";
-                let sig = crate::rtcall::rt_sig(sym)
-                    .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
                 let result = self.emty(e)?;
                 self.at(e.pos);
-                self.finish_rt_call(sym, &sig, true, vals, result)
+                self.native_call(native, params, &args, result)
             }
-            "io/stdout" => self.std_stream(e, false),
-            "io/stderr" => self.std_stream(e, true),
-            "time/clock" => self.time_clock(e, false),
-            "time/wall_clock" => self.time_clock(e, true),
+            "io/stdout" | "io/stderr" => {
+                let it = self.emty(e)?;
+                self.std_stream(it, native == "io/stderr")
+            }
+            "time/clock" | "time/wall_clock" => {
+                let it = self.emty(e)?;
+                self.time_clock(it, native == "time/wall_clock")
+            }
             "io/read_line" => self.read_line_native(e, view, params),
             "time/duration" => {
                 // A `Duration` is its count of nanoseconds.
@@ -322,7 +297,8 @@ impl<'a> FnLower<'a> {
                     .iter()
                     .find(|f| f.0 == other)
                     .expect("listed");
-                self.handle_interface(e, module, make, constant)
+                let (ity, want) = (self.ety(e), self.emty(e)?);
+                self.handle_interface(&ity, want, module, make, constant)
             }
             other if other.starts_with("testing/") => {
                 self.testing_native(e, view, &other["testing/".len()..])
@@ -418,6 +394,37 @@ impl<'a> FnLower<'a> {
                 v: self.borrow(args[0].val),
                 own: false,
             });
+        }
+        if native == "collections/map_from_entries" {
+            return self.map_from_entries(args[0].val, result);
+        }
+        if matches!(native, "crypto/sha256" | "crypto/sha384" | "crypto/sha512") {
+            // The digest of the `HashAlgorithm` case of that name.
+            let data = args
+                .first()
+                .ok_or_else(|| Error::new("a digest without data"))?;
+            let data = self.borrow(data.val);
+            let alg = match native {
+                "crypto/sha256" => 3,
+                "crypto/sha384" => 4,
+                _ => 5,
+            };
+            let alg = self.b.iconst(alg);
+            let sym = "msrt_crypto_digest";
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            return self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES);
+        }
+        if native == "crypto/derive_key" {
+            // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
+            let mut vals = vec![self.b.iconst(3)];
+            for a in args {
+                vals.push(self.borrow(a.val));
+            }
+            let sym = "msrt_crypto_derive_key";
+            let sig = crate::rtcall::rt_sig(sym)
+                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+            return self.finish_rt_call(sym, &sig, true, vals, result);
         }
         let sym = crate::rtcall::function_symbol(native_alias(native))
             .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
@@ -555,17 +562,17 @@ impl<'a> FnLower<'a> {
     }
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
-    fn std_stream(&mut self, e: &Expr, stderr: bool) -> Result<Val, Error> {
+    pub(crate) fn std_stream(&mut self, it: MTy, stderr: bool) -> Result<Val, Error> {
         let name = if stderr { "stderr" } else { "stdout" };
-        self.native_iface(e, name, &mut |m, method, params, ret| {
+        self.native_iface(it, name, &mut |m, method, params, ret| {
             build_stream_method(m, method, params, ret, stderr)
         })
     }
 
     /// `clock()` / `wall_clock()`: an interface whose `now` reads the runtime clock.
-    fn time_clock(&mut self, e: &Expr, wall: bool) -> Result<Val, Error> {
+    pub(crate) fn time_clock(&mut self, it: MTy, wall: bool) -> Result<Val, Error> {
         let name = if wall { "wall_clock" } else { "clock" };
-        self.native_iface(e, name, &mut |m, method, params, ret| {
+        self.native_iface(it, name, &mut |m, method, params, ret| {
             build_clock_method(m, method, params, ret, wall)
         })
     }
@@ -573,11 +580,10 @@ impl<'a> FnLower<'a> {
     /// An interface value of the expression's type over a vtable of MIR-built methods.
     fn native_iface(
         &mut self,
-        e: &Expr,
+        it: MTy,
         name: &str,
         build: &mut MethodBuilder<'_>,
     ) -> Result<Val, Error> {
-        let it = self.emty(e)?;
         let TyKind::Iface(iface) = self.b.m.types.kind(it).clone() else {
             return Err(Error::new(format!("{name}() is not an interface")));
         };

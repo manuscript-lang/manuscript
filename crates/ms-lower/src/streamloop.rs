@@ -50,6 +50,17 @@ impl FnLower<'_> {
             return Ok(self.dummy(MTy::UNIT));
         }
         let result = self.emty(e)?;
+        self.at(e.pos);
+        self.stream_with(kind, &args, result)
+    }
+
+    /// `read_all` / `copy` on evaluated arguments.
+    pub(crate) fn stream_with(
+        &mut self,
+        kind: Loop,
+        args: &[crate::native::NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
         let find = |name: &str| args.iter().find(|a| a.name.as_str() == name).copied();
         let input =
             find("input").ok_or_else(|| Error::new("a stream operation without an input"))?;
@@ -62,7 +73,6 @@ impl FnLower<'_> {
             _ => None,
         };
         let (has, max) = self.optional_int(find("max_bytes"))?;
-        self.at(e.pos);
         self.stream_loop(kind, input, sink, has, max, result)
     }
 
