@@ -43,6 +43,8 @@ pub struct Lower<'a, 'm> {
     slot_blk: HashMap<usize, usize>,
     /// MIR values that an already lowered instruction used.
     used: Vec<bool>,
+    /// String literal index behind each MIR value defined by `str`.
+    str_lits: HashMap<usize, u32>,
     /// Home slot of each wide block parameter, by `(block, parameter)`.
     pslots: HashMap<(usize, usize), ir::StackSlot>,
     /// Wide block parameters whose leaves are loaded from their home at each use.
@@ -77,6 +79,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             slot_of: HashMap::new(),
             slot_blk: HashMap::new(),
             used: Vec::new(),
+            str_lits: HashMap::new(),
             pslots: HashMap::new(),
             lazy: Vec::new(),
             cur: 0,
@@ -1382,6 +1385,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                     unreachable!()
                 };
                 let d = self.g.str_lit(s.0);
+                if let Some(r) = inst.res {
+                    self.str_lits.insert(r.index(), s.0);
+                }
                 vec![self.data_addr(d)]
             }
             Op::IAdd => vec![{
@@ -2340,11 +2346,78 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// Calls a runtime function with the ABI mapping of `ms-rt`: aggregates by pointer
     /// to a spilled copy, aggregate results through a trailing out pointer.
+    /// `s == "lit"` for a literal of one to eight bytes without a NUL, compared inline: the
+    /// length word, then the bytes in power-of-two chunks (read only once the length matches,
+    /// so no load passes the object's NUL terminator).
+    fn string_eq_literal(&mut self, inst: &Inst) -> Option<Vs> {
+        let (lit, other) = match (
+            self.str_lits.get(&inst.args[0].index()),
+            self.str_lits.get(&inst.args[1].index()),
+        ) {
+            (_, Some(l)) => (*l, self.a(inst, 0)[0]),
+            (Some(l), None) => (*l, self.a(inst, 1)[0]),
+            (None, None) => return None,
+        };
+        let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
+        if bytes.is_empty() || bytes.len() > 8 || bytes.contains(&0) {
+            return None;
+        }
+        let unaligned = MemFlagsData::new().with_notrap();
+        let len = self.b.ins().load(types::I64, flags(), other, 16);
+        let same_len = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, len, bytes.len() as i64);
+        let check = self.b.create_block();
+        let join = self.b.create_block();
+        self.b.append_block_param(join, types::I8);
+        let no = self.b.ins().iconst(types::I8, 0);
+        self.b
+            .ins()
+            .brif(same_len, check, &[], join, &[BlockArg::Value(no)]);
+        self.b.switch_to_block(check);
+        let mut all = None;
+        let mut at = 0;
+        while at < bytes.len() {
+            let n = [8, 4, 2, 1]
+                .into_iter()
+                .find(|n| bytes.len() - at >= *n)
+                .unwrap();
+            let ty = match n {
+                8 => types::I64,
+                4 => types::I32,
+                2 => types::I16,
+                _ => types::I8,
+            };
+            let mut word = [0u8; 8];
+            word[..n].copy_from_slice(&bytes[at..at + n]);
+            let shift = 64 - 8 * n as u32;
+            let want = (i64::from_le_bytes(word) << shift) >> shift;
+            let got = self.b.ins().load(ty, unaligned, other, 32 + at as i32);
+            let eq = self.b.ins().icmp_imm_s(IntCC::Equal, got, want);
+            all = Some(match all {
+                Some(a) => self.b.ins().band(a, eq),
+                None => eq,
+            });
+            at += n;
+        }
+        self.b
+            .ins()
+            .jump(join, &[BlockArg::Value(all.expect("non-empty literal"))]);
+        self.b.switch_to_block(join);
+        Some(vec![self.b.block_params(join)[0]])
+    }
+
     fn call_extern(&mut self, f: &Func, inst: &Inst) -> Vs {
         let Imm::Ext(e) = inst.imm else {
             unreachable!()
         };
         let def = self.g.m.externs[e.index()].clone();
+        if def.name == "msrt_string_eq"
+            && let Some(r) = self.string_eq_literal(inst)
+        {
+            return r;
+        }
         let id = match self.g.ext.get(&e) {
             Some(id) => *id,
             None => {
