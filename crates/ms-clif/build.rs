@@ -143,32 +143,36 @@ fn strip_members(archive: &Path) {
         "cannot unpack {}",
         archive.display()
     );
-    for member in &members {
+    // Import objects share member names, so only uniquely named members are extracted faithfully.
+    // They are replaced in place, which keeps the rest of the archive as it was.
+    let unique: Vec<&String> = members
+        .iter()
+        .filter(|m| members.iter().filter(|n| n == m).count() == 1)
+        .collect();
+    for member in &unique {
         // Import objects are not objects to llvm-strip; the failure leaves them untouched.
         run(
             "llvm-strip",
             &["--strip-debug".as_ref(), std::ffi::OsStr::new(member)],
         );
     }
-    let rebuilt = archive.with_extension("rebuilt");
-    let _ = std::fs::remove_file(&rebuilt);
     // Thousands of members overflow the Windows command line, so pass them in a response file.
     let list = dir.join("members.rsp");
-    std::fs::write(&list, members.join("\n")).expect("write the member list");
+    let names: Vec<&str> = unique.iter().map(|m| m.as_str()).collect();
+    std::fs::write(&list, names.join("\n")).expect("write the member list");
     let response = format!("@{}", list.display());
     assert!(
         run(
             "llvm-ar",
             &[
-                "rcs".as_ref(),
-                rebuilt.as_os_str(),
+                "rs".as_ref(),
+                archive.as_os_str(),
                 std::ffi::OsStr::new(&response)
             ]
         ),
         "cannot rebuild {}",
         archive.display()
     );
-    std::fs::rename(&rebuilt, archive).expect("replace the stripped archive");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
