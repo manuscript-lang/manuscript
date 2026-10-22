@@ -410,31 +410,41 @@ fn large_response_waits_for_window_updates() {
         let mut c = Client::connect(&addr, Settings::default());
         let id = c.get("/big");
         c.flush();
-        // Without credit the server stops at the initial 65535-byte window.
+        // Without credit the server stops at the initial 65535-byte window. Wait (generously)
+        // for the window to fill, then require silence: a loaded machine only delays the
+        // window, it must not end the wait early.
         let mut seen = 0usize;
         let mut got = 0usize;
-        let mut idle = 0;
-        while idle < 3 {
+        let mut quiet = 0;
+        loop {
             while seen < c.events.len() {
                 if let Event::Data { data, .. } = &c.events[seen] {
                     got += data.len();
                 }
                 seen += 1;
             }
-            c.tls
-                .sock
-                .set_read_timeout(Some(Duration::from_millis(300)))
-                .unwrap();
-            let before = c.events.len();
-            let mut buf = [0u8; 16 * 1024];
-            if let Ok(n) = c.tls.read(&mut buf) {
-                c.events.extend(c.core.feed(&buf[..n]).unwrap());
-            }
-            idle = if c.events.len() == before {
-                idle + 1
+            let filled = got >= 65_535;
+            let wait = if filled {
+                Duration::from_millis(300)
             } else {
-                0
+                Duration::from_secs(10)
             };
+            c.tls.sock.set_read_timeout(Some(wait)).unwrap();
+            let mut buf = [0u8; 16 * 1024];
+            match c.tls.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    c.events.extend(c.core.feed(&buf[..n]).unwrap());
+                    quiet = 0;
+                }
+                Err(_) if filled => {
+                    quiet += 1;
+                    if quiet == 3 {
+                        break;
+                    }
+                }
+                Err(e) => panic!("the window never filled: {e}"),
+            }
         }
         c.tls
             .sock
