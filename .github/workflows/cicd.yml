@@ -34,6 +34,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       rust: ${{ steps.diff.outputs.rust }}
+      matrix: ${{ steps.diff.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,6 +52,20 @@ jobs:
             fi
           fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
+          # Windows and macOS runners are scarce and queue for tens of minutes, so pull requests run
+          # Linux only; pushes to main, merge groups and manual runs cover all six platforms. Run
+          # the workflow by hand on a branch to test a platform-specific change before merging.
+          include='{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","full":true,"corpus":true},
+            {"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm"}'
+          if [ "$EVENT" != pull_request ]; then
+            include="$include,
+            {\"os\":\"darwin\",\"arch\":\"amd64\",\"runner\":\"macos-15-intel\"},
+            {\"os\":\"darwin\",\"arch\":\"arm64\",\"runner\":\"macos-15\",\"tests\":true,\"corpus\":true},
+            {\"os\":\"windows\",\"arch\":\"amd64\",\"runner\":\"windows-2025\",\"tests\":true,\"corpus\":true},
+            {\"os\":\"windows\",\"arch\":\"arm64\",\"runner\":\"windows-11-arm\"}"
+          fi
+          echo "matrix={\"include\":[$include]}" | tr -d '\n' >> "$GITHUB_OUTPUT"
+          echo >> "$GITHUB_OUTPUT"
 
   # One job per platform runs everything for that platform in sequence, so a pull request
   # starts six Rust runners, not dozens (the account runs 20 jobs at once). Tests parallelize
@@ -67,17 +82,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # `full`: format, clippy, every crate's tests and doc tests. `tests`: the same tests and doc tests without format and clippy. `corpus`: the frozen
-          # conformance corpus against the Rust ms on this platform. Failures shared with
-          # Linux are in tests/conformance/expect-fail.txt; platform-only ones go in
-          # tests/conformance/expect-fail.<os>.txt with a reason.
-          - { os: linux, arch: amd64, runner: ubuntu-24.04, full: true, corpus: true }
-          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm }
-          - { os: darwin, arch: amd64, runner: macos-15-intel }
-          - { os: darwin, arch: arm64, runner: macos-15, tests: true, corpus: true }
-          - { os: windows, arch: amd64, runner: windows-2025, tests: true, corpus: true }
-          - { os: windows, arch: arm64, runner: windows-11-arm }
+        # `full`: format, clippy, every crate's tests and doc tests. `tests`: the same tests and doc
+        # tests without format and clippy. `corpus`: the frozen conformance corpus against the Rust
+        # ms on this platform. Failures shared with Linux are in tests/conformance/expect-fail.txt;
+        # platform-only ones go in tests/conformance/expect-fail.<os>.txt with a reason. The legs
+        # come from the `changes` job, which leaves out darwin on pull requests.
+        include: ${{ fromJSON(needs.changes.outputs.matrix).include }}
     defaults:
       run:
         shell: bash
@@ -210,10 +220,13 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then
             export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
           fi
-          cargo build --workspace --tests --locked --keep-going
+          # One build with every target: the later steps (nextest, the CLI, the native tests, the
+          # corpus runner) then reuse it instead of rebuilding dependencies with other features.
+          cargo build --workspace --all-targets --locked --keep-going
           cargo nextest run --workspace --locked --no-fail-fast
           cargo test --workspace --doc --locked
       - name: MIR signed boundaries and fault semantics
+        if: ${{ !(matrix.full || matrix.tests) }}
         run: cargo test --locked -p ms-mir --test opt_overflow -- --nocapture
       - name: Build CLI for native source conformance
         run: |
@@ -253,10 +266,12 @@ jobs:
             ' "$json"
           done
       - name: Native overflow, fault positions, cleanup and inline frames
+        if: ${{ !(matrix.full || matrix.tests) }}
         run: |
           cargo test --locked -p ms-clif --test native predicated_overflow -- --nocapture
           cargo test --locked -p ms-clif --test native fault_trace_on_real_runtime -- --nocapture
       - name: Native object and linked source attribution
+        if: ${{ !(matrix.full || matrix.tests) }}
         run: |
           llvm-dwarfdump --version
           llvm-symbolizer --version
