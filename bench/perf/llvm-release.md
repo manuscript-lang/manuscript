@@ -1,6 +1,6 @@
 # Release builds: LLVM against Cranelift
 
-Release and MinSizeRel builds on Linux optimize with LLVM (`clang -O3`) when `clang` is installed; Debug builds and every other host use Cranelift. This page records both backends on the same 31 benchmarks, run back to back with the same `ms` binary: `MS_BACKEND=cranelift` selects Cranelift.
+Release and MinSizeRel builds on Linux optimize with the bundled LLVM `opt` and `llc` (`-O3`); Debug builds and every other host use Cranelift. This page records both backends on the same 31 benchmarks, run back to back with the same `ms` binary: `MS_BACKEND=cranelift` selects Cranelift.
 
 Method: `MS=ms sh bench/perf/<suite>/run.sh 5` for `kernels`, `competence` and `programs`; linux/amd64, four vCPUs, go1.24.7, rustc 1.99.1, one machine, minimum (kernels, competence) or median (programs) of 5 runs. Single runs on a shared machine move by several percent, so treat differences under about 10% as noise. Units are microseconds for kernels and competence, ns per operation for programs. Ratios of the other languages are Manuscript over them; below 1.00x is faster than they are.
 
