@@ -9,7 +9,6 @@ Agents write the code and people understand it. It is statically typed, compiles
 ## Highlights
 
 - **Clear syntax, no tricks.** Familiar names, four-space blocks, and one obvious spelling instead of clever alternatives. An agent can write it reliably and a person can read it at a glance. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
-- **Easy to verify.** `ms diagram` shows structure and `ms review` shows the semantic effect of a change. `ms verify`, `ms inspect`, and `--json` diagnostics give evidence independent of whoever wrote the code.
 - **Simple, fast memory.** Value semantics with move and copy, no garbage collector, deterministic cleanup. Nothing is copied unless you write `.clone()`, and the only ownership marker is `var`.
 - **Fast.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, typically within 1.4x of Rust with overflow checks on.
 - **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK.
