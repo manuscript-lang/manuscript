@@ -79,6 +79,34 @@ impl Regex:
         max_bytes: Optional[Int] = none
     ) Result[String, RegexError]:
 
+    # Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
+    fn captures(text: String) Result[List[String], RegexError]:
+
+    # Like captures for every nonoverlapping match, under find_all's match-count budget.
+    fn captures_all(
+        text: String,
+        max_matches: Optional[Int] = none
+    ) Result[List[List[String]], RegexError]:
+
+    # Returns the first match's named groups that participated; empty map when nothing matches.
+    fn named_captures(text: String) Result[Map[String, String], RegexError]:
+
+    # Returns [start, end] UTF-8 byte offsets of the first match, or an empty list when nothing matches.
+    fn find_span(text: String) Result[List[Int], RegexError]:
+
+    # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
+    fn split(
+        text: String,
+        max_pieces: Optional[Int] = none
+    ) Result[List[String], RegexError]:
+
+    # Like replace_all but expands $1, ${name}, and $$ in template from each match (Rust regex syntax: use ${1}x, not $1x).
+    fn replace_template(
+        text: String,
+        template: String,
+        max_bytes: Optional[Int] = none
+    ) Result[String, RegexError]:
+
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
 export fn compile(pattern: String) Result[Regex, RegexError]:
 

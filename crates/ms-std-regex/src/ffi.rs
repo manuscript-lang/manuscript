@@ -4,7 +4,7 @@
 use crate::Regex;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Fail, ObjRef, Object, abi_handle, native};
+use ms_std_core::{Fail, IntList, ObjRef, Object, StrMap, abi_handle, native};
 
 abi_handle!(Regex);
 
@@ -24,6 +24,46 @@ native! {
         max: i64,
     ) -> Result<Vec<String>, Fail> {
         re.find_all(text, has_max.then_some(max))
+    }
+
+    fn msrt_regex_captures(re: ObjRef<Regex>, text: &str) -> Result<Vec<String>, Fail> {
+        Ok(re.captures(text))
+    }
+
+    fn msrt_regex_captures_all(
+        re: ObjRef<Regex>,
+        text: &str,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<Vec<String>>, Fail> {
+        re.captures_all(text, has_max.then_some(max))
+    }
+
+    fn msrt_regex_named_captures(re: ObjRef<Regex>, text: &str) -> Result<StrMap, Fail> {
+        Ok(StrMap(re.named_captures(text)))
+    }
+
+    fn msrt_regex_find_span(re: ObjRef<Regex>, text: &str) -> Result<IntList, Fail> {
+        Ok(IntList(re.find_span(text)))
+    }
+
+    fn msrt_regex_split(
+        re: ObjRef<Regex>,
+        text: &str,
+        has_max: bool,
+        max: i64,
+    ) -> Result<Vec<String>, Fail> {
+        re.split(text, has_max.then_some(max))
+    }
+
+    fn msrt_regex_replace_template(
+        re: ObjRef<Regex>,
+        text: &str,
+        template: &str,
+        has_max: bool,
+        max: i64,
+    ) -> Result<String, Fail> {
+        re.replace_template(text, template, has_max.then_some(max))
     }
 
     fn msrt_regex_replace_all(
