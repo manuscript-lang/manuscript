@@ -1,17 +1,6 @@
 import {expect_true} from "@std/testing.ms"
 import {
-    abs,
-    abs_int,
-    atan2,
-    ceil,
-    floor,
-    max,
-    min,
-    pow,
-    remainder,
-    round,
-    sqrt,
-    truncate
+    abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate
 } from "@std/math.ms"
 
 fn viaValue(f: fn(value: Float) Float, x: Float) Float: f(value: x)
