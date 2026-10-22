@@ -166,11 +166,25 @@ pub fn prune_siblings(entry: &Path) {
 }
 
 /// Merges relocatable objects into one (`ld -r`), keeping sections, symbols and DWARF.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn merge_objects(inputs: &[&Path], out: &Path) -> Result<(), Error> {
     let dir = extract()?;
-    let o = Command::new(dir.join(LLD))
-        .args(["-flavor", "gnu", "-r", "-o"])
+    let mut command = Command::new(dir.join(LLD));
+    #[cfg(target_os = "linux")]
+    command.args(["-flavor", "gnu"]);
+    #[cfg(target_os = "macos")]
+    command.args([
+        "-flavor",
+        "darwin",
+        "-arch",
+        if cfg!(target_arch = "aarch64") {
+            "arm64"
+        } else {
+            "x86_64"
+        },
+    ]);
+    let o = command
+        .args(["-r", "-o"])
         .arg(out)
         .args(inputs)
         .output()

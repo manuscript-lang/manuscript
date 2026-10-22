@@ -678,11 +678,10 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
 }
 
 /// How many modules to split the LLVM functions into so `opt` and `llc` run in parallel. Small
-/// programs stay whole to keep cross-function inlining; splitting needs the bundled linker's
-/// relocatable merge, which is available on Linux.
+/// programs stay whole to keep cross-function inlining. Windows has no LLVM path.
 fn llvm_chunks(ir_bytes: usize) -> usize {
     const MIN_CHUNK: usize = 1 << 20;
-    if !cfg!(target_os = "linux") {
+    if !cfg!(unix) {
         return 1;
     }
     let cores = std::thread::available_parallelism().map_or(1, |n| n.get());

@@ -15,7 +15,7 @@ pub(crate) fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 pub(crate) use lld::merge_objects;
 
 /// Links `object` and the runtime static library into the executable `out`.
