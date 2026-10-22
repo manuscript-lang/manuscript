@@ -1,6 +1,6 @@
 # Owned-value model for String, List, Map, Set and Queue
 
-Status: **proposed** (not decided), revised after a skeptic review (verdict: direction defensible, plan not ready to build until the implicit-copy cost is measured and the staging is split). Date: 2026-10-22.
+Status: **proposed**; decision 1 below is made, revised after a skeptic review (verdict: direction defensible, plan not ready to build until the implicit-copy cost is measured and the staging is split). Date: 2026-10-22.
 Direction (from the project owner): represent strings "the Rust way", consistently, everywhere in the stdlib including maps, lists, sets and queues.
 
 ## 1. Goals and non-goals
@@ -101,3 +101,7 @@ Gates for stage 3: no regression above noise on `competence`/`kernels`/`programs
 ## 8. Static copy budget (stage 1 data)
 
 `sh bench/perf/copy-report.sh target/release/ms <ms.toml>` counts `copy` instructions in the lowered MIR by type. On the benchmark programs: competence 11 copies (6 `str`, 1 `Item` record holding a string), kernels 8 (no strings), programs 7 (3 `opt<str>`, 1 `str`). Static counts are small, but the loop-resident ones decide the cost: the `strmap_10M` loop executes two `str` copies per iteration (`let w = words.get(...)` copies the list element, then `m.add(w, ...)` copies it again to give the map an owned key), i.e. 20M retains today and 20M allocate-and-copy operations under unique ownership. The first is removable by binding the `let` as a lexical borrow (the ownership pass already classifies it so; lowering still copies); the second is semantically required (the map stores an owned key, as `entry(w.clone())` does in Rust). Dynamic counts are not yet measured.
+
+## 9. Decisions
+
+1. **Implicit copies are errors (2026-10-22, owner direction).** Lowering never inserts a copy of a non-Copy value from a borrow. Where a consuming position receives a borrowed value, including native collection calls such as `m.add(w, ...)` and `list.append(borrowed)`, the checker rejects the program with a mechanical `.clone()` fix, so the cost of every copy is visible in source. The change lands together with a sweep of the stdlib, examples, conformance fixtures and documentation. Moves at a value's last use and lexical borrows (`let w = xs.get(i)`) need no copy.
