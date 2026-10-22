@@ -1006,6 +1006,22 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
     }
 }
 
+/// Sorts a list of `Int` in place, ascending or (when `desc != 0`) descending. Equal integers are
+/// indistinguishable, so the unstable sort gives the same list as the stable one.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
+    // SAFETY: caller contract: `v` holds `len` words.
+    unsafe {
+        let v = &mut *v;
+        let s = core::slice::from_raw_parts_mut(v.ptr as *mut i64, v.len);
+        if desc != 0 {
+            s.sort_unstable_by(|a, b| b.cmp(a));
+        } else {
+            s.sort_unstable();
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_sorted(
     v: *const VecVal,
@@ -1734,6 +1750,27 @@ mod tests {
             assert!(got.windows(2).all(|w| w[0] <= w[1]));
             drop_list(&mut v, d);
             drop_list(&mut dv, d);
+        }
+    }
+
+    #[test]
+    fn int_sort_orders_both_ways() {
+        let _g = testutil::lock();
+        unsafe {
+            let d = &msrt_desc_int;
+            for desc in [0i64, 1] {
+                let mut v = EMPTY;
+                for i in 0..300i64 {
+                    push_int(&mut v, (i * 7919) % 101 - 50);
+                }
+                msrt_list_sort_ints(&mut v, desc);
+                let got = ints(&v);
+                assert!(
+                    got.windows(2)
+                        .all(|w| (w[0] <= w[1]) == (desc == 0) || w[0] == w[1])
+                );
+                drop_list(&mut v, d);
+            }
         }
     }
 
