@@ -10,6 +10,8 @@ use ms_rt as _;
 
 extern crate alloc;
 
+pub mod pool;
+
 use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::fmt::{self, Write};

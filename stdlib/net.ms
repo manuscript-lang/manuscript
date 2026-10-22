@@ -238,6 +238,7 @@ export interface Network:
     fn listen_unix(path: String) Result[Listener, NetworkError]
     # Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
     # More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
+    # System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
     fn lookup(
         name: String,
         max_records: Optional[Int] = none,
