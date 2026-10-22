@@ -71,6 +71,7 @@ pub struct Stream {
 }
 
 const DEFAULT_CHUNK: i64 = 64 * 1024;
+#[cfg(any(windows, test))]
 const POLL_SLICE_MS: i32 = 50;
 
 impl Stream {
@@ -168,12 +169,25 @@ impl Stream {
         Ok(())
     }
 
-    /// Blocks until the descriptor is ready, checking for cancellation between slices.
+    /// Blocks until the descriptor is ready. The task parks, so other tasks (a server's
+    /// handlers) keep running, and a stop request unwinds.
     fn wait(&self, interest: Interest) {
         if !self.pollable {
             poll_cancel();
             return;
         }
+        #[cfg(all(unix, not(test)))]
+        {
+            let events = match interest {
+                Interest::Read => ms_std_rt::WAIT_READ,
+                Interest::Write => ms_std_rt::WAIT_WRITE,
+            };
+            // Ready, hung up, or failed: the next read or write reports the details.
+            ms_std_rt::task_wait_fd(self.fd, events, -1);
+        }
+        // Tests run on many threads, which the runtime's scheduler does not support; Windows
+        // pipes and consoles cannot be polled, so they are checked between short task sleeps.
+        #[cfg(any(windows, test))]
         loop {
             poll_cancel();
             if sys::wait_ready(self.fd, interest, POLL_SLICE_MS) {

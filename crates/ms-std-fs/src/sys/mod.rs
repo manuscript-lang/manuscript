@@ -21,8 +21,10 @@ mod unix;
 #[cfg(windows)]
 mod windows;
 
+#[cfg(all(unix, test))]
+pub use unix::wait_ready;
 #[cfg(unix)]
-pub use unix::{access, chmod_link, clone_file, pipe_cloexec, set_errno, statfs, wait_ready};
+pub use unix::{access, chmod_link, clone_file, pipe_cloexec, set_errno, statfs};
 #[cfg(windows)]
 pub use windows::{is_output, standard, statfs, wait_ready};
 
@@ -916,6 +918,7 @@ pub fn random_u32() -> u32 {
     RandomState::new().hash_one(0u8) as u32
 }
 
+#[cfg(test)]
 pub fn sleep_ms(ms: i32) {
     std::thread::sleep(Duration::from_millis(ms.max(0) as u64));
 }
