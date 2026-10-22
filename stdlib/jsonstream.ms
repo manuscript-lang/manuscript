@@ -35,15 +35,8 @@ export fn decoder(limits: Optional[JsonLimits] = none) Result[JsonDecoder, JsonE
     return ok(
         JsonDecoder(
             Decoder(
-                limits: bounds,
-                pending: BytesBuilder(),
-                size: 0,
-                depth: 0,
-                mode: 0,
-                in_string: false,
-                escaped: false,
-                finished: false,
-                failure: none
+                limits: bounds, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
+                in_string: false, escaped: false, finished: false, failure: none
             )
         )
     )

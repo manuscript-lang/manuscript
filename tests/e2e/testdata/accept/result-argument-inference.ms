@@ -93,9 +93,7 @@ test "nested success preserves its domain and inferred errors remain exact":
 test "inference and widening evaluate once in written order before defaults":
     var events = Events([])
     let result = ordered(
-        second: record(var events, 2),
-        first: record(var events, 1),
-        var events
+        second: record(var events, 2), first: record(var events, 1), var events
     )
     try expect_equal(events.values, [2, 1, 3, 4])
     let value = try result

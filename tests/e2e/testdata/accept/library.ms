@@ -49,14 +49,12 @@ fn compare(left: Int, right: Int) Int:
 fn verify_json() Result[Unit, Error]:
     let limits = JsonLimits(max_bytes: 1024, max_depth: 8, max_values: 32)
     let value = try parse(
-        text: "\{\"large\":9007199254740993,\"ok\":true\}",
-        limits: limits
+        text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits
     )
     (
         not (
             try stringify(
-                value: value,
-                max_bytes: 1024
+                value: value, max_bytes: 1024
             ) == "\{\"large\":9007199254740993,\"ok\":true\}"
         )
     ) | try expect_false
@@ -84,19 +82,12 @@ fn verify_url() Result[Unit, Error]:
 
 fn verify_binary() Result[Unit, Error]:
     let binary = try write_integer(
-        value: -32768,
-        width: 2,
-        signed: true,
-        little_endian: false
+        value: -32768, width: 2, signed: true, little_endian: false
     )
     (
         not (
             try read_integer(
-                data: binary,
-                offset: 0,
-                width: 2,
-                signed: true,
-                little_endian: false
+                data: binary, offset: 0, width: 2, signed: true, little_endian: false
             ) == -32768
         )
     ) | try expect_false
@@ -104,17 +95,12 @@ fn verify_binary() Result[Unit, Error]:
 
 fn verify_compression() Result[Unit, Error]:
     let compressed = try compress(
-        data: "hello hello hello".to_bytes(),
-        format: "gzip",
-        level: 6,
-        max_bytes: 256
+        data: "hello hello hello".to_bytes(), format: "gzip", level: 6, max_bytes: 256
     )
     (
         not (
             try decompress(
-                data: compressed,
-                format: "gzip",
-                max_bytes: 17
+                data: compressed, format: "gzip", max_bytes: 17
             ) == "hello hello hello".to_bytes()
         )
     ) | try expect_false
@@ -123,9 +109,7 @@ fn verify_compression() Result[Unit, Error]:
 fn verify_archive() Result[Unit, Error]:
     let entries = [
         ArchiveEntry(
-            path: "hello.txt",
-            data: "hello".to_bytes(),
-            directory: false
+            path: "hello.txt", data: "hello".to_bytes(), directory: false
         )
     ]
     let archive = try pack(entries: entries, format: "zip", max_bytes: 1024)
@@ -135,9 +119,7 @@ fn verify_archive() Result[Unit, Error]:
                 data: archive,
                 format: "zip",
                 limits: ArchiveLimits(
-                    max_entries: 1,
-                    max_entry_bytes: 5,
-                    max_total_bytes: 5
+                    max_entries: 1, max_entry_bytes: 5, max_total_bytes: 5
                 )
             ) == entries
         )
@@ -214,10 +196,7 @@ test "malformed and bounded inputs return errors":
     (
         not (
             write_integer(
-                value: 256,
-                width: 1,
-                signed: false,
-                little_endian: true
+                value: 256, width: 1, signed: false, little_endian: true
             ) == failure5
         )
     ) | try expect_false

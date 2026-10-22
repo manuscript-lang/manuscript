@@ -145,9 +145,7 @@ fn advance(var reader: Reader) String:
 
 fn invalid(reader: Reader, reason: String) TomlError:
     return TomlError.InvalidData(
-        line: reader.line,
-        column: reader.column,
-        reason: reason
+        line: reader.line, column: reader.column, reason: reason
     )
 
 fn space(var reader: Reader, multiline: Bool) Unit:
@@ -305,8 +303,7 @@ fn key_path(var reader: Reader) Result[List[String], TomlError]:
         advance(var reader)
 
 fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
-    Int,
-    TomlError
+    Int, TomlError
 ]:
     if flags(reader, parent).sealed: return error(
         invalid(reader, "inline table is closed")
@@ -338,8 +335,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
-    Unit,
-    TomlError
+    Unit, TomlError
 ]:
     let existing = lookup(reader, parent, key)
 
@@ -359,18 +355,14 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
         _: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
-    Unit,
-    TomlError
+    Unit, TomlError
 ]:
     var current = parent
     var index = 0
 
     while index < keys.length() - 1:
         current = try child(
-            reader: var reader,
-            parent: current,
-            key: (keys.get(index)),
-            dotted: true
+            reader: var reader, parent: current, key: (keys.get(index)), dotted: true
         )
         index += 1
 
@@ -522,8 +514,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
         if (
             signed
             or not digits(
-                clean.slice(2, clean.scalar_length()).get(""),
-                alphabet
+                clean.slice(2, clean.scalar_length()).get(""), alphabet
             )
         ):
             return error(invalid(reader, "invalid integer"))
@@ -707,9 +698,7 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
                 entries.add(
                     entry.key,
                     try materialize(
-                        var reader,
-                        entry.value,
-                        (depth + 1)
+                        var reader, entry.value, (depth + 1)
                     )
                 )
             return ok(TomlValue.TableValue(entries))
@@ -723,9 +712,7 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
             var result: List[TomlValue] = []
             for id in ids: result.append(
                 try materialize(
-                    var reader,
-                    Node.TableNode(id),
-                    (depth + 1)
+                    var reader, Node.TableNode(id), (depth + 1)
                 )
             )
             return ok(TomlValue.ArrayValue(result))
@@ -754,15 +741,12 @@ export fn parse(
     for code in normalized.scalar_values():
         if code == 13: return error(
             TomlError.InvalidData(
-                line: scan_line,
-                column: scan_column,
-                reason: "bare carriage return"
+                line: scan_line, column: scan_column, reason: "bare carriage return"
             )
         )
         if (code < 32 and code != 9 and code != 10) or code == 127: return error(
             TomlError.InvalidData(
-                line: scan_line,
-                column: scan_column,
+                line: scan_line, column: scan_column,
                 reason: "invalid control character"
             )
         )
@@ -773,14 +757,8 @@ export fn parse(
         else: scan_column += 1
 
     var reader = Reader(
-        chars: normalized.split(""),
-        pos: 0,
-        line: 1,
-        column: 1,
-        limits: options,
-        values: 0,
-        tables: [],
-        entries: []
+        chars: normalized.split(""), pos: 0, line: 1, column: 1, limits: options,
+        values: 0, tables: [], entries: []
     )
     try allocate(var reader)
     let root = new_table(var reader, explicit: true, dotted: false)
@@ -809,9 +787,7 @@ export fn parse(
 
             while index < keys.length() - 1:
                 parent = try child(
-                    reader: var reader,
-                    parent: parent,
-                    key: (keys.get(index)),
+                    reader: var reader, parent: parent, key: (keys.get(index)),
                     dotted: false
                 )
                 index += 1
@@ -825,18 +801,12 @@ export fn parse(
                 try allocate(var reader)
                 let next = new_table(var reader, explicit: true, dotted: false)
                 try append_table(
-                    reader: var reader,
-                    parent: parent,
-                    key: key,
-                    next: next
+                    reader: var reader, parent: parent, key: key, next: next
                 )
                 current = next
             else:
                 current = try child(
-                    reader: var reader,
-                    parent: parent,
-                    key: key,
-                    dotted: false
+                    reader: var reader, parent: parent, key: key, dotted: false
                 )
                 var state = flags(reader, current)
                 if state.explicit or state.dotted: return error(
@@ -978,9 +948,7 @@ fn section_kind(value: TomlValue) Int:
         _: return 0
 
 fn emit_one(
-    var writer: Writer,
-    path: List[String],
-    brackets: String,
+    var writer: Writer, path: List[String], brackets: String,
     table: Map[String, TomlValue]
 ) Unit:
     if brackets == "[[": emit_header(var writer, "[[".concat(dotted(path)).concat("]]"))
@@ -1009,18 +977,12 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 
         match entry.value:
             TableValue(table): emit_one(
-                writer: var writer,
-                path: child,
-                brackets: "[",
-                table: table
+                writer: var writer, path: child, brackets: "[", table: table
             )
             ArrayValue(elements):
                 if section_kind(entry.value) == 2:
                     for table in table_items(elements): emit_one(
-                        writer: var writer,
-                        path: child,
-                        brackets: "[[",
-                        table: table
+                        writer: var writer, path: child, brackets: "[[", table: table
                     )
             _: unit
 

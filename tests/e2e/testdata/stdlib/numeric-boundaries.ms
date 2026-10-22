@@ -38,8 +38,7 @@ test "duration arithmetic retains full signed nanosecond range":
         )
     )
     try expect_equal(
-        duration(-1).multiply(9223372036854775807),
-        duration((-9223372036854775807))
+        duration(-1).multiply(9223372036854775807), duration((-9223372036854775807))
     )
     try expect_false(
         (
@@ -77,8 +76,7 @@ test "duration safe addition subtraction negation and unit edges":
     )
     try expect_equal((9223372036854).milliseconds.to_nanoseconds(), 9223372036854000000)
     try expect_equal(
-        (-9223372036854).milliseconds.to_nanoseconds(),
-        (-9223372036854000000)
+        (-9223372036854).milliseconds.to_nanoseconds(), (-9223372036854000000)
     )
     try expect_false(
         (

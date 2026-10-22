@@ -14,9 +14,7 @@ fn run(fs: FileSystem, root: String) Unit:
                 if (
                     fs
                     .write_file_bytes(
-                        "{root}/f{i}.bin",
-                        data,
-                        replace: true
+                        "{root}/f{i}.bin", data, replace: true
                     )
                     .is_ok()
                 ):

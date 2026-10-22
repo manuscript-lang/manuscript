@@ -24,8 +24,7 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal("ab".repeat(4611686018427387904), limited)
     try expect_equal("ab".pad_start(9223372036854775807, "x"), limited)
     try expect_equal(
-        "ab".pad_end(4611686018427387904, "xyz", 9223372036854775807),
-        limited
+        "ab".pad_end(4611686018427387904, "xyz", 9223372036854775807), limited
     )
     try expect_equal((try "aa".replace_all("a", "xy")), "xyxy")
     try expect_equal("a,,b".split(",", 2), ["a", ""])

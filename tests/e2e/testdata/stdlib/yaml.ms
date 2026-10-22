@@ -62,8 +62,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
             expected: "x\n# hash: text\nit's y"
         ),
         ScalarCase(
-            text: "a: \"x\n\n  \\\"y\\\"\" # outside",
-            expected: "x\n\"y\""
+            text: "a: \"x\n\n  \\\"y\\\"\" # outside", expected: "x\n\"y\""
         )
     ]
     for example in cases:
@@ -101,13 +100,11 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
         ScalarCase(text: "a: >+\n  x\n\n  y\n\n\n", expected: "x\ny\n\n\n"),
         ScalarCase(text: "a: >2-\n  x\n\n\n  y\n", expected: "x\n\ny"),
         ScalarCase(
-            text: "a: >\n  x\n\n    y\n\n  z\n",
-            expected: "x\n\n  y\n\nz\n"
+            text: "a: >\n  x\n\n    y\n\n  z\n", expected: "x\n\n  y\n\nz\n"
         ),
         ScalarCase(text: "a: >2-\n  x\n   \n  y\n", expected: "x\n \ny"),
         ScalarCase(
-            text: "a: >2-\n  x\n\n  \ty\n\n  z\n",
-            expected: "x\n\n\ty\n\nz"
+            text: "a: >2-\n  x\n\n  \ty\n\n  z\n", expected: "x\n\n\ty\n\nz"
         ),
         ScalarCase(text: "a: >-\n\n  x\n\n  y\n", expected: "\nx\ny"),
         ScalarCase(text: "a: |\n  x\n\n  y\n", expected: "x\n\ny\n"),
@@ -152,9 +149,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
                 (
                     parse(
                         text: text.replace(
-                            old: "\n",
-                            new: ending,
-                            max_replacements: text.byte_length()
+                            old: "\n", new: ending, max_replacements: text.byte_length()
                         )
                     ) | try expect_ok
                 )
@@ -171,8 +166,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
     try expect_false(
         (
             (try items(root.get("a").get())) != [
-                YamlValue.StringValue("x\ny"),
-                YamlValue.StringValue("z")
+                YamlValue.StringValue("x\ny"), YamlValue.StringValue("z")
             ]
         )
     )
@@ -188,9 +182,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
                 parse(
                     text: text,
                     limits: limits(
-                        bytes: text.byte_length(),
-                        depth: 2,
-                        values: 2
+                        bytes: text.byte_length(), depth: 2, values: 2
                     )
                 ) | try expect_ok
             ) != expected
@@ -202,9 +194,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             parse(
                 text: text,
                 limits: limits(
-                    bytes: text.byte_length() - 1,
-                    depth: none,
-                    values: none
+                    bytes: text.byte_length() - 1, depth: none, values: none
                 )
             ) != limited
         )
@@ -212,8 +202,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
     try expect_false(
         (
             parse(
-                text: text,
-                limits: limits(bytes: none, depth: none, values: 1)
+                text: text, limits: limits(bytes: none, depth: none, values: 1)
             ) != limited
         )
     )
@@ -265,8 +254,7 @@ test "YAML block mappings sequences exact scalars and core schema":
     try expect_false(
         (
             (try items(root.get("values").get())) != [
-                YamlValue.Null,
-                YamlValue.BoolValue(false),
+                YamlValue.Null, YamlValue.BoolValue(false),
                 YamlValue.NumberValue("0xFF")
             ]
         )
@@ -463,32 +451,28 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
     try expect_false(
         (
             parse(
-                text: "é",
-                limits: limits(bytes: 1, depth: none, values: none)
+                text: "é", limits: limits(bytes: 1, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "[[[]]]",
-                limits: limits(bytes: none, depth: 2, values: none)
+                text: "[[[]]]", limits: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a:\n  b: 1",
-                limits: limits(bytes: none, depth: 2, values: none)
+                text: "a:\n  b: 1", limits: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "[1,2]",
-                limits: limits(bytes: none, depth: none, values: 2)
+                text: "[1,2]", limits: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
@@ -503,8 +487,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
@@ -514,16 +497,14 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: none, depth: -1, values: none)
+                text: "", limits: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "[1,2]",
-                limits: limits(bytes: 5, depth: 2, values: 3)
+                text: "[1,2]", limits: limits(bytes: 5, depth: 2, values: 3)
             ) != parse(text: "[1,2]")
         )
     )
@@ -609,8 +590,7 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
     let list = parse(text: "- foo\n  bar\n-\n  baz\n  qux\n") | try expect_ok | try items
     list | try expect_equal(
         expected: [
-            YamlValue.StringValue("foo bar"),
-            YamlValue.StringValue("baz qux")
+            YamlValue.StringValue("foo bar"), YamlValue.StringValue("baz qux")
         ]
     )
     let anchored = parse(text: "a:\n  &x\n  k: 1\nb: *x\n") | try expect_ok | try entries
@@ -670,8 +650,7 @@ test "YAML plain scalars continued inside flow collections fold their line break
     try expect_false(
         (
             (try items(root.get("a").get())) != [
-                YamlValue.StringValue("x y"),
-                YamlValue.StringValue("z")
+                YamlValue.StringValue("x y"), YamlValue.StringValue("z")
             ]
         )
     )

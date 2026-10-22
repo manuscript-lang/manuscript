@@ -38,17 +38,14 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
     if exchange.path() == "/ws":
         with socket = try socket_result(
             result: exchange.upgrade(
-                allowed_origins: [],
-                subprotocols: ["echo"],
-                max_message_bytes: 1024
+                allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
             )
         ):
             match try socket_result(result: socket.receive()):
                 some(message):
                     let sent = try socket_result(
                         result: socket.send_bytes(
-                            data: message.data,
-                            text: message.text
+                            data: message.data, text: message.text
                         )
                     )
                 none:
@@ -68,45 +65,26 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
 
 fn exercise() Result[Unit, Error]:
     let tls = TlsOptions(
-        server_name: "",
-        roots_pem: "",
-        certificate_pem: "",
-        private_key_pem: "",
-        alpn: [],
-        require_client_certificate: false
+        server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
+        alpn: [], require_client_certificate: false
     )
     let server_options = HttpServerOptions(
-        max_requests: 8,
-        max_body_bytes: 1024,
-        max_response_bytes: 1024,
-        max_header_bytes: 65536,
-        timeout: 3.seconds,
-        grace: 0.milliseconds,
-        tls: none
+        max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
+        max_header_bytes: 65536, timeout: 3.seconds, grace: 0.milliseconds, tls: none
     )
 
     with server = try network().serve_stream(
-        address: "127.0.0.1:0",
-        handler: echo,
-        options: server_options
+        address: "127.0.0.1:0", handler: echo, options: server_options
     ):
         let client_options = HttpClientOptions(
-            max_redirects: 2,
-            max_idle_connections: 4,
-            max_header_bytes: 65536,
-            idle_timeout: 10.seconds,
-            decompress: true,
-            cookies: true,
-            tls: tls
+            max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
+            idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls
         )
 
         with client = try network().http_client(options: client_options):
             with response = try client.request(
-                method: HttpMethod.Get,
-                url: "http://{server.address()}/",
-                headers: headers(),
-                body: "",
-                max_response_bytes: 1024,
+                method: HttpMethod.Get, url: "http://{server.address()}/",
+                headers: headers(), body: "", max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
                 response.metadata().status | try expect_equal(expected: 200)
@@ -129,18 +107,13 @@ fn exercise() Result[Unit, Error]:
                         return fail(message: "Unexpected case")
 
         let websocket_options = WebSocketOptions(
-            max_message_bytes: 1024,
-            timeout: 2.seconds,
-            tls: tls,
-            compression: false
+            max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: false
         )
 
         with socket = try socket_result(
             result: network().web_socket(
-                url: "ws://{server.address()}/ws",
-                headers: headers(),
-                subprotocols: ["echo"],
-                options: websocket_options
+                url: "ws://{server.address()}/ws", headers: headers(),
+                subprotocols: ["echo"], options: websocket_options
             )
         ):
             socket.subprotocol() | try expect_equal(expected: "echo")

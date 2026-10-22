@@ -954,10 +954,7 @@ fn lex(src: List[Int], start: Int, stop: Int) Result[List[Token], SqlError]:
 
             toks.append(
                 Token(
-                    kind: "str",
-                    text: "",
-                    num: 0,
-                    data: bytes_to_string(text.freeze())
+                    kind: "str", text: "", num: 0, data: bytes_to_string(text.freeze())
                 )
             )
         else:
@@ -1491,16 +1488,9 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
 
     return ok(
         Select(
-            distinct: distinct,
-            items: items,
-            from_ref: from_ref,
-            joins: joins,
-            where_cond: where_cond,
-            group_by: group_by,
-            having_cond: having_cond,
-            order_by: order_by,
-            limit_n: limit_n,
-            offset_n: offset_n
+            distinct: distinct, items: items, from_ref: from_ref, joins: joins,
+            where_cond: where_cond, group_by: group_by, having_cond: having_cond,
+            order_by: order_by, limit_n: limit_n, offset_n: offset_n
         )
     )
 
@@ -1544,8 +1534,7 @@ fn star_columns(scope: List[ScopeCol], table: String) List[OutCol]:
             out.append(
                 OutCol(
                     e: Col(
-                        qual: scope[k].alias,
-                        name: scope[k].name
+                        qual: scope[k].alias, name: scope[k].name
                     ),
                     name: scope[k].name
                 )
@@ -1709,9 +1698,7 @@ fn run_select(
     # JOIN conditions see the tables joined up to them.
     for j in range(0, s.joins.length()):
         let jc = Check(
-            scope: prefixes[j + 1].clone(),
-            allow_agg: false,
-            aggregated: false,
+            scope: prefixes[j + 1].clone(), allow_agg: false, aggregated: false,
             group_idx: []
         )
         try check_expr(s.joins[j].on.clone(), jc, false)
@@ -1743,10 +1730,7 @@ fn run_select(
 
     if s.where_cond.is_some():
         let wc = Check(
-            scope: scope.clone(),
-            allow_agg: false,
-            aggregated: false,
-            group_idx: []
+            scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
         try check_expr(s.where_cond.get().clone(), wc, false)
 
@@ -1761,18 +1745,14 @@ fn run_select(
 
     for i in range(0, outs.length()):
         let oc = Check(
-            scope: scope.clone(),
-            allow_agg: true,
-            aggregated: aggregated,
+            scope: scope.clone(), allow_agg: true, aggregated: aggregated,
             group_idx: group_idx.clone()
         )
         try check_expr(outs[i].e.clone(), oc, false)
 
     if s.having_cond.is_some():
         let hc = Check(
-            scope: scope.clone(),
-            allow_agg: true,
-            aggregated: aggregated,
+            scope: scope.clone(), allow_agg: true, aggregated: aggregated,
             group_idx: group_idx.clone()
         )
         try check_expr(s.having_cond.get().clone(), hc, false)
@@ -1784,9 +1764,7 @@ fn run_select(
 
         if target < 0:
             let rc = Check(
-                scope: scope.clone(),
-                allow_agg: true,
-                aggregated: aggregated,
+                scope: scope.clone(), allow_agg: true, aggregated: aggregated,
                 group_idx: group_idx.clone()
             )
             try check_expr(s.order_by[i].e.clone(), rc, false)
@@ -1804,12 +1782,8 @@ fn run_select(
     for j in range(0, s.joins.length()):
         let jt = ref_tables[j + 1]
         rows = try join_rows(
-            rows,
-            tables[jt].rows.clone(),
-            s.joins[j].on.clone(),
-            prefixes[j + 1].clone(),
-            s.joins[j].left,
-            tables[jt].cols.length()
+            rows, tables[jt].rows.clone(), s.joins[j].on.clone(),
+            prefixes[j + 1].clone(), s.joins[j].left, tables[jt].cols.length()
         )
 
     var kept: List[List[Value]] = []
@@ -1851,9 +1825,7 @@ fn run_select(
         if groups[gi].rows.length() > 0:
             first = groups[gi].rows[0].clone()
         let gctx = Ctx(
-            scope: scope.clone(),
-            row: first.clone(),
-            group: groups[gi].rows.clone()
+            scope: scope.clone(), row: first.clone(), group: groups[gi].rows.clone()
         )
         var keep = true
 
@@ -2022,10 +1994,7 @@ fn exec_insert(
 
         for k in range(0, targets.length()):
             let rc = Check(
-                scope: [],
-                allow_agg: false,
-                aggregated: false,
-                group_idx: []
+                scope: [], allow_agg: false, aggregated: false, group_idx: []
             )
             try check_expr(rows[r][k].clone(), rc, false)
             let v = try eval(rows[r][k].clone(), Ctx(scope: [], row: [], group: []))
@@ -2071,19 +2040,13 @@ fn exec_update(
 
     for i in range(0, exprs.length()):
         let plain = Check(
-            scope: scope.clone(),
-            allow_agg: false,
-            aggregated: false,
-            group_idx: []
+            scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
         try check_expr(exprs[i].clone(), plain, false)
 
     if cond.is_some():
         let plain = Check(
-            scope: scope.clone(),
-            allow_agg: false,
-            aggregated: false,
-            group_idx: []
+            scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
         try check_expr(cond.get().clone(), plain, false)
 
@@ -2134,10 +2097,7 @@ fn exec_delete(
 
     if cond.is_some():
         let plain = Check(
-            scope: scope.clone(),
-            allow_agg: false,
-            aggregated: false,
-            group_idx: []
+            scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
         try check_expr(cond.get().clone(), plain, false)
 
@@ -2182,11 +2142,7 @@ fn execute(
             return ok(0)
         Update(table, names, exprs, cond):
             let n = try exec_update(
-                table,
-                names.clone(),
-                exprs.clone(),
-                cond.clone(),
-                var tables
+                table, names.clone(), exprs.clone(), cond.clone(), var tables
             )
             emit(var out, "updated {n}")
             return ok(0)

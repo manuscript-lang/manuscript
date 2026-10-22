@@ -1,12 +1,6 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range,
-    range_by,
-    filled,
-    map_from_entries,
+    ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries,
     flatten
 } from "@std/collections.ms"
 
@@ -89,8 +83,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
     try expect_equal(
-        (try range_by(minimum, maximum, maximum, 3)),
-        [minimum, -1, (maximum - 1)]
+        (try range_by(minimum, maximum, maximum, 3)), [minimum, -1, (maximum - 1)]
     )
     try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
     try expect_equal((try range_by(0, minimum, minimum, 1)), [0])

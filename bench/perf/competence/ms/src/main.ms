@@ -57,9 +57,7 @@ fn fib(n: Int) Int:
 
 fn dispatch(n: Int) Int:
     let shapes: List[Shape] = [
-        Shape(value: Sq(3)),
-        Shape(value: Rect(2, 5)),
-        Shape(value: Tri(4, 6)),
+        Shape(value: Sq(3)), Shape(value: Rect(2, 5)), Shape(value: Tri(4, 6)),
         Shape(value: Sq(7))
     ]
     var total = 0

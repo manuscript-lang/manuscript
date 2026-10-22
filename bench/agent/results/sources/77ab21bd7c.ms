@@ -105,10 +105,7 @@ fn parse_start(text: String) Optional[Moment]:
 
     return some(
         Moment(
-            year: year.get(),
-            month: month.get(),
-            day: day.get(),
-            hour: hour.get(),
+            year: year.get(), month: month.get(), day: day.get(), hour: hour.get(),
             minute: minute.get()
         )
     )
@@ -230,10 +227,7 @@ fn find_runs(
                     if minutes.get(minute):
                         runs.append(
                             Moment(
-                                year: year,
-                                month: month,
-                                day: day,
-                                hour: hour,
+                                year: year, month: month, day: day, hour: hour,
                                 minute: minute
                             )
                         )
@@ -294,13 +288,8 @@ fn report(number: Int, text: String) String:
         return "line {number}: error: bad day-of-week\n"
 
     let runs = find_runs(
-        start.get(),
-        count.get(),
-        minutes.get().clone(),
-        hours.get().clone(),
-        days.get().clone(),
-        months.get().clone(),
-        weekdays.get().clone()
+        start.get(), count.get(), minutes.get().clone(), hours.get().clone(),
+        days.get().clone(), months.get().clone(), weekdays.get().clone()
     )
     if runs.is_empty():
         return "line {number}: never\n"

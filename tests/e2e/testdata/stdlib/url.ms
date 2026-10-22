@@ -1,15 +1,7 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {
-    parse,
-    format,
-    resolve,
-    encode_component,
-    decode_component,
-    parse_query,
-    format_query,
-    QueryEntry,
-    Url,
-    UrlError
+    parse, format, resolve, encode_component, decode_component, parse_query,
+    format_query, QueryEntry, Url, UrlError
 } from "@std/net.ms"
 
 test "URL canonicalization and relative references":
@@ -17,8 +9,7 @@ test "URL canonicalization and relative references":
     try expect_false(url.host != "example.com" or url.port != some(443))
     try expect_equal((try format(url)), "https://example.com:443/a/b?q=1#fragment")
     try expect_equal(
-        (url | try resolve("../c") | try format),
-        "https://example.com:443/c"
+        (url | try resolve("../c") | try format), "https://example.com:443/c"
     )
     try expect_equal(encode_component("a b/é"), "a%20b%2F%C3%A9")
     try expect_equal((try decode_component("a%20b%2F%C3%A9")), "a b/é")

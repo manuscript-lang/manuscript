@@ -37,9 +37,7 @@ test "closed codec strings reject spelling changes with their domain errors":
             try expect_equal(
                 (
                     try compress(
-                        data,
-                        format,
-                        level
+                        data, format, level
                     ) | try decompress(format)
                 ),
                 data
@@ -75,9 +73,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                     (
                         try expect_error(
                             fs.open(
-                                "{temporary.path()}/invalid",
-                                mode,
-                                384
+                                "{temporary.path()}/invalid", mode, 384
                             )
                         )
                     ) != FileSystemError.InvalidInput
@@ -121,7 +117,6 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
         let missing = "{temporary.path()}/missing"
         try expect_equal(
-            (try expect_error(fs.open(missing, "r", 384))),
-            FileSystemError.NotFound
+            (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
         )
         try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)

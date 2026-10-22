@@ -51,10 +51,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: range_by(
-                    start: 0,
-                    end: 6,
-                    step: 2,
-                    max_items: 3
+                    start: 0, end: 6, step: 2, max_items: 3
                 )
             ) == [0, 2, 4]
         )
@@ -63,10 +60,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: range_by(
-                    start: 3,
-                    end: -1,
-                    step: -1,
-                    max_items: 4
+                    start: 3, end: -1, step: -1, max_items: 4
                 )
             ) == [3, 2, 1, 0]
         )
@@ -75,9 +69,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: "x".pad_start(
-                    target_length: 4,
-                    padding: "é🙂",
-                    max_bytes: 9
+                    target_length: 4, padding: "é🙂", max_bytes: 9
                 )
             ) == "é🙂éx"
         )
@@ -86,9 +78,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: "x".pad_end(
-                    target_length: 4,
-                    padding: "é🙂",
-                    max_bytes: 9
+                    target_length: 4, padding: "é🙂", max_bytes: 9
                 )
             ) == "xé🙂é"
         )
@@ -97,9 +87,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: "aba".replace_all(
-                    old: "a",
-                    new: "é",
-                    max_bytes: 5
+                    old: "a", new: "é", max_bytes: 5
                 )
             ) == "ébé"
         )
@@ -108,9 +96,7 @@ fn checked_expansion() Result[Unit, Error]:
         not (
             try common_result(
                 result: "é🙂".replace_all(
-                    old: "",
-                    new: "-",
-                    max_bytes: 9
+                    old: "", new: "-", max_bytes: 9
                 )
             ) == "-é-🙂-"
         )
@@ -244,8 +230,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     (
         not (
             merged.entries() == [
-                MapEntry(key: "a", value: 1),
-                MapEntry(key: "b", value: 3),
+                MapEntry(key: "a", value: 1), MapEntry(key: "b", value: 3),
                 MapEntry(key: "c", value: 4)
             ]
         )
@@ -255,8 +240,7 @@ test "map enumeration, merge, and clear preserve insertion order":
         not (
             map_from_entries(
                 entries: [
-                    MapEntry(key: "a", value: 1),
-                    MapEntry(key: "a", value: 2)
+                    MapEntry(key: "a", value: 1), MapEntry(key: "a", value: 2)
                 ]
             ).values() == [2]
         )
@@ -383,9 +367,7 @@ test "growth limits and invalid inputs return values":
     (
         not (
             "x".pad_end(
-                target_length: 9223372036854775807,
-                padding: "é",
-                max_bytes: 8
+                target_length: 9223372036854775807, padding: "é", max_bytes: 8
             ) == too_large
         )
     ) | try expect_false
@@ -543,9 +525,7 @@ fn verify_bigint_and_regex() Result[Unit, Error]:
         not (
             try common_result(
                 result: pattern.replace_all(
-                    text: "a12b3",
-                    replacement: "x",
-                    max_bytes: 4
+                    text: "a12b3", replacement: "x", max_bytes: 4
                 )
             ) == "axbx"
         )

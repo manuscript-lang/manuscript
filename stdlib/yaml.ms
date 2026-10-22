@@ -348,25 +348,18 @@ fn merge(
         ArrayValue(values): values
         _: return error(
             YamlError.InvalidData(
-                line: line,
-                column: column,
-                reason: "merge requires mappings"
+                line: line, column: column, reason: "merge requires mappings"
             )
         )
 
     for item in values:
         match item:
             ObjectValue(_): try merge(
-                line: line,
-                column: column,
-                target: var target,
-                value: item
+                line: line, column: column, target: var target, value: item
             )
             _: return error(
                 YamlError.InvalidData(
-                    line: line,
-                    column: column,
-                    reason: "merge requires mappings"
+                    line: line, column: column, reason: "merge requires mappings"
                 )
             )
 
@@ -430,8 +423,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
 
     if c == "!": return error(
         YamlError.UnsupportedFeature(
-            line: flow.line,
-            reason: "explicit tags are unsupported"
+            line: flow.line, reason: "explicit tags are unsupported"
         )
     )
     if c == "\"" or c == "'": return ok(YamlValue.StringValue(try quoted(var flow)))
@@ -440,8 +432,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
         flow.delimited = true
         if key: return error(
             YamlError.UnsupportedFeature(
-                line: flow.line,
-                reason: "complex mapping keys are unsupported"
+                line: flow.line, reason: "complex mapping keys are unsupported"
             )
         )
 
@@ -470,8 +461,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
         flow.delimited = true
         if key: return error(
             YamlError.UnsupportedFeature(
-                line: flow.line,
-                reason: "complex mapping keys are unsupported"
+                line: flow.line, reason: "complex mapping keys are unsupported"
             )
         )
 
@@ -493,8 +483,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
                 StringValue(value): name = value
                 _: return error(
                     YamlError.UnsupportedFeature(
-                        line: flow.line,
-                        reason: "mapping keys must be strings"
+                        line: flow.line, reason: "mapping keys must be strings"
                     )
                 )
 
@@ -519,9 +508,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
 
             if name == "<<" and not quoted_key:
                 try merge(
-                    line: flow.line,
-                    column: flow.pos + 1,
-                    target: var values,
+                    line: flow.line, column: flow.pos + 1, target: var values,
                     value: value
                 )
             else:
@@ -710,8 +697,7 @@ fn complete(text: String) Bool:
     return quote == "" and depth <= 0
 
 fn inline_value(var context: Context, text: String, depth: Int) Result[
-    YamlValue,
-    YamlError
+    YamlValue, YamlError
 ]:
     var joined = text
     let line = context.index
@@ -745,12 +731,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         pos: 0,
         line: line,
         context: Context(
-            lines: [],
-            final_break: context.final_break,
-            index: context.index,
-            limits: context.limits,
-            values: context.values,
-            anchors: context.anchors,
+            lines: [], final_break: context.final_break, index: context.index,
+            limits: context.limits, values: context.values, anchors: context.anchors,
             sizes: context.sizes
         ),
         delimited: false
@@ -765,8 +747,7 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     return ok(result)
 
 fn block_string(var context: Context, header: String, base: Int) Result[
-    YamlValue,
-    YamlError
+    YamlValue, YamlError
 ]:
     var mode = ""
     var explicit = 0
@@ -791,8 +772,7 @@ fn block_string(var context: Context, header: String, base: Int) Result[
         )
         else: return error(
             YamlError.InvalidData(
-                line: header_line,
-                column: header_column + offset,
+                line: header_line, column: header_column + offset,
                 reason: "invalid block scalar header"
             )
         )
@@ -888,21 +868,14 @@ fn block_string(var context: Context, header: String, base: Int) Result[
     return ok(YamlValue.StringValue(result))
 
 fn block_value(
-    var context: Context,
-    text: String,
-    base: Int,
-    depth: Int,
-    indentless: Bool
+    var context: Context, text: String, base: Int, depth: Int, indentless: Bool
 ) Result[YamlValue, YamlError]:
     var remainder = text.trim_start()
     var anchor = ""
 
     if remainder.starts_with("&"):
         var flow = Flow(
-            chars: remainder.split(""),
-            pos: 1,
-            line: context.index,
-            context: context,
+            chars: remainder.split(""), pos: 1, line: context.index, context: context,
             delimited: false
         )
         anchor = try anchor_name(var flow)
@@ -942,8 +915,7 @@ fn block_value(
                 let _indent = try indentation(context, next)
                 if (boundary(next, colon: true) >= 0 or sequence(next.trim_start())): return error(
                     invalid(
-                        context,
-                        "unexpected indented collection"
+                        context, "unexpected indented collection"
                     )
                 )
 
@@ -1018,10 +990,7 @@ fn nested_columns(line: String, base: Int) List[Int]:
     return columns
 
 fn sequence_items(
-    var context: Context,
-    var values: List[YamlValue],
-    base: Int,
-    depth: Int
+    var context: Context, var values: List[YamlValue], base: Int, depth: Int
 ) Result[Unit, YamlError]:
     while context.index < context.lines.length():
         skip(var context)
@@ -1062,8 +1031,7 @@ fn sequence_items(
                         (
                             line
                             .slice(
-                                innermost,
-                                line.scalar_length()
+                                innermost, line.scalar_length()
                             )
                             .get("")
                         )
@@ -1073,9 +1041,7 @@ fn sequence_items(
             level = chain.length()
             var nested = frames.get(level - 1)
             try sequence_items(
-                context: var context,
-                values: var nested,
-                base: innermost,
+                context: var context, values: var nested, base: innermost,
                 depth: (depth + level)
             )
             var value = YamlValue.ArrayValue(nested)
@@ -1085,10 +1051,8 @@ fn sequence_items(
                 nested = frames.get(level - 1)
                 nested.append(value)
                 try sequence_items(
-                    context: var context,
-                    values: var nested,
-                    base: chain.get(level - 1),
-                    depth: (depth + level)
+                    context: var context, values: var nested,
+                    base: chain.get(level - 1), depth: (depth + level)
                 )
                 value = YamlValue.ArrayValue(nested)
                 level -= 1
@@ -1112,10 +1076,7 @@ fn sequence_items(
             context.index += 1
             values.append(
                 try block_value(
-                    context: var context,
-                    text: item,
-                    base: base,
-                    depth: (depth + 1),
+                    context: var context, text: item, base: base, depth: (depth + 1),
                     indentless: false
                 )
             )
@@ -1127,8 +1088,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
     let first = uncomment(context.lines.get(context.index)).trim_start()
     if first.starts_with("?"): return error(
         YamlError.UnsupportedFeature(
-            line: (context.index + 1),
-            reason: "explicit mapping keys are unsupported"
+            line: (context.index + 1), reason: "explicit mapping keys are unsupported"
         )
     )
 
@@ -1136,10 +1096,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
         try count(var context, depth)
         var values: List[YamlValue] = []
         try sequence_items(
-            context: var context,
-            values: var values,
-            base: base,
-            depth: depth
+            context: var context, values: var values, base: base, depth: depth
         )
         return ok(YamlValue.ArrayValue(values))
 
@@ -1165,11 +1122,8 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
 
             if quoted_key:
                 var flow = Flow(
-                    chars: name.split(""),
-                    pos: 0,
-                    line: (context.index + 1),
-                    context: context,
-                    delimited: false
+                    chars: name.split(""), pos: 0, line: (context.index + 1),
+                    context: context, delimited: false
                 )
                 name = try quoted(var flow)
                 if flow.pos != flow.chars.length(): return error(
@@ -1185,8 +1139,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
             ):
                 return error(
                     YamlError.UnsupportedFeature(
-                        line: context.index + 1,
-                        reason: "mapping keys must be strings"
+                        line: context.index + 1, reason: "mapping keys must be strings"
                     )
                 )
 
@@ -1204,18 +1157,13 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
             let key_line = context.index + 1
             context.index += 1
             let value = try block_value(
-                context: var context,
-                text: text,
-                base: base,
-                depth: (depth + 1),
+                context: var context, text: text, base: base, depth: (depth + 1),
                 indentless: true
             )
 
             if name == "<<" and not quoted_key:
                 try merge(
-                    line: key_line,
-                    column: line_indent + 1,
-                    target: var values,
+                    line: key_line, column: line_indent + 1, target: var values,
                     value: value
                 )
             else:
@@ -1277,18 +1225,12 @@ export fn parse(
         ):
             return error(
                 YamlError.InvalidData(
-                    line: 1,
-                    column: 1,
-                    reason: "invalid control character"
+                    line: 1, column: 1, reason: "invalid control character"
                 )
             )
     var context = Context(
-        lines: normalized.split("\n"),
-        final_break: normalized.ends_with("\n"),
-        index: 0,
-        limits: options,
-        values: 0,
-        anchors: Map[String, YamlValue](),
+        lines: normalized.split("\n"), final_break: normalized.ends_with("\n"),
+        index: 0, limits: options, values: 0, anchors: Map[String, YamlValue](),
         sizes: Map[String, Int]()
     )
     # split's synthetic terminal empty line is not scalar content.
@@ -1339,9 +1281,7 @@ export fn parse(
         and uncomment((context.lines.get(context.index))) != "..."
     ):
         result = try block(
-            var context,
-            try indentation(context, (context.lines.get(context.index))),
-            1
+            var context, try indentation(context, (context.lines.get(context.index))), 1
         )
     skip(var context)
 
@@ -1436,8 +1376,7 @@ fn is_block(value: YamlValue) Bool:
         _: return false
 
 fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
-    Unit,
-    YamlError
+    Unit, YamlError
 ]:
     match value:
         ArrayValue(values):

@@ -162,12 +162,8 @@ export type HttpClientOptions:
     cookies: Bool = false
     # TLS trust and client-certificate settings for `https` requests. The host name is taken from each URL, so `server_name` is ignored.
     tls: TlsOptions = TlsOptions(
-        server_name: "",
-        roots_pem: "",
-        certificate_pem: "",
-        private_key_pem: "",
-        alpn: [],
-        require_client_certificate: false
+        server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
+        alpn: [], require_client_certificate: false
     )
 
 # One streaming server exchange. Read or write incrementally and close when done.

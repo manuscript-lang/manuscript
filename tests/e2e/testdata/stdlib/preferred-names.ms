@@ -177,8 +177,7 @@ test "regex replace_all preserves literal text and exact output budgets":
     try expect_equal((try all("a", "", 0)), "")
     try expect_equal(pattern.replace_all("z", "b", 0), limited)
     try expect_equal(
-        pattern.replace_all("aa", "b", none),
-        pattern.replace_all("aa", "b", none)
+        pattern.replace_all("aa", "b", none), pattern.replace_all("aa", "b", none)
     )
     let empty = try compile("")
     try expect_equal((try empty.replace_all("é🙂", "x")), "xéx🙂x")

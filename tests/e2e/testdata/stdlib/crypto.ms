@@ -1,33 +1,10 @@
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import {
-    sha256,
-    sha384,
-    sha512,
-    derive_key,
-    seal,
-    open,
-    public_key,
-    sign,
-    verify,
-    constant_time_equal,
-    aes_ctr,
-    aes_cbc_encrypt,
-    aes_cbc_decrypt,
-    ecdsa_generate,
-    ecdsa_sign,
-    ecdsa_verify,
-    ecdh_shared_secret,
-    public_key_der,
-    rsa_generate,
-    rsa_sign,
-    rsa_verify,
-    rsa_sign_pss,
-    rsa_verify_pss,
-    rsa_encrypt,
-    rsa_decrypt,
-    Curve,
-    CryptoError,
-    HashAlgorithm
+    sha256, sha384, sha512, derive_key, seal, open, public_key, sign, verify,
+    constant_time_equal, aes_ctr, aes_cbc_encrypt, aes_cbc_decrypt, ecdsa_generate,
+    ecdsa_sign, ecdsa_verify, ecdh_shared_secret, public_key_der, rsa_generate,
+    rsa_sign, rsa_verify, rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt, Curve,
+    CryptoError, HashAlgorithm
 } from "@std/crypto.ms"
 import {hex_encode, hex_decode} from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
@@ -50,8 +27,7 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         try HashAlgorithm
         .Sha256
         .hmac(
-            "key".to_bytes(),
-            "The quick brown fox jumps over the lazy dog".to_bytes()
+            "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
         )
     )
     try expect_false(
@@ -75,15 +51,13 @@ test "authenticated encryption detects wrong associated data":
     let nonce = "012345678901".to_bytes()
     let encrypted = try seal(key, nonce, "secret".to_bytes(), "header".to_bytes())
     try expect_equal(
-        (try open(key, nonce, encrypted, "header".to_bytes())),
-        "secret".to_bytes()
+        (try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
     )
     let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
     try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
     let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     try expect_equal(
-        seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()),
-        invalid
+        seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
     )
 
 test "Ed25519 signatures verify only the signed data":
@@ -98,8 +72,7 @@ test "Ed25519 signatures verify only the signed data":
 test "additional hash algorithms match published vectors":
     let abc = "abc".to_bytes()
     try expect_equal(
-        hex_encode(HashAlgorithm.Md5.digest(abc)),
-        "900150983cd24fb0d6963f7d28e17f72"
+        hex_encode(HashAlgorithm.Md5.digest(abc)), "900150983cd24fb0d6963f7d28e17f72"
     )
     try expect_equal(
         hex_encode(HashAlgorithm.Sha1.digest(abc)),
@@ -133,8 +106,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
     )
     let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     try expect_equal(
-        HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1),
-        invalid
+        HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
     )
     try expect_equal(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16), invalid)
 
@@ -145,8 +117,7 @@ test "AES-GCM accepts 128 and 192 bit keys":
         let key = try "0123456789012345678901234567890123".to_bytes().slice(0, size)
         let boxed = try seal(key, nonce, "secret".to_bytes(), "".to_bytes())
         try expect_equal(
-            try open(key, nonce, boxed, "".to_bytes()),
-            "secret".to_bytes()
+            try open(key, nonce, boxed, "".to_bytes()), "secret".to_bytes()
         )
 
 test "incremental hashers match one-shot digests":

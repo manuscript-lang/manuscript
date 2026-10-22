@@ -186,8 +186,7 @@ impl SortedMap[K, V]:
         let at = self.key_chunks[c].length() - 1
         return some(
             SortedEntry(
-                self.key_chunks[c].get(at),
-                self.value_chunks[c].get(at)
+                self.key_chunks[c].get(at), self.value_chunks[c].get(at)
             )
         )
 
@@ -220,8 +219,7 @@ impl SortedMap[K, V]:
 
         return some(
             SortedEntry(
-                self.key_chunks[c].get(at),
-                self.value_chunks[c].get(at)
+                self.key_chunks[c].get(at), self.value_chunks[c].get(at)
             )
         )
 
@@ -238,8 +236,7 @@ impl SortedMap[K, V]:
         ):
             return some(
                 SortedEntry(
-                    self.key_chunks[c].get(at),
-                    self.value_chunks[c].get(at)
+                    self.key_chunks[c].get(at), self.value_chunks[c].get(at)
                 )
             )
 
@@ -253,8 +250,7 @@ impl SortedMap[K, V]:
         at -= 1
         return some(
             SortedEntry(
-                self.key_chunks[c].get(at),
-                self.value_chunks[c].get(at)
+                self.key_chunks[c].get(at), self.value_chunks[c].get(at)
             )
         )
 

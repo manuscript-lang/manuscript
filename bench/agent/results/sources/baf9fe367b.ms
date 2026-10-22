@@ -125,17 +125,10 @@ fn new_repo() Repo:
     var branches = Map[String, String]()
     branches.add("main", "")
     return Repo(
-        files: Map[String, String](),
-        index: Map[String, String](),
-        commits: Map[String, Commit](),
-        branches: branches,
-        tags: Map[String, String](),
-        head_branch: "main",
-        detached: "",
-        merging: false,
-        merge_other: "",
-        merge_branch: "",
-        conflicts: Set[String]()
+        files: Map[String, String](), index: Map[String, String](),
+        commits: Map[String, Commit](), branches: branches, tags: Map[String, String](),
+        head_branch: "main", detached: "", merging: false, merge_other: "",
+        merge_branch: "", conflicts: Set[String]()
     )
 
 fn head_commit(repo: Repo) String:
@@ -166,20 +159,14 @@ fn move_head(var repo: Repo, id: String) Unit:
         repo.branches.add(repo.head_branch, id)
 
 fn make_commit(
-    var repo: Repo,
-    tree: Map[String, String],
-    parents: List[String],
-    message: String
+    var repo: Repo, tree: Map[String, String], parents: List[String], message: String
 ) String:
     let id = commit_id(tree.clone(), parents.clone(), message)
 
     if not repo.commits.contains(id):
         let number = repo.commits.length() + 1
         let commit = Commit(
-            id: id,
-            number: number,
-            tree: tree.clone(),
-            parents: parents.clone(),
+            id: id, number: number, tree: tree.clone(), parents: parents.clone(),
             message: message
         )
         repo.commits.add(id, commit)
@@ -330,9 +317,7 @@ fn nop() Unit:
     return
 
 fn apply_state(
-    var repo: Repo,
-    work: Map[String, String],
-    index: Map[String, String],
+    var repo: Repo, work: Map[String, String], index: Map[String, String],
     old_head: Map[String, String]
 ) Unit:
     var stale: List[String] = []
@@ -544,12 +529,7 @@ fn plan_merge(
         let in_theirs = theirs.contains(name)
         let theirs_text = theirs.get_or(name, "")
         let choice = choose(
-            in_base,
-            base_text,
-            in_ours,
-            ours_text,
-            in_theirs,
-            theirs_text
+            in_base, base_text, in_ours, ours_text, in_theirs, theirs_text
         )
 
         if choice == 0:
@@ -572,9 +552,7 @@ fn plan_merge(
                 put(var index, name, in_ours, ours_text)
             else:
                 let merged = merge_lines(
-                    lines_of(base_text),
-                    lines_of(ours_text),
-                    lines_of(theirs_text),
+                    lines_of(base_text), lines_of(ours_text), lines_of(theirs_text),
                     branch
                 )
                 let merged_text = text_of(merged.lines.clone())
@@ -610,8 +588,7 @@ fn choose(
     return 2
 
 fn cmd_write(var repo: Repo, args: List[String], block: List[String], append: Bool) Result[
-    Unit,
-    Fail
+    Unit, Fail
 ]:
     if args.length() != 1:
         if append:
@@ -1116,10 +1093,7 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
     if plan.kinds.length() == 0:
         let id = make_commit(
-            var repo,
-            plan.index.clone(),
-            [head, other],
-            "Merge branch '{name}'"
+            var repo, plan.index.clone(), [head, other], "Merge branch '{name}'"
         )
         move_head(var repo, id)
         say("Merge made by the 'three-way' strategy.")
@@ -1145,8 +1119,7 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     return ok(nop())
 
 fn run_command(var repo: Repo, words: List[String], raw: String, block: List[String]) Result[
-    Unit,
-    Fail
+    Unit, Fail
 ]:
     let command = words.get(0)
     let args = words.slice(1, words.length()).get()

@@ -297,8 +297,7 @@ fn fence_block(lines: List[String], i: Int, f: Fence) Step:
         open = "<pre><code class=\"language-{esc(word)}\">"
 
     return Step(
-        block: Html(text: open.concat(body).concat("</code></pre>\n")),
-        next: next
+        block: Html(text: open.concat(body).concat("</code></pre>\n")), next: next
     )
 
 fn heading_of(line: String) Optional[Heading]:
@@ -750,16 +749,11 @@ fn scan(text: String) List[Node]:
         else if c == STAR or c == UNDER:
             let run = run_length(cs.clone(), i, c)
             let flags = run_flags(
-                c,
-                at_or_space(cs.clone(), i - 1),
-                at_or_space(cs.clone(), i + run)
+                c, at_or_space(cs.clone(), i - 1), at_or_space(cs.clone(), i + run)
             )
             nodes.append(
                 Delim(
-                    ch: to_str([c]),
-                    count: run,
-                    orig: run,
-                    can_open: flags.can_open,
+                    ch: to_str([c]), count: run, orig: run, can_open: flags.can_open,
                     can_close: flags.can_close
                 )
             )
@@ -855,10 +849,7 @@ fn close_bracket(cs: List[Int], nodes: List[Node], i: Int) Scan:
             out = deactivate_openers(out)
         out.append(
             Link(
-                image: image,
-                dest: tail.dest,
-                title: tail.title,
-                children: kids
+                image: image, dest: tail.dest, title: tail.title, children: kids
             )
         )
         return Scan(nodes: out, next: tail.end)
@@ -1063,10 +1054,7 @@ fn with_count(node: Node, count: Int) Node:
     match node:
         Delim(ch, _, orig, can_open, can_close):
             return Delim(
-                ch: ch,
-                count: count,
-                orig: orig,
-                can_open: can_open,
+                ch: ch, count: count, orig: orig, can_open: can_open,
                 can_close: can_close
             )
         _:

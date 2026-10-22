@@ -274,10 +274,7 @@ fn parse_seq(var ps: Parser) Result[Int, PatError]:
 
             let last = items.length() - 1
             let rep = Repeat(
-                body: items.get(last),
-                lo: quant.lo,
-                hi: quant.hi,
-                lazy: lazy
+                body: items.get(last), lo: quant.lo, hi: quant.hi, lazy: lazy
             )
             items.set(last, add(var ps, rep))
             can_repeat = false
@@ -554,12 +551,7 @@ fn resolve_refs(var ps: Parser) Result[Unit, PatError]:
 
 fn compile(pat: Bytes) Result[Regex, PatError]:
     var ps = Parser(
-        pat: pat.clone(),
-        pos: 0,
-        nodes: [],
-        names: [],
-        icase: false,
-        multi: false,
+        pat: pat.clone(), pos: 0, nodes: [], names: [], icase: false, multi: false,
         dotall: false
     )
 
@@ -602,9 +594,7 @@ fn compile(pat: Bytes) Result[Regex, PatError]:
     try resolve_refs(var ps)
     return ok(
         Regex(
-            nodes: ps.nodes.clone(),
-            root: root,
-            names: ps.names.clone(),
+            nodes: ps.nodes.clone(), root: root, names: ps.names.clone(),
             icase: ps.icase
         )
     )
@@ -614,10 +604,7 @@ fn compile(pat: Bytes) Result[Regex, PatError]:
 # rather than captured, and captures are an immutable list, so backtracking restores them.
 # Result: the final captures (group 0 included), or none.
 fn run(
-    var c: Ctx,
-    id: Int,
-    pos: Int,
-    caps: List[Int],
+    var c: Ctx, id: Int, pos: Int, caps: List[Int],
     k: fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
     let n = c.text.length()
@@ -693,11 +680,7 @@ fn run(
             return k(c, pos + size, caps)
 
 fn concat_from(
-    var c: Ctx,
-    items: List[Int],
-    i: Int,
-    pos: Int,
-    caps: List[Int],
+    var c: Ctx, items: List[Int], i: Int, pos: Int, caps: List[Int],
     k: fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
     if i == items.length():
@@ -708,11 +691,7 @@ fn concat_from(
     return run(var c, items.get(i), pos, caps, next)
 
 fn choice_from(
-    var c: Ctx,
-    options: List[Int],
-    i: Int,
-    pos: Int,
-    caps: List[Int],
+    var c: Ctx, options: List[Int], i: Int, pos: Int, caps: List[Int],
     k: fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
     if i == options.length():
@@ -727,15 +706,8 @@ fn choice_from(
 # count is the number of iterations done so far. After min, an iteration that consumes
 # nothing ends the loop, so the match continues after it.
 fn repeat_from(
-    var c: Ctx,
-    body: Int,
-    lo: Int,
-    hi: Int,
-    lazy: Bool,
-    count: Int,
-    pos: Int,
-    caps: List[Int],
-    k: fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]
+    var c: Ctx, body: Int, lo: Int, hi: Int, lazy: Bool, count: Int, pos: Int,
+    caps: List[Int], k: fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
     if count < lo:
         let next = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:

@@ -15,9 +15,7 @@ fn chosen(var log: List[String], format: String) String:
 test "compression omission equals explicit level six for every format":
     let data = "repeat repeat repeat repeat".to_bytes()
     let formats = [
-        CompressionFormat.Gzip,
-        CompressionFormat.Zlib,
-        CompressionFormat.Deflate
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]
     let names = ["gzip", "zlib", "deflate"]
     let encode = compress
@@ -35,8 +33,7 @@ test "compression omission equals explicit level six for every format":
         try expect_equal((try copied(data)), expected)
         try expect_equal((try method(data, 6)), expected)
         try expect_equal(
-            (try format.compress(data, max_bytes: expected.length())),
-            expected
+            (try format.compress(data, max_bytes: expected.length())), expected
         )
         try expect_equal((try format.decompress(expected)), data)
         try expect_equal((try decompress(expected, name)), data)
@@ -59,9 +56,7 @@ test "compression defaults retain invalid levels formats and output budgets":
     )
 
     for format in [
-        CompressionFormat.Gzip,
-        CompressionFormat.Zlib,
-        CompressionFormat.Deflate
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
         try expect_equal(format.compress(data, -1), invalid)
         try expect_equal(format.compress(data, 10), invalid)

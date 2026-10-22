@@ -38,8 +38,7 @@ test "map callbacks":
     var visited = List[Int]()
     m.for_each(
         fn(key: String, value: Int) Unit: record(
-            into: var visited,
-            value: value
+            into: var visited, value: value
         )
     )
 

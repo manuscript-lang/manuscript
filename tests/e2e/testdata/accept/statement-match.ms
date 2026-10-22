@@ -62,8 +62,7 @@ test "statement match controls the nearest loop":
     try expect_equal(first_positive(values), 5)
     try expect_equal(first_positive([none, some(-1)]), -1)
     let rows: List[List[Optional[Int]]] = [
-        [some(1), none, some(100)],
-        [some(2), some(3)]
+        [some(1), none, some(100)], [some(2), some(3)]
     ]
     try expect_equal(nested(rows), 2006)
 

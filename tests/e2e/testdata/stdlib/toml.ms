@@ -157,32 +157,28 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 2, depth: none, values: none)
+                text: "a=1", limits: limits(bytes: 2, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: 2, values: none)
+                text: "a.b=1", limits: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: none, values: 2)
+                text: "a.b=1", limits: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
@@ -192,16 +188,14 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: none, depth: -1, values: none)
+                text: "", limits: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 3, depth: 2, values: 2)
+                text: "a=1", limits: limits(bytes: 3, depth: 2, values: 2)
             ) != parse(text: "a=1")
         )
     )
@@ -322,8 +316,7 @@ test "TOML stringify rejects invalid date-time text":
     var good = Map[String, TomlValue]()
     good.add("x", TomlValue.DateTimeValue("1979-05-27T07:32:00Z"))
     try expect_equal(
-        (try stringify(TomlValue.TableValue(good))),
-        "x = 1979-05-27T07:32:00Z\n"
+        (try stringify(TomlValue.TableValue(good))), "x = 1979-05-27T07:32:00Z\n"
     )
 
 test "TOML deeply nested inline tables parse in linear time":

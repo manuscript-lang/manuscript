@@ -686,11 +686,7 @@ fn make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) 
         .clos
         .append(
             Closure(
-                name: name,
-                params: p.names.clone(),
-                rest: p.rest,
-                body: body,
-                env: env
+                name: name, params: p.names.clone(), rest: p.rest, body: body, env: env
             )
         )
     )
@@ -698,8 +694,7 @@ fn make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) 
 
 # Parses (lambda params body...) given the form's items.
 fn make_lambda(var m: Machine, items: List[Value], env: Int, name: String) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if items.length() < 3:
         return error(bad_form("lambda"))
@@ -762,8 +757,7 @@ fn apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) Result[Value,
 # Evaluates x in env. `d0` is the call depth of the caller; `entered0` says the body
 # being run was already counted as a call, so tail calls here do not count again.
 fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     var x = start_x
     var env = start_env
@@ -835,8 +829,7 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
                 entered = true
 
 fn special_form(var m: Machine, sid: Int, items: List[Value], env: Int, d: Int) Result[
-    Step,
-    Fail
+    Step, Fail
 ]:
     if sid == S_IF:
         return sf_if(var m, items, env, d)
@@ -1012,19 +1005,14 @@ fn sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Ste
     let body = body_form(var m, items, 3)
     let loop_name = m.syms.get(sym)
     let clo = make_closure(
-        var m,
-        loop_name,
-        Params(names: b.names.clone(), rest: false),
-        body,
-        loop_env
+        var m, loop_name, Params(names: b.names.clone(), rest: false), body, loop_env
     )
     add_binding(var m, loop_env, sym, clo)
     let fid = try bind_args(var m, clo.num, vals)
     return ok(call_step(m.clos.get(clo.num).body, fid))
 
 fn sf_letstar(var m: Machine, items: List[Value], env: Int, form: String, d: Int) Result[
-    Step,
-    Fail
+    Step, Fail
 ]:
     if items.length() < 3:
         return error(bad_form(form))
@@ -1103,8 +1091,7 @@ fn sf_or(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail
     return ok(next_step(items.get(items.length() - 1), env))
 
 fn sf_when(var m: Machine, items: List[Value], env: Int, negate: Bool, d: Int) Result[
-    Step,
-    Fail
+    Step, Fail
 ]:
     if items.length() < 3:
         var form = "when"
@@ -1327,8 +1314,7 @@ fn int_divide(op: Int, a: Int, b: Int) Result[Int, Fail]:
     return ok(r)
 
 fn prim_dispatch(var m: Machine, op: Int, name: String, args: List[Value]) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if op <= P_MAX:
         if op == P_ADD or op == P_SUB or op == P_MUL:
@@ -1443,8 +1429,7 @@ fn compare(var m: Machine, op: Int, name: String, args: List[Value]) Result[Valu
     return ok(bool_v(result))
 
 fn predicates_and_lists(var m: Machine, op: Int, name: String, args: List[Value]) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     let a = args.get(0, void_v())
     if op == P_NOT:
@@ -1512,8 +1497,7 @@ fn predicates_and_lists(var m: Machine, op: Int, name: String, args: List[Value]
     return list_prims(var m, op, name, args)
 
 fn list_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if op == P_LIST:
         return ok(build_list(var m, args, 0, nil_v()))
@@ -1606,8 +1590,7 @@ fn all_pairs(m: Machine, cursors: List[Value]) Bool:
     return true
 
 fn higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if op == P_MAP or op == P_FOREACH:
         let f = try proc_arg(m, name, args.get(0))
@@ -1699,8 +1682,7 @@ fn higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int
 
 # Stable merge sort; `less` is called as (less later earlier).
 fn sort_values(var m: Machine, items: List[Value], less: Value, d: Int) Result[
-    List[Value],
-    Fail
+    List[Value], Fail
 ]:
     let n = items.length()
     if n <= 1:
@@ -1749,8 +1731,7 @@ fn sort_values(var m: Machine, items: List[Value], less: Value, d: Int) Result[
     return ok(out)
 
 fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if op == P_STRLEN:
         let s = try str_arg(m, name, args.get(0))
@@ -1825,8 +1806,7 @@ fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result
     return text_prims(var m, op, name, args)
 
 fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
-    Value,
-    Fail
+    Value, Fail
 ]:
     if op == P_STR2LIST:
         let s = try str_arg(m, name, args.get(0))
@@ -1904,21 +1884,11 @@ fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
 # ---------------------------------------------------------------- driver
 fn new_machine() Machine:
     var m = Machine(
-        syms: List[String](),
-        sym_ids: Map[String, Int](),
-        globals: List[Value](),
-        cars: List[Value](),
-        cdrs: List[Value](),
-        clos: List[Closure](),
-        frame_parent: List[Int](),
-        frame_head: List[Int](),
-        node_sym: List[Int](),
-        node_val: List[Value](),
-        node_next: List[Int](),
-        prim_names: List[String](),
-        prim_min: List[Int](),
-        prim_max: List[Int](),
-        line_start: true
+        syms: List[String](), sym_ids: Map[String, Int](), globals: List[Value](),
+        cars: List[Value](), cdrs: List[Value](), clos: List[Closure](),
+        frame_parent: List[Int](), frame_head: List[Int](), node_sym: List[Int](),
+        node_val: List[Value](), node_next: List[Int](), prim_names: List[String](),
+        prim_min: List[Int](), prim_max: List[Int](), line_start: true
     )
     for name in [
         "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
