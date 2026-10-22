@@ -1,5 +1,5 @@
-//! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (built by
-//! `scripts/build-llvm-bundle.sh`) and, on Linux, the self-contained musl startup objects and libc
+//! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (released by
+//! manuscript-lang/llvm-bundle and fetched by `scripts/fetch-lld.sh`) and, on Linux, the self-contained musl startup objects and libc
 //! that Rust's musl target carries.
 
 use std::path::{Path, PathBuf};
@@ -50,7 +50,7 @@ fn main() {
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
 }
 
-/// `MS_LLD`, else the bundle `scripts/build-llvm-bundle.sh` leaves in `target/llvm-bundle`.
+/// `MS_LLD`, else the one `scripts/fetch-lld.sh` leaves in `target/llvm-bundle`.
 fn lld() -> PathBuf {
     if let Some(path) = std::env::var_os("MS_LLD") {
         return PathBuf::from(path);
@@ -62,7 +62,7 @@ fn lld() -> PathBuf {
     println!("cargo:rerun-if-changed={}", built.display());
     assert!(
         built.is_file(),
-        "no lld to bundle: run `sh scripts/build-llvm-bundle.sh <os> <arch>` or set MS_LLD to a static lld"
+        "no lld to bundle: run `sh scripts/fetch-lld.sh` or set MS_LLD to a static lld"
     );
     built
 }

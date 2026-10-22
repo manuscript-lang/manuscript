@@ -1,0 +1,10 @@
+# Pinned static lld from https://github.com/manuscript-lang/llvm-bundle, checked by scripts/fetch-lld.sh.
+# Update the tag and every digest together; digests are the release's SHA256SUMS.
+tag llvm-19.1.7-r1
+version 19.1.7
+2283d142d87c98720269525b38ea4f1ded3486a9103d21e2f386b934b7b59259  lld-19.1.7-darwin-amd64.tar.gz
+0f11566963a514991f1aa9d0f01fdc7e5579f58b574a5f384a76de65bf7662f0  lld-19.1.7-darwin-arm64.tar.gz
+292b307d71f0e49a1a3f11312355285e57ec7589f6fa11d7ba3b46c15111ebfc  lld-19.1.7-linux-amd64.tar.gz
+1bedc19531359ddefe4ea6b5d8bd882cbe8671a39a12c9bd6d67654f7d0205c7  lld-19.1.7-linux-arm64.tar.gz
+747427751b59fbd86b72fdda4eb6b654e44b223500c7e7107c4d13bd0d1270e2  lld-19.1.7-windows-amd64.tar.gz
+b14ff6d7fe0221add64cf4c6af9fef1293b7faa932eeb32dee6a5e0a049567f7  lld-19.1.7-windows-arm64.tar.gz
