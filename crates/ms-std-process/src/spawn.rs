@@ -17,6 +17,9 @@ pub struct Child {
     pub code: Option<i64>,
     #[cfg(windows)]
     job: isize,
+    /// A pidfd that becomes readable when the child exits, or -1 before Linux 5.3.
+    #[cfg(target_os = "linux")]
+    pidfd: i32,
 }
 
 #[cfg(unix)]
@@ -127,8 +130,39 @@ impl Child {
                 job: job as isize,
             }
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: plain system call; the child is unreaped, so its pid is still its own.
+            let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, inner.id() as libc::pid_t, 0) };
+            Child {
+                inner,
+                code: None,
+                pidfd: fd as i32,
+            }
+        }
+        #[cfg(not(any(windows, target_os = "linux")))]
         Child { inner, code: None }
+    }
+
+    /// A descriptor that becomes readable when the child exits, when the platform has one.
+    pub fn exit_fd(&self) -> Option<sys::Fd> {
+        #[cfg(target_os = "linux")]
+        if self.pidfd >= 0 {
+            return Some(self.pidfd);
+        }
+        None
+    }
+
+    /// Parks the task until the child exits or `timeout_ns` passes (negative: no limit). False
+    /// when the platform cannot wait on the child, so the caller checks it in slices instead.
+    pub fn park_until_exit(&mut self, timeout_ns: i64) -> bool {
+        #[cfg(unix)]
+        if let Some(fd) = self.exit_fd() {
+            ms_std_rt::task_wait_fd(fd, ms_std_rt::WAIT_READ, timeout_ns);
+            return true;
+        }
+        let _ = timeout_ns;
+        false
     }
 
     /// Reaps the child when it has exited; reports whether it has.
@@ -199,5 +233,14 @@ impl Drop for Child {
     fn drop(&mut self) {
         // SAFETY: the job handle is ours and closed once.
         unsafe { windows_sys::Win32::Foundation::CloseHandle(self.job as _) };
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Drop for Child {
+    fn drop(&mut self) {
+        if self.pidfd >= 0 {
+            let _ = sys::close(self.pidfd);
+        }
     }
 }

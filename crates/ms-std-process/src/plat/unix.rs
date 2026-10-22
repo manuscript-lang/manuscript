@@ -58,3 +58,79 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
 pub fn would_block(e: i32) -> bool {
     e == libc::EAGAIN
 }
+
+/// One descriptor that becomes readable when the child exits or one of `run`'s pipes is ready:
+/// an epoll set over the child's pidfd and the parent's pipe ends, so the task parks on all of
+/// them at once.
+#[cfg(target_os = "linux")]
+pub struct Waiter {
+    set: Fd,
+    exit: sys::Fd,
+}
+
+#[cfg(target_os = "linux")]
+impl Waiter {
+    /// `None` without an exit descriptor (Linux before 5.3); the caller checks in slices.
+    /// Closing a pipe end removes it from the set.
+    pub fn new(exit: Option<sys::Fd>, pipes: [sys::Fd; 3]) -> Option<Waiter> {
+        let exit = exit?;
+        // SAFETY: plain system call.
+        let set = unsafe { libc::epoll_create1(libc::EPOLL_CLOEXEC) };
+        if set < 0 {
+            return None;
+        }
+        let waiter = Waiter { set: Fd(set), exit };
+        let interests = [libc::EPOLLOUT, libc::EPOLLIN, libc::EPOLLIN];
+        for (fd, events) in [(exit, libc::EPOLLIN)]
+            .into_iter()
+            .chain(pipes.into_iter().zip(interests))
+        {
+            if fd >= 0 && waiter.ctl(libc::EPOLL_CTL_ADD, fd, events) != 0 {
+                return None;
+            }
+        }
+        Some(waiter)
+    }
+
+    fn ctl(&self, op: i32, fd: sys::Fd, events: i32) -> i32 {
+        let mut event = libc::epoll_event {
+            events: events as u32,
+            u64: fd as u64,
+        };
+        // SAFETY: `event` outlives the call.
+        unsafe { libc::epoll_ctl(self.set.0, op, fd, &mut event) }
+    }
+
+    /// Stops watching the child once it is reaped; its descriptor stays readable.
+    pub fn exited(&mut self) {
+        if self.exit >= 0 {
+            self.ctl(libc::EPOLL_CTL_DEL, self.exit, 0);
+            self.exit = -1;
+        }
+    }
+
+    /// Parks the task until something in the set is ready or `timeout_ns` passes (negative: no
+    /// limit).
+    pub fn park(&self, timeout_ns: i64) {
+        ms_std_rt::task_wait_fd(self.set.0, ms_std_rt::WAIT_READ, timeout_ns);
+    }
+}
+
+/// Without pidfds the caller checks the child in slices.
+#[cfg(not(target_os = "linux"))]
+pub enum Waiter {}
+
+#[cfg(not(target_os = "linux"))]
+impl Waiter {
+    pub fn new(_exit: Option<sys::Fd>, _pipes: [sys::Fd; 3]) -> Option<Waiter> {
+        None
+    }
+
+    pub fn exited(&mut self) {
+        match *self {}
+    }
+
+    pub fn park(&self, _timeout_ns: i64) {
+        match *self {}
+    }
+}

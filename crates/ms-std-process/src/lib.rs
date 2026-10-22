@@ -546,6 +546,32 @@ mod runtime_stubs {
         0
     }
 
+    /// Blocks the thread in `poll`: unit tests run on many threads, without the scheduler.
+    #[cfg(unix)]
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
+        let mut p = libc::pollfd {
+            fd,
+            events: if events & 2 != 0 {
+                libc::POLLOUT
+            } else {
+                libc::POLLIN
+            },
+            revents: 0,
+        };
+        let ms = if timeout_ns < 0 {
+            -1
+        } else {
+            ((timeout_ns + 999_999) / 1_000_000) as i32
+        };
+        // SAFETY: `p` is one valid entry.
+        if unsafe { libc::poll(&mut p, 1, ms) } == 0 {
+            8
+        } else {
+            events
+        }
+    }
+
     #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
         // SAFETY: tests pass two writable words.
