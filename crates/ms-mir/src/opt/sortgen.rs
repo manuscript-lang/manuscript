@@ -10,7 +10,9 @@
 //! comparator calls in the same order, which is observable when the comparator has effects.
 
 use crate::builder::FuncBuilder;
-use crate::ir::{Cc, Func, FuncId, FuncKind, Imm, Inst, Mode, Module, Op, Param, Value};
+use crate::ir::{
+    Cc, ExternDef, Func, FuncId, FuncKind, Imm, Inst, Mode, Module, Op, Param, Term, Value,
+};
 use crate::types::Ty;
 use std::collections::HashMap;
 
@@ -61,6 +63,30 @@ pub fn run(m: &mut Module) -> bool {
         }
         // Last first, so each rewrite leaves the earlier indices valid.
         for (bi, ii, g, elem) in sites.into_iter().rev() {
+            if elem == Ty::INT
+                && let Some(desc) = plain_int_order(m, g)
+            {
+                let ext = m.add_extern(ExternDef {
+                    name: "msrt_list_sort_ints".to_string(),
+                    params: vec![
+                        Param {
+                            ty: m.funcs[fi].values
+                                [m.funcs[fi].blocks[bi].insts[ii].args[0].index()],
+                            mode: Mode::Borrow,
+                        },
+                        Param {
+                            ty: Ty::INT,
+                            mode: Mode::Borrow,
+                        },
+                    ],
+                    ret: Ty::UNIT,
+                    noreturn: false,
+                    pure_: false,
+                });
+                rewrite_plain(&mut m.funcs[fi], bi, ii, ext, desc);
+                changed = true;
+                continue;
+            }
             let sort = *made.entry(g).or_insert_with(|| build(m, g, elem));
             rewrite(&mut m.funcs[fi], bi, ii, sort, elem);
             changed = true;
@@ -88,6 +114,145 @@ fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
         && code.params[2].ty == elem
         && code.ret == Ty::INT;
     (shaped && (elem == Ty::INT || elem == Ty::FLOAT)).then_some(elem)
+}
+
+/// Whether `g(env, a, b)` for `Int`s is exactly "a before b" (`Some(false)`) or "b before a"
+/// (`Some(true)`), where "before" means a negative result.
+///
+/// The body may only compare the two arguments with each other, branch on those comparisons
+/// and return constants, so its result depends on nothing but the ordering of `a` and `b` and
+/// trying the three orderings decides every input. Anything else (arithmetic, calls, a
+/// comparison against a constant) yields `None`.
+fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
+    let closure = &m.funcs[g.index()];
+    // A closure that only forwards its two arguments to a named function is that function.
+    let (g, skip) = match (
+        closure.blocks.as_slice(),
+        closure.blocks[0].params.as_slice(),
+    ) {
+        ([only], [_, p, q]) => match (only.insts.as_slice(), &only.term) {
+            ([call], Term::Ret(Some(r)))
+                if call.op == Op::Call
+                    && call.res == Some(*r)
+                    && call.args == [p.value, q.value] =>
+            {
+                let Imm::Func(h) = call.imm else { return None };
+                (&m.funcs[h.index()], 0)
+            }
+            _ => (closure, 1),
+        },
+        _ => return None,
+    };
+    let [a, b] = &g.blocks[0].params[skip..] else {
+        return None;
+    };
+    let negative = |x: i64, y: i64| -> Option<bool> {
+        // `Err` marks the two arguments, which may only be compared with each other.
+        #[derive(Clone, Copy)]
+        enum V {
+            Arg(i64),
+            Num(i64),
+        }
+        let mut env: HashMap<Value, V> = HashMap::new();
+        env.insert(a.value, V::Arg(x));
+        env.insert(b.value, V::Arg(y));
+        let mut block = 0usize;
+        for _ in 0..64 {
+            let bd = &g.blocks[block];
+            for inst in &bd.insts {
+                let (res, v) = match (inst.op, inst.imm) {
+                    (Op::IConst, Imm::Int(i)) => (inst.res?, V::Num(i)),
+                    (Op::Copy, _) => (inst.res?, *env.get(inst.args.first()?)?),
+                    (Op::ICmp, Imm::Cc(cc)) => {
+                        let (l, r) =
+                            match (env.get(inst.args.first()?)?, env.get(inst.args.get(1)?)?) {
+                                (V::Arg(l), V::Arg(r)) | (V::Num(l), V::Num(r)) => (*l, *r),
+                                _ => return None,
+                            };
+                        let t = match cc {
+                            Cc::Eq => l == r,
+                            Cc::Ne => l != r,
+                            Cc::Lt => l < r,
+                            Cc::Le => l <= r,
+                            Cc::Gt => l > r,
+                            Cc::Ge => l >= r,
+                        };
+                        (inst.res?, V::Num(t as i64))
+                    }
+                    (Op::DepthEnter | Op::DepthLeave, _) => continue,
+                    _ => return None,
+                };
+                env.insert(res, v);
+            }
+            let target = match &bd.term {
+                Term::Ret(Some(v)) => {
+                    return match env.get(v)? {
+                        V::Num(c) => Some(*c < 0),
+                        V::Arg(_) => None,
+                    };
+                }
+                Term::Br(t) => t,
+                Term::CondBr { cond, then, els } => match env.get(cond)? {
+                    V::Num(c) if *c != 0 => then,
+                    V::Num(_) => els,
+                    V::Arg(_) => return None,
+                },
+                _ => return None,
+            };
+            let dest = &g.blocks[target.block.index()];
+            if dest.params.len() != target.args.len() {
+                return None;
+            }
+            let passed: Vec<V> = target
+                .args
+                .iter()
+                .map(|v| env.get(v).copied())
+                .collect::<Option<_>>()?;
+            for (p, v) in dest.params.iter().zip(passed) {
+                env.insert(p.value, v);
+            }
+            block = target.block.index();
+        }
+        None
+    };
+    let (lt, eq, gt) = (negative(0, 1)?, negative(1, 1)?, negative(1, 0)?);
+    match (lt, eq, gt) {
+        (true, false, false) => Some(false),
+        (false, false, true) => Some(true),
+        _ => None,
+    }
+}
+
+/// Rewrites the runtime sort at `blocks[bi].insts[ii]` into a copy and an in-place integer sort.
+fn rewrite_plain(f: &mut Func, bi: usize, ii: usize, ext: crate::ir::ExtId, desc: bool) {
+    let call = f.blocks[bi].insts[ii].clone();
+    let out = call.res.expect("sorted result");
+    let copy_out = Inst {
+        op: Op::Copy,
+        args: vec![call.args[0]],
+        imm: Imm::None,
+        res: Some(out),
+        loc: call.loc,
+    };
+    let flag = f.new_value(Ty::INT);
+    let flag_inst = Inst {
+        op: Op::IConst,
+        args: vec![],
+        imm: Imm::Int(desc as i64),
+        res: Some(flag),
+        loc: call.loc,
+    };
+    let unit = f.new_value(Ty::UNIT);
+    let run = Inst {
+        op: Op::CallRt,
+        args: vec![out, flag],
+        imm: Imm::Ext(ext),
+        res: Some(unit),
+        loc: call.loc,
+    };
+    f.blocks[bi]
+        .insts
+        .splice(ii..=ii, [copy_out, flag_inst, run]);
 }
 
 /// Rewrites the runtime sort at `blocks[bi].insts[ii]` into a copy, a buffer copy and a call.
