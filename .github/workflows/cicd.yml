@@ -119,9 +119,11 @@ jobs:
       # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
       - name: Fetch bundled lld
         run: |
-          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$RUNNER_TEMP/llvm-bundle/install"
-          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$RUNNER_TEMP/llvm-bundle/install/bin/lld.exe")" >> "$GITHUB_ENV"
-          else echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"; fi
+          dest="$RUNNER_TEMP/llvm-bundle/install"
+          if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
+          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$dest"
+          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
+          else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
       # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
       # with its clang (scripts/fetch-mingw.sh).
       - name: Fetch llvm-mingw
