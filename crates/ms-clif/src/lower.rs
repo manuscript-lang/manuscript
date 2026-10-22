@@ -559,6 +559,56 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// For a boxed alternative with payloadless cases: whether `tag` names one (such values are the
+    /// shared block, see [`Gen::unit_block`]) and that block's address. `None` when every case
+    /// carries a payload.
+    fn unit_case(&mut self, a: ms_mir::types::AltId, tag: Value) -> Option<(Value, Value)> {
+        let ty = self
+            .g
+            .m
+            .types
+            .find(&TyKind::Alt(a))
+            .expect("alt type interned");
+        let Some(AltRepr::Boxed { block, .. }) = self.g.lay.shape(ty).alt else {
+            return None;
+        };
+        let size = mem_layout(&block).size;
+        let units: Vec<usize> = self.g.m.alts[a.index()]
+            .cases
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.fields.is_empty())
+            .map(|(i, _)| i)
+            .collect();
+        let mut acc: Option<(Value, Value)> = None;
+        for c in units {
+            let id = self.g.unit_block(a, c, size as usize);
+            let addr = self.data_addr(id);
+            let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
+            acc = Some(match acc {
+                None => (is, addr),
+                Some((u, prev)) => (self.b.ins().bor(u, is), self.b.ins().select(is, addr, prev)),
+            });
+        }
+        acc
+    }
+
+    /// Frees the block of a boxed alternative unless its tag names a payloadless (shared) case.
+    fn free_boxed(&mut self, a: ms_mir::types::AltId, tag: Value, p: Value) {
+        match self.unit_case(a, tag) {
+            None => self.free(p),
+            Some((unit, _)) => {
+                let free = self.b.create_block();
+                let cont = self.b.create_block();
+                self.b.ins().brif(unit, cont, &[], free, &[]);
+                self.b.switch_to_block(free);
+                self.free(p);
+                self.b.ins().jump(cont, &[]);
+                self.b.switch_to_block(cont);
+            }
+        }
+    }
+
     fn glue_drop_alt(&mut self, ty: Ty, a: ms_mir::types::AltId, vs: &[Value]) {
         let fields = self.alt_fields(a);
         let boxed = matches!(self.g.lay.shape(ty).alt, Some(AltRepr::Boxed { .. }));
@@ -612,7 +662,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.ins().jump(done, &[]);
         self.b.switch_to_block(done);
         if boxed {
-            self.free(vs[0]);
+            self.free_boxed(a, tag, vs[0]);
         }
     }
 
@@ -715,7 +765,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b.switch_to_block(next);
         }
         // A case with nothing to drop: only the block is freed.
-        self.free(cur);
+        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
+            unreachable!("boxed alternative")
+        };
+        self.free_boxed(a, tag, cur);
         self.b.ins().jump(exit, &[]);
         self.b.switch_to_block(exit);
     }
@@ -747,6 +800,19 @@ impl<'a, 'm> Lower<'a, 'm> {
         };
         let sv = self.load_leaves(src, 0, &block);
         let tag = sv[0];
+        let TyKind::Alt(a) = self.g.m.types.kind(ty).clone() else {
+            unreachable!("boxed alternative")
+        };
+        if let Some((unit, addr)) = self.unit_case(a, tag) {
+            // A payloadless case is the shared block: link it and stop.
+            let shared = self.b.create_block();
+            let fresh = self.b.create_block();
+            self.b.ins().brif(unit, shared, &[], fresh, &[]);
+            self.b.switch_to_block(shared);
+            self.b.ins().store(flags(), addr, dst, 0);
+            self.b.ins().jump(exit, &[]);
+            self.b.switch_to_block(fresh);
+        }
         let blk = self.alloc(lay.size as i64);
         self.b.ins().store(flags(), blk, dst, 0);
         for (c, case) in fields.iter().enumerate() {
@@ -980,9 +1046,23 @@ impl<'a, 'm> Lower<'a, 'm> {
         let out = self.b.block_params(join).to_vec();
         if boxed {
             let size = mem_layout(&leaves).size as i64;
+            let Some((unit, addr)) = self.unit_case(a, out[0]) else {
+                let blk = self.alloc(size);
+                self.store_leaves(blk, 0, &leaves, &out);
+                return vec![blk];
+            };
+            let fin = self.b.create_block();
+            self.b.append_block_param(fin, types::I64);
+            let fresh = self.b.create_block();
+            self.b
+                .ins()
+                .brif(unit, fin, &[BlockArg::Value(addr)], fresh, &[]);
+            self.b.switch_to_block(fresh);
             let blk = self.alloc(size);
             self.store_leaves(blk, 0, &leaves, &out);
-            vec![blk]
+            self.b.ins().jump(fin, &[BlockArg::Value(blk)]);
+            self.b.switch_to_block(fin);
+            vec![self.b.block_params(fin)[0]]
         } else {
             out
         }
@@ -2099,8 +2179,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
         }
         if boxed {
-            let size = mem_layout(&leaves).size as i64;
-            let blk = self.alloc(size);
+            let size = mem_layout(&leaves).size;
+            if fields[c as usize].is_empty() {
+                let id = self.g.unit_block(a, c as usize, size as usize);
+                return vec![self.data_addr(id)];
+            }
+            let blk = self.alloc(size as i64);
             self.store_leaves(blk, 0, &leaves, &out);
             vec![blk]
         } else {
