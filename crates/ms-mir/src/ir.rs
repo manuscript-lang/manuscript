@@ -276,7 +276,7 @@ pub enum Op {
     // Optionals.
     OptSome, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
-    StrLen,
+    StrLen, StrByte, StrAscii,
     // Shared[T].
     SharedNew, SharedGet, SharedAddr,
     // Closures and interface views.
@@ -392,7 +392,7 @@ impl Op {
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
-        Op::StrLen, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
+        Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
@@ -472,6 +472,8 @@ impl Op {
             Op::OptUnwrap => ("opt.unwrap", K::None, true, effects!(faults)),
             Op::OptUnbox => ("opt.unbox", K::None, true, effects!(writes, rc)),
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
+            Op::StrByte => ("str.byte", K::None, true, effects!(reads)),
+            Op::StrAscii => ("str.ascii", K::None, true, effects!()),
             Op::SharedNew => ("shared.new", K::None, true, effects!(alloc)),
             Op::SharedGet => ("shared.get", K::None, true, effects!(reads)),
             Op::SharedAddr => ("shared.addr", K::None, true, effects!(reads)),
@@ -1220,6 +1222,7 @@ impl Module {
             | Op::GlobalGet
             | Op::Load
             | Op::StrLit
+            | Op::StrAscii
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })

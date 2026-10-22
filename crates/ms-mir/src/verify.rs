@@ -773,6 +773,20 @@ impl Verifier<'_> {
                     "str.len takes a string and yields int",
                 )
             }
+            Op::StrByte => {
+                arity(2)?;
+                want(
+                    t(0) == Ty::STR && t(1) == Ty::INT && res == Some(Ty::INT),
+                    "str.byte takes a string and a byte offset and yields int",
+                )
+            }
+            Op::StrAscii => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::INT && res == Some(Ty::STR),
+                    "str.ascii takes an ASCII byte and yields the shared one-character string",
+                )
+            }
             Op::ClosureNew => {
                 let Imm::Func(g) = inst.imm else {
                     return Err("missing function".into());
