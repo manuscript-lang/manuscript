@@ -40,10 +40,19 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
-      - uses: Swatinem/rust-cache@v2
+      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
+      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      - name: Restore cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@v6
         with:
-          shared-key: rust-dist-${{ matrix.os }}-${{ matrix.arch }}
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-rust-dist-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-rust-dist-${{ matrix.os }}-${{ matrix.arch }}-
       # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
       # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
       - name: Fetch bundled lld
@@ -63,6 +72,16 @@ jobs:
           rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
       - name: Build and package
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      - name: Save cargo cache
+        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - name: Run the packaged binary on a hello project
         run: |
           set -eu
