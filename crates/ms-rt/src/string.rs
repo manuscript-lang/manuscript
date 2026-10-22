@@ -661,8 +661,18 @@ pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrObj) -> *mut St
 
 fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     let (mut a, mut b) = (0, text.len());
+    // ASCII White_Space is \t \n \v \f \r and the space; anything else below 0x80 ends the scan
+    // without decoding.
+    let ascii_space = |b: u8| b == b' ' || (9..=13).contains(&b);
     if start {
         while a < b {
+            if text[a] < 0x80 {
+                if !ascii_space(text[a]) {
+                    break;
+                }
+                a += 1;
+                continue;
+            }
             let (c, w) = utf8::decode(&text[a..b]);
             if !utf8::is_space(c) {
                 break;
@@ -672,6 +682,13 @@ fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     }
     if end {
         while b > a {
+            if text[b - 1] < 0x80 {
+                if !ascii_space(text[b - 1]) {
+                    break;
+                }
+                b -= 1;
+                continue;
+            }
             let (c, w) = utf8::decode_last(&text[a..b]);
             if !utf8::is_space(c) {
                 break;
@@ -1783,6 +1800,17 @@ mod tests {
                 "-a-b-"
             );
             assert_eq!(txt(msrt_string_trim(st("  \t x y \n"))), "x y");
+            assert_eq!(
+                txt(msrt_string_trim(st("\u{0b}\u{0c}\r\n ok \u{1c}"))),
+                "ok \u{1c}"
+            );
+            assert_eq!(txt(msrt_string_trim(st("\u{a0}é\u{2003} \t"))), "é");
+            assert_eq!(
+                txt(msrt_string_trim_start(st(" \u{85}x \u{85}"))),
+                "x \u{85}"
+            );
+            assert_eq!(txt(msrt_string_trim_end(st(" x\u{3000} "))), " x");
+            assert_eq!(txt(msrt_string_trim(st("   "))), "");
             let mut o = null_mut();
             assert_eq!(
                 msrt_string_replace_all(st("abc"), st("b"), st("xyz"), 1, 4, &mut o),
