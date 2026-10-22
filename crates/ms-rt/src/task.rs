@@ -843,6 +843,12 @@ unsafe fn before_park() {
     }
 }
 
+/// Ends the registration a `WAIT_KEEP` wait left on `fd`; call it before closing `fd`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_task_forget_fd(fd: i32) {
+    crate::poller::forget(fd);
+}
+
 /// Parks the current task for `ns` nanoseconds. Returns `WAIT_TIMEOUT` or `WAIT_CANCELLED`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_sleep(ns: i64) -> u32 {

@@ -24,6 +24,8 @@ unsafe extern "C" {
     fn msrt_task_wait_fd(fd: sys::Raw, events: u32, timeout_ns: i64) -> u32;
     #[cfg(windows)]
     fn msrt_task_sleep(ns: i64) -> u32;
+    #[cfg(unix)]
+    fn msrt_task_forget_fd(fd: i32);
     fn msrt_token_new(flags: u32) -> u64;
     fn msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32;
     fn msrt_token_post(id: u64, value: u64);
@@ -80,6 +82,13 @@ pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *
 
 /// Request bit for [`wait_fd`]: keep the registration between waits (the runtime's `WAIT_KEEP`).
 pub const WAIT_KEEP: u32 = 32;
+
+/// Ends the registration a [`WAIT_KEEP`] wait left on `fd`; call it before `fd` closes.
+#[cfg(unix)]
+pub fn forget_fd(fd: i32) {
+    // SAFETY: plain update of the runtime poller's records.
+    unsafe { msrt_task_forget_fd(fd) }
+}
 
 /// Parks the running task until `sock` is ready for `events` (1 read, 2 write) or the
 /// timeout (negative: none) passes. Returns the runtime's ready bits. The only caller of
