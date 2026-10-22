@@ -44,8 +44,12 @@ pub unsafe fn hdr(s: *const StrVal) -> *mut StrHdr {
 /// `s` must be a live string.
 #[inline(always)]
 pub unsafe fn retained(s: StrVal) -> StrVal {
-    // SAFETY: live block per the contract.
-    unsafe { obj::retain(hdr(&s) as *mut Obj) };
+    // SAFETY: live block per the contract. `cap == 0` marks a static string: no count to change.
+    unsafe {
+        if s.cap != 0 {
+            obj::retain(hdr(&s) as *mut Obj)
+        }
+    };
     s
 }
 
@@ -56,7 +60,11 @@ pub unsafe fn retained(s: StrVal) -> StrVal {
 #[inline(always)]
 pub unsafe fn release(s: StrVal) {
     // SAFETY: live block per the contract.
-    unsafe { obj::release(hdr(&s) as *mut Obj) }
+    unsafe {
+        if s.cap != 0 {
+            obj::release(hdr(&s) as *mut Obj)
+        }
+    }
 }
 
 unsafe extern "C" fn string_drop(o: *mut Obj) {
@@ -81,7 +89,12 @@ pub fn alloc_str(len: usize) -> StrVal {
         (*o).scalars = SCALARS_UNKNOWN;
         let ptr = (o as *mut u8).add(STR_HDR_SIZE);
         *ptr.add(len) = 0;
-        StrVal { ptr, len, cap: len }
+        // Never 0: compiled code reads `cap == 0` as "static string, no count to change".
+        StrVal {
+            ptr,
+            len,
+            cap: len.max(1),
+        }
     }
 }
 
@@ -662,6 +675,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     unsafe { (msrt_string_concat_val(a, b)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
     // SAFETY: caller passes live strings.
     unsafe {
@@ -731,6 +745,7 @@ pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrVal, out: *mut 
     unsafe { (msrt_string_reverse_val(a)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe {
@@ -788,6 +803,7 @@ fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     (a, b)
 }
 
+#[inline(always)]
 unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe {
@@ -807,6 +823,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut Str
     unsafe { (msrt_string_trim_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
     // SAFETY: forwarded contract.
     unsafe { trimmed(s, true, true) }
@@ -818,6 +835,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *m
     unsafe { (msrt_string_trim_start_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
     // SAFETY: forwarded contract.
     unsafe { trimmed(s, true, false) }
@@ -829,6 +847,7 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut
     unsafe { (msrt_string_trim_end_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
     // SAFETY: forwarded contract.
     unsafe { trimmed(s, false, true) }
@@ -925,6 +944,7 @@ pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut St
     unsafe { (msrt_string_upper_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe { from_buf(map_case(bytes(s), true)) }
@@ -936,6 +956,7 @@ pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut St
     unsafe { (msrt_string_lower_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     unsafe { from_buf(map_case(bytes(s), false)) }
@@ -1063,6 +1084,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     unsafe { (msrt_string_replace_first_val(s, old, new, has_max, max)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_replace_first_val(
     s: *const StrVal,
     old: *const StrVal,
@@ -1087,6 +1109,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
     unsafe { (msrt_string_replace_val(s, old, new, has_max, max)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_replace_val(
     s: *const StrVal,
     old: *const StrVal,
@@ -1110,6 +1133,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_n(
     unsafe { (msrt_string_replace_n_val(s, old, new, max)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_replace_n_val(
     s: *const StrVal,
     old: *const StrVal,
@@ -1319,8 +1343,12 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
             // or counting references (static objects have a huge count).
             let n = text.len();
             let p = alloc::alloc(n * ELEM) as *mut StrVal;
+            let base = (core::ptr::addr_of_mut!(ASCII) as *mut u8).add(STR_HDR_SIZE);
             for (k, &b) in text.iter().enumerate() {
-                *p.add(k) = ascii_char(b);
+                let q = p.add(k);
+                (*q).ptr = base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE);
+                (*q).len = 1;
+                (*q).cap = 0;
             }
             *out = VecVal {
                 ptr: p as _,
@@ -1353,6 +1381,7 @@ pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrVal, at: i64, o
     unsafe { (msrt_string_char_at_val(s, at)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_char_at_val(s: *const StrVal, at: i64) -> StrVal {
     // SAFETY: caller passes a live string and an offset inside it.
     unsafe {
@@ -1866,6 +1895,7 @@ pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut St
     unsafe { (msrt_string_quote_val(s)).write_to(out) }
 }
 
+#[inline(always)]
 unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
     // SAFETY: caller passes a live string.
     let text = unsafe { bytes(s) };

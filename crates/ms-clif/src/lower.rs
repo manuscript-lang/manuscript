@@ -309,8 +309,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
-                let block = self.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
-                self.release(block);
+                // `cap == 0` marks a static (literal or one-byte ASCII) string: no count to change.
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                self.if_then(owned, |s| {
+                    let block = s.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
+                    s.release(block);
+                });
             }
             TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
@@ -335,8 +339,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
-                let block = self.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
-                self.retain(block);
+                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                self.if_then(owned, |s| {
+                    let block = s.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
+                    s.retain(block);
+                });
                 vs.to_vec()
             }
             TyKind::Fn(..) => {
@@ -2533,16 +2540,49 @@ impl<'a, 'm> Lower<'a, 'm> {
         Some(vec![self.b.block_params(join)[0]])
     }
 
+    /// `a == b` for two strings: differing lengths are unequal and identical pointers equal without
+    /// a call; only same-length distinct blocks reach the runtime.
+    fn string_eq_inline(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let (a, b) = (self.a(inst, 0), self.a(inst, 1));
+        let same_len = self.b.ins().icmp(IntCC::Equal, a[1], b[1]);
+        let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
+        let join = self.b.create_block();
+        self.b.append_block_param(join, types::I8);
+        let (check, slow) = (self.b.create_block(), self.b.create_block());
+        let no = self.b.ins().iconst(types::I8, 0);
+        self.b
+            .ins()
+            .brif(same_len, check, &[], join, &[BlockArg::Value(no)]);
+        self.b.switch_to_block(check);
+        let yes = self.b.ins().iconst(types::I8, 1);
+        self.b
+            .ins()
+            .brif(same_ptr, join, &[BlockArg::Value(yes)], slow, &[]);
+        self.b.switch_to_block(slow);
+        let r = self.call_extern_plain(f, inst);
+        self.b.ins().jump(join, &[BlockArg::Value(r[0])]);
+        self.b.switch_to_block(join);
+        vec![self.b.block_params(join)[0]]
+    }
+
     fn call_extern(&mut self, f: &Func, inst: &Inst) -> Vs {
         let Imm::Ext(e) = inst.imm else {
             unreachable!()
         };
-        let def = self.g.m.externs[e.index()].clone();
-        if def.name == "msrt_string_eq"
-            && let Some(r) = self.string_eq_literal(inst)
-        {
-            return r;
+        if self.g.m.externs[e.index()].name == "msrt_string_eq" {
+            if let Some(r) = self.string_eq_literal(inst) {
+                return r;
+            }
+            return self.string_eq_inline(f, inst);
         }
+        self.call_extern_plain(f, inst)
+    }
+
+    fn call_extern_plain(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let Imm::Ext(e) = inst.imm else {
+            unreachable!()
+        };
+        let def = self.g.m.externs[e.index()].clone();
         let id = match self.g.ext.get(&e) {
             Some(id) => *id,
             None => {

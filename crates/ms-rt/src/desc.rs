@@ -118,7 +118,7 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {
                 core::ptr::copy_nonoverlapping(src, dst, d.size as usize)
             }
-            KIND_STRING => *(dst as *mut StrVal) = string::retained(*(src as *const StrVal)),
+            KIND_STRING => string::retained(*(src as *const StrVal)).write_to(dst as *mut StrVal),
             KIND_SHARED => {
                 let p = *(src as *const *mut Obj);
                 obj::retain(p);

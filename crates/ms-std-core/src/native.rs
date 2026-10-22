@@ -1593,6 +1593,14 @@ macro_rules! native {
     (
         @item [$($q:tt)*]
         $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> &str $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out &str $body $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
         fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Text $body:block
         $($rest:tt)*
     ) => {
