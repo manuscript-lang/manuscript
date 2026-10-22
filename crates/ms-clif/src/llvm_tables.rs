@@ -9,7 +9,10 @@
 
 use crate::Error;
 use crate::cg::{FuncDbg, LlvmFn};
-use cranelift_object::object::{Object as _, ObjectSection as _, ObjectSymbol as _};
+use cranelift_object::object::{
+    BinaryFormat, File, Object as _, ObjectSection as _, ObjectSymbol as _, RelocationKind,
+    RelocationTarget, SectionIndex, SectionKind,
+};
 use gimli::{EndianSlice, RunTimeEndian};
 use ms_mir::ir::Scope;
 use std::collections::HashMap;
@@ -28,21 +31,142 @@ struct Inlined {
     depth: u32,
 }
 
-/// The tables rebuilt from the linked image `image`.
+/// The tables rebuilt from the LLVM object.
 pub struct Tables {
     pub dbg: Vec<FuncDbg>,
     pub scopes: Vec<Scope>,
 }
 
-pub fn read(image: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables, Error> {
-    let bytes = std::fs::read(image).map_err(|e| err("read image", e))?;
-    let obj =
-        cranelift_object::object::File::parse(bytes.as_slice()).map_err(|e| err("parse", e))?;
+/// Code addresses for an unlinked object: its code sections laid end to end, so every function
+/// and every address the DWARF names get the same offsets the final link keeps within the
+/// object's own code.
+struct Layout {
+    delta: HashMap<SectionIndex, u64>,
+}
+
+impl Layout {
+    fn new(obj: &File) -> Self {
+        let mut delta = HashMap::new();
+        let mut next = 0u64;
+        for s in obj.sections().filter(|s| s.kind() == SectionKind::Text) {
+            let align = s.align().max(1);
+            next = next.div_ceil(align) * align;
+            delta.insert(s.index(), next.wrapping_sub(s.address()));
+            next += s.size();
+        }
+        Layout { delta }
+    }
+
+    fn place(&self, section: Option<SectionIndex>, address: u64) -> u64 {
+        let delta = section.and_then(|s| self.delta.get(&s)).copied();
+        address.wrapping_add(delta.unwrap_or(0))
+    }
+}
+
+/// The DWARF sections of `obj` by their ELF names, with the object's relocations applied so
+/// code addresses are final within the object (the linker would otherwise do this).
+fn dwarf_sections(obj: &File, layout: &Layout) -> Result<HashMap<String, Vec<u8>>, Error> {
+    let little = obj.is_little_endian();
+    let mut out = HashMap::new();
+    for section in obj.sections() {
+        let Ok(name) = section.name() else { continue };
+        let name = match name.strip_prefix("__debug_") {
+            Some(rest) => format!(".debug_{rest}"),
+            None => name.to_string(),
+        };
+        if !name.starts_with(".debug_") {
+            continue;
+        }
+        let mut data = section
+            .uncompressed_data()
+            .map_err(|e| err("section data", e))?
+            .into_owned();
+        for (offset, rel) in section.relocations() {
+            let size = usize::from(rel.size() / 8);
+            let at = offset as usize;
+            if !matches!(
+                rel.kind(),
+                RelocationKind::Absolute | RelocationKind::SectionOffset
+            ) || !matches!(size, 4 | 8)
+            {
+                return Err(err(
+                    "relocation",
+                    format!(
+                        "{name}: unsupported {:?} of {} bits",
+                        rel.kind(),
+                        rel.size()
+                    ),
+                ));
+            }
+            let field = data
+                .get_mut(at..at + size)
+                .ok_or_else(|| err("relocation", format!("{name}: offset out of range")))?;
+            let mut raw = [0u8; 8];
+            let addend = if rel.has_implicit_addend() {
+                raw[..size].copy_from_slice(field);
+                let v = if little {
+                    u64::from_le_bytes(raw)
+                } else {
+                    u64::from_be_bytes(raw) >> (8 * (8 - size))
+                };
+                // Sign-extend the in-place value.
+                let shift = 64 - 8 * size as u32;
+                (((v << shift) as i64) >> shift) as u64
+            } else {
+                rel.addend() as u64
+            };
+            // An absolute field takes the target's final address; a section offset (COFF
+            // `SECREL`) its offset within its own section.
+            let section_offset = rel.kind() == RelocationKind::SectionOffset;
+            let target = match rel.target() {
+                RelocationTarget::Symbol(i) => {
+                    let sym = obj
+                        .symbol_by_index(i)
+                        .map_err(|e| err("relocation symbol", e))?;
+                    match sym.section_index() {
+                        Some(sec) if section_offset => {
+                            let base = obj
+                                .section_by_index(sec)
+                                .map_err(|e| err("section", e))?
+                                .address();
+                            sym.address().wrapping_sub(base)
+                        }
+                        sec => layout.place(sec, sym.address()),
+                    }
+                }
+                RelocationTarget::Section(i) if section_offset => {
+                    let _ = i;
+                    0
+                }
+                RelocationTarget::Section(i) => {
+                    let sec = obj.section_by_index(i).map_err(|e| err("section", e))?;
+                    layout.place(Some(i), sec.address())
+                }
+                _ => 0,
+            };
+            let value = target.wrapping_add(addend);
+            if little {
+                field.copy_from_slice(&value.to_le_bytes()[..size]);
+            } else {
+                field.copy_from_slice(&value.to_be_bytes()[8 - size..]);
+            }
+        }
+        out.insert(name, data);
+    }
+    Ok(out)
+}
+
+/// Rebuilds the tables from the DWARF in the object file `object`.
+pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables, Error> {
+    let bytes = std::fs::read(object).map_err(|e| err("read object", e))?;
+    let obj = File::parse(bytes.as_slice()).map_err(|e| err("parse", e))?;
     let endian = if obj.is_little_endian() {
         RunTimeEndian::Little
     } else {
         RunTimeEndian::Big
     };
+    let layout = Layout::new(&obj);
+    let sections = dwarf_sections(&obj, &layout)?;
     // Function address ranges by symbol.
     let by_symbol: HashMap<&str, usize> = funcs
         .iter()
@@ -50,19 +174,42 @@ pub fn read(image: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables, 
         .map(|(i, f)| (f.symbol.as_str(), i))
         .collect();
     let mut placed: Vec<Option<(u64, u64)>> = vec![None; funcs.len()];
+    // Mach-O symbols carry no size: a function runs to the next symbol of its section.
+    let mut starts: HashMap<SectionIndex, Vec<u64>> = HashMap::new();
+    for s in obj.symbols() {
+        if let Some(sec) = s.section_index() {
+            starts.entry(sec).or_default().push(s.address());
+        }
+    }
+    for v in starts.values_mut() {
+        v.sort_unstable();
+        v.dedup();
+    }
     for s in obj.symbols() {
         let Ok(name) = s.name() else { continue };
-        if let Some(&i) = by_symbol.get(name)
-            && s.size() > 0
-        {
-            placed[i] = Some((s.address(), s.size()));
+        // Mach-O prefixes C symbols with an underscore.
+        let name = match name.strip_prefix('_') {
+            Some(rest) if obj.format() == BinaryFormat::MachO => rest,
+            _ => name,
+        };
+        let (Some(&i), Some(sec)) = (by_symbol.get(name), s.section_index()) else {
+            continue;
+        };
+        let size = if s.size() > 0 {
+            s.size()
+        } else {
+            let end = starts
+                .get(&sec)
+                .and_then(|v| v.get(v.partition_point(|a| *a <= s.address())).copied());
+            let section = obj.section_by_index(sec).map_err(|e| err("section", e))?;
+            end.unwrap_or(section.address() + section.size()) - s.address()
+        };
+        if size > 0 {
+            placed[i] = Some((layout.place(Some(sec), s.address()), size));
         }
     }
     let load = |id: gimli::SectionId| -> Result<R<'_>, gimli::Error> {
-        let data = obj
-            .section_by_name(id.name())
-            .and_then(|s| s.data().ok())
-            .unwrap_or(&[]);
+        let data = sections.get(id.name()).map_or(&[][..], Vec::as_slice);
         Ok(EndianSlice::new(data, endian))
     };
     let dwarf = gimli::Dwarf::load(load).map_err(|e| err("sections", e))?;
@@ -280,4 +427,76 @@ pub fn read(image: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables, 
         }
     }
     Ok(Tables { dbg, scopes })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::link::llvm_tools;
+    use cranelift_module::FuncId;
+    use std::collections::BTreeSet;
+    use std::process::Command;
+
+    fn lines_for(triple: &str) -> Option<(BTreeSet<u32>, usize)> {
+        let tools = llvm_tools().ok()??;
+        let dir = std::env::temp_dir().join(format!("ms-tables-{}-{triple}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let object = dir.join("m.o");
+        let fixture = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/tables.ll");
+        let status = Command::new(tools.join("llc"))
+            .args(["-O2", "-filetype=obj", "-relocation-model=pic"])
+            .arg(format!("-mtriple={triple}"))
+            .arg(fixture)
+            .arg("-o")
+            .arg(&object)
+            .output()
+            .unwrap();
+        assert!(status.status.success(), "llc {triple}: {status:?}");
+        let funcs: Vec<LlvmFn> = ["ms_entry", "sum_squares#1"]
+            .iter()
+            .enumerate()
+            .map(|(i, symbol)| LlvmFn {
+                id: FuncId::from_u32(i as u32),
+                symbol: (*symbol).into(),
+                name: (*symbol).into(),
+                file: 0,
+                line: 0,
+            })
+            .collect();
+        let tables = read(&object, &funcs, &["src/main.ms".to_string()])
+            .unwrap_or_else(|e| panic!("{triple}: {e:?}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut lines = BTreeSet::new();
+        for d in &tables.dbg {
+            assert!(!d.ranges.is_empty(), "{triple}: {} has no lines", d.name);
+            for r in &d.ranges {
+                assert!(r.0 < d.size, "{triple}: {} range past its end", d.name);
+                assert_eq!(r.1, 0, "{triple}: file");
+                lines.insert(r.2);
+            }
+        }
+        Some((lines, tables.scopes.len()))
+    }
+
+    /// The line tables come out the same from ELF, Mach-O and COFF objects: relocations are
+    /// applied and symbols placed the way the linker would.
+    #[test]
+    fn tables_agree_across_object_formats() {
+        let Some(elf) = lines_for("x86_64-unknown-linux-gnu") else {
+            return;
+        };
+        assert!(elf.0.contains(&4) && elf.0.contains(&21), "{:?}", elf.0);
+        assert!(elf.1 > 0, "inlined scopes");
+        for triple in [
+            "x86_64-apple-darwin",
+            "aarch64-apple-darwin",
+            "x86_64-w64-windows-gnu",
+            "aarch64-w64-windows-gnu",
+            "aarch64-unknown-linux-gnu",
+        ] {
+            let got = lines_for(triple).unwrap();
+            assert_eq!(got.0, elf.0, "{triple}: lines");
+            assert_eq!(got.1, elf.1, "{triple}: scopes");
+        }
+    }
 }

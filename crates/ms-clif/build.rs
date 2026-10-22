@@ -65,7 +65,7 @@ fn main() {
             names.push(name.to_string());
         }
     }
-    if target_os == "linux" {
+    if target_os == "linux" || target_os == "macos" {
         // opt and llc sit beside lld when the LLVM tools were fetched; without them release builds
         // keep using Cranelift. They are embedded gzipped (together about 50 MB).
         let tools = lld().parent().map(Path::to_path_buf).unwrap_or_default();
@@ -74,6 +74,8 @@ fn main() {
             compress(&tools.join(tool), &bundle.join(&gz));
             names.push(gz);
         }
+    }
+    if target_os == "linux" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         let musl = sysroot()
             .join("lib/rustlib")

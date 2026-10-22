@@ -42,8 +42,9 @@ impl Profile {
 /// `MS_LLVM_TOOLS`) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to
 /// Cranelift.
 fn llvm_level(level: &'static str) -> Option<&'static str> {
-    // The line tables are rebuilt from ELF DWARF, so only Linux uses LLVM for now.
-    if !cfg!(target_os = "linux") || std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
+    // The tools are bundled for Linux and macOS; Windows releases still use Cranelift.
+    let bundled = cfg!(any(target_os = "linux", target_os = "macos"));
+    if !bundled || std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
         return None;
     }
     ms_clif::llvm_available().then_some(level)
@@ -82,7 +83,7 @@ pub fn build_executable(
     }
     let (level, options) = profile.options();
     optimize(module, level, cfg!(debug_assertions));
-    let object = ms_clif::compile(module, &options).map_err(|e| {
+    let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
         format!(
             "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
         )
@@ -94,25 +95,37 @@ pub fn build_executable(
         .unwrap_or(Path::new("."));
     let stem = format!(".ms-build-{}", std::process::id());
     let object_path = directory.join(format!("{stem}.o"));
+    let llvm_path = directory.join(format!("{stem}.llvm.o"));
     let staged = directory.join(format!("{stem}.exe"));
     let cleanup = || {
         let _ = std::fs::remove_file(&object_path);
+        let _ = std::fs::remove_file(&llvm_path);
         let _ = std::fs::remove_file(&staged);
         if let Some(companion) = ms_clif::link::debug_companion_path(&staged) {
             let _ = std::fs::remove_dir_all(companion);
         }
     };
-    if let Err(error) = std::fs::write(&object_path, object) {
+    if let Err(error) = std::fs::write(&object_path, parts.object) {
         cleanup();
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
+    // The functions LLVM compiled link beside the Cranelift object, ahead of the runtime.
+    let mut inputs = vec![runtime];
+    if let Some(llvm) = parts.llvm {
+        if let Err(error) = std::fs::write(&llvm_path, llvm) {
+            cleanup();
+            return Err(format!("cannot write {}: {error}", llvm_path.display()));
+        }
+        inputs.insert(0, &llvm_path);
+    }
     let linked = ms_clif::link::link_with(
         &object_path,
-        &[runtime],
+        &inputs,
         &staged,
         profile == Profile::MinSizeRel,
     );
     let _ = std::fs::remove_file(&object_path);
+    let _ = std::fs::remove_file(&llvm_path);
     if let Err(error) = linked {
         cleanup();
         return Err(error.to_string());

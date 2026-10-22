@@ -48,7 +48,7 @@ const LLD: &str = "lld.exe";
 const LLD: &str = "lld";
 
 /// The embedded `opt` and `llc`, gzipped; empty when `ms` was built without the LLVM tools.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const TOOLS: [(&str, &[u8]); 2] = [
     (
         "opt",
@@ -68,7 +68,7 @@ pub fn lld_path() -> Result<PathBuf, Error> {
 
 /// The directory holding `opt` and `llc`: `MS_LLVM_TOOLS`, else the embedded ones unpacked on
 /// first use. `None` when neither exists.
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     use std::io::Read;
     if let Some(dir) = std::env::var_os("MS_LLVM_TOOLS").filter(|v| !v.is_empty()) {
@@ -116,7 +116,7 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(Some(dir))
 }
 
-#[cfg(all(unix, not(target_os = "linux")))]
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
 pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }

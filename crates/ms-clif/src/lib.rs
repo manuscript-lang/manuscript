@@ -68,7 +68,27 @@ impl From<String> for Error {
     }
 }
 
-/// Compiles a verified module to a relocatable object file.
-pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
+/// The relocatable objects of a compiled module. They are linked together: LLVM's object refers
+/// to symbols in the Cranelift one (data, descriptors, tables) and the other way round.
+pub struct Parts {
+    /// Cranelift's object: everything when `llvm` is `None`, else data, descriptors, tables and
+    /// `main`.
+    pub object: Vec<u8>,
+    /// The functions LLVM compiled, when [`Options::llvm`] is set.
+    pub llvm: Option<Vec<u8>>,
+}
+
+/// Compiles a verified module to relocatable objects.
+pub fn compile_parts(m: &Module, opts: &Options) -> Result<Parts, Error> {
     cg::compile(m, opts)
+}
+
+/// Compiles a verified module to a single relocatable object file with Cranelift.
+pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
+    if opts.llvm.is_some() {
+        return Err(Error(
+            "LLVM builds produce two objects; use compile_parts".into(),
+        ));
+    }
+    Ok(cg::compile(m, opts)?.object)
 }

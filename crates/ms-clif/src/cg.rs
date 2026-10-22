@@ -482,7 +482,7 @@ impl<'m> Gen<'m> {
     }
 }
 
-pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
+pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     let isa_builder = cranelift_native::builder().map_err(|e| e.to_string())?;
     let arm64_coff = windows_arm64(isa_builder.triple());
     let mut flags = settings::builder();
@@ -647,8 +647,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
         let obj = crate::llvm_obj::compile(&llvm.finish(&triple), opts.llvm.unwrap_or("3"))?;
-        let image = obj.image()?;
-        let t = crate::llvm_tables::read(&image, &g.llvm_funcs, &m.files)?;
+        let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files)?;
         g.dbg = t.dbg;
         g.scopes = t.scopes;
         llvm_object = Some(obj);
@@ -665,11 +664,16 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         relocate_tables(&mut product, &g.dbg, &t);
     }
     if let Some(obj) = llvm_object {
-        let clif = product.emit().map_err(|e| Error(e.to_string()))?;
-        return obj.merge(&clif);
+        return Ok(crate::Parts {
+            object: product.emit().map_err(|e| Error(e.to_string()))?,
+            llvm: Some(obj.bytes()?),
+        });
     }
     crate::dwarf::emit(&mut product, m, &g.dbg, endian)?;
-    product.emit().map_err(|e| Error(e.to_string()))
+    Ok(crate::Parts {
+        object: product.emit().map_err(|e| Error(e.to_string()))?,
+        llvm: None,
+    })
 }
 
 fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
