@@ -125,6 +125,22 @@ mod imp {
     /// Nothing to undo: a one-shot registration stays disarmed until the next wait.
     pub fn unwatch(_: i32) {}
 
+    /// Ends the kept registration of `fd` (see `WAIT_KEEP`) before its owner closes it. Closing
+    /// removes the descriptor from the kernel's set, but the record here would survive and make
+    /// a later descriptor with the same number look registered when it is not.
+    pub fn forget(fd: i32) {
+        // SAFETY: only the scheduler thread reaches the poller state.
+        let Some(s) = (unsafe { &mut *STATE.ptr() }) else {
+            return;
+        };
+        if let Some(code) = s.kept.get_mut(fd as usize)
+            && *code != 0
+        {
+            *code = 0;
+            let _ = s.poll.registry().deregister(&mut SourceFd(&fd));
+        }
+    }
+
     pub unsafe fn close(_: i32) {
         WAKE_FD.store(-1, Ordering::Relaxed);
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -274,6 +290,9 @@ mod imp {
         release(state(), fd as usize);
     }
 
+    /// Nothing kept here: registrations are one-shot.
+    pub fn forget(_: i32) {}
+
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
         release(s, sock);
@@ -316,4 +335,4 @@ mod imp {
     }
 }
 
-pub use imp::{close, create, kick, unwatch, wait, watch};
+pub use imp::{close, create, forget, kick, unwatch, wait, watch};

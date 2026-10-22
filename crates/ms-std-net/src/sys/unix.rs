@@ -301,6 +301,13 @@ impl Poller {
     }
 }
 
+impl Drop for Poller {
+    fn drop(&mut self) {
+        // `park` keeps this descriptor registered in the runtime's poller.
+        rt::forget_fd(self.poll.borrow().as_raw_fd());
+    }
+}
+
 /// Whether a failed nonblocking `connect` is merely under way.
 pub fn connect_in_progress(e: &std::io::Error) -> bool {
     e.raw_os_error() == Some(io::Errno::INPROGRESS.raw_os_error())
