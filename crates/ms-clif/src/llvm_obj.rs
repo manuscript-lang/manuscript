@@ -1,11 +1,13 @@
 //! Compiles LLVM IR text to an object file and merges it with the Cranelift object.
 
 use crate::Error;
-use std::path::{Path, PathBuf};
+use crate::link::{lld_path, llvm_tools};
+use std::path::PathBuf;
 use std::process::Command;
 
-fn tool(var: &str, default: &str) -> String {
-    std::env::var(var).unwrap_or_else(|_| default.to_string())
+/// Whether release builds can use LLVM: the tools are embedded in `ms` or named by `MS_LLVM_TOOLS`.
+pub fn available() -> bool {
+    llvm_tools().is_ok_and(|tools| tools.is_some())
 }
 
 fn run(mut c: Command, what: &str) -> Result<(), Error> {
@@ -55,19 +57,29 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     if std::env::var_os("MS_KEEP_LL").is_some() {
         let _ = std::fs::copy(&ll, "ms-keep.ll");
     }
-    let mut cc = Command::new(tool("MS_LLVM_CC", "clang"));
-    cc.args([
-        "-c",
-        "-x",
-        "ir",
-        &format!("-O{level}"),
-        "-fPIC",
-        "-Wno-override-module",
-    ])
-    .arg(&ll)
-    .arg("-o")
-    .arg(&obj);
-    run(cc, "clang (LLVM optimizer)")?;
+    let tools = llvm_tools()?.ok_or_else(|| {
+        Error(
+            "this ms was built without the LLVM tools (opt, llc); see scripts/fetch-lld.sh".into(),
+        )
+    })?;
+    // What `clang -O<level>` does for IR input: the default pipeline, then code generation.
+    let (pipeline, codegen) = match level {
+        "s" => ("default<Os>", "-O2"),
+        _ => (&*format!("default<O{level}>"), &*format!("-O{level}")),
+    };
+    let bitcode = dir.join("m.bc");
+    let mut opt = Command::new(tools.join("opt"));
+    opt.arg(format!("-passes={pipeline}"))
+        .arg(&ll)
+        .arg("-o")
+        .arg(&bitcode);
+    run(opt, "opt (LLVM optimizer)")?;
+    let mut llc = Command::new(tools.join("llc"));
+    llc.args([codegen, "-filetype=obj", "-relocation-model=pic"])
+        .arg(&bitcode)
+        .arg("-o")
+        .arg(&obj);
+    run(llc, "llc (LLVM code generator)")?;
     Ok(this)
 }
 
@@ -76,12 +88,14 @@ impl LlvmObject {
     /// line tables. The result is only read, never run.
     pub fn image(&self) -> Result<PathBuf, Error> {
         let image = self.dir.join("image.so");
-        let mut ld = Command::new(tool("MS_LINKER", "cc"));
+        let mut ld = Command::new(lld_path()?);
         ld.args([
+            "-flavor",
+            "gnu",
             "-shared",
-            "-nostdlib",
-            "-Wl,--unresolved-symbols=ignore-all",
-            "-Wl,-z,notext",
+            "--unresolved-symbols=ignore-all",
+            "-z",
+            "notext",
         ])
         .arg(&self.obj)
         .arg("-o")
@@ -94,8 +108,8 @@ impl LlvmObject {
     pub fn merge(&self, clif: &[u8]) -> Result<Vec<u8>, Error> {
         let (co, out) = (self.dir.join("clif.o"), self.dir.join("merged.o"));
         std::fs::write(&co, clif).map_err(|e| Error(e.to_string()))?;
-        let mut ld = Command::new(tool("MS_LINKER", "cc"));
-        ld.args(["-r", "-nostdlib"])
+        let mut ld = Command::new(lld_path()?);
+        ld.args(["-flavor", "gnu", "-r"])
             .arg(&co)
             .arg(&self.obj)
             .arg("-o")
@@ -104,6 +118,3 @@ impl LlvmObject {
         std::fs::read(&out).map_err(|e| Error(e.to_string()))
     }
 }
-
-#[allow(dead_code)]
-fn _unused(_: &Path) {}
