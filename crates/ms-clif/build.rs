@@ -70,6 +70,7 @@ fn main() {
             if DEBUG_INFO.contains(&name) {
                 strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
             }
+            assert_no_line_tables(&to, name);
             names.push(name);
         }
     }
@@ -98,6 +99,28 @@ fn main() {
         }
     }
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
+}
+
+/// Fails the build if `file` still carries DWARF line tables, naming what remains.
+fn assert_no_line_tables(file: &Path, name: &str) {
+    let objdump = mingw().join("bin/llvm-objdump");
+    let Ok(output) = Command::new(&objdump)
+        .arg("--section-headers")
+        .arg(file)
+        .output()
+    else {
+        println!(
+            "cargo:warning=cannot run {} to check {name}",
+            objdump.display()
+        );
+        return;
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    let left = text.lines().filter(|l| l.contains(".debug_line")).count();
+    assert!(
+        left == 0,
+        "{name} still has {left} .debug_line sections after stripping"
+    );
 }
 
 /// `MS_MINGW`, else the llvm-mingw tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`.
