@@ -486,12 +486,17 @@ mod tests {
     fn large_blocks_are_reused() {
         let _g = lock();
         let a = alloc(100_000);
+        // The system may round a block up past its class (macOS does), and a freed block is
+        // filed under the largest class that fits its usable size.
+        // SAFETY: `a` is live.
+        let usable = unsafe { sys::malloc_usable_size(a.cast()) };
+        let size = large_size(large_class_down(usable));
         // SAFETY: `a` is live and holds 100000 bytes.
         unsafe {
             *a.add(99_999) = 7;
             free(a);
         }
-        let b = alloc(100_000);
+        let b = alloc(size);
         assert_eq!(a, b);
         // SAFETY: `b` is live.
         unsafe { free(b) };
