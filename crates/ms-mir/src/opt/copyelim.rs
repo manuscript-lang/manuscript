@@ -17,6 +17,7 @@ pub fn run(m: &mut Module) -> bool {
         changed |= run_func(m, fi);
         changed |= move_dead_sources(&mut m.funcs[fi]);
         changed |= borrow_closure_copies(m, fi);
+        changed |= borrow_str_copies_across_blocks(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
     }
@@ -150,6 +151,147 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
             alias[c.index()] = Some(v);
             dead.push((bi, i));
             dead.push((bi, j));
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            let drop_it = dead.contains(&(bi, k));
+            k += 1;
+            !drop_it
+        });
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(s) = alias[a.index()] {
+                    *a = s;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// Removes `c = copy v; ...; drop c` for a string `v` read out of a list when the copy lives
+/// across several blocks (a loop body with an `if`), which the single-block pass cannot see.
+/// Every instruction that can run between the copy and the drop must only borrow `c`, `v`
+/// and the list; the paths from the copy reach the list's release only through the drop.
+fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let nb = f.blocks.len();
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
+    let mut uses = vec![0u32; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+            for a in &inst.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
+    for (bc, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            if !matches!(m.types.kind(f.ty(v)), TyKind::Str) || alias[v.index()].is_some() {
+                continue;
+            }
+            // The one drop of `c`, in a later block (the same-block case is handled elsewhere).
+            let mut drops = f.blocks.iter().enumerate().flat_map(|(bd, blk)| {
+                blk.insts
+                    .iter()
+                    .enumerate()
+                    .filter(move |(_, n)| n.op == Op::Drop && n.args[0] == c)
+                    .map(move |(jd, _)| (bd, jd))
+            });
+            let (Some((bd, jd)), None) = (drops.next(), drops.next()) else {
+                continue;
+            };
+            if bd == bc {
+                continue;
+            }
+            // The list `v` is read from, or none for a parameter or literal.
+            let root = match defs[v.index()] {
+                None => None,
+                Some((db, di)) => {
+                    let def = &f.blocks[db].insts[di];
+                    match def.op {
+                        Op::StrLit => None,
+                        Op::ListGet | Op::ListGetU | Op::ListGetNn => Some(def.args[0]),
+                        _ => continue,
+                    }
+                }
+            };
+            // Blocks reachable from the copy without passing through the drop's block.
+            let mut seen = vec![false; nb];
+            let mut stack: Vec<usize> = Vec::new();
+            let mut reaches_copy_again = false;
+            f.blocks[bc]
+                .term
+                .for_each_target(|t| stack.push(t.block.index()));
+            while let Some(x) = stack.pop() {
+                if x == bc {
+                    reaches_copy_again = true;
+                    continue;
+                }
+                if x == bd || seen[x] {
+                    continue;
+                }
+                seen[x] = true;
+                f.blocks[x]
+                    .term
+                    .for_each_target(|t| stack.push(t.block.index()));
+            }
+            if reaches_copy_again {
+                continue;
+            }
+            // Instructions that may run while the copy is alive.
+            let mut ok = true;
+            let mut c_borrows = 0u32;
+            let mut visit = |insts: &[Inst], term: Option<&crate::ir::Term>| {
+                for n in insts {
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                        if *a == c {
+                            if mode != Mode::Borrow {
+                                ok = false;
+                            }
+                            c_borrows += 1;
+                        } else if (*a == v || Some(*a) == root) && mode != Mode::Borrow {
+                            ok = false;
+                        }
+                    }
+                }
+                if let Some(t) = term {
+                    t.for_each_use(|a| {
+                        if a == c || a == v || Some(a) == root {
+                            ok = false;
+                        }
+                    });
+                }
+            };
+            visit(&b.insts[i + 1..], Some(&b.term));
+            for (x, blk) in f.blocks.iter().enumerate() {
+                if seen[x] {
+                    visit(&blk.insts, Some(&blk.term));
+                }
+            }
+            visit(&f.blocks[bd].insts[..jd], None);
+            if !ok || c_borrows + 1 != uses[c.index()] {
+                continue;
+            }
+            alias[c.index()] = Some(v);
+            dead.push((bc, i));
+            dead.push((bd, jd));
         }
     }
     if dead.is_empty() {
