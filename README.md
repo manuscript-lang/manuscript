@@ -1,17 +1,19 @@
 # Manuscript
 
-Manuscript is a statically typed language that compiles to fast, self-contained native executables. It has a small, regular syntax, value semantics with checked ownership, and a single toolchain, so programs are quick to write, easy to review, and predictable to run.
+Manuscript is a language where agents write the code and people understand it.
+
+As coding agents produce more of the software, the language and its tools decide how reliably they can build it and how well people can follow what they built. Manuscript is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result without holding the whole implementation in mind.
 
 [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
 ## Highlights
 
+- **Written by agents.** A small, regular language with structured compiler output. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
+- **Understood by people.** Readable code, plus views derived deterministically from the checked source: `ms diagram` for structure and `ms review` for the semantic effect of a change.
+- **Verifiable.** Evidence independent of the code-generating step: `ms verify`, `ms inspect`, and `--json` diagnostics.
+- **Simple, fast memory.** Value semantics with move and copy. There is no garbage collector, cleanup is deterministic, and nothing is copied unless you write `.clone()`. The compiler infers borrows, moves, and mutation; the only marker is `var`.
 - **Performance.** Native code through LLVM, faster than hand-written Go on 26 of 31 benchmarks and typically within 1.4x of Rust with overflow checks on.
-- **Simple, fast memory.** Value semantics with move and copy. There is no garbage collector, cleanup is deterministic, and nothing is copied unless you write `.clone()`.
-- **Checked ownership without extra syntax.** The compiler infers borrows, moves, and mutation. The only marker is `var`, written where a function changes its argument.
-- **Failure as a value.** `Optional`, `Result`, and `try` make absence and errors part of the type. There are no exceptions and no async syntax.
 - **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK, and an HTTP server is about 4.4 MB.
-- **Reliable for agents.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
 
 ## Example
 
@@ -139,16 +141,17 @@ Representative programs compiled natively (linux/amd64). Each value is Manuscrip
 
 Across all 31 benchmarks Manuscript is faster than Go on 26, and typically within 1.4x of Rust with overflow checks on; sorting with a comparator is within 1.2x. Linux and macOS release builds optimize with LLVM through tools bundled in `ms`. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. See the [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), and [kernel](bench/perf/kernels/README.md) results for methods and numbers.
 
-## Tooling for agents and people
+## Agents write, people understand
 
-The language and the toolchain are designed around one loop: write, check, fix, verify, ship.
+Manuscript is designed around one loop: an agent writes, checks, fixes, and verifies, and a person guides the work and inspects the result.
 
-- **Structured evidence.** `check`, `lint`, `test`, `build`, and `inspect` accept `--json`. `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source.
-- **Regular code.** Four-space blocks, pipe flows, `try`, exhaustive `match`, and `with` for scoped cleanup keep programs flat and uniform.
+- **A language agents can work with directly.** Four-space blocks, pipe flows, `try`, exhaustive `match`, and `with` for scoped cleanup keep programs flat and uniform. Compiler messages are structured for tools and name the next step, so agents make targeted corrections instead of fighting hidden complexity.
+- **A language people can inspect.** `ms diagram` draws the call graph and `ms review` shows the semantic effect of a diff. Both come from deterministic analysis of the checked source, not from a model summarizing another model's output. They complement source, tests, and human judgment; they do not replace them.
+- **A trustworthy loop.** `check`, `lint`, `test`, `build`, and `inspect` accept `--json`; `ms verify` runs check, format, lint, and test in one result; `ms search_symbol` finds exact APIs and `ms guide` prints the cheat sheet.
 - **Measured with agents.** [`agent-bench`](bench/agent/README.md) runs real challenges with real agents, and its failures drive diagnostics, documentation, and the cheat sheet.
 - **A broad standard library.** Files, processes, networking, HTTP, JSON, text, and time, plus `Queue`, `Deque`, `BitSet`, `SortedMap`, and `SortedSet`.
 
-See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes the direction.
+See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes where the project is heading.
 
 ## Try it
 
