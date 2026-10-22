@@ -158,7 +158,12 @@ fn dwarf_sections(obj: &File, layout: &Layout) -> Result<HashMap<String, Vec<u8>
 }
 
 /// Rebuilds the tables from the DWARF in the object file `object`.
-pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables, Error> {
+pub fn read(
+    object: &Path,
+    funcs: &[LlvmFn],
+    files: &[String],
+    anchored: bool,
+) -> Result<Tables, Error> {
     let bytes = std::fs::read(object).map_err(|e| err("read object", e))?;
     let obj = File::parse(bytes.as_slice()).map_err(|e| err("parse", e))?;
     let endian = if obj.is_little_endian() {
@@ -327,11 +332,17 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
         }
     }
     // Functions are addressed from the anchor, which only works inside its own code section.
-    let (anchor_sec, anchor_at) =
-        anchor.ok_or_else(|| err("anchor", format!("{TEXT_ANCHOR} is not in the object")))?;
-    if let Some(i) = section_of
-        .iter()
-        .position(|s| s.is_some_and(|s| s != anchor_sec))
+    let (anchor_sec, anchor_at) = match anchor {
+        Some(a) => a,
+        None if anchored => {
+            return Err(err("anchor", format!("{TEXT_ANCHOR} is not in the object")));
+        }
+        None => (SectionIndex(0), 0),
+    };
+    if anchored
+        && let Some(i) = section_of
+            .iter()
+            .position(|s| s.is_some_and(|s| s != anchor_sec))
     {
         return Err(err(
             "layout",
@@ -354,7 +365,11 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
                 size: size as u32,
                 ranges: Vec::new(),
                 dwarf_ranges: Vec::new(),
-                text: addr.wrapping_sub(anchor_at),
+                text: if anchored {
+                    addr.wrapping_sub(anchor_at)
+                } else {
+                    0
+                },
             })
         })
         .collect();
@@ -488,7 +503,7 @@ mod tests {
                 line: 0,
             })
             .collect();
-        let tables = read(&object, &funcs, &["src/main.ms".to_string()])
+        let tables = read(&object, &funcs, &["src/main.ms".to_string()], true)
             .unwrap_or_else(|e| panic!("{triple}: {e:?}"));
         let _ = std::fs::remove_dir_all(&dir);
         let mut lines = BTreeSet::new();
