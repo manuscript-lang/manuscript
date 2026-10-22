@@ -258,10 +258,11 @@ jobs:
           cp "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" "$src"
           printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
           export MS_FORCE_LLVM=1
-          for n in crypto-rsa url json numbers string-basics semver; do
-            (cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-$n" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/$n.ms" --build-type Release 2>&1 | grep -c "os error 193" || true)
-            echo "PECHECK $n"
-            node "$GITHUB_WORKSPACE/scripts/pecheck.js" "$dir/prog-$n" 2>&1 | head -40
+          for extra in "" "--no-dynamicbase" "--no-gc-sections" "--no-high-entropy-va" "--disable-large-address-aware" "--no-gc-sections --no-dynamicbase --no-high-entropy-va --disable-large-address-aware" "--image-base=0x10000000" "--icf=none" "--no-seh"; do
+            for n in crypto-rsa url; do
+              out=$(cd "$dir" && MS_LLD_EXTRA="$extra" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/$n.ms" --build-type Release 2>&1 | grep -c "os error 193" || true)
+              echo "VARIANT [$extra] $n err193=$out"
+            done
           done
       - name: Native standard-library source conformance
         run: |
