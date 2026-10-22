@@ -6,6 +6,9 @@
 //! `msrt_task_sleep`, `msrt_task_join`) or yields; there is no preemption. Each task owns a
 //! stack, a cleanup stack, a guard stack, a call depth and a cancellation request, which are
 //! swapped in and out of the runtime globals on every switch (`fault::Ctx`).
+//!
+//! A task can also park on a token (`msrt_token_park`): a one-shot slot that code on the runtime
+//! thread posts to with `msrt_token_post`, and any other thread with `msrt_token_post_remote`.
 use crate::alloc;
 use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
 use crate::global::Global;
@@ -28,6 +31,10 @@ pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
+
+/// `msrt_token_new` flag: another thread will post the token, so while it is unposted the
+/// scheduler waits for it instead of reporting a deadlock.
+pub const TOKEN_REMOTE: u32 = 1;
 
 const DEFAULT_STACK: usize = 256 << 20;
 const MIN_STACK: usize = 128 << 10;
@@ -66,12 +73,26 @@ struct Task {
     wait_events: u32,
     wait_result: u32,
     deadline: i64,
+    /// The token this task is parked on, or 0.
+    wait_token: u64,
 }
 
 #[derive(Clone, Copy)]
 struct Slot {
     task: *mut Task,
     gen_: u32,
+}
+
+/// One park token. Its id is `(generation << 32) | (index + 1)`; a stale id never matches.
+struct Token {
+    gen_: u32,
+    live: bool,
+    /// Expects a post from another thread that has not been delivered yet.
+    remote: bool,
+    /// Handle of the task parked on the token, or 0.
+    waiter: u64,
+    /// The value of a delivered post that the waiter has not taken yet.
+    posted: Option<u64>,
 }
 
 struct Sched {
@@ -92,7 +113,16 @@ struct Sched {
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
+    tokens: Vec<Token>,
+    free_tokens: Vec<usize>,
+    /// Live tokens still expecting a post from another thread.
+    remote_tokens: usize,
 }
+
+/// Posts from other threads, delivered by the scheduler on the runtime thread.
+static INBOX: std::sync::Mutex<Vec<(u64, u64)>> = std::sync::Mutex::new(Vec::new());
+/// Whether `INBOX` may hold posts; spares the scheduler the lock when nothing was posted.
+static INBOX_FULL: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
 static SCHED: Global<Sched> = Global::new(Sched {
     cur: null_mut(),
@@ -109,6 +139,9 @@ static SCHED: Global<Sched> = Global::new(Sched {
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
+    tokens: Vec::new(),
+    free_tokens: Vec::new(),
+    remote_tokens: 0,
 });
 
 /// The scheduler state. Each access derives a fresh short-lived reference from the raw pointer,
@@ -373,6 +406,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             wait_events: 0,
             wait_result: 0,
             deadline: NO_DEADLINE,
+            wait_token: 0,
         });
     }
     s.live += 1;
@@ -482,6 +516,12 @@ unsafe fn wake(t: *mut Task, result: u32) {
             s.fd_waiting -= 1;
             (*t).wait_fd = -1;
         }
+        if (*t).wait_token != 0 {
+            if let Some(k) = token_mut(&mut s, (*t).wait_token) {
+                k.waiter = 0;
+            }
+            (*t).wait_token = 0;
+        }
         (*t).deadline = NO_DEADLINE;
         (*t).wait_result = result;
         (*t).state = State::Ready;
@@ -550,6 +590,7 @@ unsafe fn reactor_wait() {
             if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 && cancel_all_waiters() {
                 return;
             }
+            deliver_remote_posts();
             let now = clock_ns();
             expire_timers(now);
             if !s.ready.is_empty() {
@@ -566,7 +607,7 @@ unsafe fn reactor_wait() {
                 timeout_ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
                 break;
             }
-            if timeout_ms < 0 && s.fd_waiting == 0 {
+            if timeout_ms < 0 && s.fd_waiting == 0 && s.remote_tokens == 0 {
                 fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
             }
             let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
@@ -735,12 +776,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }
-        let hook = PREPARK.load(Ordering::Relaxed);
-        if hook != 0 {
-            // SAFETY: only `msrt_task_set_prepark` stores here, and it stores a function pointer.
-            let hook: unsafe extern "C-unwind" fn() = core::mem::transmute(hook);
-            hook();
-        }
+        before_park();
         let mut s = sched();
         if fd >= 0 {
             let fd_idx = fd as usize;
@@ -762,26 +798,48 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             (*cur).wait_fd = fd;
         }
         (*cur).wait_events = events;
-        (*cur).deadline = NO_DEADLINE;
-        if timeout_ns >= 0 {
-            let deadline = clock_ns().saturating_add(timeout_ns);
-            (*cur).deadline = deadline;
-            s.timers.push(Reverse((deadline, (*cur).handle)));
-            if s.timers.len() > s.timer_limit {
-                // A task woken by its descriptor leaves its entry behind until the deadline;
-                // a loop of short waits with long timeouts must not grow the heap without bound.
-                let sched = &mut *s;
-                let slots = &sched.slots;
-                sched.timers.retain(|&Reverse((deadline, h))| {
-                    let t = lookup_in(slots, h);
-                    !t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline
-                });
-                s.timer_limit = (s.timers.len() * 2).max(MIN_TIMER_LIMIT);
-            }
-        }
+        set_deadline(cur, timeout_ns);
         (*cur).state = State::Waiting;
         switch_away();
         (*cur).wait_result
+    }
+}
+
+/// Arms the timer of a park that times out after `timeout_ns` (negative: never).
+unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
+    let mut s = sched();
+    // SAFETY: `cur` is the running task; slots hold live records or null.
+    unsafe {
+        (*cur).deadline = NO_DEADLINE;
+        if timeout_ns < 0 {
+            return;
+        }
+        let deadline = clock_ns().saturating_add(timeout_ns);
+        (*cur).deadline = deadline;
+        s.timers.push(Reverse((deadline, (*cur).handle)));
+        if s.timers.len() > s.timer_limit {
+            // A task woken by its descriptor leaves its entry behind until the deadline;
+            // a loop of short waits with long timeouts must not grow the heap without bound.
+            let sched = &mut *s;
+            let slots = &sched.slots;
+            sched.timers.retain(|&Reverse((deadline, h))| {
+                let t = lookup_in(slots, h);
+                !t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline
+            });
+            s.timer_limit = (s.timers.len() * 2).max(MIN_TIMER_LIMIT);
+        }
+    }
+}
+
+/// Runs the pre-park hook, if one is installed.
+unsafe fn before_park() {
+    let hook = PREPARK.load(Ordering::Relaxed);
+    if hook != 0 {
+        // SAFETY: only `msrt_task_set_prepark` stores here, and it stores a function pointer.
+        unsafe {
+            let hook: unsafe extern "C-unwind" fn() = core::mem::transmute(hook);
+            hook();
+        }
     }
 }
 
@@ -883,6 +941,201 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut S
     }
 }
 
+// ---- tokens ----
+
+fn token_mut(s: &mut Sched, id: u64) -> Option<&mut Token> {
+    let idx = (id & 0xffff_ffff) as usize;
+    let k = s.tokens.get_mut(idx.checked_sub(1)?)?;
+    (k.live && k.gen_ as u64 == id >> 32).then_some(k)
+}
+
+/// Records a post to `id` and wakes its waiter. A post to a freed token, or to one that holds
+/// a post nobody has taken yet, is dropped.
+unsafe fn post(id: u64, value: u64, remote: bool) {
+    let mut s = sched();
+    let Some(k) = token_mut(&mut s, id) else {
+        return;
+    };
+    if remote && k.remote {
+        k.remote = false;
+        s.remote_tokens -= 1;
+    }
+    let k = token_mut(&mut s, id).unwrap_or_else(|| fault::fatal(b"runtime invariant: token"));
+    if k.posted.is_some() {
+        return;
+    }
+    k.posted = Some(value);
+    let waiter = k.waiter;
+    if waiter != 0 {
+        // SAFETY: handles are validated by `lookup`.
+        unsafe {
+            let t = lookup(waiter);
+            if !t.is_null() {
+                wake(t, 0);
+            }
+        }
+    }
+}
+
+/// Delivers the posts other threads made since the last call.
+unsafe fn deliver_remote_posts() {
+    if !INBOX_FULL.swap(false, Ordering::Acquire) {
+        return;
+    }
+    let posts = std::mem::take(&mut *INBOX.lock().unwrap_or_else(|e| e.into_inner()));
+    for (id, value) in posts {
+        // SAFETY: runs on the runtime thread.
+        unsafe { post(id, value, true) };
+    }
+}
+
+/// Creates a park token. With `TOKEN_REMOTE` another thread will post it: the runtime
+/// then counts it as a pending wake-up until the post arrives or the token is freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        let remote = flags & TOKEN_REMOTE != 0;
+        if remote {
+            // A remote post kicks the poller, which must exist before the post can happen.
+            poller_fd();
+        }
+        let mut s = sched();
+        let idx = match s.free_tokens.pop() {
+            Some(i) => i,
+            None => {
+                s.tokens.push(Token {
+                    gen_: 0,
+                    live: false,
+                    remote: false,
+                    waiter: 0,
+                    posted: None,
+                });
+                s.tokens.len() - 1
+            }
+        };
+        let k = &mut s.tokens[idx];
+        k.gen_ = k.gen_.wrapping_add(1).max(1);
+        k.live = true;
+        k.remote = remote;
+        k.waiter = 0;
+        k.posted = None;
+        let id = (k.gen_ as u64) << 32 | (idx as u64 + 1);
+        if remote {
+            s.remote_tokens += 1;
+        }
+        id
+    }
+}
+
+/// Parks the current task until `id` is posted, the timeout (nanoseconds, negative for none)
+/// passes, or cancellation is requested. Returns 0 with the posted value in `*value_out`,
+/// `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A post made before the park is kept, so the park
+/// returns at once; the park takes the post, so the token can be posted and parked on again.
+/// It also stays usable after a timeout or cancellation. Faults for a freed
+/// token or one another task waits on.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_token_park(
+    id: u64,
+    timeout_ns: i64,
+    value_out: *mut u64,
+) -> u32 {
+    // SAFETY: single threaded scheduler; `value_out` is null or writable.
+    unsafe {
+        let cur = ensure_init();
+        let take = |value_out: *mut u64| -> bool {
+            let mut s = sched();
+            let k = token_mut(&mut s, id)
+                .unwrap_or_else(|| fault::fault(b"park on a token that does not exist"));
+            match k.posted.take() {
+                Some(v) => {
+                    if !value_out.is_null() {
+                        *value_out = v;
+                    }
+                    true
+                }
+                None => false,
+            }
+        };
+        if take(value_out) {
+            return 0;
+        }
+        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+            return WAIT_CANCELLED;
+        }
+        before_park();
+        // The hook can run other code; look again.
+        if take(value_out) {
+            return 0;
+        }
+        let mut s = sched();
+        let k = token_mut(&mut s, id)
+            .unwrap_or_else(|| fault::fault(b"park on a token that does not exist"));
+        if k.waiter != 0 {
+            fault::fault(b"another task is already waiting on this token");
+        }
+        k.waiter = (*cur).handle;
+        (*cur).wait_token = id;
+        (*cur).wait_events = 0;
+        set_deadline(cur, timeout_ns);
+        (*cur).state = State::Waiting;
+        switch_away();
+        let result = (*cur).wait_result;
+        if result == 0 && !take(value_out) {
+            fault::fatal(b"runtime invariant: woken token without a post");
+        }
+        result
+    }
+}
+
+/// Posts `value` to `id` from the runtime thread: wakes its waiter, or keeps the post for the
+/// next park. A post to a freed token, or to one that already holds a post, is dropped.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_token_post(id: u64, value: u64) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        post(id, value, false);
+    }
+}
+
+/// Posts `value` to `id` from any thread. It takes effect when the scheduler next looks, and
+/// interrupts a scheduler that is blocked. Touches no runtime state but a locked queue.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_token_post_remote(id: u64, value: u64) {
+    INBOX
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push((id, value));
+    INBOX_FULL.store(true, Ordering::Release);
+    kick();
+}
+
+/// Ends `id`: later posts to it are dropped and its slot is reused. Faults while a task waits
+/// on it. Freeing a token that does not exist does nothing.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        let mut s = sched();
+        let Some(k) = token_mut(&mut s, id) else {
+            return;
+        };
+        if k.waiter != 0 {
+            fault::fault(b"a token was freed while a task waits on it");
+        }
+        k.live = false;
+        k.posted = None;
+        let remote = std::mem::replace(&mut k.remote, false);
+        if remote {
+            s.remote_tokens -= 1;
+        }
+        s.free_tokens.push((id & 0xffff_ffff) as usize - 1);
+    }
+}
+
 /// Drops all scheduler state (unit tests run several scenarios in one process).
 #[cfg(test)]
 pub fn reset_for_tests() {
@@ -916,6 +1169,11 @@ pub fn reset_for_tests() {
         s.zombie_stack = (0, 0);
         s.zombie_task = null_mut();
         s.live = 0;
+        s.tokens = Vec::new();
+        s.free_tokens = Vec::new();
+        s.remote_tokens = 0;
+        INBOX_FULL.store(false, Ordering::Relaxed);
+        INBOX.lock().unwrap_or_else(|e| e.into_inner()).clear();
     }
 }
 
@@ -989,6 +1247,161 @@ mod tests {
             assert_eq!(msrt_task_join(fast, null_mut()), 0);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[5, 20]);
             assert_eq!(msrt_task_count(), 1);
+        }
+        reset_for_tests();
+    }
+
+    static TOKEN: Global<u64> = Global::new(0);
+    static GOT: Global<(u32, u64)> = Global::new((0, 0));
+
+    unsafe extern "C-unwind" fn token_parker(arg: *mut u8) {
+        let mut v = 0;
+        // SAFETY: called from a running task; the token outlives the park.
+        let r = unsafe { msrt_token_park(*TOKEN.ptr(), arg as usize as i64, &mut v) };
+        // SAFETY: tests hold the lock.
+        unsafe { *GOT.ptr() = (r, v) };
+    }
+
+    unsafe extern "C-unwind" fn token_poster(arg: *mut u8) {
+        // SAFETY: called from a running task.
+        unsafe { msrt_token_post(*TOKEN.ptr(), arg as usize as u64) };
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn tokens_deliver_posts_made_before_and_during_a_park() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            let id = msrt_token_new(0);
+            msrt_token_post(id, 7);
+            // A second post while the first is untaken is dropped.
+            msrt_token_post(id, 8);
+            let mut v = 0;
+            assert_eq!(msrt_token_park(id, -1, &mut v), 0);
+            assert_eq!(v, 7);
+
+            // The park took the post: the next one waits for a new post.
+            *TOKEN.ptr() = id;
+            let parker = msrt_task_spawn(
+                token_parker,
+                core::ptr::without_provenance_mut(usize::MAX),
+                0,
+                0,
+            );
+            let poster = msrt_task_spawn(token_poster, core::ptr::without_provenance_mut(9), 0, 0);
+            assert_eq!(msrt_task_join(parker, null_mut()), 0);
+            assert_eq!(msrt_task_join(poster, null_mut()), 0);
+            assert_eq!(*GOT.ptr(), (0, 9));
+            msrt_token_free(id);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_timed_out_park_keeps_the_token_and_the_late_post() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock.
+        unsafe {
+            let id = msrt_token_new(0);
+            let mut v = 0;
+            assert_eq!(msrt_token_park(id, 1_000_000, &mut v), WAIT_TIMEOUT);
+            msrt_token_post(id, 3);
+            assert_eq!(msrt_token_park(id, 1_000_000, &mut v), 0);
+            assert_eq!(v, 3);
+            msrt_token_free(id);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn cancelling_a_task_parked_on_a_token_releases_the_token() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock; the handle is joined once.
+        unsafe {
+            let id = msrt_token_new(0);
+            *TOKEN.ptr() = id;
+            let parker = msrt_task_spawn(
+                token_parker,
+                core::ptr::without_provenance_mut(usize::MAX),
+                0,
+                0,
+            );
+            msrt_task_yield();
+            msrt_task_cancel(parker);
+            assert_eq!(msrt_task_join(parker, null_mut()), 0);
+            assert_eq!((*GOT.ptr()).0, WAIT_CANCELLED);
+            // Nobody waits any more, so the token can be freed.
+            msrt_token_free(id);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn posts_to_a_freed_token_do_not_reach_its_reused_slot() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock.
+        unsafe {
+            let old = msrt_token_new(0);
+            msrt_token_free(old);
+            let new = msrt_token_new(0);
+            assert_eq!(old & 0xffff_ffff, new & 0xffff_ffff, "the slot is reused");
+            assert_ne!(old, new);
+            msrt_token_post(old, 1);
+            msrt_token_post_remote(old, 2);
+            let mut v = 0;
+            assert_eq!(msrt_token_park(new, 1_000_000, &mut v), WAIT_TIMEOUT);
+            msrt_token_free(new);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_remote_post_wakes_a_parked_scheduler() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock.
+        unsafe {
+            let id = msrt_token_new(TOKEN_REMOTE);
+            let poster = std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                msrt_token_post_remote(id, 42);
+            });
+            // No timer and no descriptor: only the pending remote post keeps this from being
+            // reported as a deadlock.
+            let mut v = 0;
+            assert_eq!(msrt_token_park(id, -1, &mut v), 0);
+            assert_eq!(v, 42);
+            assert_eq!(sched().remote_tokens, 0);
+            poster.join().unwrap();
+            msrt_token_free(id);
+        }
+        reset_for_tests();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn freeing_an_unposted_remote_token_stops_counting_it() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock.
+        unsafe {
+            let id = msrt_token_new(TOKEN_REMOTE);
+            assert_eq!(sched().remote_tokens, 1);
+            msrt_token_free(id);
+            assert_eq!(sched().remote_tokens, 0);
+            // The late post is dropped when it is delivered.
+            msrt_token_post_remote(id, 1);
+            deliver_remote_posts();
+            assert_eq!(sched().remote_tokens, 0);
         }
         reset_for_tests();
     }

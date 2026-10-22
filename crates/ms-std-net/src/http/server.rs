@@ -18,7 +18,7 @@ use crate::conn::{Io, Plain, Step};
 use crate::error::{HttpErr, NetErr};
 use crate::net::{Network, Resource};
 use crate::rt;
-use crate::sys::{AsSock, Borrowed, Ev, Poller, Wake};
+use crate::sys::{AsSock, Borrowed, Ev, Poller};
 use crate::tls::{Handshake, TlsIo};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -615,8 +615,6 @@ pub struct Server {
     pub(super) dispatch: Box<dyn Dispatch>,
     st: RefCell<ServerSt>,
     token: u64,
-    /// Signalled when the server has closed, for [`Server::wait`].
-    closed_wake: Option<Wake>,
 }
 
 struct ServerSt {
@@ -627,6 +625,11 @@ struct ServerSt {
     admitted: usize,
     /// Set while the listener is unwatched after accept ran out of descriptors or memory.
     accept_paused_until: Option<Instant>,
+    /// Tokens of the tasks in [`Server::wait`], posted on close.
+    waiters: Vec<u64>,
+    /// Token of a close waiting for responses to finish, posted when a connection closes or
+    /// goes idle.
+    draining: Option<u64>,
 }
 
 impl Resource for Server {
@@ -685,9 +688,10 @@ impl Server {
                 closed: false,
                 admitted: 0,
                 accept_paused_until: None,
+                waiters: Vec::new(),
+                draining: None,
             }),
             token,
-            closed_wake: Wake::new(),
         });
         reactor
             .targets
@@ -737,18 +741,17 @@ impl Server {
 
     /// Blocks until the server is closed, serving requests meanwhile.
     pub fn wait(&self) {
+        if self.is_closed() {
+            return;
+        }
+        let token = rt::Token::new();
+        self.st.borrow_mut().waiters.push(token.id());
         while !self.is_closed() {
-            match &self.closed_wake {
-                Some(fd) => {
-                    crate::wait::wait_fd(
-                        fd.sock(),
-                        crate::wait::Interest::Read,
-                        crate::wait::Deadline::none(),
-                    );
-                }
-                None => crate::wait::sleep(Duration::from_millis(10)),
+            if token.park(-1) & 16 != 0 {
+                rt::cancelled();
             }
         }
+        self.st.borrow_mut().waiters.retain(|&id| id != token.id());
     }
 
     /// Stops accepting, lets in-flight responses finish within the grace period
@@ -795,29 +798,51 @@ impl Server {
         let deadline =
             crate::wait::Deadline::from_nanos(self.limits.grace.map(|g| g.as_nanos() as i64))
                 .unwrap_or(crate::wait::Deadline::none());
-        let in_handler = reactor.in_handler();
-        while !in_handler && !self.st.borrow().conns.is_empty() && !deadline.expired() {
-            // Let responses finish: the reactor and request tasks run while this parks.
-            crate::wait::sleep(Duration::from_millis(2));
-            if self
-                .st
-                .borrow()
-                .conns
-                .values()
-                .all(|c| matches!(c.st.borrow().phase, Phase::Head))
-            {
-                break;
+        if !reactor.in_handler() {
+            // Let responses finish: the reactor and request tasks run while this parks, and
+            // post the token whenever a connection closes or goes idle.
+            let token = rt::Token::new();
+            self.st.borrow_mut().draining = Some(token.id());
+            while !self.drained() && !deadline.expired() {
+                let left = deadline
+                    .remaining()
+                    .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
+                if token.park(left) & 16 != 0 {
+                    self.st.borrow_mut().draining = None;
+                    rt::cancelled();
+                }
             }
+            self.st.borrow_mut().draining = None;
         }
         let conns: Vec<Rc<Conn>> = self.st.borrow().conns.values().cloned().collect();
         for conn in conns {
             self.close_conn(&conn, &reactor);
         }
-        self.st.borrow_mut().closed = true;
-        if let Some(wake) = &self.closed_wake {
-            wake.notify();
+        let waiters = {
+            let mut st = self.st.borrow_mut();
+            st.closed = true;
+            std::mem::take(&mut st.waiters)
+        };
+        for id in waiters {
+            rt::post(id);
         }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
+    }
+
+    /// Whether every connection has closed or gone idle, so a close can stop waiting.
+    fn drained(&self) -> bool {
+        self.st
+            .borrow()
+            .conns
+            .values()
+            .all(|c| matches!(c.st.borrow().phase, Phase::Head))
+    }
+
+    /// Wakes a close that waits for responses to finish, after a connection closed or went idle.
+    fn note_drain_progress(&self) {
+        if let Some(id) = self.st.borrow().draining {
+            rt::post(id);
+        }
     }
 
     // ------------------------------------------------------------- accepting
@@ -965,6 +990,7 @@ impl Server {
                     st.phase = Phase::Head;
                 }
                 drop(st);
+                self.note_drain_progress();
                 if h2 {
                     self.set_interest(conn, reactor, Ev::IN);
                     self.h2_serve(conn, reactor);
@@ -1028,6 +1054,7 @@ impl Server {
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
         self.st.borrow_mut().conns.remove(&conn.token);
+        self.note_drain_progress();
         Some((io, leftover))
     }
 
@@ -1059,6 +1086,7 @@ impl Server {
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
         self.st.borrow_mut().conns.remove(&conn.token);
+        self.note_drain_progress();
     }
 
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
@@ -1514,6 +1542,7 @@ impl Server {
                         st.phase = Phase::Head;
                     }
                 }
+                self.note_drain_progress();
                 self.set_interest(conn, reactor, Ev::IN);
                 // Pipelined requests may already be buffered.
                 self.after_read(conn, reactor);
