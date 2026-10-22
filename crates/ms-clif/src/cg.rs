@@ -147,6 +147,8 @@ pub struct Gen<'m> {
     pub dbg: Vec<FuncDbg>,
     /// Static type descriptors by type.
     pub desc_ids: HashMap<Ty, DataId>,
+    /// Shared read-only blocks for payloadless cases of boxed alternatives, by `(alternative, case)`.
+    unit_blocks: HashMap<(ms_mir::types::AltId, usize), DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
     /// Functions translated to LLVM IR instead of being compiled by Cranelift (release builds).
@@ -469,6 +471,31 @@ impl<'m> Gen<'m> {
         id
     }
 
+    /// The shared block of payloadless case `case` of a boxed alternative: `size` zero bytes with
+    /// the tag stored first. Such values never allocate, and dropping them frees nothing.
+    pub fn unit_block(&mut self, alt: ms_mir::types::AltId, case: usize, size: usize) -> DataId {
+        if let Some(id) = self.unit_blocks.get(&(alt, case)) {
+            return *id;
+        }
+        let id = self
+            .module
+            .declare_data(
+                &format!("ms.unit.{}", self.unit_blocks.len()),
+                self.private(),
+                false,
+                false,
+            )
+            .expect("declare unit block");
+        let mut bytes = vec![0u8; size.max(8)];
+        bytes[0..8].copy_from_slice(&(case as u64).to_le_bytes());
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(8);
+        self.module.define_data(id, &d).expect("define unit block");
+        self.unit_blocks.insert((alt, case), id);
+        id
+    }
+
     /// A static `String` object for literal `i`.
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
@@ -543,6 +570,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         dbg: Vec::new(),
         tables: None,
         desc_ids: HashMap::new(),
+        unit_blocks: HashMap::new(),
         llvm_funcs: Vec::new(),
         pinned: HashSet::new(),
         anchor: None,
