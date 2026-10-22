@@ -10,6 +10,7 @@ use rustix::io;
 use rustix::time::Timespec;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::mem::ManuallyDrop;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::time::Duration;
 
@@ -113,7 +114,10 @@ impl Default for Poller {
 /// is cleared only by [`Poller::consumed`], which callers invoke when an operation would
 /// block, so a remembered edge is never lost and a stale one costs one extra attempt.
 pub struct Poller {
-    poll: RefCell<mio::Poll>,
+    /// Never closed: the runtime keeps this descriptor registered between parks (`WAIT_KEEP`)
+    /// and cannot tell when its number is reused, so a closed poller (a test thread's, say)
+    /// would leave a later poller on the same number unwatched.
+    poll: ManuallyDrop<RefCell<mio::Poll>>,
     registry: mio::Registry,
     events: RefCell<mio::Events>,
     sockets: RefCell<HashMap<Raw, Watched>>,
@@ -150,7 +154,7 @@ impl Poller {
             )
             .expect("poller wake-up registration");
         Poller {
-            poll: RefCell::new(poll),
+            poll: ManuallyDrop::new(RefCell::new(poll)),
             registry,
             events: RefCell::new(mio::Events::with_capacity(MAX_EVENTS)),
             sockets: RefCell::new(HashMap::new()),
