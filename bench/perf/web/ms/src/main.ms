@@ -64,8 +64,7 @@ fn user_reply(path: String) HttpResponse:
     if let id = parts.get(2).parse_int():
         if id >= 0 and id < 1000:
             return reply(
-                200,
-                "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
+                200, "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
             )
     return reply(404, "not found\n")
 
@@ -112,8 +111,7 @@ export fn main() Int:
         return reply(404, "not found\n")
 
     if let acquired = network().serve(
-        address: "127.0.0.1:{args.get(0)}",
-        handler: handler
+        address: "127.0.0.1:{args.get(0)}", handler: handler
     ):
         with server = acquired:
             let _ignored = server.wait()

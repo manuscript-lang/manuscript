@@ -63,6 +63,8 @@ pub struct StrObj {
 pub const STR_LEN_OFFSET: usize = 16;
 pub const STR_SCALARS_OFFSET: usize = 24;
 pub const STR_DATA_OFFSET: usize = 32;
+/// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
+pub const ASCII_CHAR_STRIDE: usize = 40;
 
 // ---------------------------------------------------------------------------
 // Owned aggregate values: List, Bytes, Map, Set (no header, no count)

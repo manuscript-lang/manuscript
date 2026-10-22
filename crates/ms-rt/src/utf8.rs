@@ -92,6 +92,9 @@ pub fn is_ascii(s: &[u8]) -> bool {
 
 /// Number of scalars.
 pub fn count(s: &[u8]) -> usize {
+    if s.is_ascii() {
+        return s.len();
+    }
     if core::str::from_utf8(s).is_ok() {
         return s.iter().filter(|&&b| b & 0xC0 != 0x80).count();
     }
@@ -125,6 +128,14 @@ pub fn is_space(c: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn count_matches_scalars_with_and_without_ascii_fast_path() {
+        assert_eq!(count(b""), 0);
+        assert_eq!(count(b"padded"), 6);
+        assert_eq!(count("héllo 😀".as_bytes()), 7);
+        assert_eq!(count(&[b'a', 0xFF, b'b', 0xC3]), 4);
+    }
 
     #[test]
     fn decode_matches_std_on_valid_and_replaces_invalid() {

@@ -776,6 +776,107 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
+    /// `for c in text.chars()`: scans the bytes of `text`. An ASCII byte is the shared
+    /// one-character string for it, borrowed and counted by nothing; any other character is
+    /// built by the runtime and kept in a hidden variable until the next one replaces it.
+    fn chars_loop(
+        &mut self,
+        loop_var: &ms_check::types::BindingRef,
+        text: Val,
+        body: &[Stmt],
+    ) -> Result<(), Error> {
+        let text_var = self.bind_hidden(text);
+        let empty = self.b.str_lit("");
+        let keep = self.bind_hidden(Val {
+            v: empty,
+            own: false,
+        });
+        let s = self.b.use_var(text_var);
+        let len = self.call_runtime("msrt_string_byte_length", &[s], MTy::INT)?;
+        let zero = self.b.iconst(0);
+        let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
+        self.b.def_var(idx, zero);
+        let cur = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
+        let (header, scan, fast, slow, join, exit) = (
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+        );
+        self.b.br(header, &[]);
+        self.enter(header);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(Cc::Lt, i, len);
+        self.b.br_if(more, scan, &[], exit, &[]);
+        self.b.seal_block(scan);
+        self.enter(scan);
+        let s = self.b.use_var(text_var);
+        let i = self.b.use_var(idx);
+        let byte = self
+            .b
+            .emit(Op::StrByte, &[s, i], Imm::None, Some(MTy::INT))
+            .expect("byte");
+        let limit = self.b.iconst(128);
+        let ascii = self.b.icmp(Cc::Lt, byte, limit);
+        self.b.br_if(ascii, fast, &[], slow, &[]);
+        self.b.seal_block(fast);
+        self.b.seal_block(slow);
+        self.enter(fast);
+        let ch = self
+            .b
+            .emit(Op::StrAscii, &[byte], Imm::None, Some(MTy::STR))
+            .expect("ascii");
+        let one = self.b.iconst(1);
+        let next = self
+            .b
+            .emit(Op::IAdd, &[i, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(cur, ch);
+        self.b.def_var(idx, next);
+        self.b.br(join, &[]);
+        self.enter(slow);
+        let s = self.b.use_var(text_var);
+        let i = self.b.use_var(idx);
+        let ch = self.call_runtime("msrt_string_char_at", &[s, i], MTy::STR)?;
+        let width = self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?;
+        let next = self
+            .b
+            .emit(Op::IAdd, &[i, width], Imm::None, Some(MTy::INT))
+            .expect("add");
+        let old = self.b.use_var(keep);
+        self.drop_value(old);
+        self.b.def_var(keep, ch);
+        self.b.def_var(cur, ch);
+        self.b.def_var(idx, next);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
+        let depth = self.scopes.len();
+        self.loops.push(LoopCtx {
+            brk: exit,
+            cont: header,
+            depth,
+            cont_used: false,
+            brk_used: false,
+        });
+        self.push_scope();
+        let ch = self.b.use_var(cur);
+        self.bind_local(loop_var, Val { v: ch, own: false });
+        self.stmts(body)?;
+        self.pop_scope();
+        self.loops.pop();
+        if !self.dead {
+            self.b.br(header, &[]);
+        }
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.enter(exit);
+        self.pop_scope();
+        Ok(())
+    }
+
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let loop_var = self
             .hir
@@ -788,8 +889,10 @@ impl<'a> FnLower<'a> {
             Some(bounds) => bounds,
             None => {
                 self.split_iter_for = Some(iter as *const Expr);
+                self.chars_iter_for = Some(iter as *const Expr);
                 let it = self.expr(iter);
                 self.split_iter_for = None;
+                self.chars_iter_for = None;
                 let it = it?;
                 if self.dead {
                     self.scopes.pop();
@@ -799,6 +902,9 @@ impl<'a> FnLower<'a> {
                 let mut ity = self.ty_of(it.v);
                 if matches!(self.b.m.types.kind(ity), TyKind::Obj(n, _) if n == "SplitIter") {
                     return self.split_loop(&loop_var, it, body);
+                }
+                if ity == MTy::STR {
+                    return self.chars_loop(&loop_var, it, body);
                 }
                 if crate::mapset::is_map_or_set(self.b.m, ity) {
                     // A map yields its entries and a set its values, as a list snapshot.

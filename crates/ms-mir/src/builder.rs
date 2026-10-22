@@ -252,6 +252,10 @@ impl<'m> FuncBuilder<'m> {
     pub fn list_len(&mut self, l: Value) -> Value {
         self.val(Op::ListLen, &[l], Imm::None, Ty::INT)
     }
+    /// `str.len`: the scalar count of a string.
+    pub fn str_len(&mut self, s: Value) -> Value {
+        self.val(Op::StrLen, &[s], Imm::None, Ty::INT)
+    }
     /// `list.get` (negative indexes count from the end).
     pub fn list_get(&mut self, l: Value, i: Value) -> Value {
         let e = self.m.list_elem(self.ty(l)).expect("list operand");

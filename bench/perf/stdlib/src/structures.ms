@@ -1,6 +1,6 @@
 import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
+import {Queue, PriorityQueue} from "@std/collections.ms"
 import {Deque} from "@std/deque.ms"
 import {BitSet} from "@std/bitset.ms"
 import {SortedMap} from "@std/sorted.ms"

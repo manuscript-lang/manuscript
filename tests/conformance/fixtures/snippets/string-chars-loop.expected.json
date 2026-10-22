@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "[h][é][l][l][o][ ][w][ö][r][l][d][ ][✓][ ][😀][!] 16\n 0\n[a][b][c] 3\n4 -1\n3 ñ\n2\n",
+    "stderr": ""
+  }
+}

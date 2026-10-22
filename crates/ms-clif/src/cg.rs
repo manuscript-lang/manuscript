@@ -85,6 +85,7 @@ const RT: &[(&str, &str, &str)] = &[
 const RT_DATA: &[(&str, bool)] = &[
     ("msrt_cancel_flag", false),
     ("msrt_stack_limit", true),
+    ("msrt_ascii_chars", false),
     ("msrt_desc_int", false),
     ("msrt_desc_float", false),
     ("msrt_desc_bool", false),

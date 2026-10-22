@@ -91,7 +91,10 @@ const fn build_ascii() -> [Lit<2>; 128] {
     t
 }
 
+#[unsafe(export_name = "msrt_ascii_chars")]
 static mut ASCII: [Lit<2>; 128] = build_ascii();
+
+const _: () = assert!(core::mem::size_of::<Lit<2>>() == ms_rt_abi::ASCII_CHAR_STRIDE);
 
 /// The static empty string (+0; static strings have a huge count).
 #[unsafe(no_mangle)]
@@ -658,8 +661,18 @@ pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrObj) -> *mut St
 
 fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     let (mut a, mut b) = (0, text.len());
+    // ASCII White_Space is \t \n \v \f \r and the space; anything else below 0x80 ends the scan
+    // without decoding.
+    let ascii_space = |b: u8| b == b' ' || (9..=13).contains(&b);
     if start {
         while a < b {
+            if text[a] < 0x80 {
+                if !ascii_space(text[a]) {
+                    break;
+                }
+                a += 1;
+                continue;
+            }
             let (c, w) = utf8::decode(&text[a..b]);
             if !utf8::is_space(c) {
                 break;
@@ -669,6 +682,13 @@ fn trim_range(text: &[u8], start: bool, end: bool) -> (usize, usize) {
     }
     if end {
         while b > a {
+            if text[b - 1] < 0x80 {
+                if !ascii_space(text[b - 1]) {
+                    break;
+                }
+                b -= 1;
+                continue;
+            }
             let (c, w) = utf8::decode_last(&text[a..b]);
             if !utf8::is_space(c) {
                 break;
@@ -1171,6 +1191,29 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrObj, out: *mut Ve
         }
         *out = v;
     }
+}
+
+/// The character that starts at byte `at`, which `for c in text.chars()` reaches for a non-ASCII
+/// lead byte (or a stray byte, which reads as U+FFFD): an owned one-character string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrObj, at: i64) -> *mut StrObj {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe {
+        let text = &bytes(s)[at as usize..];
+        let (c, w) = utf8::decode(text);
+        if c == 0xFFFD && w == 1 {
+            from_bytes("\u{FFFD}".as_bytes())
+        } else {
+            from_bytes(&text[..w])
+        }
+    }
+}
+
+/// Byte width of the character that starts at byte `at`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrObj, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
 }
 
 #[unsafe(no_mangle)]
@@ -1757,6 +1800,17 @@ mod tests {
                 "-a-b-"
             );
             assert_eq!(txt(msrt_string_trim(st("  \t x y \n"))), "x y");
+            assert_eq!(
+                txt(msrt_string_trim(st("\u{0b}\u{0c}\r\n ok \u{1c}"))),
+                "ok \u{1c}"
+            );
+            assert_eq!(txt(msrt_string_trim(st("\u{a0}é\u{2003} \t"))), "é");
+            assert_eq!(
+                txt(msrt_string_trim_start(st(" \u{85}x \u{85}"))),
+                "x \u{85}"
+            );
+            assert_eq!(txt(msrt_string_trim_end(st(" x\u{3000} "))), " x");
+            assert_eq!(txt(msrt_string_trim(st("   "))), "");
             let mut o = null_mut();
             assert_eq!(
                 msrt_string_replace_all(st("abc"), st("b"), st("xyz"), 1, 4, &mut o),

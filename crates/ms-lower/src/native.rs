@@ -813,6 +813,11 @@ impl<'a> FnLower<'a> {
             let result = self.emty(e)?;
             return self.hash_algorithm_call(sym, recv, &args, result);
         }
+        if native == "string/chars" && self.chars_iter_for == Some(e as *const Expr) {
+            // `for c in text.chars()`: the loop scans the string itself, so no list is built.
+            self.chars_iter_for = None;
+            return Ok(recv);
+        }
         if native == "string/split" && self.split_iter_for == Some(e as *const Expr) {
             // `for piece in text.split(..)`: pieces are produced one at a time.
             self.split_iter_for = None;
@@ -840,6 +845,11 @@ impl<'a> FnLower<'a> {
             let r = self.borrow(recv);
             let out = self.call_runtime(sym, &[r], MTy::STR)?;
             return Ok(Val { v: out, own: true });
+        }
+        if native == "string/length" || native == "string/scalar_length" {
+            let r = self.borrow(recv);
+            let n = self.b.str_len(r);
+            return Ok(Val { v: n, own: false });
         }
         if let Some((_, sym, ret)) = PLAIN_STRING.iter().find(|(n, _, _)| *n == native) {
             let mut vals = vec![self.borrow(recv)];
