@@ -33,18 +33,6 @@ const MINGW_FILES: [&str; 18] = [
     "libshell32.a",
 ];
 
-/// mingw files compiled with `-g` (`libucrt.a` carries compatibility objects beside its imports); the
-/// pure import libraries have none.
-const DEBUG_INFO: [&str; 7] = [
-    "libucrt.a",
-    "libmsvcrt.a",
-    "crt2.o",
-    "libmingw32.a",
-    "libmingwex.a",
-    "libmoldname.a",
-    "libunwind.a",
-];
-
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=MS_LLD");
@@ -67,12 +55,10 @@ fn main() {
             let to = bundle.join(name);
             copy(&lib.join(name), &to, name);
             // The CRT objects carry line tables for code the program never shows in a debugger.
-            if DEBUG_INFO.contains(&name) {
-                strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
-                // Import objects in an archive make the tool reject the whole file: strip member by member.
-                if has_line_tables(&to) {
-                    strip_members(&to);
-                }
+            strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
+            // Import objects in an archive make the tool reject the whole file: strip member by member.
+            if has_line_tables(&to) {
+                strip_members(&to);
             }
             assert_no_line_tables(&to, name);
             names.push(name);
