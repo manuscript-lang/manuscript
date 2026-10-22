@@ -9,6 +9,7 @@
 
 use crate::Error;
 use crate::cg::{FuncDbg, LlvmFn};
+use crate::llvm_ir::TEXT_ANCHOR;
 use cranelift_object::object::{
     BinaryFormat, File, Object as _, ObjectSection as _, ObjectSymbol as _, RelocationKind,
     RelocationTarget, SectionIndex, SectionKind,
@@ -174,6 +175,8 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
         .map(|(i, f)| (f.symbol.as_str(), i))
         .collect();
     let mut placed: Vec<Option<(u64, u64)>> = vec![None; funcs.len()];
+    let mut section_of: Vec<Option<SectionIndex>> = vec![None; funcs.len()];
+    let mut anchor: Option<(SectionIndex, u64)> = None;
     // Mach-O symbols carry no size: a function runs to the next symbol of its section.
     let mut starts: HashMap<SectionIndex, Vec<u64>> = HashMap::new();
     for s in obj.symbols() {
@@ -192,6 +195,11 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
             Some(rest) if obj.format() == BinaryFormat::MachO => rest,
             _ => name,
         };
+        if name == TEXT_ANCHOR {
+            anchor = s
+                .section_index()
+                .map(|sec| (sec, layout.place(Some(sec), s.address())));
+        }
         let (Some(&i), Some(sec)) = (by_symbol.get(name), s.section_index()) else {
             continue;
         };
@@ -206,6 +214,7 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
         };
         if size > 0 {
             placed[i] = Some((layout.place(Some(sec), s.address()), size));
+            section_of[i] = Some(sec);
         }
     }
     let load = |id: gimli::SectionId| -> Result<R<'_>, gimli::Error> {
@@ -317,12 +326,27 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
             }
         }
     }
+    // Functions are addressed from the anchor, which only works inside its own code section.
+    let (anchor_sec, anchor_at) =
+        anchor.ok_or_else(|| err("anchor", format!("{TEXT_ANCHOR} is not in the object")))?;
+    if let Some(i) = section_of
+        .iter()
+        .position(|s| s.is_some_and(|s| s != anchor_sec))
+    {
+        return Err(err(
+            "layout",
+            format!(
+                "{} is in another code section than {TEXT_ANCHOR}",
+                funcs[i].name
+            ),
+        ));
+    }
     // Assemble per-function range lists.
     let mut dbg: Vec<FuncDbg> = funcs
         .iter()
         .enumerate()
         .filter_map(|(i, f)| {
-            placed[i].map(|(_, size)| FuncDbg {
+            placed[i].map(|(addr, size)| FuncDbg {
                 id: f.id,
                 name: f.name.clone(),
                 file: f.file,
@@ -330,6 +354,7 @@ pub fn read(object: &Path, funcs: &[LlvmFn], files: &[String]) -> Result<Tables,
                 size: size as u32,
                 ranges: Vec::new(),
                 dwarf_ranges: Vec::new(),
+                text: addr.wrapping_sub(anchor_at),
             })
         })
         .collect();

@@ -1,4 +1,8 @@
 target triple = "x86_64-unknown-linux-gnu"
+define void @"ms.text.base"() #0 {
+  ret void
+}
+
 define i64 @"ms_entry"() #0 !dbg !6 {
 b0:
   %t1 = call i64 @"sum_squares#1"(i64 20), !dbg !8
