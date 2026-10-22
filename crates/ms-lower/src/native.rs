@@ -841,6 +841,11 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r], MTy::STR)?;
             return Ok(Val { v: out, own: true });
         }
+        if native == "string/length" || native == "string/scalar_length" {
+            let r = self.borrow(recv);
+            let n = self.b.str_len(r);
+            return Ok(Val { v: n, own: false });
+        }
         if let Some((_, sym, ret)) = PLAIN_STRING.iter().find(|(n, _, _)| *n == native) {
             let mut vals = vec![self.borrow(recv)];
             for a in args {
