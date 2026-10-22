@@ -1,17 +1,21 @@
 # Manuscript
 
-**A small, statically typed language that compiles to fast native executables, built so agents and people get it right the first time.**
+Manuscript is a statically typed language that compiles to fast, self-contained native executables. It has a small, regular syntax, value semantics with checked ownership, and a single toolchain, so programs are quick to write, easy to review, and predictable to run.
 
-[Why Manuscript](documentation/learn/why-manuscript.md) · [Take the tour](documentation/learn/tour.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
+[Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
-- **Fast.** Faster than hand-written Go on 26 of 31 benchmarks, and typically within 1.4x of Rust with overflow checks on.
-- **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. No C toolchain, SDK, or package manager to install. An HTTP server is about 4.4 MB.
-- **Agents succeed with it.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md), at 1.30x the source size of TypeScript.
-- **Little to get wrong.** Failure is a value, ownership is checked on every program, and there is no implicit conversion, truthiness, or async syntax.
+## Highlights
 
-## A taste
+- **Performance.** Native code through LLVM, faster than hand-written Go on 26 of 31 benchmarks and typically within 1.4x of Rust with overflow checks on.
+- **Simple, fast memory.** Value semantics with move and copy. There is no garbage collector, cleanup is deterministic, and nothing is copied unless you write `.clone()`.
+- **Checked ownership without extra syntax.** The compiler infers borrows, moves, and mutation. The only marker is `var`, written where a function changes its argument.
+- **Failure as a value.** `Optional`, `Result`, and `try` make absence and errors part of the type. There are no exceptions and no async syntax.
+- **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK, and an HTTP server is about 4.4 MB.
+- **Reliable for agents.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
 
-Typed JSON, optional values, error propagation with `try`, and a test, in one file:
+## Example
+
+Typed JSON, optional values, error propagation with `try`, and a test in one file:
 
 ```manuscript
 import {parse, stringify} from "@std/json.ms"
@@ -25,8 +29,8 @@ type Order:
 fn discount(order: Order) Int:
     if let code = order.coupon:
         return if code == "SAVE10": order.cents / 10 else: 0
-
-    return 0
+    else:
+        return 0
 
 fn summary(text: String) Result[String, Error]:
     let orders = try parse[List[Order]](text)
@@ -43,33 +47,108 @@ test "orders from JSON":
     try expect_equal(summary("not json").is_error(), true)
 ```
 
-Run it with `ms test`. `parse[List[Order]]` reads text straight into your types and returns a `Result`; `try` hands any error to the caller; `Optional` fields unwrap with `if let`. There are no exceptions to forget about.
+Run it with `ms test`. `parse[List[Order]]` reads text into your types and returns a `Result`, `try` passes any error to the caller, and `Optional` fields unwrap with `if let`.
 
-## Fast without ceremony
+## The language
 
-Ordinary code, compiled natively (linux/amd64, Manuscript time as a fraction of hand-written Go's; lower is faster):
+### Pipes
 
-| Program | Manuscript vs Go |
+A `|` flow passes each result to the next call, so a sequence of steps reads from top to bottom. A `try` step unwraps a `Result` or returns its error.
+
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+type Reading:
+    sensor: String
+    celsius: Float
+
+fn hot(readings: List[Reading]) List[Reading]:
+    return readings.filter(
+        fn(reading: Reading) Bool:
+            return reading.celsius > 30.0
+    )
+
+fn names(readings: List[Reading]) String:
+    return readings.map(
+        fn(reading: Reading) String:
+            return reading.sensor
+    ).join(", ")
+
+fn alert(readings: List[Reading]) String:
+    return readings | hot | names
+
+test "pipe flow":
+    let readings = [
+        Reading(sensor: "a", celsius: 21.5),
+        Reading(sensor: "b", celsius: 35.0)
+    ]
+    try expect_equal(alert(readings), "b")
+```
+
+### Value semantics and ownership
+
+Records, lists, maps, and sets are values, so two names never change one object. Small values copy implicitly; everything else moves at its last use, which passes data along without copying it. `.clone()` is the only deep copy and is always visible. Every value has one owner and is dropped at a known point, so there is no garbage collector and no pause.
+
+The compiler checks this on every program, with no lifetime annotations. It infers whether each parameter reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
+
+```manuscript
+type Cart:
+    items: List[String]
+
+fn add(var cart: Cart, item: String) Unit:
+    cart.items.append(item)
+
+fn count(cart: Cart) Int:
+    return cart.items.length()
+
+fn pay(cart: Cart) Cart:
+    return cart
+
+fn demo() Int:
+    var cart = Cart(items: [])
+    add(var cart, "book")
+    let seen = count(cart)
+    let receipt = pay(cart)
+    return seen + receipt.items.length()
+```
+
+`count` borrows `cart`. `pay` consumes it, so the move happens at its last use. Using `cart` after that is rejected, with a fix the compiler states:
+
+```text
+`cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
+```
+
+Cleanup follows the same ownership. `with file = try files.open("data.txt"):` closes the resource at the end of the block, including when an error occurs.
+
+### Errors
+
+`Optional` and `Result` put absence and failure in the type, and `try` propagates them. Input and output are ordinary calls, so no function needs special async syntax.
+
+## Performance
+
+Representative programs compiled natively (linux/amd64). Each value is Manuscript's time as a fraction of hand-written Go's; lower is faster.
+
+| Program | Manuscript / Go |
 | --- | ---: |
-| Game of Life, 128x128 for 50 generations | 0.06x |
-| Stack of 20M pushes and pops | 0.14x |
-| Sorting 1M items with a comparator | 0.26x |
-| Parsing and splitting 1M lines of text | 0.45x |
-| Calling a captured closure 100M times | 0.50x |
-| `Result` propagation with `try`, 50M calls | 0.56x |
+| Game of Life, 128x128 for 50 generations | 0.06 |
+| Stack of 20M pushes and pops | 0.14 |
+| Sorting 1M items with a comparator | 0.26 |
+| Parsing and splitting 1M lines of text | 0.45 |
+| Calling a captured closure 100M times | 0.50 |
+| `Result` propagation with `try`, 50M calls | 0.56 |
 
-Across all 31 benchmarks it is faster than Go on 26, and typically within 1.4x of Rust with overflow checks on (sorting with a comparator is within 1.2x). Linux and macOS release builds optimize with LLVM through tools bundled in `ms`. Unreached runtime and standard-library code is dropped at link time: an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
+Across all 31 benchmarks Manuscript is faster than Go on 26, and typically within 1.4x of Rust with overflow checks on; sorting with a comparator is within 1.2x. Linux and macOS release builds optimize with LLVM through tools bundled in `ms`. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. See the [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), and [kernel](bench/perf/kernels/README.md) results for methods and numbers.
 
-## Built for the agent loop
+## Tooling for agents and people
 
-Most languages were shaped for human authors and then adapted to agents. Manuscript shapes the language and the toolchain together around the loop an agent actually runs: write, check, fix, verify, ship.
+The language and the toolchain are designed around one loop: write, check, fix, verify, ship.
 
-- **Evidence, not prose.** `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source.
-- **Flat, regular code.** Four-space blocks, `|` pipe flows, `try`, exhaustive `match`, and `with` for scoped cleanup. Values have one owner: moves happen at last use, `var` marks mutation at the declaration and the call, and `.clone()` copies explicitly.
-- **Measured on real agents.** [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet.
-- **A batteries-included standard library.** Files, processes, networking, HTTP, JSON, text, and time, plus `Queue`, `Deque`, `BitSet`, `SortedMap`, and `SortedSet`.
+- **Structured evidence.** `check`, `lint`, `test`, `build`, and `inspect` accept `--json`. `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source.
+- **Regular code.** Four-space blocks, pipe flows, `try`, exhaustive `match`, and `with` for scoped cleanup keep programs flat and uniform.
+- **Measured with agents.** [`agent-bench`](bench/agent/README.md) runs real challenges with real agents, and its failures drive diagnostics, documentation, and the cheat sheet.
+- **A broad standard library.** Files, processes, networking, HTTP, JSON, text, and time, plus `Queue`, `Deque`, `BitSet`, `SortedMap`, and `SortedSet`.
 
-See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). For direction, read the [vision](VISION.md).
+See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes the direction.
 
 ## Try it
 
