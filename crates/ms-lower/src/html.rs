@@ -260,7 +260,7 @@ impl FnLower<'_> {
     /// `parse(text, limits)`: the tree copied into an `HtmlNode`, or the runtime's error.
     pub(crate) fn html_parse(
         &mut self,
-        e: &ms_syntax::ast::Expr,
+        node: &ct::Ty,
         rty: MTy,
         args: &[NArg],
     ) -> Result<Val, Error> {
@@ -273,12 +273,6 @@ impl FnLower<'_> {
             .iter()
             .position(|c| c.name == "error")
             .ok_or_else(|| Error::new("not a Result"))?;
-        let node = self
-            .ety(e)
-            .args
-            .first()
-            .cloned()
-            .ok_or_else(|| Error::new("parse without a node type"))?;
         let text = self.jarg(args, "text")?;
         let text = self.borrow(text);
         let limits = args
@@ -309,7 +303,7 @@ impl FnLower<'_> {
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         let hir = self.hir.clone();
-        let node_fn = self.cx.html_node_fn(self.b.m, &hir, &node)?;
+        let node_fn = self.cx.html_node_fn(self.b.m, &hir, node)?;
         self.two_ways(
             good,
             rty,

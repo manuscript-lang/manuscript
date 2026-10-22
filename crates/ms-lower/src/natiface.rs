@@ -1273,18 +1273,17 @@ impl FnLower<'_> {
     /// `stdin()`: an interface value over a runtime handle made by `make(constant)`.
     pub(crate) fn handle_interface(
         &mut self,
-        e: &ms_syntax::ast::Expr,
+        ity: &ct::Ty,
+        want: MTy,
         module: &str,
         make: &str,
         constant: i64,
     ) -> Result<Val, Error> {
-        let ity = self.ety(e);
-        let want = self.emty(e)?;
         let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
             return Err(Error::new("a handle function must return an interface"));
         };
         let hir = self.hir.clone();
-        let vt = self.cx.handle_vtable(self.b.m, &hir, module, &ity, iface)?;
+        let vt = self.cx.handle_vtable(self.b.m, &hir, module, ity, iface)?;
         let h = if make.is_empty() {
             self.b.unit()
         } else {
