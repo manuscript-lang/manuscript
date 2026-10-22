@@ -55,7 +55,7 @@ test "filesystem writes default to exclusive creation through aliases and bounds
         let path = "{temporary.path()}/file"
         (fs.write_file(path, "first") | try expect_ok)
         let write = fs.write_file
-        let alias = write
+        let alias = write.clone()
         (try rejected(alias(path, "second")))
         (try rejected(write(path, "second", replace: false)))
         (try rejected(generic_write(fs, path, "second")))
@@ -73,7 +73,7 @@ test "filesystem file copies default to no replacement and retain byte limits":
         let destination = "{temporary.path()}/destination"
         (fs.write_file(source, "source") | try expect_ok)
         let copy = fs.copy_file
-        let alias = copy
+        let alias = copy.clone()
         (alias(source, destination) | try expect_ok)
         (fs.write_file(source, "changed", true) | try expect_ok)
         (try rejected(copy(source, destination)))
@@ -111,7 +111,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         (fs.create_directory(source) | try expect_ok)
         (fs.write_file("{source}/data", "abc") | try expect_ok)
         let copy = fs.copy_tree
-        let alias = copy
+        let alias = copy.clone()
         (alias(source, destination) | try expect_ok)
         (fs.write_file("{source}/data", "xyz", true) | try expect_ok)
         (try rejected(copy(source, destination)))
@@ -156,7 +156,7 @@ test "filesystem directory creation defaults to requiring an existing parent":
 
     with temporary = (fs.temporary("manuscript-default-directory-") | try expect_ok):
         let create = fs.create_directory
-        let alias = create
+        let alias = create.clone()
         let child = "{temporary.path()}/missing/child"
         (try rejected(alias(child)))
         (try rejected(create(child, false)))
@@ -178,7 +178,7 @@ test "filesystem removal defaults to retaining nonempty trees":
         (fs.create_directory(directory) | try expect_ok)
         (fs.write_file(path, "keep") | try expect_ok)
         let remove = fs.remove
-        let alias = remove
+        let alias = remove.clone()
         (try rejected(alias(directory)))
         (try rejected(remove(directory, false)))
         (try rejected(generic_remove(fs, directory)))

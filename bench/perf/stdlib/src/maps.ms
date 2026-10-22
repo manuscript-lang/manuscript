@@ -21,7 +21,7 @@ export fn bench_map_set() Unit:
             let keys = words(50000)
             var m = Map[String, Int]()
             for k in keys:
-                m.add(k, 1)
+                m.add(k.clone(), 1)
             var n = 0
             for k in keys:
                 n += m.get(k).get(0)

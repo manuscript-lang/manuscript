@@ -159,32 +159,28 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 2, depth: none, values: none)
+                text: "a=1", limits: limits(bytes: 2, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: 2, values: none)
+                text: "a.b=1", limits: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: none, values: 2)
+                text: "a.b=1", limits: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
@@ -194,16 +190,14 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: none, depth: -1, values: none)
+                text: "", limits: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 3, depth: 2, values: 2)
+                text: "a=1", limits: limits(bytes: 3, depth: 2, values: 2)
             ) != parse(text: "a=1")
         )
     )
@@ -295,7 +289,7 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text: text, count: count / 2)
+    let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
@@ -305,7 +299,11 @@ test "TOML long strings parse and stringify in linear time":
     let expected = repeated(text: "x\n", count: 150000)
     let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
     let table = (try entries(root.clone()))
-    (table.get("a").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
+    (
+        table.get("a").get() | try expect_equal(
+            expected: TomlValue.StringValue(expected.clone())
+        )
+    )
     (table.get("b").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
     let text = (stringify(value: root) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(expected: root)
@@ -324,6 +322,5 @@ test "TOML stringify rejects invalid date-time text":
     var good = Map[String, TomlValue]()
     good.add("x", TomlValue.DateTimeValue("1979-05-27T07:32:00Z"))
     try expect_equal(
-        (try stringify(TomlValue.TableValue(good))),
-        "x = 1979-05-27T07:32:00Z\n"
+        (try stringify(TomlValue.TableValue(good))), "x = 1979-05-27T07:32:00Z\n"
     )

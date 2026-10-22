@@ -52,7 +52,7 @@ test "second local extensions":
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         self.events.append(value: 20)
 
 fn leave(resource: Resource) Unit:

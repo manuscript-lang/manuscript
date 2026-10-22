@@ -46,7 +46,7 @@ export fn main() Int:
     say("s9 = [{s9}]")
     let l10 = l7.sorted(fn(a, b): a.compare(b))
     say("l10 = {l10} len {l10.length()}")
-    let s11 = s5
+    let s11 = s5.clone()
     say("s11 = [{s11}]")
     let i12 = (i8 % (((-50) - 23) + l10.length()))
     say("i12 = {i12}")

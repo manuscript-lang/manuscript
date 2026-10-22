@@ -21,7 +21,7 @@ export fn main() Int:
     say("i3 = {i3}")
     let s4 = ("{(i3 % i3)}:" + "brace\{s\}".trim()).replace("brace\{s\}", "ms")
     say("s4 = [{s4}]")
-    let s5 = s4
+    let s5 = s4.clone()
     say("s5 = [{s5}]")
     let b6 = ((-20) < ((4361 - (-26)) + ((-17) + i3)))
     say("b6 = {b6}")

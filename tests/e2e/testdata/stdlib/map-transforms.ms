@@ -92,7 +92,7 @@ test "Map key transformation retains first equal keys and last values":
             return key
     )
     (created.length() != 4 or mapped.length() != 2) | try expect_false
-    try expect_equal(mapped.keys().map(fn(k): k.label), ["2", "1"])
+    try expect_equal(mapped.keys().map(fn(k): k.label.clone()), ["2", "1"])
     try expect_equal(mapped.values().map(fn(v): v.count), [3, 4])
     var first_key = mapped.keys().get(0).clone()
     first_key.label = "first copy"
@@ -162,11 +162,15 @@ test "Map reverse fold and last match retain ordered snapshots":
     initial.length() | try expect_equal(expected: 0)
     var seen: List[String] = []
     let find = source.clone().find_last
-    var found = find(
-        predicate: fn(k, v):
-            seen.append(k)
-            return k == "a"
-    ).get().clone()
+    var found = (
+        find(
+            predicate: fn(k, v):
+                seen.append(k.clone())
+                return k == "a"
+        )
+        .get()
+        .clone()
+    )
     (seen != ["c", "a"] or found.key != "a") | try expect_false
     var edited = found.value.clone()
     edited.count = 8
@@ -185,7 +189,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
         initial.clone(),
         fn(acc, v):
             var next = acc
-            next.append(v.label)
+            next.append(v.label.clone())
             return next
     )
     folded | try expect_equal(expected: ["c", "a", "b"])

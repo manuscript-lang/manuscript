@@ -26,7 +26,7 @@ export fn main() Int:
     say("l7 = {l7} len {l7.length()}")
     let f8 = 598.25
     say("f8 = {f8}")
-    let s9 = s5
+    let s9 = s5.clone()
     say("s9 = [{s9}]")
     let s10 = (("gamma" + "x".replace("brace\{s\}", s5)) + s5)
     say("s10 = [{s10}]")

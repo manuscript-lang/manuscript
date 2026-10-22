@@ -4,7 +4,7 @@
 fn make_headline() fn() String:
     var subject = "Weekly update"
     let headline = fn():
-        return subject
+        return subject.clone()
     subject = "Launch announcement"
     return headline
 # make_headline()() returns "Weekly update".

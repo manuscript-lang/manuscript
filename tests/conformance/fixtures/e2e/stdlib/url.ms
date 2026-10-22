@@ -3,16 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/url.ms
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {
-    parse,
-    format,
-    resolve,
-    encode_component,
-    decode_component,
-    parse_query,
-    format_query,
-    QueryEntry,
-    Url,
-    UrlError
+    parse, format, resolve, encode_component, decode_component, parse_query,
+    format_query, QueryEntry, Url, UrlError
 } from "@std/net.ms"
 
 test "URL canonicalization and relative references":
@@ -20,8 +12,7 @@ test "URL canonicalization and relative references":
     try expect_false(url.host != "example.com" or url.port != some(443))
     try expect_equal((try format(url)), "https://example.com:443/a/b?q=1#fragment")
     try expect_equal(
-        (url | try resolve("../c") | try format),
-        "https://example.com:443/c"
+        (url | try resolve("../c") | try format), "https://example.com:443/c"
     )
     try expect_equal(encode_component("a b/é"), "a%20b%2F%C3%A9")
     try expect_equal((try decode_component("a%20b%2F%C3%A9")), "a b/é")
@@ -46,10 +37,16 @@ test "URL format rejects queries that would not round trip":
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
-        let bad = Url(base.scheme, base.host, base.port, base.path, query, "")
+        let bad = Url(
+            base.scheme.clone(), base.host.clone(), base.port, base.path.clone(),
+            query.clone(), ""
+        )
         if format(bad) != invalid: return fail("query {query}")
 
-    let good = Url(base.scheme, base.host, base.port, base.path, "a=%41&b", "")
+    let good = Url(
+        base.scheme.clone(), base.host.clone(), base.port, base.path.clone(), "a=%41&b",
+        ""
+    )
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
@@ -67,7 +64,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
     for scheme in [
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
-        let bad = Url(scheme, "host", none, "/path", "", "")
+        let bad = Url(scheme.clone(), "host", none, "/path", "", "")
         if format(bad) != invalid_text: return fail("invalid scheme accepted: {scheme}")
 
         try expect_equal(resolve(bad, "/next"), invalid_url)

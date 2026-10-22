@@ -2,7 +2,7 @@ import {TextError} from "@std/core.ms"
 import {expect_true} from "@std/testing.ms"
 
 fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:
-    log.append(value: name)
+    log.append(value: name.clone())
     if n < 0:
         return error(cause: TextError(name))
 

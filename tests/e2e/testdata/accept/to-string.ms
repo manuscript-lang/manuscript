@@ -102,7 +102,7 @@ test "generics views bound methods functions and resources":
     (try check(value: stringify(person), expected: person.to_string()))
     (try check(value: interpolate(person), expected: person.to_string()))
     (try check(value: bound_stringify(person), expected: person.to_string()))
-    let view = Named(person)
+    let view = Named(person.clone())
     (try check(value: view.to_string(), expected: person.to_string()))
     (try check(value: "{view}", expected: person.to_string()))
     let convert: fn() String = view.to_string

@@ -107,8 +107,8 @@ test "methods native APIs function values and contextual labels":
         )
     )
     let copied = subtract
-    let typed: fn(amount: Int, deduction: Int) Int = copied
-    var mutable = typed
+    let typed: fn(amount: Int, deduction: Int) Int = copied.clone()
+    var mutable = typed.clone()
     try expect_false(
         (
             copied(10, 3) != 7

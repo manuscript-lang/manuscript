@@ -35,7 +35,7 @@ test "map literals and positional identifier arguments":
     try expect_false(not optional.get("a").get().is_none())
     let key = "c"
     let value = 5
-    values.add(key, value)
+    values.add(key.clone(), value)
     try expect_equal(values.get(key).get(), value)
     var log: List[Int] = []
     let ordered = {
@@ -63,5 +63,5 @@ impl Hashable for Key:
 test "map literal uses custom key equality":
     let a = Key(1, "first")
     let b = Key(1, "second")
-    let values = {a: "a", b: "b"}
+    let values = {a.clone(): "a", b: "b"}
     try expect_false(values.length() != 1 or values.get(a).get() != "b")

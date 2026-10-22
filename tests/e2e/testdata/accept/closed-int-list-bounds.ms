@@ -66,7 +66,7 @@ fn effect(var visits: List[Int], value: Int) Int:
 
 fn mutated_alias() Int:
     let values = [0]
-    var alias = values
+    var alias = values.clone()
     alias.set(0, 9223372036854775807)
     var sum = 0
     for value in values:

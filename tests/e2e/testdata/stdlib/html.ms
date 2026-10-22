@@ -34,7 +34,7 @@ test "HTML parses nested elements attributes entities and comments":
     let doc = try parse(
         "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
     )
-    let div = body_nodes(doc).get(0)
+    let div = body_nodes(doc.clone()).get(0)
 
     match div:
         Element(tag, namespace, attributes, items):
@@ -105,7 +105,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     let svg_items = match body.get(0):
         Element(tag, namespace, _, items):
             try expect_false(tag != "svg" or namespace != "svg")
-            items
+            items.clone()
         _: return fail("expected SVG")
 
     match svg_items.get(0):

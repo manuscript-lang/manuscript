@@ -33,7 +33,7 @@ export fn main() Int:
         else:
             acc7 -= 1
     say("acc7 = {acc7}")
-    let s8 = s6
+    let s8 = s6.clone()
     say("s8 = [{s8}]")
     let s9 = ("{(i5 + (-791878))}:" + s8.replace(s6, "line\nbreak").reverse())
     say("s9 = [{s9}]")

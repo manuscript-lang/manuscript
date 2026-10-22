@@ -111,7 +111,7 @@ fn checked_expansion() Result[Unit, Error]:
 
 test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
-    let alias = original
+    let alias = original.clone()
     original.get(index: -1) | try expect_equal(expected: 1)
     let absent: Optional[Int] = none
     original.get(index: -9223372036854775808, default: -1) | try expect_equal(
@@ -224,7 +224,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     other.add(key: "b", value: 3)
     other.add(key: "c", value: 4)
     var merged = original.clone()
-    merged.merge(other: other)
+    merged.merge(other: other.clone())
     merged.keys() | try expect_equal(expected: ["a", "b", "c"])
     merged.values() | try expect_equal(expected: [1, 3, 4])
     (

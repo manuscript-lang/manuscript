@@ -162,7 +162,7 @@ test "alternative consumers retain tags and payloads after shrink":
             let snapshot = [first, second, last]
             var total = 0
             var wanted = 0
-            for value in seen: total = total + score(value)
+            for value in seen: total = total + score(value.clone())
             for value in snapshot.clone(): wanted = wanted + score(value)
             (not (total == wanted and seen == snapshot and values == want)) | try expect_false
 
