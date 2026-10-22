@@ -1,6 +1,6 @@
 import range from "@std/collections.ms"
 import {bench} from "./harness.ms"
-import {Queue, PriorityQueue} from "@std/collections.ms"
+import {Queue, PriorityQueue} from "@std/queue.ms"
 import {Deque} from "@std/deque.ms"
 import {BitSet} from "@std/bitset.ms"
 import {SortedMap} from "@std/sorted.ms"
@@ -20,7 +20,7 @@ export fn bench_structures() Unit:
             "queue.enqueue_dequeue_{n}",
             n * 2,
             fn() Int:
-                let queue = Queue[Int]()
+                var queue = Queue[Int]()
                 for i in range(0, n):
                     queue.enqueue(i)
                 var total = 0
@@ -32,7 +32,7 @@ export fn bench_structures() Unit:
             "priority_queue.enqueue_dequeue_{n}",
             n * 2,
             fn() Int:
-                let queue = PriorityQueue[Int](ascending)
+                var queue = PriorityQueue[Int](ascending)
                 for i in range(0, n):
                     queue.enqueue((i * 7919) % 100003)
                 var total = 0

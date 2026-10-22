@@ -402,27 +402,3 @@ impl SetBuilder[T]:
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]:
-
-# Negative compare results put left before right; equal priorities remain FIFO.
-export type PriorityQueue[T]:
-    # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
-    # Comparisons must stay consistent and must not mutate this queue.
-    compare: fn(left: T, right: T) Int
-    # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
-    capacity: Optional[Int] = none
-
-impl PriorityQueue[T]:
-    # Adds a value, returning false when a bounded queue is full.
-    fn enqueue(value: T) Bool:
-
-    # Removes and returns the next value by priority, or `none` when empty.
-    fn dequeue() Optional[T]:
-
-    # Returns the next value by priority without removing it, or none when empty.
-    fn peek() Optional[T]:
-
-    # Returns the number of enqueued values, independent of their priorities.
-    fn length() Int:
-
-    # Reports whether the queue has no values to peek or dequeue.
-    fn is_empty() Bool:

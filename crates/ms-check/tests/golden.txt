@@ -1359,7 +1359,7 @@ fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
 resolution	1	8	7	module does not export PriorityQueue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections.ms"type Choice[T]:
+resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/queue.ms"type Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int], o: Optional[Int]) Int:

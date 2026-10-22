@@ -46,7 +46,6 @@ pub mod obj;
 pub mod poller;
 pub mod process;
 pub mod profile;
-pub mod queue;
 pub mod start;
 pub mod string;
 #[cfg(not(windows))]
