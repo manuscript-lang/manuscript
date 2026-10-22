@@ -728,10 +728,14 @@ impl<'a> Layout<'a> {
         if g.list && !g.force && simple_layout_items(&parts) {
             return self.packed(g, &parts, indent);
         }
-        if g.items && !g.parameters && !g.force && comma_separated && parts.len() > 1 {
-            if let Some(packed) = self.packed_arguments(g, &parts, indent) {
-                return packed;
-            }
+        if g.items
+            && !g.parameters
+            && !g.force
+            && comma_separated
+            && parts.len() > 1
+            && let Some(packed) = self.packed_arguments(g, &parts, indent)
+        {
+            return packed;
         }
         // Keep an opener's trailing comment on its original line.
         let mut opening = self.text(&g.open).to_string();
