@@ -11,6 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::{ASCII_CHAR_STRIDE, STR_DATA_OFFSET};
 use std::collections::HashMap;
 
 type Vs = Vec<Value>;
@@ -1865,6 +1866,23 @@ impl<'a, 'm> Lower<'a, 'm> {
                 } else {
                     v[1..].to_vec()
                 }
+            }
+            Op::StrByte => {
+                let (p, i) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let at = self.b.ins().iadd(p, i);
+                let byte = self
+                    .b
+                    .ins()
+                    .load(types::I8, flags(), at, STR_DATA_OFFSET as i32);
+                let byte = self.b.ins().uextend(types::I64, byte);
+                vec![byte]
+            }
+            Op::StrAscii => {
+                let b = self.a(inst, 0)[0];
+                let d = self.g.rt_data("msrt_ascii_chars");
+                let base = self.data_addr(d);
+                let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
+                vec![self.b.ins().iadd(base, off)]
             }
             Op::StrLen => {
                 // Scalar count: cached in the object, else computed (and cached) by the runtime.

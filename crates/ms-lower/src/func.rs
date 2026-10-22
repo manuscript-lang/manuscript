@@ -80,6 +80,8 @@ pub(crate) struct FnLower<'a> {
     pub err_slot: Option<Value>,
     /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
     pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
+    /// The `for` iterable whose `String.chars` call becomes a byte scan (see `chars_loop`).
+    pub chars_iter_for: Option<*const ms_syntax::ast::Expr>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
@@ -321,6 +323,7 @@ impl<'a> FnLower<'a> {
             fixture: None,
             err_slot: None,
             split_iter_for: None,
+            chars_iter_for: None,
             aliases: HashMap::new(),
         }
     }

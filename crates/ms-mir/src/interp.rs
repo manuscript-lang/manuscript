@@ -768,6 +768,18 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Int(s.chars().count() as i64));
             }
+            Op::StrByte => {
+                let (Val::Str(s), Val::Int(i)) = (&regs[a[0].index()], &regs[a[1].index()]) else {
+                    return Err(Raw::internal("str.byte on a non-string"));
+                };
+                set!(Val::Int(i64::from(s.as_bytes()[*i as usize])));
+            }
+            Op::StrAscii => {
+                let Val::Int(b) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("str.ascii on a non-int"));
+                };
+                set!(Val::Str(((*b as u8) as char).to_string().into()));
+            }
             Op::SharedNew => set!(Val::Shared(Rc::new(arg(f, regs, a[0], true, m)))),
             Op::SharedGet => {
                 let Val::Shared(s) = &regs[a[0].index()] else {

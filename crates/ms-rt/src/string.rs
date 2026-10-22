@@ -91,7 +91,10 @@ const fn build_ascii() -> [Lit<2>; 128] {
     t
 }
 
+#[unsafe(export_name = "msrt_ascii_chars")]
 static mut ASCII: [Lit<2>; 128] = build_ascii();
+
+const _: () = assert!(core::mem::size_of::<Lit<2>>() == ms_rt_abi::ASCII_CHAR_STRIDE);
 
 /// The static empty string (+0; static strings have a huge count).
 #[unsafe(no_mangle)]
@@ -1171,6 +1174,29 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrObj, out: *mut Ve
         }
         *out = v;
     }
+}
+
+/// The character that starts at byte `at`, which `for c in text.chars()` reaches for a non-ASCII
+/// lead byte (or a stray byte, which reads as U+FFFD): an owned one-character string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrObj, at: i64) -> *mut StrObj {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe {
+        let text = &bytes(s)[at as usize..];
+        let (c, w) = utf8::decode(text);
+        if c == 0xFFFD && w == 1 {
+            from_bytes("\u{FFFD}".as_bytes())
+        } else {
+            from_bytes(&text[..w])
+        }
+    }
+}
+
+/// Byte width of the character that starts at byte `at`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrObj, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
 }
 
 #[unsafe(no_mangle)]

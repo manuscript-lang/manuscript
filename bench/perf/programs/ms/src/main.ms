@@ -4,7 +4,7 @@ import {clock, Instant} from "@std/time.ms"
 import {StringBuilder} from "@std/string.ms"
 
 interface Counter:
-    fn bump(by: Int) Int
+    var fn bump(by: Int) Int
 
 type Acc:
     total: Int
