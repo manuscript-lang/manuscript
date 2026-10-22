@@ -20,6 +20,7 @@ test "addition":
 ```
 
 - Be terse: omit types a closure can infer, use one-line bodies (`if n < 0: return 0`; `fn f(x: Int) Int: x * 2` returns implicitly), `xs[i]`, `xs[i] = v`, `read_lines(stdin())` (`@std/streams.ms`), and `map`/`filter`/`fold`/`join`/`get(d)` over loops. stdout flushes at exit.
+- Regex: `compile` in `@std/string.ms`; `captures`, `named_captures`, `split`, `replace_template`; pattern braces need `\{`.
 - Workflow: `ms search_symbol <name or words>` finds a symbol (`<module>` lists one); `ms verify` (check, fmt, lint, test); `ms review`.
 - `main() Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `error(...)` (or a failing `try`) fails.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.

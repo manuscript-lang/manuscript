@@ -463,6 +463,8 @@ fn flags(s: &[char], i: &mut usize) -> R<(String, bool)> {
 pub fn translate(pattern: &str) -> R<String> {
     let s: Vec<char> = pattern.chars().collect();
     let mut out = String::new();
+    // Go accepts repeated group names; the regex crate does not, so later ones stay unnamed.
+    let mut names: alloc::vec::Vec<&[char]> = alloc::vec::Vec::new();
     let mut i = 0;
     let mut frames = alloc::vec![Frame { max: 1, last: 1 }];
     let mut after_repeat = false;
@@ -561,7 +563,14 @@ pub fn translate(pattern: &str) -> R<String> {
                         {
                             return Err(());
                         }
-                        out.push('(');
+                        if names.contains(&name) {
+                            out.push('(');
+                        } else {
+                            names.push(name);
+                            out.push_str("(?P<");
+                            out.extend(name);
+                            out.push('>');
+                        }
                         i = start + end + 1;
                         frames.push(Frame { max: 1, last: 1 });
                     } else {

@@ -318,6 +318,12 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("matches", "string/matches"),
             ("find_all", "string/find_all"),
             ("replace_all", "string/replace_all"),
+            ("captures", "string/captures"),
+            ("captures_all", "string/captures_all"),
+            ("named_captures", "string/named_captures"),
+            ("find_span", "string/find_span"),
+            ("split", "string/split"),
+            ("replace_template", "string/replace_template"),
         ],
     ),
 ];
