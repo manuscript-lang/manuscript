@@ -262,9 +262,9 @@ jobs:
           printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
           for backend in llvm cranelift; do
             if [ $backend = llvm ]; then export MS_FORCE_LLVM=1; else unset MS_FORCE_LLVM; fi
-            (cd "$dir" && "$ms" build "$src" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend.exe 2>&1 | head -3; echo "exit=$?")
-            "$bin/llvm-readobj" --file-headers --coff-imports "$dir/rsa-$backend.exe" 2>&1 | head -60
-            "$bin/llvm-objdump" -h "$dir/rsa-$backend.exe" 2>&1 | head -40
+            (cd "$dir" && "$ms" build "$src" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend 2>&1 | head -3; echo "exit=${PIPESTATUS[0]}") || true
+            "$bin/llvm-readobj" --file-headers "$dir/rsa-$backend" 2>&1 | head -60 || true
+            "$bin/llvm-objdump" -h "$dir/rsa-$backend" 2>&1 | head -40 || true
           done
       - name: Native standard-library source conformance
         run: |
