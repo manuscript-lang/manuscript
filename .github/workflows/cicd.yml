@@ -257,9 +257,12 @@ jobs:
           mkdir -p "$dir"
           ms="$GITHUB_WORKSPACE/target/debug/ms.exe"
           bin="$MS_MINGW/bin"
+          src="$dir/rsa.ms"
+          cp "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" "$src"
+          printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
           for backend in llvm cranelift; do
             if [ $backend = llvm ]; then export MS_FORCE_LLVM=1; else unset MS_FORCE_LLVM; fi
-            (cd "$dir" && "$ms" build "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend.exe 2>&1 | head -3; echo "exit=$?")
+            (cd "$dir" && "$ms" build "$src" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend.exe 2>&1 | head -3; echo "exit=$?")
             "$bin/llvm-readobj" --file-headers --coff-imports "$dir/rsa-$backend.exe" 2>&1 | head -60
             "$bin/llvm-objdump" -h "$dir/rsa-$backend.exe" 2>&1 | head -40
           done
