@@ -292,7 +292,7 @@ export interface System:
     # Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
     # Returns Unsupported where the host does not expose it.
     fn os_version() Result[String, SystemError]
-    # Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use their Go name.
+    # Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
     fn machine() Result[String, SystemError]
     # Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
     # A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
@@ -303,9 +303,9 @@ export interface System:
 
 # Operating system and processor architecture for the current host.
 export type SystemInfo:
-    # Native Go OS identifier, such as linux, darwin, or windows; an open host identifier set.
+    # Operating system identifier, such as linux, darwin, or windows; an open host identifier set.
     os: String
-    # The processor architecture in Go's naming, such as `amd64`, `arm64`, or `386`.
+    # The processor architecture in common naming, such as `amd64`, `arm64`, or `386`.
     architecture: String
     # Number of logical CPUs the operating system reports as present for this process.
     cpu_count: Int
@@ -383,7 +383,7 @@ export fn end_of_line() String:
 # Returns the conventional null-device path for the host.
 export fn dev_null() String:
 
-# Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their Go OS name.
+# Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their operating system name.
 export fn os_type() String:
 
 # Returns native signal/error/loader/priority constants by name.
