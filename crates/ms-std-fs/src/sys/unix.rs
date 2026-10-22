@@ -1,7 +1,9 @@
 //! The Unix calls `std` has no equivalent for: `statfs`, `FICLONE`, `access(2)`, `poll(2)`,
 //! no-follow time and mode changes, and a close-on-exec pipe for `ms-std-process`. Everything else
 //! lives in the portable layer in `mod.rs`.
-use super::{CPath, Errno, FsStat, Interest};
+#[cfg(test)]
+use super::Interest;
+use super::{CPath, Errno, FsStat};
 
 /// Runs a libc call returning a negative value on failure, retrying `EINTR`.
 fn retry<T: Copy + PartialOrd + Default>(mut call: impl FnMut() -> T) -> Result<T, Errno> {
@@ -107,7 +109,8 @@ pub unsafe fn pipe_cloexec(fds: &mut [i32; 2], nonblocking: bool) -> i32 {
 }
 
 /// Blocks up to `ms` milliseconds until `fd` is ready; `true` when ready, hung up or failed (the
-/// next read or write reports the details).
+/// next read or write reports the details). Tests only: the runtime parks tasks instead.
+#[cfg(test)]
 pub fn wait_ready(fd: super::Fd, interest: Interest, ms: i32) -> bool {
     let mut p = libc::pollfd {
         fd,

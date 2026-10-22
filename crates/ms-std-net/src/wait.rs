@@ -4,9 +4,13 @@
 //! the running `ms-rt` task so the server reactor and request handlers (other tasks)
 //! run while it waits. A stop request wakes the wait and takes the runtime's
 //! cancellation path.
+//!
+//! Unit tests run on many threads, which the runtime's scheduler does not support: there a
+//! thread parks only once it serves (see `use_tasks`), and otherwise polls in slices.
 
 use crate::rt;
 use crate::sys::{self, Borrowed, Wake};
+#[cfg(test)]
 use std::cell::Cell;
 use std::sync::Arc;
 use std::sync::mpsc;
@@ -64,23 +68,32 @@ pub enum Wait {
     TimedOut,
 }
 
+#[cfg(test)]
 thread_local! {
     static TASKS: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Makes this thread's waits park the running `ms-rt` task. Done by the first
-/// server, whose reactor and request tasks need the scheduler; a thread without
-/// one (a helper thread, a program that only dials out) waits by polling.
+/// Tests: makes this thread's waits park the running `ms-rt` task. Done by the first server
+/// of a test thread, which then holds the scheduler for the rest of the test.
 pub fn use_tasks() {
+    #[cfg(test)]
     TASKS.with(|t| t.set(true));
 }
 
+/// Whether waits park the task: always, except on a test thread without a server.
+fn parks() -> bool {
+    #[cfg(test)]
+    return TASKS.with(Cell::get);
+    #[cfg(not(test))]
+    true
+}
+
 /// Waits until `fd` is ready for `interest` (hang-up and error count as ready, so
-/// the next read or write reports them) or the deadline passes. With tasks enabled
-/// the task parks, so the server reactor and request handlers run meanwhile.
-/// Faults with the runtime's cancellation when a stop was requested.
+/// the next read or write reports them) or the deadline passes. The task parks, so the
+/// server reactor and request handlers run meanwhile. Faults with the runtime's
+/// cancellation when a stop was requested.
 pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
-    if TASKS.with(Cell::get) {
+    if parks() {
         wait_task(fd, interest, deadline)
     } else {
         wait_poll(fd, interest, deadline)
@@ -126,13 +139,15 @@ fn wait_poll(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
 
 /// Sleeps for `d` while serving handlers; faults on cancellation.
 pub fn sleep(d: Duration) {
-    let deadline = Deadline::after(d);
-    // A wake-up nobody signals: the wait ends at the deadline.
-    let Some(idle) = Wake::new() else {
+    if !parks() {
         std::thread::sleep(d);
         return;
-    };
-    let _ = wait_fd(idle.sock(), Interest::Read, deadline);
+    }
+    rt::check_cancel();
+    crate::http::server::give_up_reactor_role();
+    if rt::sleep(d.as_nanos().min(i64::MAX as u128) as i64) & 16 != 0 {
+        rt::cancelled();
+    }
 }
 
 /// A background computation whose completion wakes the ms thread.

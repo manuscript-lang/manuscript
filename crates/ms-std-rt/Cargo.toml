@@ -11,6 +11,9 @@ crate-type = ["rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", default-features = false }
+
 [lints]
 workspace = true
 

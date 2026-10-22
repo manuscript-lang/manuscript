@@ -22,7 +22,6 @@ unsafe extern "C" {
     // The first argument is the raw socket handle (`sys::Raw`: a file descriptor on Unix, the
     // `SOCKET` as `u64` on Windows).
     fn msrt_task_wait_fd(fd: sys::Raw, events: u32, timeout_ns: i64) -> u32;
-    #[cfg(windows)]
     fn msrt_task_sleep(ns: i64) -> u32;
     #[cfg(unix)]
     fn msrt_task_forget_fd(fd: i32);
@@ -100,7 +99,6 @@ pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
 
 /// Parks the running task for `ns` nanoseconds without watching a socket. Returns the
 /// runtime's bits (8 timeout, 16 cancelled).
-#[cfg(windows)]
 pub fn sleep(ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
     unsafe { msrt_task_sleep(ns) }
