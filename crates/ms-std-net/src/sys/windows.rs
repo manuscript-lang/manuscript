@@ -231,25 +231,46 @@ impl Poller {
         self.sockets.borrow_mut().remove(sock);
     }
 
+    /// Wakes the parked reactor task.
+    pub fn kick(&self) {
+        self.wake.notify();
+    }
+
+    /// Nothing to forget: interest changes re-arm the registration here.
+    pub fn consumed(&self, _sock: Borrowed<'_>, _ev: Ev) {}
+
     /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
-    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
+    /// Returns how many raised events were read: fewer than `max` means the queue was drained.
+    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) -> usize {
         out.clear();
         // Empty the wake socket before taking the queue: a signal that lands in between
         // leaves the socket readable for the next park.
         self.wake.drain();
-        let raised =
-            std::mem::take(&mut *self.shared.raised.lock().unwrap_or_else(|e| e.into_inner()));
+        // Take at most `max`: the rest stay queued for the next call, which the caller makes
+        // when this one returns `max`.
+        let raised: Vec<Raised> = {
+            let mut queue = self.shared.raised.lock().unwrap_or_else(|e| e.into_inner());
+            let count = queue.len().min(max);
+            queue.drain(..count).collect()
+        };
+        let count = raised.len();
         self.sockets
             .borrow()
             .report(raised.into_iter(), max, out, |sock, token, ev| {
                 let _ = self.arm(sock, token, ev);
             });
+        count
     }
 
     /// Parks the running task until something may be ready (or 50 ms pass); returns
     /// the runtime's ready bits.
-    pub fn park(&self) -> u32 {
-        rt::wait_fd(self.wake.sock(), 1, PARK_NS)
+    pub fn park(&self, timeout_ns: i64) -> u32 {
+        let timeout = if timeout_ns < 0 {
+            PARK_NS
+        } else {
+            timeout_ns.min(PARK_NS)
+        };
+        rt::wait_fd(self.wake.sock(), 1, timeout)
     }
 }
 

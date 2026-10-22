@@ -74,6 +74,9 @@ pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *
     unsafe { msrt_task_spawn(entry, arg, 1, 0) };
 }
 
+/// Request bit for [`wait_fd`]: keep the registration between waits (the runtime's `WAIT_KEEP`).
+pub const WAIT_KEEP: u32 = 32;
+
 /// Parks the running task until `sock` is ready for `events` (1 read, 2 write) or the
 /// timeout (negative: none) passes. Returns the runtime's ready bits. The only caller of
 /// `msrt_task_wait_fd`: a change of its handle type is confined to this function and `sys::Raw`.

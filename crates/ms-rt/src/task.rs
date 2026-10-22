@@ -22,6 +22,9 @@ pub const WAIT_WRITE: u32 = 2;
 pub const WAIT_HUP: u32 = 4;
 pub const WAIT_TIMEOUT: u32 = 8;
 pub const WAIT_CANCELLED: u32 = 16;
+/// Request bit: keep the descriptor registered between waits instead of re-arming it. Only for
+/// a descriptor whose owner drains it before every wait and keeps it open for good.
+pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
