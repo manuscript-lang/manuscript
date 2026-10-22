@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek",
-        "position": {
-          "file": "pkg-build-testserviceboundaries-1.ms",
-          "line": 7,
-          "column": 26,
-          "offset": 284
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/pkg-build-testserviceboundaries-1.ms:7:26: resolution: member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked pkg-build-testserviceboundaries-1.ms\n",
+      "stderr": ""
     }
   }
 }

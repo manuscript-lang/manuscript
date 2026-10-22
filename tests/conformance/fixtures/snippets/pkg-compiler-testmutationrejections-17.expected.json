@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Queue; add: import Queue from \"@std/collections.ms\"",
+        "message": "unknown type Queue; add: import Queue from \"@std/queue.ms\"",
         "position": {
           "file": "pkg-compiler-testmutationrejections-17.ms",
           "line": 4,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-17.ms:4:13: resolution: unknown type Queue; add: import Queue from \"@std/collections.ms\"\n<DIR>/pkg-compiler-testmutationrejections-17.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-17.ms:4:13: resolution: unknown type Queue; add: import Queue from \"@std/queue.ms\"\n<DIR>/pkg-compiler-testmutationrejections-17.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

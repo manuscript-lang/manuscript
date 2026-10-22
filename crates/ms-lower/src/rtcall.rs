@@ -173,7 +173,6 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         return rt_sig(&sym).map(|_| sym);
     }
     let prefix = match m.types.kind(recv) {
-        TyKind::Obj(n, _) if n == "Queue" => "queue",
         TyKind::Obj(n, _) if n == "PriorityQueue" => "priority_queue",
         TyKind::Str => "string",
         TyKind::List(_) => "list",
@@ -267,17 +266,15 @@ impl FnLower<'_> {
     }
 
     /// Calls the runtime function `sym` for a method call.
-    /// `Queue[T]()`, `Queue[T](capacity: n)` or `PriorityQueue[T](compare: f, capacity: n)`:
-    /// a runtime queue of elements of `T`.
+    /// `PriorityQueue[T](compare: f, capacity: n)`: a runtime queue of elements of `T`.
     pub(crate) fn construct_queue(
         &mut self,
         view: &ms_check::hir::CallView<'_>,
         ty: MTy,
     ) -> Result<Val, Error> {
-        let TyKind::Obj(name, args) = self.b.m.types.kind(ty).clone() else {
+        let TyKind::Obj(_, args) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("queue without an element type"));
         };
-        let prioritized = name == "PriorityQueue";
         let desc = self.type_desc(args[0]);
         let mut compare = None;
         let mut capacity = None;
@@ -299,10 +296,6 @@ impl FnLower<'_> {
             None => (self.b.bconst(false), self.b.iconst(0)),
             Some(input) => self.flatten_optional(input, "i64")?,
         };
-        if !prioritized {
-            let q = self.call_runtime("msrt_queue_new", &[desc, has, cap], ty)?;
-            return Ok(Val { v: q, own: true });
-        }
         let user = compare.ok_or_else(|| Error::new("PriorityQueue without a comparator"))?;
         let user = self.owned(user);
         let thunk = self.compare_closure(args[0], user);

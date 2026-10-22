@@ -4,6 +4,6 @@
 fn f() Int:
     let a = SetBuilder[Int]()
     let b = SetBuilder[Int]()
-    let m = Queue[Int]()
-    let n = Queue[Int]()
+    var m = Queue[Int]()
+    var n = Queue[Int]()
     return 0

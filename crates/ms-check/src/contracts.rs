@@ -552,7 +552,7 @@ impl Checker {
         if t.is_std("Decimal") || t.is_std("Bytes") || t.is_std("Duration") || t.is_std("Instant") {
             return true;
         }
-        if t.is_std("Queue") || t.is_std("PriorityQueue") {
+        if t.is_std("PriorityQueue") {
             return false;
         }
         if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {

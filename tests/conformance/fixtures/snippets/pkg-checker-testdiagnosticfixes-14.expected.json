@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Queue; add: import Queue from \"@std/collections.ms\"",
+        "message": "unknown binding Queue; add: import Queue from \"@std/queue.ms\"",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-14.ms",
           "line": 7,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: import Queue from \"@std/collections.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: import Queue from \"@std/queue.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

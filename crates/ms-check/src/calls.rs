@@ -198,7 +198,7 @@ impl Checker {
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
             let signature = constructor_signature(&typ);
             fields = signature.params.clone();
-            if (typ.is_std("Queue") || typ.is_std("Set")) && args.is_empty() {
+            if typ.is_std("Set") && args.is_empty() {
                 fields.clear();
             }
             i.no_return = self.arguments_for(

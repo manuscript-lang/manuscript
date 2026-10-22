@@ -1,7 +1,8 @@
-# conform: tags=diagnostics,modules,stdlib-queues,tier-stdlib
+# conform: tags=diagnostics,modules,stdlib-queue,tier-stdlib
 # conform: phase=check
 # conform: origin=documentation/core-language/types/optionals.md:32
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 
-let bounded = Queue[Int](capacity: 4)
-let unbounded = Queue[Int]()
+fn main() Unit:
+    var bounded = Queue[Int](capacity: 4)
+    var unbounded = Queue[Int]()
