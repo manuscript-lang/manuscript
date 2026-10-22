@@ -11,8 +11,7 @@ fn add(a: Int, b: Int) Int:
     return a + b
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n")
-    return stdout().flush()
+    return stdout().write("{text}\n")
 
 export fn main() Int:
     say("sum is {add(1, 2)}").get()
@@ -22,6 +21,7 @@ test "addition":
     try expect_equal(add(1, 2), 3)
 ```
 
+- Compact source is cheaper to read and write: `xs[i]` and `xs[i] = v` index (out of range faults; `xs.get(i, d)` takes a default), a lone `return`/`continue`/`break`/assignment may share its `if`/`for` line (`if n < 0: return 0`), `read_lines(stdin())` from `@std/streams.ms` reads all of stdin, and `stdout` is flushed when `main` returns, so skip `flush()`.
 - Workflow: `ms search_symbol <name or words>` finds a project or std symbol (`ms search_symbol <module>` lists a module); `ms verify` (check, fmt, lint, test) after each edit; `ms review`/`ms diagram` map changes.
 - `main() Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes, returning `error(...)` (or `try` on a failing check) fails.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import; declaring one is rejected.
