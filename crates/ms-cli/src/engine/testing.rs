@@ -226,6 +226,9 @@ pub(super) fn test<L: Lower>(
     if let Err(message) = backend.link(&mut compiled, &executable, request.build_type) {
         return Ok(failed_early(io, &mut document, "build", &message));
     }
+    if let Some(keep) = std::env::var_os("MS_KEEP_TEST_PROGRAM") {
+        let _ = std::fs::copy(&executable, keep);
+    }
     let working = if compiled.project_root.is_empty() {
         gopath::dir(&request.filename)
     } else {

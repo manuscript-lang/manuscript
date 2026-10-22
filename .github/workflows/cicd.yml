@@ -257,6 +257,14 @@ jobs:
           src="$dir/rsa.ms"
           cp "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" "$src"
           printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
+          export MS_FORCE_LLVM=1
+          for backend in llvm cranelift; do
+            if [ $backend = cranelift ]; then unset MS_FORCE_LLVM; fi
+            (cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-$backend" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" --build-type Release 2>&1 | head -8; ls -l prog-$backend; ./prog-$backend 0 2>&1 | head -5; echo "exit=${PIPESTATUS[0]}") || true
+            "$bin/llvm-readobj" --file-headers --coff-imports "$dir/prog-$backend" 2>&1 | head -80 || true
+            "$bin/llvm-objdump" -h "$dir/prog-$backend" 2>&1 | head -30 || true
+          done
+          export MS_FORCE_LLVM=1
           for backend in llvm cranelift; do
             if [ $backend = llvm ]; then export MS_FORCE_LLVM=1; else unset MS_FORCE_LLVM; fi
             (cd "$dir" && "$ms" build "$src" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend 2>&1 | head -3; echo "exit=${PIPESTATUS[0]}") || true
