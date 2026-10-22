@@ -102,12 +102,6 @@ msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_process_exit(code: i64) -> !
-msrt_priority_queue_new( d: *const TypeDesc, compare: *mut Closure, has_capacity: u8, capacity: i64, ) -> *mut PriorityQueueObj
-msrt_priority_queue_enqueue( q: *mut PriorityQueueObj, value: *mut u8, ) -> u8
-msrt_priority_queue_dequeue( q: *mut PriorityQueueObj, out: *mut u8, ) -> u8
-msrt_priority_queue_peek( q: *const PriorityQueueObj, out: *mut u8, ) -> u8
-msrt_priority_queue_length(q: *const PriorityQueueObj) -> i64
-msrt_priority_queue_is_empty(q: *const PriorityQueueObj) -> u8
 msrt_start_nanos() -> i64
 msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8, ) -> i32
 msrt_argv(out: *mut VecVal)

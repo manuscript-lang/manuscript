@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {PriorityQueue} from "@std/collections.ms"
-import {Queue} from "@std/queue.ms"
+import {PriorityQueue, Queue} from "@std/queue.ms"
+import {range} from "@std/collections.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 
@@ -16,7 +16,7 @@ test "FIFO capacity empty reads draining and reuse":
     try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
-    let queue = PriorityQueue(compare, 3)
+    var queue = PriorityQueue(compare, 3)
     queue.enqueue(3)
     queue.enqueue(1)
     queue.enqueue(2)
@@ -25,3 +25,19 @@ test "priority queue orders values and honors capacity":
     for expected in [1, 2, 3]:
         try expect_equal(queue.dequeue(), some(expected))
     try expect_false(not queue.is_empty())
+
+test "priority queue sorts many values and copies are independent":
+    var queue = PriorityQueue[Int](compare)
+    for index in range(0, 200):
+        queue.enqueue((index * 37) % 101)
+    var copy = queue.clone()
+    try expect_equal(copy.dequeue(), some(0))
+    try expect_equal(queue.length(), 200)
+    var previous = -1
+
+    while not queue.is_empty():
+        let next = queue.dequeue().get()
+        try expect_false(next < previous)
+        previous = next
+
+    try expect_equal(copy.length(), 199)

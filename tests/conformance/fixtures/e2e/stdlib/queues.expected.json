@@ -18,19 +18,24 @@
           "index": 1,
           "name": "queues.ms::priority queue orders values and honors capacity",
           "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "queues.ms::priority queue sorts many values and copies are independent",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 2,
-        "selected": 2,
-        "passed": 2,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN queues.ms::FIFO capacity empty reads draining and reuse\nPASS queues.ms::FIFO capacity empty reads draining and reuse\nRUN queues.ms::priority queue orders values and honors capacity\nPASS queues.ms::priority queue orders values and honors capacity\n2 tests, 0 failed\n",
+      "stdout": "RUN queues.ms::FIFO capacity empty reads draining and reuse\nPASS queues.ms::FIFO capacity empty reads draining and reuse\nRUN queues.ms::priority queue orders values and honors capacity\nPASS queues.ms::priority queue orders values and honors capacity\nRUN queues.ms::priority queue sorts many values and copies are independent\nPASS queues.ms::priority queue sorts many values and copies are independent\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

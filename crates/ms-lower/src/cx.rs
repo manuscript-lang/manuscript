@@ -347,10 +347,6 @@ impl Cx {
         if t.is_std("Bytes") {
             return Ok(MTy::BYTES);
         }
-        if t.is_std("PriorityQueue") {
-            let elem = self.lower_ty(m, &t.args[0])?;
-            return Ok(m.types.obj("PriorityQueue", vec![elem]));
-        }
         // Clock values are two-word C structs in the runtime (`Timestamp`, `Instant`), so a
         // record of two `Int`s shares their memory layout.
         if t.is_std("Timestamp") || t.is_std("Instant") {
