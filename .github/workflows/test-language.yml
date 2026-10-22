@@ -26,12 +26,18 @@ jobs:
         with:
           shared-key: language-static
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
+        id: tools
         with:
           path: .tools/
           key: devtools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/devtools.env', 'scripts/devtools.sha256') }}
       - name: Install pinned linters
         run: make setup
+      - uses: actions/cache/save@v6
+        if: github.ref == 'refs/heads/main' && steps.tools.outputs.cache-hit != 'true'
+        with:
+          path: .tools/
+          key: ${{ steps.tools.outputs.cache-primary-key }}
       - name: Workflow and shell lint, repo rules, licenses
         run: make lint repo-check licenses-check
       - name: Validate and package VS Code extension

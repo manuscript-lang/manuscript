@@ -58,7 +58,7 @@ jobs:
           else brew install ninja; fi
           LLVM_WORK="$RUNNER_TEMP/llvm-bundle" sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}" lld
       - name: Save bundled lld
-        if: runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/llvm-bundle/install

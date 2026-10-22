@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Debug info makes the dev and test builds slower to link and the saved caches several times
+  # larger; nothing in CI reads the compiler's own debug info. Release keeps the profile setting.
+  CARGO_PROFILE_DEV_DEBUG: '0'
+
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -132,7 +137,7 @@ jobs:
           else brew install ninja; fi
           LLVM_WORK="$RUNNER_TEMP/llvm-bundle" sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}" lld
       - name: Save bundled lld
-        if: runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
+        if: github.ref == 'refs/heads/main' && runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/llvm-bundle/install
@@ -154,9 +159,10 @@ jobs:
           elif [ "$RUNNER_OS" = Windows ] && [ '${{ matrix.arch }}' = arm64 ]; then
             echo 'C:/Program Files/LLVM/bin' >> "$GITHUB_PATH"
           fi
-      - name: Cache Windows x64 LLVM consumers
+      - name: Restore Windows x64 LLVM consumers
+        id: llvm-debug
         if: runner.os == 'Windows' && matrix.arch == 'amd64'
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/llvm-debug-19.1.7
           key: llvm-debug-windows-x64-19.1.7-b4557b4f
@@ -175,6 +181,12 @@ jobs:
               clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
           fi
           cygpath -w "$tools" >> "$GITHUB_PATH"
+      - name: Save Windows x64 LLVM consumers
+        if: github.ref == 'refs/heads/main' && runner.os == 'Windows' && matrix.arch == 'amd64' && steps.llvm-debug.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/llvm-debug-19.1.7
+          key: ${{ steps.llvm-debug.outputs.cache-primary-key }}
       - name: Format and clippy
         if: matrix.full
         run: |
