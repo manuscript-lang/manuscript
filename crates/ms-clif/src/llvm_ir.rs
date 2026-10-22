@@ -916,22 +916,22 @@ impl LlvmModule {
         });
     }
 
-    /// The finished module text. Functions are `internal` unless they are public or named in
-    /// `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and specialize them.
-    pub fn finish(&self, triple: &str, pinned: &HashSet<String>) -> String {
+    /// The finished module text. When `anchored`, functions are `internal` unless they are public
+    /// or named in `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and
+    /// specialize them; otherwise every function keeps a symbol.
+    pub fn finish(&self, triple: &str, pinned: &HashSet<String>, anchored: bool) -> String {
         let mut s = String::new();
-        // A COFF object lists every declared function as an undefined symbol, referenced or not, and
-        // the linker reports each one that no object defines, so on Windows nothing can be internal.
-        let keep = triple.contains("windows");
         let _ = writeln!(s, "target triple = \"{triple}\"");
-        let _ = writeln!(
-            s,
-            "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
-        );
+        if anchored {
+            let _ = writeln!(
+                s,
+                "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
+            );
+        }
         for d in &self.defs {
             let vis = if d.public {
                 ""
-            } else if keep || pinned.contains(&d.name) {
+            } else if !anchored || pinned.contains(&d.name) {
                 "hidden "
             } else {
                 "internal "

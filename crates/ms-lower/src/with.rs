@@ -186,6 +186,10 @@ impl FnLower<'_> {
         let l = self.locals[&uid];
         let v = self.local_get(&l);
         let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
+        // Like the cleanup stack on a fault, a stop request that arrives while the close runs
+        // must not interrupt it.
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
         close_call(&mut self.b, &closer.kind, v, l.ty);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 }

@@ -30,10 +30,11 @@ There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs
 An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `Optional[T]` passes unchanged, including `none`.
 
 ```manuscript
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 
-let bounded = Queue[Int](capacity: 4)
-let unbounded = Queue[Int]()
+fn main() Unit:
+    var bounded = Queue[Int](capacity: 4)
+    var unbounded = Queue[Int]()
 ```
 
 - Applies to functions, methods, function values, constructor fields, and alternative payloads.

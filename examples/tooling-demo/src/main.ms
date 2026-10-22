@@ -1,5 +1,5 @@
 import stdout from "@std/io.ms"
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 import total from "@math"
 import compute from "@math"
 
@@ -20,7 +20,7 @@ export fn main() Int:
         return 1
 
     let sum = total(values.length(), 20, 30)
-    let queue = Queue[Int](4)
+    var queue = Queue[Int](4)
     if not queue.enqueue(package.count):
         return 1
 

@@ -300,6 +300,18 @@ impl<'a> FnLower<'a> {
         slot
     }
 
+    /// A stack slot lending the borrowed `x` to a runtime call that only reads it: nothing is
+    /// copied and nothing is taken back or dropped afterwards.
+    pub(crate) fn lend_slot(&mut self, x: Value) -> Value {
+        let t = self.ty_of(x);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Store, &[slot, x], Imm::None, None);
+        slot
+    }
+
     pub(crate) fn take_slot(&mut self, slot: Value, t: MTy) -> Value {
         self.b
             .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))

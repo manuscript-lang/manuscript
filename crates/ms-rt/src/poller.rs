@@ -5,7 +5,7 @@
 use crate::fault;
 #[cfg(unix)]
 use crate::sys;
-use crate::task::{WAIT_HUP, WAIT_READ, WAIT_WRITE};
+use crate::task::{WAIT_HUP, WAIT_KEEP, WAIT_READ, WAIT_WRITE};
 #[cfg(unix)]
 use core::sync::atomic::AtomicI32;
 #[cfg(unix)]
@@ -71,6 +71,8 @@ mod imp {
     struct State {
         poll: Poll,
         events: Events,
+        /// Per descriptor: the interest bits of a kept registration (see `WAIT_KEEP`), or 0.
+        kept: Vec<u8>,
         wake_rx: pipe::Receiver,
         // Owns the write end that `WAKE_FD` points at.
         _wake_tx: pipe::Sender,
@@ -97,6 +99,7 @@ mod imp {
             Ok(State {
                 poll,
                 events: Events::with_capacity(64),
+                kept: Vec::new(),
                 wake_rx: rx,
                 _wake_tx: tx,
             })
@@ -122,6 +125,22 @@ mod imp {
     /// Nothing to undo: a one-shot registration stays disarmed until the next wait.
     pub fn unwatch(_: i32) {}
 
+    /// Ends the kept registration of `fd` (see `WAIT_KEEP`) before its owner closes it. Closing
+    /// removes the descriptor from the kernel's set, but the record here would survive and make
+    /// a later descriptor with the same number look registered when it is not.
+    pub fn forget(fd: i32) {
+        // SAFETY: only the scheduler thread reaches the poller state.
+        let Some(s) = (unsafe { &mut *STATE.ptr() }) else {
+            return;
+        };
+        if let Some(code) = s.kept.get_mut(fd as usize)
+            && *code != 0
+        {
+            *code = 0;
+            let _ = s.poll.registry().deregister(&mut SourceFd(&fd));
+        }
+    }
+
     pub unsafe fn close(_: i32) {
         WAKE_FD.store(-1, Ordering::Relaxed);
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -130,7 +149,17 @@ mod imp {
 
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let interest = interest(events);
-        let registry = state().poll.registry();
+        let s = state();
+        let idx = fd as usize;
+        if s.kept.len() <= idx {
+            s.kept.resize(idx + 1, 0);
+        }
+        let code = (events & (WAIT_READ | WAIT_WRITE)) as u8 | 0x80;
+        if events & WAIT_KEEP != 0 && s.kept[idx] == code {
+            return Watch::Armed;
+        }
+        s.kept[idx] = 0;
+        let registry = s.poll.registry();
         let (token, mut source) = (Token(fd as usize), SourceFd(&fd));
         // Re-registering reports a descriptor that is already ready, which is what makes a
         // wait level-like on top of mio's edge-triggered events.
@@ -142,7 +171,12 @@ mod imp {
             }
         }
         match r {
-            Ok(()) => Watch::Armed,
+            Ok(()) => {
+                if events & WAIT_KEEP != 0 {
+                    s.kept[idx] = code;
+                }
+                Watch::Armed
+            }
             Err(e) if e.raw_os_error() == Some(EPERM) => Watch::Always,
             Err(_) => Watch::Failed,
         }
@@ -256,6 +290,9 @@ mod imp {
         release(state(), fd as usize);
     }
 
+    /// Nothing kept here: registrations are one-shot.
+    pub fn forget(_: i32) {}
+
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
         release(s, sock);
@@ -298,4 +335,4 @@ mod imp {
     }
 }
 
-pub use imp::{close, create, kick, unwatch, wait, watch};
+pub use imp::{close, create, forget, kick, unwatch, wait, watch};

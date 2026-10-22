@@ -27,8 +27,6 @@
     "@std/logcore.ms/LogState": "native",
     "@std/net.ms/Cidr": "native",
     "@std/net.ms/IpAddress": "native",
-    "@std/collections.ms/PriorityQueue": "native",
-    "@std/collections.ms/Queue": "native",
     "@std/string.ms/Regex": "native",
     "@std/string.ms/StringBuilder": "native",
     "@std/time.ms/Duration": "native",

@@ -59,12 +59,20 @@ fn visit(
     Ok(())
 }
 
+/// Waits for inotify events: the task parks, so other tasks keep running.
 #[cfg(target_os = "linux")]
-fn wait_slice(fd: sys::Fd) {
+fn wait_events(fd: sys::Fd) {
+    #[cfg(not(test))]
+    ms_std_rt::task_wait_fd(fd, ms_std_rt::WAIT_READ, -1);
+    // Tests run on many threads, which the runtime's scheduler does not support.
+    #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
 }
 
 fn sleep_slice() {
+    #[cfg(not(test))]
+    ms_std_rt::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+    #[cfg(test)]
     sys::sleep_ms(SLICE_MS);
 }
 
@@ -328,7 +336,7 @@ impl Native {
                 return Ok(alloc::vec![e]);
             }
             poll_cancel();
-            wait_slice(self.fd);
+            wait_events(self.fd);
         }
     }
 }

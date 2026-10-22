@@ -11,7 +11,9 @@
 //!   sockets, so the server reactor parks in short slices instead (see
 //!   `Poller::park`).
 
+#[cfg(windows)]
 use std::collections::HashMap;
+#[cfg(windows)]
 use std::hash::Hash;
 use std::ops::BitOr;
 
@@ -57,6 +59,7 @@ impl BitOr for Ev {
 
 /// The interest to register for `ev`: watching nothing still watches for readability, so
 /// hang-up and error are reported.
+#[cfg(windows)]
 pub(crate) fn mio_interest(ev: Ev) -> mio::Interest {
     match (ev.contains(Ev::IN), ev.contains(Ev::OUT)) {
         (_, false) => mio::Interest::READABLE,
@@ -87,11 +90,13 @@ impl From<&mio::event::Event> for Raised {
 
 /// The sockets of a [`Poller`], found by handle (to update or delete) and by token (to
 /// resolve an event).
+#[cfg(windows)]
 pub(crate) struct Sockets<R> {
     by_handle: HashMap<R, (u64, Ev)>,
     by_token: HashMap<u64, R>,
 }
 
+#[cfg(windows)]
 impl<R> Default for Sockets<R> {
     fn default() -> Sockets<R> {
         Sockets {
@@ -101,6 +106,7 @@ impl<R> Default for Sockets<R> {
     }
 }
 
+#[cfg(windows)]
 impl<R: Copy + Eq + Hash> Sockets<R> {
     pub fn set(&mut self, handle: R, token: u64, ev: Ev) {
         self.by_handle.insert(handle, (token, ev));

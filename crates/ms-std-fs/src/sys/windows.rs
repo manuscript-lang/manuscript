@@ -237,6 +237,15 @@ fn is_console(handle: RawHandle) -> bool {
     unsafe { GetConsoleMode(handle, &mut mode) != 0 }
 }
 
+/// Lets other tasks run for 2 ms between checks of a handle that cannot be polled.
+fn pause_2ms() {
+    #[cfg(not(test))]
+    ms_std_rt::task_sleep(2_000_000);
+    // Tests run on many threads, which the runtime's scheduler does not support.
+    #[cfg(test)]
+    std::thread::sleep(Duration::from_millis(2));
+}
+
 /// Blocks up to `ms` milliseconds until `fd` is ready; `true` when ready, hung up or failed (the
 /// next read or write reports the details). Only pipes and consoles can block a read.
 pub fn wait_ready(fd: Fd, interest: Interest, ms: i32) -> bool {
@@ -267,13 +276,23 @@ pub fn wait_ready(fd: Fd, interest: Interest, ms: i32) -> bool {
                 if waited >= ms {
                     return false;
                 }
-                std::thread::sleep(Duration::from_millis(2));
+                pause_2ms();
                 waited += 2;
             }
         }
         FILE_TYPE_CHAR if is_console(handle) => {
-            // SAFETY: waiting on a console input handle.
-            unsafe { WaitForSingleObject(handle, ms.max(0) as u32) == WAIT_OBJECT_0 }
+            let mut waited = 0;
+            loop {
+                // SAFETY: polling a console input handle.
+                if unsafe { WaitForSingleObject(handle, 0) } == WAIT_OBJECT_0 {
+                    return true;
+                }
+                if waited >= ms {
+                    return false;
+                }
+                pause_2ms();
+                waited += 2;
+            }
         }
         _ => true,
     }

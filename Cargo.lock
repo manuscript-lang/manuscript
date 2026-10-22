@@ -1363,6 +1363,7 @@ dependencies = [
 name = "ms-std-rt"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "ms-rt",
  "ms-rt-abi",
 ]

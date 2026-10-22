@@ -22,8 +22,13 @@ unsafe extern "C" {
     // The first argument is the raw socket handle (`sys::Raw`: a file descriptor on Unix, the
     // `SOCKET` as `u64` on Windows).
     fn msrt_task_wait_fd(fd: sys::Raw, events: u32, timeout_ns: i64) -> u32;
-    #[cfg(windows)]
     fn msrt_task_sleep(ns: i64) -> u32;
+    #[cfg(unix)]
+    fn msrt_task_forget_fd(fd: i32);
+    fn msrt_token_new(flags: u32) -> u64;
+    fn msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32;
+    fn msrt_token_post(id: u64, value: u64);
+    fn msrt_token_free(id: u64);
 }
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
@@ -74,6 +79,16 @@ pub unsafe fn spawn_detached(entry: unsafe extern "C-unwind" fn(*mut u8), arg: *
     unsafe { msrt_task_spawn(entry, arg, 1, 0) };
 }
 
+/// Request bit for [`wait_fd`]: keep the registration between waits (the runtime's `WAIT_KEEP`).
+pub const WAIT_KEEP: u32 = 32;
+
+/// Ends the registration a [`WAIT_KEEP`] wait left on `fd`; call it before `fd` closes.
+#[cfg(unix)]
+pub fn forget_fd(fd: i32) {
+    // SAFETY: plain update of the runtime poller's records.
+    unsafe { msrt_task_forget_fd(fd) }
+}
+
 /// Parks the running task until `sock` is ready for `events` (1 read, 2 write) or the
 /// timeout (negative: none) passes. Returns the runtime's ready bits. The only caller of
 /// `msrt_task_wait_fd`: a change of its handle type is confined to this function and `sys::Raw`.
@@ -84,7 +99,6 @@ pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
 
 /// Parks the running task for `ns` nanoseconds without watching a socket. Returns the
 /// runtime's bits (8 timeout, 16 cancelled).
-#[cfg(windows)]
 pub fn sleep(ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
     unsafe { msrt_task_sleep(ns) }
@@ -98,4 +112,46 @@ pub fn install_prepark_hook() {
     }
     // SAFETY: `hook` follows the runtime's hook ABI and stays valid for the process lifetime.
     unsafe { msrt_task_set_prepark(Some(hook)) };
+}
+
+/// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.
+pub struct Token(u64);
+
+impl Token {
+    pub fn new() -> Token {
+        // SAFETY: plain scheduler call on the runtime thread.
+        Token(unsafe { msrt_token_new(0) })
+    }
+
+    pub fn id(&self) -> u64 {
+        self.0
+    }
+
+    /// Parks the running task until the token is posted or the timeout (negative: none)
+    /// passes. Returns 0 when posted, else the runtime's bits (8 timeout, 16 cancelled).
+    pub fn park(&self, timeout_ns: i64) -> u32 {
+        // SAFETY: parks the current task on a live token; no Rust borrow is held across the
+        // call by contract.
+        unsafe { msrt_token_park(self.0, timeout_ns, core::ptr::null_mut()) }
+    }
+}
+
+impl Default for Token {
+    fn default() -> Token {
+        Token::new()
+    }
+}
+
+impl Drop for Token {
+    fn drop(&mut self) {
+        // SAFETY: the token is live and nobody waits on it once its owner is dropped.
+        unsafe { msrt_token_free(self.0) }
+    }
+}
+
+/// Wakes the task parked on token `id`, or makes its next park return at once. A token that
+/// was freed ignores the post.
+pub fn post(id: u64) {
+    // SAFETY: plain scheduler call on the runtime thread; stale ids are ignored.
+    unsafe { msrt_token_post(id, 0) }
 }

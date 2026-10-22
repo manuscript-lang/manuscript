@@ -368,8 +368,8 @@ impl Read for Box[fn(right: Int) Int]:
 test "opaque":
     let queue = Queue[Int](capacity: 1)
     let capacity = queue.capacity
-resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
-resolution	3	17	66	unknown binding Queue; add: import Queue from "@std/collections.ms"interface Same[V]:
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	3	17	66	unknown binding Queue; add: import Queue from "@std/queue.ms"interface Same[V]:
     fn same(other: V) Bool
 type Box[T: Equal]:
     value: T
@@ -467,7 +467,7 @@ fn old(value: Read & Equal) Unit:
     let resource = Closeable(value: queue)parse	2	5	40	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport Queue from "@std/queues.ms"
 import Closeable from "@std/cleanup.ms"
 fn invalid() Unit:
-    resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
+    resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	2	8	42	module does not export Closeable; unknown standard module @std/cleanup.msimport panic from "@std/faults.ms"
 
 fn positive(value: Int) Int:
@@ -1099,8 +1099,8 @@ resolution	3	5	51	unknown binding panic; add: import panic from "@std/core.ms"i
 fn f(q: Queue[Int]) Int:
     q.capacity = 5
     return q.capacity
-resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
-resolution	2	9	43	unknown type Queue; add: import Queue from "@std/collections.ms"
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	9	43	unknown type Queue; add: import Queue from "@std/queue.ms"
 type	3	7	66	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'interface I:
     fn n() Int
 type Pair[A, B]:
@@ -1123,7 +1123,7 @@ fn f() Int:
     let n = Queue[Int]()
     return 0
 resolution	2	13	24	unknown binding SetBuilder; add: import SetBuilder from "@std/collections.ms"
-resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/collections.ms"fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) Unit:
+resolution	4	13	84	unknown binding Queue; add: import Queue from "@std/queue.ms"fn f(counts: Map[String, Int], names: List[String], found: Optional[Int]) Unit:
     match found:
         some(n):
             counts.add(key: "a", value: n)
@@ -1358,8 +1358,8 @@ fn f() Unit:
 fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
-resolution	1	8	7	module does not export PriorityQueue; unknown standard module @std/queues.ms
-resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections.ms"type Choice[T]:
+resolution	1	8	7	module does not export PriorityQueue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/queue.ms"type Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int], o: Optional[Int]) Int:
@@ -2487,7 +2487,7 @@ type Val:
 impl Read for Val:
     fn get() Int:
         return self.val
-resolution	3	8	69	module does not export Queue; unknown standard module @std/queues.msfn f(value: Val) Unit:
+resolution	3	8	69	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?fn f(value: Val) Unit:
     value.val = true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
@@ -2531,9 +2531,9 @@ fn f(socket: Connection) Unit:
     socket.clone()
 resolution	3	12	79	unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytesfn f(queue: Queue[Int]) Unit:
     queue.clone()
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections.ms"fn f(queue: Queue[Int]) Unit:
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
-resolution	1	13	12	unknown type Queue; add: import Queue from "@std/collections.ms"
+resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"
 type	2	11	40	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn number(value: Optional[Int]) Int: return value.get()
 fn call() Int: return type	2	16	71	bare return requires Unit; this function returns Int, so write 'return <value>'fn f(value: Optional[Int]) Unit: return
 fn call() Unit: f("wrong")
@@ -3870,8 +3870,8 @@ fn named(state: Queue[Int], value: Int = read(state)) Int:
 fn nested(state: Queue[Int]) Unit:
     let callback = fn(value: Int = read(state)) Int:
         return value
-resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms
-resolution	2	16	50	unknown type Queue; add: import Queue from "@std/collections.ms"diff --git a/src/a.ms b/src/a.ms
+resolution	1	8	7	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	16	50	unknown type Queue; add: import Queue from "@std/queue.ms"diff --git a/src/a.ms b/src/a.ms
 index 111..222 100644
 --- a/src/a.ms
 +++ b/src/a.ms
@@ -3939,8 +3939,8 @@ fn nested(resource: Resource) Unit:
 fn indirect(callback: fn() Unit) Unit:
     callback()
 resolution	1	8	7	module does not export Closeable; unknown standard module @std/cleanup.ms
-resolution	2	8	47	module does not export Queue; unknown standard module @std/queues.ms
-resolution	5	12	102	unknown type Queue; add: import Queue from "@std/collections.ms"
+resolution	2	8	47	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	5	12	102	unknown type Queue; add: import Queue from "@std/queue.ms"
 resolution	7	6	119	unknown type Closeable; add: import Closeable from "@std/core.ms"
 type	15	5	263	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
 type	23	9	447	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unittype State:
@@ -6624,8 +6624,8 @@ export fn main() Int:
 import {Queue, PriorityQueue} from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) Int: left - right
-resolution	2	9	58	module does not export Queue; unknown standard module @std/queues.ms
-resolution	2	16	65	module does not export PriorityQueue; unknown standard module @std/queues.ms
+resolution	2	9	58	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	16	65	module does not export PriorityQueue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	3	8	109	module does not export from_int; unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
@@ -6743,11 +6743,11 @@ test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")
 resolution	1	8	7	module does not export panic; unknown standard module @std/faults.ms
 resolution	2	8	42	module does not export Closeable; unknown standard module @std/cleanup.ms
-resolution	4	9	131	module does not export Queue; unknown standard module @std/queues.ms
+resolution	4	9	131	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	14	6	367	unknown type Closeable; add: import Closeable from "@std/core.ms"
 type	19	5	524	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
 resolution	20	16	575	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	32	17	904	unknown binding Queue; add: import Queue from "@std/collections.ms"import filesystem from "@std/fs.ms"
+resolution	32	17	904	unknown binding Queue; add: import Queue from "@std/queue.ms"import filesystem from "@std/fs.ms"
 import {expect_true, fail} from "@std/testing.ms"
 
 test "fixture next to the manifest":

@@ -18,7 +18,7 @@ use crate::conn::{Io, Plain, Step};
 use crate::error::{HttpErr, NetErr};
 use crate::net::{Network, Resource};
 use crate::rt;
-use crate::sys::{AsSock, Borrowed, Ev, Poller, Wake};
+use crate::sys::{AsSock, Borrowed, Ev, Poller};
 use crate::tls::{Handshake, TlsIo};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
@@ -209,6 +209,8 @@ pub struct Reactor {
     role: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
+    /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
+    next_sweep: Cell<Option<Instant>>,
 }
 
 thread_local! {
@@ -234,10 +236,22 @@ impl Reactor {
                 role: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
+                next_sweep: Cell::new(None),
             });
             *slot = Some(reactor.clone());
             reactor
         })
+    }
+
+    /// Makes sure the sweep runs by `at`.
+    fn note_deadline(&self, at: Option<Instant>) {
+        if let Some(at) = at
+            && self.next_sweep.get().is_none_or(|n| at < n)
+        {
+            self.next_sweep.set(Some(at));
+            // A parked reactor computed its timeout from the old deadline.
+            self.poller.kick();
+        }
     }
 
     fn token(&self) -> u64 {
@@ -300,7 +314,15 @@ impl Reactor {
     /// that blocks hands the reactor role to a fresh task first (see
     /// [`give_up_reactor_role`]), so the rest keep being served.
     fn run_handlers(&self) {
+        let me = rt::current_task();
         loop {
+            // A task whose handler parked lost the role: what is left belongs to the new reactor.
+            if self.role.get() != me {
+                if !self.ready.borrow().is_empty() || !self.retry.borrow().is_empty() {
+                    self.poller.kick();
+                }
+                break;
+            }
             let next = self.ready.borrow_mut().pop_front();
             let Some(conn) = next else { break };
             if let Some(server) = conn.server.upgrade() {
@@ -379,13 +401,8 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     reactor.role.set(me);
     let mut drain = DrainShield::default();
     loop {
-        drain.set(reactor.drains());
-        PARKING.with(|p| p.set(true));
-        let got = reactor.poller.park();
-        PARKING.with(|p| p.set(false));
-        if got & 16 != 0 {
-            return;
-        }
+        // Serve before parking: the poller's registration is edge-triggered, so whatever a
+        // previous reactor task left unserved would not wake this one.
         reactor.service();
         if reactor.role.get() != me {
             return;
@@ -394,6 +411,16 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         if reactor.targets.borrow().is_empty() {
             reactor.role.set(0);
             reactor.task_started.set(false);
+            return;
+        }
+        drain.set(reactor.drains());
+        let timeout = reactor.next_sweep.get().map_or(-1, |at| {
+            at.saturating_duration_since(Instant::now()).as_nanos() as i64
+        });
+        PARKING.with(|p| p.set(true));
+        let got = reactor.poller.park(timeout);
+        PARKING.with(|p| p.set(false));
+        if got & 16 != 0 {
             return;
         }
     }
@@ -459,7 +486,7 @@ impl Reactor {
     fn service(&self) {
         let mut events = Vec::new();
         loop {
-            self.poller.poll(&mut events, 64);
+            let raw = self.poller.poll(&mut events, 64);
             for &(token, flags) in &events {
                 self.handle_event(token, flags);
             }
@@ -475,11 +502,13 @@ impl Reactor {
                 }
             }
             self.run_handlers();
-            if events.len() < 64 {
+            if raw < 64 || self.role.get() != rt::current_task() {
                 break;
             }
         }
-        self.sweep_timeouts();
+        if self.next_sweep.get().is_some_and(|at| at <= Instant::now()) {
+            self.sweep_timeouts();
+        }
     }
 }
 
@@ -487,6 +516,36 @@ impl Reactor {
     /// Closes connections whose read or write deadline passed.
     fn sweep_timeouts(&self) {
         let now = Instant::now();
+        let mut next: Option<Instant> = None;
+        let mut note = |at: Option<Instant>| {
+            if let Some(at) = at
+                && next.is_none_or(|n| at < n)
+            {
+                next = Some(at);
+            }
+        };
+        for t in self.targets.borrow().values() {
+            match t {
+                Target::Conn(c) => {
+                    if let Some(c) = c.upgrade() {
+                        let st = c.st.borrow();
+                        if st.deadline.is_some_and(|d| d > now) {
+                            note(st.deadline);
+                        }
+                        if matches!(st.phase, Phase::H2) {
+                            // HTTP/2 streams keep their own clocks; look at them often.
+                            note(Some(now + Duration::from_millis(50)));
+                        }
+                    }
+                }
+                Target::Listener(s) => {
+                    if let Some(s) = s.upgrade() {
+                        note(s.st.borrow().accept_paused_until);
+                    }
+                }
+            }
+        }
+        self.next_sweep.set(next);
         let expired: Vec<Rc<Conn>> = self
             .targets
             .borrow()
@@ -566,6 +625,11 @@ struct ServerSt {
     admitted: usize,
     /// Set while the listener is unwatched after accept ran out of descriptors or memory.
     accept_paused_until: Option<Instant>,
+    /// Tokens of the tasks in [`Server::wait`], posted on close.
+    waiters: Vec<u64>,
+    /// Token of a close waiting for responses to finish, posted when a connection closes or
+    /// goes idle.
+    draining: Option<u64>,
 }
 
 impl Resource for Server {
@@ -624,6 +688,8 @@ impl Server {
                 closed: false,
                 admitted: 0,
                 accept_paused_until: None,
+                waiters: Vec::new(),
+                draining: None,
             }),
             token,
         });
@@ -675,17 +741,17 @@ impl Server {
 
     /// Blocks until the server is closed, serving requests meanwhile.
     pub fn wait(&self) {
-        // A wake-up nobody signals: each wait lasts its 50 ms deadline.
-        let idle = Wake::new();
+        if self.is_closed() {
+            return;
+        }
+        let token = rt::Token::new();
+        self.st.borrow_mut().waiters.push(token.id());
         while !self.is_closed() {
-            match &idle {
-                Some(fd) => {
-                    let deadline = crate::wait::Deadline::after(Duration::from_millis(50));
-                    crate::wait::wait_fd(fd.sock(), crate::wait::Interest::Read, deadline);
-                }
-                None => crate::wait::sleep(Duration::from_millis(10)),
+            if token.park(-1) & 16 != 0 {
+                rt::cancelled();
             }
         }
+        self.st.borrow_mut().waiters.retain(|&id| id != token.id());
     }
 
     /// Stops accepting, lets in-flight responses finish within the grace period
@@ -732,26 +798,51 @@ impl Server {
         let deadline =
             crate::wait::Deadline::from_nanos(self.limits.grace.map(|g| g.as_nanos() as i64))
                 .unwrap_or(crate::wait::Deadline::none());
-        let in_handler = reactor.in_handler();
-        while !in_handler && !self.st.borrow().conns.is_empty() && !deadline.expired() {
-            // Let responses finish: the reactor and request tasks run while this parks.
-            crate::wait::sleep(Duration::from_millis(2));
-            if self
-                .st
-                .borrow()
-                .conns
-                .values()
-                .all(|c| matches!(c.st.borrow().phase, Phase::Head))
-            {
-                break;
+        if !reactor.in_handler() {
+            // Let responses finish: the reactor and request tasks run while this parks, and
+            // post the token whenever a connection closes or goes idle.
+            let token = rt::Token::new();
+            self.st.borrow_mut().draining = Some(token.id());
+            while !self.drained() && !deadline.expired() {
+                let left = deadline
+                    .remaining()
+                    .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
+                if token.park(left) & 16 != 0 {
+                    self.st.borrow_mut().draining = None;
+                    rt::cancelled();
+                }
             }
+            self.st.borrow_mut().draining = None;
         }
         let conns: Vec<Rc<Conn>> = self.st.borrow().conns.values().cloned().collect();
         for conn in conns {
             self.close_conn(&conn, &reactor);
         }
-        self.st.borrow_mut().closed = true;
+        let waiters = {
+            let mut st = self.st.borrow_mut();
+            st.closed = true;
+            std::mem::take(&mut st.waiters)
+        };
+        for id in waiters {
+            rt::post(id);
+        }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
+    }
+
+    /// Whether every connection has closed or gone idle, so a close can stop waiting.
+    fn drained(&self) -> bool {
+        self.st
+            .borrow()
+            .conns
+            .values()
+            .all(|c| matches!(c.st.borrow().phase, Phase::Head))
+    }
+
+    /// Wakes a close that waits for responses to finish, after a connection closed or went idle.
+    fn note_drain_progress(&self) {
+        if let Some(id) = self.st.borrow().draining {
+            rt::post(id);
+        }
     }
 
     // ------------------------------------------------------------- accepting
@@ -795,6 +886,7 @@ impl Server {
         {
             reactor.delete(listener.as_sock());
             st.accept_paused_until = Some(Instant::now() + ACCEPT_BACKOFF);
+            reactor.note_deadline(st.accept_paused_until);
         }
     }
 
@@ -859,6 +951,7 @@ impl Server {
                 return;
             }
             st.registered = true;
+            reactor.note_deadline(st.deadline);
         }
         reactor
             .targets
@@ -890,12 +983,14 @@ impl Server {
                 }
                 st.deadline = None;
                 if h2 {
+                    reactor.note_deadline(Some(Instant::now() + Duration::from_millis(50)));
                     st.phase = Phase::H2;
                     st.h2 = Some(Box::new(h2serve::H2Conn::new(&self.limits)));
                 } else {
                     st.phase = Phase::Head;
                 }
                 drop(st);
+                self.note_drain_progress();
                 if h2 {
                     self.set_interest(conn, reactor, Ev::IN);
                     self.h2_serve(conn, reactor);
@@ -931,11 +1026,8 @@ impl Server {
 
     /// Takes the connection out of the event loop (a handler owns it).
     pub(super) fn detach(&self, conn: &Rc<Conn>, reactor: &Reactor) {
-        let mut st = conn.st.borrow_mut();
-        if st.registered {
-            reactor.delete(st.fd());
-            st.registered = false;
-        }
+        // The socket stays registered; only the interest goes (no system call).
+        self.set_interest(conn, reactor, Ev::NONE);
     }
 
     /// Takes the stream and unread input of a connection whose handler upgraded
@@ -953,11 +1045,16 @@ impl Server {
             st.pos = 0;
             st.outbuf = Vec::new();
             st.phase = Phase::Closed;
+            if st.registered {
+                reactor.delete(io.fd());
+                st.registered = false;
+            }
             (io, leftover)
         };
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
         self.st.borrow_mut().conns.remove(&conn.token);
+        self.note_drain_progress();
         Some((io, leftover))
     }
 
@@ -989,6 +1086,7 @@ impl Server {
         reactor.targets.borrow_mut().remove(&conn.token);
         reactor.ready.borrow_mut().retain(|c| !Rc::ptr_eq(c, conn));
         self.st.borrow_mut().conns.remove(&conn.token);
+        self.note_drain_progress();
     }
 
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
@@ -1036,12 +1134,21 @@ impl Server {
                             more = true;
                             break;
                         }
+                        if n < scratch.len()
+                            && st.io.as_ref().is_some_and(|io| io.short_read_drains())
+                        {
+                            reactor.poller.consumed(st.fd(), Ev::IN);
+                            break;
+                        }
                     }
                     Step::Eof => {
                         st.eof = true;
                         break;
                     }
-                    Step::WantRead | Step::WantWrite => break,
+                    Step::WantRead | Step::WantWrite => {
+                        reactor.poller.consumed(st.fd(), Ev::IN);
+                        break;
+                    }
                     Step::Err(_) => {
                         st.eof = true;
                         st.close_after = true;
@@ -1073,6 +1180,7 @@ impl Server {
             let mut st = conn.st.borrow_mut();
             if st.deadline.is_none() {
                 st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                reactor.note_deadline(st.deadline);
                 st.idle_deadline = st.deadline.is_some();
             }
         }
@@ -1150,6 +1258,7 @@ impl Server {
                 Parsed::Partial => {
                     if st.deadline.is_none() || st.idle_deadline {
                         st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                        reactor.note_deadline(st.deadline);
                         st.idle_deadline = false;
                     }
                     return false;
@@ -1285,6 +1394,7 @@ impl Server {
                     Decoded::More => {
                         if st.deadline.is_none() {
                             st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
+                            reactor.note_deadline(st.deadline);
                         }
                         st.phase = Phase::Body(pending);
                         false
@@ -1383,6 +1493,7 @@ impl Server {
                 match io.write(&st.outbuf[st.out_pos..]) {
                     Step::Done(n) => st.out_pos += n,
                     Step::WantWrite | Step::WantRead => {
+                        reactor.poller.consumed(io.fd(), Ev::OUT);
                         next = Some(Next::Blocked);
                         break;
                     }
@@ -1431,6 +1542,7 @@ impl Server {
                         st.phase = Phase::Head;
                     }
                 }
+                self.note_drain_progress();
                 self.set_interest(conn, reactor, Ev::IN);
                 // Pipelined requests may already be buffered.
                 self.after_read(conn, reactor);

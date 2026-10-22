@@ -108,7 +108,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 | SetBuilder | `with_value` | `add` | Unit |
 | Bytes | `reverse` | `reversed` | Copy of byte storage |
 
-`List.shift` is removed. Use `Queue` (`enqueue`, `dequeue`, `peek`) for first-in, first-out work: `dequeue` is O(1), where `shift` cost O(n) per call. Use `Deque` when values are pushed or popped at both ends.
+`List.shift` is removed. Use `Queue` from `@std/queue.ms` (`enqueue`, `dequeue`, `peek`) for first-in, first-out work; like `Deque` and `List` it is an owned value, so a copy is independent (declare it with `var` to mutate). `dequeue` is O(1), where `shift` cost O(n) per call. Use `Deque` when values are pushed or popped at both ends.
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
@@ -120,7 +120,7 @@ The standard library adds collections written in Manuscript. Each follows value 
 
 | Type | Use it for |
 | --- | --- |
-| `Queue[T]` | First-in, first-out work, optionally bounded; `PriorityQueue[T]` orders by a compare function with FIFO ties |
+| `Queue[T]` (`@std/queue.ms`, owned) | First-in, first-out work, optionally bounded; `PriorityQueue[T]` orders by a compare function with FIFO ties |
 | `Deque[T]` | A queue with O(1) amortized push and pop at both ends and O(1) indexed reads, such as sliding windows |
 | `BitSet` | Dense sets of small non-negative integers (0 through 1073741823), one bit each |
 | `SortedMap[K, V]`, `SortedSet[T]` | Ascending key order with first, last, floor, ceiling, and range lookups; keys must be `Comparable` |

@@ -10,7 +10,7 @@ Agents write the code and people understand it. It is statically typed, compiles
 
 - **Clear syntax, no tricks.** Familiar names, four-space blocks, and one obvious spelling instead of clever alternatives. An agent can write it reliably and a person can read it at a glance. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
 - **Simple, fast memory.** Value semantics with move and copy, no garbage collector, deterministic cleanup. Nothing is copied unless you write `.clone()`, and the only ownership marker is `var`.
-- **Fast, and closing in on Rust.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, typically within 1.4x of Rust with overflow checks on.
+- **Fast, and closing in on Rust.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, and within 1.25x of Rust (overflow checks on) on most kernels, ahead on several.
 - **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK.
 
 ## Example
@@ -130,14 +130,14 @@ Representative programs compiled natively (linux/amd64), as a fraction of hand-w
 
 | Program | Manuscript / Go |
 | --- | ---: |
-| Game of Life, 128x128 for 50 generations | 0.06 |
-| Stack of 20M pushes and pops | 0.14 |
-| Sorting 1M items with a comparator | 0.26 |
+| Game of Life, 128x128 for 50 generations | 0.09 |
+| Stack of 20M pushes and pops | 0.11 |
+| Sorting 1M items with a comparator | 0.14 |
 | Parsing and splitting 1M lines of text | 0.45 |
-| Calling a captured closure 100M times | 0.50 |
-| `Result` propagation with `try`, 50M calls | 0.56 |
+| `Result` propagation with `try`, 50M calls | 0.57 |
+| `Optional` construction and `if let`, 100M | 0.66 |
 
-Across all 31 benchmarks Manuscript beats Go on 26; sorting with a comparator is within 1.2x of Rust. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
+Across all 31 benchmarks Manuscript beats Go on 26. Against Rust with overflow checks on, most kernels are within 1.25x and several are ahead (dispatch, sort, string-keyed maps, grids, optionals, sets). Whole programs are level or ahead on sieve, matmul, trees, collatz, and map counting, and within 1.3x on n-body and life. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
 
 ## Built on measurement
 

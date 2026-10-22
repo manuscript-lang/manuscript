@@ -169,8 +169,8 @@ fn server_cleanup_finishes_before_the_synchronous_farewell() {
         connection
             .read_to_string(&mut farewell)
             .expect("read farewell and EOF");
-        assert_eq!(farewell, "farewell\n");
         let (lines, status) = child.finish();
+        assert_eq!(farewell, "farewell\n", "{status:?} {lines:?}");
         assert_eq!(status.code(), Some(128 + signal), "{status:?} {lines:?}");
         assert_eq!(
             lines.join("\n"),

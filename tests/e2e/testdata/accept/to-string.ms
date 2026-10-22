@@ -2,7 +2,7 @@ import {TextError} from "@std/core.ms"
 import {fail} from "@std/testing.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 
 type Person:
     name: String
@@ -110,8 +110,12 @@ test "generics views bound methods functions and resources":
     (try check(value: answer.to_string(), expected: "[function]"))
     (try check(value: "{answer}", expected: "[function]"))
     let queue = Queue[Int](1)
-    (try check(value: queue.to_string(), expected: "[object]"))
-    (try check(value: "{queue}", expected: "[object]"))
+    (
+        try check(
+            value: queue.to_string(),
+            expected: "Queue(capacity: Optional.some(1), head: 0, items: [])"
+        )
+    )
 
 test "interpolation and bound conversion evaluate each receiver once":
     var state = Counter(value: 1)

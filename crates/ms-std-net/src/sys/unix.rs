@@ -1,6 +1,6 @@
 //! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and a mio readiness set.
 
-use super::{Ev, Raised, Sockets, mio_interest};
+use super::{Ev, Raised};
 use crate::rt;
 use mio::unix::SourceFd;
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -8,7 +8,9 @@ use rustix::event::EventfdFlags;
 use rustix::event::{self, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::mem::ManuallyDrop;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::time::Duration;
 
@@ -104,13 +106,36 @@ impl Default for Poller {
     }
 }
 
-/// The server's set of watched sockets, on mio (see [`Sockets::report`] for how its edge
-/// events serve the server's level-triggered reads and writes).
+/// The server's set of watched sockets, on mio.
+///
+/// Each socket is registered once, edge-triggered for both directions, and stays registered
+/// until [`Poller::delete`]. Interest is kept here, not in the kernel: an edge in a direction
+/// nobody wants is remembered as readiness and reported once the interest returns. Readiness
+/// is cleared only by [`Poller::consumed`], which callers invoke when an operation would
+/// block, so a remembered edge is never lost and a stale one costs one extra attempt.
 pub struct Poller {
-    poll: RefCell<mio::Poll>,
+    /// Never closed: the runtime keeps this descriptor registered between parks (`WAIT_KEEP`)
+    /// and cannot tell when its number is reused, so a closed poller (a test thread's, say)
+    /// would leave a later poller on the same number unwatched.
+    poll: ManuallyDrop<RefCell<mio::Poll>>,
     registry: mio::Registry,
     events: RefCell<mio::Events>,
-    sockets: RefCell<Sockets<Raw>>,
+    sockets: RefCell<HashMap<Raw, Watched>>,
+    by_token: RefCell<HashMap<u64, Raw>>,
+    /// Tokens whose remembered readiness met new interest, reported by the next poll.
+    pending: RefCell<Vec<u64>>,
+    /// Registered in `poll` under `WAKE_TOKEN`: wakes a parked reactor when work appears
+    /// that the kernel does not report (pending tokens, an earlier deadline, queued handlers).
+    wake: Wake,
+    parked: Cell<bool>,
+}
+
+const WAKE_TOKEN: u64 = u64::MAX;
+
+struct Watched {
+    token: u64,
+    want: Ev,
+    ready: Ev,
 }
 
 const MAX_EVENTS: usize = 64;
@@ -119,76 +144,171 @@ impl Poller {
     pub fn new() -> Poller {
         let poll = mio::Poll::new().expect("poller");
         let registry = poll.registry().try_clone().expect("poller registry");
+        let wake = Wake::new().expect("poller wake-up");
+        let wake_fd = wake.0.as_raw_fd();
+        registry
+            .register(
+                &mut SourceFd(&wake_fd),
+                mio::Token(WAKE_TOKEN as usize),
+                mio::Interest::READABLE,
+            )
+            .expect("poller wake-up registration");
         Poller {
-            poll: RefCell::new(poll),
+            poll: ManuallyDrop::new(RefCell::new(poll)),
             registry,
             events: RefCell::new(mio::Events::with_capacity(MAX_EVENTS)),
-            sockets: RefCell::new(Sockets::default()),
+            sockets: RefCell::new(HashMap::new()),
+            by_token: RefCell::new(HashMap::new()),
+            pending: RefCell::new(Vec::new()),
+            wake,
+            parked: Cell::new(false),
         }
     }
 
-    /// Registers `fd` for `ev`, or updates an earlier registration.
-    fn arm(&self, fd: Raw, token: u64, ev: Ev) -> std::io::Result<()> {
-        let (mut source, token) = (SourceFd(&fd), mio::Token(token as usize));
-        match self
-            .registry
-            .reregister(&mut source, token, mio_interest(ev))
-        {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                self.registry.register(&mut source, token, mio_interest(ev))
-            }
-            r => r,
+    /// Wakes the reactor task if it is parked, so its next `poll` sees work the kernel will not
+    /// report. Costs one `write` only while parked.
+    pub fn kick(&self) {
+        if self.parked.replace(false) {
+            self.wake.notify();
         }
     }
 
     pub fn add(&self, sock: Borrowed<'_>, token: u64, ev: Ev) -> bool {
         let fd = sock.as_raw_fd();
-        let armed = self.arm(fd, token, ev).is_ok();
-        if armed {
-            self.sockets.borrow_mut().set(fd, token, ev);
+        if self.sockets.borrow().contains_key(&fd) {
+            self.modify(sock, token, ev);
+            return true;
         }
-        armed
+        let interest = mio::Interest::READABLE | mio::Interest::WRITABLE;
+        if self
+            .registry
+            .register(&mut SourceFd(&fd), mio::Token(token as usize), interest)
+            .is_err()
+        {
+            return false;
+        }
+        self.sockets.borrow_mut().insert(
+            fd,
+            Watched {
+                token,
+                want: ev,
+                ready: Ev::NONE,
+            },
+        );
+        self.by_token.borrow_mut().insert(token, fd);
+        true
     }
 
     pub fn modify(&self, sock: Borrowed<'_>, token: u64, ev: Ev) {
         let fd = sock.as_raw_fd();
-        if self.arm(fd, token, ev).is_ok() {
-            self.sockets.borrow_mut().set(fd, token, ev);
+        let mut sockets = self.sockets.borrow_mut();
+        let Some(w) = sockets.get_mut(&fd) else {
+            drop(sockets);
+            self.add(sock, token, ev);
+            return;
+        };
+        let gained = Ev(ev.0 & !w.want.0);
+        w.want = ev;
+        if w.ready.intersects(gained) || w.ready.contains(Ev::HUP) && gained != Ev::NONE {
+            self.pending.borrow_mut().push(w.token);
+            drop(sockets);
+            self.kick();
+        }
+    }
+
+    /// Forgets that `sock` was ready for `ev`: an operation in that direction would block, so
+    /// the kernel reports the next edge.
+    pub fn consumed(&self, sock: Borrowed<'_>, ev: Ev) {
+        if let Some(w) = self.sockets.borrow_mut().get_mut(&sock.as_raw_fd()) {
+            w.ready = Ev(w.ready.0 & !ev.0);
         }
     }
 
     pub fn delete(&self, sock: Borrowed<'_>) {
         let fd = sock.as_raw_fd();
-        let _ = self.registry.deregister(&mut SourceFd(&fd));
-        self.sockets.borrow_mut().remove(fd);
-    }
-
-    /// Collects up to `max` ready `(token, events)` pairs into `out` without blocking.
-    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) {
-        out.clear();
-        let mut events = self.events.borrow_mut();
-        let polled = self
-            .poll
-            .borrow_mut()
-            .poll(&mut events, Some(Duration::ZERO));
-        if polled.is_ok() {
-            self.sockets.borrow().report(
-                events.iter().map(Raised::from),
-                max,
-                out,
-                |fd, token, ev| {
-                    let _ = self.arm(fd, token, ev);
-                },
-            );
+        if let Some(w) = self.sockets.borrow_mut().remove(&fd) {
+            let _ = self.registry.deregister(&mut SourceFd(&fd));
+            self.by_token.borrow_mut().remove(&w.token);
         }
     }
 
-    /// Parks the running task until something may be ready (or 50 ms pass); returns
-    /// the runtime's ready bits.
-    pub fn park(&self) -> u32 {
+    /// Collects ready `(token, events)` pairs into `out` without blocking. Returns how many
+    /// kernel events were read: fewer than `max` means the set was drained.
+    pub fn poll(&self, out: &mut Vec<(u64, Ev)>, max: usize) -> usize {
+        out.clear();
+        let mut sockets = self.sockets.borrow_mut();
+        let by_token = self.by_token.borrow();
+        for token in self.pending.borrow_mut().drain(..) {
+            let Some(w) = by_token.get(&token).and_then(|fd| sockets.get(fd)) else {
+                continue;
+            };
+            let ev = Ev(w.ready.0 & (w.want.0 | Ev::HUP.0));
+            if ev != Ev::NONE && !out.iter().any(|&(t, _)| t == token) {
+                out.push((token, ev));
+            }
+        }
+        let mut events = self.events.borrow_mut();
+        if self
+            .poll
+            .borrow_mut()
+            .poll(&mut events, Some(Duration::ZERO))
+            .is_err()
+        {
+            return 0;
+        }
+        let mut raw = 0;
+        for e in events.iter().take(max) {
+            raw += 1;
+            if e.token().0 == WAKE_TOKEN as usize {
+                let mut buf = [0u8; 8];
+                while io::read(&self.wake.0, &mut buf).is_ok() {}
+                continue;
+            }
+            let r = Raised::from(e);
+            let Some(w) = by_token.get(&r.token).and_then(|fd| sockets.get_mut(fd)) else {
+                continue;
+            };
+            let mut got = Ev::NONE;
+            if r.read {
+                got = got | Ev::IN;
+            }
+            if r.write {
+                got = got | Ev::OUT;
+            }
+            if r.hup {
+                got = got | Ev::HUP;
+            }
+            w.ready = w.ready | got;
+            let ev = Ev(w.ready.0 & (w.want.0 | Ev::HUP.0));
+            if ev != Ev::NONE {
+                out.push((r.token, ev));
+            }
+        }
+        raw
+    }
+
+    /// Parks the running task until something may be ready or `timeout_ns` passes (negative:
+    /// no limit); returns the runtime's ready bits. The registration in the runtime's poller
+    /// is kept between parks (edge-triggered), which is sound because the reactor drains
+    /// this set before every park.
+    pub fn park(&self, timeout_ns: i64) -> u32 {
         let fd = self.poll.borrow().as_raw_fd();
+        self.parked.set(true);
         // SAFETY: the descriptor belongs to `self.poll`, which outlives the call.
-        rt::wait_fd(unsafe { BorrowedFd::borrow_raw(fd) }, 1, 50_000_000)
+        let got = rt::wait_fd(
+            unsafe { BorrowedFd::borrow_raw(fd) },
+            1 | rt::WAIT_KEEP,
+            timeout_ns,
+        );
+        self.parked.set(false);
+        got
+    }
+}
+
+impl Drop for Poller {
+    fn drop(&mut self) {
+        // `park` keeps this descriptor registered in the runtime's poller.
+        rt::forget_fd(self.poll.borrow().as_raw_fd());
     }
 }
 

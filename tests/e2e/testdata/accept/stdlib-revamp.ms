@@ -1,7 +1,7 @@
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {ReadStream, IoError, read_line} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import {PriorityQueue} from "@std/collections.ms"
+import {PriorityQueue} from "@std/queue.ms"
 
 type Key:
     id: Int
@@ -34,7 +34,7 @@ test "domain equality and hashing select interfaces":
     try expect_false(not (view.equals(Equal(b))))
 
 test "stable priority queue and optional capacity":
-    let queue = PriorityQueue(compare)
+    var queue = PriorityQueue(compare)
     queue.enqueue(Key(2, "later"))
     queue.enqueue(Key(1, "first"))
     queue.enqueue(Key(1, "second"))
@@ -49,7 +49,7 @@ test "stable priority queue and optional capacity":
     else:
         return fail("missing item")
 
-    let bounded = PriorityQueue(compare, 1)
+    var bounded = PriorityQueue(compare, 1)
     try expect_false(not (bounded.enqueue(Key(1, "only"))))
     try expect_false(bounded.enqueue(Key(0, "full")))
 
@@ -71,7 +71,7 @@ impl ReadStream for EchoReader:
     fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
-    let stream = ReadStream(EchoReader(0))
+    var stream = ReadStream(EchoReader(0))
     let omitted: Result[Optional[Bytes], IoError] = stream.read()
     try expect_equal(omitted, ok(some(Bytes([0]))))
     let supplied: Result[Optional[Bytes], IoError] = stream.read(8)

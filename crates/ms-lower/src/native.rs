@@ -633,20 +633,8 @@ impl<'a> FnLower<'a> {
             .b
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
             .expect("slot");
-        if self.needs_drop(t) {
-            let o = self.owned(Val { v: x, own: false });
-            self.b.emit(Op::Put, &[slot, o], Imm::None, None);
-        } else {
-            self.b.emit(Op::Store, &[slot, x], Imm::None, None);
-        }
+        self.b.emit(Op::Store, &[slot, x], Imm::None, None);
         let h = self.call_runtime("msrt_slot_hash", &[desc, slot], MTy::INT)?;
-        if self.needs_drop(t) {
-            let back = self
-                .b
-                .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
-                .expect("take");
-            self.drop_value(back);
-        }
         Ok(Val { v: h, own: false })
     }
 
@@ -2267,7 +2255,7 @@ impl<'a> FnLower<'a> {
                 let TyKind::Obj(_, parts) = self.b.m.types.kind(out).clone() else {
                     return Err(Error::new("group_by without a map result"));
                 };
-                let (key_ty, group_ty) = (parts[0], parts[1]);
+                let group_ty = parts[1];
                 let first = self.map_new(out)?;
                 let acc = self.fresh_var(out);
                 self.b.def_var(acc, first);
@@ -2278,16 +2266,11 @@ impl<'a> FnLower<'a> {
                     };
                     let (kd, vd) = s.map_descs(out)?;
                     let vd = vd.ok_or_else(|| Error::new("group_by without a value type"))?;
-                    // The lookup lends a copy of the key, taken back afterwards.
-                    let probe = s.owned(Val { v: k, own: false });
-                    let kslot = s.put_slot(probe);
+                    // The lookup only reads the key, so it lends the key itself.
+                    let kslot = s.lend_slot(k);
                     let m = s.b.use_var(acc);
                     let found =
                         s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
-                    if s.needs_drop(key_ty) {
-                        let back = s.take_slot(kslot, key_ty);
-                        s.drop_value(back);
-                    }
                     let missing =
                         s.b.emit(
                             ms_mir::ir::Op::PtrIsNull,
