@@ -1003,6 +1003,7 @@ dependencies = [
  "gimli",
  "ms-mir",
  "ms-rt-abi",
+ "object",
  "target-lexicon",
 ]
 

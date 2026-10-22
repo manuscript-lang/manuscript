@@ -1,14 +1,14 @@
 //! Real LLVM consumers validate native ELF, Mach-O/dSYM and COFF/PE source addresses.
 //! Missing consumer tools fail the test; the six-platform gate installs them.
 
-use ms_clif::{Options, compile, link::link};
+use ms_clif::{Options, compile};
 use ms_mir::{opt, parse::parse_module, verify::verify_module};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 mod support;
-use support::cc;
+use support::{cc, link_fixture};
 
 fn tool(program: &str) -> String {
     let key = if program == "llvm-dwarfdump" {
@@ -252,7 +252,7 @@ b0:
         std::fs::write(&obj, bytes).unwrap();
         check_lines(&obj, &absolute, optimized);
         let exe = d.join(format!("lines-{optimized}{}", std::env::consts::EXE_SUFFIX));
-        link(&obj, &runtime, &exe).unwrap();
+        link_fixture(&obj, &runtime, &exe).unwrap();
         let out = Command::new(&exe).output().unwrap();
         assert_eq!(out.status.code(), Some(0));
         assert_eq!(

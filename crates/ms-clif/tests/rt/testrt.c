@@ -191,3 +191,9 @@ int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
 }
 
 #include "callback.h"
+
+#ifdef __linux__
+/* The bundled linker has no libgcc; fixtures borrow the toolchain's compiler-builtins (see support/mod.rs),
+   whose unwind tables name Rust's personality routine. Nothing unwinds here. */
+void rust_eh_personality(void) {}
+#endif

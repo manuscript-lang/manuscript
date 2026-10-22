@@ -63,6 +63,12 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .unwrap_or(out)
         .join("ms-native");
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    // Linux programs are static musl executables linked by the bundled lld, so the runtime is built
+    // for musl. `ring`'s C sources need a C compiler here: building `ms` needs one, using it does not.
+    let musl = (std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")).then(|| {
+        let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
+        format!("{arch}-unknown-linux-musl")
+    });
     let mut command = Command::new(cargo);
     command
         .args(["build", "--release", "-p", "ms-native", "--manifest-path"])
@@ -73,14 +79,25 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
+    if let Some(triple) = &musl {
+        let cc = format!("CC_{}", triple.replace('-', "_"));
+        if std::env::var_os(&cc).is_none() {
+            command.env(cc, "cc");
+        }
+        command.args(["--target", triple]);
+    }
     let status = command.status().expect("run cargo to build ms-native");
     assert!(status.success(), "building ms-native failed");
     // The MSVC toolchain names a staticlib `ms_native.lib`; every other target uses `libms_native.a`.
     let msvc = std::env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|env| env == "msvc");
-    target.join(if msvc {
-        "release/ms_native.lib"
+    let release = match &musl {
+        Some(triple) => target.join(triple).join("release"),
+        None => target.join("release"),
+    };
+    release.join(if msvc {
+        "ms_native.lib"
     } else {
-        "release/libms_native.a"
+        "libms_native.a"
     })
 }
 

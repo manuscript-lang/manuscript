@@ -76,7 +76,7 @@ pub fn run_native_full(src: &str, opts: &Options, tag: &str) -> (Outcome, String
     let objp = d.join(format!("{tag}.o"));
     std::fs::write(&objp, obj).unwrap();
     let exe = d.join(tag);
-    link(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
+    support::link_fixture(&objp, runtime(), &exe).unwrap_or_else(|e| panic!("{e}"));
     let out = Command::new(&exe)
         .env("MSRT_LEAKCHECK", "1")
         .output()
@@ -282,17 +282,39 @@ fn real_runtime() -> &'static PathBuf {
         command
             .current_dir(&root)
             .args(["build", "--release", "-p", "ms-rt"]);
+        // The bundled Linux linker links musl, so the runtime is a musl build.
+        let musl = format!("{}-unknown-linux-musl", std::env::consts::ARCH);
+        if cfg!(target_os = "linux") {
+            command.args(["--target", &musl]);
+            command.env(format!("CC_{}", musl.replace('-', "_")), "cc");
+        }
         let st = command
             .arg("--target-dir")
             .arg(&target)
             .status()
             .expect("cargo build ms-rt");
         assert!(st.success(), "building ms-rt failed");
-        target.join(if cfg!(windows) {
-            "release/ms_rt.lib"
+        let release = if cfg!(target_os = "linux") {
+            target.join(&musl).join("release")
         } else {
-            "release/libms_rt.a"
-        })
+            target.join("release")
+        };
+        let name = if cfg!(windows) {
+            "ms_rt.lib"
+        } else {
+            "libms_rt.a"
+        };
+        // Parallel test processes share this target directory and each cargo
+        // run briefly replaces the archive, so take a private copy to link.
+        let built = release.join(name);
+        let copy = std::env::temp_dir().join(format!("ms-rt-{}-{name}", std::process::id()));
+        for _ in 0..100 {
+            if std::fs::copy(&built, &copy).is_ok() {
+                return copy;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        panic!("cannot copy {}", built.display());
     })
 }
 
