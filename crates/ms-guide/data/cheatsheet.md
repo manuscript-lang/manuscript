@@ -7,21 +7,19 @@ Statically typed; compiled to native code. Four-space indentation, `#` comments.
 import stdout from "@std/io.ms"
 import {expect_equal} from "@std/testing.ms"
 
-fn add(a: Int, b: Int) Int:
-    return a + b
-
-fn say(text: String) Result[Unit, Error]:
-    return stdout().write("{text}\n")
+fn add(a: Int, b: Int) Int: a + b
 
 export fn main() Int:
-    say("sum is {add(1, 2)}").get()
+    let xs = [1, 2, 3]
+    let big = xs.filter(fn(x): x > 1).map(fn(x): "{x * 2}")
+    stdout().write("sum {add(xs[0], 2)} {big.join(",")}\n").get()
     return 0
 
 test "addition":
     try expect_equal(add(1, 2), 3)
 ```
 
-- Compact: `xs[i]`, `xs[i] = v`; one-line bodies (`if n < 0: return 0`, `fn dbl(x: Int) Int: x * 2`); closures `fn(x): x + 1` infer types; `read_lines(stdin())` in `@std/streams.ms`; stdout flushes at exit.
+- Be terse: omit types a closure can infer, use one-line bodies (`if n < 0: return 0`; `fn f(x: Int) Int: x * 2` returns implicitly), `xs[i]`, `xs[i] = v`, `read_lines(stdin())` (`@std/streams.ms`), and `map`/`filter`/`fold`/`join`/`get(d)` over loops. stdout flushes at exit.
 - Workflow: `ms search_symbol <name or words>` finds a symbol (`<module>` lists one); `ms verify` (check, fmt, lint, test); `ms review`.
 - `main() Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `error(...)` (or a failing `try`) fails.
 - Imports: `import {a, b} from "@std/x.ms"` or `"./local.ms"`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
@@ -34,4 +32,3 @@ test "addition":
 - Methods: `impl T:` or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
 - Closures may change captures. `with f = try ...:` closes `f` at block end.
-- Rejected: reassigning a `let`; mixed list types; missing arguments; bare `none`; odd indentation.
