@@ -58,3 +58,20 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
 pub fn would_block(_: i32) -> bool {
     false
 }
+
+/// Windows pipes cannot be waited on with the process handle; the caller checks in slices.
+pub enum Waiter {}
+
+impl Waiter {
+    pub fn new(_exit: Option<sys::Fd>, _pipes: [sys::Fd; 3]) -> Option<Waiter> {
+        None
+    }
+
+    pub fn exited(&mut self) {
+        match *self {}
+    }
+
+    pub fn park(&self, _timeout_ns: i64) {
+        match *self {}
+    }
+}

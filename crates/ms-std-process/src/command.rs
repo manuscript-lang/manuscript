@@ -2,7 +2,8 @@
 //!
 //! Children start in their own process group (a job object on Windows) so a kill reaches the
 //! whole tree.
-//! Waiting polls in short slices that park the task, so other tasks run and a pending
+//! Waiting parks the task on the child's exit and its pipes at once (Linux pidfds); elsewhere it
+//! checks in short slices that park the task. Either way other tasks run and a pending
 //! cancellation kills the tree and unwinds.
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
@@ -10,7 +11,8 @@ use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
 use ms_std_rt::{cancel_pending, cancelled};
 
-/// How long a waiting task parks between checks of the child and its pipes.
+/// How long a waiting task parks between checks of the child and its pipes when it cannot park
+/// on the child's exit.
 const POLL_MS: i64 = 2;
 /// How long the pipes may stay open after the child exited (`exec.Cmd.WaitDelay`).
 const WAIT_DELAY_NS: i64 = 1_000_000_000;
@@ -36,7 +38,7 @@ pub fn now_ns() -> i64 {
         .elapsed()
         .as_nanos() as i64
 }
-use plat::{set_nonblocking, wait_io, would_block};
+use plat::{Waiter, set_nonblocking, wait_io, would_block};
 
 /// Parks the task `ms` milliseconds so other tasks run meanwhile.
 fn sleep_ms(ms: i64) {
@@ -124,6 +126,7 @@ pub fn run(
     let (mut overflow, mut timed_out, mut kept_open) = (false, false, false);
     let mut exited_at: Option<i64> = None;
     let mut buf = alloc::vec![0u8; 64 * 1024];
+    let mut waiter = Waiter::new(child.0.exit_fd(), [in_w.0, out_r.0, err_r.0]);
 
     loop {
         if cancel_pending() {
@@ -134,6 +137,9 @@ pub fn run(
             exited_at = None;
         } else if exited_at.is_none() {
             exited_at = Some(now_ns());
+            if let Some(w) = &mut waiter {
+                w.exited();
+            }
         }
         if exited_at.is_some() && !out_r.is_open() && !err_r.is_open() {
             break;
@@ -148,13 +154,17 @@ pub fn run(
             kept_open = true;
             break;
         }
-        let mut slice = POLL_MS;
-        if let Some(d) = deadline {
-            slice = slice.min(((d - now) / 1_000_000).max(1));
-        }
         let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
         if !ready.contains(&true) {
-            sleep_ms(slice);
+            let until = [deadline, exited_at.map(|t| t + WAIT_DELAY_NS)]
+                .into_iter()
+                .flatten()
+                .min();
+            if let Some(w) = &waiter {
+                w.park(until.map_or(-1, |u| u - now));
+            } else {
+                sleep_ms(until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)));
+            }
             continue;
         }
 
@@ -251,8 +261,9 @@ impl Subprocess {
             if deadline.is_some_and(|d| now >= d) {
                 return Err(Fail::status(STATUS_TIMEOUT));
             }
-            let slice = deadline.map_or(2, |d| ((d - now) / 1_000_000).clamp(1, 2));
-            sleep_ms(slice);
+            if !self.child.park_until_exit(deadline.map_or(-1, |d| d - now)) {
+                sleep_ms(deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)));
+            }
         }
     }
 
