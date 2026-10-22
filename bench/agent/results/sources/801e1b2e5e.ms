@@ -74,8 +74,7 @@ fn parse_primary(tokens: List[Token], pos: Int) Optional[Parsed]:
         if symbol_at(tokens, inner.next) == ")":
             return some(
                 Parsed(
-                    value: inner.value,
-                    next: inner.next + 1,
+                    value: inner.value, next: inner.next + 1,
                     zero_division: inner.zero_division
                 )
             )
@@ -86,8 +85,7 @@ fn parse_unary(tokens: List[Token], pos: Int) Optional[Parsed]:
         if let operand = parse_unary(tokens, pos + 1):
             return some(
                 Parsed(
-                    value: 0 - operand.value,
-                    next: operand.next,
+                    value: 0 - operand.value, next: operand.next,
                     zero_division: operand.zero_division
                 )
             )
@@ -107,23 +105,19 @@ fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
             return product_rest(
                 tokens,
                 Parsed(
-                    value: left.value * right.value,
-                    next: right.next,
+                    value: left.value * right.value, next: right.next,
                     zero_division: zero
                 )
             )
         if right.value == 0:
             return product_rest(
-                tokens,
-                Parsed(value: 0, next: right.next, zero_division: true)
+                tokens, Parsed(value: 0, next: right.next, zero_division: true)
             )
 
         return product_rest(
             tokens,
             Parsed(
-                value: left.value / right.value,
-                next: right.next,
-                zero_division: zero
+                value: left.value / right.value, next: right.next, zero_division: zero
             )
         )
 
@@ -146,8 +140,7 @@ fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
             return sum_rest(
                 tokens,
                 Parsed(
-                    value: left.value + right.value,
-                    next: right.next,
+                    value: left.value + right.value, next: right.next,
                     zero_division: zero
                 )
             )
@@ -155,9 +148,7 @@ fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
         return sum_rest(
             tokens,
             Parsed(
-                value: left.value - right.value,
-                next: right.next,
-                zero_division: zero
+                value: left.value - right.value, next: right.next, zero_division: zero
             )
         )
 

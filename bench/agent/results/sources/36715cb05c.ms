@@ -550,14 +550,8 @@ fn instruction(var a: Asm, ln: Int, name: String, rest: String) Result[Int, AsmE
     (
         a.items.append(
             Item(
-                ln: ln,
-                kind: 0,
-                opc: opc,
-                addr: a.ninstr,
-                ops: ops,
-                exprs: List[String](),
-                vals: List[Int](),
-                cnt: 0
+                ln: ln, kind: 0, opc: opc, addr: a.ninstr, ops: ops,
+                exprs: List[String](), vals: List[Int](), cnt: 0
             )
         )
     )
@@ -576,14 +570,8 @@ fn data_word(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
     (
         a.items.append(
             Item(
-                ln: ln,
-                kind: 1,
-                opc: 0,
-                addr: a.dcount,
-                ops: List[Operand](),
-                exprs: exprs,
-                vals: List[Int](),
-                cnt: 0
+                ln: ln, kind: 1, opc: 0, addr: a.dcount, ops: List[Operand](),
+                exprs: exprs, vals: List[Int](), cnt: 0
             )
         )
     )
@@ -601,14 +589,8 @@ fn data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) Result[Int, A
     (
         a.items.append(
             Item(
-                ln: ln,
-                kind: 2,
-                opc: 0,
-                addr: a.dcount,
-                ops: List[Operand](),
-                exprs: List[String](),
-                vals: vals,
-                cnt: 0
+                ln: ln, kind: 2, opc: 0, addr: a.dcount, ops: List[Operand](),
+                exprs: List[String](), vals: vals, cnt: 0
             )
         )
     )
@@ -635,14 +617,8 @@ fn data_space(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
     (
         a.items.append(
             Item(
-                ln: ln,
-                kind: 3,
-                opc: 0,
-                addr: a.dcount,
-                ops: List[Operand](),
-                exprs: fills,
-                vals: List[Int](),
-                cnt: count
+                ln: ln, kind: 3, opc: 0, addr: a.dcount, ops: List[Operand](),
+                exprs: fills, vals: List[Int](), cnt: count
             )
         )
     )
@@ -739,8 +715,7 @@ fn is_jump(opc: Int) Bool:
 
 # Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg, value) for two operands.
 fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) Result[
-    Int,
-    AsmError
+    Int, AsmError
 ]:
     if item.kind == 0:
         code.append(item.opc)
@@ -1030,16 +1005,9 @@ export fn main() Int:
             if is_int_token(piece):
                 inputs.append(int_value(piece))
     var a = Asm(
-        section: 0,
-        ninstr: 0,
-        dcount: 0,
-        budget: DEFAULT_BUDGET,
-        items: List[Item](),
-        symbols: Map[String, Int](),
-        equ_text: Map[String, String](),
-        busy: Set[String](),
-        text_labels: Set[String](),
-        seen_equ: Set[String](),
+        section: 0, ninstr: 0, dcount: 0, budget: DEFAULT_BUDGET, items: List[Item](),
+        symbols: Map[String, Int](), equ_text: Map[String, String](),
+        busy: Set[String](), text_labels: Set[String](), seen_equ: Set[String](),
         equ_val: Map[String, Int]()
     )
     for i in range(0, src_end):
@@ -1069,19 +1037,8 @@ export fn main() Int:
         regs.append(0)
     regs.set(8, MEM_WORDS)
     var vm = Machine(
-        code: code,
-        mem: mem,
-        regs: regs,
-        inputs: inputs,
-        budget: a.budget,
-        n: a.ninstr,
-        pc: start,
-        steps: 0,
-        z: 0,
-        l: 0,
-        in_pos: 0,
-        outbuf: BytesBuilder(),
-        last: -1
+        code: code, mem: mem, regs: regs, inputs: inputs, budget: a.budget, n: a.ninstr,
+        pc: start, steps: 0, z: 0, l: 0, in_pos: 0, outbuf: BytesBuilder(), last: -1
     )
     let status = run(var vm)
     if vm.last != -1 and vm.last != 10:

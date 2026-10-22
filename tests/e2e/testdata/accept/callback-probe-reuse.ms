@@ -29,8 +29,7 @@ test "callback inference retains captures and contextual metadata":
     )
     try expect_equal(values, [[11, 12], [12, 13]])
     let callable: fn(value: Int) fn(input: Int) Int = apply(
-        value: 1,
-        transform: fn(base): fn(item): fn(extra): item + extra + base
+        value: 1, transform: fn(base): fn(item): fn(extra): item + extra + base
     )
     try expect_equal(callable(value: 3)(input: 4), 8)
     let callback = Callback(fn(item: Int = 4): item + offset)
@@ -46,8 +45,7 @@ test "callback inference retains captures and contextual metadata":
     )
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
     let failed: Result[Int, Error] = apply(
-        value: 9,
-        transform: fn(item): error(Failure(item))
+        value: 9, transform: fn(item): error(Failure(item))
     )
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")

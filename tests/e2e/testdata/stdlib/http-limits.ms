@@ -30,9 +30,7 @@ test "serve timeout closes idle connections":
 
     with server = (
         net.serve(
-            address: "127.0.0.1:0",
-            handler: handler,
-            timeout: 300.milliseconds
+            address: "127.0.0.1:0", handler: handler, timeout: 300.milliseconds
         ) | try expect_ok
     ):
         with silent = (net.connect(server.address(), 2.seconds) | try expect_ok):

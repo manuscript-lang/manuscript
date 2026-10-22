@@ -11,9 +11,7 @@ fn entries(count: Int) List[ArchiveEntry]:
     for i in range(0, count):
         out.append(
             ArchiveEntry(
-                "dir/file{i}.txt",
-                "contents of file {i}".to_bytes(),
-                directory: false
+                "dir/file{i}.txt", "contents of file {i}".to_bytes(), directory: false
             )
         )
     return out

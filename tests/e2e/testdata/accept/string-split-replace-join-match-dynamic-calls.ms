@@ -10,9 +10,7 @@ test "omitted and supplied caps":
     try expect_true(
         (
             "a-b-c".replace(
-                old: "-",
-                new: "+",
-                max_replacements: some(2)
+                old: "-", new: "+", max_replacements: some(2)
             ) == "a+b+c"
         )
     )

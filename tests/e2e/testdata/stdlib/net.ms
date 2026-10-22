@@ -7,16 +7,14 @@ test "IP parsing CIDR normalization and containment":
     try expect_false(
         not (
             try contains_ip(
-                try parse_cidr("192.0.2.0/24"),
-                try parse_ip("192.0.2.255")
+                try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.2.255")
             )
         )
     )
     try expect_false(
         (
             try contains_ip(
-                try parse_cidr("192.0.2.0/24"),
-                try parse_ip("192.0.3.0")
+                try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.3.0")
             )
         )
     )
@@ -30,8 +28,7 @@ test "TCP loopback writes reads half close and EOF":
             with server = try listener.accept(2.seconds):
                 try client.write("hello", 2.seconds)
                 try expect_equal(
-                    (try server.read(5, 2.seconds)).get(),
-                    "hello".to_bytes()
+                    (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
                 )
                 try expect_equal(server.peer_address(), client.local_address())
                 try client.shutdown_write()

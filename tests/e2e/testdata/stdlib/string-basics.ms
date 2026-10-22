@@ -52,21 +52,12 @@ type LineCase:
 
 test "lines preserve interior empties and recognize LF and CRLF only":
     let cases = [
-        LineCase("", []),
-        LineCase("\n", [""]),
-        LineCase("\r\n", [""]),
-        LineCase("\n\n", ["", ""]),
-        LineCase("\r\n\r\n", ["", ""]),
-        LineCase("a\n", ["a"]),
-        LineCase("a\r\n", ["a"]),
-        LineCase("a\n\n", ["a", ""]),
-        LineCase("a\r\nb\nc", ["a", "b", "c"]),
-        LineCase("a\r", ["a\r"]),
-        LineCase("\r", ["\r"]),
-        LineCase("\r\r\n", ["\r"]),
-        LineCase("a\rb", ["a\rb"]),
-        LineCase("é\r\n🙂\n", ["é", "🙂"]),
-        LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
+        LineCase("", []), LineCase("\n", [""]), LineCase("\r\n", [""]),
+        LineCase("\n\n", ["", ""]), LineCase("\r\n\r\n", ["", ""]),
+        LineCase("a\n", ["a"]), LineCase("a\r\n", ["a"]), LineCase("a\n\n", ["a", ""]),
+        LineCase("a\r\nb\nc", ["a", "b", "c"]), LineCase("a\r", ["a\r"]),
+        LineCase("\r", ["\r"]), LineCase("\r\r\n", ["\r"]), LineCase("a\rb", ["a\rb"]),
+        LineCase("é\r\n🙂\n", ["é", "🙂"]), LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
         LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"])
     ]
     for line_case in cases:

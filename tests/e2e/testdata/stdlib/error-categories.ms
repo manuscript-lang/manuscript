@@ -64,9 +64,7 @@ test "shared categories keep exact standard domain values":
         (
             category(
                 TomlError.InvalidData(
-                    line: 1,
-                    column: 2,
-                    reason: "detail"
+                    line: 1, column: 2, reason: "detail"
                 )
             ) != some(ErrorCategory.InvalidData)
         )
@@ -86,9 +84,7 @@ test "shared categories keep exact standard domain values":
         expected: some(ErrorCategory.LimitExceeded)
     )
     let original: Error = YamlError.InvalidData(
-        line: 3,
-        column: 9,
-        reason: "retained detail"
+        line: 3, column: 9, reason: "retained detail"
     )
     category(original) | try expect_equal(expected: some(ErrorCategory.InvalidData))
 
@@ -107,9 +103,7 @@ test "shared categories keep exact standard domain values":
 
 test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [
-        NetworkError.Timeout,
-        HttpError.Timeout,
-        CommandError.Timeout
+        NetworkError.Timeout, HttpError.Timeout, CommandError.Timeout
     ]
     let query = category
     for cause in causes:
@@ -117,16 +111,13 @@ test "timeout classification keeps timeout spelling out of generic handling":
 
 test "classification does not parse messages invoke user code or guess domain-specific cases":
     let custom = CustomError(
-        calls: 0,
-        message: "filesystem: file or directory not found"
+        calls: 0, message: "filesystem: file or directory not found"
     )
     (category(custom).is_some() or custom.calls != 0) | try expect_false
     category(PathError.InvalidInput).is_some() | try expect_false
     let causes: List[Error] = [
-        IoError.Failed("not found; operation timed out"),
-        NumberError.OutOfRange,
-        CommandError.OutputLimit,
-        CryptoError.AuthenticationFailed,
+        IoError.Failed("not found; operation timed out"), NumberError.OutOfRange,
+        CommandError.OutputLimit, CryptoError.AuthenticationFailed,
         YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]

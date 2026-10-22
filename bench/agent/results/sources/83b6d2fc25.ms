@@ -250,15 +250,8 @@ fn is_directive(w: String) Bool:
 
 fn plain(line: Int) Scope:
     return Scope(
-        line: line,
-        auto_on: false,
-        target: "",
-        stem: "",
-        first: "",
-        deps: "",
-        newer: "",
-        order: "",
-        binds: []
+        line: line, auto_on: false, target: "", stem: "", first: "", deps: "",
+        newer: "", order: "", binds: []
     )
 
 fn is_auto(name: String) Bool:
@@ -429,8 +422,7 @@ fn raw_at(raw: List[String], i: Int) String:
 
 # Expands argument `i` (missing arguments are empty).
 fn arg(var st: St, sc: Scope, stack: List[String], raw: List[String], i: Int) Result[
-    String,
-    Fatal
+    String, Fatal
 ]:
     if i >= raw.length():
         return ok("")
@@ -446,8 +438,7 @@ fn is_func(name: String) Bool:
     ].contains(name)
 
 fn lookup(var st: St, sc: Scope, stack: List[String], name: String) Result[
-    String,
-    Fatal
+    String, Fatal
 ]:
     for b in sc.binds.reversed():
         if b.name == name:
@@ -496,8 +487,7 @@ fn match_close(cs: List[String], start: Int, open: String, close: String) Int:
     return -1
 
 fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: String) Result[
-    String,
-    Fatal
+    String, Fatal
 ]:
     let raw = split_args(body)
 
@@ -675,8 +665,7 @@ fn if_min(a: Int, b: Int) Int:
 
 # Resolves `inner` (the text between a reference's brackets).
 fn reference(var st: St, sc: Scope, stack: List[String], inner: String) Result[
-    String,
-    Fatal
+    String, Fatal
 ]:
     let ic = inner.chars()
     let k = index_of_space(ic)
@@ -693,18 +682,12 @@ fn reference(var st: St, sc: Scope, stack: List[String], inner: String) Result[
         let eq = index_of(rest, "=")
         let vname = (
             try expand(
-                var st,
-                sc.clone(),
-                stack.clone(),
-                ic.take(colon).join("")
+                var st, sc.clone(), stack.clone(), ic.take(colon).join("")
             )
         ).trim()
         let from = try expand(var st, sc.clone(), stack.clone(), rest.take(eq).join(""))
         let to = try expand(
-            var st,
-            sc.clone(),
-            stack.clone(),
-            rest.drop(eq + 1).join("")
+            var st, sc.clone(), stack.clone(), rest.drop(eq + 1).join("")
         )
         let value = try lookup(var st, sc, stack, vname)
         var pat = from
@@ -763,8 +746,7 @@ fn subst_colon(cs: List[String]) Int:
 
 # Expands text: `$$`, `$(...)`, `${...}` and `$X` references.
 fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
-    String,
-    Fatal
+    String, Fatal
 ]:
     let cs = text.chars()
     let n = cs.length()
@@ -882,8 +864,7 @@ fn push_frame(var mk: Mk, parent: Bool, cond: Bool, num: Int) Result[Unit, Fatal
     return ok(unit)
 
 fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Result[
-    Unit,
-    Fatal
+    Unit, Fatal
 ]:
     let rest = text.chars().drop(word.length()).join("").trim()
 
@@ -924,10 +905,7 @@ fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Resul
                 mk.frames.set(
                     mk.frames.length() - 1,
                     Frame(
-                        parent: f.parent,
-                        cond: f.cond,
-                        in_else: true,
-                        line: f.line
+                        parent: f.parent, cond: f.cond, in_else: true, line: f.line
                     )
                 )
             )
@@ -978,9 +956,7 @@ fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
                     st.vars.add(
                         name,
                         Var(
-                            value: join_sep(old.value, v),
-                            simple: true,
-                            cmd: false
+                            value: join_sep(old.value, v), simple: true, cmd: false
                         )
                     )
                 )
@@ -992,8 +968,7 @@ fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
                         name,
                         Var(
                             value: join_sep(
-                                old.value,
-                                value_raw
+                                old.value, value_raw
                             ),
                             simple: false,
                             cmd: false
@@ -1006,8 +981,7 @@ fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
     return ok(unit)
 
 fn rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) Result[
-    Unit,
-    Fatal
+    Unit, Fatal
 ]:
     let targets_raw = cs.take(col).join("")
     let rest = cs.drop(col + 1)
@@ -1041,11 +1015,7 @@ fn rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) Resul
         return ok(unit)
 
     mk.rule = Rule(
-        targets: targets,
-        normal: normal,
-        order: order,
-        recipe: recipe,
-        line: num
+        targets: targets, normal: normal, order: order, recipe: recipe, line: num
     )
     return ok(unit)
 
@@ -1079,9 +1049,7 @@ fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
                 .pats
                 .append(
                     PatRule(
-                        pattern: t,
-                        normal: r.normal.clone(),
-                        order: r.order.clone(),
+                        pattern: t, normal: r.normal.clone(), order: r.order.clone(),
                         recipe: r.recipe.clone()
                     )
                 )
@@ -1110,9 +1078,7 @@ fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
                 .add(
                     t,
                     Explicit(
-                        name: t,
-                        normal: r.normal.clone(),
-                        order: r.order.clone(),
+                        name: t, normal: r.normal.clone(), order: r.order.clone(),
                         recipe: r.recipe.clone()
                     )
                 )
@@ -1174,16 +1140,9 @@ fn logical_lines(lines: List[String]) List[Logical]:
 
 fn parse(var st: St, lines: List[String]) Result[Mk, Fatal]:
     var mk = Mk(
-        rules: Map[String, Explicit](),
-        pats: [],
-        phony: [],
-        is_open: false,
-        rule: empty_rule(),
-        frames: [],
-        memo: Map[String, Bool](),
-        stack: [],
-        ran: false,
-        dry: false
+        rules: Map[String, Explicit](), pats: [], phony: [], is_open: false,
+        rule: empty_rule(), frames: [], memo: Map[String, Bool](), stack: [],
+        ran: false, dry: false
     )
     for lg in logical_lines(lines):
         try parse_line(var st, var mk, lg.num, lg.text)
@@ -1236,11 +1195,8 @@ fn resolve(st: St, mk: Mk, name: String) Resolved:
     if let ex = mk.rules.get(name):
         if ex.recipe.length() > 0:
             return Resolved(
-                found: true,
-                normal: ex.normal.clone(),
-                order: ex.order.clone(),
-                recipe: ex.recipe.clone(),
-                stem: ""
+                found: true, normal: ex.normal.clone(), order: ex.order.clone(),
+                recipe: ex.recipe.clone(), stem: ""
             )
     let idx = find_pattern(st, mk, name, 0)
 
@@ -1255,19 +1211,12 @@ fn resolve(st: St, mk: Mk, name: String) Resolved:
             order = order.concat(ex.order)
 
         return Resolved(
-            found: true,
-            normal: normal,
-            order: order,
-            recipe: p.recipe.clone(),
-            stem: s
+            found: true, normal: normal, order: order, recipe: p.recipe.clone(), stem: s
         )
 
     if let ex = mk.rules.get(name):
         return Resolved(
-            found: true,
-            normal: ex.normal.clone(),
-            order: ex.order.clone(),
-            recipe: [],
+            found: true, normal: ex.normal.clone(), order: ex.order.clone(), recipe: [],
             stem: ""
         )
 
@@ -1332,8 +1281,7 @@ fn is_phony(mk: Mk, name: String) Bool:
 
 # Runs (or, in a dry run, prints) the recipe of a rule for `name`.
 fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[String]) Result[
-    Unit,
-    Fatal
+    Unit, Fatal
 ]:
     mk.ran = true
     var first = ""
@@ -1345,15 +1293,8 @@ fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[Str
 
     for rl in r.recipe:
         let sc = Scope(
-            line: rl.line,
-            auto_on: true,
-            target: name,
-            stem: r.stem,
-            first: first,
-            deps: all,
-            newer: newer_s,
-            order: order,
-            binds: []
+            line: rl.line, auto_on: true, target: name, stem: r.stem, first: first,
+            deps: all, newer: newer_s, order: order, binds: []
         )
         let text = try expand(var st, sc, [], rl.text)
         let cs = text.trim().chars()
@@ -1467,8 +1408,7 @@ fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fat
     return ok(changed)
 
 fn build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool) Result[
-    Unit,
-    Fatal
+    Unit, Fatal
 ]:
     var mk = try parse(var st, lines)
     mk.dry = dry
@@ -1499,11 +1439,7 @@ fn build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool)
     return ok(unit)
 
 fn dep_walk(
-    var st: St,
-    mk: Mk,
-    name: String,
-    var stack: List[String],
-    var seen: List[String],
+    var st: St, mk: Mk, name: String, var stack: List[String], var seen: List[String],
     var out: List[String]
 ) Result[Unit, Fatal]:
     let r = resolve(st, mk, name)
@@ -1577,9 +1513,7 @@ fn set_vars(var st: St, args: List[String]) List[String]:
                 .add(
                     cs.take(e).join(""),
                     Var(
-                        value: cs.drop(e + 1).join(""),
-                        simple: false,
-                        cmd: true
+                        value: cs.drop(e + 1).join(""), simple: false, cmd: true
                     )
                 )
             )
@@ -1618,8 +1552,7 @@ fn touch_req(var st: St, args: List[String]) Result[Unit, Fatal]:
     return ok(unit)
 
 fn dispatch(var st: St, mk_lines: List[String], line: String, words: List[String]) Result[
-    Unit,
-    Fatal
+    Unit, Fatal
 ]:
     let cmd = words.get(0)
     let args = words.drop(1)

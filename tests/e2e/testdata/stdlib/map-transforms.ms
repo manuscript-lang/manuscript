@@ -81,10 +81,7 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 
 test "Map key transformation retains first equal keys and last values":
     let source: Map[Int, Counter] = {
-        2: Counter(1),
-        1: Counter(2),
-        4: Counter(3),
-        3: Counter(4)
+        2: Counter(1), 1: Counter(2), 4: Counter(3), 3: Counter(4)
     }
     var created: List[Key] = []
     var mapped = map_keys(
@@ -149,9 +146,7 @@ test "empty transformations skip callbacks and allocate independent storage":
 
 test "Map reverse fold and last match retain ordered snapshots":
     let source: Map[String, Counter] = {
-        "b": Counter(2),
-        "a": Counter(1),
-        "c": Counter(3)
+        "b": Counter(2), "a": Counter(1), "c": Counter(3)
     }
     let initial: List[String] = []
     var folded = reverse_map(

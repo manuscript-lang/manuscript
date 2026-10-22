@@ -166,9 +166,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 test "Map filter copies ordered membership and get_or never inserts":
     var counter = Counter(0)
     let values: Map[String, Counter] = {
-        "b": counter.clone(),
-        "a": Counter(2),
-        "c": Counter(3)
+        "b": counter.clone(), "a": Counter(2), "c": Counter(3)
     }
     var selected = values.clone().filter(fn(k, v): k != "a" and v.calls >= 0)
     try expect_false(selected.keys() != ["b", "c"] or values.length() != 3)

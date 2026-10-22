@@ -31,22 +31,18 @@ test "typed SHA selectors match their algorithms and retain bound operations":
     let key = "key".to_bytes()
     for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
         try expect_equal(
-            (try algorithm.hmac(key, data)).length(),
-            (algorithm.digest(data).length())
+            (try algorithm.hmac(key, data)).length(), (algorithm.digest(data).length())
         )
     let hmac_operation = HashAlgorithm.Sha512.hmac
     try expect_equal(
-        (try hmac_operation(key, data)),
-        (try HashAlgorithm.Sha512.hmac(key, data))
+        (try hmac_operation(key, data)), (try HashAlgorithm.Sha512.hmac(key, data))
     )
 
 test "typed compression preserves bytes limits errors and optional arguments":
     let data = "typed codecs typed codecs".to_bytes()
 
     for format in [
-        CompressionFormat.Gzip,
-        CompressionFormat.Zlib,
-        CompressionFormat.Deflate
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
         let name = match format:
             Gzip: "gzip"
@@ -100,14 +96,12 @@ test "typed archives retain entry limits validation and existing string calls":
         try expect_equal(format.unpack(encoded, ArchiveLimits(0)), limited)
         let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
         try expect_equal(
-            format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]),
-            invalid
+            format.pack([ArchiveEntry("../escape", "".to_bytes(), false)]), invalid
         )
         try expect_equal(format.pack(entries, -1), invalid)
 
     let stored = ArchiveFormat.Zip.pack
     let unpacker = ArchiveFormat.Zip.unpack
     try expect_equal(
-        (stored(entries, none) | try | unpacker(ArchiveLimits()) | try),
-        entries
+        (stored(entries, none) | try | unpacker(ArchiveLimits()) | try), entries
     )

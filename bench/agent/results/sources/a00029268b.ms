@@ -136,8 +136,7 @@ fn cut_word(text: String) Word:
     while i < cs.length() and not is_space(cs.get(i)):
         i += 1
     return Word(
-        head: join_range(cs, 0, i),
-        rest: join_range(cs, i, cs.length()).trim_start()
+        head: join_range(cs, 0, i), rest: join_range(cs, i, cs.length()).trim_start()
     )
 
 fn dash(s: String) String:
@@ -576,9 +575,7 @@ fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fa
             labs.append(l)
 
     return commit(
-        var app,
-        idx,
-        [Update(field: "labels", norm: unique_sorted(labs).join(","))]
+        var app, idx, [Update(field: "labels", norm: unique_sorted(labs).join(","))]
     )
 
 fn sign_split(tok: String) Word:
@@ -609,18 +606,9 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "empty title"))
 
     var it = Issue(
-        id: app.next_id,
-        title: title,
-        state: app.initial,
-        priority: "medium",
-        assignee: none,
-        reporter: some(app.actor),
-        points: none,
-        due: none,
-        labels: [],
-        comments: [],
-        created: 0,
-        updated: 0
+        id: app.next_id, title: title, state: app.initial, priority: "medium",
+        assignee: none, reporter: some(app.actor), points: none, due: none, labels: [],
+        comments: [], created: 0, updated: 0
     )
     let base = it.clone()
     let updates = try parse_updates(toks.drop(1))
@@ -660,8 +648,7 @@ fn trans_guards(app: App, src: String, dst: String) Optional[List[String]]:
     return none
 
 fn move_core(var app: App, id: Int, to: String, comment: String) Result[
-    List[String],
-    Fail
+    List[String], Fail
 ]:
     let idx = find_index(app, id).get()
     let it = app.issues.get(idx).clone()
@@ -972,11 +959,7 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
 
                 out.append(
                     Tok(
-                        kind: "TERM",
-                        field: name,
-                        op: op,
-                        value: value,
-                        quoted: quoted
+                        kind: "TERM", field: name, op: op, value: value, quoted: quoted
                     )
                 )
                 i = p
@@ -994,21 +977,13 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
                 if word == "AND" or word == "OR" or word == "NOT":
                     out.append(
                         Tok(
-                            kind: word,
-                            field: "",
-                            op: "",
-                            value: word,
-                            quoted: false
+                            kind: word, field: "", op: "", value: word, quoted: false
                         )
                     )
                 else:
                     out.append(
                         Tok(
-                            kind: "BAD",
-                            field: "",
-                            op: "",
-                            value: word,
-                            quoted: false
+                            kind: "BAD", field: "", op: "", value: word, quoted: false
                         )
                     )
 
@@ -1196,8 +1171,7 @@ fn split_limit(text: String) Clause:
         b -= 1
     if n > 0 and e < s and join_range(cs, b, e) == "limit":
         return Clause(
-            head: join_range(cs, 0, b).trim_end(),
-            found: true,
+            head: join_range(cs, 0, b).trim_end(), found: true,
             tail: join_range(cs, s, n)
         )
 
@@ -1212,8 +1186,7 @@ fn split_sort(text: String) Clause:
         if i == 0 or is_space(cs.get(i - 1)):
             if join_range(cs, i, i + 4) == "sort" and is_space(cs.get(i + 4)):
                 return Clause(
-                    head: join_range(cs, 0, i).trim_end(),
-                    found: true,
+                    head: join_range(cs, 0, i).trim_end(), found: true,
                     tail: join_range(cs, i + 4, n)
                 )
         i += 1
@@ -1634,8 +1607,7 @@ fn cmd_view(var app: App, rest: String) Result[List[String], Fail]:
     return error(Fail(msg: "usage: view save|run|list|show|delete"))
 
 fn bulk_one(var app: App, verb: String, args: List[String], id: Int) Result[
-    List[String],
-    Fail
+    List[String], Fail
 ]:
     if verb == "move":
         return move_core(var app, id, args.get(0), "")
@@ -1986,17 +1958,8 @@ fn show(r: Result[List[String], Fail]) Unit:
 
 export fn main() Int:
     var app = App(
-        t: 0,
-        today: "1970-01-01",
-        actor: "system",
-        has_workflow: false,
-        initial: "",
-        states: [],
-        finals: [],
-        trans: [],
-        issues: [],
-        next_id: 1,
-        journal: [],
+        t: 0, today: "1970-01-01", actor: "system", has_workflow: false, initial: "",
+        states: [], finals: [], trans: [], issues: [], next_id: 1, journal: [],
         views: Map[String, String]()
     )
     let lines = read_all()

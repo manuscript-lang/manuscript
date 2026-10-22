@@ -24,30 +24,23 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
             (
                 fs.write_file(
-                    path: "{root}/{name}",
-                    data: "",
-                    replace: false
+                    path: "{root}/{name}", data: "", replace: false
                 ) | try expect_ok
             )
         let matches = (fs.glob(path: root, pattern: "**/*.\{txt,md\}") | try expect_ok)
         matches | try expect_equal(expected: ["a.txt", "b.md", "sub/c.txt"])
         (
             fs.glob(
-                path: root,
-                pattern: "**/*.\{txt,md\}",
-                max_entries: 2
+                path: root, pattern: "**/*.\{txt,md\}", max_entries: 2
             ) | try expect_fs_error(expected: FileSystemError.LimitExceeded)
         )
         (
             fs.glob(
-                path: root,
-                pattern: "\{a.txt,[\}"
+                path: root, pattern: "\{a.txt,[\}"
             ) | try expect_fs_error(expected: FileSystemError.InvalidInput)
         )
         let options = GlobOptions(
-            patterns: ["*.txt"],
-            exclude: ["sub/**"],
-            follow_links: false
+            patterns: ["*.txt"], exclude: ["sub/**"], follow_links: false
         )
         let entries = (
             try expect_ok(
@@ -72,28 +65,22 @@ test "ordinary filesystem misuse retains typed cases":
         let file = "{temporary.path()}/file"
         let created = (
             fs.create_directory(
-                path: directory,
-                recursive: false
+                path: directory, recursive: false
             ) | try expect_ok
         )
         let child = (
             fs.write_file(
-                path: "{directory}/child",
-                data: "x",
-                replace: false
+                path: "{directory}/child", data: "x", replace: false
             ) | try expect_ok
         )
         let written = (
             fs.write_file(
-                path: file,
-                data: "abc",
-                replace: false
+                path: file, data: "abc", replace: false
             ) | try expect_ok
         )
         (
             fs.remove(
-                path: directory,
-                recursive: false
+                path: directory, recursive: false
             ) | try expect_fs_error(expected: FileSystemError.NotEmpty)
         )
         (
@@ -108,8 +95,7 @@ test "ordinary filesystem misuse retains typed cases":
         )
         (
             fs.create_directory(
-                path: file,
-                recursive: false
+                path: file, recursive: false
             ) | try expect_fs_error(expected: FileSystemError.AlreadyExists)
         )
 
@@ -121,8 +107,7 @@ test "ordinary filesystem misuse retains typed cases":
             )
             (
                 reader.seek(
-                    offset: -1,
-                    origin: 0
+                    offset: -1, origin: 0
                 ) | try expect_fs_error(expected: FileSystemError.InvalidInput)
             )
             (
@@ -152,9 +137,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         let path = "{directory}/data.txt"
         let written = (
             fs.write_file(
-                path: path,
-                data: "hello",
-                replace: false
+                path: path, data: "hello", replace: false
             ) | try expect_ok
         )
         fs.read_file(path: path, max_bytes: 5) | try expect_ok | try expect_equal(
@@ -189,9 +172,7 @@ test "file handles positional I/O stream adapters and closed errors":
         let path = "{temporary.path()}/data.txt"
         let written = (
             fs.write_file(
-                path: path,
-                data: "abcdef",
-                replace: false
+                path: path, data: "abcdef", replace: false
             ) | try expect_ok
         )
         let handle = (fs.open(path: path, flags: "r+", mode: 384) | try expect_ok)

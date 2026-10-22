@@ -35,12 +35,10 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         )
         try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
         try expect_equal(
-            unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)),
-            limited
+            unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)), limited
         )
         try expect_equal(
-            unpack(packed, format, ArchiveLimits(max_total_bytes: 7)),
-            limited
+            unpack(packed, format, ArchiveLimits(max_total_bytes: 7)), limited
         )
 
 test "archives reject traversal paths":
