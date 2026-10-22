@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, OBJ_HEADER, SHARED_VALUE, leaf_type};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, SHARED_VALUE, leaf_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -934,9 +934,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         if boxed && self.has_tail(ty, &fields) {
             return vec![self.copy_boxed_iter(ty, &fields, vs[0])];
         }
-        let (leaves, slots_total) = match &shape.alt {
-            Some(AltRepr::Boxed { block, .. }) => (block.clone(), block.len()),
-            _ => (shape.leaves.clone(), shape.leaves.len()),
+        let leaves = match &shape.alt {
+            Some(AltRepr::Boxed { block, .. }) => block.clone(),
+            _ => shape.leaves.clone(),
         };
         // Source leaves: boxed values are loaded from the block.
         let src: Vs = if boxed {
@@ -949,12 +949,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b.append_block_param(join, leaf_type(*l));
         }
         let tag = src[0];
-        let mut any = false;
         for (c, case) in fields.iter().enumerate() {
             if !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
                 continue;
             }
-            any = true;
             let this = self.b.create_block();
             let next = self.b.create_block();
             let is = self.b.ins().icmp_imm_s(IntCC::Equal, tag, c as i64);
@@ -974,7 +972,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.b.ins().jump(join, &bargs(&out));
             self.b.switch_to_block(next);
         }
-        let _ = (any, slots_total);
         self.b.ins().jump(join, &bargs(&src));
         self.b.switch_to_block(join);
         let out = self.b.block_params(join).to_vec();
@@ -1087,7 +1084,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         )
     }
 
-    pub fn lower_func(&mut self, f: &Func, _index: usize) {
+    pub fn lower_func(&mut self, f: &Func) {
         let rpo = f.rpo();
         self.g.scope_base = self.g.scopes.len() as u32;
         let base = self.g.scope_base;
@@ -1322,12 +1319,6 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.rt_call("msrt_fault_depth", &[]);
             }
             FaultKind::Unreachable => {
-                let id = self
-                    .g
-                    .module
-                    .declare_anonymous_data(false, false)
-                    .expect("data");
-                let _ = id;
                 self.unsupported("fault unreachable_code message");
             }
             FaultKind::Message(s) => {
@@ -1601,11 +1592,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
             Op::RecGet => {
-                let Imm::Field(r, i) = inst.imm else {
+                let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
-                let _ = r;
                 let (_, at, w) = self.fields_of(ty)[i as usize];
                 self.a(inst, 0)[at..at + w].to_vec()
             }
@@ -1835,7 +1825,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let obj = self.a(inst, 0)[0];
                 vec![self.add_imm(obj, SHARED_VALUE)]
             }
-            Op::ClosureNew => self.closure_new(inst, res_ty.expect("closure result")),
+            Op::ClosureNew => self.closure_new(inst),
             Op::ClosureCap => {
                 let Imm::Idx(i) = inst.imm else {
                     unreachable!()
@@ -1993,7 +1983,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.call_id(id, &args)
             }
             Op::CallInd => self.call_closure(f, inst),
-            Op::CallMethod => self.call_method(f, inst),
+            Op::CallMethod => self.call_method(inst),
             Op::CallRt => self.call_extern(f, inst),
             Op::FuncAddr => {
                 let Imm::Func(g) = inst.imm else {
@@ -2266,7 +2256,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    fn closure_new(&mut self, inst: &Inst, _ty: Ty) -> Vs {
+    fn closure_new(&mut self, inst: &Inst) -> Vs {
         let Imm::Func(c) = inst.imm else {
             unreachable!()
         };
@@ -2299,7 +2289,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             let v = self.a(inst, i);
             self.store_leaves(obj, *off, leaves, &v);
         }
-        let _ = OBJ_HEADER;
         vec![obj]
     }
 
@@ -2324,7 +2313,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.inst_results(c).to_vec()
     }
 
-    fn call_method(&mut self, _f: &Func, inst: &Inst) -> Vs {
+    fn call_method(&mut self, inst: &Inst) -> Vs {
         let Imm::Method(iface, k) = inst.imm else {
             unreachable!()
         };
