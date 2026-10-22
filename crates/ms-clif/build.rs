@@ -166,10 +166,19 @@ fn strip_members(archive: &Path) {
     }
     let rebuilt = archive.with_extension("rebuilt");
     let _ = std::fs::remove_file(&rebuilt);
-    let mut args: Vec<&std::ffi::OsStr> = vec!["rcs".as_ref(), rebuilt.as_os_str()];
-    args.extend(members.iter().map(|m| std::ffi::OsStr::new(m.as_str())));
+    // Thousands of members overflow the Windows command line, so pass them in a response file.
+    let list = dir.join("members.rsp");
+    std::fs::write(&list, members.join("\n")).expect("write the member list");
+    let response = format!("@{}", list.display());
     assert!(
-        run("llvm-ar", &args),
+        run(
+            "llvm-ar",
+            &[
+                "rcs".as_ref(),
+                rebuilt.as_os_str(),
+                std::ffi::OsStr::new(&response)
+            ]
+        ),
         "cannot rebuild {}",
         archive.display()
     );
