@@ -650,6 +650,35 @@ pub unsafe extern "C-unwind" fn msrt_map_slot(
     }
 }
 
+/// Like [`msrt_map_slot`] but `key` is only borrowed: it is copied into the map when the entry is
+/// absent, so a lookup that hits never allocates a key.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    default: *mut u8,
+) -> *mut u8 {
+    // SAFETY: caller contract; the value type is an 8-byte scalar.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| {
+            let l = layout(kd, Some(vd));
+            let h = hash_key::<K>(kd, key);
+            if let Some(i) = find::<K>(m, kd, &l, key, h) {
+                return slot(m, &l, i).add(l.voff);
+            }
+            // Absent: own a copy of the key and insert it.
+            let owned = alloc::alloc((kd.size as usize).max(8));
+            slot_copy(kd, key, owned);
+            let at = upsert_k::<K>(m, kd, Some(vd), owned, default, false).0;
+            alloc::free(owned);
+            at
+        })
+    }
+}
+
 /// `add_default(key, value)`: stores only when absent; both consumed.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_add_default(

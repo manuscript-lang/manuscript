@@ -18,6 +18,17 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
     matches!(m.types.kind(t), TyKind::Obj(n, _) if n == "Map" || n == "Set")
 }
 
+/// `x` of `x.clone()`.
+fn clone_receiver(e: &Expr) -> Option<&Expr> {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    let ExprKind::Member { left, name } = &callee.kind else {
+        return None;
+    };
+    (name.as_str() == "clone" && args.is_empty()).then_some(&**left)
+}
+
 impl<'a> FnLower<'a> {
     /// `m.add(k, m.get(k).get(d) <op> x)` on an `Int`-valued map held in a local, as one probe
     /// (`+`, `-` with the read on the left, `*`). The runtime finds or creates the entry with
@@ -42,6 +53,9 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
+        // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
+        // is absent, so the runtime makes it then and the lookup borrows `w`.
+        let key = clone_receiver(key).unwrap_or(key);
         let ExprKind::Binary { op, left, right } = &value.kind else {
             return Ok(None);
         };
@@ -77,7 +91,7 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(Some(k));
         }
-        let k = self.owned(k);
+        let k = self.borrow(k);
         let x = self.expr(other)?;
         if self.dead {
             return Ok(Some(x));
@@ -89,9 +103,9 @@ impl<'a> FnLower<'a> {
         let at = e.pos;
         self.place_update(recv_expr, &mut |s, old| {
             let slot = s.put_slot(old);
-            let ks = s.put_slot(k);
+            let ks = s.lend_slot(k);
             let ds = s.put_slot(d.v);
-            let p = s.call_runtime("msrt_map_slot", &[slot, kd, vd, ks, ds], MTy::PTR)?;
+            let p = s.call_runtime("msrt_map_slot_lent", &[slot, kd, vd, ks, ds], MTy::PTR)?;
             let cur =
                 s.b.emit(Op::Load, &[p], Imm::Ty(MTy::INT), Some(MTy::INT))
                     .expect("load");
