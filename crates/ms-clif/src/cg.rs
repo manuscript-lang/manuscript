@@ -604,7 +604,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
             .map_err(|e| e.to_string())?;
         g.funcs.push(id);
     }
-    if opts.llvm.is_some() {
+    if opts.llvm.is_some() && internalize(g.module.isa().triple()) {
         let sig = g.module.make_signature();
         let id = g
             .module
@@ -699,9 +699,12 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     if let Some(llvm) = g.llvm.take() {
         let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
-        let obj =
-            crate::llvm_obj::compile(&llvm.finish(&triple, &pinned), opts.llvm.unwrap_or("3"))?;
-        let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files)?;
+        let anchored = g.anchor.is_some();
+        let obj = crate::llvm_obj::compile(
+            &llvm.finish(&triple, &pinned, anchored),
+            opts.llvm.unwrap_or("3"),
+        )?;
+        let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
         g.dbg = t.dbg;
         g.scopes = t.scopes;
         llvm_object = Some(obj);
@@ -728,6 +731,14 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         object: product.emit().map_err(|e| Error(e.to_string()))?,
         llvm: None,
     })
+}
+
+/// Whether LLVM-built functions may be internal, with the tables addressing them from an anchor.
+/// Mach-O links with `-dead_strip` and one atom per function, so offsets within the object's code
+/// do not survive the link; COFF linkers reject the undefined symbol that the Cranelift object
+/// declares for each function it never references. Both keep a visible symbol per function.
+fn internalize(triple: &target_lexicon::Triple) -> bool {
+    triple.binary_format == target_lexicon::BinaryFormat::Elf
 }
 
 fn windows_arm64(triple: &target_lexicon::Triple) -> bool {
