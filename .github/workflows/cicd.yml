@@ -258,15 +258,14 @@ jobs:
           cp "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" "$src"
           printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
           export MS_FORCE_LLVM=1
-          (cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-llvm" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" --build-type Release 2>&1 | head -3) || true
-          p="$dir/prog-llvm"
-          "$bin/llvm-readobj" --coff-basereloc "$p" 2>&1 | head -40 || true
-          "$bin/llvm-readobj" --coff-load-config "$p" 2>&1 | head -60 || true
-          "$bin/llvm-objcopy" --strip-debug "$p" "$dir/p-nodebug" && { "$dir/p-nodebug" 0 2>&1 | head -2; echo "nodebug exit=${PIPESTATUS[0]}"; } || true
-          "$bin/llvm-objcopy" --strip-all "$p" "$dir/p-nosym" && { "$dir/p-nosym" 0 2>&1 | head -2; echo "nosym exit=${PIPESTATUS[0]}"; } || true
-          MSYS2_ARG_CONV_EXCL='*' cmd.exe /c "$(cygpath -w "$p")" 0 2>&1 | head -3 || true
-          powershell.exe -NoProfile -Command "try { & '$(cygpath -w "$p")' 0 } catch { \$_.Exception.Message }" 2>&1 | head -3 || true
-          dumpbin.exe /nologo /headers /loadconfig "$(cygpath -w "$p")" 2>&1 | tail -80 || true
+          for f in "$GITHUB_WORKSPACE"/tests/e2e/testdata/stdlib/*.ms; do
+            n=$(basename "$f" .ms)
+            out=$(cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-$n" timeout 300 "$ms" test "$f" --build-type Release 2>&1 | grep -c "os error 193" || true)
+            echo "DIAG $n size=$(stat -c %s "$dir/prog-$n" 2>/dev/null) err193=$out"
+          done
+          p="$dir/prog-crypto-rsa"
+          "$bin/llvm-readobj" --section-headers "$p" 2>&1 | grep -E "Name:|Characteristics|Flags|VirtualSize|RawDataSize" | head -90 || true
+          "$bin/llvm-readobj" --unwind "$p" 2>&1 | head -50 || true
       - name: Native standard-library source conformance
         run: |
           set -euo pipefail
