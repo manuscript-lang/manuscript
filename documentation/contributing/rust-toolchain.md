@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-`ms` is implemented in Rust. Debug builds use Cranelift and Linux release builds use LLVM through `clang`. Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
+`ms` is implemented in Rust. Debug builds use Cranelift and Linux release builds use LLVM (currently run through a host `clang`, which bundled LLVM tools will replace). Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
 
 ## Build and run
 
