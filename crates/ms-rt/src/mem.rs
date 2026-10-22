@@ -1,0 +1,328 @@
+//! Memory routines for Linux musl programs.
+//!
+//! musl's x86-64 `memcpy` and `memset` begin every call with `rep movsq`/`rep stosq`, which costs
+//! tens of cycles before the first byte moves, and its `memcmp`/`bcmp` compare one byte at a time.
+//! Programs copy and compare short strings, list tails and records constantly, so these definitions
+//! take precedence over libc's: unaligned word moves for small sizes, `rep movsb` (fast on current
+//! CPUs) for large ones, and eight bytes per step for comparisons.
+//!
+//! The bodies avoid loops that LLVM could turn back into calls to the function being defined.
+
+use core::ffi::c_int;
+#[cfg(not(test))]
+use core::ffi::c_void;
+
+/// Copies `n` bytes; `dst` and `src` may overlap only if `n <= 64` (all loads precede all stores).
+///
+/// # Safety
+/// Both ranges must be valid for `n` bytes.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn copy_small(dst: *mut u8, src: *const u8, n: usize) {
+    use core::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_storeu_si128};
+    // SAFETY: each branch reads and writes only within the first and last `k` bytes, `k <= n`.
+    unsafe {
+        if n >= 16 {
+            let load = |at: usize| _mm_loadu_si128(src.add(at) as *const __m128i);
+            let store = |at: usize, v: __m128i| _mm_storeu_si128(dst.add(at) as *mut __m128i, v);
+            if n <= 32 {
+                let (a, b) = (load(0), load(n - 16));
+                store(0, a);
+                store(n - 16, b);
+            } else {
+                let (a, b, c, d) = (load(0), load(16), load(n - 32), load(n - 16));
+                store(0, a);
+                store(16, b);
+                store(n - 32, c);
+                store(n - 16, d);
+            }
+        } else if n >= 8 {
+            let (a, b) = (
+                (src as *const u64).read_unaligned(),
+                (src.add(n - 8) as *const u64).read_unaligned(),
+            );
+            (dst as *mut u64).write_unaligned(a);
+            (dst.add(n - 8) as *mut u64).write_unaligned(b);
+        } else if n >= 4 {
+            let (a, b) = (
+                (src as *const u32).read_unaligned(),
+                (src.add(n - 4) as *const u32).read_unaligned(),
+            );
+            (dst as *mut u32).write_unaligned(a);
+            (dst.add(n - 4) as *mut u32).write_unaligned(b);
+        } else if n >= 2 {
+            let (a, b) = (
+                (src as *const u16).read_unaligned(),
+                (src.add(n - 2) as *const u16).read_unaligned(),
+            );
+            (dst as *mut u16).write_unaligned(a);
+            (dst.add(n - 2) as *mut u16).write_unaligned(b);
+        } else if n == 1 {
+            *dst = *src;
+        }
+    }
+}
+
+/// Copies forward with `rep movsb`.
+///
+/// # Safety
+/// Both ranges must be valid for `n` bytes, and `dst` must not lie inside `(src, src + n)`.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn copy_forward(dst: *mut u8, src: *const u8, n: usize) {
+    // SAFETY: the caller guarantees the ranges; the instruction reads `n` bytes and writes `n`.
+    unsafe {
+        core::arch::asm!(
+            "rep movsb",
+            inout("rcx") n => _,
+            inout("rdi") dst => _,
+            inout("rsi") src => _,
+            options(nostack, preserves_flags)
+        );
+    }
+}
+
+/// The C `memcpy`.
+///
+/// # Safety
+/// As in C: valid, non-overlapping ranges.
+#[cfg(all(
+    not(test),
+    target_os = "linux",
+    target_env = "musl",
+    target_arch = "x86_64"
+))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn memcpy(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
+    // SAFETY: the C contract gives valid, disjoint ranges.
+    unsafe {
+        if n <= 64 {
+            copy_small(dst.cast(), src.cast(), n);
+        } else {
+            copy_forward(dst.cast(), src.cast(), n);
+        }
+    }
+    dst
+}
+
+/// The C `memmove`.
+///
+/// # Safety
+/// As in C: valid ranges, which may overlap.
+#[cfg(all(
+    not(test),
+    target_os = "linux",
+    target_env = "musl",
+    target_arch = "x86_64"
+))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn memmove(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
+    // SAFETY: the C contract gives valid ranges; each branch handles the overlap it can meet.
+    unsafe {
+        let (d, s): (*mut u8, *const u8) = (dst.cast(), src.cast());
+        if n <= 64 {
+            copy_small(d, s, n);
+        } else if (d as usize).wrapping_sub(s as usize) >= n {
+            // `dst` is below `src` or past its end: copying forward never overwrites unread bytes.
+            copy_forward(d, s, n);
+        } else {
+            core::arch::asm!(
+                "std",
+                "rep movsb",
+                "cld",
+                inout("rcx") n => _,
+                inout("rdi") d.add(n - 1) => _,
+                inout("rsi") s.add(n - 1) => _,
+                options(nostack)
+            );
+        }
+    }
+    dst
+}
+
+/// The C `memset`.
+///
+/// # Safety
+/// As in C: a valid range.
+#[cfg(all(
+    not(test),
+    target_os = "linux",
+    target_env = "musl",
+    target_arch = "x86_64"
+))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn memset(dst: *mut c_void, c: c_int, n: usize) -> *mut c_void {
+    // SAFETY: the C contract gives a valid range; each branch stays within the first and last `k` bytes.
+    unsafe {
+        let d: *mut u8 = dst.cast();
+        use core::arch::x86_64::{__m128i, _mm_set1_epi8, _mm_storeu_si128};
+        let byte = c as u8;
+        if n > 64 {
+            core::arch::asm!(
+                "rep stosb",
+                inout("rcx") n => _,
+                inout("rdi") d => _,
+                in("al") byte,
+                options(nostack, preserves_flags)
+            );
+        } else if n >= 16 {
+            let v = _mm_set1_epi8(byte as i8);
+            let store = |at: usize| _mm_storeu_si128(d.add(at) as *mut __m128i, v);
+            if n <= 32 {
+                store(0);
+                store(n - 16);
+            } else {
+                store(0);
+                store(16);
+                store(n - 32);
+                store(n - 16);
+            }
+        } else if n >= 8 {
+            let w = u64::from(byte) * 0x0101_0101_0101_0101;
+            (d as *mut u64).write_unaligned(w);
+            (d.add(n - 8) as *mut u64).write_unaligned(w);
+        } else if n >= 4 {
+            let w = u32::from(byte) * 0x0101_0101;
+            (d as *mut u32).write_unaligned(w);
+            (d.add(n - 4) as *mut u32).write_unaligned(w);
+        } else if n >= 2 {
+            let w = u16::from(byte) * 0x0101;
+            (d as *mut u16).write_unaligned(w);
+            (d.add(n - 2) as *mut u16).write_unaligned(w);
+        } else if n == 1 {
+            *d = byte;
+        }
+    }
+    dst
+}
+
+/// Orders the first difference between two ranges, like C `memcmp`.
+///
+/// # Safety
+/// Both ranges must be valid for `n` bytes.
+#[cfg(any(test, all(target_os = "linux", target_env = "musl")))]
+#[inline(always)]
+unsafe fn compare(a: *const u8, b: *const u8, n: usize) -> c_int {
+    // SAFETY: every read lies inside the first `n` bytes of a range.
+    unsafe {
+        let mut i = 0;
+        while i + 8 <= n {
+            let x = (a.add(i) as *const u64).read_unaligned();
+            let y = (b.add(i) as *const u64).read_unaligned();
+            if x != y {
+                // Big-endian order makes the first differing byte the most significant one.
+                return if x.swap_bytes() < y.swap_bytes() {
+                    -1
+                } else {
+                    1
+                };
+            }
+            i += 8;
+        }
+        while i < n {
+            let (x, y) = (*a.add(i), *b.add(i));
+            if x != y {
+                return c_int::from(x) - c_int::from(y);
+            }
+            i += 1;
+        }
+        0
+    }
+}
+
+/// The C `memcmp`.
+///
+/// # Safety
+/// As in C: valid ranges.
+#[cfg(all(not(test), target_os = "linux", target_env = "musl"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn memcmp(a: *const c_void, b: *const c_void, n: usize) -> c_int {
+    // SAFETY: the C contract gives valid ranges.
+    unsafe { compare(a.cast(), b.cast(), n) }
+}
+
+/// The C `bcmp`: zero when equal, nonzero otherwise.
+///
+/// # Safety
+/// As in C: valid ranges.
+#[cfg(all(not(test), target_os = "linux", target_env = "musl"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bcmp(a: *const c_void, b: *const c_void, n: usize) -> c_int {
+    // SAFETY: the C contract gives valid ranges.
+    unsafe { compare(a.cast(), b.cast(), n) }
+}
+
+#[cfg(all(test, target_arch = "x86_64"))]
+mod tests {
+    use super::*;
+
+    fn pattern(n: usize, seed: u8) -> Vec<u8> {
+        (0..n)
+            .map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed))
+            .collect()
+    }
+
+    #[test]
+    fn copies_every_small_size_at_every_offset() {
+        for n in 0..=130 {
+            for off in 0..8 {
+                let src = pattern(n + 16, 7);
+                let mut dst = vec![0xAAu8; n + 16];
+                // SAFETY: both buffers hold `n + 16` bytes.
+                unsafe {
+                    if n <= 64 {
+                        copy_small(dst.as_mut_ptr().add(off), src.as_ptr().add(off), n);
+                    } else {
+                        copy_forward(dst.as_mut_ptr().add(off), src.as_ptr().add(off), n);
+                    }
+                }
+                assert_eq!(dst[off..off + n], src[off..off + n], "n={n} off={off}");
+                assert!(dst[..off].iter().all(|b| *b == 0xAA), "head touched n={n}");
+                assert!(
+                    dst[off + n..].iter().all(|b| *b == 0xAA),
+                    "tail touched n={n}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn small_copies_tolerate_overlap() {
+        for n in 0..=64 {
+            for shift in 1..40 {
+                let mut buf = pattern(200, 3);
+                let expected: Vec<u8> = buf[10..10 + n].to_vec();
+                // SAFETY: both ranges lie inside the 200-byte buffer.
+                unsafe {
+                    let p = buf.as_mut_ptr();
+                    copy_small(p.add(10 + shift), p.add(10), n);
+                }
+                assert_eq!(
+                    buf[10 + shift..10 + shift + n],
+                    expected[..],
+                    "n={n} shift={shift}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn compare_matches_the_slice_order() {
+        for n in 0..=40 {
+            let a = pattern(n, 1);
+            let mut b = a.clone();
+            // SAFETY: both vectors hold `n` bytes.
+            unsafe {
+                assert_eq!(compare(a.as_ptr(), b.as_ptr(), n), 0);
+                for at in 0..n {
+                    for delta in [1u8, 200] {
+                        b[at] = a[at].wrapping_add(delta);
+                        let got = compare(a.as_ptr(), b.as_ptr(), n);
+                        assert_eq!(got.signum(), a.cmp(&b) as i32, "n={n} at={at}");
+                        b[at] = a[at];
+                    }
+                }
+            }
+        }
+    }
+}
