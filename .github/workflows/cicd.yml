@@ -242,7 +242,6 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
-        if: runner.os != 'Windows'
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.

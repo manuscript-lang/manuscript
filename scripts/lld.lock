@@ -12,3 +12,5 @@ cfd53fac029ae883e9c84f04c0adedb30de5e72497f803566bad29d19e961dea  llvm-tools-19.
 fb4a8f1f4a56b045dae35266b38545ead1f7180ac6f8fd76ea4714d13eb99968  llvm-tools-19.1.7-darwin-arm64.tar.gz
 40583f5c6cea4df6077a8d2a44312470479842b86489bde62ccf815c6d3049e4  llvm-tools-19.1.7-linux-amd64.tar.gz
 2b146f35657e8bce5b9ea978012e8c464933a9341919a5d126911cd3c51e6e95  llvm-tools-19.1.7-linux-arm64.tar.gz
+6eaf390e421364a46bc768e3afd3fc1a961ab59b928274a93b806d9edc8c843d  llvm-tools-19.1.7-windows-amd64.tar.gz
+d8fb6bb8c504efbfd4974d22c4a8cc4852e3118940ddced3d642d1dbef08081c  llvm-tools-19.1.7-windows-arm64.tar.gz
