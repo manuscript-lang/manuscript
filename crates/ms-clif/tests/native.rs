@@ -288,22 +288,32 @@ fn real_runtime() -> &'static PathBuf {
             command.args(["--target", &musl]);
             command.env(format!("CC_{}", musl.replace('-', "_")), "cc");
         }
+        #[cfg(windows)]
+        let gnullvm = format!("{}-pc-windows-gnullvm", std::env::consts::ARCH);
+        #[cfg(windows)]
+        {
+            // The bundled Windows linker links mingw-w64, so the runtime is a gnullvm build.
+            command.args(["--target", &gnullvm]);
+            command.env(
+                format!("CC_{}", gnullvm.replace('-', "_")),
+                support::mingw_clang(),
+            );
+        }
         let st = command
             .arg("--target-dir")
             .arg(&target)
             .status()
             .expect("cargo build ms-rt");
         assert!(st.success(), "building ms-rt failed");
+        #[cfg(windows)]
+        let release = target.join(&gnullvm).join("release");
+        #[cfg(not(windows))]
         let release = if cfg!(target_os = "linux") {
             target.join(&musl).join("release")
         } else {
             target.join("release")
         };
-        let name = if cfg!(windows) {
-            "ms_rt.lib"
-        } else {
-            "libms_rt.a"
-        };
+        let name = "libms_rt.a";
         // Parallel test processes share this target directory and each cargo
         // run briefly replaces the archive, so take a private copy to link.
         let built = release.join(name);

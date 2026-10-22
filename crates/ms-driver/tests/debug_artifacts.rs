@@ -29,7 +29,7 @@ fn final_build_keeps_source_lines_after_staging_and_object_cleanup() {
     )
     .unwrap();
     let c = root.join("start.c");
-    std::fs::write(&c, "#include <stdint.h>\nint msrt_start(int64_t (*entry)(void), const void *tables, int argc, char **argv) { return (int)entry(); }\n").unwrap();
+    std::fs::write(&c, "#include <stdint.h>\n#ifdef _WIN32\n/* mingw's startup code asks for the stack probe; this runtime has no compiler-builtins. */\n#ifdef __aarch64__\nvoid __chkstk(void) {}\n#else\nvoid ___chkstk_ms(void) {}\n#endif\n#endif\nint msrt_start(int64_t (*entry)(void), const void *tables, int argc, char **argv) { return (int)entry(); }\n").unwrap();
     let runtime = root.join("start.o");
     assert!(
         support::cc()
