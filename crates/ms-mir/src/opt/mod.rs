@@ -23,6 +23,7 @@ pub mod optparam;
 pub mod range;
 pub mod simplify;
 pub mod slotfuse;
+pub mod sortgen;
 pub mod strfuse;
 
 /// Optimization level.
