@@ -5,7 +5,7 @@ weight = 0
 
 # How it works
 
-`ms` is one self-contained binary. It checks your program and compiles it to a native executable. Cranelift and the compiled runtime are embedded, and Linux release builds optimize with LLVM (for now through a host `clang`, to be replaced by bundled LLVM tools); linking requires host tools ([requirements](../contributing/rust-toolchain.md#differences-users-can-see)).
+`ms` is one self-contained binary. It checks your program and compiles it to a native executable. Cranelift and the compiled runtime are embedded, and Linux release builds optimize with bundled LLVM tools (no `clang` needed); linking requires host tools ([requirements](../contributing/rust-toolchain.md#differences-users-can-see)).
 
 ```text
 .ms source → parse → check (HIR) → lower (MIR) → Cranelift or LLVM object code → link → executable

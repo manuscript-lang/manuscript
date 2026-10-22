@@ -19,4 +19,4 @@ Median of 7 runs with alternating order; linux/amd64, four cores, Go 1.24.7, rus
 | builtin_length | 100000000 | 0.00 | 0.33 | 0.38 | 0.40 | 0.00x | 0.00x | 0.00x |
 | for_list | 100000000 | 0.62 | 0.84 | 0.38 | 0.74 | 0.74x | 1.64x | 0.84x |
 
-Release builds use LLVM (`clang -O3`). Manuscript is faster than Go on 9 of 10 rows (method_call and builtin_length fold to constants) and ties on int_eq. Against Rust with overflow checks it is slower on string_append (4.2x: a call per append against an inlined push), int_eq (1.4x) and read_line (1.2x). Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
+Release builds use LLVM (bundled `opt`/`llc`, `-O3`). Manuscript is faster than Go on 9 of 10 rows (method_call and builtin_length fold to constants) and ties on int_eq. Against Rust with overflow checks it is slower on string_append (4.2x: a call per append against an inlined push), int_eq (1.4x) and read_line (1.2x). Whole-program kernels: see [`../kernels/README.md`](../kernels/README.md) and [`../competence/README.md`](../competence/README.md).
