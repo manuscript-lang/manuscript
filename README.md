@@ -4,10 +4,10 @@
 
 [Why Manuscript](documentation/learn/why-manuscript.md) · [Take the tour](documentation/learn/tour.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
-- **Fast.** Faster than hand-written Go on 26 of 31 benchmarks, and typically within 1.4x of Rust with overflow checks on.
+- **Fast.** Native code through LLVM: ahead of hand-written Go on 26 of 31 benchmarks, and typically within 1.4x of Rust with overflow checks on.
 - **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. No C toolchain, SDK, or package manager to install. An HTTP server is about 4.4 MB.
-- **Agents succeed with it.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md), at 1.30x the source size of TypeScript.
-- **Little to get wrong.** Failure is a value, ownership is checked on every program, and there is no implicit conversion, truthiness, or async syntax.
+- **Agents succeed with it.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md), with compact source.
+- **Little to get wrong.** Pipes, inferred ownership and borrowing, failure as a value, and no implicit conversion or truthiness.
 
 ## A taste
 
@@ -47,7 +47,7 @@ Run it with `ms test`. `parse[List[Order]]` reads text straight into your types 
 
 ## What makes it different
 
-**Pipes instead of nesting.** A `|` flow feeds each result into the next call, so a chain of steps reads top to bottom. A `try` step unwraps a `Result` or returns its error (`x | try parse | .total()`), which replaces nested calls and `Result` matching:
+**Pipes instead of nesting.** A `|` flow feeds each result into the next call, so a chain of steps reads top to bottom. A `try` step unwraps a `Result` or returns its error (`x | try parse | .total()`), so there are no nested calls and no `Result` matching:
 
 ```manuscript
 import expect_equal from "@std/testing.ms"
@@ -79,7 +79,7 @@ test "pipe flow":
     try expect_equal(alert(readings), "b")
 ```
 
-**Ownership and borrow checking with no extra syntax.** There are no lifetimes, no `&` or `&mut`, and no garbage collector. Every value has one owner, and the checker infers whether each parameter only reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
+**Ownership and borrow checking with no extra syntax.** Every value has one owner, with deterministic cleanup and no lifetime annotations, and the checker infers whether each parameter only reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
 
 ```manuscript
 type Cart:
@@ -110,7 +110,7 @@ Passing `cart` to `count` is a borrow; passing it to `pay`, which returns it, is
 
 The ownership check runs on every program, so a whole class of aliasing bugs never reaches a test. Cleanup is just as direct: `with file = try files.open("data.txt"):` closes the resource at block end, on errors too.
 
-**Failure is a value.** `Optional` and `Result` replace null and exceptions, and `try` propagates. There is no async syntax to color your functions; I/O is an ordinary call.
+**Failure is a value.** `Optional` and `Result` make absence and errors part of the type, and `try` propagates them. I/O is an ordinary call, with no async syntax.
 
 **Everything is one tool.** The same `ms` binary that compiles your program also formats, lints, tests, profiles, and answers an agent's questions with `--json`. See [Built for the agent loop](#built-for-the-agent-loop).
 
@@ -131,11 +131,11 @@ Across all 31 benchmarks it is faster than Go on 26, and typically within 1.4x o
 
 ## Built for the agent loop
 
-Most languages were shaped for human authors and then adapted to agents. Manuscript shapes the language and the toolchain together around the loop an agent actually runs: write, check, fix, verify, ship.
+Manuscript shapes the language and the toolchain together around the loop an agent runs: write, check, fix, verify, ship.
 
 - **Evidence, not prose.** `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source.
 - **Flat, regular code.** Four-space blocks, `|` pipe flows, `try`, exhaustive `match`, and `with` for scoped cleanup. Values have one owner: moves happen at last use, `var` marks mutation at the declaration and the call, and `.clone()` copies explicitly.
-- **Measured on real agents.** [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet.
+- **Measured on real agents.** [`agent-bench`](bench/agent/README.md) runs real challenges with real agents. Failures there drive diagnostics, docs, and the cheat sheet.
 - **A batteries-included standard library.** Files, processes, networking, HTTP, JSON, text, and time, plus `Queue`, `Deque`, `BitSet`, `SortedMap`, and `SortedSet`.
 
 See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). For direction, read the [vision](VISION.md).
