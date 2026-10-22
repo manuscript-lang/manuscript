@@ -249,6 +249,20 @@ jobs:
           dir="$RUNNER_TEMP/llvm-release"
           mkdir -p "$dir"
           (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
+      - name: Diagnose LLVM Release image on Windows arm64
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
+        continue-on-error: true
+        run: |
+          dir="$RUNNER_TEMP/rsa-diag"
+          mkdir -p "$dir"
+          ms="$GITHUB_WORKSPACE/target/debug/ms.exe"
+          bin="$MS_MINGW/bin"
+          for backend in llvm cranelift; do
+            if [ $backend = llvm ]; then export MS_FORCE_LLVM=1; else unset MS_FORCE_LLVM; fi
+            (cd "$dir" && "$ms" build "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend.exe 2>&1 | head -3; echo "exit=$?")
+            "$bin/llvm-readobj" --file-headers --coff-imports "$dir/rsa-$backend.exe" 2>&1 | head -60
+            "$bin/llvm-objdump" -h "$dir/rsa-$backend.exe" 2>&1 | head -40
+          done
       - name: Native standard-library source conformance
         run: |
           set -euo pipefail
