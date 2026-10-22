@@ -2,11 +2,11 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/queues.ms
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 
 test "omitted capacity creates an unbounded queue":
-    let queue = Queue[Int]()
-    let inferred: Queue[Int] = Queue()
+    var queue = Queue[Int]()
+    var inferred: Queue[Int] = Queue()
 
     for unused in [1, 2]:
         for value in [1, 2, 3, 4, 5]:
@@ -22,26 +22,26 @@ test "omitted capacity creates an unbounded queue":
 
     (inferred.enqueue(1)) | try expect_true
 
-test "local FIFO aliases and saved methods":
-    let queue = Queue[Int](2)
-    let alias = queue
-    let enqueue = alias.enqueue
-    let dequeue = queue.dequeue
+test "a copy is an independent queue":
+    var queue = Queue[Int](2)
     let missing: Optional[Int] = none
     (queue.is_empty() and queue.length() == 0) | try expect_true
-    (dequeue() == missing and queue.peek() == missing) | try expect_true
-    (enqueue(3) and enqueue(value: 4)) | try expect_true
-    enqueue(5) | try expect_false
+    (queue.dequeue() == missing and queue.peek() == missing) | try expect_true
+    (queue.enqueue(3) and queue.enqueue(value: 4)) | try expect_true
+    queue.enqueue(5) | try expect_false
+    var copy = queue.clone()
     let first: Optional[Int] = some(3)
     let second: Optional[Int] = some(4)
-    (alias.peek() == first and queue.length() == 2) | try expect_true
-    (dequeue() == first and alias.dequeue() == second) | try expect_true
-    (dequeue() == missing and queue.is_empty()) | try expect_true
+    (copy.dequeue() == first and copy.length() == 1) | try expect_true
+    (queue.peek() == first and queue.length() == 2) | try expect_true
+    (queue.dequeue() == first and queue.dequeue() == second) | try expect_true
+    (queue.dequeue() == missing and queue.is_empty()) | try expect_true
+    (copy.peek() == second and copy.enqueue(6)) | try expect_true
     (queue.enqueue(4)) | try expect_true
-    dequeue() | try expect_equal(expected: second)
+    queue.dequeue() | try expect_equal(expected: second)
 
 test "queue elements include ordinary functions":
-    let queue = Queue[fn() Int](1)
+    var queue = Queue[fn() Int](1)
     queue.enqueue(
         fn():
             return 7

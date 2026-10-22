@@ -5,7 +5,8 @@ import Decimal from "@std/decimal.ms"
 import {from_int} from "@std/math.ms"
 import {compress, decompress} from "@std/archive.ms"
 import {parse_timestamp} from "@std/time.ms"
-import {PriorityQueue, Queue} from "@std/collections.ms"
+import {PriorityQueue} from "@std/collections.ms"
+import {Queue} from "@std/queue.ms"
 
 export fn bench_numbers() Unit:
     let rate: Decimal = 1.12345d
@@ -66,7 +67,7 @@ export fn bench_numbers() Unit:
         "queue.enqueue_dequeue",
         200000,
         fn() Int:
-            let q = Queue[Int]()
+            var q = Queue[Int]()
             for i in range(0, 100000):
                 q.enqueue(i)
             var n = 0

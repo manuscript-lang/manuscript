@@ -7,32 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek",
-        "position": {
-          "file": "pkg-checker-testdiagnosticfixes-11.ms",
-          "line": 6,
-          "column": 7,
-          "offset": 234
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek",
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-11.ms",
           "line": 7,
           "column": 14,
-          "offset": 260
+          "offset": 254
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-11.ms:6:7: resolution: member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek\n<DIR>/pkg-checker-testdiagnosticfixes-11.ms:7:14: resolution: member capacity of Queue[Int] is not readable or assignable; its state is reached only through its operations: dequeue, enqueue, is_empty, length, peek\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-11.ms:7:14: type: expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

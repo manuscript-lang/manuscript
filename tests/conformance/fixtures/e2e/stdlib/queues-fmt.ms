@@ -2,12 +2,13 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
-import {Queue, PriorityQueue} from "@std/collections.ms"
+import {PriorityQueue} from "@std/collections.ms"
+import {Queue} from "@std/queue.ms"
 
 fn compare(left: Int, right: Int) Int: left - right
 
 test "FIFO capacity empty reads draining and reuse":
-    let queue = Queue[Int](2)
+    var queue = Queue[Int](2)
     try expect_false(not queue.is_empty() or not queue.peek().is_none())
     try expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))
     try expect_false(queue.peek() != some(1) or queue.length() != 2)

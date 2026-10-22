@@ -690,8 +690,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
-        if matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "Queue" || n == "PriorityQueue")
-        {
+        if matches!(self.b.m.types.kind(mt), TyKind::Obj(n, _) if n == "PriorityQueue") {
             return self.construct_queue(view, mt);
         }
         if crate::sharedbuilder::builder_kind(&t).is_some() {

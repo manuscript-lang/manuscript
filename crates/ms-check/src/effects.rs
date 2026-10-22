@@ -131,14 +131,6 @@ impl Scan<'_> {
             "@std/Network" | "@std/HttpServer" | "@std/Commands" | "@std/Subprocess" => {
                 add(&mut self.effects, &["external-call", "read", "write"]);
             }
-            "@std/Queue" => {
-                if name != "enqueue" {
-                    add(&mut self.effects, &["read"]);
-                }
-                if name == "enqueue" || name == "dequeue" {
-                    add(&mut self.effects, &["write"]);
-                }
-            }
             "@std/List" | "@std/Map" | "@std/Set" => {
                 add(&mut self.effects, &["read"]);
                 if collection_mutation(method) {

@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "queues.ms::local FIFO aliases and saved methods",
+          "name": "queues.ms::a copy is an independent queue",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN queues.ms::omitted capacity creates an unbounded queue\nPASS queues.ms::omitted capacity creates an unbounded queue\nRUN queues.ms::local FIFO aliases and saved methods\nPASS queues.ms::local FIFO aliases and saved methods\nRUN queues.ms::queue elements include ordinary functions\nPASS queues.ms::queue elements include ordinary functions\n3 tests, 0 failed\n",
+      "stdout": "RUN queues.ms::omitted capacity creates an unbounded queue\nPASS queues.ms::omitted capacity creates an unbounded queue\nRUN queues.ms::a copy is an independent queue\nPASS queues.ms::a copy is an independent queue\nRUN queues.ms::queue elements include ordinary functions\nPASS queues.ms::queue elements include ordinary functions\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

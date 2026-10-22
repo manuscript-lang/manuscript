@@ -3,7 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {Queue, PriorityQueue} from "@std/collections.ms"
+import {PriorityQueue} from "@std/collections.ms"
+import {Queue} from "@std/queue.ms"
 import from_int from "@std/math.ms"
 import {parse_int, NumberError} from "@std/math.ms"
 
@@ -56,11 +57,11 @@ test "radix formatting retains inclusive boundaries and parse errors":
     try expect_equal((1.0).to_precision(0), precision)
 
 test "queue capacities retain omission none minimum maximum and full results":
-    let queue = Queue[Int](1)
+    var queue = Queue[Int](1)
     try expect_false(not queue.enqueue(1) or queue.enqueue(2))
     try expect_false(queue.dequeue() != some(1) or not queue.dequeue().is_none())
-    let unbounded = Queue[Int](none)
-    let large = Queue[Int](9223372036854775807)
+    var unbounded = Queue[Int](none)
+    var large = Queue[Int](9223372036854775807)
     try expect_false(not unbounded.enqueue(1) or not large.enqueue(1))
     let priority = PriorityQueue[Int](compare, 1)
     try expect_false(not priority.enqueue(1) or priority.enqueue(2))

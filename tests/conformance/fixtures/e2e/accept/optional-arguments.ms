@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/accept/optional-arguments.ms
 import {TextError} from "@std/core.ms"
 import {expect_equal, expect_false} from "@std/testing.ms"
-import Queue from "@std/collections.ms"
+import Queue from "@std/queue.ms"
 
 fn number(value: Optional[Int] = none) Int: value.get(-1)
 
@@ -125,15 +125,15 @@ test "wrapping evaluates arguments once in written order":
     try expect_equal(counter.calls, 2)
 
 test "queue capacity accepts a plain value or omission":
-    let bounded = Queue[Int](4)
+    var bounded = Queue[Int](4)
     for value in [1, 2, 3, 4]:
         try expect_false(not (bounded.enqueue(value)))
     try expect_false(bounded.enqueue(5))
     try expect_equal(bounded.dequeue().get(), 1)
-    let unbounded = Queue[Int]()
-    let absent = Queue[Int]()
+    var unbounded = Queue[Int]()
+    var absent = Queue[Int]()
     let capacity: Optional[Int] = some(4)
-    let explicit = Queue[Int](capacity)
+    var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:
         try expect_false(not (unbounded.enqueue(value)))
