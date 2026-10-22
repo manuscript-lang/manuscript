@@ -533,3 +533,13 @@ test "JSON parse returns InvalidData for targets that cannot be read":
     try expect_false(parse[Float]("1e999").is_ok())
     try expect_false(parse[String]("1").is_ok())
     try expect_false(parse[List[Int]]("[1,\"a\"]").is_ok())
+
+type BoundReading:
+    id: Int
+
+test "JSON parse and stringify bound to a type argument pipe like the call":
+    let read = parse[List[BoundReading]]
+    let write = stringify[BoundReading]
+    let items = "[\{\"id\":1\},\{\"id\":2\}]" | read
+    try expect_equal(items, ok([BoundReading(1), BoundReading(2)]))
+    try expect_equal(BoundReading(1) | write, ok("\{\"id\":1\}"))
