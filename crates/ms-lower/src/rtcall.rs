@@ -432,7 +432,6 @@ impl FnLower<'_> {
         let end = body - usize::from(has_out);
         let mut vals: Vec<Value> = Vec::new();
         // Slots of borrowed owned values, taken back and dropped after the call.
-        let mut lent: Vec<(Value, MTy)> = Vec::new();
         let mut cursor = 0;
         let mut i = 0;
         while i < end {
@@ -600,7 +599,7 @@ impl FnLower<'_> {
                         || wire
                     {
                         // A generic element slot: pass the address of the value in memory.
-                        // `*mut` hands the value over; `*const` is lent and taken back.
+                        // `*mut` hands the value over; `*const` is lent.
                         let x = if input.wrapped {
                             // The checker converted the argument to an optional element.
                             let o = self.owned(x);
@@ -614,12 +613,13 @@ impl FnLower<'_> {
                             .b
                             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
                             .expect("slot");
-                        if self.needs_drop(t) {
+                        if self.needs_drop(t) && p.ty.starts_with("*const ") {
+                            // Only read by the runtime: lend the value itself.
+                            let v = self.borrow(x);
+                            self.b.emit(Op::Store, &[slot, v], Imm::None, None);
+                        } else if self.needs_drop(t) {
                             let o = self.owned(x);
                             self.b.emit(Op::Put, &[slot, o], Imm::None, None);
-                            if p.ty.starts_with("*const ") {
-                                lent.push((slot, t));
-                            }
                         } else {
                             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
                         }
@@ -648,13 +648,6 @@ impl FnLower<'_> {
             i += 1;
         }
         let r = self.finish_rt_call(sym, &sig, has_out, vals, result)?;
-        for (slot, t) in lent {
-            let v = self
-                .b
-                .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
-                .expect("take");
-            self.drop_value(v);
-        }
         Ok(r)
     }
 

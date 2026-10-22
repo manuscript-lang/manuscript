@@ -1063,8 +1063,8 @@ impl Verifier<'_> {
             Op::Store => {
                 arity(2)?;
                 want(
-                    t(0) == Ty::PTR && !m.needs_drop(t(1)),
-                    "store writes a non-droppable value through a ptr",
+                    t(0) == Ty::PTR,
+                    "store writes a value through a ptr; the memory does not own a droppable value, it lends the borrow",
                 )
             }
             Op::FuncAddr => {
