@@ -9,6 +9,19 @@ use std::process::Command;
 
 #[cfg(unix)]
 mod lld;
+#[cfg(unix)]
+pub(crate) use lld::{lld_path, llvm_tools};
+
+/// Windows links with the system toolchain and has no bundled LLVM tools.
+#[cfg(not(unix))]
+pub(crate) fn lld_path() -> Result<PathBuf, Error> {
+    Err(Error("no bundled linker on this platform".to_string()))
+}
+
+#[cfg(not(unix))]
+pub(crate) fn llvm_tools() -> Result<Option<PathBuf>, Error> {
+    Ok(None)
+}
 
 /// Links `object` and the runtime static library into the executable `out`.
 pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {

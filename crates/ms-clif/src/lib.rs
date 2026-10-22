@@ -14,6 +14,7 @@ mod cg;
 mod dwarf;
 pub mod llvm_ir;
 mod llvm_obj;
+pub use llvm_obj::available as llvm_available;
 mod llvm_tables;
 mod lower;
 mod spill;

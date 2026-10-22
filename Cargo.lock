@@ -1000,6 +1000,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
+ "flate2",
  "gimli",
  "ms-mir",
  "ms-rt-abi",
