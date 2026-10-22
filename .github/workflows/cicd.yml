@@ -112,7 +112,6 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then
             clang --version
             echo 'CC=clang' >> "$GITHUB_ENV"
-            echo 'MS_LINKER=clang' >> "$GITHUB_ENV"
           else
             cc --version
           fi
@@ -120,26 +119,35 @@ jobs:
       # build takes about an hour, so the install tree is cached by recipe hash.
       - name: Restore bundled lld
         id: lld
-        if: runner.os != 'Windows'
         uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/llvm-bundle/install
           key: lld-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('scripts/build-llvm-bundle.sh', 'scripts/llvm-version') }}
       - name: Build bundled lld
-        if: runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
+        if: steps.lld.outputs.cache-hit != 'true'
         run: |
           if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update && sudo apt-get install -y ninja-build
+          elif [ "$RUNNER_OS" = Windows ]; then choco install ninja -y
           else brew install ninja; fi
           LLVM_WORK="$RUNNER_TEMP/llvm-bundle" sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}" lld
       - name: Save bundled lld
-        if: runner.os != 'Windows' && steps.lld.outputs.cache-hit != 'true'
+        if: steps.lld.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/llvm-bundle/install
           key: ${{ steps.lld.outputs.cache-primary-key }}
       - name: Point the build at lld
-        if: runner.os != 'Windows'
-        run: echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$RUNNER_TEMP/llvm-bundle/install/bin/lld.exe")" >> "$GITHUB_ENV"
+          else echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"; fi
+      # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
+      # with its clang (scripts/fetch-mingw.sh).
+      - name: Fetch llvm-mingw
+        if: runner.os == 'Windows'
+        run: |
+          mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
+          echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
+          rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
       # Runner images often ship the LLVM tools already; install only when they are missing.
       - name: Install LLVM native debug consumers
         run: |

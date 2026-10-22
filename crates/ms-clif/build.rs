@@ -1,12 +1,49 @@
 //! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (built by
 //! `scripts/build-llvm-bundle.sh`) and, on Linux, the self-contained musl startup objects and libc
-//! that Rust's musl target carries.
+//! that Rust's musl target carries, or, on Windows, the mingw-w64 startup object, libraries and import
+//! libraries of the pinned llvm-mingw release (`scripts/fetch-mingw.sh`).
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Files copied from the toolchain's musl `self-contained` directory.
 const MUSL_FILES: [&str; 5] = ["crt1.o", "crti.o", "crtn.o", "libc.a", "libunwind.a"];
+
+/// Files copied from llvm-mingw's `<arch>-w64-mingw32/lib`: the C startup object, the CRT and unwinder
+/// libraries, and the import libraries for every DLL the runtime (Rust's `std` plus the standard library
+/// crates) calls.
+const MINGW_FILES: [&str; 18] = [
+    "crt2.o",
+    "libmingw32.a",
+    "libmingwex.a",
+    "libmoldname.a",
+    "libunwind.a",
+    "libucrt.a",
+    "libmsvcrt.a",
+    "libkernel32.a",
+    "libadvapi32.a",
+    "libbcrypt.a",
+    "libcrypt32.a",
+    "libdbghelp.a",
+    "libntdll.a",
+    "libsecur32.a",
+    "libuserenv.a",
+    "libws2_32.a",
+    "libuser32.a",
+    "libshell32.a",
+];
+
+/// mingw files compiled with `-g` (`libucrt.a` carries compatibility objects beside its imports); the
+/// pure import libraries have none.
+const DEBUG_INFO: [&str; 7] = [
+    "libucrt.a",
+    "libmsvcrt.a",
+    "crt2.o",
+    "libmingw32.a",
+    "libmingwex.a",
+    "libmoldname.a",
+    "libunwind.a",
+];
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -16,12 +53,25 @@ fn main() {
     let bundle = out.join("linker");
     std::fs::create_dir_all(&bundle).expect("create the linker bundle directory");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS");
-    // Windows still links with the system toolchain; the bundle files are only placeholders there.
-    let mut names = vec!["lld"];
-    if target_os == "windows" {
-        std::fs::write(bundle.join("lld"), b"").expect("write placeholder");
+    let mut names = vec![if target_os == "windows" {
+        "lld.exe"
     } else {
-        copy(&lld(), &bundle.join("lld"), "lld");
+        "lld"
+    }];
+    copy(&lld(), &bundle.join(names[0]), "lld");
+    if target_os == "windows" {
+        let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
+        println!("cargo:rerun-if-env-changed=MS_MINGW");
+        let lib = mingw().join(format!("{arch}-w64-mingw32/lib"));
+        for name in MINGW_FILES {
+            let to = bundle.join(name);
+            copy(&lib.join(name), &to, name);
+            // The CRT objects carry line tables for code the program never shows in a debugger.
+            if DEBUG_INFO.contains(&name) {
+                strip_debug(&to, Some(&mingw().join("bin/llvm-strip")));
+            }
+            names.push(name);
+        }
     }
     if target_os == "linux" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
@@ -36,7 +86,7 @@ fn main() {
                 &to,
                 &format!("{name} (run `rustup target add {arch}-unknown-linux-musl`)"),
             );
-            strip_debug(&to);
+            strip_debug(&to, None);
             names.push(name);
         }
     }
@@ -48,6 +98,19 @@ fn main() {
         }
     }
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
+}
+
+/// `MS_MINGW`, else the llvm-mingw tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`.
+fn mingw() -> PathBuf {
+    let root = std::env::var_os("MS_MINGW").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/llvm-bundle/mingw"),
+        PathBuf::from,
+    );
+    assert!(
+        root.join("bin").is_dir(),
+        "no llvm-mingw to bundle: run `sh scripts/fetch-mingw.sh` or set MS_MINGW to its root"
+    );
+    root
 }
 
 /// `MS_LLD`, else the bundle `scripts/build-llvm-bundle.sh` leaves in `target/llvm-bundle`.
@@ -93,9 +156,13 @@ fn copy(from: &Path, to: &Path, what: &str) {
 /// musl's startup objects and archives carry line tables for code the program never sees in a
 /// debugger; they would land in every linked executable. Without a strip tool the file is used as
 /// shipped.
-fn strip_debug(file: &Path) {
+fn strip_debug(file: &Path, preferred: Option<&Path>) {
     let original = std::fs::read(file).expect("read bundled file");
-    for tool in ["strip", "llvm-strip"] {
+    let tools = preferred
+        .into_iter()
+        .map(Path::as_os_str)
+        .chain(["strip".as_ref(), "llvm-strip".as_ref()]);
+    for tool in tools {
         let done = Command::new(tool)
             .arg("--strip-debug")
             .arg(file)

@@ -43,7 +43,12 @@ case "$os" in
         osx_arch=x86_64
         [ "$arch" = arm64 ] && osx_arch=arm64
         set -- "$@" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 "-DCMAKE_OSX_ARCHITECTURES=$osx_arch" ;;
-    windows) set -- "$@" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ;;
+    windows)
+        # CI exports CC=clang for Rust's C dependencies; LLVM is built with the MSVC compiler.
+        triple=x86_64-pc-windows-msvc
+        [ "$arch" = arm64 ] && triple=aarch64-pc-windows-msvc
+        set -- "$@" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl \
+            "-DLLVM_HOST_TRIPLE=$triple" ;;
     *) set -- "$@" "-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc" ;;
 esac
 cmake "$@"

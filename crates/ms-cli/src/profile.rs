@@ -787,7 +787,7 @@ The directory must be new. Native builds keep frame pointers, DWARF line tables 
 so perf record works on any ms build output; ms profile prints the command for this program.
 Profiling adds overhead. Measure normal execution separately.
 Arguments after -- go to the application; its exit status is returned.
-Linux and macOS builds link with the linker bundled in ms; Windows uses the system C compiler driver.
+Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
 
 Options:
   --out-dir <directory>    Bundle directory (default: ./profile)
