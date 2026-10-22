@@ -1,6 +1,6 @@
 //! Deadlines and blocking waits for the ms thread.
 //!
-//! Every blocking operation waits through [`wait_fd`] or [`Task::wait`], which park
+//! Every blocking operation waits through [`wait_fd`] or [`blocking`], which park
 //! the running `ms-rt` task so the server reactor and request handlers (other tasks)
 //! run while it waits. A stop request wakes the wait and takes the runtime's
 //! cancellation path.
@@ -9,11 +9,10 @@
 //! thread parks only once it serves (see `use_tasks`), and otherwise polls in slices.
 
 use crate::rt;
-use crate::sys::{self, Borrowed, Wake};
+use crate::sys::{self, Borrowed};
+pub use ms_std_rt::pool::Lane;
 #[cfg(test)]
 use std::cell::Cell;
-use std::sync::Arc;
-use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 /// A supplied timeout below zero.
@@ -150,42 +149,24 @@ pub fn sleep(d: Duration) {
     }
 }
 
-/// A background computation whose completion wakes the ms thread.
-pub struct Task<T> {
-    rx: mpsc::Receiver<T>,
-    wake: Arc<Wake>,
-}
-
-/// Runs `f` on a helper thread. `f` must not call into the runtime.
-pub fn spawn_blocking<T: Send + 'static>(
-    f: impl FnOnce() -> T + Send + 'static,
-) -> Option<Task<T>> {
-    let wake = Arc::new(Wake::new()?);
-    let signal = wake.clone();
-    let (tx, rx) = mpsc::channel();
-    std::thread::Builder::new()
-        .name("ms-net-blocking".into())
-        .spawn(move || {
-            let value = f();
-            let _ = tx.send(value);
-            signal.notify();
-        })
-        .ok()?;
-    Some(Task { rx, wake })
-}
-
-impl<T> Task<T> {
-    /// Waits for the result; `None` when the deadline passes first.
-    pub fn wait(self, deadline: Deadline) -> Option<T> {
-        loop {
-            if let Ok(v) = self.rx.try_recv() {
-                return Some(v);
-            }
-            if wait_fd(self.wake.sock(), Interest::Read, deadline) == Wait::TimedOut {
-                return self.rx.try_recv().ok();
-            }
-        }
+/// Runs `f(&input)` on the shared blocking pool and parks until it finishes; `None` when the
+/// deadline passes first (the late result is dropped). `f` must not call into the runtime.
+/// Unit tests, which do not park, run it inline.
+pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
+    lane: Lane,
+    input: I,
+    f: fn(&I) -> O,
+    deadline: Deadline,
+) -> Option<O> {
+    if !parks() {
+        return Some(f(&input));
     }
+    rt::check_cancel();
+    crate::http::server::give_up_reactor_role();
+    let timeout = deadline
+        .remaining()
+        .map_or(-1, |left| left.as_nanos().min(i64::MAX as u128) as i64);
+    ms_std_rt::pool::run(lane, input, f, timeout)
 }
 
 #[cfg(test)]
@@ -205,17 +186,5 @@ mod tests {
         let start = Instant::now();
         sleep(Duration::from_millis(30));
         assert!(start.elapsed() >= Duration::from_millis(30));
-    }
-
-    #[test]
-    fn tasks_deliver_and_time_out() {
-        let t = spawn_blocking(|| 7).unwrap();
-        assert_eq!(t.wait(Deadline::after(Duration::from_secs(2))), Some(7));
-        let t = spawn_blocking(|| {
-            std::thread::sleep(Duration::from_millis(300));
-            1
-        })
-        .unwrap();
-        assert_eq!(t.wait(Deadline::after(Duration::from_millis(20))), None);
     }
 }
