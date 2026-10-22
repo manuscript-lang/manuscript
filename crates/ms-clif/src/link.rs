@@ -6,14 +6,9 @@ use std::path::{Path, PathBuf};
 
 mod lld;
 #[cfg(unix)]
-pub(crate) use lld::{lld_path, llvm_tools};
+pub(crate) use lld::llvm_tools;
 
 /// Windows links with the system toolchain and has no bundled LLVM tools.
-#[cfg(not(unix))]
-pub(crate) fn lld_path() -> Result<PathBuf, Error> {
-    Err(Error("no bundled linker on this platform".to_string()))
-}
-
 #[cfg(not(unix))]
 pub(crate) fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(None)
@@ -34,7 +29,7 @@ pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error
 pub fn link_with(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     lld::link(object, inputs, out, strip)?;
     place_executable(out)?;
-    emit_debug_companion(object, out)
+    emit_debug_companion(object, inputs, out)
 }
 
 /// Native debug companion for an executable, where the platform uses one.
@@ -49,17 +44,27 @@ pub fn debug_companion_path(output: &Path) -> Option<PathBuf> {
 }
 
 #[cfg(not(target_os = "macos"))]
-fn emit_debug_companion(_object: &Path, _out: &Path) -> Result<(), Error> {
+fn emit_debug_companion(_object: &Path, _inputs: &[&Path], _out: &Path) -> Result<(), Error> {
     Ok(())
 }
 
 #[cfg(target_os = "macos")]
-fn emit_debug_companion(object: &Path, out: &Path) -> Result<(), Error> {
+fn emit_debug_companion(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
     use cranelift_object::object::Object as _;
-    let bytes = std::fs::read(object).map_err(|e| Error(format!("read debug object: {e}")))?;
-    let file = cranelift_object::object::File::parse(bytes.as_slice())
-        .map_err(|e| Error(format!("read debug object: {e}")))?;
-    if file.section_by_name("__debug_info").is_none() {
+    // Any object among the inputs may carry the DWARF (LLVM's does when it compiled the functions).
+    let mut has_dwarf = false;
+    for path in std::iter::once(object).chain(
+        inputs
+            .iter()
+            .copied()
+            .filter(|p| p.extension().is_some_and(|e| e == "o")),
+    ) {
+        let bytes = std::fs::read(path).map_err(|e| Error(format!("read debug object: {e}")))?;
+        let file = cranelift_object::object::File::parse(bytes.as_slice())
+            .map_err(|e| Error(format!("read debug object: {e}")))?;
+        has_dwarf |= file.section_by_name("__debug_info").is_some();
+    }
+    if !has_dwarf {
         return Ok(());
     }
     let companion = debug_companion_path(out).expect("macOS companion");

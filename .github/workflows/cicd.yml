@@ -241,6 +241,14 @@ jobs:
       - name: Native Windows project paths
         if: runner.os == 'Windows'
         run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+      - name: Release builds use the bundled LLVM tools
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
+          dir="$RUNNER_TEMP/llvm-release"
+          mkdir -p "$dir"
+          (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
       - name: Native standard-library source conformance
         run: |
           set -euo pipefail

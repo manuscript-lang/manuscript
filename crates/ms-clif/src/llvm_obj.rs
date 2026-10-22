@@ -1,8 +1,8 @@
-//! Compiles LLVM IR text to an object file and merges it with the Cranelift object.
+//! Compiles LLVM IR text to an object file.
 
 use crate::Error;
-use crate::link::{lld_path, llvm_tools};
-use std::path::PathBuf;
+use crate::link::llvm_tools;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Whether release builds can use LLVM: the tools are embedded in `ms` or named by `MS_LLVM_TOOLS`.
@@ -84,37 +84,13 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
 }
 
 impl LlvmObject {
-    /// Links the object alone (undefined symbols ignored) so its code has final offsets for the
-    /// line tables. The result is only read, never run.
-    pub fn image(&self) -> Result<PathBuf, Error> {
-        let image = self.dir.join("image.so");
-        let mut ld = Command::new(lld_path()?);
-        ld.args([
-            "-flavor",
-            "gnu",
-            "-shared",
-            "--unresolved-symbols=ignore-all",
-            "-z",
-            "notext",
-        ])
-        .arg(&self.obj)
-        .arg("-o")
-        .arg(&image);
-        run(ld, "line table link")?;
-        Ok(image)
+    /// The object file `llc` wrote, whose DWARF the line tables are rebuilt from.
+    pub fn path(&self) -> &Path {
+        &self.obj
     }
 
-    /// Merges the Cranelift object (data, descriptors, tables, `main`) with this one.
-    pub fn merge(&self, clif: &[u8]) -> Result<Vec<u8>, Error> {
-        let (co, out) = (self.dir.join("clif.o"), self.dir.join("merged.o"));
-        std::fs::write(&co, clif).map_err(|e| Error(e.to_string()))?;
-        let mut ld = Command::new(lld_path()?);
-        ld.args(["-flavor", "gnu", "-r"])
-            .arg(&co)
-            .arg(&self.obj)
-            .arg("-o")
-            .arg(&out);
-        run(ld, "relocatable link")?;
-        std::fs::read(&out).map_err(|e| Error(e.to_string()))
+    /// The object's bytes.
+    pub fn bytes(&self) -> Result<Vec<u8>, Error> {
+        std::fs::read(&self.obj).map_err(|e| Error(e.to_string()))
     }
 }
