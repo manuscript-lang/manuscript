@@ -48,7 +48,8 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
         if ready.iter().any(|&r| r) || waited >= slice_ms {
             return ready;
         }
-        sys::sleep_ms(1);
+        // Parks the task, so other tasks run while the pipes are idle.
+        ms_std_rt::task_sleep(1_000_000);
         waited += 1;
     }
 }
