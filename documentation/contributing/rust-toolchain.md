@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-`ms` is implemented in Rust with Cranelift; Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
+`ms` is implemented in Rust. Debug builds use Cranelift and Linux release builds use LLVM through `clang`. Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
 
 ## Build and run
 
@@ -65,7 +65,7 @@ Behavior to know about:
 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 - **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
-- **`ms emit` prints MIR.** Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered intermediate code. Native builds compile MIR to object code through Cranelift.
+- **`ms emit` prints MIR.** Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered intermediate code. Native builds compile MIR to object code through Cranelift, or LLVM for Linux release builds.
 - **Release builds use LLVM on Linux when `clang` is found.** `ms-clif` translates each Cranelift function to LLVM IR (`llvm_ir.rs`) and `clang -O3` (`-Os` for MinSizeRel) optimizes it; Cranelift still emits data, descriptors and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). `MS_BACKEND=cranelift` opts out; `MS_LLVM_CC` names the compiler. Without `clang`, or off Linux, Release uses Cranelift. A bundled LLVM replaces the host `clang` once packaged.
 - **Linking.** `ms` embeds a pinned static `lld`. Building `ms` needs it: set `MS_LLD` to one, or run `sh scripts/build-llvm-bundle.sh <os> <arch> lld` (about an hour; CI caches it). Linux links static musl executables over the startup files and libc copied from the Rust toolchain by `crates/ms-clif/build.rs`, and the runtime is built for the musl target. macOS links against `.tbd` stubs generated from the imported symbols; it needs no SDK, and `dsymutil` (if present) writes `<output>.dSYM` beside the executable, which should stay with it for source lookup. Windows uses `clang` with LLVM's `lld` to retain DWARF sections; `MS_LINKER` overrides the compiler driver there. A bundled Windows path is planned.
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.

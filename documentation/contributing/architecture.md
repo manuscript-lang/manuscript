@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`; `ms` compiles Manuscript to native code through Cranelift. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is a Rust workspace under `crates/`; `ms` compiles Manuscript to native code through Cranelift, or LLVM for Linux release builds. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
 
 ## Follow one compilation
 
@@ -33,7 +33,7 @@ weight = 1
 | --- | --- |
 | `ms-syntax` | Lexer, parser, syntax tree, formatter |
 | `ms-check` | Resolution, types, generics, contracts, effects, cleanup, ownership; typed HIR; diagnostics; editor queries |
-| `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift code generation |
+| `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
 | `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, build and link |
