@@ -12,7 +12,6 @@ use std::os::windows::ffi::OsStrExt;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::{AsRawHandle, RawHandle};
 use std::path::{Component, Path};
-use std::time::Duration;
 use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_READONLY, FILE_FLAG_BACKUP_SEMANTICS,
@@ -243,7 +242,7 @@ fn pause_2ms() {
     ms_std_rt::task_sleep(2_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
-    std::thread::sleep(Duration::from_millis(2));
+    std::thread::sleep(std::time::Duration::from_millis(2));
 }
 
 /// Blocks up to `ms` milliseconds until `fd` is ready; `true` when ready, hung up or failed (the
