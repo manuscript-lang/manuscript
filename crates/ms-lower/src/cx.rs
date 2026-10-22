@@ -70,6 +70,8 @@ pub struct NativeThunkJob {
     pub native: String,
     /// Declared parameters under the use site's substitution.
     pub params: Vec<ct::Param>,
+    /// Declared result under the use site's substitution.
+    pub result: ct::Ty,
     /// The declaration, for the defaults of omitted parameters.
     pub sym: ct::SymRef,
     /// Module the use is written in.

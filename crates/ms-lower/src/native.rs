@@ -195,9 +195,21 @@ impl<'a> FnLower<'a> {
                 let declared = ct::sub(&sym.ty().result_ty(), &subst);
                 let have = self.mty(&declared)?;
                 let r = if native == "json/parse" {
-                    self.json_parse(e, have, &args)?
+                    let t = self
+                        .ety(e)
+                        .args
+                        .first()
+                        .cloned()
+                        .ok_or_else(|| Error::new("parse without a result type"))?;
+                    self.json_parse(&t, have, &args)?
                 } else {
-                    self.json_stringify(e, have, view, &args)?
+                    let value = view
+                        .arguments
+                        .iter()
+                        .find(|a| a.slot.name.as_str() == "value")
+                        .ok_or_else(|| Error::new("stringify without a value"))?;
+                    let t = self.ety(value.expr);
+                    self.json_stringify(t, have, &args)?
                 };
                 let want = self.emty(e)?;
                 self.fit_ty(r, &declared, want)
