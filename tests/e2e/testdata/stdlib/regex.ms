@@ -35,8 +35,7 @@ test "regex captures groups spans and splits":
     try expect_equal((try comma.split("")), [""])
     let swap = try compile("(\\w+)@(?P<host>\\w+)")
     try expect_equal(
-        (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")),
-        "home:me $ y:x $"
+        (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
     )
     let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
     try expect_equal(comma.split("a,b,c", 2), limited)
