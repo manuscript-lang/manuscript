@@ -52,6 +52,11 @@ pub trait Io {
     fn tls_details(&self) -> Option<TlsDetails> {
         None
     }
+    /// Whether a read that filled less than its buffer emptied the socket, so the next
+    /// arrival raises a fresh readiness edge without a read that would block first.
+    fn short_read_drains(&self) -> bool {
+        false
+    }
 }
 
 /// An unencrypted socket.
@@ -76,6 +81,12 @@ fn would_block(e: &io::Error) -> bool {
 impl Io for Plain {
     fn fd(&self) -> Borrowed<'_> {
         self.sock.as_sock()
+    }
+
+    /// Linux's TCP receive copies until the buffer is full or the queue is empty, and
+    /// edge-triggered epoll raises a new edge for any later arrival.
+    fn short_read_drains(&self) -> bool {
+        cfg!(target_os = "linux")
     }
 
     fn read(&self, buf: &mut [u8]) -> Step {
