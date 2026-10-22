@@ -28,9 +28,9 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
         if calls.count != 1:
             return
 
-        var target = left
+        var target = left.clone()
         if side == "right":
-            target = right
+            target = right.clone()
         let next_action = target[1].on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
@@ -55,8 +55,8 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
         target.set(1, Element(77, next_action))
 
     for id in [1, 2, 3]:
-        left.append(Element(id, visit))
-        right.append(Element(id, visit))
+        left.append(Element(id, visit.clone()))
+        right.append(Element(id, visit.clone()))
 
     if mutation == "shrink_mismatch":
         right.set(2, Element(99, visit))
@@ -81,4 +81,4 @@ test "element Equal mutating either List retains both captured headers":
             "shrink", "shrink_mismatch", "append", "append_write", "grow_write",
             "overwrite"
         ]:
-            (try check_equality(side, mutation))
+            (try check_equality(side.clone(), mutation))

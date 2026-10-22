@@ -17,7 +17,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     by_id.values().get(0).label | try expect_equal(expected: "1")
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
-    mapped.length() | try expect_equal(expected: 1)
+  .clone()  mapped.length() | try expect_equal(expected: 1)
     let input = Set[Int]([1, 2])
     first_generic_map(input).length() | try expect_equal(expected: 1)
     first_lookup() | try expect_equal(expected: "found")
@@ -27,7 +27,7 @@ test "Result composition retains concrete Error and its local implementation":
     let one = first_failure(cause)
     let two = second_failure(cause)
     try expect_false(
-        (one.err().message() != "first 1" or two.err().message() != "second 1")
+        (on.clone()e.err().message() != "first 1" or two.err().message() != "second 1")
     )
     cause.count = 2
     (cause.count != 2 or two.err().message() != "second 2") | try expect_false

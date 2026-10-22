@@ -7,7 +7,7 @@ import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:
         for delimiter in [",", ";", "\t"]:
-            let options = CsvOptions(delimiter, ending)
+            let options = CsvOptions(delimiter.clone(), ending.clone())
             let rows = [["a"], [""], ["b"], [""], [""]]
             let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
             let text = try stringify(rows, options)
@@ -21,20 +21,18 @@ test "CSV retains single empty fields and distinguishes empty rows":
                 (
                     (
                         try parse(
-                            "{ending}\"\"{ending}{ending}\"\"",
-                            options
+                            "{ending}\"\"{ending}{ending}\"\"", options
                         )
                     ) != [[""], [""]]
                 )
             )
             try expect_equal(
-                (try stringify([["", ""]], options)),
-                "{delimiter}{ending}"
+                (try stringify([["", ""]], options)), "{delimiter}{ending}"
             )
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
     for ending in ["\n", "\r\n"]:
-        let options = CsvOptions(",", ending)
+        let options = CsvOptions(",", ending.clone())
         let rows = [[""], ["a"], [""]]
         let text = "\"\"{ending}a{ending}\"\"{ending}"
         let bytes = text.byte_length()
@@ -57,8 +55,7 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
     try expect_equal((try parse(try stringify(rows, options), options)), rows)
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
-            ["line\n\nbreak"],
-            [""]
+            ["line\n\nbreak"], [""]
         ]
     )
 

@@ -45,7 +45,7 @@ test "standalone try evaluates once and continues on Unit success":
 
     with temporary = (fs.temporary("manuscript-try-") | try expect_ok):
         let marker = "{temporary.path()}/marker"
-        let value = try exact(State(0, marker), fail: false)
+        let value = try exact(State(0, marker.clone()), fail: false)
         try expect_equal(value, "done 11")
         try expect_true(closed(marker))
 
@@ -54,7 +54,7 @@ test "standalone try propagates and cleans up before returning":
 
     with temporary = (fs.temporary("manuscript-try-") | try expect_ok):
         let marker = "{temporary.path()}/marker"
-        let failed = exact(State(0, marker), fail: true)
+        let failed = exact(State(0, marker.clone()), fail: true)
         try expect_false(failed.is_ok())
         try expect_equal(failed.err().code, 42)
         try expect_true(closed(marker))

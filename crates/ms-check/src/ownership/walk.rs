@@ -1642,13 +1642,19 @@ impl Walker<'_> {
             self.lend(e, &info.resolved, direct)
         };
         if d == Demand::Consume && class != Class::Copy && !lent {
-            self.error(
-                e.pos,
-                format!(
-                    "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
-                    info.text, info.root.name
-                ),
+            let message = format!(
+                "cannot move `{0}` out of `{1}`: only a whole variable can move; take an owned copy with `{0}.{COPY}()`",
+                info.text, info.root.name
             );
+            // A member's position is its name, so the copy goes right after it.
+            match &e.kind {
+                ExprKind::Member { name, .. } => self.error_fix(
+                    e.pos,
+                    message,
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                ),
+                _ => self.error(e.pos, message),
+            }
         }
         self.read_place(e.pos, &info);
     }

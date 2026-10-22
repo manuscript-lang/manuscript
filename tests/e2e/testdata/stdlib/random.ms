@@ -26,7 +26,7 @@ type FailedEntropy:
 
 impl Entropy for FailedEntropy:
     fn bytes(count: Int) Result[Bytes, RandomError]:
-        return error(RandomError.Failed(self.message))
+        return error(RandomError.Failed(self.message.clone()))
 
 test "random algorithms call Manuscript entropy implementations":
     try expect_equal((try secure_int(Entropy(ExactEntropy(1)), -2, 3)), -2)

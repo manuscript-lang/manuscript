@@ -19,7 +19,7 @@ export fn main() Int:
     say("b4 = {b4}")
     let i5 = 45
     say("i5 = {i5}")
-    let s7 = s1
+    let s7 = s1.clone()
     say("s7 = [{s7}]")
     let i8 = 790626811094
     say("i8 = {i8}")

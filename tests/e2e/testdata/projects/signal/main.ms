@@ -7,14 +7,14 @@ type Resource:
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() Unit:
+    var fn close() Unit:
         let _ignored = self.output.write("close {self.label}\n")
 
 export fn main() Int:
     let output = stdout()
 
-    with resource = Resource("parent", output):
-        with child = Resource("child", output):
+    with resource = Resource("parent", output.clone()):
+        with child = Resource("child", output.clone()):
             let _ignored = output.write("ready\n")
             while true:
                 continue

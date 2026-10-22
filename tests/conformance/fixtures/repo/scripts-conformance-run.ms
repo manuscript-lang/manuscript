@@ -72,8 +72,7 @@ fn inventory(suite: String) Result[List[String], Error]:
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file}")
         let projects = try fs.glob(
-            "tests/e2e/testdata/projects",
-            "*/conformance_test.ms"
+            "tests/e2e/testdata/projects", "*/conformance_test.ms"
         )
         projects.is_empty() | try expect_false
         for file in projects: files.append("tests/e2e/testdata/projects/{file}")
@@ -116,7 +115,7 @@ fn run(args: List[String]) Result[Unit, Error]:
         if selected(index, shard, count):
             ran = ran + 1
             try emit("TEST {file}")
-            let result = run_file(ms, file)
+            let result = run_file(ms, file.clone())
 
             match result:
                 ok(_): try emit("PASS {file}")
@@ -132,9 +131,7 @@ fn run(args: List[String]) Result[Unit, Error]:
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
     let output = try commands().run(
-        ms,
-        ["test", file, "--json", "--timeout=30s"],
-        timeout: 3.minutes,
+        ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes,
         max_output_bytes: 16000000
     )
     let text = output.stdout.decode_utf8() | try expect_some
@@ -160,10 +157,7 @@ export fn main() Int:
 
 test "reports require complete nonempty executions and count explicit skips":
     var report = Report(
-        1,
-        true,
-        0,
-        [Case("pass", "passed"), Case("skip", "skipped")],
+        1, true, 0, [Case("pass", "passed"), Case("skip", "skipped")],
         Summary(2, 2, 1, 0, 1, 0)
     )
     try validate(report)

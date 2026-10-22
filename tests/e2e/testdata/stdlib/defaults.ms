@@ -11,14 +11,14 @@ type Capture:
     calls: Int
 
 impl Commands for Capture:
-    fn run(
+    var fn run(
         program: String,
         arguments: List[String],
         input: Bytes,
         max_output_bytes: Optional[Int],
         timeout: Optional[Duration]
     ) Result[CommandOutput, CommandError]:
-        self.last = input
+        self.last = input.clone()
         self.calls += 1
         return ok(CommandOutput(0, input, "".to_bytes()))
 
@@ -36,12 +36,12 @@ type Override:
 test "bound receiver is captured before supplied arguments":
     let first = Capture("first".to_bytes(), 0)
     let second = Capture("second".to_bytes(), 0)
-    var selected = first
+    var selected = first.clone()
     let index: Optional[Int] = some(0)
     let output = try selected.run(
         match index:
             some(_):
-                selected = second
+                selected = second.clone()
                 "fake"
             none: "fake"
         ,
@@ -75,7 +75,7 @@ test "concrete implementation defaults and interface defaults stay distinct":
 
 test "CSV defaults are fresh and explicit options retain their meaning":
     let first = CsvOptions()
-    var alias = first
+    var alias = first.clone()
     alias.delimiter = ";"
     alias.line_ending = "\r\n"
     let second = CsvOptions()
@@ -115,7 +115,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
     )
     try expect_equal(base64_encode(bytes, true), "_w==")
     let encode = base64_encode
-    let copied = encode
+    let copied = encode.clone()
     try expect_equal(copied(bytes), "/w==")
     let typed: fn(data: Bytes, url_safe: Bool) String = encode
     try expect_equal(typed(bytes, false), "/w==")
@@ -137,7 +137,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     let bound = capture.run
     try expect_equal((try bound("fake", [])).stdout.length(), 0)
     try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
-    let view = Commands(capture)
+    let view = Commands(capture.clone())
     let viewed = view.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
     try expect_equal((try generic_run(capture)).length(), 0)

@@ -287,7 +287,7 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text: text, count: count / 2)
+    let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
@@ -296,8 +296,12 @@ test "TOML long strings parse and stringify in linear time":
     let long = repeated(text: "x\\n", count: 150000)
     let expected = repeated(text: "x\n", count: 150000)
     let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
-    let table = (try entries(root))
-    (table.get("a").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
+    let table = (try entries(root.clone()))
+    (
+        table.get("a").get() | try expect_equal(
+            expected: TomlValue.StringValue(expected.clone())
+        )
+    )
     (table.get("b").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
     let text = (stringify(value: root) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(expected: root)
@@ -308,7 +312,7 @@ test "TOML stringify rejects invalid date-time text":
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
         var table = Map[String, TomlValue]()
         table.add("x", TomlValue.DateTimeValue(text))
-        try expect_equal(stringify(TomlValue.TableValue(table)), invalid)
+        try expect_equal(stringify(TomlValue.TableValue(table.clone())), invalid)
         var nested = Map[String, TomlValue]()
         nested.add("a", TomlValue.ArrayValue([TomlValue.TableValue(table)]))
         try expect_equal(stringify(TomlValue.TableValue(nested)), invalid)

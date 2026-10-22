@@ -32,7 +32,7 @@ export fn main() Int:
     var kept: List[String] = []
 
     for c in "añb".chars():
-        kept.append(c)
+        kept.append(c.clone())
         if c == "b":
             break
 

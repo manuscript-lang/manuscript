@@ -32,7 +32,7 @@ export fn main() Int:
                 let next = term.next_event(duration(5000000000))
                 if let maybe = next:
                     if let e = maybe:
-                        stdout().write(describe(e) + "\r\n")
+                        stdout().write(describe(e.clone()) + "\r\n")
                         done = describe(e) == "text:q"
                     else:
                         stdout().write("timeout\r\n")

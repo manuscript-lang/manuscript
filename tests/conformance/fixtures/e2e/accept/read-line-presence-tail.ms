@@ -88,10 +88,10 @@ test "presence retains written argument order and cleanup":
     with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
         let first = "{temporary.path()}/first"
         let second = "{temporary.path()}/second"
-        with_cleanup(var input, first) | try expect_true
+        with_cleanup(var input, first.clone()) | try expect_true
         fs.read_file(first).is_ok() | try expect_true
         fs.read_file(second).is_ok() | try expect_false
-        with_cleanup(var input, second) | try expect_false
+        with_cleanup(var input, second.clone()) | try expect_false
         fs.read_file(second).is_ok() | try expect_true
 
 test "presence and text reads share buffered consumption":

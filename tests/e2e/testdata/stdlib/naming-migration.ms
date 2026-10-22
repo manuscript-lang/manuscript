@@ -13,7 +13,7 @@ type EntryAdapter:
     builder: MapBuilder[String, Int]
 
 impl EntryBuilder for EntryAdapter:
-    fn add(key: String, value: Int) Unit:
+    var fn add(key: String, value: Int) Unit:
         self.builder.add(key, value)
 
 interface Defaults:
@@ -51,7 +51,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     lazy("ccc", create)
     values.add_default("d", 4)
     try expect_false(counter.calls != 2 or values.values() != [1, 2, 3, 4])
-    var view = Defaults(DefaultAdapter(values))
+    var view = Defaults(DefaultAdapter(values.clone()))
     view.add_default("a", 88)
     view.add_default_from("ee", create)
     var copy = values.clone()

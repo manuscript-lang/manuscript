@@ -126,7 +126,7 @@ fn word_map(n: Int) Int:
 
     while j < n:
         let w = words.get(j * 7 % 1000)
-        m.add(w, m.get(w).get(0) + 1)
+        m.add(w.clone(), m.get(w).get(0) + 1)
         j += 1
 
     return m.length() + m.get("word7").get(0)

@@ -58,7 +58,7 @@ test "rebinding the list inside the loop selects the new storage":
 
     while i < 3:
         total += values.get(i)
-        values = other
+        values = other.clone()
         i += 1
 
     try expect_equal(total, 1 + 20 + 30)

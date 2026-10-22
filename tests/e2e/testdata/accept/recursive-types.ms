@@ -151,7 +151,7 @@ test "finite nested generic composition constructs and extracts values":
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-        ok(inner): inner
+        ok(inner): inner.clone()
         error(_): return fail("unexpected outer result error")
 
     match inner:

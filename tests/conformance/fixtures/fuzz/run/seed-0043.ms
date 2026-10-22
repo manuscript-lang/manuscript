@@ -45,7 +45,7 @@ export fn main() Int:
         say(s6)
     let l10 = [(-13)]
     say("l10 = {l10} len {l10.length()}")
-    let s11 = s2
+    let s11 = s2.clone()
     say("s11 = [{s11}]")
     let f12 = (543.245 - ((598.022 * f4) - 442.882))
     say("f12 = {f12}")

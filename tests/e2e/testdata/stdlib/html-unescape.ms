@@ -50,7 +50,7 @@ test "HTML escape and unescape retain immutable text":
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
     let original = "&lt;é&gt;"
-    let alias = original
+    let alias = original.clone()
     let decoded = unescape(original)
     try expect_false((alias != "&lt;é&gt;" or original != alias or decoded != "<é>"))
 

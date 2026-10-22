@@ -54,8 +54,7 @@ test "recursive alternatives construct match compare and clone":
     let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     tree | try expect_equal(
         expected: Tree[Int].Branch(
-            left: Tree[Int].Leaf(1),
-            right: Tree[Int].Leaf(2)
+            left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2)
         )
     )
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
@@ -155,7 +154,7 @@ test "finite nested generic composition constructs and extracts values":
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-        ok(inner): inner
+        ok(inner): inner.clone()
         error(_): return fail("unexpected outer result error")
 
     match inner:
@@ -166,7 +165,6 @@ test "finite nested generic composition constructs and extracts values":
     let box = Box(Box(6))
     box.value.value | try expect_equal(expected: 6)
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
-        first: some(7),
-        second: some(some("nested"))
+        first: some(7), second: some(some("nested"))
     )
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

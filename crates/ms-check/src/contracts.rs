@@ -881,13 +881,14 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         };
     if name == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
+            || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
             || t.is_std("Map")
             || t.is_std("Set")
             || t.is_std("Bytes"))
     {
         let mut owner = t.clone();
-        if matches!(t.kind, Kind::Record | Kind::Alternative) {
+        if matches!(t.kind, Kind::Record | Kind::Alternative | Kind::Primitive) {
             owner = stdlib::standard_symbol("CloneOperations")?.ty();
         }
         let decl = stdlib::standard_method_declaration(&owner, name);

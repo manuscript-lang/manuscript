@@ -28,7 +28,7 @@ test "bound typed and generic calls retain the required count and captured recei
     let replace = text.replace_n
     text = "zzzz"
     try expect_equal(replace("a", "b", 2), "bbaa")
-    let typed: fn(old: String, new: String, max_replacements: Int) String = replace
+    let typed: fn(old: String, new: String, max_replacements: Int) String = replace.clone()
     try expect_equal(typed("a", "b", 3), "bbba")
     let generic = forward(replace)
     try expect_equal(generic("a", "b", 1), "baaa")

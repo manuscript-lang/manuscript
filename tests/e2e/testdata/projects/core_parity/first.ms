@@ -37,7 +37,7 @@ export fn first_failure(cause: Cause) Result[String, Error]:
 export fn first_queries() Bool:
     let key = Key(5, "original")
     var map = Map[Key, String]()
-    map.add(key, "found")
+    map.add(key.clone(), "found")
     let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_some()

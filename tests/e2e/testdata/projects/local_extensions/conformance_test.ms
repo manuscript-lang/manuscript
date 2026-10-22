@@ -25,9 +25,10 @@ test "views and functions retain local implementations across modules":
     (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
     let events = ListBuilder[Int]()
     let resource = Resource(events)
-    with first_close = first_resource(resource):
+    with first_close = first_resource(resource.clone()):
         let active = true
     with second_close = second_resource(resource):
         let active = true
     let values = events.freeze()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false
+var var 

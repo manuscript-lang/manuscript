@@ -45,7 +45,7 @@ test "try can change the success type":
 test "try retains aliases and error views":
     var visits: List[Int] = []
     let original = Failure("before")
-    let exact = relay(Result[Int, Failure].error(original), var visits)
+    let exact = relay(Result[Int, Failure].error(original.clone()), var visits)
     let abstract = widened(Result[Int, Failure].error(original))
     exact.err().detail | try expect_equal(expected: "before")
     abstract.err().message() | try expect_equal(expected: "before")
@@ -98,13 +98,15 @@ test "tail Results preserve cleanup on success and failure":
     with temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
         let first = "{temporary.path()}/first"
         let second = "{temporary.path()}/second"
-        tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(
+        tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(
             expected: 42
         )
         visits | try expect_equal(expected: [1])
         fs.read_file(first).is_ok() | try expect_true
         fs.read_file(second).is_ok() | try expect_false
-        tail_cleanup(Result[Int, TextError].error(TextError("")), var visits, second).is_error() | try expect_true
+        tail_cleanup(
+            Result[Int, TextError].error(TextError("")), var visits, second.clone()
+        ).is_error() | try expect_true
         visits | try expect_equal(expected: [1, 1])
         fs.read_file(second).is_ok() | try expect_true
 

@@ -23,7 +23,7 @@ impl ReadStream for Chunks:
             self.index += 1
             return ok(some(part.clone()))
 
-        if let cause = self.failure: return error(cause)
+        if let cause = self.failure: return error(cause.clone())
 
         return ok(none)
 
@@ -150,8 +150,7 @@ test "invalid UTF-8 is InvalidData and final":
         try expect_false(not failure)
         try expect_false(
             not is_case(
-                created.feed("data: x\n\n".to_bytes()),
-                SseError.InvalidData
+                created.feed("data: x\n\n".to_bytes()), SseError.InvalidData
             )
         )
 
@@ -159,8 +158,7 @@ test "line and event budgets report LimitExceeded":
     var tight = try decoder(SseLimits(some(7)))
     try expect_false(
         not is_case(
-            tight.feed("data: 12\n\n".to_bytes()),
-            SseError.LimitExceeded
+            tight.feed("data: 12\n\n".to_bytes()), SseError.LimitExceeded
         )
     )
     var exact = try decoder(SseLimits(some(8)))
@@ -197,9 +195,7 @@ test "truncated streams fail and clean ends succeed":
 test "reader decodes a borrowed stream and leaves it open":
     let source = stream(
         [
-            "data: he".to_bytes(),
-            "llo\r".to_bytes(),
-            "\n\r\ndata: 2\n\n".to_bytes()
+            "data: he".to_bytes(), "llo\r".to_bytes(), "\n\r\ndata: 2\n\n".to_bytes()
         ],
         none
     )
@@ -216,8 +212,7 @@ test "reader reports truncation limits and read failures":
     let truncated = next_event(var cut)
     try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
     var big = try reader(
-        ReadStream(stream(["data: abcdef\n\n".to_bytes()], none)),
-        SseLimits(some(4))
+        ReadStream(stream(["data: abcdef\n\n".to_bytes()], none)), SseLimits(some(4))
     )
     let limited = next_event(var big)
     try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
