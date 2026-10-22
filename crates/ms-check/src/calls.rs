@@ -193,7 +193,9 @@ impl Checker {
                 );
                 return i;
             }
-            let resolved = constructor_arguments(args, &fields);
+            // `reserve` is named-only: `List[T](n)` stays an error.
+            let named_only = typ.is_std("List") && args.iter().any(|a| a.name.is_none());
+            let resolved = constructor_arguments(args, if named_only { &[] } else { &fields });
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
             let signature = constructor_signature(&typ);

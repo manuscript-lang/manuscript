@@ -6,6 +6,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
+use crate::rtcall::Input;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::Var;
@@ -214,12 +215,29 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(ty));
         }
+        let wrapped = view
+            .arguments
+            .first()
+            .is_some_and(|a| a.wrap_optional.is_some());
         match (self.b.m.types.kind(ty).clone(), arg) {
             (TyKind::List(elem), None) => {
                 let v = self.b.list_lit(elem, &[]);
                 Ok(Val { v, own: true })
             }
-            (TyKind::List(_), Some(x)) => Ok(x),
+            // `List[T](reserve: n)`: an empty list with room for `n` items.
+            (TyKind::List(elem), Some(n)) => {
+                let input = Input {
+                    val: Some(n),
+                    wrapped,
+                };
+                let (has, n) = self.flatten_optional(input, "i64")?;
+                let zero = self.b.iconst(0);
+                let neg = self.b.icmp(Cc::Lt, n, zero);
+                let floor = self.b.select(neg, zero, n);
+                let cap = self.b.select(has, floor, zero);
+                let v = self.b.list_new(elem, cap);
+                Ok(Val { v, own: true })
+            }
             (TyKind::Bytes, Some(values)) if self.ty_of(values.v) != MTy::BYTES => {
                 let v = self.borrow(values);
                 let out = self.call_runtime("msrt_bytes_from_values", &[v], ty)?;
