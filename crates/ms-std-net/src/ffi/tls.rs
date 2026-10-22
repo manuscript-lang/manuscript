@@ -176,12 +176,12 @@ native! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_rt_abi::StrObj;
-    use ms_std_core::{new_string, str_ref};
+    use ms_rt_abi::StrVal;
+    use ms_std_core::new_string;
     use std::ptr::null_mut;
 
-    fn s(text: &str) -> *const StrObj {
-        new_string(text)
+    fn s(text: &str) -> *const StrVal {
+        Box::leak(Box::new(new_string(text)))
     }
 
     #[test]
@@ -208,8 +208,8 @@ mod tests {
                 msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), 1_700_000_000, 0),
                 4
             );
-            let m = msrt_tls_error_message(4);
-            assert_eq!(str_ref(m), "TLS: authentication failed");
+            let m = ms_std_core::take_string(|o| msrt_tls_error_message(4, o));
+            assert_eq!(m, "TLS: authentication failed");
         }
     }
 }

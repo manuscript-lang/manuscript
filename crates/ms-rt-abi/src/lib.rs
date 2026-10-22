@@ -41,30 +41,56 @@ pub const OBJ_DROP_OFFSET: usize = 8;
 pub const OBJ_HEADER_SIZE: usize = 16;
 
 // ---------------------------------------------------------------------------
-// String (the only refcounted value besides Shared)
+// String
 // ---------------------------------------------------------------------------
 
 /// `scalars` value meaning "not counted yet".
 pub const SCALARS_UNKNOWN: usize = usize::MAX;
 
-/// `String`: header, UTF-8 byte length, cached Unicode scalar count, bytes, and
-/// one trailing NUL byte (not counted in `len`). Strings are immutable and
-/// shared by reference count (non-atomic).
+/// `String`: three words in the owner's slot, the same shape as [`VecVal`] with `ptr` pointing at
+/// the UTF-8 bytes. `len` is the byte length and `cap` the byte capacity of the allocation (0
+/// for a literal). The bytes are followed by one NUL (not counted in `len`).
+///
+/// The bytes live in a reference-counted block: a [`StrHdr`] sits immediately before `ptr`, so
+/// copying the value retains the block and dropping it releases the block. Strings are
+/// immutable and shared (non-atomic counts: the language has no concurrency).
 #[repr(C)]
-pub struct StrObj {
-    pub hdr: Obj,
-    /// Byte length.
+#[derive(Clone, Copy)]
+pub struct StrVal {
+    pub ptr: *mut u8,
     pub len: usize,
+    pub cap: usize,
+}
+pub const STR_PTR_OFFSET: usize = 0;
+pub const STR_LEN_OFFSET: usize = 8;
+pub const STR_CAP_OFFSET: usize = 16;
+pub const STR_SIZE: usize = 24;
+
+/// Header of the block that holds a string's bytes, placed immediately before them.
+#[repr(C)]
+pub struct StrHdr {
+    pub hdr: Obj,
     /// Scalar count or [`SCALARS_UNKNOWN`]. Written lazily by `length()`.
     pub scalars: usize,
-    // `len + 1` bytes of data follow at offset 32.
 }
-
-pub const STR_LEN_OFFSET: usize = 16;
-pub const STR_SCALARS_OFFSET: usize = 24;
-pub const STR_DATA_OFFSET: usize = 32;
+/// Size of [`StrHdr`]: the distance from the block to the bytes.
+pub const STR_HDR_SIZE: usize = 24;
+/// Distance from the bytes to the reference count.
+pub const STR_RC_BEFORE: usize = 24;
+/// Distance from the bytes to the cached scalar count.
+pub const STR_SCALARS_BEFORE: usize = 8;
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
-pub const ASCII_CHAR_STRIDE: usize = 40;
+pub const ASCII_CHAR_STRIDE: usize = 32;
+
+/// `Optional[String]`: a presence byte, then the string at offset 8 (32 bytes).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct OptStr {
+    pub present: u8,
+    pub value: StrVal,
+}
+pub const OPT_STR_VALUE_OFFSET: usize = 8;
+pub const OPT_STR_SIZE: usize = 32;
 
 // ---------------------------------------------------------------------------
 // Owned aggregate values: List, Bytes, Map, Set (no header, no count)
@@ -115,12 +141,12 @@ pub const MAP_SIZE: usize = 48;
 pub const KIND_INT: u32 = 0;
 pub const KIND_FLOAT: u32 = 1;
 pub const KIND_BOOL: u32 = 2;
-/// Slot holds a non-null `*mut StrObj`; copy = retain, drop = release; content equality and hash.
+/// Slot holds a `StrVal` (24 bytes); copy = retain, drop = release; content equality and hash.
 pub const KIND_STRING: u32 = 3;
 /// Slot holds a `VecVal` of bytes (24 bytes). Copy duplicates the buffer.
 pub const KIND_BYTES: u32 = 4;
 /// Slot holds a nullable pointer to a reference-counted object with an `Obj`
-/// header (`Shared[T]`, `Optional[String]`...). Copy = retain, drop = release.
+/// header (`Shared[T]`, closures, handle objects...). Copy = retain, drop = release.
 /// `eq`/`hash` are called when present, else identity.
 pub const KIND_SHARED: u32 = 5;
 /// Plain bits without ownership (scalars, records of scalars, inline `Optional[Int]`).
@@ -383,9 +409,18 @@ mod tests {
         assert_eq!(size_of::<Obj>(), OBJ_HEADER_SIZE);
         assert_eq!(offset_of!(Obj, rc), OBJ_RC_OFFSET);
         assert_eq!(offset_of!(Obj, drop), OBJ_DROP_OFFSET);
-        assert_eq!(offset_of!(StrObj, len), STR_LEN_OFFSET);
-        assert_eq!(offset_of!(StrObj, scalars), STR_SCALARS_OFFSET);
-        assert_eq!(size_of::<StrObj>(), STR_DATA_OFFSET);
+        assert_eq!(offset_of!(StrVal, ptr), STR_PTR_OFFSET);
+        assert_eq!(offset_of!(StrVal, len), STR_LEN_OFFSET);
+        assert_eq!(offset_of!(StrVal, cap), STR_CAP_OFFSET);
+        assert_eq!(size_of::<StrVal>(), STR_SIZE);
+        assert_eq!(size_of::<StrHdr>(), STR_HDR_SIZE);
+        assert_eq!(offset_of!(Obj, rc) + STR_RC_BEFORE, STR_HDR_SIZE);
+        assert_eq!(
+            offset_of!(StrHdr, scalars) + STR_SCALARS_BEFORE,
+            STR_HDR_SIZE
+        );
+        assert_eq!(offset_of!(OptStr, value), OPT_STR_VALUE_OFFSET);
+        assert_eq!(size_of::<OptStr>(), OPT_STR_SIZE);
         assert_eq!(offset_of!(VecVal, ptr), VEC_PTR_OFFSET);
         assert_eq!(offset_of!(VecVal, len), VEC_LEN_OFFSET);
         assert_eq!(offset_of!(VecVal, cap), VEC_CAP_OFFSET);

@@ -51,7 +51,8 @@ recorded here before it is committed.)_
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
-  Only `String` and `Shared[T]`-style objects keep an `Obj` header and a count.
+  Only `Shared[T]`-style objects and closures keep an `Obj` header and a count.
+  `String` is a three-word `StrVal` whose bytes live in a refcounted block (section 3).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words) living in the owner's slot;
   runtime operations take a **pointer to the value** (borrowed, or `&mut` for `var`
@@ -68,9 +69,9 @@ recorded here before it is committed.)_
   - Strings: refcounted, immutable, **substrings are copies** (no sharing of buffers); empty and one-ASCII-byte results are
     shared statics (`rc = STATIC_RC`). `scalars == len` means ASCII and enables O(1) indexing; non-ASCII long strings keep a one-entry
     position hint. Retain/release are valid on statics.
-  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = nullable owned pointer
-    (`bytes_decode_utf8`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
-    (borrowed `Optional[String]` parameters are nullable pointers, e.g. `msrt_string_get(s, index, default_or_null)`).
+  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { present: u8, value: StrVal }` through `out`, or a `present: u8` result with `out: *mut StrVal`
+    (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
+    (borrowed `Optional[String]` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
   - Lists: `msrt_list_*` take `(receiver*, desc*, ...)`. Language `drop(count)` is `msrt_list_drop_n` (`msrt_list_drop` releases the value);
     `append` is `msrt_list_push`; `prepend/insert/set` consume the element slot; `fill` borrows and copies its value; `splice` and `extend`
     consume the replacement list; `concat`, `slice`, `take`, `drop_n`, `reversed`, `sorted`, `distinct`, `flatten`, `to_set`, `filled`,
@@ -93,16 +94,16 @@ recorded here before it is committed.)_
   `extern "C"` (declared `C-unwind` in Rust so tests can intercept faults; the ABI
   is identical), named `msrt_<module>_<name>`. Data symbols are `msrt_*` too.
 - Scalars: `Int` = `i64`, `Float` = `f64`, `Bool` = `u8` (0/1), `Unit` is never passed.
-- **No struct by value, ever.** `String` and other refcounted objects are passed as
-  a pointer to the header. Owned aggregates (`List`, `Bytes`, `Map`, `Set`,
-  `StringBuilder`) are passed as a **pointer to the value** (`*const VecVal` /
+- **No struct by value, ever.** Refcounted objects are passed as a pointer to the
+  header. Owned aggregates (`String`, `List`, `Bytes`, `Map`, `Set`,
+  `StringBuilder`) are passed as a **pointer to the value** (`*const StrVal` / `*const VecVal` /
   `*const MapVal` = borrowed read; `*mut` = `var` receiver, mutated in place).
-  Constructed aggregates are returned through a trailing `out: *mut VecVal|MapVal`
+  Constructed aggregates are returned through a trailing `out: *mut StrVal|VecVal|MapVal`
   (uninitialised memory in the caller; the callee initialises it; the caller owns it).
 - **Optional parameters.** `Optional[Int|Float|Bool]` is flattened into
   `has: u8, value: i64|f64|u8`. `Optional[<refcounted object>]` is a nullable pointer.
 - **Optional results.** Scalar payload: return `present: u8`, payload through a
-  trailing `out` pointer only when present. `String`: nullable owned pointer. Generic
+  trailing `out` pointer only when present. `String`: `present: u8` with `out: *mut StrVal`. Generic
   elements: return `present: u8`, element moved/copied into `out: *mut u8`.
 - **Fallible results.** Return `status: u8` (`STATUS_OK = 0`, else the error case
   from `ms-rt-abi`) and write the ok value through the trailing `out` only on
@@ -160,14 +161,16 @@ lists (up to 64 MiB) for reuse instead of returning to the system. No locking.
 ## 3. String
 
 ```text
-StrObj { hdr @0, len: usize @16, scalars: usize @24, data[len] @32, NUL }
+StrVal { ptr @0, len: usize @8, cap: usize @16 }       String (same shape as VecVal)
+StrHdr { hdr @-24, scalars: usize @-8 }                 24 bytes immediately before ptr
 ```
 
-`len` is the UTF-8 byte length; `scalars` is the scalar count or `usize::MAX`
-(unknown), filled lazily by `msrt_string_length` (a literal may carry it). A NUL
-follows the data (not in `len`). Language-level indices and lengths count Unicode
+`ptr` points at the UTF-8 bytes; copying a `StrVal` retains the block at `ptr - 24` and
+dropping it releases the block. `len` is the UTF-8 byte length and `cap` the byte capacity
+(0 for a literal). `scalars` is the scalar count or `usize::MAX` (unknown), filled lazily by
+`msrt_string_length` (a literal may carry it). A NUL follows the data (not in `len`). Language-level indices and lengths count Unicode
 scalars; `byte_length` is `len`. Invalid UTF-8 (only from a compiler bug) decodes as
-U+FFFD of width 1. `msrt_string_empty()` returns a static.
+U+FFFD of width 1. `msrt_string_empty(out)` writes a static.
 
 ## 4. Owned aggregates
 
@@ -212,7 +215,7 @@ TypeDesc { size u32 @0, align u32 @4, kind u32 @8, _ @12, inner0 @16, inner1 @24
 | --- | --- | --- | --- | --- |
 | `INT` / `BOOL` | i64 / u8 | none / bitwise | `==` | mixed |
 | `FLOAT` | f64 | none / bitwise | IEEE (`NaN != NaN`, `0.0 == -0.0`) | none |
-| `STRING` | non-null `StrObj*` | release / retain | content | content |
+| `STRING` | `StrVal` (24 bytes) | release / retain | content | content |
 | `BYTES` | `VecVal` of u8 | free buffer / duplicate buffer | content | content |
 | `SHARED` | nullable `Obj*` | release / retain | `eq` else identity | `hash` else address |
 | `POD` | plain bits | none / `memcpy` | `eq` else `memcmp` | `hash` else bytes |
@@ -244,7 +247,7 @@ build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
 
 ```text
 msrt_fault(msg: *const u8, len: usize) -> !          message bytes are copied
-msrt_fault_string(msg: *mut StrObj) -> !
+msrt_fault_string(msg: *const StrVal) -> !
 msrt_fault_depth() -> !                              "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead"
 msrt_index_fault(index: i64, length: i64) -> !       "index I out of range for length N; pass a default: get(index:, default: ...)"
 msrt_fault_unwrap_none() -> !   msrt_fault_result_get() -> !   msrt_fault_result_err() -> !
@@ -284,7 +287,7 @@ newer pending ones first, innermost to outermost). On a fault the remaining acti
 run LIFO shielded from cancellation.
 
 **Guarded calls.** `msrt_guard_call(code: extern "C-unwind" fn(*mut u8), data: *mut u8,
-msg_out: *mut *mut StrObj) -> u8` runs `code(data)` as an isolated request and returns
+msg_out: *mut StrVal) -> u8` runs `code(data)` as an isolated request and returns
 0 when it returns normally. A fault inside it (user fault, call-depth limit, runtime
 fault) runs the cleanups pushed since entry LIFO, shielded, restores the stack limit,
 cancel shield and equality-cycle state, and returns 1 with the fault report (message
@@ -315,7 +318,7 @@ msrt_task_yield()
 msrt_task_set_prepark(hook: Option<extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
 msrt_task_sleep(ns: i64) -> u32
-msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
+msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_task_cancel(handle: u64)
 msrt_task_current() -> u64
 msrt_task_count() -> usize
@@ -365,7 +368,7 @@ Inline fast paths the code generator may open-code (part of the ABI):
 2. List element address `ptr + i * desc.size` when `(i as u64) < len` (else the slow path:
    negative index, default, or `msrt_index_fault`).
 3. List push: `if len < cap { store at ptr + len*size; len += 1 } else msrt_list_push*`.
-4. Lengths: `StrObj.len @16`, `VecVal.len @8`, `MapVal.len @16`.
+4. Lengths: `StrVal.len @8`, `VecVal.len @8`, `MapVal.len @16`.
 5. Stack-limit check and cancel-flag polling.
 6. Checked `Int` arithmetic via overflow flags, calling `msrt_fault_int_overflow`.
 7. `Optional` presence tests and payload loads.

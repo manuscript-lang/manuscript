@@ -25,8 +25,8 @@ use std::collections::{HashMap, HashSet};
 
 /// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
 pub const STATIC_RC: u64 = 1 << 62;
-/// `ms_rt_abi::STR_DATA_OFFSET`.
-pub const STR_DATA_OFFSET: usize = 32;
+/// `ms_rt_abi::STR_HDR_SIZE`: the bytes of a string follow a 24-byte header.
+pub const STR_HDR_SIZE: usize = 24;
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
 /// Offset of the payload in a `Shared[T]` box.
@@ -497,16 +497,16 @@ impl<'m> Gen<'m> {
         id
     }
 
-    /// A static `String` object for literal `i`.
+    /// A static `String` block for literal `i`: the header (count, no drop entry, scalar count)
+    /// then the bytes. The value of the literal points `STR_HDR_SIZE` bytes into it.
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
         }
         let s = &self.m.strings[i as usize];
-        let mut bytes = vec![0u8; STR_DATA_OFFSET];
+        let mut bytes = vec![0u8; STR_HDR_SIZE];
         bytes[0..8].copy_from_slice(&STATIC_RC.to_le_bytes());
-        bytes[16..24].copy_from_slice(&(s.len() as u64).to_le_bytes());
-        bytes[24..32].copy_from_slice(&(s.chars().count() as u64).to_le_bytes());
+        bytes[16..24].copy_from_slice(&(s.chars().count() as u64).to_le_bytes());
         bytes.extend_from_slice(s.as_bytes());
         bytes.push(0);
         let id = self

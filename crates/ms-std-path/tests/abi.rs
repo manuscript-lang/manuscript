@@ -2,31 +2,30 @@
 #![allow(unsafe_code)]
 
 //! this crate's rlib, so a unit test that also uses `ms-rt` defines every `msrt_path_*` twice.
-use ms_rt::obj::msrt_release;
-use ms_std_core::StrObj;
-use ms_std_core::{new_string, str_ref};
+use ms_rt as _; // links the msrt_* runtime symbols
+use ms_std_core::{StrVal, new_string, str_ref, str_release, take_string};
 use ms_std_path::ffi::*;
 
 #[test]
 fn abi_roundtrip() {
     let p = new_string("/a/b/c.txt");
-    let mut rec = core::mem::MaybeUninit::<[*mut StrObj; 5]>::uninit();
+    let mut rec = core::mem::MaybeUninit::<[StrVal; 5]>::uninit();
     // SAFETY: all pointers are live; results are released below.
     unsafe {
-        msrt_path_parse(0, p, rec.as_mut_ptr());
+        msrt_path_parse(0, &p, rec.as_mut_ptr());
         let r = rec.assume_init_ref();
         assert_eq!(
-            (str_ref(r[2]), str_ref(r[3]), str_ref(r[4])),
+            (str_ref(&r[2]), str_ref(&r[3]), str_ref(&r[4])),
             ("c.txt", ".txt", "c")
         );
-        let f = msrt_path_format(0, rec.as_ptr());
-        assert_eq!(str_ref(f), "/a/b/c.txt");
+        let f = take_string(|o| msrt_path_format(0, rec.as_ptr(), o));
+        assert_eq!(f, "/a/b/c.txt");
         let mut ok = 0u8;
         let pat = new_string("/a/*/c.*");
-        assert_eq!(msrt_path_matches_glob(0, p, pat, &mut ok), 0);
+        assert_eq!(msrt_path_matches_glob(0, &p, &pat, &mut ok), 0);
         assert_eq!(ok, 1);
-        for o in [r[0], r[1], r[2], r[3], r[4], p, f, pat] {
-            msrt_release(o.cast());
+        for o in [r[0], r[1], r[2], r[3], r[4], p, pat] {
+            str_release(o);
         }
     }
 }

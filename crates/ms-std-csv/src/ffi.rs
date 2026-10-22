@@ -44,7 +44,7 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_std_core::{StrObj, VecVal, new_string, read_string_matrix, str_ref};
+    use ms_std_core::{StrVal, VecVal, new_string, read_string_matrix, str_ref};
 
     #[test]
     fn abi_roundtrip() {
@@ -54,11 +54,11 @@ mod tests {
             new_string("\n"),
         );
         let mut rows = MaybeUninit::<VecVal>::uninit();
-        let mut s = MaybeUninit::<*mut StrObj>::uninit();
+        let mut s = MaybeUninit::<StrVal>::uninit();
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_csv_parse(text, comma, lf, 0, 0, 0, 0, rows.as_mut_ptr()),
+                msrt_csv_parse(&text, &comma, &lf, 0, 0, 0, 0, rows.as_mut_ptr()),
                 0
             );
             assert_eq!(
@@ -66,17 +66,17 @@ mod tests {
                 [["a", "b,c"], ["1", "2"]]
             );
             assert_eq!(
-                msrt_csv_stringify(rows.as_ptr(), comma, lf, 0, 0, s.as_mut_ptr()),
+                msrt_csv_stringify(rows.as_ptr(), &comma, &lf, 0, 0, s.as_mut_ptr()),
                 0
             );
-            assert_eq!(str_ref(s.assume_init()), "a,\"b,c\"\n1,2\n");
+            assert_eq!(str_ref(s.as_ptr()), "a,\"b,c\"\n1,2\n");
             let bad = new_string("ab");
             assert_eq!(
-                msrt_csv_parse(text, bad, lf, 0, 0, 0, 0, rows.as_mut_ptr()),
+                msrt_csv_parse(&text, &bad, &lf, 0, 0, 0, 0, rows.as_mut_ptr()),
                 ms_std_core::STATUS_INVALID_INPUT
             );
             for o in [text, comma, lf, bad, s.assume_init()] {
-                ms_rt::obj::msrt_release(o.cast());
+                ms_std_core::str_release(o);
             }
         }
     }

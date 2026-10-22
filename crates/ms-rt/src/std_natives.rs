@@ -2,16 +2,24 @@
 use crate::string::{bytes, from_bytes};
 use crate::testutil::{assert_fault, lock};
 use ms_rt_abi::{
-    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrObj,
+    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
 use ms_std_time::*;
 use std::string::String;
 
-fn st(t: &str) -> *mut StrObj {
-    from_bytes(t.as_bytes())
+/// A string argument that lives for the rest of the test run.
+fn st(t: &str) -> *const StrVal {
+    Box::leak(Box::new(from_bytes(t.as_bytes())))
 }
 
-fn text(s: *const StrObj) -> String {
+/// Calls a string-returning native on a fresh output slot and reads the result.
+fn ret(f: impl FnOnce(*mut StrVal)) -> String {
+    let mut out = crate::string::NO_STR;
+    f(&mut out);
+    text(&out)
+}
+
+fn text(s: *const StrVal) -> String {
     // SAFETY: tests pass live strings.
     String::from_utf8_lossy(unsafe { bytes(s) }).into_owned()
 }
@@ -78,7 +86,7 @@ fn timestamps_round_trip_through_strings() {
             STATUS_OK
         );
         assert_eq!(
-            text(msstd_time_timestamp_to_string(&t)),
+            ret(|o| msstd_time_timestamp_to_string(&t, o)),
             "2024-07-04T16:05:09.5Z"
         );
         assert_eq!(
@@ -108,12 +116,12 @@ fn timestamps_round_trip_through_strings() {
             STATUS_INVALID_INPUT
         );
 
-        let mut out: *mut StrObj = std::ptr::null_mut();
+        let mut out = crate::string::NO_STR;
         assert_eq!(
             msstd_time_timestamp_format(&t, st("YYYY/MM/DD HH:mm ZZ"), st("+05:30"), &mut out),
             STATUS_OK
         );
-        assert_eq!(text(out), "2024/07/04 21:35 +05:30");
+        assert_eq!(text(&out), "2024/07/04 21:35 +05:30");
 
         let mut back = Timestamp {
             seconds: 0,
@@ -142,7 +150,7 @@ fn timestamps_round_trip_through_strings() {
         assert_eq!(d, 1_500_000_000);
         assert_eq!(msstd_time_timestamp_compare(&t, &later), -1);
         assert_eq!(
-            text(msstd_time_error_message(STATUS_OUT_OF_RANGE)),
+            ret(|o| msstd_time_error_message(STATUS_OUT_OF_RANGE, o)),
             "time: value out of range"
         );
     }
@@ -208,7 +216,7 @@ mod fs_io {
             );
             assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
             assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
-            let mut s: *mut StrObj = core::ptr::null_mut();
+            let mut s = crate::string::NO_STR;
             assert_eq!(msstd_fs_read_link(file, &mut s), STATUS_NOT_FOUND);
         }
     }
@@ -230,12 +238,16 @@ mod fs_io {
 
     unsafe extern "C-unwind" fn skip_deep(
         env: *mut ms_rt_abi::Closure,
-        source: *const StrObj,
-        _destination: *const StrObj,
+        ptr: *mut u8,
+        len: usize,
+        cap: usize,
+        _destination: *mut u8,
+        _destination_len: usize,
+        _destination_cap: usize,
     ) -> u8 {
-        // SAFETY: `env` is the `Counting` the test passed; `source` is a live string.
+        // SAFETY: `env` is the `Counting` the test passed; the source is a live string.
         unsafe { (*env.cast::<Counting>()).count += 1 };
-        (!text(source as *mut StrObj).ends_with("deep")) as u8
+        (!text(&StrVal { ptr, len, cap }).ends_with("deep")) as u8
     }
 
     #[test]
@@ -394,7 +406,7 @@ mod fs_io {
             len: 0,
             cap: 0,
         };
-        let mut line: *mut StrObj = core::ptr::null_mut();
+        let mut line = crate::string::NO_STR;
         // SAFETY: valid handles and out pointers throughout.
         unsafe {
             assert_eq!(
@@ -404,7 +416,7 @@ mod fs_io {
             assert_eq!(msstd_io_open(path, &mut h), STATUS_OK);
             assert_eq!(msstd_io_read_line(h, 1, 0, &mut line), STATUS_INVALID_INPUT);
             assert_eq!(msstd_io_read_line(h, 0, 0, &mut line), STATUS_OK);
-            assert!(!text(line).is_empty());
+            assert!(!text(&line).is_empty());
             assert_eq!(msstd_io_read(h, 0, 0, &mut chunk), STATUS_NONE);
             assert_eq!(msstd_io_is_closed(h), 0);
             msstd_io_close(h);
@@ -424,7 +436,7 @@ mod process {
     use ms_std_process::*;
 
     fn list_of(items: &[&str]) -> VecVal {
-        let strs: std::vec::Vec<*mut StrObj> = items.iter().map(|s| st(s)).collect();
+        let strs: std::vec::Vec<StrVal> = items.iter().map(|s| from_bytes(s.as_bytes())).collect();
         let mut v = VecVal {
             ptr: core::ptr::null_mut(),
             len: 0,
@@ -591,9 +603,9 @@ mod process {
             let a = msstd_process_monotonic_time();
             let uptime = msstd_process_uptime();
             assert!(started >= 0 && a >= 0 && uptime >= a && uptime >= started);
-            let mut cwd: *mut StrObj = core::ptr::null_mut();
+            let mut cwd = crate::string::NO_STR;
             assert_eq!(msstd_process_working_directory(&mut cwd), STATUS_OK);
-            assert!(!text(cwd).is_empty());
+            assert!(!text(&cwd).is_empty());
             assert_eq!(
                 msstd_process_set_environment(st("MS_ABI_VAR"), 1, st("x")),
                 STATUS_OK

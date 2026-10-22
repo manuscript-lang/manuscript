@@ -1,7 +1,7 @@
 //! Buffered standard output and unbuffered standard error.
 use crate::global::Global;
 use crate::sys;
-use ms_rt_abi::{StrObj, VecVal};
+use ms_rt_abi::{StrVal, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
 static OUT: Global<Vec<u8>> = Global::new(Vec::new());
@@ -41,13 +41,13 @@ pub fn write_stderr(data: &[u8]) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_io_write_stdout(s: *mut StrObj) {
+pub unsafe extern "C-unwind" fn msrt_io_write_stdout(s: *const StrVal) {
     // SAFETY: caller passes a live string.
     write_stdout(unsafe { crate::string::bytes(s) });
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_io_write_stderr(s: *mut StrObj) {
+pub unsafe extern "C-unwind" fn msrt_io_write_stderr(s: *const StrVal) {
     // SAFETY: caller passes a live string.
     write_stderr(unsafe { crate::string::bytes(s) });
 }
@@ -57,7 +57,7 @@ static TEST_SITE: std::sync::Mutex<Option<(Vec<u8>, Vec<u8>)>> = std::sync::Mute
 
 /// Remembers where the assertion failure carrying `message` was built.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_test_site(message: *mut StrObj, site: *mut StrObj) {
+pub unsafe extern "C-unwind" fn msrt_test_site(message: *const StrVal, site: *const StrVal) {
     // SAFETY: caller passes live strings.
     let entry = unsafe {
         (
@@ -72,7 +72,7 @@ pub unsafe extern "C-unwind" fn msrt_test_site(message: *mut StrObj, site: *mut 
 
 /// Writes `  at <position>` to stderr when `message` is the last recorded assertion failure.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_test_site_report(message: *mut StrObj) {
+pub unsafe extern "C-unwind" fn msrt_test_site_report(message: *const StrVal) {
     // SAFETY: caller passes a live string.
     let message = unsafe { crate::string::bytes(message) };
     let Ok(slot) = TEST_SITE.lock() else { return };

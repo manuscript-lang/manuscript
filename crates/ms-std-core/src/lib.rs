@@ -26,12 +26,14 @@ use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
     KIND_CUSTOM, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
-    STATUS_OUT_OF_RANGE, STATUS_UNSUPPORTED, StrObj, TypeDesc, VecVal,
+    STATUS_OUT_OF_RANGE, STATUS_UNSUPPORTED, StrVal, TypeDesc, VecVal,
 };
 
 unsafe extern "C" {
     fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj;
+    fn msrt_retain(o: *mut ms_rt_abi::Obj);
+    fn msrt_release(o: *mut ms_rt_abi::Obj);
+    fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     static msrt_desc_string: TypeDesc;
@@ -96,25 +98,60 @@ pub fn int_overflow() -> ! {
 /// Borrows the text of a runtime string.
 ///
 /// # Safety
-/// `p` is a live, non-null `StrObj` that outlives `'a`.
-pub unsafe fn str_ref<'a>(p: *const StrObj) -> &'a str {
-    // SAFETY: caller contract; the runtime guarantees valid UTF-8 and a trailing NUL after `len`.
-    unsafe {
-        let len = (*p).len;
-        let data = (p as *const u8).add(ms_rt_abi::STR_DATA_OFFSET);
-        core::str::from_utf8_unchecked(core::slice::from_raw_parts(data, len))
-    }
+/// `p` is a live `StrVal` whose bytes outlive `'a`.
+pub unsafe fn str_ref<'a>(p: *const StrVal) -> &'a str {
+    // SAFETY: caller contract; the runtime guarantees valid UTF-8.
+    unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts((*p).ptr, (*p).len)) }
+}
+
+/// Adds a reference to the block that holds `s`'s bytes.
+///
+/// # Safety
+/// `s` is a live string.
+pub unsafe fn str_retain(s: StrVal) {
+    // SAFETY: the reference-counted header sits immediately before the bytes.
+    unsafe { msrt_retain(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
+}
+
+/// Drops a reference to the block that holds `s`'s bytes.
+///
+/// # Safety
+/// `s` is a live string the caller owns a reference to.
+pub unsafe fn str_release(s: StrVal) {
+    // SAFETY: the reference-counted header sits immediately before the bytes.
+    unsafe { msrt_release(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
 }
 
 /// Creates an owned runtime string (+1).
-pub fn new_string(s: &str) -> *mut StrObj {
+pub fn new_string(s: &str) -> StrVal {
     new_string_bytes(s.as_bytes())
 }
 
 /// Creates an owned runtime string (+1) from bytes the caller trusts to be UTF-8.
-pub fn new_string_bytes(s: &[u8]) -> *mut StrObj {
-    // SAFETY: pointer and length describe `s`.
-    unsafe { msrt_string_from_bytes(s.as_ptr(), s.len()) }
+pub fn new_string_bytes(s: &[u8]) -> StrVal {
+    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+    // SAFETY: pointer and length describe `s`; `out` is written by the call.
+    unsafe {
+        msrt_string_from_bytes(s.as_ptr(), s.len(), out.as_mut_ptr());
+        out.assume_init()
+    }
+}
+
+/// Runs `write` on an output slot, then returns the string it wrote as a Rust `String` and
+/// releases it. For tests that call a string-returning native.
+///
+/// # Safety
+/// `write` initialises its argument with an owned string.
+pub unsafe fn take_string(write: impl FnOnce(*mut StrVal)) -> alloc::string::String {
+    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+    write(out.as_mut_ptr());
+    // SAFETY: caller contract; the string is owned and released once.
+    unsafe {
+        let s = out.assume_init();
+        let text = alloc::string::String::from(str_ref(&s));
+        str_release(s);
+        text
+    }
 }
 
 /// Borrows the contents of a `Bytes` value.
@@ -181,7 +218,7 @@ pub unsafe fn write_string_list<S: AsRef<str>>(
     items: impl IntoIterator<Item = S>,
 ) {
     // SAFETY: `out` is initialised by `msrt_list_new` before use; each pushed slot holds a
-    // string pointer whose ownership moves into the list.
+    // string whose ownership moves into the list.
     unsafe {
         msrt_list_new(out);
         for item in items {
@@ -215,11 +252,11 @@ pub unsafe fn write_string_matrix<S: AsRef<str>, R: IntoIterator<Item = S>>(
 /// # Safety
 /// `v` is a live `List[String]`.
 pub unsafe fn read_string_list<'a>(v: *const VecVal) -> Vec<&'a str> {
-    // SAFETY: elements are non-null `StrObj` pointers stored inline, 8 bytes apart.
+    // SAFETY: elements are `StrVal`s stored inline, 24 bytes apart.
     unsafe {
         let v = &*v;
         (0..v.len)
-            .map(|i| str_ref(*(v.ptr as *const *const StrObj).add(i)))
+            .map(|i| str_ref((v.ptr as *const StrVal).add(i)))
             .collect()
     }
 }
@@ -251,7 +288,7 @@ mod tests {
     fn strings_and_bytes_roundtrip() {
         let s = new_string("héllo");
         // SAFETY: `s` is a fresh live string.
-        assert_eq!(unsafe { str_ref(s) }, "héllo");
+        assert_eq!(unsafe { str_ref(&s) }, "héllo");
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: `v` is writable; the value is dropped at the end.
         unsafe {

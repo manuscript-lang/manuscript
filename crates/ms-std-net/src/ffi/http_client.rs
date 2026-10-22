@@ -263,8 +263,8 @@ native! {
     // -------------------------------------------------------------------- errors
 
     /// `HttpError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_http_error_message(status: u8, failed: Option<&str>) -> String {
-        http_from_code(status, failed.unwrap_or_default().to_string()).message()
+    fn msrt_http_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+        http_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
     }
 
     // ------------------------------------------------------------------- headers

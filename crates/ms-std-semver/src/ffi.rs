@@ -63,7 +63,7 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _; // links the msrt_* runtime symbols
-    use ms_std_core::{new_string, str_ref};
+    use ms_std_core::{new_string, take_string};
 
     #[test]
     fn abi_roundtrip() {
@@ -71,14 +71,14 @@ mod tests {
         let mut rec = MaybeUninit::<VersionRec>::uninit();
         // SAFETY: pointers are live; the record is released below.
         unsafe {
-            assert_eq!(msrt_semver_parse(t, rec.as_mut_ptr()), 0);
-            let f = msrt_semver_format(rec.as_ptr());
-            assert_eq!(str_ref(f), "1.2.3-rc.1+b.7");
+            assert_eq!(msrt_semver_parse(&t, rec.as_mut_ptr()), 0);
+            let f = take_string(|o| msrt_semver_format(rec.as_ptr(), o));
+            assert_eq!(f, "1.2.3-rc.1+b.7");
             assert_eq!(msrt_semver_compare(rec.as_ptr(), rec.as_ptr()), 0);
             let bad = new_string("01.2.3");
-            assert_eq!(msrt_semver_parse(bad, rec.as_mut_ptr()), 4);
+            assert_eq!(msrt_semver_parse(&bad, rec.as_mut_ptr()), 4);
             let big = new_string("99999999999999999999.2.3");
-            assert_eq!(msrt_semver_parse(big, rec.as_mut_ptr()), 2);
+            assert_eq!(msrt_semver_parse(&big, rec.as_mut_ptr()), 2);
         }
     }
 }

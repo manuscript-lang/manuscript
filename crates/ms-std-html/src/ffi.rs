@@ -130,7 +130,7 @@ mod tests {
     use core::mem::MaybeUninit;
     use ms_rt as _;
     use ms_rt_abi::STATUS_OK;
-    use ms_std_core::{ObjCell, new_string, str_ref};
+    use ms_std_core::{ObjCell, new_string, take_string};
 
     #[test]
     fn parse_walk() {
@@ -140,20 +140,20 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_html_parse(text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
+                msrt_html_parse(&text, 0, 0, 0, 0, 0, 0, 0, t.as_mut_ptr(), &mut root),
                 STATUS_OK
             );
             let t = t.assume_init();
             assert_eq!(msrt_html_kind(t, root), KIND_DOCUMENT);
             let html = msrt_html_first_child(t, root);
-            assert_eq!(str_ref(msrt_html_data(t, html)), "html");
+            assert_eq!(take_string(|o| msrt_html_data(t, html, o)), "html");
             let body = msrt_html_child(t, html, 1);
             let p = msrt_html_first_child(t, body);
             assert_eq!(msrt_html_attr_count(t, p), 1);
             let tx = msrt_html_first_child(t, p);
-            assert_eq!(str_ref(msrt_html_data(t, tx)), "x&y");
+            assert_eq!(take_string(|o| msrt_html_data(t, tx, o)), "x&y");
             ms_rt::obj::msrt_release(t.cast());
-            ms_rt::obj::msrt_release(text.cast());
+            ms_std_core::str_release(text);
         }
     }
 }

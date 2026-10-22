@@ -113,7 +113,7 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _; // links the msrt_* runtime symbols
-    use ms_std_core::{ObjCell, new_string};
+    use ms_std_core::{ObjCell, StrVal, new_string};
 
     #[test]
     fn line_roundtrip() {
@@ -123,15 +123,15 @@ mod tests {
         unsafe {
             assert_eq!(msrt_logcore_new_state(0, 0, 1, 0, 0, 0, l.as_mut_ptr()), 0);
             let l = l.assume_init();
-            let mut out = MaybeUninit::<*mut _>::uninit();
-            assert_eq!(msrt_logcore_line(l, 2, msg, 5, out.as_mut_ptr()), 0);
+            let mut out = MaybeUninit::<StrVal>::uninit();
+            assert_eq!(msrt_logcore_line(l, 2, &msg, 5, out.as_mut_ptr()), 0);
             assert_eq!(
-                ms_std_core::str_ref(out.assume_init()),
+                ms_std_core::str_ref(&out.assume_init()),
                 "{\"level\":30,\"msg\":\"hi\"}\n"
             );
-            assert_eq!(msrt_logcore_line(l, 0, msg, 5, out.as_mut_ptr()), 0);
-            assert_eq!(ms_std_core::str_ref(out.assume_init()), "");
-            assert_eq!(msrt_logcore_line(l, 6, msg, 5, out.as_mut_ptr()), 1);
+            assert_eq!(msrt_logcore_line(l, 0, &msg, 5, out.as_mut_ptr()), 0);
+            assert_eq!(ms_std_core::str_ref(&out.assume_init()), "");
+            assert_eq!(msrt_logcore_line(l, 6, &msg, 5, out.as_mut_ptr()), 1);
         }
     }
 }

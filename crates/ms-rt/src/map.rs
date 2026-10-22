@@ -136,14 +136,15 @@ impl KeyOps for StrKey {
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds a live string.
-        unsafe { crate::string::hash_bytes(crate::string::bytes(*(key as *const *const StrObj))) }
+        unsafe { crate::string::hash_bytes(crate::string::bytes(key as *const StrVal)) }
     }
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
         // SAFETY: both slots hold live strings. A lookup of an inserted key hits the same object.
         unsafe {
-            let (x, y) = (*(a as *const *const StrObj), *(b as *const *const StrObj));
-            x == y || crate::string::bytes(x) == crate::string::bytes(y)
+            let (x, y) = (a as *const StrVal, b as *const StrVal);
+            (*x).ptr == (*y).ptr && (*x).len == (*y).len
+                || crate::string::bytes(x) == crate::string::bytes(y)
         }
     }
 }
@@ -1249,7 +1250,7 @@ mod tests {
             let got: std::vec::Vec<_> = (0..vals.len)
                 .map(|i| {
                     std::string::String::from_utf8_lossy(string::bytes(
-                        *(vals.ptr as *const *const StrObj).add(i),
+                        (vals.ptr as *const StrVal).add(i),
                     ))
                     .into_owned()
                 })

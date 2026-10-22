@@ -19,7 +19,7 @@ mod inventory;
 
 use alloc::vec::Vec;
 use inventory::{Cpu, Interface, Metrics, Slot};
-use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrObj};
+use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrVal};
 use ms_std_core::{IntMap, StatusCode, Text, native};
 use ms_std_process::control;
 
@@ -51,7 +51,7 @@ fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
 }
 
 native! {
-    safe fn msstd_system_failure_message() -> *mut StrObj {
+    fn msstd_system_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 

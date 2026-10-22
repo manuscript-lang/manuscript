@@ -88,7 +88,7 @@ native! {
     }
 
     /// `NetworkError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_net_error_message(status: u8, failed: Option<&str>) -> String {
+    fn msrt_net_error_message(status: u8, has_failed: bool, failed: &str) -> String {
         let e = match status {
             1 => NetErr::InvalidInput,
             2 => NetErr::InvalidData,
@@ -97,7 +97,7 @@ native! {
             5 => NetErr::Unsupported,
             6 => NetErr::Closed,
             7 => NetErr::Timeout,
-            _ => NetErr::Failed(failed.unwrap_or_default().to_string()),
+            _ => NetErr::Failed((if has_failed { failed } else { "" }).to_string()),
         };
         e.message()
     }
@@ -401,18 +401,41 @@ fn _normalize(ip: IpAddr) -> IpAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_rt_abi::{StrObj, VecVal};
-    use ms_std_core::{bytes_ref, new_string, read_string_list, str_ref, write_string_list};
+    use ms_rt_abi::{StrVal, VecVal};
+    use ms_std_core::{
+        bytes_ref, new_string, read_string_list, str_ref, str_release, take_string,
+        write_string_list,
+    };
     use std::mem::MaybeUninit;
     use std::ptr::null_mut;
 
-    unsafe fn s(text: &str) -> *mut StrObj {
-        new_string(text)
+    /// A string argument that lives for the rest of the test run.
+    fn s(text: &str) -> *const StrVal {
+        Box::leak(Box::new(new_string(text)))
     }
 
-    unsafe fn take(p: *mut StrObj) -> String {
+    fn take_string_val(write: impl FnOnce(*mut StrVal)) -> StrVal {
+        let mut out = no_str();
+        write(&mut out);
+        out
+    }
+
+    fn no_str() -> StrVal {
+        StrVal {
+            ptr: null_mut(),
+            len: 0,
+            cap: 0,
+        }
+    }
+
+    /// Reads and releases an owned string.
+    unsafe fn take(v: StrVal) -> String {
         // SAFETY: test helper over a fresh string.
-        unsafe { str_ref(p) }.to_string()
+        unsafe {
+            let text = str_ref(&v).to_string();
+            str_release(v);
+            text
+        }
     }
 
     #[test]
@@ -421,29 +444,35 @@ mod tests {
         unsafe {
             let mut ip = null_mut();
             let mut cidr = null_mut();
-            let mut err = null_mut();
+            let mut err = no_str();
             assert_eq!(
                 msrt_net_parse_ip(s("::ffff:192.0.2.1"), &mut ip, &mut err),
                 0
             );
-            assert_eq!(take(msrt_net_ip_address_text(ip)), "192.0.2.1");
+            assert_eq!(
+                take_string(|o| msrt_net_ip_address_text(ip, o)),
+                "192.0.2.1"
+            );
             assert_eq!(msrt_net_ip_address_family(ip), 0);
             assert_eq!(
                 msrt_net_parse_cidr(s("192.0.2.3/24"), &mut cidr, &mut err),
                 0
             );
-            assert_eq!(take(msrt_net_cidr_text(cidr)), "192.0.2.0/24");
+            assert_eq!(take_string(|o| msrt_net_cidr_text(cidr, o)), "192.0.2.0/24");
             let mut yes = 0;
             assert_eq!(msrt_net_contains_ip(cidr, ip, &mut yes), 0);
             assert_eq!(yes, 1);
             assert_eq!(msrt_net_parse_ip(s("fe80::1%eth0"), &mut ip, &mut err), 2);
             assert_eq!(
-                take(msrt_net_error_message(2, null_mut())),
+                take_string(|o| msrt_net_error_message(2, 0, s(""), o)),
                 "network: invalid data"
             );
-            assert_eq!(take(msrt_net_error_message(8, s("boom"))), "boom");
-            assert_eq!(take(msrt_net_dns_kind_text(3)), "MX");
-            assert_eq!(take(msrt_net_ip_family_text(1)), "IPv6");
+            assert_eq!(
+                take_string(|o| msrt_net_error_message(8, 1, s("boom"), o)),
+                "boom"
+            );
+            assert_eq!(take_string(|o| msrt_net_dns_kind_text(3, o)), "MX");
+            assert_eq!(take_string(|o| msrt_net_ip_family_text(1, o)), "IPv6");
         }
     }
 
@@ -453,12 +482,14 @@ mod tests {
         unsafe {
             let net = msrt_net_network();
             let (mut listener, mut client, mut server) = (null_mut(), null_mut(), null_mut());
-            let mut err = null_mut();
+            let mut err = no_str();
             assert_eq!(
                 msrt_net_network_listen(net, s("127.0.0.1:0"), &mut listener, &mut err),
                 0
             );
-            let addr = msrt_net_listener_address(listener);
+            let addr = Box::leak(Box::new(take_string_val(|o| {
+                msrt_net_listener_address(listener, o)
+            })));
             assert_eq!(
                 msrt_net_network_connect(net, addr, 1, 2_000_000_000, &mut client, &mut err),
                 0
@@ -505,8 +536,8 @@ mod tests {
             );
             assert_eq!(take(err), "operation timed out");
             assert_eq!(
-                take(msrt_net_connection_peer_address(server)),
-                take(msrt_net_connection_local_address(client))
+                take_string(|o| msrt_net_connection_peer_address(server, o)),
+                take_string(|o| msrt_net_connection_local_address(client, o))
             );
             msrt_net_connection_close(client);
             msrt_net_connection_close(server);
@@ -523,7 +554,7 @@ mod tests {
         unsafe {
             let net = msrt_net_network();
             let mut child = null_mut();
-            let mut err = null_mut();
+            let mut err = no_str();
             let mut hosts = MaybeUninit::<VecVal>::uninit();
             write_string_list(hosts.as_mut_ptr(), ["localhost"]);
             let mut cidrs = MaybeUninit::<VecVal>::uninit();
@@ -576,7 +607,7 @@ mod tests {
                 0
             );
             assert_eq!(count, 1);
-            assert_eq!(take((*records).value.as_ptr().cast_mut()), "127.0.0.1");
+            assert_eq!(take((*records).value.as_ptr().read()), "127.0.0.1");
             ms_rt::obj::msrt_release(child.cast());
             ms_rt::obj::msrt_release(net.cast());
         }

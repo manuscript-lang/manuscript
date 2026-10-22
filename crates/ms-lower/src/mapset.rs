@@ -710,10 +710,8 @@ impl<'a> FnLower<'a> {
         let (kd, vd) = self.map_descs(mt)?;
         let vd = match vd {
             Some(v) => v,
-            None => {
-                let ot = self.b.m.types.opt(MTy::STR);
-                self.b.opt_none(ot)
-            }
+            // A set is a map without a value descriptor: a null pointer.
+            None => self.b.iconst(0),
         };
         let kp = self.ptr_slot();
         let vp = self.ptr_slot();

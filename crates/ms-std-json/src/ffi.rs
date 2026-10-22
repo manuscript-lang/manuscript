@@ -75,10 +75,10 @@ native! {
         matches!(d.nodes[id as usize], Node::Bool(true))
     }
 
-    fn msrt_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
+    fn msrt_json_text(d: ObjRef<'_, Doc>, id: u32) -> String {
         match &d.0.nodes[id as usize] {
-            Node::Number(s) | Node::Str(s) => s,
-            _ => "",
+            Node::Number(s) | Node::Str(s) => s.clone(),
+            _ => String::new(),
         }
     }
 
@@ -99,10 +99,10 @@ native! {
         }
     }
 
-    fn msrt_json_key(d: ObjRef<'_, Doc>, id: u32, i: i64) -> &str {
+    fn msrt_json_key(d: ObjRef<'_, Doc>, id: u32, i: i64) -> String {
         match &d.0.nodes[id as usize] {
-            Node::Object(v) => &v[i as usize].0,
-            _ => "",
+            Node::Object(v) => v[i as usize].0.clone(),
+            _ => String::new(),
         }
     }
 
@@ -231,7 +231,7 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _;
-    use ms_rt_abi::{STATUS_OK, StrObj};
+    use ms_rt_abi::{STATUS_OK, StrVal};
     use ms_std_core::{ObjCell, new_string, str_ref};
 
     #[test]
@@ -239,11 +239,11 @@ mod tests {
         let text = new_string(r#"{"a":[1,"x",null],"b":true}"#);
         let mut d = MaybeUninit::<*mut ObjCell<Doc>>::uninit();
         let mut root = 0u32;
-        let mut s = MaybeUninit::<*mut StrObj>::uninit();
+        let mut s = MaybeUninit::<StrVal>::uninit();
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_json_parse(text, 0, 0, 0, 0, 0, 0, d.as_mut_ptr(), &mut root),
+                msrt_json_parse(&text, 0, 0, 0, 0, 0, 0, d.as_mut_ptr(), &mut root),
                 STATUS_OK
             );
             let d = d.assume_init();
@@ -255,10 +255,10 @@ mod tests {
                 msrt_json_stringify(d, root, 0, 0, 1, 2, s.as_mut_ptr()),
                 STATUS_OK
             );
-            assert!(str_ref(s.assume_init()).starts_with("{\n  \"a\": [\n    1,"));
-            ms_rt::obj::msrt_release(s.assume_init().cast());
+            assert!(str_ref(s.as_ptr()).starts_with("{\n  \"a\": [\n    1,"));
+            ms_std_core::str_release(s.assume_init());
             ms_rt::obj::msrt_release(d.cast());
-            ms_rt::obj::msrt_release(text.cast());
+            ms_std_core::str_release(text);
         }
     }
 }

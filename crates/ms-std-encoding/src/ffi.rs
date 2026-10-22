@@ -61,7 +61,7 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_std_core::{VecVal, bytes_ref, new_string, str_ref};
+    use ms_std_core::{VecVal, bytes_ref, new_string, take_string};
 
     #[test]
     fn abi_roundtrip() {
@@ -69,18 +69,17 @@ mod tests {
         let mut b = MaybeUninit::<VecVal>::uninit();
         // SAFETY: all pointers are live; the results are released below.
         unsafe {
-            assert_eq!(msrt_encoding_base64_decode(t, 0, 0, 0, b.as_mut_ptr()), 0);
+            assert_eq!(msrt_encoding_base64_decode(&t, 0, 0, 0, b.as_mut_ptr()), 0);
             assert_eq!(bytes_ref(b.as_ptr()), b"foo");
-            let hex = msrt_encoding_hex_encode(b.as_ptr());
-            assert_eq!(str_ref(hex), "666f6f");
+            let hex = take_string(|o| msrt_encoding_hex_encode(b.as_ptr(), o));
+            assert_eq!(hex, "666f6f");
             let bad = new_string("%");
             assert_eq!(
-                msrt_encoding_base64_decode(bad, 0, 0, 0, b.as_mut_ptr()),
+                msrt_encoding_base64_decode(&bad, 0, 0, 0, b.as_mut_ptr()),
                 ms_std_core::STATUS_INVALID_DATA
             );
-            ms_rt::obj::msrt_release(hex.cast());
-            ms_rt::obj::msrt_release(t.cast());
-            ms_rt::obj::msrt_release(bad.cast());
+            ms_std_core::str_release(t);
+            ms_std_core::str_release(bad);
         }
     }
 }

@@ -2,7 +2,7 @@
 use crate::{Draw, Kind, RandomFail};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Mut, Own, Ref, Status, StrObj, abi_handle, native};
+use ms_std_core::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
 
 abi_handle!(Draw);
 
@@ -32,7 +32,7 @@ fn kind_of(kind: i64) -> Kind {
 
 native! {
     /// The text of the last `Failed` status (a fresh string).
-    safe fn msstd_random_failure_message() -> *mut StrObj {
+    fn msstd_random_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 

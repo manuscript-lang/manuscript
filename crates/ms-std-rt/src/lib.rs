@@ -16,10 +16,10 @@ use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
 use core::sync::atomic::{AtomicU8, Ordering};
-use ms_rt_abi::{STR_DATA_OFFSET, StrObj};
+use ms_rt_abi::StrVal;
 
 unsafe extern "C-unwind" {
-    fn msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj;
+    fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
     fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_fault(msg: *const u8, len: usize) -> !;
@@ -30,16 +30,20 @@ unsafe extern "C-unwind" {
 /// The bytes of a live string.
 ///
 /// # Safety
-/// `s` must point to a live `StrObj` that outlives `'a`.
-pub unsafe fn str_bytes<'a>(s: *const StrObj) -> &'a [u8] {
-    // SAFETY: a `StrObj` is followed by `len` data bytes at `STR_DATA_OFFSET`.
-    unsafe { core::slice::from_raw_parts((s as *const u8).add(STR_DATA_OFFSET), (*s).len) }
+/// `s` must point to a live `StrVal` whose bytes outlive `'a`.
+pub unsafe fn str_bytes<'a>(s: *const StrVal) -> &'a [u8] {
+    // SAFETY: `ptr..ptr+len` holds the text.
+    unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len) }
 }
 
 /// A new owned string (refcount 1) holding `bytes`.
-pub fn new_string(bytes: &[u8]) -> *mut StrObj {
-    // SAFETY: the slice is readable; the runtime copies it.
-    unsafe { msrt_string_from_bytes(bytes.as_ptr(), bytes.len()) }
+pub fn new_string(bytes: &[u8]) -> StrVal {
+    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+    // SAFETY: the slice is readable; the runtime copies it and writes `out`.
+    unsafe {
+        msrt_string_from_bytes(bytes.as_ptr(), bytes.len(), out.as_mut_ptr());
+        out.assume_init()
+    }
 }
 
 /// Raises a fault with this message; never returns.
@@ -236,8 +240,8 @@ pub unsafe fn write_bytes(data: &[u8], out: *mut ms_rt_abi::VecVal) {
 ///
 /// # Safety
 /// `out` must be writable.
-pub unsafe fn write_string_list(items: &[*mut StrObj], out: *mut ms_rt_abi::VecVal) {
-    // SAFETY: the allocation holds `items.len()` pointers.
+pub unsafe fn write_string_list(items: &[StrVal], out: *mut ms_rt_abi::VecVal) {
+    // SAFETY: the allocation holds `items.len()` strings.
     unsafe {
         if items.is_empty() {
             *out = ms_rt_abi::VecVal {
@@ -248,7 +252,7 @@ pub unsafe fn write_string_list(items: &[*mut StrObj], out: *mut ms_rt_abi::VecV
             return;
         }
         let ptr = msrt_alloc(core::mem::size_of_val(items));
-        core::ptr::copy_nonoverlapping(items.as_ptr(), ptr as *mut *mut StrObj, items.len());
+        core::ptr::copy_nonoverlapping(items.as_ptr(), ptr as *mut StrVal, items.len());
         *out = ms_rt_abi::VecVal {
             ptr,
             len: items.len(),
@@ -359,7 +363,7 @@ pub fn record_failure(message: Vec<u8>) {
 }
 
 /// A fresh string holding the most recently recorded failure text.
-pub fn failure_message() -> *mut StrObj {
+pub fn failure_message() -> StrVal {
     // SAFETY: single-threaded runtime.
     new_string(unsafe { &*FAILURE.0.get() })
 }

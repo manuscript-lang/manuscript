@@ -7,9 +7,10 @@ use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
 use crate::http::headers::Headers;
 use crate::http::server::{Dispatch, Outcome, Reply, Request as ServerRequest};
-use ms_rt_abi::{Obj, StrObj, VecVal};
+use ms_rt_abi::{Obj, StrVal, VecVal};
 use ms_std_core::{
-    FromAbi, Handler, IntoAbi, ObjRef, Object, bytes_ref, new_string, str_ref, write_bytes,
+    FromAbi, Handler, IntoAbi, ObjRef, Object, bytes_ref, new_string, str_ref, str_release,
+    write_bytes,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,11 +19,18 @@ unsafe extern "C" {
     fn msrt_guard_call(
         code: unsafe extern "C-unwind" fn(*mut u8),
         data: *mut u8,
-        msg_out: *mut *mut StrObj,
+        msg_out: *mut StrVal,
     ) -> u8;
     fn msrt_free(p: *mut u8);
     fn msrt_release(o: *mut Obj);
 }
+
+/// A string slot no one has written: the null string a thunk leaves when it reports no message.
+const NO_MESSAGE: StrVal = StrVal {
+    ptr: std::ptr::null_mut(),
+    len: 0,
+    cap: 0,
+};
 
 // ------------------------------------------------------------------ wire types
 
@@ -30,10 +38,10 @@ unsafe extern "C" {
 /// thunk.
 #[repr(C)]
 pub struct RequestWire {
-    pub method: *mut StrObj,
-    pub path: *mut StrObj,
-    pub query: *mut StrObj,
-    pub protocol: *mut StrObj,
+    pub method: StrVal,
+    pub path: StrVal,
+    pub query: StrVal,
+    pub protocol: StrVal,
     /// `HttpHeaders` handle.
     pub headers: *mut Obj,
     /// `Bytes`.
@@ -59,7 +67,7 @@ pub type BufferedThunk =
 /// exchange handle is +1 for the thunk; the result is an `HttpError` status
 /// (`Failed` text through `err`).
 pub type StreamThunk =
-    unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut *mut StrObj) -> u8;
+    unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut StrVal) -> u8;
 
 // --------------------------------------------------------------------- helpers
 
@@ -114,20 +122,20 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
         unsafe { (*data.cast::<&mut dyn FnMut()>())() };
     }
     let mut dynamic: &mut dyn FnMut() = &mut call;
-    let mut message: *mut StrObj = std::ptr::null_mut();
+    let mut message = NO_MESSAGE;
     // SAFETY: `run` and its data outlive the call; `message` is written only on a fault.
     let status = unsafe { msrt_guard_call(run, (&raw mut dynamic).cast(), &mut message) };
     match status {
         0 => None,
         2 => Some(Outcome::Cancelled),
         _ => {
-            let text = if message.is_null() {
+            let text = if message.ptr.is_null() {
                 "fault".to_string()
             } else {
                 // SAFETY: the guard hands over an owned string, released once here.
-                let text = unsafe { str_ref(message) }.to_string();
+                let text = unsafe { str_ref(&message) }.to_string();
                 // SAFETY: as above.
-                unsafe { msrt_release(message.cast()) };
+                unsafe { str_release(message) };
                 text
             };
             Some(Outcome::Fault(text))
@@ -184,7 +192,7 @@ impl Dispatch for Program {
         let Some(thunk) = self.streaming else {
             return Outcome::Fault("no handler".into());
         };
-        let mut message: *mut StrObj = std::ptr::null_mut();
+        let mut message = NO_MESSAGE;
         // SAFETY: the thunk borrows the exchange handle (it takes its own reference for the
         // handler); the status and optional message string come back owned.
         let mut status = 0;
@@ -196,13 +204,13 @@ impl Dispatch for Program {
         }
         // SAFETY: the handle created above is released once, after the thunk returned.
         unsafe { msrt_release(handle) };
-        let text = if message.is_null() {
+        let text = if message.ptr.is_null() {
             String::new()
         } else {
             // SAFETY: an owned string from the thunk.
-            let text = unsafe { str_ref(message) }.to_string();
+            let text = unsafe { str_ref(&message) }.to_string();
             // SAFETY: as above; the string is released once, after copying.
-            unsafe { msrt_release(message.cast()) };
+            unsafe { str_release(message) };
             text
         };
         Outcome::Done(match status {
@@ -278,7 +286,7 @@ mod tests {
     unsafe extern "C" fn thunk(_env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire) {
         // SAFETY: the dispatcher passes live wires; the path string is owned by us.
         unsafe {
-            if str_ref((*req).path) == "/boom" {
+            if str_ref(&(*req).path) == "/boom" {
                 msrt_fault(b"boom".as_ptr(), 4);
             }
             (*resp).status = 204;

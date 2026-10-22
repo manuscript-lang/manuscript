@@ -29,7 +29,7 @@ pub static msrt_desc_float: TypeDesc = builtin(8, 8, KIND_FLOAT);
 #[unsafe(no_mangle)]
 pub static msrt_desc_bool: TypeDesc = builtin(1, 1, KIND_BOOL);
 #[unsafe(no_mangle)]
-pub static msrt_desc_string: TypeDesc = builtin(8, 8, KIND_STRING);
+pub static msrt_desc_string: TypeDesc = builtin(24, 8, KIND_STRING);
 #[unsafe(no_mangle)]
 pub static msrt_desc_bytes: TypeDesc = builtin(24, 8, KIND_BYTES);
 
@@ -73,7 +73,8 @@ unsafe fn slot_drop_owned(d: &TypeDesc, slot: *mut u8) {
     unsafe {
         match d.kind {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {}
-            KIND_STRING | KIND_SHARED => obj::release(*(slot as *mut *mut Obj)),
+            KIND_STRING => string::release(*(slot as *const StrVal)),
+            KIND_SHARED => obj::release(*(slot as *mut *mut Obj)),
             KIND_BYTES => {
                 let v = &mut *(slot as *mut VecVal);
                 if !v.ptr.is_null() {
@@ -117,7 +118,8 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {
                 core::ptr::copy_nonoverlapping(src, dst, d.size as usize)
             }
-            KIND_STRING | KIND_SHARED => {
+            KIND_STRING => *(dst as *mut StrVal) = string::retained(*(src as *const StrVal)),
+            KIND_SHARED => {
                 let p = *(src as *const *mut Obj);
                 obj::retain(p);
                 *(dst as *mut *mut Obj) = p;
@@ -209,9 +211,7 @@ pub unsafe fn slot_eq(d: &TypeDesc, a: *const u8, b: *const u8) -> bool {
             KIND_INT => *(a as *const i64) == *(b as *const i64),
             KIND_FLOAT => *(a as *const f64) == *(b as *const f64),
             KIND_BOOL => *a == *b,
-            KIND_STRING => {
-                string::equal(*(a as *const *const StrObj), *(b as *const *const StrObj))
-            }
+            KIND_STRING => string::equal(a as *const StrVal, b as *const StrVal),
             KIND_BYTES => {
                 let (x, y) = (&*(a as *const VecVal), &*(b as *const VecVal));
                 x.len == y.len
@@ -274,7 +274,7 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
         match d.kind {
             KIND_INT => string::mix(*(slot as *const u64) ^ 0x9e37_79b9),
             KIND_BOOL => string::mix(*slot as u64 + 1),
-            KIND_STRING => string::hash_bytes(string::bytes(*(slot as *const *const StrObj))),
+            KIND_STRING => string::hash_bytes(string::bytes(slot as *const StrVal)),
             KIND_BYTES => {
                 let v = &*(slot as *const VecVal);
                 string::hash_bytes(if v.len == 0 {

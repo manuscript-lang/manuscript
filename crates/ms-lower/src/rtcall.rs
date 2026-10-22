@@ -360,10 +360,7 @@ impl FnLower<'_> {
                     match a.get(k) {
                         Some(t) => vals.push(self.type_desc(*t)),
                         // A set is a map without a value descriptor.
-                        None if k == 1 => {
-                            let ot = self.b.m.types.opt(MTy::STR);
-                            vals.push(self.b.opt_none(ot));
-                        }
+                        None if k == 1 => vals.push(self.b.iconst(0)),
                         None => return Err(Error::new(format!("{sym}: no key type"))),
                     }
                 }
@@ -431,13 +428,6 @@ impl FnLower<'_> {
                     }
                     cursor += 1;
                     let Some(x) = input.val else {
-                        if p.ty.ends_with("StrObj") {
-                            // An omitted optional string is a null pointer.
-                            let ot = self.b.m.types.opt(MTy::STR);
-                            vals.push(self.b.opt_none(ot));
-                            i += 1;
-                            continue;
-                        }
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
                     };
                     // An `HttpMethod` crosses as its token text.
@@ -540,6 +530,7 @@ impl FnLower<'_> {
                                 )?;
                                 given.v
                             }
+                            // A present optional string arrives as the plain string.
                             _ => v,
                         };
                         vals.push(v);
@@ -667,6 +658,8 @@ impl FnLower<'_> {
         let zero = |s: &mut Self| match payload {
             "i64" => s.b.iconst(0),
             "f64" => s.b.fconst(0.0),
+            // An absent string still passes a live (empty) string, which the runtime ignores.
+            "*const StrVal" => s.b.str_lit(""),
             _ => s.b.bconst(false),
         };
         let Some(x) = input.val else {
@@ -738,10 +731,18 @@ impl FnLower<'_> {
             "i64" => Some(MTy::INT),
             "f64" => Some(MTy::FLOAT),
             "u8" => Some(MTy::BOOL),
-            "*mut StrObj" | "*mut ms_rt_abi::StrObj" => Some(MTy::STR),
             "" | "()" => Some(MTy::UNIT),
             _ => None,
         };
+        // A string comes back through a trailing `out: *mut StrVal` and no status.
+        let body =
+            sig.params.len() - usize::from(sig.params.last().is_some_and(|p| p.name == "err"));
+        let string_ret = has_out
+            && direct(&sig.ret) == Some(MTy::UNIT)
+            && sig.params[..body]
+                .last()
+                .is_some_and(|p| p.ty == "*mut StrVal");
+        let has_out = has_out && !string_ret;
         // A new runtime object (`BigInt`) is returned as its pointer.
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
@@ -755,6 +756,7 @@ impl FnLower<'_> {
                 _ => false,
             };
         let ret = direct(&sig.ret)
+            .map(|r| if string_ret { MTy::STR } else { r })
             .or(object.then_some(result))
             .ok_or_else(|| Error::new(format!("{sym}: unsupported return {}", sig.ret)))?;
         if !has_out {
@@ -815,30 +817,11 @@ impl FnLower<'_> {
                     .expect("iface");
                 return Ok(Val { v, own: true });
             }
-            // A null string pointer is the absent `Optional[String]`.
-            let ret = match self.b.m.types.kind(result) {
-                TyKind::Opt(inner) if ret == MTy::STR && *inner == MTy::STR => result,
-                _ => ret,
-            };
             let out = self.call_runtime(sym, &vals, ret)?;
             let owned = self.needs_drop(ret);
             return Ok(Val { v: out, own: owned });
         }
         if ret == MTy::UNIT {
-            if matches!(self.b.m.types.kind(result), TyKind::Str) {
-                // A single pointer: the runtime stores it through the out pointer.
-                let slot = self
-                    .b
-                    .emit(Op::Slot, &[], Imm::Ty(result), Some(MTy::PTR))
-                    .expect("slot");
-                vals.push(slot);
-                self.call_runtime(sym, &vals, MTy::UNIT)?;
-                let v = self
-                    .b
-                    .emit(Op::Take, &[slot], Imm::Ty(result), Some(result))
-                    .expect("take");
-                return Ok(Val { v, own: true });
-            }
             // The constructed value returns through the trailing out pointer.
             let out = self.call_runtime(sym, &vals, result)?;
             return Ok(Val { v: out, own: true });

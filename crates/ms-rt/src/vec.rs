@@ -866,8 +866,8 @@ pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVa
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_join(
     v: *const VecVal,
-    sep: *const StrObj,
-    out: *mut *mut StrObj,
+    sep: *const StrVal,
+    out: *mut StrVal,
 ) {
     // SAFETY: caller contract.
     unsafe {
@@ -878,7 +878,7 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
             if i > 0 {
                 b.extend_from_slice(sepb);
             }
-            b.extend_from_slice(string::bytes(*(v.ptr as *const *const StrObj).add(i)));
+            b.extend_from_slice(string::bytes((v.ptr as *const StrVal).add(i)));
         }
         *out = string::from_buf(b);
     }
@@ -1459,16 +1459,17 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
     }
 }
 
-/// `decode_utf8`: nullable owned string, null when invalid.
+/// `decode_utf8`: presence flag (0 when the bytes are not valid UTF-8), the string through `out`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal) -> *mut StrObj {
+pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
         if core::str::from_utf8(s).is_err() {
-            return core::ptr::null_mut();
+            return 0;
         }
-        from_bytes(s)
+        out.write(from_bytes(s));
+        1
     }
 }
 
@@ -1506,7 +1507,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 // ---- StringBuilder (bytes) ----
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const StrObj) {
+pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) {
     // SAFETY: caller contract.
     unsafe {
         // One byte (a character or punctuation) is the common append and needs no call:
@@ -1522,7 +1523,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
 }
 
 #[inline(never)]
-unsafe fn append_slow(b: *mut VecVal, s: *const StrObj) {
+unsafe fn append_slow(b: *mut VecVal, s: *const StrVal) {
     // SAFETY: caller contract.
     unsafe {
         let data = string::bytes(s);
@@ -1556,12 +1557,12 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
 
 /// Builds the string and consumes the builder (its buffer is freed).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj {
+pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) {
     // SAFETY: caller contract.
     unsafe {
         let s = from_bytes(bslice(b));
         msrt_bytes_drop(b);
-        s
+        out.write(s);
     }
 }
 

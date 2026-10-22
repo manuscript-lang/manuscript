@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::{ASCII_CHAR_STRIDE, STR_DATA_OFFSET};
+use ms_rt_abi::{ASCII_CHAR_STRIDE, STR_HDR_SIZE, STR_RC_BEFORE, STR_SCALARS_BEFORE};
 use std::collections::HashMap;
 
 type Vs = Vec<Value>;
@@ -308,7 +308,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             return;
         }
         match m.types.kind(ty) {
-            TyKind::Str | TyKind::Fn(..) => self.release(vs[0]),
+            TyKind::Str => {
+                let block = self.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
+                self.release(block);
+            }
+            TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>
@@ -330,7 +334,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             return vs.to_vec();
         }
         match m.types.kind(ty) {
-            TyKind::Str | TyKind::Fn(..) => {
+            TyKind::Str => {
+                let block = self.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
+                self.retain(block);
+                vs.to_vec()
+            }
+            TyKind::Fn(..) => {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
@@ -1411,7 +1420,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let p = self
                     .b
                     .ins()
-                    .iadd_imm_s(base, crate::cg::STR_DATA_OFFSET as i64);
+                    .iadd_imm_s(base, crate::cg::STR_HDR_SIZE as i64);
                 let n = self.iconst(self.g.m.strings[s.index()].len() as i64);
                 self.rt_call("msrt_fault", &[p, n]);
             }
@@ -1469,7 +1478,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if let Some(r) = inst.res {
                     self.str_lits.insert(r.index(), s.0);
                 }
-                vec![self.data_addr(d)]
+                let base = self.data_addr(d);
+                let ptr = self.b.ins().iadd_imm_s(base, STR_HDR_SIZE as i64);
+                let len = self.iconst(self.g.m.strings[s.0 as usize].len() as i64);
+                let cap = self.iconst(0);
+                vec![ptr, len, cap]
             }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1870,10 +1883,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::StrByte => {
                 let (p, i) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 let at = self.b.ins().iadd(p, i);
-                let byte = self
-                    .b
-                    .ins()
-                    .load(types::I8, flags(), at, STR_DATA_OFFSET as i32);
+                let byte = self.b.ins().load(types::I8, flags(), at, 0);
                 let byte = self.b.ins().uextend(types::I64, byte);
                 vec![byte]
             }
@@ -1882,12 +1892,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.rt_data("msrt_ascii_chars");
                 let base = self.data_addr(d);
                 let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
-                vec![self.b.ins().iadd(base, off)]
+                let block = self.b.ins().iadd(base, off);
+                let ptr = self.b.ins().iadd_imm_s(block, STR_HDR_SIZE as i64);
+                let len = self.iconst(1);
+                let cap = self.iconst(0);
+                vec![ptr, len, cap]
             }
             Op::StrLen => {
                 // Scalar count: cached in the object, else computed (and cached) by the runtime.
-                let p = self.a(inst, 0)[0];
-                let n = self.b.ins().load(types::I64, flags(), p, 24);
+                let s = self.a(inst, 0);
+                let p = s[0];
+                let n = self
+                    .b
+                    .ins()
+                    .load(types::I64, flags(), p, -(STR_SCALARS_BEFORE as i32));
                 let unknown = self.b.ins().icmp_imm_s(IntCC::Equal, n, -1);
                 let join = self.b.create_block();
                 self.b.append_block_param(join, types::I64);
@@ -1897,7 +1915,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .ins()
                     .brif(unknown, slow, &[], join, &[BlockArg::Value(n)]);
                 self.b.switch_to_block(slow);
-                let c = self.rt_call("msrt_string_length", &[p])[0];
+                let at = self.spill(&s, &[Leaf::I64; 3]);
+                let c = self.rt_call("msrt_string_length", &[at])[0];
                 self.b.ins().jump(join, &[BlockArg::Value(c)]);
                 self.b.switch_to_block(join);
                 vec![self.b.block_params(join)[0]]
@@ -2456,8 +2475,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.str_lits.get(&inst.args[0].index()),
             self.str_lits.get(&inst.args[1].index()),
         ) {
-            (_, Some(l)) => (*l, self.a(inst, 0)[0]),
-            (Some(l), None) => (*l, self.a(inst, 1)[0]),
+            (_, Some(l)) => (*l, self.a(inst, 0)),
+            (Some(l), None) => (*l, self.a(inst, 1)),
             (None, None) => return None,
         };
         let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
@@ -2465,7 +2484,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             return None;
         }
         let unaligned = MemFlagsData::new().with_notrap();
-        let len = self.b.ins().load(types::I64, flags(), other, 16);
+        let len = other[1];
         let same_len = self
             .b
             .ins()
@@ -2495,7 +2514,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             word[..n].copy_from_slice(&bytes[at..at + n]);
             let shift = 64 - 8 * n as u32;
             let want = (i64::from_le_bytes(word) << shift) >> shift;
-            let got = self.b.ins().load(ty, unaligned, other, 32 + at as i32);
+            let got = self.b.ins().load(ty, unaligned, other[0], at as i32);
             let eq = self.b.ins().icmp_imm_s(IntCC::Equal, got, want);
             all = Some(match all {
                 Some(a) => self.b.ins().band(a, eq),
@@ -2596,7 +2615,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int
             | TyKind::Float
             | TyKind::Ptr
-            | TyKind::Str
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,
             TyKind::Obj(n, _) => n != "Map" && n != "Set",

@@ -605,7 +605,7 @@ pub unsafe extern "C-unwind" fn msrt_fault(msg: *const u8, len: usize) -> ! {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_fault_string(s: *mut ms_rt_abi::StrObj) -> ! {
+pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -> ! {
     // SAFETY: caller passes a live string.
     fault(unsafe { crate::string::bytes(s) })
 }
@@ -823,7 +823,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         GUARD_MESSAGE = if status == GUARD_FAULT {
             crate::string::from_bytes(&message)
         } else {
-            core::ptr::null_mut()
+            crate::string::NO_STR
         };
         drop(message);
         guard_jump(f.jmp as *mut usize, status as usize)
@@ -862,7 +862,7 @@ pub(crate) unsafe fn pop_trap_guard() {
 }
 
 #[cfg(not(test))]
-static mut GUARD_MESSAGE: *mut ms_rt_abi::StrObj = core::ptr::null_mut();
+static mut GUARD_MESSAGE: ms_rt_abi::StrVal = crate::string::NO_STR;
 
 #[cfg(not(test))]
 unsafe extern "C" {
@@ -1020,12 +1020,12 @@ core::arch::global_asm!(
 pub unsafe extern "C-unwind" fn msrt_guard_call(
     code: unsafe extern "C-unwind" fn(*mut u8),
     data: *mut u8,
-    msg_out: *mut *mut ms_rt_abi::StrObj,
+    msg_out: *mut ms_rt_abi::StrVal,
 ) -> u8 {
     // SAFETY: single threaded runtime state; the frame is popped before returning.
     unsafe {
         if !msg_out.is_null() {
-            *msg_out = core::ptr::null_mut();
+            *msg_out = crate::string::NO_STR;
         }
         let mut slot: usize = 0;
         (*GUARDS.ptr()).push(GuardFrame {
@@ -1045,10 +1045,10 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             }
             if !msg_out.is_null() {
                 *msg_out = GUARD_MESSAGE;
-            } else if !GUARD_MESSAGE.is_null() {
-                crate::obj::release(GUARD_MESSAGE as *mut ms_rt_abi::Obj);
+            } else {
+                crate::string::release_opt(GUARD_MESSAGE);
             }
-            GUARD_MESSAGE = core::ptr::null_mut();
+            GUARD_MESSAGE = crate::string::NO_STR;
             r as u8
         }
         #[cfg(test)]
@@ -1129,16 +1129,16 @@ mod tests {
         unsafe {
             *LOG_N.ptr() = 0;
             msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
-            let mut msg: *mut ms_rt_abi::StrObj = core::ptr::null_mut();
+            let mut msg = crate::string::NO_STR;
             let mut data = 1u8;
             assert_eq!(msrt_guard_call(request, &mut data, &mut msg), 1);
-            assert!(!msg.is_null());
-            assert!(crate::string::bytes(msg).starts_with(b"handler failed"));
+            assert!(!msg.ptr.is_null());
+            assert!(crate::string::bytes(&msg).starts_with(b"handler failed"));
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[2]);
             assert_eq!((*CLEANUPS.ptr()).len(), 1);
             let mut ok = 0u8;
             assert_eq!(msrt_guard_call(request, &mut ok, &mut msg), 0);
-            assert!(msg.is_null());
+            assert!(msg.ptr.is_null());
             assert_eq!(ok, 10);
             assert_eq!((*CLEANUPS.ptr()).len(), 2);
             reset_for_tests();
