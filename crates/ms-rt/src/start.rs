@@ -167,6 +167,8 @@ mod os {
     }
 
     extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
+        #[cfg(target_os = "linux")]
+        crate::alloc::claim_arena();
         install_overflow_handler();
         // SAFETY: see `run_main`.
         unsafe { run_main() };

@@ -122,6 +122,15 @@ pub struct itimerval {
     pub value: timeval,
 }
 
+/// Identity of the calling thread (`pthread_self`).
+pub fn thread_self() -> usize {
+    unsafe extern "C" {
+        fn pthread_self() -> usize;
+    }
+    // SAFETY: no arguments; returns the caller's handle.
+    unsafe { pthread_self() }
+}
+
 /// Opaque storage large enough for `pthread_attr_t` on supported targets.
 #[repr(C, align(16))]
 pub struct pthread_attr_buf(pub [u8; 128]);

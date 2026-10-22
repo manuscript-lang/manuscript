@@ -519,3 +519,115 @@ mod tests {
         assert_eq!(live_blocks(), before);
     }
 }
+
+/// Rust's global allocator for compiled programs (installed by `ms-native` on Linux).
+///
+/// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
+/// runtime's size-class allocator instead of libc's, which is several times slower per call. The
+/// arena is single threaded: only the thread that runs `main` touches it, and every other thread
+/// uses the system allocator. A block that another thread frees from the arena is leaked.
+#[cfg(target_os = "linux")]
+pub struct StdHeap;
+
+#[cfg(target_os = "linux")]
+mod owner {
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    /// The thread that owns the arena; 0 until the runtime thread starts, when any thread may use it.
+    static OWNER: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn claim() {
+        OWNER.store(crate::sys::thread_self(), Ordering::Relaxed);
+    }
+
+    #[inline(always)]
+    pub fn is_current() -> bool {
+        let owner = OWNER.load(Ordering::Relaxed);
+        owner == 0 || owner == crate::sys::thread_self()
+    }
+}
+
+/// Makes the calling thread the only one that allocates from the arena.
+#[cfg(target_os = "linux")]
+pub fn claim_arena() {
+    owner::claim();
+}
+
+#[cfg(target_os = "linux")]
+mod std_heap {
+    use super::{MAX_SMALL, STATE, StdHeap, in_arena, owner};
+    use core::alloc::{GlobalAlloc, Layout};
+    use std::alloc::System;
+
+    /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
+    /// library out of the arena so leak checks see only program allocations.
+    #[inline(always)]
+    fn arena_ok(layout: Layout) -> bool {
+        !cfg!(feature = "stats") && layout.align() <= 16 && owner::is_current()
+    }
+
+    #[inline(always)]
+    fn owns(p: *mut u8) -> bool {
+        // SAFETY: single field reads of the allocator state.
+        in_arena(unsafe { &*STATE.ptr() }, p)
+    }
+
+    // SAFETY: blocks come from the arena or the system allocator, and `dealloc` and `realloc`
+    // tell them apart by address, so each is released by the allocator that produced it.
+    unsafe impl GlobalAlloc for StdHeap {
+        #[inline]
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            if arena_ok(layout) {
+                super::alloc(layout.size())
+            } else {
+                // SAFETY: forwarded.
+                unsafe { System.alloc(layout) }
+            }
+        }
+
+        #[inline]
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            if arena_ok(layout) && layout.size() <= MAX_SMALL {
+                super::alloc_zeroed(layout.size())
+            } else {
+                // SAFETY: forwarded; the system allocator hands out lazily zeroed pages for big blocks.
+                unsafe { System.alloc_zeroed(layout) }
+            }
+        }
+
+        #[inline]
+        unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
+            if !owns(p) {
+                // SAFETY: not an arena block, so the system allocator produced it.
+                unsafe { System.dealloc(p, layout) };
+            } else if owner::is_current() {
+                // SAFETY: an arena block freed on the arena's thread.
+                unsafe { super::free(p) };
+            }
+        }
+
+        unsafe fn realloc(&self, p: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+            let target = Layout::from_size_align(new_size, layout.align());
+            let Ok(target) = target else {
+                return core::ptr::null_mut();
+            };
+            if arena_ok(layout) && (owns(p) || new_size > MAX_SMALL) {
+                // SAFETY: `p` is a live block of this heap (arena, or a large system block).
+                return unsafe { super::realloc(p, new_size) };
+            }
+            if !owns(p) && layout.align() <= 16 {
+                // SAFETY: a system block stays with the system allocator.
+                return unsafe { System.realloc(p, layout, new_size) };
+            }
+            // SAFETY: moves between allocators by copy; the old block is released by `dealloc`.
+            unsafe {
+                let q = self.alloc(target);
+                if !q.is_null() {
+                    core::ptr::copy_nonoverlapping(p, q, layout.size().min(new_size));
+                    self.dealloc(p, layout);
+                }
+                q
+            }
+        }
+    }
+}
