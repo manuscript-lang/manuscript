@@ -258,19 +258,15 @@ jobs:
           cp "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" "$src"
           printf '\nexport fn main() Int:\n    return 0\n' >> "$src"
           export MS_FORCE_LLVM=1
-          for backend in llvm cranelift; do
-            if [ $backend = cranelift ]; then unset MS_FORCE_LLVM; fi
-            (cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-$backend" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" --build-type Release 2>&1 | head -8; ls -l prog-$backend; ./prog-$backend 0 2>&1 | head -5; echo "exit=${PIPESTATUS[0]}") || true
-            "$bin/llvm-readobj" --file-headers --coff-imports "$dir/prog-$backend" 2>&1 | head -80 || true
-            "$bin/llvm-objdump" -h "$dir/prog-$backend" 2>&1 | head -30 || true
-          done
-          export MS_FORCE_LLVM=1
-          for backend in llvm cranelift; do
-            if [ $backend = llvm ]; then export MS_FORCE_LLVM=1; else unset MS_FORCE_LLVM; fi
-            (cd "$dir" && "$ms" build "$src" -o "rsa-$backend" --build-type Release 2>&1 | tail -5; ls -l rsa-$backend*; ./rsa-$backend 2>&1 | head -3; echo "exit=${PIPESTATUS[0]}") || true
-            "$bin/llvm-readobj" --file-headers "$dir/rsa-$backend" 2>&1 | head -60 || true
-            "$bin/llvm-objdump" -h "$dir/rsa-$backend" 2>&1 | head -40 || true
-          done
+          (cd "$dir" && MS_KEEP_TEST_PROGRAM="$dir/prog-llvm" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/crypto-rsa.ms" --build-type Release 2>&1 | head -3) || true
+          p="$dir/prog-llvm"
+          "$bin/llvm-readobj" --coff-basereloc "$p" 2>&1 | head -40 || true
+          "$bin/llvm-readobj" --coff-load-config "$p" 2>&1 | head -60 || true
+          "$bin/llvm-objcopy" --strip-debug "$p" "$dir/p-nodebug" && { "$dir/p-nodebug" 0 2>&1 | head -2; echo "nodebug exit=${PIPESTATUS[0]}"; } || true
+          "$bin/llvm-objcopy" --strip-all "$p" "$dir/p-nosym" && { "$dir/p-nosym" 0 2>&1 | head -2; echo "nosym exit=${PIPESTATUS[0]}"; } || true
+          MSYS2_ARG_CONV_EXCL='*' cmd.exe /c "$(cygpath -w "$p")" 0 2>&1 | head -3 || true
+          powershell.exe -NoProfile -Command "try { & '$(cygpath -w "$p")' 0 } catch { \$_.Exception.Message }" 2>&1 | head -3 || true
+          dumpbin.exe /nologo /headers /loadconfig "$(cygpath -w "$p")" 2>&1 | tail -80 || true
       - name: Native standard-library source conformance
         run: |
           set -euo pipefail
