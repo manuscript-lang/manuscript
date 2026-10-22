@@ -44,33 +44,15 @@ jobs:
         with:
           shared-key: rust-dist-${{ matrix.os }}-${{ matrix.arch }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: runner.os == 'Windows'
-        with:
-          arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
-      - name: Restore bundled lld
-        id: lld
-        uses: actions/cache/restore@v6
-        with:
-          path: ${{ runner.temp }}/llvm-bundle/install
-          key: lld-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('scripts/build-llvm-bundle.sh', 'scripts/llvm-version') }}
-      - name: Build bundled lld
-        if: steps.lld.outputs.cache-hit != 'true'
+      # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
+      # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
+      - name: Fetch bundled lld
         run: |
-          if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update && sudo apt-get install -y ninja-build
-          elif [ "$RUNNER_OS" = Windows ]; then choco install ninja -y
-          else brew install ninja; fi
-          LLVM_WORK="$RUNNER_TEMP/llvm-bundle" sh scripts/build-llvm-bundle.sh "${{ matrix.os }}" "${{ matrix.arch }}" lld
-      - name: Save bundled lld
-        if: steps.lld.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ runner.temp }}/llvm-bundle/install
-          key: ${{ steps.lld.outputs.cache-primary-key }}
-      - name: Point the build at lld
-        run: |
+          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$RUNNER_TEMP/llvm-bundle/install"
           if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$RUNNER_TEMP/llvm-bundle/install/bin/lld.exe")" >> "$GITHUB_ENV"
           else echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"; fi
+      # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
+      # with its clang (scripts/fetch-mingw.sh).
       - name: Fetch llvm-mingw
         if: runner.os == 'Windows'
         run: |

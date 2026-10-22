@@ -47,6 +47,80 @@ const LLD: &str = "lld.exe";
 #[cfg(not(windows))]
 const LLD: &str = "lld";
 
+/// The embedded `opt` and `llc`, gzipped; empty when `ms` was built without the LLVM tools.
+#[cfg(target_os = "linux")]
+const TOOLS: [(&str, &[u8]); 2] = [
+    (
+        "opt",
+        include_bytes!(concat!(env!("OUT_DIR"), "/linker/opt.gz")),
+    ),
+    (
+        "llc",
+        include_bytes!(concat!(env!("OUT_DIR"), "/linker/llc.gz")),
+    ),
+];
+
+/// The path of the bundled `lld`, unpacked on first use.
+#[cfg(unix)]
+pub fn lld_path() -> Result<PathBuf, Error> {
+    Ok(extract()?.join(LLD))
+}
+
+/// The directory holding `opt` and `llc`: `MS_LLVM_TOOLS`, else the embedded ones unpacked on
+/// first use. `None` when neither exists.
+#[cfg(target_os = "linux")]
+pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
+    use std::io::Read;
+    if let Some(dir) = std::env::var_os("MS_LLVM_TOOLS").filter(|v| !v.is_empty()) {
+        return Ok(Some(PathBuf::from(dir)));
+    }
+    if TOOLS.iter().any(|(_, gz)| gz.is_empty()) {
+        return Ok(None);
+    }
+    let dir = cache_root()
+        .join("ms")
+        .join("llvm")
+        .join(env!("MS_LINKER_ID"));
+    let failed = |e: std::io::Error| {
+        Error(format!(
+            "cannot unpack the bundled LLVM tools into {}: {e}",
+            dir.display()
+        ))
+    };
+    static STAGED: AtomicUsize = AtomicUsize::new(0);
+    std::fs::create_dir_all(&dir).map_err(failed)?;
+    for (name, gz) in TOOLS {
+        // The marker file records that the unpacked tool is complete.
+        let done = dir.join(format!("{name}.ok"));
+        if done.is_file() && dir.join(name).is_file() {
+            continue;
+        }
+        let staged = dir.join(format!(
+            ".{name}-{}-{}",
+            std::process::id(),
+            STAGED.fetch_add(1, Ordering::Relaxed)
+        ));
+        let unpacked = (|| {
+            let mut bytes = Vec::new();
+            flate2::read::GzDecoder::new(gz).read_to_end(&mut bytes)?;
+            std::fs::write(&staged, bytes)?;
+            set_mode(&staged, true)?;
+            std::fs::rename(&staged, dir.join(name))?;
+            std::fs::write(&done, b"")
+        })();
+        unpacked.map_err(|e| {
+            let _ = std::fs::remove_file(&staged);
+            failed(e)
+        })?;
+    }
+    Ok(Some(dir))
+}
+
+#[cfg(all(unix, not(target_os = "linux")))]
+pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
+    Ok(None)
+}
+
 /// Links `object` and `inputs` (the runtime built for this platform) into the executable `out`.
 pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let dir = extract()?;
