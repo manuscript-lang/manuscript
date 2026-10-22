@@ -29,3 +29,8 @@ extern crate ms_std_system;
 extern crate ms_std_terminal;
 extern crate ms_std_time;
 extern crate ms_std_url;
+
+/// Rust-side allocations of the native standard library share the runtime's allocator.
+#[cfg(target_os = "linux")]
+#[global_allocator]
+static HEAP: ms_rt::alloc::StdHeap = ms_rt::alloc::StdHeap;
