@@ -920,6 +920,9 @@ impl LlvmModule {
     /// `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and specialize them.
     pub fn finish(&self, triple: &str, pinned: &HashSet<String>) -> String {
         let mut s = String::new();
+        // A COFF object lists every declared function as an undefined symbol, referenced or not, and
+        // the linker reports each one that no object defines, so on Windows nothing can be internal.
+        let keep = triple.contains("windows");
         let _ = writeln!(s, "target triple = \"{triple}\"");
         let _ = writeln!(
             s,
@@ -928,7 +931,7 @@ impl LlvmModule {
         for d in &self.defs {
             let vis = if d.public {
                 ""
-            } else if pinned.contains(&d.name) {
+            } else if keep || pinned.contains(&d.name) {
                 "hidden "
             } else {
                 "internal "
