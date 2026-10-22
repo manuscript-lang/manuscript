@@ -61,6 +61,23 @@ pub struct StrVal {
     pub len: usize,
     pub cap: usize,
 }
+impl StrVal {
+    /// Writes the three words to `out` as separate stores. A plain struct write lets the compiler
+    /// copy through a 16-byte vector move, which stalls reading words a callee just stored
+    /// separately.
+    ///
+    /// # Safety
+    /// `out` must be writable.
+    #[inline(always)]
+    pub unsafe fn write_to(self, out: *mut StrVal) {
+        // SAFETY: caller contract.
+        unsafe {
+            core::ptr::write_volatile(&raw mut (*out).ptr, self.ptr);
+            core::ptr::write_volatile(&raw mut (*out).len, self.len);
+            core::ptr::write_volatile(&raw mut (*out).cap, self.cap);
+        }
+    }
+}
 pub const STR_PTR_OFFSET: usize = 0;
 pub const STR_LEN_OFFSET: usize = 8;
 pub const STR_CAP_OFFSET: usize = 16;

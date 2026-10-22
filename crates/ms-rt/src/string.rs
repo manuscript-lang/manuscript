@@ -155,7 +155,7 @@ pub fn empty() -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_empty(out: *mut StrVal) {
     // SAFETY: caller passes a writable out.
-    unsafe { out.write(empty()) }
+    unsafe { (empty()).write_to(out) }
 }
 
 fn ascii_char(b: u8) -> StrVal {
@@ -208,7 +208,7 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
     out: *mut StrVal,
 ) {
     // SAFETY: caller contract.
-    unsafe { out.write(from_bytes(core::slice::from_raw_parts(ptr, len))) }
+    unsafe { (from_bytes(core::slice::from_raw_parts(ptr, len))).write_to(out) }
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +343,7 @@ pub unsafe extern "C-unwind" fn msrt_string_get(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(string_get(s, index, has_default != 0, default)) }
+    unsafe { (string_get(s, index, has_default != 0, default)).write_to(out) }
 }
 
 unsafe fn string_get(
@@ -659,7 +659,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_concat_val(a, b)) }
+    unsafe { (msrt_string_concat_val(a, b)).write_to(out) }
 }
 
 unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
@@ -716,7 +716,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuf_push(buf: *mut StrBuf, s: *const Str
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_strbuf_finish_val(buf)) }
+    unsafe { (msrt_strbuf_finish_val(buf)).write_to(out) }
 }
 
 unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
@@ -728,7 +728,7 @@ unsafe fn msrt_strbuf_finish_val(buf: *mut StrBuf) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_reverse(a: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_reverse_val(a)) }
+    unsafe { (msrt_string_reverse_val(a)).write_to(out) }
 }
 
 unsafe fn msrt_string_reverse_val(a: *const StrVal) -> StrVal {
@@ -804,7 +804,7 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_trim(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_trim_val(s)) }
+    unsafe { (msrt_string_trim_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
@@ -815,7 +815,7 @@ unsafe fn msrt_string_trim_val(s: *const StrVal) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_trim_start_val(s)) }
+    unsafe { (msrt_string_trim_start_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
@@ -826,7 +826,7 @@ unsafe fn msrt_string_trim_start_val(s: *const StrVal) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_trim_end(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_trim_end_val(s)) }
+    unsafe { (msrt_string_trim_end_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
@@ -922,7 +922,7 @@ fn is_case_ignorable(c: char) -> bool {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_upper_val(s)) }
+    unsafe { (msrt_string_upper_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
@@ -933,7 +933,7 @@ unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_lower_val(s)) }
+    unsafe { (msrt_string_lower_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
@@ -1060,7 +1060,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_replace_first_val(s, old, new, has_max, max)) }
+    unsafe { (msrt_string_replace_first_val(s, old, new, has_max, max)).write_to(out) }
 }
 
 unsafe fn msrt_string_replace_first_val(
@@ -1084,7 +1084,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_replace_val(s, old, new, has_max, max)) }
+    unsafe { (msrt_string_replace_val(s, old, new, has_max, max)).write_to(out) }
 }
 
 unsafe fn msrt_string_replace_val(
@@ -1107,7 +1107,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_n(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_replace_n_val(s, old, new, max)) }
+    unsafe { (msrt_string_replace_n_val(s, old, new, max)).write_to(out) }
 }
 
 unsafe fn msrt_string_replace_n_val(
@@ -1350,7 +1350,7 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_char_at_val(s, at)) }
+    unsafe { (msrt_string_char_at_val(s, at)).write_to(out) }
 }
 
 unsafe fn msrt_string_char_at_val(s: *const StrVal, at: i64) -> StrVal {
@@ -1814,7 +1814,7 @@ unsafe fn normalize_kind(
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_int_to_string_val(v)) }
+    unsafe { (msrt_int_to_string_val(v)).write_to(out) }
 }
 
 unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
@@ -1825,7 +1825,7 @@ unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_float_to_string_val(v)) }
+    unsafe { (msrt_float_to_string_val(v)).write_to(out) }
 }
 
 unsafe fn msrt_float_to_string_val(v: f64) -> StrVal {
@@ -1835,7 +1835,7 @@ unsafe fn msrt_float_to_string_val(v: f64) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bool_to_string(v: u8, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_bool_to_string_val(v)) }
+    unsafe { (msrt_bool_to_string_val(v)).write_to(out) }
 }
 
 unsafe fn msrt_bool_to_string_val(v: u8) -> StrVal {
@@ -1845,7 +1845,7 @@ unsafe fn msrt_bool_to_string_val(v: u8) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_int_to_string_radix_val(v, radix)) }
+    unsafe { (msrt_int_to_string_radix_val(v, radix)).write_to(out) }
 }
 
 unsafe fn msrt_int_to_string_radix_val(v: i64, radix: i64) -> StrVal {
@@ -1863,7 +1863,7 @@ unsafe fn msrt_int_to_string_radix_val(v: i64, radix: i64) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrVal, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { out.write(msrt_string_quote_val(s)) }
+    unsafe { (msrt_string_quote_val(s)).write_to(out) }
 }
 
 unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {

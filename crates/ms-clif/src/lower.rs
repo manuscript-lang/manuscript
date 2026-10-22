@@ -1109,7 +1109,8 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn is_wide(&self, ty: Ty) -> bool {
-        matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+        matches!(self.g.m.types.kind(ty), TyKind::Str)
+            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
     }
 
     fn new_slot(&mut self, size: u32) -> ir::StackSlot {
@@ -1915,7 +1916,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .ins()
                     .brif(unknown, slow, &[], join, &[BlockArg::Value(n)]);
                 self.b.switch_to_block(slow);
-                let at = self.spill(&s, &[Leaf::I64; 3]);
+                let at = match self.home_of(inst.args[0]) {
+                    Some(h) => h.addr,
+                    None => self.spill(&s, &[Leaf::I64; 3]),
+                };
                 let c = self.rt_call("msrt_string_length", &[at])[0];
                 self.b.ins().jump(join, &[BlockArg::Value(c)]);
                 self.b.switch_to_block(join);
