@@ -9,7 +9,7 @@ use crate::ip::{Cidr, ip_text, normalize};
 use crate::policy::{Policy, fold_host, host_ok, ip_ok};
 use crate::rt;
 use crate::sys::{self, AsSock};
-use crate::wait::{Deadline, Interest, Wait, spawn_blocking, wait_fd};
+use crate::wait::{Deadline, Interest, Lane, Wait, blocking, wait_fd};
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -314,14 +314,7 @@ impl Network {
             }
             return Ok(out);
         }
-        let name = host.to_string();
-        let task = spawn_blocking(move || {
-            (name.as_str(), 0u16)
-                .to_socket_addrs()
-                .map(|it| it.map(|a| a.ip()).collect::<Vec<_>>())
-        })
-        .ok_or_else(|| NetErr::failed("cannot start resolver"))?;
-        match task.wait(deadline) {
+        match blocking(Lane::Dns, host.to_string(), resolve, deadline) {
             None => Err(NetErr::Timeout),
             Some(Err(_)) => Err(NetErr::failed(cannot_resolve(host))),
             Some(Ok(mut ips)) => {
@@ -604,6 +597,14 @@ impl Network {
             .map(|ip| SocketAddr::new(ip, port))
             .ok_or_else(denied)
     }
+}
+
+/// The system resolver's addresses for `host`; runs on a pool thread.
+#[expect(clippy::ptr_arg, reason = "a pool job takes `&I` for its input type")]
+fn resolve(host: &String) -> io::Result<Vec<IpAddr>> {
+    (host.as_str(), 0u16)
+        .to_socket_addrs()
+        .map(|it| it.map(|a| a.ip()).collect())
 }
 
 /// A bound UDP socket; a wildcard IPv6 address serves both families.

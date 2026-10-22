@@ -11,6 +11,7 @@ crate-type = ["staticlib", "rlib"]
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-core = { path = "../ms-std-core" }
+ms-std-rt = { path = "../ms-std-rt" }
 mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 socket2 = { version = "0.6", features = ["all"] }
 

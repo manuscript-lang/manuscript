@@ -572,6 +572,32 @@ mod runtime_stubs {
         }
     }
 
+    /// One task, so blocking calls run inline and the token calls below are never reached.
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_task_count() -> usize {
+        1
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_token_new(_: u32) -> u64 {
+        unreachable!("tests run blocking calls inline")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_token_park(_: u64, _: i64, _: *mut u64) -> u32 {
+        unreachable!("tests run blocking calls inline")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_token_post_remote(_: u64, _: u64) {
+        unreachable!("tests run blocking calls inline")
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C-unwind" fn msrt_token_free(_: u64) {
+        unreachable!("tests run blocking calls inline")
+    }
+
     #[unsafe(no_mangle)]
     pub extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
         // SAFETY: tests pass two writable words.
