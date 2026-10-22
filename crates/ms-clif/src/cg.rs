@@ -21,7 +21,7 @@ use cranelift_module::{
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use ms_mir::ir::{ExtId, Func, Module};
 use ms_mir::types::{Ty, TyKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
 pub const STATIC_RC: u64 = 1 << 62;
@@ -147,12 +147,18 @@ pub struct Gen<'m> {
     pub dbg: Vec<FuncDbg>,
     /// Static type descriptors by type.
     pub desc_ids: HashMap<Ty, DataId>,
+    /// Shared read-only blocks for payloadless cases of boxed alternatives, by `(alternative, case)`.
+    unit_blocks: HashMap<(ms_mir::types::AltId, usize), DataId>,
     /// The `ms.tables` blob, once emitted.
     pub tables: Option<DataId>,
     /// Functions translated to LLVM IR instead of being compiled by Cranelift (release builds).
     pub llvm: Option<crate::llvm_ir::LlvmModule>,
     /// Source functions defined through [`Gen::llvm`], for the fault and profile tables.
     pub llvm_funcs: Vec<LlvmFn>,
+    /// Functions the Cranelift object refers to by address.
+    pub pinned: HashSet<FuncId>,
+    /// Symbol the LLVM-built code's table addresses are relative to.
+    pub anchor: Option<FuncId>,
 }
 
 /// A source function compiled by LLVM.
@@ -172,6 +178,13 @@ impl Gen<'_> {
         } else {
             Linkage::Local
         }
+    }
+
+    /// Declares `f` in a data object built by this compile. The Cranelift object then names it, so
+    /// an LLVM-built `f` must stay a visible symbol.
+    pub fn func_in_data(&mut self, f: FuncId, d: &mut DataDescription) -> ir::FuncRef {
+        self.pinned.insert(f);
+        self.module.declare_func_in_data(f, d)
     }
 
     /// Linkage of a function defined in this compile: LLVM-built functions are imported here.
@@ -239,6 +252,9 @@ pub struct FuncDbg {
     pub ranges: Vec<(u32, u32, u32, u32)>,
     /// Exact known source spans `(start, end, file, line)`; gaps stay unmapped in DWARF.
     pub dwarf_ranges: Vec<(u32, u32, u32, u32)>,
+    /// Offset of the function from [`crate::llvm_ir::TEXT_ANCHOR`]; zero when Cranelift built it
+    /// (its own symbol is the table's target).
+    pub text: u64,
 }
 
 impl<'m> Gen<'m> {
@@ -438,7 +454,7 @@ impl<'m> Gen<'m> {
                 (DESC_DROP_OFFSET as u32, drop),
                 (DESC_DROP_OFFSET as u32 + 8, copy),
             ] {
-                let fr = self.module.declare_func_in_data(f, &mut d);
+                let fr = self.func_in_data(f, &mut d);
                 d.write_function_addr(off, fr);
             }
         }
@@ -447,13 +463,36 @@ impl<'m> Gen<'m> {
                 (ms_rt_abi::DESC_EQ_OFFSET as u32, eq),
                 (ms_rt_abi::DESC_HASH_OFFSET as u32, hash),
             ] {
-                let fr = self
-                    .module
-                    .declare_func_in_data(self.funcs[f.index()], &mut d);
+                let fr = self.func_in_data(self.funcs[f.index()], &mut d);
                 d.write_function_addr(off, fr);
             }
         }
         self.module.define_data(id, &d).expect("define descriptor");
+        id
+    }
+
+    /// The shared block of payloadless case `case` of a boxed alternative: `size` zero bytes with
+    /// the tag stored first. Such values never allocate, and dropping them frees nothing.
+    pub fn unit_block(&mut self, alt: ms_mir::types::AltId, case: usize, size: usize) -> DataId {
+        if let Some(id) = self.unit_blocks.get(&(alt, case)) {
+            return *id;
+        }
+        let id = self
+            .module
+            .declare_data(
+                &format!("ms.unit.{}", self.unit_blocks.len()),
+                self.private(),
+                false,
+                false,
+            )
+            .expect("declare unit block");
+        let mut bytes = vec![0u8; size.max(8)];
+        bytes[0..8].copy_from_slice(&(case as u64).to_le_bytes());
+        let mut d = DataDescription::new();
+        d.define(bytes.into_boxed_slice());
+        d.set_align(8);
+        self.module.define_data(id, &d).expect("define unit block");
+        self.unit_blocks.insert((alt, case), id);
         id
     }
 
@@ -531,7 +570,10 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         dbg: Vec::new(),
         tables: None,
         desc_ids: HashMap::new(),
+        unit_blocks: HashMap::new(),
         llvm_funcs: Vec::new(),
+        pinned: HashSet::new(),
+        anchor: None,
         llvm: opts.llvm.map(|_| {
             let files = m
                 .files
@@ -560,6 +602,14 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
             .declare_function(&name, g.func_linkage(exported), &sig)
             .map_err(|e| e.to_string())?;
         g.funcs.push(id);
+    }
+    if opts.llvm.is_some() {
+        let sig = g.module.make_signature();
+        let id = g
+            .module
+            .declare_function(crate::llvm_ir::TEXT_ANCHOR, Linkage::Import, &sig)
+            .map_err(|e| e.to_string())?;
+        g.anchor = Some(id);
     }
     for (i, gl) in m.globals.iter().enumerate() {
         let mem = g.lay.mem(gl.ty);
@@ -596,13 +646,13 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         let mut d = DataDescription::new();
         d.define(vec![0u8; 8 * (2 + vt.methods.len())].into_boxed_slice());
         d.set_align(8);
-        let r = g.module.declare_func_in_data(drop, &mut d);
+        let r = g.func_in_data(drop, &mut d);
         d.write_function_addr(0, r);
         // The payload copier follows the methods.
-        let r = g.module.declare_func_in_data(copy, &mut d);
+        let r = g.func_in_data(copy, &mut d);
         d.write_function_addr(8 * (1 + vt.methods.len()) as u32, r);
         for (k, mf) in vt.methods.iter().enumerate() {
-            let r = g.module.declare_func_in_data(g.funcs[mf.index()], &mut d);
+            let r = g.func_in_data(g.funcs[mf.index()], &mut d);
             d.write_function_addr(8 * (1 + k as u32), r);
         }
         g.module.define_data(id, &d).map_err(|e| e.to_string())?;
@@ -646,7 +696,10 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     let triple = llvm_triple(g.module.isa().triple());
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
-        let obj = crate::llvm_obj::compile(&llvm.finish(&triple), opts.llvm.unwrap_or("3"))?;
+        let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
+        let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
+        let obj =
+            crate::llvm_obj::compile(&llvm.finish(&triple, &pinned), opts.llvm.unwrap_or("3"))?;
         let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files)?;
         g.dbg = t.dbg;
         g.scopes = t.scopes;
@@ -661,7 +714,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     let endian = g.module.isa().endianness();
     let mut product = g.module.finish();
     if let Some(t) = tables {
-        relocate_tables(&mut product, &g.dbg, &t);
+        relocate_tables(&mut product, &g.dbg, g.anchor, &t);
     }
     if let Some(obj) = llvm_object {
         return Ok(crate::Parts {
@@ -786,7 +839,12 @@ fn emit_tables(g: &mut Gen) -> Result<Tables, Error> {
 }
 
 /// Adds the absolute relocations that point the tables at code and at themselves.
-fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg], t: &Tables) {
+fn relocate_tables(
+    product: &mut cranelift_object::ObjectProduct,
+    dbg: &[FuncDbg],
+    anchor: Option<FuncId>,
+    t: &Tables,
+) {
     use cranelift_object::object::{
         RelocationEncoding, RelocationFlags, RelocationKind,
         write::{Relocation, SymbolSection},
@@ -803,10 +861,14 @@ fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg
         encoding: RelocationEncoding::Generic,
         size: 64,
     };
+    // LLVM-built functions have no visible symbol: they are addressed from the anchor.
     let syms: Vec<_> = t
         .pcs
         .iter()
-        .map(|p| product.function_symbol(dbg[p.1].id))
+        .map(|p| match anchor {
+            Some(a) => (product.function_symbol(a), dbg[p.1].text as i64),
+            None => (product.function_symbol(dbg[p.1].id), 0),
+        })
         .collect();
     let obj = &mut product.object;
     let mut add = |offset: usize, symbol, addend: i64| {
@@ -823,8 +885,8 @@ fn relocate_tables(product: &mut cranelift_object::ObjectProduct, dbg: &[FuncDbg
     add(40, own, t.strings_at as i64);
     add(56, own, t.line_scopes_at as i64);
     add(64, own, t.scopes_at as i64);
-    for (&(at, _, off), sym) in t.pcs.iter().zip(syms) {
-        add(at, sym, off as i64);
+    for (&(at, _, off), (sym, base)) in t.pcs.iter().zip(syms) {
+        add(at, sym, base + off as i64);
     }
 }
 
@@ -881,7 +943,7 @@ fn define_with(
             fn_loc,
             &ctx.func,
             &ModuleSymbols(&g.module, &g.locs, &g.scopes),
-            !exported,
+            exported,
         );
         if let Some(f) = source {
             g.llvm_funcs.push(LlvmFn {
@@ -937,6 +999,7 @@ fn define_with(
             size: cc.code_buffer().len() as u32,
             ranges,
             dwarf_ranges,
+            text: 0,
         });
     }
     g.module.clear_context(ctx);

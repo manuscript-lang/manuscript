@@ -149,8 +149,7 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
 
         (
             store.stock.add(
-                key: line.sku,
-                value: store.stock.get_or(line.sku, 0) - line.qty
+                key: line.sku, value: store.stock.get_or(line.sku, 0) - line.qty
             )
         )
 
@@ -178,8 +177,7 @@ fn cancel_cmd(var store: Store, id: String) Unit:
                 .add(
                     key: line.sku,
                     value: store.stock.get_or(
-                        line.sku,
-                        0
+                        line.sku, 0
                     ) + line.qty
                 )
             )
@@ -279,10 +277,8 @@ fn handle(var store: Store, line: String) Unit:
 
 export fn main() Int:
     var store = Store(
-        stock: Map[String, Int](),
-        prices: Map[String, Int](),
-        statuses: Map[String, String](),
-        totals: Map[String, Int](),
+        stock: Map[String, Int](), prices: Map[String, Int](),
+        statuses: Map[String, String](), totals: Map[String, Int](),
         lines: Map[String, List[Line]]()
     )
     let input = stdin()

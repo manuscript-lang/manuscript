@@ -7,7 +7,7 @@ Manuscript. Per run it records pass/fail against hidden tests, tokens, turns, wa
 
 Status: 20 challenges: 10 small programs (c03-c44, with reference solutions in all four languages) and 10 large applications of roughly 3-5k lines (c51-c60), which have no reference solutions and are validated only through the Go oracle in each challenge's `oracle/` directory (see its `gen.py`, which derives the expected outputs deterministically). One trial per challenge and language. Runs through Harbor (preferred) or the built-in runner.
 
-Report source size as LLM tokens (`llm_tokens` in each run, from `pip install tiktoken`; final sources are saved under `results/sources/`), never lexical tokens (`code_tokens`).
+Report source size as LLM tokens (`llm_tokens` in each run, from `pip install tiktoken`; final sources are saved under `results/sources/`), never lexical tokens (`code_tokens`). `python3 bench/agent/tokens.py` compares the reference solutions per language.
 
 ## How a run works
 

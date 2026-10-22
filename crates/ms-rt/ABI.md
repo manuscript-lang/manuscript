@@ -153,7 +153,9 @@ Cycles through `Shared` are never collected (documented leak).
 `msrt_alloc(size) -> *mut u8` (16-aligned, uninitialised, never null: exhaustion is a
 fault), `msrt_alloc_zeroed`, `msrt_realloc(ptr, new_size)`, `msrt_free(ptr)` (no size
 argument). Blocks up to 2048 bytes come from size-class pages (16-byte steps to 128,
-then four steps per doubling); larger blocks use the system allocator. No locking.
+then four steps per doubling); larger blocks use the system allocator, rounded up to four
+steps per doubling from 4 KiB to 16 MiB, and freed blocks in that range are kept in free
+lists (up to 64 MiB) for reuse instead of returning to the system. No locking.
 
 ## 3. String
 

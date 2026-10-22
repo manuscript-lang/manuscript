@@ -17,9 +17,7 @@ fn mark(var counter: Counter, value: Int) Int:
     return value
 
 fn ordered(
-    var counter: Counter,
-    first: Int = mark(counter, 3),
-    second: Int = mark(counter, 4),
+    var counter: Counter, first: Int = mark(counter, 3), second: Int = mark(counter, 4),
     third: Int = 0
 ) Int:
     counter.value = counter.value * 10 + 5

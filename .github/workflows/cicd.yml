@@ -76,9 +76,6 @@ jobs:
     if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 75
-    permissions:
-      contents: read
-      actions: write
     strategy:
       fail-fast: false
       matrix:
@@ -344,18 +341,6 @@ jobs:
             ~/.cargo/git/db
             target
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
-      # A lockfile change writes a new entry and nothing removes the old one, so old copies pile up
-      # until GitHub evicts at the 10 GB limit and takes useful entries with it. Keep the two newest.
-      - name: Delete stale Rust caches
-        if: github.ref == 'refs/heads/main'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KEY: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-
-        run: |
-          gh cache list --repo "$GITHUB_REPOSITORY" --key "$KEY" --ref refs/heads/main \
-            --sort created_at --order desc --limit 100 --json id --jq '.[2:][].id' |
-            while read -r id; do gh cache delete "$id" --repo "$GITHUB_REPOSITORY"; done
       - name: Preserve test artifacts
         if: always()
         uses: actions/upload-artifact@v7

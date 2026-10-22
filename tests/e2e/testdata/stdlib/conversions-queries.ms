@@ -54,8 +54,7 @@ test "conversions and collection queries are callable":
     let missing: Optional[Int] = none
     present.ok_or(TextError("absent")).get() | try expect_equal(expected: 2)
     try expect_equal(
-        missing.ok_or_else(fn(): TextError("absent")).err().message(),
-        "absent"
+        missing.ok_or_else(fn(): TextError("absent")).err().message(), "absent"
     )
     let failed: Result[Int, TextError] = error(TextError("failed"))
     (failed.to_optional().is_none()) | try expect_true
@@ -117,9 +116,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []
     let values: Map[String, Counter] = {
-        "b": Counter(2),
-        "a": Counter(1),
-        "c": Counter(3)
+        "b": Counter(2), "a": Counter(1), "c": Counter(3)
     }
     let initial: List[String] = []
     var visits = reduce_map(
@@ -157,9 +154,7 @@ test "Map find returns fresh entry shells with copied payloads":
     var empty_calls: List[Int] = []
     let counter = Counter(2)
     let values: Map[String, Counter] = {
-        "b": counter.clone(),
-        "a": Counter(1),
-        "c": Counter(3)
+        "b": counter.clone(), "a": Counter(1), "c": Counter(3)
     }
     var visits: List[String] = []
     let found = locate(

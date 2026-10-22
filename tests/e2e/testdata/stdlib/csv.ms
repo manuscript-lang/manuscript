@@ -18,15 +18,13 @@ test "CSV retains single empty fields and distinguishes empty rows":
                 (
                     (
                         try parse(
-                            "{ending}\"\"{ending}{ending}\"\"",
-                            options
+                            "{ending}\"\"{ending}{ending}\"\"", options
                         )
                     ) != [[""], [""]]
                 )
             )
             try expect_equal(
-                (try stringify([["", ""]], options)),
-                "{delimiter}{ending}"
+                (try stringify([["", ""]], options)), "{delimiter}{ending}"
             )
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
@@ -54,8 +52,7 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
     try expect_equal((try parse(try stringify(rows, options), options)), rows)
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
-            ["line\n\nbreak"],
-            [""]
+            ["line\n\nbreak"], [""]
         ]
     )
 

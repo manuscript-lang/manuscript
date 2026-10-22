@@ -96,18 +96,9 @@ export fn decoder(limits: SseLimits = SseLimits()) Result[SseDecoder, SseError]:
     return ok(
         SseDecoder(
             Decoder(
-                limits: limits,
-                retry_ms: none,
-                last_id: none,
-                line: BytesBuilder(),
-                line_bytes: 0,
-                event_bytes: 0,
-                carriage: false,
-                started: false,
-                open_block: false,
-                event_type: "",
-                data: List[String](),
-                failure: none,
+                limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
+                line_bytes: 0, event_bytes: 0, carriage: false, started: false,
+                open_block: false, event_type: "", data: List[String](), failure: none,
                 closed: false
             )
         )
@@ -161,8 +152,7 @@ impl SseDecoder for Decoder:
         return self.retry_ms
 
 fn consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) Result[
-    Unit,
-    SseError
+    Unit, SseError
 ]:
     let after_carriage = decoder.carriage
     decoder.carriage = false
@@ -291,12 +281,8 @@ export fn reader(
     let created = try decoder(limits)
     return ok(
         SseReader(
-            input: input,
-            decoder: created,
-            ready: List[SseEvent](),
-            next: 0,
-            chunk_bytes: chunk_bytes,
-            finished: false
+            input: input, decoder: created, ready: List[SseEvent](), next: 0,
+            chunk_bytes: chunk_bytes, finished: false
         )
     )
 

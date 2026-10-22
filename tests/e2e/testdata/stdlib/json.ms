@@ -82,8 +82,7 @@ test "JSON stringify encodes records in declaration order and omits none fields"
     try expect_equal((try encoded(request)), named)
     try expect_equal((try encoded(Box[Int](1, none))), "\{\"first\":1\}")
     try expect_equal(
-        (try encoded(Box[Int](1, some(2)))),
-        "\{\"first\":1,\"second\":2\}"
+        (try encoded(Box[Int](1, some(2)))), "\{\"first\":1,\"second\":2\}"
     )
 
 test "JSON stringify encodes alternatives and nested optionals":
@@ -181,8 +180,7 @@ test "JSON stringify encodes standard-library values":
     try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
     try expect_equal((try encoded(JsonError.InvalidData)), "\"InvalidData\"")
     try expect_equal(
-        (try encoded(Tagged.Named("n", none))),
-        "\{\"Named\":\{\"name\":\"n\"\}\}"
+        (try encoded(Tagged.Named("n", none))), "\{\"Named\":\{\"name\":\"n\"\}\}"
     )
     try expect_equal((try encoded(Tagged.Plain)), "\"Plain\"")
 
@@ -245,8 +243,7 @@ test "JSON stringify omits interface values and monotonic instants":
     try expect_equal(stringify(unit), invalid)
     let failed: Result[Int, JsonError] = error(JsonError.LimitExceeded)
     try expect_equal(
-        (try encoded(failed)),
-        "\{\"error\":\{\"cause\":\"LimitExceeded\"\}\}"
+        (try encoded(failed)), "\{\"error\":\{\"cause\":\"LimitExceeded\"\}\}"
     )
 
 type Event:
@@ -271,8 +268,7 @@ type Feed:
 
 test "JSON stringify lets JsonEncode override the structural encoding of an alternative":
     try expect_equal(
-        (try encoded(Event.Created(1))),
-        "\{\"type\":\"created\",\"id\":1\}"
+        (try encoded(Event.Created(1))), "\{\"type\":\"created\",\"id\":1\}"
     )
     let feed = Feed([Event.Created(1), Event.Deleted(2)])
     let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
@@ -353,8 +349,7 @@ test "JSON parse decodes alternatives and generic records":
     try expect_equal(parse[Shape]("\{\"Dot\":\{\}\}"), invalid)
     try expect_equal(parse[Shape]("\"Square\""), invalid)
     try expect_equal(
-        parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}"),
-        invalid
+        parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}"), invalid
     )
     let scene: Scene = try parse[Scene](
         "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
@@ -517,8 +512,7 @@ test "JSON round trips generic records alternatives and Duration keys":
     var chain_2 = Map[Duration, String]()
     chain_2.add(duration(5), "five")
     let w = Wrap(
-        [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop],
-        [Pair(1, Op.Nop)],
+        [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop], [Pair(1, Op.Nop)],
         chain_2
     )
     let t = try stringify(w)
@@ -533,3 +527,13 @@ test "JSON parse returns InvalidData for targets that cannot be read":
     try expect_false(parse[Float]("1e999").is_ok())
     try expect_false(parse[String]("1").is_ok())
     try expect_false(parse[List[Int]]("[1,\"a\"]").is_ok())
+
+type BoundReading:
+    id: Int
+
+test "JSON parse and stringify bound to a type argument pipe like the call":
+    let read = parse[List[BoundReading]]
+    let write = stringify[BoundReading]
+    let items = "[\{\"id\":1\},\{\"id\":2\}]" | read
+    try expect_equal(items, ok([BoundReading(1), BoundReading(2)]))
+    try expect_equal(BoundReading(1) | write, ok("\{\"id\":1\}"))

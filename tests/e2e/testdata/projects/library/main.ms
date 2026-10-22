@@ -21,9 +21,7 @@ fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
 fn exercise(path: String) Result[Unit, Error]:
     let written = try common_result(
         result: filesystem().write_file(
-            path: path,
-            data: "hello",
-            replace: false
+            path: path, data: "hello", replace: false
         )
     )
     try expect_false(
@@ -69,10 +67,7 @@ fn exercise(path: String) Result[Unit, Error]:
 
     with watcher = try common_result(
         result: filesystem().watch_native(
-            path: path,
-            recursive: false,
-            max_entries: 4,
-            max_events: 16,
+            path: path, recursive: false, max_entries: 4, max_events: 16,
             overflow: "error"
         )
     ):
@@ -87,8 +82,7 @@ fn exercise(path: String) Result[Unit, Error]:
         not (
             try common_result(
                 result: paths.resolve(
-                    base: "/work",
-                    parts: ["a", "../b"]
+                    base: "/work", parts: ["a", "../b"]
                 )
             ) == "/work/b"
         )

@@ -159,9 +159,7 @@ impl Error for ReadError:
 fn failed_read() Result[Unit, ReadError]:
     return error(
         ReadError(
-            diagnostic: "read failed",
-            path: "settings.json",
-            attempt: 2,
+            diagnostic: "read failed", path: "settings.json", attempt: 2,
             retryable: true
         )
     )
@@ -217,10 +215,7 @@ fn describe_direct(cause: Error) String:
 
 test "specific errors pass directly into Error boundaries":
     let original = ReadError(
-        diagnostic: "read failed",
-        path: "settings.json",
-        attempt: 3,
-        retryable: true
+        diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: true
     )
     let shared: Error = Error(original.clone())
     (
@@ -229,10 +224,8 @@ test "specific errors pass directly into Error boundaries":
         ) != "read failed" or shared.message() != "read failed"
     ) | try expect_false
     let results: List[Result[Unit, Error]] = [
-        general_read(original.clone()),
-        forward_read(original.clone()),
-        generic_propagation(original.clone()),
-        error(original.clone())
+        general_read(original.clone()), forward_read(original.clone()),
+        generic_propagation(original.clone()), error(original.clone())
     ]
 
     for result in results:

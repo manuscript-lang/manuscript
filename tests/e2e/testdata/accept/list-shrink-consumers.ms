@@ -16,11 +16,7 @@ fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
         values.splice(start: 0, delete_count: 0, replacement: fill)
 
 fn step[T](
-    var seen: List[T],
-    var visits: Visits,
-    var values: List[T],
-    value: T,
-    mode: String,
+    var seen: List[T], var visits: Visits, var values: List[T], value: T, mode: String,
     fill: List[T]
 ) Unit:
     seen.append(value)
@@ -29,8 +25,7 @@ fn step[T](
     visits.count = visits.count + 1
 
 fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
-    List[T],
-    Error
+    List[T], Error
 ]:
     var seen: List[T] = []
     var visits = Visits(0)
@@ -41,12 +36,7 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
             .clone()
             .for_each(
                 fn(value: T): step(
-                    var seen,
-                    var visits,
-                    var values,
-                    value,
-                    mode,
-                    fill.clone()
+                    var seen, var visits, var values, value, mode, fill.clone()
                 )
             )
         )
@@ -61,14 +51,10 @@ fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
     var out = items
     if mode == "remove": out.remove(0)
     if mode == "splice": out.splice(
-        start: 1,
-        delete_count: 2,
-        replacement: fill.clone()
+        start: 1, delete_count: 2, replacement: fill.clone()
     )
     if mode == "clear" or mode == "clear_append": out.splice(
-        start: 0,
-        delete_count: 3,
-        replacement: []
+        start: 0, delete_count: 3, replacement: []
     )
 
     if mode == "clear_append":
@@ -219,9 +205,7 @@ test "map and folds consume snapshots of the live list":
             0,
             fn(accumulator, value):
                 if visits.count == 0: folded.splice(
-                    start: 0,
-                    delete_count: 3,
-                    replacement: []
+                    start: 0, delete_count: 3, replacement: []
                 )
                 visits.count = visits.count + 1
                 return accumulator + value
@@ -254,18 +238,14 @@ test "interface view consumers dispatch after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last_record = Payload(3)
             var values = [
-                ReadValue(Payload(1)),
-                ReadValue(Payload(2)),
+                ReadValue(Payload(1)), ReadValue(Payload(2)),
                 ReadValue(last_record.clone())
             ]
             let clone = values.clone()
             let want = remaining(mode, values.clone(), [ReadValue(Payload(9))])
             let seen = (
                 try observe(
-                    var values,
-                    mode,
-                    [ReadValue(Payload(9))],
-                    callback
+                    var values, mode, [ReadValue(Payload(9))], callback
                 )
             )
             var total = 0

@@ -27,8 +27,7 @@ test "inlined callbacks":
     try expect_true(
         (
             items.fold(
-                initial: "",
-                step: fn(a: String, v: Int) String: (a + "{v}")
+                initial: "", step: fn(a: String, v: Int) String: (a + "{v}")
             ) == "01234"
         )
     )

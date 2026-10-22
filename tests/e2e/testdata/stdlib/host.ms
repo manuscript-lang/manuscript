@@ -44,9 +44,7 @@ test "subprocess validation returns expected domain errors":
     try expect_false(
         (
             commands().run(
-                "manuscript-nonexistent-command-stdlib",
-                [],
-                "".to_bytes()
+                "manuscript-nonexistent-command-stdlib", [], "".to_bytes()
             ) != unavailable
         )
     )

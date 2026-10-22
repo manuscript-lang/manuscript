@@ -10,8 +10,7 @@ test "Bytes split handles exact and nonoverlapping separators":
     try expect_equal(Bytes([0, 7, 0]).split(Bytes([0])), [empty, Bytes([7]), empty])
     try expect_equal(Bytes([0, 0]).split(Bytes([0])), [empty, empty, empty])
     try expect_equal(
-        Bytes([255, 0, 9, 255, 0]).split(Bytes([255, 0])),
-        [empty, Bytes([9]), empty]
+        Bytes([255, 0, 9, 255, 0]).split(Bytes([255, 0])), [empty, Bytes([9]), empty]
     )
     try expect_equal(Bytes([1, 1, 1]).split(Bytes([1, 1])), [empty, Bytes([1])])
     try expect_equal(Bytes([1]).split(Bytes([1, 2])), [Bytes([1])])
@@ -21,8 +20,7 @@ test "Bytes empty separator splits bytes without decoding":
     let empty = Bytes([])
     try expect_false(not (empty.split(empty).is_empty()))
     try expect_equal(
-        Bytes([0, 255, 128]).split(empty),
-        [Bytes([0]), Bytes([255]), Bytes([128])]
+        Bytes([0, 255, 128]).split(empty), [Bytes([0]), Bytes([255]), Bytes([128])]
     )
     let scalars = "é".to_bytes().split(empty)
     try expect_equal(scalars, [Bytes([195]), Bytes([169])])
@@ -69,9 +67,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     try expect_false(
         (
             split_then[Bool](
-                Bytes([1, 0, 2]),
-                Bytes([0]),
-                fn(value): value.length() == 2
+                Bytes([1, 0, 2]), Bytes([0]), fn(value): value.length() == 2
             ) != true
         )
     )

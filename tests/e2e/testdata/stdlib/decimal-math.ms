@@ -1,21 +1,8 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
 import Decimal from "@std/decimal.ms"
 import {
-    abs,
-    abs_int,
-    ceil,
-    floor,
-    round,
-    truncate,
-    sqrt,
-    hypot,
-    pow,
-    log2,
-    min,
-    max,
-    sin,
-    cos,
-    pi
+    abs, abs_int, ceil, floor, round, truncate, sqrt, hypot, pow, log2, min, max, sin,
+    cos, pi
 } from "@std/math.ms"
 
 test "decimal arithmetic is exact and conversion truncates":

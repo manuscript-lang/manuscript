@@ -52,12 +52,8 @@ fn parse_entry(line: String) Optional[Entry]:
 
     return some(
         Entry(
-            timestamp: timestamp,
-            level: level,
-            method: method,
-            path: path,
-            status: status,
-            latency: latency_text.parse_int().get(0)
+            timestamp: timestamp, level: level, method: method, path: path,
+            status: status, latency: latency_text.parse_int().get(0)
         )
     )
 
@@ -140,9 +136,7 @@ fn report(entries: List[Entry], malformed: Int) Unit:
     for path in counts.keys():
         stats.append(
             PathStat(
-                path: path,
-                count: counts.get_or(path, 0),
-                total: totals.get_or(path, 0)
+                path: path, count: counts.get_or(path, 0), total: totals.get_or(path, 0)
             )
         )
     let ranked = stats.sorted(compare_paths)

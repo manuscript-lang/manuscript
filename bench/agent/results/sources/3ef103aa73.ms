@@ -618,22 +618,15 @@ fn parse_address(text: String) Address:
     )
     if not valid:
         return Address(
-            col: 0,
-            row: 0,
-            valid: false,
-            col_absolute: false,
-            row_absolute: false
+            col: 0, row: 0, valid: false, col_absolute: false, row_absolute: false
         )
 
     var row = 0
     for j in range(digit_start, i):
         row = row * 10 + DIGITS.index_of(char_at(chars, j)).get(0)
     return Address(
-        col: letter_index(char_at(chars, letter_start)),
-        row: row,
-        valid: true,
-        col_absolute: col_absolute,
-        row_absolute: row_absolute
+        col: letter_index(char_at(chars, letter_start)), row: row, valid: true,
+        col_absolute: col_absolute, row_absolute: row_absolute
     )
 
 # Key of a plain cell argument (no $ markers); 0 when invalid.
@@ -649,10 +642,8 @@ fn cell_key(text: String) Int:
 
 fn rect_of(a: Int, b: Int) Rect:
     return Rect(
-        left: lower_of(a / 1000, b / 1000),
-        top: lower_of(a % 1000, b % 1000),
-        right: higher_of(a / 1000, b / 1000),
-        bottom: higher_of(a % 1000, b % 1000)
+        left: lower_of(a / 1000, b / 1000), top: lower_of(a % 1000, b % 1000),
+        right: higher_of(a / 1000, b / 1000), bottom: higher_of(a % 1000, b % 1000)
     )
 
 # Range argument: one cell or two cells joined by a colon.
@@ -741,10 +732,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
             let end = number_end(chars, i)
             tokens.append(
                 Token(
-                    kind: "number",
-                    text: join_range(chars, i, end),
-                    start: i,
-                    end: end
+                    kind: "number", text: join_range(chars, i, end), start: i, end: end
                 )
             )
             i = end
@@ -788,10 +776,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
 
                 tokens.append(
                     Token(
-                        kind: kind,
-                        text: join_range(chars, i, end),
-                        start: i,
-                        end: end
+                        kind: kind, text: join_range(chars, i, end), start: i, end: end
                     )
                 )
                 i = end
@@ -801,9 +786,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
                     end += 1
                 tokens.append(
                     Token(
-                        kind: "identifier",
-                        text: join_range(chars, i, end),
-                        start: i,
+                        kind: "identifier", text: join_range(chars, i, end), start: i,
                         end: end
                     )
                 )
@@ -836,11 +819,8 @@ fn span_node(text: String) Node:
         return SpanNode(left: 0, top: 0, right: 0, bottom: 0, valid: false)
 
     return SpanNode(
-        left: lower_of(a.col, b.col),
-        top: lower_of(a.row, b.row),
-        right: higher_of(a.col, b.col),
-        bottom: higher_of(a.row, b.row),
-        valid: true
+        left: lower_of(a.col, b.col), top: lower_of(a.row, b.row),
+        right: higher_of(a.col, b.col), bottom: higher_of(a.row, b.row), valid: true
     )
 
 impl Parser:
@@ -1186,10 +1166,7 @@ fn with_value(cell: Cell, value: Value) Cell:
     let ast = cell.ast.clone().clone()
     let precedents = cell.precedents.clone()
     return Cell(
-        raw: cell.raw,
-        value: value,
-        ast: ast,
-        is_formula: cell.is_formula,
+        raw: cell.raw, value: value, ast: ast, is_formula: cell.is_formula,
         precedents: precedents
     )
 
@@ -1280,10 +1257,7 @@ impl Sheet:
                 self.cells.add(
                     key,
                     Cell(
-                        raw: text,
-                        value: Empty,
-                        ast: parsed,
-                        is_formula: true,
+                        raw: text, value: Empty, ast: parsed, is_formula: true,
                         precedents: precedents
                     )
                 )
@@ -1295,11 +1269,8 @@ impl Sheet:
                 .add(
                     key,
                     Cell(
-                        raw: text,
-                        value: constant_value(text),
-                        ast: none,
-                        is_formula: false,
-                        precedents: []
+                        raw: text, value: constant_value(text), ast: none,
+                        is_formula: false, precedents: []
                     )
                 )
             )
@@ -1845,8 +1816,7 @@ impl Sheet:
 
             return Text(
                 value: text_of(s).replace_all(
-                    old_text,
-                    text_of(replacement)
+                    old_text, text_of(replacement)
                 ).get("")
             )
 
@@ -1933,8 +1903,7 @@ impl Sheet:
                     .add(
                         key,
                         lower_of(
-                            self.low_of(key),
-                            self.index_of_node(w)
+                            self.low_of(key), self.index_of_node(w)
                         )
                     )
                 )
@@ -2340,10 +2309,7 @@ fn span_info(node: Node) SpanInfo:
                 return SpanInfo(
                     state: 2,
                     rect: Rect(
-                        left: left,
-                        top: top,
-                        right: right,
-                        bottom: bottom
+                        left: left, top: top, right: right, bottom: bottom
                     )
                 )
 
@@ -2355,14 +2321,9 @@ export fn main() Int:
     let data = read_all(stdin(), none).get()
     let lines = data.decode_utf8().get("").lines()
     var sheet = Sheet(
-        cells: Map[Int, Cell](),
-        dependents: Map[Int, Set[Int]](),
-        evals: 0,
-        affected: Set[Int](),
-        tarjan_index: Map[Int, Int](),
-        tarjan_low: Map[Int, Int](),
-        tarjan_stack: [],
-        tarjan_on: Set[Int](),
+        cells: Map[Int, Cell](), dependents: Map[Int, Set[Int]](), evals: 0,
+        affected: Set[Int](), tarjan_index: Map[Int, Int](),
+        tarjan_low: Map[Int, Int](), tarjan_stack: [], tarjan_on: Set[Int](),
         tarjan_counter: 0
     )
     var index = 0

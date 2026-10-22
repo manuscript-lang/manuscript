@@ -1281,18 +1281,7 @@ impl FnLower<'_> {
     // ------------------------------------------------------------- entry points
 
     /// `parse[T](text, limits, ignore_unknown_fields)`.
-    pub(crate) fn json_parse(
-        &mut self,
-        e: &ms_syntax::ast::Expr,
-        rty: MTy,
-        args: &[NArg],
-    ) -> Result<Val, Error> {
-        let res = self.ety(e);
-        let t = res
-            .args
-            .first()
-            .cloned()
-            .ok_or_else(|| Error::new("parse without a result type"))?;
+    pub(crate) fn json_parse(&mut self, t: &ct::Ty, rty: MTy, args: &[NArg]) -> Result<Val, Error> {
         let text = self.jarg(args, "text")?;
         let text = self.borrow(text);
         let ignore = args
@@ -1338,7 +1327,7 @@ impl FnLower<'_> {
                 let raw = s.take_slot(root_slot, MTy::INT);
                 let m = s.b.iconst(0xffff_ffff);
                 let root = s.b.binop(Op::And, raw, m);
-                let r = s.jdecode_call(&t, doc, root, strict)?;
+                let r = s.jdecode_call(t, doc, root, strict)?;
                 s.drop_value(doc);
                 let good = s.b.opt_is_some(r);
                 let v = s.two_ways(
@@ -1441,18 +1430,10 @@ impl FnLower<'_> {
     /// `stringify(value, max_bytes, indent)`.
     pub(crate) fn json_stringify(
         &mut self,
-        e: &ms_syntax::ast::Expr,
+        t: ct::Ty,
         rty: MTy,
-        view: &ms_check::hir::CallView<'_>,
         args: &[NArg],
     ) -> Result<Val, Error> {
-        let _ = e;
-        let value_expr = view
-            .arguments
-            .iter()
-            .find(|a| a.slot.name.as_str() == "value")
-            .ok_or_else(|| Error::new("stringify without a value"))?;
-        let t = self.ety(value_expr.expr);
         let value = self.jarg(args, "value")?;
         let value = self.borrow(value);
         let flat = |s: &mut Self, name: &str| -> Result<(Value, Value), Error> {

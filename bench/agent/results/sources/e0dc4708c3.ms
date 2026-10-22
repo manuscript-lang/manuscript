@@ -84,9 +84,7 @@ fn edit_distance(a: Bytes, b: Bytes) Int:
             cur.set(
                 j + 1,
                 min3(
-                    prev.get(j + 1) + 1,
-                    cur.get(j) + 1,
-                    prev.get(j) + cost
+                    prev.get(j + 1) + 1, cur.get(j) + 1, prev.get(j) + cost
                 )
             )
 

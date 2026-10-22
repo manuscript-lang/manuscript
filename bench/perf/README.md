@@ -8,6 +8,7 @@ How fast Manuscript is, compared with hand-written Go and Rust and across the st
 | [`programs/`](programs) | the same pure-Manuscript programs against hand-written Go and Rust, as a ratio | `MS=./target/release/ms GO=go sh bench/perf/programs/run.sh 7` | [`programs/results.md`](programs/results.md) |
 | [`llvm-release.md`](llvm-release.md) | LLVM against Cranelift on all 31 benchmarks | see the page | [`llvm-release.md`](llvm-release.md) |
 | [`kernels/`](kernels) | whole numeric and data-structure kernels (sieve, n-body, life, matmul, trees, collatz, Int map) against hand-written Go and Rust | `MS=./target/release/ms GO=go sh bench/perf/kernels/run.sh 5` | [`kernels/README.md`](kernels/README.md) |
+| [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 
 Compare numbers only from the same machine; treat them as a profiling guide, not a pass/fail gate.
 

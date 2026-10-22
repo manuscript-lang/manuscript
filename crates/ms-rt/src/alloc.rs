@@ -3,7 +3,10 @@
 //! Small blocks (up to [`MAX_SMALL`] bytes) come from 64 KiB pages carved out of
 //! one large lazily-committed reservation; each page serves a single size class
 //! and the page's class is recorded in a side table, so `free` needs no size.
-//! Large blocks go to the system allocator. Single threaded: no locks.
+//! Large blocks go to the system allocator, with freed blocks up to [`LARGE_MAX`] kept in
+//! per-size free lists so growing and rebuilding big lists does not map and unmap memory
+//! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB). Single
+//! threaded: no locks.
 use crate::global::Global;
 use crate::sys;
 use core::ptr::null_mut;
@@ -15,6 +18,36 @@ const ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 16 << 30 };
 /// Arena growth step where memory is committed explicitly.
 const COMMIT_STEP: usize = 4 << 20;
 const NUM_CLASSES: usize = 24;
+/// Large size classes: four per doubling, from 4 KiB (class 0) up to [`LARGE_MAX`].
+const NUM_LARGE: usize = 49;
+const LARGE_MIN_SHIFT: usize = 12;
+/// The largest block kept in a large free list.
+const LARGE_MAX: usize = 16 << 20;
+/// Bytes the large free lists may hold before further frees go back to the system.
+const LARGE_CACHE_LIMIT: usize = 64 << 20;
+
+/// Size of large class `class`: 4, 5, 6, 7 times 1 KiB, then doubling.
+const fn large_size(class: usize) -> usize {
+    (4 + class % 4) << (LARGE_MIN_SHIFT - 2 + class / 4)
+}
+
+/// The smallest large class holding `size` bytes (`size` is at most [`LARGE_MAX`]).
+#[inline]
+fn large_class_up(size: usize) -> usize {
+    if size <= 1 << LARGE_MIN_SHIFT {
+        return 0;
+    }
+    let s = size - 1;
+    let k = (usize::BITS - 1 - s.leading_zeros()) as usize;
+    (k - LARGE_MIN_SHIFT) * 4 + ((s >> (k - 2)) - 4) + 1
+}
+
+/// The largest large class that fits in `usable` bytes (`usable` is at least 4 KiB).
+#[inline]
+fn large_class_down(usable: usize) -> usize {
+    let k = (usize::BITS - 1 - usable.leading_zeros()) as usize;
+    ((k - LARGE_MIN_SHIFT) * 4 + ((usable >> (k - 2)) - 4)).min(NUM_LARGE - 1)
+}
 
 const CLASS_SIZES: [u32; NUM_CLASSES] = [
     16, 32, 48, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 448, 512, 640, 768, 896, 1024,
@@ -49,6 +82,9 @@ struct State {
     free: [*mut u8; NUM_CLASSES],
     bump: [*mut u8; NUM_CLASSES],
     bump_end: [*mut u8; NUM_CLASSES],
+    large_free: [*mut u8; NUM_LARGE],
+    /// Usable bytes held in `large_free`.
+    large_cached: usize,
     initialized: bool,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
@@ -63,6 +99,8 @@ static STATE: Global<State> = Global::new(State {
     free: [null_mut(); NUM_CLASSES],
     bump: [null_mut(); NUM_CLASSES],
     bump_end: [null_mut(); NUM_CLASSES],
+    large_free: [null_mut(); NUM_LARGE],
+    large_cached: 0,
     initialized: false,
     #[cfg(any(test, feature = "stats"))]
     live: 0,
@@ -176,15 +214,34 @@ fn alloc_slow(size: usize) -> *mut u8 {
 }
 
 #[inline(never)]
-fn alloc_large(_s: &mut State, size: usize) -> *mut u8 {
+fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
+    let mut request = size.max(16);
+    if size > MAX_SMALL && size <= LARGE_MAX {
+        let class = large_class_up(size);
+        let head = s.large_free[class];
+        if !head.is_null() {
+            // SAFETY: cached blocks store the next pointer in their first word and have
+            // at least `large_size(class)` usable bytes.
+            unsafe {
+                s.large_free[class] = *(head as *mut *mut u8);
+                s.large_cached -= sys::malloc_usable_size(head.cast());
+            }
+            #[cfg(any(test, feature = "stats"))]
+            {
+                s.live += 1;
+            }
+            return head;
+        }
+        request = large_size(class);
+    }
     // SAFETY: plain malloc.
-    let p = unsafe { sys::malloc(size.max(16)) } as *mut u8;
+    let p = unsafe { sys::malloc(request) } as *mut u8;
     if p.is_null() {
         crate::fault::fatal(b"out of memory");
     }
     #[cfg(any(test, feature = "stats"))]
     {
-        _s.live += 1;
+        s.live += 1;
     }
     p
 }
@@ -228,6 +285,27 @@ pub unsafe fn free(p: *mut u8) {
         }
     } else {
         // SAFETY: not an arena block, so it came from malloc/realloc.
+        unsafe { free_large(s, p) };
+    }
+}
+
+/// Keeps a freed system block in its large free list, or returns it to the system.
+///
+/// # Safety
+/// `p` is a live block from `sys::malloc`/`sys::realloc`.
+unsafe fn free_large(s: &mut State, p: *mut u8) {
+    // SAFETY: `p` is a live system block.
+    let usable = unsafe { sys::malloc_usable_size(p.cast()) };
+    if (1 << LARGE_MIN_SHIFT..=LARGE_MAX).contains(&usable)
+        && s.large_cached + usable <= LARGE_CACHE_LIMIT
+    {
+        let class = large_class_down(usable);
+        // SAFETY: the block holds at least 4 KiB, so its first word can hold the link.
+        unsafe { *(p as *mut *mut u8) = s.large_free[class] };
+        s.large_free[class] = p;
+        s.large_cached += usable;
+    } else {
+        // SAFETY: `p` is a live system block.
         unsafe { sys::free(p.cast()) };
     }
 }
@@ -283,9 +361,23 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
         q
     } else {
         // SAFETY: `p` came from malloc/realloc.
-        let q = unsafe { sys::realloc(p.cast(), new_size) } as *mut u8;
-        if q.is_null() {
-            crate::fault::fatal(b"out of memory");
+        let old = unsafe { sys::malloc_usable_size(p.cast()) };
+        if old > LARGE_MAX && new_size > LARGE_MAX {
+            // SAFETY: `p` came from malloc/realloc.
+            let q = unsafe { sys::realloc(p.cast(), new_size) } as *mut u8;
+            if q.is_null() {
+                crate::fault::fatal(b"out of memory");
+            }
+            return q;
+        }
+        if new_size <= old && new_size > old / 2 {
+            return p;
+        }
+        let q = alloc(new_size);
+        // SAFETY: both blocks are valid for the copied length and do not overlap.
+        unsafe {
+            core::ptr::copy_nonoverlapping(p, q, old.min(new_size));
+            free(p);
         }
         q
     }
@@ -377,6 +469,35 @@ mod tests {
     }
 
     #[test]
+    fn large_classes_round_trip() {
+        assert_eq!(large_size(0), 4096);
+        assert_eq!(large_size(1), 5120);
+        assert_eq!(large_size(4), 8192);
+        assert_eq!(large_size(NUM_LARGE - 1), LARGE_MAX);
+        for size in (MAX_SMALL + 1..=LARGE_MAX).step_by(997) {
+            let c = large_class_up(size);
+            assert!(large_size(c) >= size, "{size}");
+            assert!(c == 0 || large_size(c - 1) < size, "{size}");
+            assert_eq!(large_class_down(large_size(c)), c);
+        }
+    }
+
+    #[test]
+    fn large_blocks_are_reused() {
+        let _g = lock();
+        let a = alloc(100_000);
+        // SAFETY: `a` is live and holds 100000 bytes.
+        unsafe {
+            *a.add(99_999) = 7;
+            free(a);
+        }
+        let b = alloc(100_000);
+        assert_eq!(a, b);
+        // SAFETY: `b` is live.
+        unsafe { free(b) };
+    }
+
+    #[test]
     fn many_blocks_across_pages() {
         let _g = lock();
         let before = live_blocks();
@@ -396,5 +517,117 @@ mod tests {
             unsafe { free(p) };
         }
         assert_eq!(live_blocks(), before);
+    }
+}
+
+/// Rust's global allocator for compiled programs (installed by `ms-native` on Linux).
+///
+/// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
+/// runtime's size-class allocator instead of libc's, which is several times slower per call. The
+/// arena is single threaded: only the thread that runs `main` touches it, and every other thread
+/// uses the system allocator. A block that another thread frees from the arena is leaked.
+#[cfg(target_os = "linux")]
+pub struct StdHeap;
+
+#[cfg(target_os = "linux")]
+mod owner {
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    /// The thread that owns the arena; 0 until the runtime thread starts, when any thread may use it.
+    static OWNER: AtomicUsize = AtomicUsize::new(0);
+
+    pub fn claim() {
+        OWNER.store(crate::sys::thread_self(), Ordering::Relaxed);
+    }
+
+    #[inline(always)]
+    pub fn is_current() -> bool {
+        let owner = OWNER.load(Ordering::Relaxed);
+        owner == 0 || owner == crate::sys::thread_self()
+    }
+}
+
+/// Makes the calling thread the only one that allocates from the arena.
+#[cfg(target_os = "linux")]
+pub fn claim_arena() {
+    owner::claim();
+}
+
+#[cfg(target_os = "linux")]
+mod std_heap {
+    use super::{MAX_SMALL, STATE, StdHeap, in_arena, owner};
+    use core::alloc::{GlobalAlloc, Layout};
+    use std::alloc::System;
+
+    /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
+    /// library out of the arena so leak checks see only program allocations.
+    #[inline(always)]
+    fn arena_ok(layout: Layout) -> bool {
+        !cfg!(feature = "stats") && layout.align() <= 16 && owner::is_current()
+    }
+
+    #[inline(always)]
+    fn owns(p: *mut u8) -> bool {
+        // SAFETY: single field reads of the allocator state.
+        in_arena(unsafe { &*STATE.ptr() }, p)
+    }
+
+    // SAFETY: blocks come from the arena or the system allocator, and `dealloc` and `realloc`
+    // tell them apart by address, so each is released by the allocator that produced it.
+    unsafe impl GlobalAlloc for StdHeap {
+        #[inline]
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            if arena_ok(layout) {
+                super::alloc(layout.size())
+            } else {
+                // SAFETY: forwarded.
+                unsafe { System.alloc(layout) }
+            }
+        }
+
+        #[inline]
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            if arena_ok(layout) && layout.size() <= MAX_SMALL {
+                super::alloc_zeroed(layout.size())
+            } else {
+                // SAFETY: forwarded; the system allocator hands out lazily zeroed pages for big blocks.
+                unsafe { System.alloc_zeroed(layout) }
+            }
+        }
+
+        #[inline]
+        unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
+            if !owns(p) {
+                // SAFETY: not an arena block, so the system allocator produced it.
+                unsafe { System.dealloc(p, layout) };
+            } else if owner::is_current() {
+                // SAFETY: an arena block freed on the arena's thread.
+                unsafe { super::free(p) };
+            }
+        }
+
+        unsafe fn realloc(&self, p: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+            let target = Layout::from_size_align(new_size, layout.align());
+            let Ok(target) = target else {
+                return core::ptr::null_mut();
+            };
+            if arena_ok(layout) && (owns(p) || new_size > MAX_SMALL) {
+                // SAFETY: `p` is a live block of this heap (arena, or a large system block).
+                return unsafe { super::realloc(p, new_size) };
+            }
+            if !owns(p) && layout.align() <= 16 {
+                // SAFETY: a system block stays with the system allocator.
+                return unsafe { System.realloc(p, layout, new_size) };
+            }
+            // SAFETY: moves between allocators by copy; the old block is released by `dealloc`.
+            unsafe {
+                let q = self.alloc(target);
+                if !q.is_null() {
+                    core::ptr::copy_nonoverlapping(p, q, layout.size().min(new_size));
+                    self.dealloc(p, layout);
+                }
+                q
+            }
+        }
     }
 }

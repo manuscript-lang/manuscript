@@ -50,8 +50,7 @@ export fn main() Int:
                 table.set(
                     i * width + j,
                     max(
-                        table.get((i + 1) * width + j),
-                        table.get(i * width + j + 1)
+                        table.get((i + 1) * width + j), table.get(i * width + j + 1)
                     )
                 )
 

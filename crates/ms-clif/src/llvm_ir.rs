@@ -11,7 +11,7 @@ use cranelift_codegen::ir::{
     self, Block, ExtFuncData, ExternalName, Function, GlobalValueData, Inst, InstructionData,
     Opcode, Type, Value, types,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 
 /// Resolves the symbol a Cranelift external name refers to.
@@ -29,14 +29,29 @@ pub struct LlvmModule {
     di: DebugInfo,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
-    /// Function definitions.
-    pub body: String,
+    /// Function definitions in emission order.
+    defs: Vec<Def>,
     /// `declare` lines of external functions, by symbol.
     decls: BTreeMap<String, String>,
     /// External data symbols referenced.
     data: BTreeMap<String, ()>,
     /// Symbols defined in this module.
     defined: Vec<String>,
+}
+
+/// Symbol of the empty function every module starts with: the fault and profile tables address
+/// all LLVM-built code as offsets from it, so the functions themselves need no visible symbol.
+pub const TEXT_ANCHOR: &str = "ms.text.base";
+
+/// A finished function definition; its linkage is chosen once the whole module is known.
+struct Def {
+    name: String,
+    /// Part of the program's external interface (exported or entry), so it stays visible.
+    public: bool,
+    /// `define ` is followed by the linkage, then this: return type, name, parameters, attributes.
+    header: String,
+    /// The entry label, the stack slots, then the rest of the body.
+    body: String,
 }
 
 /// Line-table metadata under construction.
@@ -169,7 +184,7 @@ impl LlvmModule {
                 scope_at: HashMap::new(),
                 lexical: HashMap::new(),
             },
-            body: String::new(),
+            defs: Vec::new(),
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
             defined: Vec::new(),
@@ -786,7 +801,7 @@ impl LlvmModule {
         fn_loc: (u32, u32),
         f: &Function,
         syms: &dyn Symbols,
-        hidden: bool,
+        public: bool,
     ) {
         let blocks: Vec<Block> = f.layout.blocks().collect();
         let entry = blocks[0];
@@ -881,26 +896,45 @@ impl LlvmModule {
         }
         // Allocas must sit in the entry block, right after its label.
         let (first, rest) = text.split_once('\n').expect("entry label");
-        let vis = if hidden { "hidden " } else { "" };
         let header = format!(
-            "define {vis}{} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
+            "{} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
             ret_ty(&f.signature.returns),
             params.join(", ")
         );
-        self.body.push_str(&header);
-        self.body.push_str(first);
-        self.body.push('\n');
-        self.body.push_str(&allocas);
-        self.body.push_str(rest);
-        self.body.push_str("}\n\n");
+        let mut body = String::new();
+        body.push_str(first);
+        body.push('\n');
+        body.push_str(&allocas);
+        body.push_str(rest);
+        body.push_str("}\n\n");
         self.defined.push(name.to_string());
+        self.defs.push(Def {
+            name: name.to_string(),
+            public,
+            header,
+            body,
+        });
     }
 
-    /// The finished module text.
-    pub fn finish(&self, triple: &str) -> String {
+    /// The finished module text. Functions are `internal` unless they are public or named in
+    /// `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and specialize them.
+    pub fn finish(&self, triple: &str, pinned: &HashSet<String>) -> String {
         let mut s = String::new();
         let _ = writeln!(s, "target triple = \"{triple}\"");
-        s.push_str(&self.body);
+        let _ = writeln!(
+            s,
+            "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
+        );
+        for d in &self.defs {
+            let vis = if d.public {
+                ""
+            } else if pinned.contains(&d.name) {
+                "hidden "
+            } else {
+                "internal "
+            };
+            let _ = write!(s, "define {vis}{}{}", d.header, d.body);
+        }
         for (name, decl) in &self.decls {
             if !self.defined.contains(name) {
                 s.push_str(decl);

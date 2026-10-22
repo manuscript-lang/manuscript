@@ -705,6 +705,7 @@ impl<'a> Layout<'a> {
         if parts.is_empty() {
             return flat;
         }
+        let comma_separated = parts.len() > 1;
         if !force {
             // A child's complexity or width can expand the containing argument.
             let trial = self.sequence(
@@ -726,6 +727,15 @@ impl<'a> Layout<'a> {
         }
         if g.list && !g.force && simple_layout_items(&parts) {
             return self.packed(g, &parts, indent);
+        }
+        if g.items
+            && !g.parameters
+            && !g.force
+            && comma_separated
+            && parts.len() > 1
+            && let Some(packed) = self.packed_arguments(g, &parts, indent)
+        {
+            return packed;
         }
         // Keep an opener's trailing comment on its original line.
         let mut opening = self.text(&g.open).to_string();
@@ -801,6 +811,41 @@ impl<'a> Layout<'a> {
             }
         }
         (selected, count)
+    }
+
+    /// Fills call arguments or list elements line by line when every one prints
+    /// on a single line; any argument that must itself break keeps one per line.
+    fn packed_arguments(&self, g: &Group, parts: &[&[Node]], indent: usize) -> Option<String> {
+        let mut texts = Vec::with_capacity(parts.len());
+        for part in parts {
+            if part.iter().any(|n| n.tok.kind == Tok::Comment) {
+                return None;
+            }
+            let text = self.item(part, indent + 4);
+            if text.is_empty() || text.contains('\n') {
+                return None;
+            }
+            texts.push(text);
+        }
+        let mut out = String::from(self.text(&g.open));
+        let mut column = 0usize;
+        for text in &texts {
+            let width = text.trim_start().chars().count();
+            if column == 0 || column + 1 + width > WIDTH {
+                out.push('\n');
+                out.push_str(&" ".repeat(indent + 4));
+                column = indent + 4;
+            } else {
+                out.push(' ');
+                column += 1;
+            }
+            out.push_str(text.trim_start());
+            column += width;
+        }
+        out.push('\n');
+        out.push_str(&" ".repeat(indent));
+        out.push_str(self.text(&g.close));
+        Some(out)
     }
 
     fn packed(&self, g: &Group, parts: &[&[Node]], indent: usize) -> String {

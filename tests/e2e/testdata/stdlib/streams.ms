@@ -58,9 +58,7 @@ test "compression streams round trip all formats":
     let text = "compress me compress me compress me".to_bytes()
 
     for format in [
-        CompressionFormat.Gzip,
-        CompressionFormat.Zlib,
-        CompressionFormat.Deflate
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
         let packed = format.compress_stream(from_bytes(text, 5))
         let restored = format.decompress_stream(packed)
@@ -72,8 +70,7 @@ test "compression streams round trip all formats":
         CompressionFormat
         .Gzip
         .decompress_stream(
-            CompressionFormat.Gzip.compress_stream(from_bytes(text)),
-            some(4)
+            CompressionFormat.Gzip.compress_stream(from_bytes(text)), some(4)
         )
     )
     if read_all(limited).is_ok(): return panic("decompression budget")

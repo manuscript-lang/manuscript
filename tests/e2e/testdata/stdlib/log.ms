@@ -1,14 +1,7 @@
 import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
 import {
-    Transport,
-    LogLevel,
-    LogError,
-    create,
-    record,
-    bind,
-    stream_transport,
-    stdout_transport,
-    file_transport
+    Transport, LogLevel, LogError, create, record, bind, stream_transport,
+    stdout_transport, file_transport
 } from "@std/log.ms"
 import {WriteStream, IoError} from "@std/io.ms"
 import JsonValue from "@std/json.ms"
@@ -33,12 +26,7 @@ test "logger writes typed escaped records and protects metadata":
     with transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, timestamp: false)
         let fields = Payload(
-            9007199254740993,
-            ok: true,
-            Items([none, some(1)]),
-            0,
-            "fake",
-            0
+            9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
         )
         try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
@@ -122,9 +110,7 @@ test "limits and unencodable values reject before writing":
     with transport = stream_transport(WriteStream(output)):
         let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let logger = try create(
-            transport,
-            timestamp: false,
-            max_bytes: (line.to_bytes().length())
+            transport, timestamp: false, max_bytes: (line.to_bytes().length())
         )
         try logger.info("x")
         try expect_equal(output.data.decode_utf8(), some(line))

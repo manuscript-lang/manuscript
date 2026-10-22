@@ -32,8 +32,7 @@ impl BitSet:
             .set(
                 word,
                 bit_and(
-                    self.words.get(word),
-                    bit_not(shift_left(1, index % 64))
+                    self.words.get(word), bit_not(shift_left(1, index % 64))
                 )
             )
         )

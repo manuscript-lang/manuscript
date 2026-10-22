@@ -59,9 +59,7 @@ test "expected generic results preserve behavior and call order":
     try expect_equal(consume(identity(5)), 5)
     var events = Events([])
     let combined: Optional[Int] = combine(
-        var events,
-        second: record(var events, 2),
-        first: record(var events, 1)
+        var events, second: record(var events, 2), first: record(var events, 1)
     )
     try expect_false(not combined.is_none())
     try expect_equal(events.values, [2, 1, 3])

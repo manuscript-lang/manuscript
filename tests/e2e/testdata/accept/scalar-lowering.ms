@@ -168,12 +168,10 @@ test "cleanup remains owned by its source callable":
         )
     )
     try expect_equal(
-        bare_propagate(),
-        Result[Int, TextError].error(TextError("expected"))
+        bare_propagate(), Result[Int, TextError].error(TextError("expected"))
     )
     try expect_equal(
-        equality_propagate(),
-        Result[Bool, TextError].error(TextError("expected"))
+        equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
     )
     var index = 0
 

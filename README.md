@@ -1,78 +1,158 @@
 # Manuscript
 
-A statically typed language that compiles to small, fast native executables, designed for the loop an agent runs: write, check, fix, verify, ship.
+Manuscript is the language for the agentic era.
 
-- **Fast.** Faster than hand-written Go on 26 of 31 benchmarks, and typically within 1.4x of Rust with overflow checks on. Linux release builds use LLVM.
-- **Small and self-contained.** One `ms` binary compiles, formats, lints, tests, and serves your editor. No C toolchain needed on Linux and macOS; an HTTP server is about 4.4 MB.
-- **Hard to get wrong.** Failure is a value, ownership is checked on every program, and there is no implicit conversion, truthiness, or async syntax. Agents pass 9 of 10 small challenges and 8 of 10 large applications on the [agent bench](bench/agent/results/summary-2026-10-21.md).
+Agents write the code and people understand it. It is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result.
 
-See the [vision](VISION.md) for direction.
+[Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
-## How Manuscript is different
+## Highlights
 
-Most languages were shaped for human authors and then adapted to agents. Manuscript optimizes the language and the toolchain together for the loop an agent actually runs: write, check, fix, verify, ship.
+- **Written by agents.** Small, regular syntax and structured compiler output. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
+- **Understood by people.** `ms diagram` shows structure and `ms review` shows the semantic effect of a change, both derived deterministically from the checked source.
+- **Verifiable.** `ms verify`, `ms inspect`, and `--json` diagnostics give evidence independent of the code-generating step.
+- **Simple, fast memory.** Value semantics with move and copy, no garbage collector, deterministic cleanup. Nothing is copied unless you write `.clone()`, and the only ownership marker is `var`.
+- **Fast.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, typically within 1.4x of Rust with overflow checks on.
+- **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK.
 
-| Optimization | What it means in practice |
-| --- | --- |
-| **A language with little to get wrong** | Statically typed, four-space blocks, no implicit conversion or truthiness, no special async syntax, and flat code: `|` pipe flows, `try`, and exhaustive `match`. Failure is a value: `Optional`, `Result`, and `try`. Cleanup is scoped with `with`. Values have one owner: an ownership check runs on every program, moves happen at last use, `var` marks mutation at the declaration and the call, and `.clone()` copies explicitly. Fewer concepts means fewer first-draft errors and less to review. |
-| **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
-| **Native code without a second language to manage** | Source compiles to a native executable, linked with a pinned `lld` bundled in `ms` on Linux, macOS, and Windows (no C toolchain needed). Across 31 benchmarks Manuscript is faster than hand-written Go on 26, and as low as 0.14x of Go's time. Against Rust with overflow checks on it is typically within 1.4x, and sorting with a comparator is within 1.2x. Linux release builds optimize with LLVM through tools bundled in `ms`, so no `clang` is needed; macOS and Windows use Cranelift for now. See the [program](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md) and [kernel](bench/perf/kernels/README.md) benchmarks. |
-| **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, and profiler. The native runtime is embedded. Linking uses a pinned static `lld` bundled in `ms`, so Linux (static musl executables), macOS, and Windows (over the mingw-w64 CRT) need no C compiler or SDK. Unreached runtime and standard-library code is dropped at link time: on Linux x86_64 an empty program is about 0.45 MB and an HTTP server about 4.4 MB. |
-| **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. With Claude Haiku 5.5 (2026-10-21), agents pass 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) in Manuscript, against 10 of 10 small ones in TypeScript. Manuscript source is 1.30x TypeScript's size in LLM tokens. See the [results](bench/agent/results/summary-2026-10-21.md). |
+## Example
 
-See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
-
-Manuscript is statically typed. Write `.ms` files and build native executables with `ms`; the standard library covers files, processes, networking, HTTP, JSON, text, and time, plus collections beyond List, Map, and Set: `Queue`, `Deque`, `BitSet`, `SortedMap`, and `SortedSet`.
-
-[Why Manuscript](documentation/learn/why-manuscript.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Take the tour](documentation/learn/tour.md) · [Download Manuscript](https://github.com/manuscript-lang/manuscript/releases)
-
-## A first look
-
-This complete program prints the number of arguments it receives:
+Typed JSON, optional values, error propagation with `try`, and a test in one file:
 
 ```manuscript
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+import {parse, stringify} from "@std/json.ms"
+import expect_equal from "@std/testing.ms"
 
-export fn main() Int:
-    let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message).is_error():
-        return 1
-    return 0
-```
+type Order:
+    customer: String
+    cents: Int
+    coupon: Optional[String]
 
-`main`'s return value is the exit code; `is_error()` tests the write.
-
-## More of the language
-
-Optionals unwrap with `if let`; typed JSON maps text to your types:
-
-```manuscript
-type Request:
-    model: String
-    user: Optional[String]
-
-fn describe(request: Request) String:
-    if let name = request.user:
-        return "{request.model} for {name}"
+fn discount(order: Order) Int:
+    if let code = order.coupon:
+        return if code == "SAVE10": order.cents / 10 else: 0
     else:
-        return "{request.model} for nobody"
+        return 0
+
+fn summary(text: String) Result[String, Error]:
+    let orders = try parse[List[Order]](text)
+    var total = 0
+    for order in orders:
+        total += order.cents - discount(order)
+    return ok("{orders.length()} orders, {total / 100} dollars")
+
+test "orders from JSON":
+    let sam = Order(customer: "Sam", cents: 5000, coupon: some("SAVE10"))
+    let ana = Order(customer: "Ana", cents: 2500, coupon: none)
+    let text = try stringify([sam, ana])
+    try expect_equal(try summary(text), "2 orders, 70 dollars")
+    try expect_equal(summary("not json").is_error(), true)
 ```
 
-`if` is an expression, and `match` takes literal arms:
+Run it with `ms test`. `parse[List[Order]]` reads text into your types and returns a `Result`, `try` passes any error to the caller, and `Optional` fields unwrap with `if let`.
+
+## The language
+
+### Pipes
+
+A `|` flow passes each result to the next call, so a sequence of steps reads from top to bottom. A `try` step unwraps a `Result` or returns its error.
 
 ```manuscript
-fn sign(value: Int) Int:
-    return if value < 0: -1 else if value == 0: 0 else: 1
+import expect_equal from "@std/testing.ms"
 
-fn name(count: Int) String:
-    match count:
-        0: return "none"
-        1: return "one"
-        _: return "many"
+type Reading:
+    sensor: String
+    celsius: Float
+
+fn hot(readings: List[Reading]) List[Reading]:
+    return readings.filter(
+        fn(reading: Reading) Bool:
+            return reading.celsius > 30.0
+    )
+
+fn names(readings: List[Reading]) String:
+    return readings.map(
+        fn(reading: Reading) String:
+            return reading.sensor
+    ).join(", ")
+
+fn alert(readings: List[Reading]) String:
+    return readings | hot | names
+
+test "pipe flow":
+    let readings = [
+        Reading(sensor: "a", celsius: 21.5),
+        Reading(sensor: "b", celsius: 35.0)
+    ]
+    try expect_equal(alert(readings), "b")
 ```
 
-`json.parse[T]` and `json.stringify[T]` (`@std/json.ms`) convert such types; unknown members are ignored by default. The [tour](documentation/learn/tour.md) covers more.
+### Value semantics and ownership
+
+Records, lists, maps, and sets are values, so two names never change one object. Small values copy implicitly; everything else moves at its last use, which passes data along without copying it. `.clone()` is the only deep copy and is always visible. Every value has one owner and is dropped at a known point, so there is no garbage collector and no pause.
+
+The compiler checks this on every program, with no lifetime annotations. It infers whether each parameter reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
+
+```manuscript
+type Cart:
+    items: List[String]
+
+fn add(var cart: Cart, item: String) Unit:
+    cart.items.append(item)
+
+fn count(cart: Cart) Int:
+    return cart.items.length()
+
+fn pay(cart: Cart) Cart:
+    return cart
+
+fn demo() Int:
+    var cart = Cart(items: [])
+    add(var cart, "book")
+    let seen = count(cart)
+    let receipt = pay(cart)
+    return seen + receipt.items.length()
+```
+
+`count` borrows `cart`. `pay` consumes it, so the move happens at its last use. Using `cart` after that is rejected, with a fix the compiler states:
+
+```text
+`cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
+```
+
+Cleanup follows the same ownership. `with file = try files.open("data.txt"):` closes the resource at the end of the block, including when an error occurs.
+
+### Errors
+
+`Optional` and `Result` put absence and failure in the type, and `try` propagates them. Input and output are ordinary calls, so no function needs special async syntax.
+
+## Performance
+
+Representative programs compiled natively (linux/amd64), as a fraction of hand-written Go's time; lower is faster.
+
+| Program | Manuscript / Go |
+| --- | ---: |
+| Game of Life, 128x128 for 50 generations | 0.06 |
+| Stack of 20M pushes and pops | 0.14 |
+| Sorting 1M items with a comparator | 0.26 |
+| Parsing and splitting 1M lines of text | 0.45 |
+| Calling a captured closure 100M times | 0.50 |
+| `Result` propagation with `try`, 50M calls | 0.56 |
+
+Across all 31 benchmarks Manuscript beats Go on 26; sorting with a comparator is within 1.2x of Rust. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
+
+## Built on measurement
+
+Language and compiler choices are settled by benchmarks, not taste.
+
+- **Agents.** [`agent-bench`](bench/agent/README.md) gives real agents the same challenges in TypeScript, Go, Rust, and Manuscript, and checks their output against hidden tests. Failures drive changes to diagnostics, documentation, and the `ms guide` cheat sheet.
+- **Speed.** [`bench/perf`](bench/perf/README.md) times Manuscript against hand-written Go and Rust. A design that cannot show a measured gain does not get built.
+
+## Tools for the loop
+
+An agent writes, checks, fixes, and verifies; a person guides and inspects. `check`, `lint`, `test`, `build`, and `inspect` accept `--json`; `ms verify` runs check, format, lint, and test in one result; `ms search_symbol` finds exact APIs. Compiler messages name the next step. The standard library covers files, processes, networking, HTTP, JSON, text, and time.
+
+See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes where the project is heading.
 
 ## Try it
 
