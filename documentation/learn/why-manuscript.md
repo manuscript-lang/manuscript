@@ -34,8 +34,8 @@ The language server, VS Code extension, source-level debugger, and CPU, heap, an
 
 ## Measured, not claimed
 
-- [`bench/perf`](https://github.com/manuscript-lang/manuscript/tree/main/bench/perf) compares generated code with hand-written Go and Rust. Across 31 benchmarks Manuscript takes 0.04x to 1.7x of Go's time (faster on 26, within 1.25x on 2 more). Rust is usually faster, typically by up to 1.4x with overflow checks on and by more on string_append and chars, because Manuscript checks Int overflow and allocates where Rust slices. Both are measured, not promised.
-- [`bench/agent`](https://github.com/manuscript-lang/manuscript/tree/main/bench/agent) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. Manuscript currently trails the others on pass rate and cost; closing that gap is the point of the project.
+- [`bench/perf`](https://github.com/manuscript-lang/manuscript/tree/main/bench/perf) compares generated code with hand-written Go and Rust. Across 31 benchmarks Manuscript takes 0.14x to 2.6x of Go's time (faster on 26, within 1.25x on 2 more); release builds use LLVM on Linux. With Rust's overflow checks on, Manuscript is typically within 1.4x of Rust, with larger gaps on string_append and chars, because Manuscript allocates where Rust slices and decodes characters where Rust iterates bytes. Both are measured, not promised.
+- [`bench/agent`](https://github.com/manuscript-lang/manuscript/tree/main/bench/agent) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. On the latest Haiku 5.5 run, agents pass 9 of 10 small challenges and 8 of 10 large applications in Manuscript, with source 1.30x TypeScript's size in LLM tokens.
 
 ## Try it
 

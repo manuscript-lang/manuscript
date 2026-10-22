@@ -14,7 +14,7 @@ Most languages were shaped for human authors and then adapted to agents. Manuscr
 | **Tools that give evidence, not prose** | `--json` from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol` finds exact APIs, `ms guide` prints the cheat sheet, `ms verify` runs check, format, lint, and test in one result, and `ms review` and `ms diagram` show the effect of a change from the checked source, deterministically. |
 | **Native code without a second language to manage** | Source compiles to a native executable, linked with a pinned `lld` bundled in `ms` on Linux and macOS (no C toolchain needed) and the system C compiler driver on Windows. Across 31 benchmarks, Manuscript takes 0.14x to 2.6x of hand-written Go's time: faster on 26, within 1.25x on 2 more, and up to 1.7x slower on the other 3 (string-keyed map updates, 2-D list indexing, map counting). Rust is faster on most rows, since it does not check Int overflow by default; with overflow checks on it is typically within 1.4x, with larger gaps on string_append (4x) and chars (7.6x, where Rust iterates bytes without decoding). Release builds on Linux use LLVM when `clang` is installed. See the [program](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md) and [kernel](bench/perf/kernels/README.md) benchmarks. |
 | **One binary, always fresh** | `ms` is the compiler, formatter, linter, test runner, language server, and profiler. The native runtime is embedded. Linking uses a pinned static `lld` bundled in `ms`, so Linux (static musl executables) and macOS need no C compiler or SDK; Windows still links with the system C compiler driver (`clang`; `MS_LINKER` overrides it) until its bundled path lands. Unreached runtime and standard-library code is dropped at link time: on Linux x86_64 an empty program is about 0.45 MB and an HTTP server about 4.4 MB. |
-| **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. The latest Haiku baseline has Manuscript behind the others on pass rate and cost, and closing that gap is the current work. |
+| **Measured on real agents** | [`agent-bench`](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript, and Rust. Failures there drive diagnostics, docs, and the cheat sheet. With Claude Haiku 5.5 (2026-10-21), agents pass 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) in Manuscript, against 10 of 10 small ones in TypeScript. Manuscript source is 1.30x TypeScript's size in LLM tokens. See the [results](bench/agent/results/summary-2026-10-21.md). |
 
 See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md).
 
@@ -53,6 +53,19 @@ fn describe(request: Request) String:
         return "{request.model} for {name}"
     else:
         return "{request.model} for nobody"
+```
+
+`if` is an expression, and `match` takes literal arms:
+
+```manuscript
+fn sign(value: Int) Int:
+    return if value < 0: -1 else if value == 0: 0 else: 1
+
+fn name(count: Int) String:
+    match count:
+        0: return "none"
+        1: return "one"
+        _: return "many"
 ```
 
 `json.parse[T]` and `json.stringify[T]` (`@std/json.ms`) convert such types; unknown members are ignored by default. The [tour](documentation/learn/tour.md) covers more.
