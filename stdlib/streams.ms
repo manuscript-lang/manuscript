@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import {HashAlgorithm} from "@std/crypto.ms"
-import {ReadStream, WriteStream, IoError} from "@std/io.ms"
+import {ReadStream, WriteStream, IoError, read_line} from "@std/io.ms"
 
 # Transform and composition helpers for byte streams. Each helper takes its input first, so
 # flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
@@ -179,3 +179,18 @@ export fn digest(input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, IoEr
             return ok(hasher.finish())
 
     return ok(hasher.finish())
+
+# Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
+export fn read_lines(
+    input: ReadStream,
+    max_bytes: Optional[Int] = none
+) Result[List[String], IoError]:
+    var lines = List[String]()
+
+    while true:
+        let line = try read_line(input, max_bytes)
+        if line.is_none(): break
+
+        lines.append(line.get())
+
+    return ok(lines)
