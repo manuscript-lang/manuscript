@@ -1,8 +1,8 @@
 # Manuscript
 
-Manuscript is a language where agents write the code and people understand it.
+Manuscript is the language for the agentic era.
 
-As coding agents produce more of the software, the language and its tools decide how reliably they can build it and how well people can follow what they built. Manuscript is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result without holding the whole implementation in mind.
+Agents write the code and people understand it. As coding agents produce more of the software, the language and its tools decide how reliably they can build it and how well people can follow what they built. Manuscript is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result without holding the whole implementation in mind.
 
 [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
