@@ -45,6 +45,75 @@ test "orders from JSON":
 
 Run it with `ms test`. `parse[List[Order]]` reads text straight into your types and returns a `Result`; `try` hands any error to the caller; `Optional` fields unwrap with `if let`. There are no exceptions to forget about.
 
+## What makes it different
+
+**Pipes instead of nesting.** A `|` flow feeds each result into the next call, so a chain of steps reads top to bottom. A `try` step unwraps a `Result` or returns its error (`x | try parse | .total()`), which replaces nested calls and `Result` matching:
+
+```manuscript
+import expect_equal from "@std/testing.ms"
+
+type Reading:
+    sensor: String
+    celsius: Float
+
+fn hot(readings: List[Reading]) List[Reading]:
+    return readings.filter(
+        fn(reading: Reading) Bool:
+            return reading.celsius > 30.0
+    )
+
+fn names(readings: List[Reading]) String:
+    return readings.map(
+        fn(reading: Reading) String:
+            return reading.sensor
+    ).join(", ")
+
+fn alert(readings: List[Reading]) String:
+    return readings | hot | names
+
+test "pipe flow":
+    let readings = [
+        Reading(sensor: "a", celsius: 21.5),
+        Reading(sensor: "b", celsius: 35.0)
+    ]
+    try expect_equal(alert(readings), "b")
+```
+
+**Ownership and borrow checking with no extra syntax.** There are no lifetimes, no `&` or `&mut`, and no garbage collector. Every value has one owner, and the checker infers whether each parameter only reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
+
+```manuscript
+type Cart:
+    items: List[String]
+
+fn add(var cart: Cart, item: String) Unit:
+    cart.items.append(item)
+
+fn count(cart: Cart) Int:
+    return cart.items.length()
+
+fn pay(cart: Cart) Cart:
+    return cart
+
+fn demo() Int:
+    var cart = Cart(items: [])
+    add(var cart, "book")
+    let seen = count(cart)
+    let receipt = pay(cart)
+    return seen + receipt.items.length()
+```
+
+Passing `cart` to `count` is a borrow; passing it to `pay`, which returns it, is a move at its last use. Use `cart` again after the move and the checker rejects the program with a fix an agent can apply:
+
+```text
+`cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
+```
+
+The ownership check runs on every program, so a whole class of aliasing bugs never reaches a test. Cleanup is just as direct: `with file = try files.open("data.txt"):` closes the resource at block end, on errors too.
+
+**Failure is a value.** `Optional` and `Result` replace null and exceptions, and `try` propagates. There is no async syntax to color your functions; I/O is an ordinary call.
+
+**Everything is one tool.** The same `ms` binary that compiles your program also formats, lints, tests, profiles, and answers an agent's questions with `--json`. See [Built for the agent loop](#built-for-the-agent-loop).
+
 ## Fast without ceremony
 
 Ordinary code, compiled natively (linux/amd64, Manuscript time as a fraction of hand-written Go's; lower is faster):
