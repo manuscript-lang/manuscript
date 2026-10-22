@@ -29,6 +29,7 @@ pub const GROWTH_SLACK: usize = 200;
 /// Runs the pass over the whole module; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = specialize_sort_thunks(m);
+    changed |= super::sortgen::run(m);
     changed |= inline_calls(m);
     changed |= inline_closures(m);
     changed |= strip_depth(m);
