@@ -22,10 +22,19 @@ jobs:
           node-version-file: .node-version
           cache: npm
           cache-dependency-path: extensions/vscode/package-lock.json
-      - uses: Swatinem/rust-cache@v2
+      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
+      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      - name: Restore cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@v6
         with:
-          shared-key: language-static
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-language-static-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-language-static-
       - uses: actions/cache/restore@v6
         id: tools
         with:
@@ -40,6 +49,16 @@ jobs:
           key: ${{ steps.tools.outputs.cache-primary-key }}
       - name: Workflow and shell lint, repo rules, licenses
         run: make lint repo-check licenses-check
+      - name: Save cargo cache
+        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - name: Validate and package VS Code extension
         working-directory: extensions/vscode
         run: |

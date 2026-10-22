@@ -15,6 +15,8 @@ env:
   # Debug info makes the dev and test builds slower to link and the saved caches several times
   # larger; nothing in CI reads the compiler's own debug info. Release keeps the profile setting.
   CARGO_PROFILE_DEV_DEBUG: '0'
+  # Incremental artifacts are large and never reused on a fresh runner.
+  CARGO_INCREMENTAL: '0'
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -90,10 +92,19 @@ jobs:
         if: runner.os == 'Windows'
         with:
           arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
-      - uses: Swatinem/rust-cache@v2
+      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
+      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      - name: Restore cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@v6
         with:
-          shared-key: rust-${{ matrix.os }}-${{ matrix.arch }}
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-
       - uses: taiki-e/install-action@v2
         if: matrix.full || matrix.tests
         with:
@@ -291,16 +302,24 @@ jobs:
           else
             "../../$(basename "$ms")" run ms.toml
           fi
-      # rust-cache writes a new entry whenever the lockfile or flags change and never removes the
-      # old ones, so copies of main's cache pile up until GitHub evicts at the 10 GB limit and
-      # takes useful entries with it. Keep the two newest per platform (the post step of
-      # rust-cache saves after this one).
+      - name: Save cargo cache
+        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+      # A lockfile change writes a new entry and nothing removes the old one, so old copies pile up
+      # until GitHub evicts at the 10 GB limit and takes useful entries with it. Keep the two newest.
       - name: Delete stale Rust caches
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
-          KEY: v0-rust-rust-${{ matrix.os }}-${{ matrix.arch }}
+          KEY: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-
         run: |
           gh cache list --repo "$GITHUB_REPOSITORY" --key "$KEY" --ref refs/heads/main \
             --sort created_at --order desc --limit 100 --json id --jq '.[2:][].id' |
@@ -346,10 +365,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: Swatinem/rust-cache@v2
+      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
+      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      - name: Restore cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@v6
         with:
-          shared-key: rust-docs
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-rust-docs-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-rust-docs-
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -363,6 +391,16 @@ jobs:
           make book-check
           make book
           node --test tests/docs/publication.test.cjs
+      - name: Save cargo cache
+        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: .artifacts/book
