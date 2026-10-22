@@ -126,7 +126,7 @@ cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
 
-See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for checks, crates, and behavior differences.
+See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for checks, crates, and platform behavior.
 
 ## Contribute
 

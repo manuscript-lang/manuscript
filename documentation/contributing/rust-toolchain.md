@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-`ms` is implemented in Rust with Cranelift; the earlier Go implementation has been removed. Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
+`ms` is implemented in Rust with Cranelift; Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
 
 ## Build and run
 
@@ -31,7 +31,7 @@ cargo test --workspace --doc
 
 CI runs these in one **Rust** job per platform; linux-amd64 runs fmt, clippy, nextest, doc tests, and the corpus. Pull requests that only change documentation, the website, blog, proposals, skills, extensions, or Markdown skip them.
 
-The conformance corpus in `tests/conformance/` holds programs with expectations first recorded from the Go `ms` and now frozen. `make conform` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
+The conformance corpus in `tests/conformance/` holds programs with frozen expected output. `make conform` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
 Runtime memory safety is checked under Miri, which needs a nightly toolchain and is not part of CI:
 
@@ -61,7 +61,7 @@ The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/cr
 
 ## Differences users can see
 
-The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these differences.
+Behavior to know about:
 
 - **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` makes an explicit deep copy (to be spelled `.copy()`). Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 - **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
@@ -71,9 +71,9 @@ The Rust `ms` accepts the same `.ms` source and `ms.toml` manifests, with these 
 - **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
 - **No concurrency runtime.** Tasks are cooperative and single-threaded; cancellation exists for signals and shutdown only.
 - **Exit codes.** A fault exits 70, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
-- **Math.** `@std/math` calls the host libm; results can differ from Go in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
-- **`ms test --shuffle`** uses its own random generator, so orders differ from the Go `ms`; fixtures run once per test, not once per module.
-- **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ from Go where the corpus does not pin them.
-- **Windows.** The standard crates follow Go's Windows behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds gate CI like Linux.
+- **Math.** `@std/math` calls the host libm; results can differ between hosts in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
+- **`ms test --shuffle`** uses its own random generator, so orders differ from other shuffles; fixtures run once per test, not once per module.
+- **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ where the corpus does not pin them.
+- **Windows.** The standard crates use Windows-specific behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS builds gate CI like Linux.
 
-Do not add code solely to reproduce the old Go output where Rust std covers the concept.
+Do not add code solely to reproduce older output where Rust std covers the concept.
