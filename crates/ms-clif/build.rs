@@ -1,5 +1,5 @@
-//! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (built by
-//! `scripts/build-llvm-bundle.sh`) and, on Linux, the self-contained musl startup objects and libc
+//! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (released by
+//! manuscript-lang/llvm-bundle and fetched by `scripts/fetch-lld.sh`) and, on Linux, the self-contained musl startup objects and libc
 //! that Rust's musl target carries.
 
 use std::path::{Path, PathBuf};
@@ -17,13 +17,21 @@ fn main() {
     std::fs::create_dir_all(&bundle).expect("create the linker bundle directory");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS");
     // Windows still links with the system toolchain; the bundle files are only placeholders there.
-    let mut names = vec!["lld"];
+    let mut names: Vec<String> = vec!["lld".to_string()];
     if target_os == "windows" {
         std::fs::write(bundle.join("lld"), b"").expect("write placeholder");
     } else {
         copy(&lld(), &bundle.join("lld"), "lld");
     }
     if target_os == "linux" {
+        // opt and llc sit beside lld when the LLVM tools were fetched; without them release builds
+        // keep using Cranelift. They are embedded gzipped (together about 50 MB).
+        let tools = lld().parent().map(Path::to_path_buf).unwrap_or_default();
+        for tool in ["opt", "llc"] {
+            let gz = format!("{tool}.gz");
+            compress(&tools.join(tool), &bundle.join(&gz));
+            names.push(gz);
+        }
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         let musl = sysroot()
             .join("lib/rustlib")
@@ -37,7 +45,7 @@ fn main() {
                 &format!("{name} (run `rustup target add {arch}-unknown-linux-musl`)"),
             );
             strip_debug(&to);
-            names.push(name);
+            names.push(name.to_string());
         }
     }
     let mut id = 0xcbf29ce484222325u64;
@@ -50,7 +58,24 @@ fn main() {
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
 }
 
-/// `MS_LLD`, else the bundle `scripts/build-llvm-bundle.sh` leaves in `target/llvm-bundle`.
+/// Writes `from` gzipped to `to`, or an empty file when `from` does not exist.
+fn compress(from: &Path, to: &Path) {
+    use std::io::Write;
+    println!("cargo:rerun-if-changed={}", from.display());
+    let Ok(bytes) = std::fs::read(from) else {
+        std::fs::write(to, b"").expect("write placeholder");
+        return;
+    };
+    let mut packed = Vec::new();
+    let mut encoder = flate2::write::GzEncoder::new(&mut packed, flate2::Compression::new(6));
+    encoder.write_all(&bytes).expect("compress");
+    encoder.finish().expect("compress");
+    if std::fs::read(to).ok().as_deref() != Some(&packed) {
+        std::fs::write(to, packed).expect("write compressed tool");
+    }
+}
+
+/// `MS_LLD`, else the one `scripts/fetch-lld.sh` leaves in `target/llvm-bundle`.
 fn lld() -> PathBuf {
     if let Some(path) = std::env::var_os("MS_LLD") {
         return PathBuf::from(path);
@@ -62,7 +87,7 @@ fn lld() -> PathBuf {
     println!("cargo:rerun-if-changed={}", built.display());
     assert!(
         built.is_file(),
-        "no lld to bundle: run `sh scripts/build-llvm-bundle.sh <os> <arch>` or set MS_LLD to a static lld"
+        "no lld to bundle: run `sh scripts/fetch-lld.sh` or set MS_LLD to a static lld"
     );
     built
 }
