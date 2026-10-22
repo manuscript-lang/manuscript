@@ -60,12 +60,6 @@ const TOOLS: [(&str, &[u8]); 2] = [
     ),
 ];
 
-/// The path of the bundled `lld`, unpacked on first use.
-#[cfg(unix)]
-pub fn lld_path() -> Result<PathBuf, Error> {
-    Ok(extract()?.join(LLD))
-}
-
 /// The directory holding `opt` and `llc`: `MS_LLVM_TOOLS`, else the embedded ones unpacked on
 /// first use. `None` when neither exists.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
