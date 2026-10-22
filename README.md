@@ -5,6 +5,7 @@
 [Why Manuscript](documentation/learn/why-manuscript.md) · [Take the tour](documentation/learn/tour.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
 
 - **Fast.** Native code through LLVM: ahead of hand-written Go on 26 of 31 benchmarks, and typically within 1.4x of Rust with overflow checks on.
+- **No garbage collector.** Memory is deterministic: every value has one owner and is dropped at a known point, so there are no collection pauses and no tracing runtime.
 - **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. No C toolchain, SDK, or package manager to install. An HTTP server is about 4.4 MB.
 - **Agents succeed with it.** Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md), with compact source.
 - **Little to get wrong.** Pipes, inferred ownership and borrowing, failure as a value, and no implicit conversion or truthiness.
@@ -79,7 +80,7 @@ test "pipe flow":
     try expect_equal(alert(readings), "b")
 ```
 
-**Ownership and borrow checking with no extra syntax.** Every value has one owner, with deterministic cleanup and no lifetime annotations, and the checker infers whether each parameter only reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
+**Ownership and borrow checking with no extra syntax.** Every value has one owner and is dropped at a known point: no garbage collector, no pauses, no lifetime annotations, and the checker infers whether each parameter only reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
 
 ```manuscript
 type Cart:
