@@ -62,13 +62,16 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .filter(|_| out.ancestors().nth(2).and_then(|p| p.file_name()) == Some("build".as_ref()))
         .unwrap_or(out)
         .join("ms-native");
+    // Linux programs are static musl executables and Windows programs mingw-w64 (gnullvm) ones, all
+    // linked by the bundled lld, so the runtime is built for that target. `ring`'s C sources need a C
+    // compiler here (llvm-mingw's clang on Windows): building `ms` needs one, using it does not.
+    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
+    let triple = match std::env::var("CARGO_CFG_TARGET_OS").as_deref() {
+        Ok("linux") => Some(format!("{arch}-unknown-linux-musl")),
+        Ok("windows") => Some(format!("{arch}-pc-windows-gnullvm")),
+        _ => None,
+    };
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    // Linux programs are static musl executables linked by the bundled lld, so the runtime is built
-    // for musl. `ring`'s C sources need a C compiler here: building `ms` needs one, using it does not.
-    let musl = (std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")).then(|| {
-        let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
-        format!("{arch}-unknown-linux-musl")
-    });
     let mut command = Command::new(cargo);
     command
         .args(["build", "--release", "-p", "ms-native", "--manifest-path"])
@@ -79,26 +82,35 @@ fn build_native(out: &Path, crates: &Path) -> PathBuf {
         .env_remove("RUSTC_WORKSPACE_WRAPPER")
         .env_remove("CARGO_ENCODED_RUSTFLAGS")
         .env_remove("RUSTFLAGS");
-    if let Some(triple) = &musl {
+    if let Some(triple) = &triple {
         let cc = format!("CC_{}", triple.replace('-', "_"));
         if std::env::var_os(&cc).is_none() {
-            command.env(cc, "cc");
+            command.env(cc, c_compiler(triple, &arch));
         }
         command.args(["--target", triple]);
     }
     let status = command.status().expect("run cargo to build ms-native");
     assert!(status.success(), "building ms-native failed");
-    // The MSVC toolchain names a staticlib `ms_native.lib`; every other target uses `libms_native.a`.
-    let msvc = std::env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|env| env == "msvc");
-    let release = match &musl {
+    let release = match &triple {
         Some(triple) => target.join(triple).join("release"),
         None => target.join("release"),
     };
-    release.join(if msvc {
-        "ms_native.lib"
-    } else {
-        "libms_native.a"
-    })
+    release.join("libms_native.a")
+}
+
+/// The C compiler for the runtime's C sources: `cc` where the target is Linux, else llvm-mingw's clang
+/// (`MS_MINGW`, else the tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`).
+fn c_compiler(triple: &str, arch: &str) -> PathBuf {
+    if !triple.contains("windows") {
+        return PathBuf::from("cc");
+    }
+    println!("cargo:rerun-if-env-changed=MS_MINGW");
+    let root = std::env::var_os("MS_MINGW")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/llvm-bundle/mingw")
+        });
+    root.join("bin").join(format!("{arch}-w64-mingw32-clang"))
 }
 
 /// Drops the debug sections the toolchain's precompiled std, core and alloc objects carry (about 4 MB

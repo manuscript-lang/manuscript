@@ -56,10 +56,20 @@ jobs:
       # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
       # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
       - name: Fetch bundled lld
-        if: runner.os != 'Windows'
         run: |
-          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$RUNNER_TEMP/llvm-bundle/install"
-          echo "MS_LLD=$RUNNER_TEMP/llvm-bundle/install/bin/lld" >> "$GITHUB_ENV"
+          dest="$RUNNER_TEMP/llvm-bundle/install"
+          if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
+          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$dest"
+          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
+          else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
+      # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
+      # with its clang (scripts/fetch-mingw.sh).
+      - name: Fetch llvm-mingw
+        if: runner.os == 'Windows'
+        run: |
+          mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
+          echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
+          rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
       - name: Build and package
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
       - name: Save cargo cache

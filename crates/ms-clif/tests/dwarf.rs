@@ -118,7 +118,7 @@ fn check_lines(path: &Path, absolute: &Path, optimized: bool) {
             30 | 31 | 40 => format!("relative/nested/first.ms:{line}"),
             70 => "inline/origin.ms:70".into(),
             90 => "relative/nested/first.ms:90".into(),
-            _ => panic!("unexpected line {line}: {row}"),
+            _ => panic!("unexpected line {line}: {row} ({got})"),
         };
         assert!(
             got.ends_with(&suffix),

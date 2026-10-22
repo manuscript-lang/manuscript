@@ -48,16 +48,11 @@ use ms_std_io::stream::Stream;
 
 /// Nanoseconds since the runtime started (or since the first call when it did not record a start).
 fn uptime_ns() -> i64 {
-    use core::sync::atomic::{AtomicI64, Ordering};
-    static FIRST: AtomicI64 = AtomicI64::new(0);
-    let mut origin = start_nanos();
-    if origin == 0 {
-        origin = FIRST.load(Ordering::Relaxed);
-        if origin == 0 {
-            origin = command::now_ns();
-            FIRST.store(origin, Ordering::Relaxed);
-        }
-    }
+    static FIRST: std::sync::OnceLock<i64> = std::sync::OnceLock::new();
+    let origin = match start_nanos() {
+        0 => *FIRST.get_or_init(command::now_ns),
+        start => start,
+    };
     command::now_ns() - origin
 }
 

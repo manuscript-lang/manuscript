@@ -2,22 +2,44 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-/// Compile all fixture C code with the same host ABI and CRT as the linker.
+/// The mingw-w64 target the bundled Windows linker links, in clang's spelling.
+#[cfg(windows)]
+#[allow(dead_code)]
+pub fn mingw_triple() -> &'static str {
+    if cfg!(target_arch = "aarch64") {
+        "aarch64-w64-mingw32"
+    } else {
+        "x86_64-w64-mingw32"
+    }
+}
+
+/// llvm-mingw's clang: `MS_MINGW`, else the tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle`.
+#[cfg(windows)]
+#[allow(dead_code)]
+pub fn mingw_clang() -> std::path::PathBuf {
+    let root = std::env::var_os("MS_MINGW")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/llvm-bundle/mingw")
+        });
+    root.join("bin").join(format!("{}-clang", mingw_triple()))
+}
+
+/// Compile all fixture C code with the same ABI and CRT as the bundled linker.
 pub fn cc() -> Command {
-    let program =
-        std::env::var("CC").unwrap_or_else(|_| if cfg!(windows) { "clang" } else { "cc" }.into());
+    // `CC` names the host compiler (MSVC ABI on Windows); fixtures must match the mingw-w64 runtime.
+    #[cfg(windows)]
+    let program = mingw_clang();
+    #[cfg(not(windows))]
+    let program = std::env::var("CC").unwrap_or_else(|_| "cc".into());
     let mut command = Command::new(program);
+    if cfg!(windows) {
+        // mingw-w64 headers declare the Windows 8 and later APIs only for a newer target version.
+        command.arg("-D_WIN32_WINNT=0x0A00");
+    }
     if cfg!(target_os = "linux") {
         // The bundled linker links musl, which has no fortified `*_chk` entry points.
         command.arg("-D_FORTIFY_SOURCE=0");
-    }
-    if cfg!(windows) {
-        command.arg(if cfg!(target_arch = "aarch64") {
-            "--target=aarch64-pc-windows-msvc"
-        } else {
-            "--target=x86_64-pc-windows-msvc"
-        });
-        command.arg("-fms-runtime-lib=dll");
     }
     command
 }
@@ -39,9 +61,13 @@ pub fn link_fixture(object: &Path, runtime: &Path, out: &Path) -> Result<(), ms_
 }
 
 fn builtins() -> Option<PathBuf> {
-    if !cfg!(target_os = "linux") {
+    let triple = if cfg!(target_os = "linux") {
+        format!("{}-unknown-linux-musl", std::env::consts::ARCH)
+    } else if cfg!(windows) {
+        format!("{}-pc-windows-gnullvm", std::env::consts::ARCH)
+    } else {
         return None;
-    }
+    };
     let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     let sysroot = Command::new(rustc)
         .args(["--print", "sysroot"])
@@ -49,7 +75,7 @@ fn builtins() -> Option<PathBuf> {
         .ok()?;
     let lib = PathBuf::from(String::from_utf8(sysroot.stdout).ok()?.trim())
         .join("lib/rustlib")
-        .join(format!("{}-unknown-linux-musl", std::env::consts::ARCH))
+        .join(triple)
         .join("lib");
     let rlib = std::fs::read_dir(lib)
         .ok()?
@@ -68,12 +94,22 @@ fn builtins() -> Option<PathBuf> {
         return Some(stripped);
     }
     let staged = stripped.with_extension(format!("{}.tmp", std::process::id()));
-    let done = Command::new("llvm-objcopy")
+    // llvm-mingw ships one; runner images do not always have LLVM tools on `PATH`.
+    #[cfg(windows)]
+    let objcopy = mingw_clang().with_file_name("llvm-objcopy");
+    #[cfg(not(windows))]
+    let objcopy = PathBuf::from("llvm-objcopy");
+    let done = Command::new(objcopy)
         .arg("--strip-debug")
         .arg(&rlib)
         .arg(&staged)
         .status()
         .is_ok_and(|status| status.success())
         && std::fs::rename(&staged, &stripped).is_ok();
+    assert!(
+        done || !cfg!(windows),
+        "cannot strip debug info from {}",
+        rlib.display()
+    );
     Some(if done { stripped } else { rlib })
 }

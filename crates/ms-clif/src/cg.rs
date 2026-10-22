@@ -27,8 +27,6 @@ use std::collections::HashMap;
 pub const STATIC_RC: u64 = 1 << 62;
 /// `ms_rt_abi::STR_DATA_OFFSET`.
 pub const STR_DATA_OFFSET: usize = 32;
-/// Size of the object header.
-pub const OBJ_HEADER: u32 = 16;
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
 /// Offset of the payload in a `Shared[T]` box.
@@ -617,7 +615,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<Vec<u8>, Error> {
         ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
         {
             let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
-            l.lower_func(f, i);
+            l.lower_func(f);
             if let Some(u) = l.unsupported.clone() {
                 return Err(Error(format!("{}: unsupported: {u}", f.name)));
             }

@@ -662,9 +662,6 @@ impl<'a> Tr<'a> {
         match sig.returns.len() {
             0 => {
                 self.line(rhs);
-                if self.is_noreturn_follow(inst) {
-                    // A call followed by `trap` is already terminated by the trap.
-                }
             }
             1 => {
                 let d = self.def(rhs);
@@ -678,10 +675,6 @@ impl<'a> Tr<'a> {
                 }
             }
         }
-    }
-
-    fn is_noreturn_follow(&self, _inst: Inst) -> bool {
-        false
     }
 
     fn binary(&mut self, inst: Inst, opc: Opcode, args: [Value; 2]) {
@@ -833,15 +826,11 @@ impl LlvmModule {
                 tr.ops.insert(*p, format!("%p{}_{i}", b.as_u32()));
             }
         }
-        // Pre-assign operands to every instruction result so that uses before definitions in
-        // layout order (loops) resolve: each result is named after its value.
-        let mut body = String::new();
+        // Translate each block's instructions; phis are added once every incoming edge is known.
+        let mut bodies: Vec<(Block, String)> = Vec::with_capacity(blocks.len());
         for b in &blocks {
             tr.out.clear();
             tr.cur = tr.label(*b);
-            let _ = writeln!(body, "{}:", tr.cur);
-            let start = body.len();
-            let _ = start;
             for inst in f.layout.block_insts(*b) {
                 tr.dbg = Some(
                     self.di
@@ -850,48 +839,36 @@ impl LlvmModule {
                 );
                 tr.inst(inst);
             }
-            body.push_str(&tr.out);
+            bodies.push((*b, std::mem::take(&mut tr.out)));
         }
         self.sites = tr.sites;
         // Trampolines carry arguments into phis.
         let tramps = std::mem::take(&mut tr.tramps);
-        let mut tbody = String::new();
         for (l, blk, args) in &tramps {
-            let _ = writeln!(tbody, "{l}:\n  br label %{}", tr.label(*blk));
             tr.incoming.entry(*blk).or_default().push(Edge {
                 from: l.clone(),
                 args: args.clone(),
             });
         }
-        // Phis: now the full incoming set is known.
         let mut text = String::new();
-        let mut final_body = String::new();
-        for line in body.lines() {
-            if let Some(lab) = line.strip_suffix(':').filter(|l| !l.starts_with(' ')) {
-                final_body.push_str(line);
-                final_body.push('\n');
-                if let Some(bn) = lab.strip_prefix('b').and_then(|n| n.parse::<u32>().ok()) {
-                    let blk = Block::from_u32(bn);
-                    if blk != entry {
-                        let edges = tr.incoming.get(&blk).map(Vec::as_slice).unwrap_or(&[]);
-                        for (i, p) in f.dfg.block_params(blk).iter().enumerate() {
-                            let t = llty(f.dfg.value_type(*p));
-                            let ins: Vec<String> = edges
-                                .iter()
-                                .map(|e| format!("[ {}, %{} ]", e.args[i], e.from))
-                                .collect();
-                            let _ =
-                                writeln!(final_body, "  %p{bn}_{i} = phi {t} {}", ins.join(", "));
-                        }
-                    }
+        for (b, code) in &bodies {
+            let _ = writeln!(text, "{}:", tr.label(*b));
+            if *b != entry {
+                let edges = tr.incoming.get(b).map(Vec::as_slice).unwrap_or(&[]);
+                for (i, p) in f.dfg.block_params(*b).iter().enumerate() {
+                    let t = llty(f.dfg.value_type(*p));
+                    let ins: Vec<String> = edges
+                        .iter()
+                        .map(|e| format!("[ {}, %{} ]", e.args[i], e.from))
+                        .collect();
+                    let _ = writeln!(text, "  %p{}_{i} = phi {t} {}", b.as_u32(), ins.join(", "));
                 }
-                continue;
             }
-            final_body.push_str(line);
-            final_body.push('\n');
+            text.push_str(code);
         }
-        text.push_str(&final_body);
-        text.push_str(&tbody);
+        for (l, blk, _) in &tramps {
+            let _ = writeln!(text, "{l}:\n  br label %{}", tr.label(*blk));
+        }
         let mut allocas = String::new();
         for (ss, data) in f.sized_stack_slots.iter() {
             let _ = writeln!(
