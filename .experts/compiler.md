@@ -92,6 +92,10 @@ Verified: LLVM translation must preserve cold-edge hints and identify runtime fa
 Evidence: [LLVM translation and six-target object tests](../crates/ms-clif/src/llvm_ir.rs), [actual backend frame comparison](../crates/ms-cli/tests/llvm.rs), [runtime fault definitions](../crates/ms-rt/src/fault.rs).
 Verify: generate and verify ELF, Mach-O and COFF for x86-64 and ARM64; run LLVM/Cranelift fault-frame equality on supported native hosts. Cross-target object generation establishes code generation, not native execution or runtime ABI correctness on another operating system.
 
+Verified: LLVM glue inlining barriers must not depend on traversal order. Caching provisional recursive depths across roots made identical inputs choose different `noinline` functions. Count a cycle's closing edge once and exclude direct self calls; at the fixed three-edge threshold, two distinct non-leaf witnesses per callee suffice to answer every root without recursive context. This derivation is specific to three edges, not a general depth algorithm.
+Evidence: [glue selection and bounded-traversal regressions](../crates/ms-clif/src/llvm_ir.rs), [deep-literal and source-frame guards](../crates/ms-cli/tests/llvm.rs).
+Verify: compare definition/edge permutations and repeated actual LLVM input captures; preserve acyclic selections, recursive owned copy/drop behavior, fault frames and the deep-literal compile guard. Deterministic attributes alone do not establish runtime performance.
+
 ### Omitted library entries must stay empty through module loading
 
 Verified: executable manifests require an entry; libraries omit the key, and an explicitly empty or invalid entry remains an error. Resolving an empty entry as a source path would turn it into the project directory, so graph loading skips that resolution and discovers source and test roots instead. Application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.

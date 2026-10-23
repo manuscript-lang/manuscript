@@ -949,7 +949,8 @@ impl LlvmModule {
 
     /// Glue functions at the top of a chain of glue calls three or more levels deep. They stay
     /// out of line: inlining a chain nests one loop per element-type level, which makes the
-    /// optimizer quadratic in the nesting depth of a literal. Shallow glue still inlines.
+    /// optimizer quadratic in the nesting depth of a literal. Count a cycle's closing edge,
+    /// then stop traversing it; direct self calls remain excluded. Shallow glue still inlines.
     fn deep_glue(&self) -> HashSet<String> {
         const GLUE: &str = "@\"ms.glue.";
         let callees: HashMap<&str, Vec<&str>> = self
@@ -969,31 +970,35 @@ impl LlvmModule {
                 (d.name.as_str(), calls)
             })
             .collect();
-        fn depth<'a>(
-            name: &'a str,
-            callees: &HashMap<&'a str, Vec<&'a str>>,
-            memo: &mut HashMap<&'a str, usize>,
-        ) -> usize {
-            if let Some(d) = memo.get(name) {
-                return *d;
-            }
-            // A cycle (recursive types) counts as shallow while it is being resolved.
-            memo.insert(name, 0);
-            let d = callees.get(name).map_or(0, |cs| {
-                cs.iter()
-                    .filter(|c| callees.contains_key(**c))
-                    .map(|c| 1 + depth(c, callees, memo))
-                    .max()
-                    .unwrap_or(0)
-            });
-            memo.insert(name, d);
-            d
-        }
-        let mut memo = HashMap::new();
+        let nonleaf: HashSet<&str> = callees
+            .iter()
+            .filter(|(_, cs)| cs.iter().any(|c| callees.contains_key(c)))
+            .map(|(&name, _)| name)
+            .collect();
+        // With self edges excluded, a three-edge traversal r -> a -> b -> c only
+        // requires b != r: c may close a cycle. For each a, retain two distinct b
+        // choices that have an outgoing edge. Only r is forbidden, so two suffice.
+        // This fixed-threshold query is linear and independent of traversal order;
+        // memoizing recursive depths would retain results from another active path.
+        let witnesses: HashMap<&str, [Option<&str>; 2]> = callees
+            .iter()
+            .map(|(&name, cs)| {
+                let mut choices = cs.iter().copied().filter(|c| nonleaf.contains(c));
+                let first = choices.next();
+                let second = choices.find(|c| Some(*c) != first);
+                (name, [first, second])
+            })
+            .collect();
         callees
-            .keys()
-            .filter(|n| depth(n, &callees, &mut memo) >= 3)
-            .map(|n| n.to_string())
+            .iter()
+            .filter(|(root, cs)| {
+                cs.iter().any(|a| {
+                    witnesses
+                        .get(a)
+                        .is_some_and(|bs| bs.iter().flatten().any(|b| b != *root))
+                })
+            })
+            .map(|(&name, _)| name.to_string())
             .collect()
     }
 
@@ -1099,6 +1104,131 @@ mod tests {
     use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
     use std::process::Command;
 
+    fn glue_module(edges: &[Vec<usize>]) -> LlvmModule {
+        let mut module = LlvmModule::new(vec![Some("glue.ms".into())], ".".into());
+        for (node, calls) in edges.iter().enumerate() {
+            let name = format!("ms.glue.{node}.drop");
+            let mut body = "block0:\n".to_string();
+            for callee in calls {
+                writeln!(body, "  call void @\"ms.glue.{callee}.drop\"()").unwrap();
+            }
+            body.push_str("  ret void\n}\n\n");
+            module.defs.push(Def {
+                header: format!("void @\"{name}\"() #0 {{\n"),
+                name,
+                public: false,
+                body,
+            });
+        }
+        module
+    }
+
+    fn assert_deep_glue(edges: &[&[usize]], expected: &[usize]) {
+        let edges: Vec<_> = edges.iter().map(|cs| cs.to_vec()).collect();
+        let expected: HashSet<_> = expected
+            .iter()
+            .map(|n| format!("ms.glue.{n}.drop"))
+            .collect();
+        assert_eq!(glue_module(&edges).deep_glue(), expected);
+    }
+
+    #[test]
+    fn deep_glue_preserves_acyclic_depth_and_ignores_missing_targets() {
+        // Every possible starting depth from zero through four occurs in this chain.
+        assert_deep_glue(&[&[1], &[2], &[3], &[4], &[]], &[0, 1]);
+        assert_deep_glue(&[&[1, 2], &[3], &[3], &[4], &[]], &[0]);
+        assert_deep_glue(&[&[1], &[2], &[99], &[]], &[]);
+        assert_deep_glue(&[&[1, 99], &[2], &[3], &[]], &[0]);
+    }
+
+    #[test]
+    fn deep_glue_counts_cycle_closure_once_and_keeps_distinct_witnesses() {
+        assert_deep_glue(&[&[0]], &[]);
+        assert_deep_glue(&[&[1], &[0]], &[]);
+        assert_deep_glue(&[&[1], &[2], &[0]], &[0, 1, 2]);
+        assert_deep_glue(&[&[1], &[2], &[1]], &[0]);
+        assert_deep_glue(&[&[1], &[2], &[1, 3], &[4], &[]], &[0, 1]);
+        // Two copies of the forbidden root must not hide the other eligible witness.
+        assert_deep_glue(&[&[1], &[0, 0, 2], &[3], &[]], &[0]);
+        assert_deep_glue(&[&[0, 1], &[2], &[3], &[]], &[0]);
+    }
+
+    #[test]
+    fn deep_glue_matches_bounded_traversal_on_every_four_node_graph() {
+        fn reaches_three(
+            node: usize,
+            edges: &[Vec<usize>],
+            active: &mut Vec<usize>,
+            remaining: usize,
+        ) -> bool {
+            // Reaching the limit counts even when this last edge closed a cycle.
+            if remaining == 0 {
+                return true;
+            }
+            if active.contains(&node) {
+                return false;
+            }
+            active.push(node);
+            let reached = edges[node]
+                .iter()
+                .any(|&next| reaches_three(next, edges, active, remaining - 1));
+            active.pop();
+            reached
+        }
+        let possible: Vec<_> = (0..4)
+            .flat_map(|a| (0..4).filter(move |&b| a != b).map(move |b| (a, b)))
+            .collect();
+        for mask in 0..(1 << possible.len()) {
+            let mut edges = vec![Vec::new(); 4];
+            for (bit, &(a, b)) in possible.iter().enumerate() {
+                if mask & (1 << bit) != 0 {
+                    edges[a].push(b);
+                }
+            }
+            let expected: HashSet<_> = (0..4)
+                .filter(|&root| reaches_three(root, &edges, &mut Vec::new(), 3))
+                .map(|n| format!("ms.glue.{n}.drop"))
+                .collect();
+            assert_eq!(glue_module(&edges).deep_glue(), expected, "graph {mask}");
+        }
+    }
+
+    #[test]
+    fn deep_glue_selection_and_emission_do_not_depend_on_traversal_order() {
+        let edges = vec![vec![1], vec![0, 0, 2], vec![3], vec![], vec![5], vec![4]];
+        let expected = glue_module(&edges).deep_glue();
+        for shift in 0..edges.len() {
+            for reverse in [false, true] {
+                let mut permuted = edges.clone();
+                for cs in &mut permuted {
+                    if !cs.is_empty() {
+                        let length = cs.len();
+                        cs.rotate_left(shift % length);
+                    }
+                    if reverse {
+                        cs.reverse();
+                    }
+                }
+                let mut module = glue_module(&permuted);
+                module.defs.rotate_left(shift);
+                if reverse {
+                    module.defs.reverse();
+                }
+                assert_eq!(module.deep_glue(), expected);
+            }
+        }
+        let module = glue_module(&edges);
+        let text = module.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        for _ in 0..32 {
+            assert_eq!(
+                glue_module(&edges).finish("x86_64-unknown-linux-gnu", &HashSet::new(), false),
+                text
+            );
+        }
+        assert!(text.contains("@\"ms.glue.0.drop\"() #1"));
+        assert!(text.contains("@\"ms.glue.1.drop\"() #0"));
+    }
+
     struct TestSymbols;
 
     impl Symbols for TestSymbols {
@@ -1160,6 +1290,9 @@ mod tests {
         let f = checked_add(cold_first);
         let mut m = LlvmModule::new(vec![Some("cold.ms".into())], ".".into());
         m.add_function("checked_add", "checked_add", (0, 1), &f, &TestSymbols, true);
+        // Exercise recursive and deep glue attributes through the same target verifier.
+        m.defs
+            .extend(glue_module(&[vec![1], vec![0, 2], vec![3], vec![4], vec![]]).defs);
         m.finish(triple, &HashSet::new(), false)
     }
 
