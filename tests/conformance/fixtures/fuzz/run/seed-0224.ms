@@ -12,47 +12,64 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = ((((-49) - 0) / 47) - (((-47) * (-39)) % ((-8) + (-25))))
     say("i1 = {i1}")
+
     var acc2 = 0
     for i in range(0, 2):
         acc2 += i * 3
     say("acc2 = {acc2}")
+
     let s3 = ("alpha" + "a").trim().upper()
     say("s3 = [{s3}]")
+
     let l5 = [0, (-26), (-19), (-1), (-24)]
     say("l5 = {l5} len {l5.length()}")
+
     if (not (9.0e2 > 403.512)):
         say(s3)
     else:
         say(s3)
+
     let b6 = (false and true)
     say("b6 = {b6}")
+
     let s7 = "line\nbreak"
     say("s7 = [{s7}]")
+
     let b8 = ("quote\"d".lower().ends_with("emoji 😀") and false)
     say("b8 = {b8}")
+
     let i9 = (i1 % ((-i1) % (-28)))
     say("i9 = {i9}")
+
     let i10 = (l5.get(0) - ((i9 + i1) * (741269 + i9)))
     say("i10 = {i10}")
+
     let i11 = 33
     say("i11 = {i11}")
+
     let i12 = ((i9 + i9) - (-23))
     say("i12 = {i12}")
+
     let f13 = (((673.406 - 621.700) * 4.0e-9) * 7.5)
     say("f13 = {f13}")
+
     let l14 = [12, (-15), 15]
     say("l14 = {l14} len {l14.length()}")
+
     let i15 = i12
     say("i15 = {i15}")
+
     if ((0.0 + 4.5) == 7.5):
         say(s7)
     else:
         say((s3 + "Tab\there"))
+
     let i16 = (((i15 + i12) % (633373 % (-35))) * (((-28) - 21) / s7.length()))
     say("i16 = {i16}")
     say("fact(0) = {fact(0)}")

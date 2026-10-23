@@ -52,6 +52,7 @@ test "HTML escape and unescape retain immutable text":
     let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
+
     let original = "&lt;é&gt;"
     let alias = original.clone()
     let decoded = unescape(original)

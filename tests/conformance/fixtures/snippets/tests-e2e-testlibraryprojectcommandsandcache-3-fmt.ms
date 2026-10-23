@@ -4,7 +4,9 @@
 import value from "@lib/value.ms"
 import filesystem from "@std/fs.ms"
 import fail from "@std/testing.ms"
+
 test "root":
     if value() != 3: return fail("bad value")
+
     let data = try filesystem().read_file(path: "golden/input.txt", max_bytes: 1024)
     if data.length() != 7: return fail("wrong fixture size")

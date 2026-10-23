@@ -2,14 +2,7 @@
 # conform: phase=test
 # conform: origin=perf thread: @std/log on the native backend
 import {expect_equal, expect_error} from "@std/testing.ms"
-import {
-    LogError,
-    LogLevel,
-    bind,
-    create,
-    file_transport,
-    record
-} from "@std/log.ms"
+import {LogError, LogLevel, bind, create, file_transport, record} from "@std/log.ms"
 import {FileSystemError, filesystem} from "@std/fs.ms"
 
 type Service:
@@ -24,8 +17,10 @@ fn lines(path: String) Result[String, Error]:
 
 test "levels filter, fields nest under data, and bound fields merge":
     let fs = filesystem()
+
     with directory = try fs.temporary("manuscript-log-"):
         let path = "{directory.path()}/events.ndjson"
+
         with transport = try file_transport(path):
             let logger = try create(transport, LogLevel.Warn, false)
             try expect_equal(logger.enabled(LogLevel.Info), false)
@@ -33,6 +28,7 @@ test "levels filter, fields nest under data, and bound fields merge":
             try logger.warn("warn")
             try record(logger, LogLevel.Error, "n", 7)
             try record(logger, LogLevel.Fatal, "l", ["a", "b"])
+
             let root = try bind(logger, Service("api"))
             let child = try bind(root, Request(7))
             try record(child, LogLevel.Warn, "child", Service("worker"))
@@ -40,28 +36,33 @@ test "levels filter, fields nest under data, and bound fields merge":
             try expect_equal(logger.level(), LogLevel.Trace)
             try logger.trace("trace")
             try logger.flush()
+
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
         try expect_equal(try lines(path), expected)
 
 test "limits, invalid levels, and closed transports are errors":
     let fs = filesystem()
+
     with directory = try fs.temporary("manuscript-log-"):
         let path = "{directory.path()}/events.ndjson"
         let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let transport = try file_transport(path)
         let logger = try create(
-            transport,
-            timestamp: false,
-            max_bytes: line.to_bytes().length()
+            transport, timestamp: false, max_bytes: line.to_bytes().length()
         )
         try logger.info("x")
+
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
         try expect_equal(logger.info("xx"), limited)
+
         let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
         try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
-        try expect_equal(try expect_error(create(transport, max_bytes: -1)), LogError.InvalidInput)
+        try expect_equal(
+            try expect_error(create(transport, max_bytes: -1)), LogError.InvalidInput
+        )
         transport.close()
         transport.close()
+
         let closed: Result[Unit, LogError] = error(LogError.Closed)
         try expect_equal(logger.info("x"), closed)
         try expect_equal(logger.flush(), closed)
@@ -69,6 +70,9 @@ test "limits, invalid levels, and closed transports are errors":
 
 test "a missing directory is a filesystem error":
     let fs = filesystem()
+
     with directory = try fs.temporary("manuscript-log-"):
-        let missing = try expect_error(file_transport("{directory.path()}/missing/events.ndjson"))
+        let missing = try expect_error(
+            file_transport("{directory.path()}/missing/events.ndjson")
+        )
         try expect_equal(missing, LogError.FileSystem(FileSystemError.NotFound))

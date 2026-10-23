@@ -11,17 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = ("{7}:" + "MiXeD CaSe").ends_with("ms")
     say("b1 = {b1}")
+
     let fixed = 1
     fixed = 2
-    say("{(((-48) / (-43)) * 647476542643)} {41} {((((-48) / (-43)) * 647476542643) < 41)} sum {(((-48) / (-43)) * 647476542643) + 41}")
+    say(
+        "{(((-48) / (-43)) * 647476542643)} {41} {((((-48) / (-43)) * 647476542643) < 41)} sum {(((-48) / (-43)) * 647476542643) + 41}"
+    )
+
     let i2 = (-615199)
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = ("{(i2 * i2)}:" + ("naïve" + ("delta" + "delta")))
     say("s4 = [{s4}]")
+
     let i5 = (i2 / (8 + (i2 * i2)))
     say("i5 = {i5}")
+
     let l6 = l3.filter(fn(x): x > (-3))
     say("l6 = {l6} len {l6.length()}")
     return 0

@@ -12,9 +12,9 @@
         "message": "callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
-          "line": 5,
+          "line": 6,
           "column": 70,
-          "offset": 305
+          "offset": 306
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "String does not satisfy Error; pass a type that already implements it",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
-          "line": 5,
+          "line": 6,
           "column": 59,
-          "offset": 294
+          "offset": 295
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "expected fn() String, found fn(value: Int) String (in argument 'create' of value.ok_or_else)",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
-          "line": 5,
+          "line": 6,
           "column": 70,
-          "offset": 305
+          "offset": 306
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "String does not satisfy Error; use a type that implements it",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 236
+          "offset": 237
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:5:70: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:5:59: type: String does not satisfy Error; pass a type that already implements it\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:5:70: type: expected fn() String, found fn(value: Int) String (in argument 'create' of value.ok_or_else)\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:5:1: type: String does not satisfy Error; use a type that implements it\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:70: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:59: type: String does not satisfy Error; pass a type that already implements it\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:70: type: expected fn() String, found fn(value: Int) String (in argument 'create' of value.ok_or_else)\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-1.ms:6:1: type: String does not satisfy Error; use a type that implements it\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

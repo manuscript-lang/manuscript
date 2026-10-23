@@ -10,16 +10,24 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((41 + (-866710345838)) - 29) + (((-230799) / (-16329071327)) + (597670 + (-248960950542))))
+    let i1 = (
+        ((41 + (-866710345838)) - 29)
+        + (((-230799) / (-16329071327)) + (597670 + (-248960950542)))
+    )
     say("i1 = {i1}")
+
     let s2 = "  padded  "
     say("s2 = [{s2}]")
+
     let l4 = [4, 1, (-29), (-8)]
     say("l4 = {l4} len {l4.length()}")
+
     let l5 = l4.sorted(fn(a, b): a.compare(b))
     say("l5 = {l5} len {l5.length()}")
+
     let i6 = i1
     say("i6 = {i6}")
+
     let bad = 1 and 2
     var acc7 = 0
     for i in range(0, 6):

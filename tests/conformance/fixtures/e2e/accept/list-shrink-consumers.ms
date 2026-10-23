@@ -19,11 +19,7 @@ fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
         values.splice(start: 0, delete_count: 0, replacement: fill)
 
 fn step[T](
-    var seen: List[T],
-    var visits: Visits,
-    var values: List[T],
-    value: T,
-    mode: String,
+    var seen: List[T], var visits: Visits, var values: List[T], value: T, mode: String,
     fill: List[T]
 ) Unit:
     seen.append(value)
@@ -32,8 +28,7 @@ fn step[T](
     visits.count = visits.count + 1
 
 fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
-    List[T],
-    Error
+    List[T], Error
 ]:
     var seen: List[T] = []
     var visits = Visits(0)
@@ -44,12 +39,7 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
             .clone()
             .for_each(
                 fn(value: T): step(
-                    var seen,
-                    var visits,
-                    var values,
-                    value,
-                    mode,
-                    fill.clone()
+                    var seen, var visits, var values, value, mode, fill.clone()
                 )
             )
         )
@@ -64,14 +54,10 @@ fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
     var out = items
     if mode == "remove": out.remove(0)
     if mode == "splice": out.splice(
-        start: 1,
-        delete_count: 2,
-        replacement: fill.clone()
+        start: 1, delete_count: 2, replacement: fill.clone()
     )
     if mode == "clear" or mode == "clear_append": out.splice(
-        start: 0,
-        delete_count: 3,
-        replacement: []
+        start: 0, delete_count: 3, replacement: []
     )
 
     if mode == "clear_append":
@@ -202,6 +188,7 @@ test "nested list consumers keep independent inner lists after shrink":
 test "map and folds consume snapshots of the live list":
     var mapped = [1, 2, 3]
     var visits = Visits(0)
+
     let output = (
         mapped
         .clone()
@@ -212,9 +199,12 @@ test "map and folds consume snapshots of the live list":
                 return value + 10
         )
     )
+
     (output == [11, 12, 13] and mapped == [2, 3]) | try expect_true
+
     var folded = [1, 2, 3]
     visits.count = 0
+
     let total = (
         folded
         .clone()
@@ -222,17 +212,18 @@ test "map and folds consume snapshots of the live list":
             0,
             fn(accumulator, value):
                 if visits.count == 0: folded.splice(
-                    start: 0,
-                    delete_count: 3,
-                    replacement: []
+                    start: 0, delete_count: 3, replacement: []
                 )
                 visits.count = visits.count + 1
                 return accumulator + value
         )
     )
+
     (total == 6 and folded.is_empty() and visits.count == 3) | try expect_true
+
     var reversed = [1, 2, 3]
     visits.count = 0
+
     let backwards = (
         reversed
         .clone()
@@ -244,6 +235,7 @@ test "map and folds consume snapshots of the live list":
                 return accumulator * 10 + value
         )
     )
+
     (backwards == 321 and reversed == [2, 3] and visits.count == 3) | try expect_true
 
 interface ReadValue:
@@ -257,18 +249,14 @@ test "interface view consumers dispatch after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last_record = Payload(3)
             var values = [
-                ReadValue(Payload(1)),
-                ReadValue(Payload(2)),
+                ReadValue(Payload(1)), ReadValue(Payload(2)),
                 ReadValue(last_record.clone())
             ]
             let clone = values.clone()
             let want = remaining(mode, values.clone(), [ReadValue(Payload(9))])
             let seen = (
                 try observe(
-                    var values,
-                    mode,
-                    [ReadValue(Payload(9))],
-                    callback
+                    var values, mode, [ReadValue(Payload(9))], callback
                 )
             )
             var total = 0
@@ -281,13 +269,17 @@ test "interface view consumers dispatch after shrink":
 
 test "find returns the value passed to a mutating predicate":
     var forward = [1, 2, 3]
+
     let found = forward.clone().find(
         fn(value):
             forward.remove(0)
             return value == 1
     )
+
     (found.get() == 1 and forward == [2, 3]) | try expect_true
+
     var replaced = [1, 2, 3]
+
     let original = (
         replaced
         .clone()
@@ -297,8 +289,11 @@ test "find returns the value passed to a mutating predicate":
                 return value == 1
         )
     )
+
     (original.get() == 1 and replaced == [9, 2, 3]) | try expect_true
+
     var reverse = [1, 2, 3]
+
     let last = (
         reverse
         .clone()
@@ -308,8 +303,11 @@ test "find returns the value passed to a mutating predicate":
                 return value == 2
         )
     )
+
     (last.get() == 2 and reverse == [1, 3]) | try expect_true
+
     var last_replaced = [1, 2, 3]
+
     let before = (
         last_replaced
         .clone()
@@ -319,8 +317,11 @@ test "find returns the value passed to a mutating predicate":
                 return value == 3
         )
     )
+
     (before.get() == 3 and last_replaced == [1, 2, 9]) | try expect_true
+
     var indexes = [1, 2, 3]
+
     let index = (
         indexes
         .clone()
@@ -330,7 +331,9 @@ test "find returns the value passed to a mutating predicate":
                 return value == 1
         )
     )
+
     var reverse_indexes = [1, 2, 3]
+
     let last_index = (
         reverse_indexes
         .clone()
@@ -340,7 +343,9 @@ test "find returns the value passed to a mutating predicate":
                 return value == 2
         )
     )
+
     (index.get() == 0 and last_index.get() == 1) | try expect_true
+
     let record = Payload(1)
     var records = [record.clone(), Payload(2)]
     let retained = (
@@ -378,9 +383,11 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
     values.reverse_in_place()
     values.append(4)
     values | try expect_equal([3, 9, 4])
+
     let separate = values.reversed()
     values.set(1, 5)
     (separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true
+
     var child = Payload(1)
     var children = [child.clone(), Payload(2)]
     let shallow = children.reversed()

@@ -13,11 +13,7 @@ test "binary integer boundaries and both byte orders":
                 (
                     (
                         try read_integer(
-                            data,
-                            0,
-                            8,
-                            signed: true,
-                            little_endian: little
+                            data, 0, 8, signed: true, little_endian: little
                         )
                     ) != number
                 )
@@ -35,8 +31,7 @@ test "binary integer boundaries and both byte orders":
                 (
                     try read_float(
                         write_float(
-                            -1.25,
-                            little_endian: little
+                            -1.25, little_endian: little
                         ),
                         0,
                         little_endian: little
@@ -48,15 +43,13 @@ test "binary integer boundaries and both byte orders":
 test "binary errors preserve domain and range":
     let range_error: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
     try expect_equal(
-        write_integer(256, 1, signed: false, little_endian: false),
-        range_error
+        write_integer(256, 1, signed: false, little_endian: false), range_error
     )
     try expect_equal(
-        write_integer(-1, 1, signed: false, little_endian: false),
-        range_error
+        write_integer(-1, 1, signed: false, little_endian: false), range_error
     )
+
     let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
     try expect_equal(
-        read_integer(Bytes([0]), -1, 1, signed: true, little_endian: false),
-        invalid
+        read_integer(Bytes([0]), -1, 1, signed: true, little_endian: false), invalid
     )

@@ -11,6 +11,7 @@ fn toml_doc(count: Int) String:
 
 export fn bench_toml() Unit:
     let toml = toml_doc(2000)
+
     bench(
         "toml.parse",
         2000,

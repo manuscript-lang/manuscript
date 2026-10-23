@@ -10,7 +10,6 @@ fn say(text: String) Unit:
 
 export fn main() Int:
     let i1 = 46
-
     let i2 = (((i1 % i1) * ((-22) - i1)) - (18 % i1))
     say("i2 = {i2}")
     return 0

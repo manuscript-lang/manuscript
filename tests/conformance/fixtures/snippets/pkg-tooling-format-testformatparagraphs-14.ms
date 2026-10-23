@@ -12,4 +12,5 @@ fn example() Int:
                 return next
         )
     )
+
     return result

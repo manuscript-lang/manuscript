@@ -11,16 +11,22 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "beta".lower().replace("  padded  ", "line\nbreak").lower()
     say("s1 = [{s1}]")
+
     let b2 = (((0.5 * 443.823) < (667.432 + 409.25)) or ("日本語" != s1.trim()))
     say("b2 = {b2}")
+
     var acc3 = 0
     var stepacc3 = 0
+
     while stepacc3 < 3:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 6
+
     say("acc3 = {acc3}")
+
     let i4 = (-25)
     say("i4 = {i4}")
+
     let i6 = (-((219135 * i4) / (i4 + 18)))
     say("i6 = {i6}")
     return 0

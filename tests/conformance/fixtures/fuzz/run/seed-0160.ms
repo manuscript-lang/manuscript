@@ -11,14 +11,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-47)
     say("i1 = {i1}")
+
     let b2 = (((514103 - (-5)) / ((-24) - i1)) > (-((-23) * i1)))
     say("b2 = {b2}")
+
     let f3 = (306.011 + ((198.635 + 490.25) + 828.614))
     say("f3 = {f3}")
+
     let b4 = ((i1 != (-i1)) and ("brace\{s\}".is_empty() and ((-44) > i1)))
     say("b4 = {b4}")
+
     let i5 = ((-25) - ((i1 - (-658808)) - 21))
     say("i5 = {i5}")
+
     let l6 = [3, 7, 12, (-11), (-11)]
     say("l6 = {l6} len {l6.length()}")
     return 0

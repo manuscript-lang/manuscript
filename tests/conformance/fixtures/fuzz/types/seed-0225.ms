@@ -11,22 +11,31 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [24, (-24), (-16)]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = l1.map(fn(x): x + 3).filter(fn(x): x % 2 == 0)
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = ((559.724 * 329.840) / ((839.150 / 0.0) - (547.347 + 67.159)))
     say("f3 = {f3}")
+
     let i4 = ((-968323683883) + (-31))
     say("i4 = {i4}")
+
     var acc5 = 0
+
     for x in l2:
         if x % 2 == 0:
             acc5 += x
         else:
             acc5 -= 1
+
     say("acc5 = {acc5}")
+
     let bad = 1.5 + 2
+
     if false:
         say("".upper())
     else:
         say("delta")
+
     return 0

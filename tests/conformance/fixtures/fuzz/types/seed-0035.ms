@@ -12,20 +12,27 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = ((-(23 - 876823)) + 8)
     say("i1 = {i1}")
+
     let bad = missing_function(3)
     let s2 = "héllo"
     say("s2 = [{s2}]")
     say("fib(16) = {fib(16)}")
-    let f3 = (((733.910 + 55.196) + (2.0e7 - 557.349)) / ((190.021 + 751.856) + (899.199 + 550.966)))
+
+    let f3 = (
+        ((733.910 + 55.196) + (2.0e7 - 557.349))
+        / ((190.021 + 751.856) + (899.199 + 550.966))
+    )
     say("f3 = {f3}")
     return 0

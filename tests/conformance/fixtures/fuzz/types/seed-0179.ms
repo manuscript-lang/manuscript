@@ -11,15 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 632.083
     say("f1 = {f1}")
+
     let f2 = ((f1 + (f1 * f1)) / f1)
     say("f2 = {f2}")
+
     let l3 = [(-30), 18]
     say("l3 = {l3} len {l3.length()}")
+
     let bad = say
     let i4 = (-((13 % 39) / l3.get(1)))
     say("i4 = {i4}")
+
     if (false or (not true)):
         say("a".upper())
     else:
         say("brace\{s\}".replace("MiXeD CaSe", "emoji 😀"))
+
     return 0

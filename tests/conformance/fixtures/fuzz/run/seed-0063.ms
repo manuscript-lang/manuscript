@@ -11,22 +11,31 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 20
     say("i1 = {i1}")
+
     let i2 = (((i1 + i1) / 488514) * i1)
     say("i2 = {i2}")
+
     let b3 = ((true or (false or true)) or (not (not true)))
     say("b3 = {b3}")
+
     let s4 = ("{(i1 + 24)}:" + "日本語")
     say("s4 = [{s4}]")
+
     let i5 = i2
     say("i5 = {i5}")
+
     let i6 = 47
     say("i6 = {i6}")
+
     let i8 = i6
     say("i8 = {i8}")
+
     let l9 = [22, 9]
     say("l9 = {l9} len {l9.length()}")
+
     if ((true or b3) and ("back\\slash" == "quote\"d")):
         say(s4.lower())
     else:
         say("brace\{s\}")
+
     return 0

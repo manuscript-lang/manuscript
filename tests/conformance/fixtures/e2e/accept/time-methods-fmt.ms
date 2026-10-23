@@ -20,6 +20,7 @@ test "duration arithmetic and conversion":
             or 90.minutes.to_hours() != 1.5
         )
     )
+
     let negative = duration(-1500001)
     try expect_false(
         (
@@ -47,6 +48,7 @@ test "duration arithmetic and conversion":
             or interval.compare(1.seconds) != 1
         )
     )
+
     let convert = interval.to_seconds
     try expect_equal(convert(), 1.5)
 
@@ -77,6 +79,7 @@ test "timestamp methods and expected range failures":
             or value.to_string() != "1969-12-31T23:59:59.5Z"
         )
     )
+
     let later = try value.shift(1500.milliseconds)
     try expect_false(
         (
@@ -86,8 +89,10 @@ test "timestamp methods and expected range failures":
             or value.compare(later) != -1
         )
     )
+
     let delta = try later.difference(value)
     try expect_equal(delta, 1500.milliseconds)
+
     let parsed = try parse_timestamp("2026-10-12T01:00:00+01:00")
     try expect_false(
         (
@@ -95,15 +100,18 @@ test "timestamp methods and expected range failures":
             or parsed.compare(parsed) != 0
         )
     )
+
     let maximum = try timestamp(253402300799, 999999999)
     let shifted = maximum.shift(duration(1))
     try expect_false(shifted.is_ok())
     try expect_equal(shifted.err(), TimeError.OutOfRange)
+
     let minimum = try timestamp(-62135596800, 0)
     let difference = maximum.difference(minimum)
     try expect_false(difference.is_ok())
     try expect_equal(difference.err(), TimeError.OutOfRange)
     try expect_equal(maximum.compare(minimum), 1)
+
     let now = wall_clock().now()
     let roundtrip = try parse_timestamp(now.to_string())
     try expect_equal(roundtrip, now)

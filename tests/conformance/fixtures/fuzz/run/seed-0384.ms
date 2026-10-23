@@ -11,49 +11,68 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let s1 = ("  padded  " + "Tab\there").upper().lower()
     say("s1 = [{s1}]")
+
     let s2 = "Tab\there"
     say("s2 = [{s2}]")
+
     let s3 = "naïve"
     say("s3 = [{s3}]")
     say("collatz(1020) = {collatz(1020)}")
+
     let s4 = (s1 + "hello world".replace("42", "back\\slash"))
     say("s4 = [{s4}]")
+
     let i5 = (((-42) + 139220) - (16 + (-8)))
     say("i5 = {i5}")
+
     let s6 = "emoji 😀"
     say("s6 = [{s6}]")
+
     let l7 = [19, (-2), (-23), 16]
     say("l7 = {l7} len {l7.length()}")
+
     if ((0.5 * 968.134) > (7.0e-4 / 0.0)):
         say("  padded  ".trim())
     else:
         say("".lower())
+
     let i8 = (((-37) - l7.length()) - ((-43) + i5))
     say("i8 = {i8}")
+
     let f9 = 489.077
     say("f9 = {f9}")
+
     let s10 = (s3.replace("x", "Tab\there").trim() + "Tab\there".upper())
     say("s10 = [{s10}]")
+
     let b11 = true
     say("b11 = {b11}")
+
     if (s1 + s4).is_empty():
         say("naïve".trim())
     else:
         say("delta".lower())
+
     let s12 = s3.lower().lower()
     say("s12 = [{s12}]")
-    say("{l7.length()} {((i5 - i5) + (0 * (-19)))} {(l7.length() < ((i5 - i5) + (0 * (-19))))} sum {l7.length() + ((i5 - i5) + (0 * (-19)))}")
+    say(
+        "{l7.length()} {((i5 - i5) + (0 * (-19)))} {(l7.length() < ((i5 - i5) + (0 * (-19))))} sum {l7.length() + ((i5 - i5) + (0 * (-19)))}"
+    )
+
     let s13 = s2.upper()
     say("s13 = [{s13}]")
     return 0

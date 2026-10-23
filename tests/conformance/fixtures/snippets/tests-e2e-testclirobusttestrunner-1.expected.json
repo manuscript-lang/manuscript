@@ -24,10 +24,10 @@
           "index": 2,
           "name": "tests-e2e-testclirobusttestrunner-1.ms::failing",
           "status": "failed",
-          "failure": "expected 2, got 1\n  at tests-e2e-testclirobusttestrunner-1.ms:10:5",
+          "failure": "expected 2, got 1\n  at tests-e2e-testclirobusttestrunner-1.ms:13:5",
           "position": {
             "file": "tests-e2e-testclirobusttestrunner-1.ms",
-            "line": 10,
+            "line": 13,
             "column": 5,
             "offset": 0
           }
@@ -48,7 +48,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testclirobusttestrunner-1.ms::passing\nPASS tests-e2e-testclirobusttestrunner-1.ms::passing\nRUN tests-e2e-testclirobusttestrunner-1.ms::skipped\nSKIP tests-e2e-testclirobusttestrunner-1.ms::skipped: fixture unavailable\nRUN tests-e2e-testclirobusttestrunner-1.ms::failing\nFAIL tests-e2e-testclirobusttestrunner-1.ms::failing: expected 2, got 1\n  at tests-e2e-testclirobusttestrunner-1.ms:10:5\nRUN tests-e2e-testclirobusttestrunner-1.ms::later\nPASS tests-e2e-testclirobusttestrunner-1.ms::later\n4 tests, 1 failed, 1 skipped\n",
+      "stdout": "RUN tests-e2e-testclirobusttestrunner-1.ms::passing\nPASS tests-e2e-testclirobusttestrunner-1.ms::passing\nRUN tests-e2e-testclirobusttestrunner-1.ms::skipped\nSKIP tests-e2e-testclirobusttestrunner-1.ms::skipped: fixture unavailable\nRUN tests-e2e-testclirobusttestrunner-1.ms::failing\nFAIL tests-e2e-testclirobusttestrunner-1.ms::failing: expected 2, got 1\n  at tests-e2e-testclirobusttestrunner-1.ms:13:5\nRUN tests-e2e-testclirobusttestrunner-1.ms::later\nPASS tests-e2e-testclirobusttestrunner-1.ms::later\n4 tests, 1 failed, 1 skipped\n",
       "diagnostics": []
     },
     "shape": [

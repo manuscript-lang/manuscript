@@ -17,8 +17,10 @@ fn handle(request: HttpRequest) HttpResponse:
 fn exchange(address: String) String:
     if let conn = network().connect(address):
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+
         # The slow handler is parked by now; the second request arrives while it waits.
         sleep(duration(50000000))
+
         let _second = conn.write(
             "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )

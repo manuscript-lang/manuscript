@@ -12,9 +12,9 @@
         "message": "recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle",
         "position": {
           "file": "pkg-checker-testrecursivedataandfinitetypeapplications-19.ms",
-          "line": 7,
+          "line": 8,
           "column": 5,
-          "offset": 222
+          "offset": 223
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-19.ms:7:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-19.ms:5:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-19.ms:8:5: type: recursive generic applications must preserve their parameters in B.a; keep the same type arguments in the same positions along a recursive cycle\n<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-19.ms:5:5: type: recursive generic applications must preserve their parameters in A.b; keep the same type arguments in the same positions along a recursive cycle\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

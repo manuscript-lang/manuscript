@@ -12,16 +12,16 @@
         "message": "unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it",
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-8.ms",
-          "line": 5,
+          "line": 6,
           "column": 12,
-          "offset": 246
+          "offset": 247
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-8.ms:5:12: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-8.ms:6:12: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

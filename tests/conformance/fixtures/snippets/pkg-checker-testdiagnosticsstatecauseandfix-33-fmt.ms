@@ -4,6 +4,7 @@
 type Choice[T]:
     case Found(value: T)
     case Missing
+
 fn f(c: Choice[Int]) Int:
     match c:
         Choice[String].Found(v): return 1

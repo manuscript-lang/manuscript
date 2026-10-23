@@ -11,28 +11,41 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (10 * (-27))
     say("i1 = {i1}")
+
     let i2 = (((10 + i1) + (i1 % (-805412))) + (-40))
     say("i2 = {i2}")
+
     let b3 = ("quote\"d" + "MiXeD CaSe").reverse().is_empty()
     say("b3 = {b3}")
+
     let i4 = i2
     say("i4 = {i4}")
-    say("{((-i2) % i1)} {((-416352) % ((-14) + i1))} {(((-i2) % i1) < ((-416352) % ((-14) + i1)))} sum {((-i2) % i1) + ((-416352) % ((-14) + i1))}")
+    say(
+        "{((-i2) % i1)} {((-416352) % ((-14) + i1))} {(((-i2) % i1) < ((-416352) % ((-14) + i1)))} sum {((-i2) % i1) + ((-416352) % ((-14) + i1))}"
+    )
+
     let l5 = [9, 29]
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = l5.map(fn(x): x + 4).filter(fn(x): x % 2 == 0)
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = b3
     say("b7 = {b7}")
+
     let s8 = "back\\slash".replace("ms", "beta").trim().upper()
     say("s8 = [{s8}]")
+
     var acc9 = 0
+
     for x in l6:
         if x % 2 == 0:
             acc9 += x
         else:
             acc9 -= 1
+
     say("acc9 = {acc9}")
+
     let s10 = s8
     say("s10 = [{s10}]")
     return 0

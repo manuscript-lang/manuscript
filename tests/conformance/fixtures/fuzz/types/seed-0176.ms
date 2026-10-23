@@ -12,24 +12,31 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [27]
     say("l1 = {l1} len {l1.length()}")
+
     let b2 = true
     say("b2 = {b2}")
+
     if b2:
         say("hello world")
     else:
         say("ms".upper())
+
     say("fib(45) = {fib(45)}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let bad = [1, "two"]
     return 0

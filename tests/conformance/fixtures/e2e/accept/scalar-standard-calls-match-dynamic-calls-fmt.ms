@@ -3,18 +3,7 @@
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 import {expect_true} from "@std/testing.ms"
 import {
-    abs,
-    abs_int,
-    atan2,
-    ceil,
-    floor,
-    max,
-    min,
-    pow,
-    remainder,
-    round,
-    sqrt,
-    truncate
+    abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate
 } from "@std/math.ms"
 
 fn viaValue(f: fn(value: Float) Float, x: Float) Float: f(value: x)
@@ -47,6 +36,7 @@ test "typed math":
     try expect_true((remainder(left: 7.0, right: 4.0) == 3.0))
     try expect_true((atan2(y: 0.0, x: 1.0) == 0.0))
     try expect_true((sqrt(value: 0.0 - 1.0).is_nan() and sqrt(value: 1.0).is_finite()))
+
     var total = 0.0
     var i = 0
 

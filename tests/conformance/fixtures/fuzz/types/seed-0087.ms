@@ -12,16 +12,23 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 657.263
     say("f1 = {f1}")
+
     var acc2 = 0
     for i in range(0, 1):
         acc2 += i * (-1)
     say("acc2 = {acc2}")
+
     let i3 = 4
     say("i3 = {i3}")
+
     let s4 = (("{(-8)}:" + "delta").replace("ms", "") + "emoji 😀")
     say("s4 = [{s4}]")
-    say("{((-i3) - (40 + i3))} {i3} {(((-i3) - (40 + i3)) < i3)} sum {((-i3) - (40 + i3)) + i3}")
+    say(
+        "{((-i3) - (40 + i3))} {i3} {(((-i3) - (40 + i3)) < i3)} sum {((-i3) - (40 + i3)) + i3}"
+    )
+
     let f5 = 197.731
     say("f5 = {f5}")
+
     let bad: Int = "text"
     return 0

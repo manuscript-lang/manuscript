@@ -13,20 +13,28 @@ export fn main() Int:
         say("quote\"d")
     else:
         say("gamma".upper())
+
     let b1 = ((-23) >= (-(36 + (-40))))
     say("b1 = {b1}")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 2:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 7
+
     say("acc2 = {acc2}")
+
     let b3 = (((not b1) and b1) and ("quote\"d" == "a".upper()))
     say("b3 = {b3}")
+
     let i4 = (((-11) + ((-803686) * (-24))) - (524404 + ((-885812577757) - (-10))))
     say("i4 = {i4}")
+
     let b5 = "emoji 😀".replace("", "naïve").is_empty()
     say("b5 = {b5}")
+
     let l6 = [(-22), 5]
     say("l6 = {l6} len {l6.length()}")
     return 0

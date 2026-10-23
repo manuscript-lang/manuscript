@@ -11,20 +11,28 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 37
     say("i1 = {i1}")
+
     let b2 = (not ("hello world" != ("naïve" + "42")))
     say("b2 = {b2}")
+
     let s3 = "brace\{s\}"
     say("s3 = [{s3}]")
+
     let b4 = (((i1 * 39) + i1) >= ((-23) * (25 % i1)))
     say("b4 = {b4}")
+
     let b5 = ((((-831444) % 7) <= (-(-17))) or (not b2))
     say("b5 = {b5}")
+
     let s6 = "naïve".upper().trim().trim()
     say("s6 = [{s6}]")
+
     let b7 = ((8.5 < (6.0e12 * 581.095)) and (23 >= 15))
     say("b7 = {b7}")
+
     let i8 = (i1 * (i1 * i1))
     say("i8 = {i8}")
+
     let i9 = (((i1 - i1) + (i1 * i1)) + (41 + i1))
     say("i9 = {i9}")
     return 0

@@ -5,6 +5,7 @@ fn use(value: Optional[Int]) Int:
     let present = match value:
         some(n): n
         none: return 0
+
     return match value:
         some(n): present + n
         none: 0

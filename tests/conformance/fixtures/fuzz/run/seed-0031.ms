@@ -11,28 +11,40 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 179.523
     say("f1 = {f1}")
+
     let i2 = ((-806570) + (-28))
     say("i2 = {i2}")
+
     let i3 = (((i2 - i2) - (496200 / 14)) + i2)
     say("i3 = {i3}")
+
     let f4 = (((f1 + f1) * (f1 + f1)) - ((375.242 - f1) / (f1 + f1)))
     say("f4 = {f4}")
+
     let s5 = ("{i3}:" + "line\nbreak".trim())
     say("s5 = [{s5}]")
+
     let i6 = (48 * (i3 + (i2 / i3)))
     say("i6 = {i6}")
+
     let s7 = (s5 + s5.reverse())
     say("s7 = [{s7}]")
+
     let l8 = [(-12), (-12), (-11)]
     say("l8 = {l8} len {l8.length()}")
+
     let i9 = (((i2 * (-9)) + (-505474)) % (-((-5) * i3)))
     say("i9 = {i9}")
+
     let i10 = ((l8.get(2) - (i6 * i3)) - i3)
     say("i10 = {i10}")
+
     let l11 = l8.concat(l8)
     say("l11 = {l11} len {l11.length()}")
+
     if "ms".is_empty():
         say((s7 + s5))
     else:
         say(s5.reverse())
+
     return 0

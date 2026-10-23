@@ -12,16 +12,16 @@
         "message": "impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'",
         "position": {
           "file": "tests-e2e-testinherentimplrejections-4.ms",
-          "line": 6,
+          "line": 7,
           "column": 1,
-          "offset": 192
+          "offset": 193
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-4.ms:6:1: type: impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-4.ms:7:1: type: impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

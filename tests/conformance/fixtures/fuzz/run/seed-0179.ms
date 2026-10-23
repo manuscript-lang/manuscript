@@ -12,35 +12,51 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-928283)
     say("i1 = {i1}")
+
     let s2 = "gamma"
     say("s2 = [{s2}]")
+
     var acc3 = 0
     for i in range(0, 3):
         acc3 += i * 4
     say("acc3 = {acc3}")
+
     let f4 = 161.032
     say("f4 = {f4}")
+
     if "emoji 😀".contains(s2):
         say("hello world")
     else:
         say(s2.reverse())
-    say("{i1} {(s2.length() % s2.length())} {(i1 < (s2.length() % s2.length()))} sum {i1 + (s2.length() % s2.length())}")
+
+    say(
+        "{i1} {(s2.length() % s2.length())} {(i1 < (s2.length() % s2.length()))} sum {i1 + (s2.length() % s2.length())}"
+    )
+
     let f5 = 309.25
     say("f5 = {f5}")
+
     let f6 = (f5 / 972.397)
     say("f6 = {f6}")
+
     let i7 = ((25 * (i1 - i1)) - ((i1 - i1) % (i1 - 29)))
     say("i7 = {i7}")
+
     let b8 = (not (s2.is_empty() and (not true)))
     say("b8 = {b8}")
+
     let l9 = [(-7), 4, (-4)]
     say("l9 = {l9} len {l9.length()}")
+
     let f10 = 461.821
     say("f10 = {f10}")
+
     let f11 = (5.5 + 141.929)
     say("f11 = {f11}")
+
     let s12 = "MiXeD CaSe".lower()
     say("s12 = [{s12}]")
+
     let l13 = l9.concat(l9)
     say("l13 = {l13} len {l13.length()}")
     say("{s2.length()} {i7} {(s2.length() < i7)} sum {s2.length() + i7}")

@@ -13,18 +13,25 @@ export fn main() Int:
         say("brace\{s\}".replace("brace\{s\}", "delta"))
     else:
         say("a")
+
     let b1 = false
     say("b1 = {b1}")
+
     let i2 = (-40)
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let b4 = (not (not "quote\"d".ends_with("beta")))
     say("b4 = {b4}")
+
     let i5 = ((-(i2 + i2)) * (i2 + i2))
     say("i5 = {i5}")
+
     let i6 = (l3.length() + 3)
     say("i6 = {i6}")
+
     let big7 = -9223372036854775808
     say("{big7 - 2}")
     return 0

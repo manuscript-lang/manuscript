@@ -15,7 +15,6 @@ type Chain:
 fn build(depth: Int) Tree:
     if depth == 0:
         return Leaf
-
     if depth == 1:
         return Node(Gap, Leaf)
 

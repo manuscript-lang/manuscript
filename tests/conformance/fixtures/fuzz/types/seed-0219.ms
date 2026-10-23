@@ -16,8 +16,10 @@ export fn main() Int:
     say("acc1 = {acc1}")
     if 1:
         say("truthy")
+
     let l2 = [8, 21, 19, (-17), 23]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = ((false and (not true)) and ((749833 + (-225012)) == ((-41) + (-229776))))
     say("b3 = {b3}")
     return 0

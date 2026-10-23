@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [26]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = ((-46) + l1.get(0))
     say("i2 = {i2}")
+
     let i3 = (i2 + (((-7) - i2) / (25 + i2)))
     say("i3 = {i3}")
     return 0

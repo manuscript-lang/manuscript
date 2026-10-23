@@ -3,5 +3,6 @@
 # conform: origin=pkg/checker/json_parse_test.go:20 TestParseTypeArgument
 type Request:
     model: String
+
 fn f(text: String) Result[Request, JsonError]:
     return parse(text)

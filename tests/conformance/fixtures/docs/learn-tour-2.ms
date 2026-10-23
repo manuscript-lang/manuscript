@@ -7,6 +7,7 @@ test "unread message count":
     let customer = "Sam"
     var unread = 2
     unread += 1
+
     let message = "{customer}, you have {unread} unread messages."
     let enabled: Bool = true
     try expect_equal(enabled, true)

@@ -4,9 +4,9 @@
 fn double(n: Int) Int: n * 2
 
 fn run(n: Int) Int:
-    let a = n|double|double
+    let a = n | double | double
     let b = n
-        |double   # first
+        | double  # first
         # second
-        |double
-    return a+b
+        | double
+    return a + b

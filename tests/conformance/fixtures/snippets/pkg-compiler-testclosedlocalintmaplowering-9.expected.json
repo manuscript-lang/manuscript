@@ -12,16 +12,16 @@
         "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
         "position": {
           "file": "pkg-compiler-testclosedlocalintmaplowering-9.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 197
+          "offset": 198
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testclosedlocalintmaplowering-9.ms:5:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testclosedlocalintmaplowering-9.ms:6:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

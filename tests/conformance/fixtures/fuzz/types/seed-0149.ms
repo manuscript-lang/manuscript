@@ -11,22 +11,30 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = (-20)
     say("i1 = {i1}")
+
     if (48 < (1 - i1)):
         say(("  padded  " + "brace\{s\}"))
     else:
         say("gamma")
+
     say("fact(15) = {fact(15)}")
+
     let i2 = (-((i1 / i1) % (i1 * (-645569931752))))
     say("i2 = {i2}")
+
     let i3 = ((-13) + 27)
     say("i3 = {i3}")
+
     let bad = (1 < 2) < 3
     let s4 = ""
     say("s4 = [{s4}]")
-    say("{(i2 - (35 + i1))} {((i1 % i3) + (-i3))} {((i2 - (35 + i1)) < ((i1 % i3) + (-i3)))} sum {(i2 - (35 + i1)) + ((i1 % i3) + (-i3))}")
+    say(
+        "{(i2 - (35 + i1))} {((i1 % i3) + (-i3))} {((i2 - (35 + i1)) < ((i1 % i3) + (-i3)))} sum {(i2 - (35 + i1)) + ((i1 % i3) + (-i3))}"
+    )
     return 0

@@ -13,6 +13,7 @@ export fn main() Int:
     say("l1 = {l1} len {l1.length()}")
     if 1:
         say("truthy")
+
     let b2 = false
     say("b2 = {b2}")
     return 0

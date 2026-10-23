@@ -94,9 +94,7 @@ test "closed cells retain prefix overflow":
     )
 
 test "peer cells and scalar carries are not initial invariants":
-    (try expect_fault(fn(): let ignored = peer())) | try expect_contains(
-        "Int overflow"
-    )
+    (try expect_fault(fn(): let ignored = peer())) | try expect_contains("Int overflow")
     (try expect_fault(fn(): let ignored = scalar_peer())) | try expect_contains(
         "Int overflow"
     )

@@ -26,9 +26,11 @@ test "primitive storage retains generic record Optional and independent copies":
     try expect_equal(values[-1], 17)
     try expect_equal(values[0], 9223372036854775807)
     try expect_equal(wrapped.get() [0], 9223372036854775807)
+
     var copy = values.clone()
     values.set(0, 42)
     try expect_equal(copy[0], 9223372036854775807)
+
     let nested: List[Optional[Int]] = [some(7), none]
     try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
@@ -51,9 +53,11 @@ test "Float Bool and String preserve mutation traversal and width":
             and floats[1] == 0.5
         )
     )
+
     var booleans = [true, false, true]
     booleans.remove(0)
     booleans.prepend(false)
+
     var strings = ["a", "b", "c"]
     strings.reverse_in_place()
     try expect_false(

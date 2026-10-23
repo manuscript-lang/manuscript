@@ -12,14 +12,18 @@ export fn main() Int:
     let bad: String = 5
     let l2 = [10, 5]
     say("l2 = {l2} len {l2.length()}")
+
     if (("x" + "héllo") != "back\\slash"):
         say("alpha".lower())
     else:
         say("hello world".lower())
+
     let b3 = "line\nbreak".is_empty()
     say("b3 = {b3}")
+
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
+
     var l5 = l4.clone()
     l5.append(53)
     say("l5 = {l5} len {l5.length()}")

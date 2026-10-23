@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = 8836974\ni2 = 8836974\ni3 = -8836980\nacc4 = 26\nf5 = 719.421\ni6 = -12\ni7 = 0\nb8 = false\ns9 = [日本語]\nb10 = true\ns11 = [-93901:alpha]\n-8836980 500492 true sum -8336488\nb12 = false\ni13 = -1991031\ni14 = -8836980\ni15 = -28\nb18 = false\n",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0194.ms:50 in main\n"
+    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0194.ms:73 in main\n"
   }
 }

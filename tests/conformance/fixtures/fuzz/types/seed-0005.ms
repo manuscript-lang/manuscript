@@ -11,19 +11,28 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = false
     say("b1 = {b1}")
-    let s2 = (("brace\{s\}" + "  padded  ").reverse() + (("ms" + "MiXeD CaSe") + ("{(-39)}:" + "beta")))
+
+    let s2 = (
+        ("brace\{s\}" + "  padded  ").reverse()
+        + (("ms" + "MiXeD CaSe") + ("{(-39)}:" + "beta"))
+    )
     say("s2 = [{s2}]")
+
     let l3 = [8, (-25), (-30)]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = 16
     say("i4 = {i4}")
+
     let bad = (1 < 2) < 3
     let i5 = (l3.length() + (((-6) + 49) + (-17)))
     say("i5 = {i5}")
+
     if false:
         say(s2)
     else:
         say((s2 + "line\nbreak"))
+
     let i6 = (((i4 + (-83048488943)) * i5) * ((-i4) / (20 + i5)))
     say("i6 = {i6}")
     return 0

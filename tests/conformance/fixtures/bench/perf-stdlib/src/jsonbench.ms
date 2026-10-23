@@ -24,6 +24,7 @@ fn encoded_length(value: JsonValue) Int:
 
 export fn bench_json() Unit:
     let doc = json_doc(5000)
+
     bench(
         "json.parse",
         5000,
@@ -33,6 +34,7 @@ export fn bench_json() Unit:
 
             return 0
     )
+
     bench(
         "json.roundtrip",
         5000,

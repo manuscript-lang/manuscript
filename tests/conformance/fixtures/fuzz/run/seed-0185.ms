@@ -11,18 +11,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-30) * (-26))
     say("i1 = {i1}")
+
     let l2 = [1, (-7), (-20)]
     say("l2 = {l2} len {l2.length()}")
+
     let s3 = "MiXeD CaSe"
     say("s3 = [{s3}]")
+
     let f4 = (((0.0 + 0.0) / 8.5) / ((478.493 / 200.835) + (979.382 / 610.142)))
     say("f4 = {f4}")
+
     let i5 = (l2.get(0) / ((i1 - i1) + 379210))
     say("i5 = {i5}")
+
     if ((true and false) and (not false)):
         say(("Tab\there" + "brace\{s\}"))
     else:
         say("a")
+
     let s6 = ("42" + s3)
     say("s6 = [{s6}]")
     return 0

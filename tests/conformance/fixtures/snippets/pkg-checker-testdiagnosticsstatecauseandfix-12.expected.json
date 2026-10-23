@@ -12,16 +12,16 @@
         "message": "callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-12.ms",
-          "line": 9,
+          "line": 11,
           "column": 18,
-          "offset": 270
+          "offset": 272
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-12.ms:9:18: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-12.ms:11:18: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

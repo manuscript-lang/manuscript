@@ -11,16 +11,18 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let b1 = (not ((0.0 * 0.5) == (908.392 + 7.5)))
     say("b1 = {b1}")
-
     say("f2 = {f2}")
     say("gcd(1112, 4840) = {gcd(1112, 4840)}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = "x"
     say("s4 = [{s4}]")
     return 0

@@ -11,41 +11,59 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 18
     say("i1 = {i1}")
+
     let l2 = [2, 14, (-12), 29, 21]
     say("l2 = {l2} len {l2.length()}")
+
     let s3 = "日本語".reverse()
     say("s3 = [{s3}]")
+
     let l4 = l2.concat(l2)
     say("l4 = {l4} len {l4.length()}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 3:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 3
+
     say("acc5 = {acc5}")
     say("{18} {(i1 * (i1 + i1))} {(18 < (i1 * (i1 + i1)))} sum {18 + (i1 * (i1 + i1))}")
+
     let i6 = (((-i1) * (i1 + i1)) + ((i1 - i1) * (-29)))
     say("i6 = {i6}")
+
     if true:
         say(s3.trim())
     else:
         say("héllo")
+
     var acc7 = 0
+
     for x in l2:
         if x % 2 == 0:
             acc7 += x
         else:
             acc7 -= 1
+
     say("acc7 = {acc7}")
+
     var acc8 = 0
     var stepacc8 = 0
+
     while stepacc8 < 1:
         stepacc8 += 1
         acc8 += stepacc8 * stepacc8 + (-4)
+
     say("acc8 = {acc8}")
+
     let b9 = "Tab\there".is_empty()
     say("b9 = {b9}")
-    say("{s3.length()} {((i6 - i6) / (i6 * (-41)))} {(s3.length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.length() + ((i6 - i6) / (i6 * (-41)))}")
+    say(
+        "{s3.length()} {((i6 - i6) / (i6 * (-41)))} {(s3.length() < ((i6 - i6) / (i6 * (-41))))} sum {s3.length() + ((i6 - i6) / (i6 * (-41)))}"
+    )
+
     let big10 = 9223372036854775807
     say("{big10 * 2}")
     return 0

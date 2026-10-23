@@ -1,7 +1,6 @@
 # conform: tags=control-flow,diagnostics,lists,mutation,records,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/modules/boundaries.md:12
-
 export type Item:
     price: Int
     quantity: Int

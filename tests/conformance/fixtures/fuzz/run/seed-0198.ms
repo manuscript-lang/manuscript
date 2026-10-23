@@ -11,31 +11,44 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((69.640 - 867.25) * 144.621) + ((507.578 + 0.5) * (231.946 / 6.0e15)))
     say("f1 = {f1}")
+
     let s2 = "emoji 😀"
     say("s2 = [{s2}]")
+
     let i3 = ((-9) + ((3 - 211039) / (42 + (-449310))))
     say("i3 = {i3}")
+
     let b4 = (("  padded  " + s2) + "".reverse()).starts_with(s2)
     say("b4 = {b4}")
+
     let f5 = (((639.996 + 678.944) * (0.0 + f1)) + f1)
     say("f5 = {f5}")
+
     let l6 = [(-7), (-15), 20, 18, (-12)]
     say("l6 = {l6} len {l6.length()}")
+
     let i7 = s2.length()
     say("i7 = {i7}")
+
     let f8 = ((550.584 * (0.0 + f1)) / ((393.300 * 97.203) * (0.0 + f5)))
     say("f8 = {f8}")
+
     var l9 = l6.clone()
     l9.append(27)
     say("l9 = {l9} len {l9.length()}")
+
     let i10 = ((s2.length() + ((-11) / (-570102))) - ((i3 % 49) - (-i3)))
     say("i10 = {i10}")
+
     let i11 = s2.length()
     say("i11 = {i11}")
+
     let f12 = (f1 * ((f8 * f5) / 312.113))
     say("f12 = {f12}")
+
     let b13 = (((i3 != i11) and ("日本語" == s2)) and s2.is_empty())
     say("b13 = {b13}")
+
     let i14 = (-((i7 % 66928) * (-i11)))
     say("i14 = {i14}")
     return 0

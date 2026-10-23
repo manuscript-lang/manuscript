@@ -11,17 +11,26 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "quote\"d"
     say("s1 = [{s1}]")
+
     let bad = say(1, 2)
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 3:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-5)
+
     say("acc2 = {acc2}")
-    let i3 = ((((-571100) + (-307960)) + 14590112962) / ((357453 % 51553) * ((-38) / 23)))
+
+    let i3 = (
+        (((-571100) + (-307960)) + 14590112962)
+        / ((357453 % 51553) * ((-38) / 23))
+    )
     say("i3 = {i3}")
+
     let s4 = "line\nbreak"
     say("s4 = [{s4}]")
+
     let i5 = (-((i3 + (-114432)) + (5 * (-25))))
     say("i5 = {i5}")
     return 0

@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = ("gamma".ends_with("x") and ("gamma" + "naïve").is_empty())
     say("b1 = {b1}")
+
     let bad = say
     let i2 = 26
     say("i2 = {i2}")
+
     let i3 = (((i2 + 4) * (i2 * 391206)) * (i2 % 9))
     say("i3 = {i3}")
+
     let i4 = (((375998945411 % (-10)) - (i3 + 15)) / (-(i3 + (-44))))
     say("i4 = {i4}")
     return 0

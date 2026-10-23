@@ -13,10 +13,10 @@
           "index": 0,
           "name": "tests-e2e-testruntimefaults-2.ms::failed assertion",
           "status": "failed",
-          "failure": "expected 6, got 5\n  at tests-e2e-testruntimefaults-2.ms:6:5",
+          "failure": "expected 6, got 5\n  at tests-e2e-testruntimefaults-2.ms:7:5",
           "position": {
             "file": "tests-e2e-testruntimefaults-2.ms",
-            "line": 6,
+            "line": 7,
             "column": 5,
             "offset": 0
           }
@@ -32,7 +32,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testruntimefaults-2.ms::failed assertion\nFAIL tests-e2e-testruntimefaults-2.ms::failed assertion: expected 6, got 5\n  at tests-e2e-testruntimefaults-2.ms:6:5\n1 tests, 1 failed\n",
+      "stdout": "RUN tests-e2e-testruntimefaults-2.ms::failed assertion\nFAIL tests-e2e-testruntimefaults-2.ms::failed assertion: expected 6, got 5\n  at tests-e2e-testruntimefaults-2.ms:7:5\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

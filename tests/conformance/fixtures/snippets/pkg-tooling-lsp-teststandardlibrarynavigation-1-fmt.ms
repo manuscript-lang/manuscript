@@ -3,7 +3,9 @@
 # conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
 import ListBuilder from "@std/collections.ms"
 import system from "@std/process.ms"
+
 fn length(values: List[Int]) Int:
     return values.length()
+
 fn os_name() String:
     return system().info().os

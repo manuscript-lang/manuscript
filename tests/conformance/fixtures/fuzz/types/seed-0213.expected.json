@@ -12,16 +12,16 @@
         "message": "expected Int, found String (in entry 2 of the literal, whose entries share one type)",
         "position": {
           "file": "seed-0213.ms",
-          "line": 14,
+          "line": 15,
           "column": 19,
-          "offset": 426
+          "offset": 427
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0213.ms:14:19: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0213.ms:15:19: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

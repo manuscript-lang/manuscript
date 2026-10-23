@@ -8,6 +8,7 @@ impl Box:
     fn pick(first: Bool) List[Int]:
         if first:
             return self.items
+
         return [1]
 
 fn first_of[T](xs: List[T]) T:

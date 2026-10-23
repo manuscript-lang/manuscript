@@ -11,7 +11,9 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((((-37) + (-5)) - ((-897931) + 19)) / (-10))
     say("i1 = {i1}")
+
     let i2 = (-31)
     say("i2 = {i2}")
+
     let bad = true + 1
     return 0

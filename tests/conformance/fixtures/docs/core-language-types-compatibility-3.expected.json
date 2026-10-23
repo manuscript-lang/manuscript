@@ -12,9 +12,9 @@
         "message": "cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
-          "line": 11,
+          "line": 12,
           "column": 27,
-          "offset": 453
+          "offset": 454
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "<invalid> does not satisfy Error; use a type that implements it",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
-          "line": 11,
+          "line": 12,
           "column": 27,
-          "offset": 453
+          "offset": 454
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it",
         "position": {
           "file": "core-language-types-compatibility-3.ms",
-          "line": 11,
+          "line": 12,
           "column": 23,
-          "offset": 449
+          "offset": 450
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-3.ms:11:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/core-language-types-compatibility-3.ms:11:27: type: <invalid> does not satisfy Error; use a type that implements it\n<DIR>/core-language-types-compatibility-3.ms:11:23: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-3.ms:12:27: type: cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/core-language-types-compatibility-3.ms:12:27: type: <invalid> does not satisfy Error; use a type that implements it\n<DIR>/core-language-types-compatibility-3.ms:12:23: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, TextError] but the operand fails with <invalid>, so change the return error type or implement Error for it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

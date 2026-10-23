@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = 786399379245\ni2 = 786399379245\nacc3 = 0\nb4 = true\ncollatz(2641) = 102\nl5 = [-26] len 1\nf6 = NaN\ncollatz(1822) = 42\ni7 = 30\ni8 = -1\nb9 = false\ni10 = 0\n日本語\ni11 = -457692\ns12 = [-41:TAB\tHEREbrace{s}]\ni13 = 0\nb14 = false\ni15 = -9223372036854775777\n-41:TAB\tHEREbrace{s}\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0292.ms:67 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0292.ms:87 in main\n"
   }
 }

@@ -10,16 +10,14 @@ test "IP parsing CIDR normalization and containment":
     try expect_false(
         not (
             try contains_ip(
-                try parse_cidr("192.0.2.0/24"),
-                try parse_ip("192.0.2.255")
+                try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.2.255")
             )
         )
     )
     try expect_false(
         (
             try contains_ip(
-                try parse_cidr("192.0.2.0/24"),
-                try parse_ip("192.0.3.0")
+                try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.3.0")
             )
         )
     )
@@ -33,8 +31,7 @@ test "TCP loopback writes reads half close and EOF":
             with server = try listener.accept(2.seconds):
                 try client.write("hello", 2.seconds)
                 try expect_equal(
-                    (try server.read(5, 2.seconds)).get(),
-                    "hello".to_bytes()
+                    (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
                 )
                 try expect_equal(server.peer_address(), client.local_address())
                 try client.shutdown_write()
@@ -46,6 +43,7 @@ test "UDP loopback preserves datagram data and sender":
     with receiver = try net.bind_datagram("127.0.0.1:0"):
         with sender = try net.bind_datagram("127.0.0.1:0"):
             try sender.send("packet", receiver.address(), 2.seconds)
+
             let packet = try receiver.receive(64, 2.seconds)
             try expect_false(
                 (
@@ -59,9 +57,7 @@ test "network restriction denies admission and close rejects acquisitions":
     try expect_false(
         (
             (
-                try expect_error(
-                    restricted.listen("127.0.0.1:0")
-                )
+                try expect_error(restricted.listen("127.0.0.1:0"))
             ) != NetworkError.PermissionDenied
         )
     )

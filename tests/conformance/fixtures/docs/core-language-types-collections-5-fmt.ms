@@ -3,7 +3,6 @@
 # conform: origin=documentation/core-language/types/collections.md:187
 import panic from "@std/core.ms"
 
-
 fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
@@ -16,8 +15,10 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
     if [1].get(5, default: -1) != -1:
         return panic("check failed")
+
     var original = Map[String, Int]()
     original.add("a", 1)
+
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)

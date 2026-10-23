@@ -14,23 +14,34 @@ export fn main() Int:
     for i in range(0, 1):
         acc1 += i * 6
     say("acc1 = {acc1}")
+
     let i2 = (-(((-49) + 46) + (39 - 16)))
     say("i2 = {i2}")
+
     let b3 = ((623.627 + 574.582) > ((322.601 + 751.037) * (0.0 + 997.436)))
     say("b3 = {b3}")
+
     let s4 = "日本語"
     say("s4 = [{s4}]")
+
     let s5 = ("ms" + "").upper().trim()
     say("s5 = [{s5}]")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 4:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + (-3)
+
     say("acc6 = {acc6}")
+
     let b7 = (not b3)
     say("b7 = {b7}")
-    say("{(((-7) * i2) + s4.length())} {(i2 - (-i2))} {((((-7) * i2) + s4.length()) < (i2 - (-i2)))} sum {(((-7) * i2) + s4.length()) + (i2 - (-i2))}")
+    say(
+        "{(((-7) * i2) + s4.length())} {(i2 - (-i2))} {((((-7) * i2) + s4.length()) < (i2 - (-i2)))} sum {(((-7) * i2) + s4.length()) + (i2 - (-i2))}"
+    )
+
     let big8 = 9223372036854775807
     say("{big8 * 4}")
     return 0

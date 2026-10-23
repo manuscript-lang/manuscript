@@ -12,20 +12,25 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = 12
     say("i1 = {i1}")
+
     let s2 = "42"
     say("s2 = [{s2}]")
+
     let f3 = (444.078 - (864.349 * (834.219 + 708.268)))
     say("f3 = {f3}")
+
     let bad = missing_function(3)
     let s4 = ("".trim() + ("brace\{s\}" + "naïve").trim())
     say("s4 = [{s4}]")

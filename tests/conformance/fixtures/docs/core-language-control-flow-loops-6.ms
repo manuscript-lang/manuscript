@@ -5,5 +5,4 @@ fn count_down(start: Int) Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1
-
     return remaining

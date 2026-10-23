@@ -12,16 +12,16 @@
         "message": "cannot assign to imported function panic; assignment targets are 'var' bindings and record fields",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-10.ms",
-          "line": 6,
+          "line": 7,
           "column": 5,
-          "offset": 219
+          "offset": 220
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-10.ms:6:5: type: cannot assign to imported function panic; assignment targets are 'var' bindings and record fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-10.ms:7:5: type: cannot assign to imported function panic; assignment targets are 'var' bindings and record fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

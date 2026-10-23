@@ -11,27 +11,39 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = true
     say("b1 = {b1}")
+
     let l2 = [12, 8]
     say("l2 = {l2} len {l2.length()}")
+
     let s3 = ""
     say("s3 = [{s3}]")
+
     let l4 = [30, (-8)]
     say("l4 = {l4} len {l4.length()}")
-    say("{(-48)} {(((-820821075565) / 3) * ((-21) + (-2)))} {((-48) < (((-820821075565) / 3) * ((-21) + (-2))))} sum {(-48) + (((-820821075565) / 3) * ((-21) + (-2)))}")
+    say(
+        "{(-48)} {(((-820821075565) / 3) * ((-21) + (-2)))} {((-48) < (((-820821075565) / 3) * ((-21) + (-2))))} sum {(-48) + (((-820821075565) / 3) * ((-21) + (-2)))}"
+    )
+
     var acc5 = 0
+
     for x in l4:
         if x % 2 == 0:
             acc5 += x
         else:
             acc5 -= 1
+
     say("acc5 = {acc5}")
+
     let b6 = ((s3.is_empty() and true) and (not (s3 == s3)))
     say("b6 = {b6}")
+
     var acc7 = 0
+
     for x in l2:
         if x % 2 == 0:
             acc7 += x
         else:
             acc7 -= 1
+
     say("acc7 = {acc7}")
     return 0

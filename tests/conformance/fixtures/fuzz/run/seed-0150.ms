@@ -11,30 +11,40 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = ((((-802083) * 510898) + 13) + (-(23 % (-40))))
     say("i1 = {i1}")
+
     let b2 = (((3.5 * 755.991) + (120.25 + 760.635)) > ((261.105 + 6.5) * 9.5))
     say("b2 = {b2}")
+
     let i3 = ((((-802414) + 3) * ((-11) % 17)) - 22)
     say("i3 = {i3}")
+
     let f4 = 0.0
     say("f4 = {f4}")
+
     let l5 = [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
+
     if (not "delta".is_empty()):
         say("gamma".replace("42", "delta"))
     else:
         say("x".lower())
+
     let f6 = ((f4 + (147.778 + f4)) * ((f4 + f4) / (f4 * f4)))
     say("f6 = {f6}")
+
     let b7 = (((-40) - (i3 % i3)) == l5.length())
     say("b7 = {b7}")
     say("fact(10) = {fact(10)}")
+
     let i8 = (((i3 + i3) / (2 - i1)) + ((-i3) + (30 + 369307)))
     say("i8 = {i8}")
+
     let l9 = [5]
     say("l9 = {l9} len {l9.length()}")
     say("{(-29)} {24} {((-29) < 24)} sum {(-29) + 24}")

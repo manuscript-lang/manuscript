@@ -13,11 +13,13 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
@@ -25,25 +27,42 @@ export fn main() Int:
         say(("" + "quote\"d"))
     else:
         say("emoji 😀".replace("MiXeD CaSe", "Tab\there"))
+
     let b1 = false
     say("b1 = {b1}")
+
     let s2 = ("{((-17) - 865442)}:" + "gamma")
     say("s2 = [{s2}]")
+
     let f3 = ((306.528 + (915.282 * 603.25)) + (617.039 - (639.395 / 273.346)))
     say("f3 = {f3}")
     say("fib(39) = {fib(39)}")
-    let b4 = (((932.25 - 860.714) < (f3 - 158.178)) and ((b1 and b1) and ((-986354) <= (-203685))))
+
+    let b4 = (
+        ((932.25 - 860.714) < (f3 - 158.178))
+        and ((b1 and b1) and ((-986354) <= (-203685)))
+    )
     say("b4 = {b4}")
+
     var acc5 = 0
     for i in range(0, 3):
         acc5 += i * 2
     say("acc5 = {acc5}")
+
     let f6 = (((f3 / 0.0) - 552.068) - f3)
     say("f6 = {f6}")
-    let b7 = ((s2 + (s2 + s2)) != (("hello world" + "a") + "beta".replace("x", "héllo")))
+
+    let b7 = (
+        (s2 + (s2 + s2)) != (
+            ("hello world" + "a")
+            + "beta".replace("x", "héllo")
+        )
+    )
     say("b7 = {b7}")
+
     let l8 = [1, 2, 3].take(0)
     say("l8 = {l8} len {l8.length()}")
+
     let f9 = 226.760
     say("f9 = {f9}")
     return 0

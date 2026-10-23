@@ -12,42 +12,54 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = (-902866)
     say("i1 = {i1}")
+
     let s2 = "42"
     say("s2 = [{s2}]")
+
     let s3 = s2
     say("s3 = [{s3}]")
+
     let l4 = [(-10)]
     say("l4 = {l4} len {l4.length()}")
+
     let b5 = ((s3 + "gamma") + ("line\nbreak" + "back\\slash")).contains("beta")
     say("b5 = {b5}")
     say("fib(53) = {fib(53)}")
+
     let l6 = l4.sorted(fn(a, b): a.compare(b))
     say("l6 = {l6} len {l6.length()}")
     say("{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
+
     let i7 = i1
     say("i7 = {i7}")
     say("collatz(2469) = {collatz(2469)}")
+
     let i8 = (-528791)
     say("i8 = {i8}")
     return 0

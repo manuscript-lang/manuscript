@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "gcd(300, 2662) = 2\nf1 = 280.25\nb2 = false\nl3 = [-15, 24] len 2\ns4 = [olléh]\nb5 = false\nf6 = 6.5\ni7 = 2\ni8 = 2\nl9 = [5, -15] len 2\nolléh\ni10 = -43\nl11 = [6, -14] len 2\ni12 = 8\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0370.ms:47 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0370.ms:62 in main\n"
   }
 }

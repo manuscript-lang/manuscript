@@ -5,4 +5,5 @@ fn f(x: Optional[Int]) Int:
     let y = match x:
         some(n): n
         none: 0
+
     return n

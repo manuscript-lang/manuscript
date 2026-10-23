@@ -9,8 +9,12 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    say("{(516882 % (-17))} {(-42)} {((516882 % (-17)) < (-42))} sum {(516882 % (-17)) + (-42)}")
+    say(
+        "{(516882 % (-17))} {(-42)} {((516882 % (-17)) < (-42))} sum {(516882 % (-17)) + (-42)}"
+    )
+
     let s1 = ("{(50 - (-838413))}:" + "héllo".replace("brace\{s\}", ""))
     say("s1 = [{s1}]")
+
     let bad = undefined_name + 1
     return 0

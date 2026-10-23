@@ -11,16 +11,21 @@ fn say(text: String) Unit:
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 4:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-5)
+
     say("ac1 = {acc1}")
+
     let i2 = (46 * ((18 - (-297318)) / (291313 + 535757)))
     say("i2 = {i2}")
+
     if "héllo".contains("a"):
         say("ms")
     else:
         say(("a" + "ms"))
+
     let b3 = (((not false) and ("back\\slash" != "a")) and false)
     say("b3 = {b3}")
     return 0

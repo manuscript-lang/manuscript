@@ -12,43 +12,58 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let f1 = 0.0
     say("f1 = {f1}")
+
     let l2 = [28, 2, 4, 14, (-14)]
     say("l2 = {l2} len {l2.length()}")
+
     if ("emoji 😀".is_empty() and (not true)):
         say(("emoji 😀" + "MiXeD CaSe"))
     else:
         say("back\\slash")
+
     let f3 = (((f1 * f1) + 219.118) * f1)
     say("f3 = {f3}")
+
     let l4 = l2.map(fn(x): x + 2).filter(fn(x): x % 2 == 0)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = (((5 - (-22)) + (27 - (-3))) + (-22))
     say("i5 = {i5}")
+
     let l6 = l2.take(0)
     say("l6 = {l6} len {l6.length()}")
+
     let i7 = (l6.length() - l2.get(3))
     say("i7 = {i7}")
+
     let f8 = 0.0
     say("f8 = {f8}")
+
     let b9 = false
     say("b9 = {b9}")
     say("fib(3) = {fib(3)}")
+
     let f10 = 137.603
     say("f10 = {f10}")
+
     let i11 = (((i7 * i5) + (-44)) * i5)
     say("i11 = {i11}")
+
     let i12 = (-((i5 + i11) % ((-8) + i11)))
     say("i12 = {i12}")
+
     let i13 = (29 + ((27 * i7) + ((-247732088004) + i12)))
     say("i13 = {i13}")
     return 0

@@ -2,16 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/crypto-rsa.ms
 import {
-    CryptoError,
-    HashAlgorithm,
-    public_key_der,
-    rsa_generate,
-    rsa_sign,
-    rsa_verify,
-    rsa_sign_pss,
-    rsa_verify_pss,
-    rsa_encrypt,
-    rsa_decrypt
+    CryptoError, HashAlgorithm, public_key_der, rsa_generate, rsa_sign, rsa_verify,
+    rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt
 } from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
 import {expect_equal, expect_true, expect_false} from "@std/testing.ms"
@@ -32,22 +24,18 @@ test "RSA PKCS1 PSS and OAEP support every declared hash":
     let data = "payload é🙂".to_bytes()
 
     for hash in [
-        HashAlgorithm.Md5,
-        HashAlgorithm.Sha1,
-        HashAlgorithm.Sha224,
-        HashAlgorithm.Sha256,
-        HashAlgorithm.Sha384,
-        HashAlgorithm.Sha512,
-        HashAlgorithm.Sha3_256,
-        HashAlgorithm.Sha3_384,
-        HashAlgorithm.Sha3_512
+        HashAlgorithm.Md5, HashAlgorithm.Sha1, HashAlgorithm.Sha224,
+        HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512,
+        HashAlgorithm.Sha3_256, HashAlgorithm.Sha3_384, HashAlgorithm.Sha3_512
     ]:
         let signature = try rsa_sign(private, hash, data)
         try expect_true(rsa_verify(public, hash, data, signature))
         try expect_false(rsa_verify(public, hash, "other".to_bytes(), signature))
+
         let pss = try rsa_sign_pss(private, hash, data)
         try expect_true(rsa_verify_pss(public, hash, data, pss))
         try expect_false(rsa_verify_pss(public, hash, "other".to_bytes(), pss))
+
         let ciphertext = try rsa_encrypt(public, hash, data)
         try expect_equal(ciphertext.length(), 256)
         try expect_equal(try rsa_decrypt(private, hash, ciphertext), data)
@@ -76,26 +64,22 @@ test "RSA malformed keys and signatures fail without faulting":
 
     for key in [bad.clone(), public]:
         try expect_equal(
-            rsa_sign(key, HashAlgorithm.Sha256, data).err(),
-            CryptoError.InvalidInput
+            rsa_sign(key, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
         )
         try expect_equal(
             rsa_sign_pss(key, HashAlgorithm.Sha256, data).err(),
             CryptoError.InvalidInput
         )
         try expect_equal(
-            rsa_decrypt(key, HashAlgorithm.Sha256, data).err(),
-            CryptoError.InvalidInput
+            rsa_decrypt(key, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
         )
 
     try expect_equal(
-        rsa_encrypt(bad, HashAlgorithm.Sha256, data).err(),
-        CryptoError.InvalidInput
+        rsa_encrypt(bad, HashAlgorithm.Sha256, data).err(), CryptoError.InvalidInput
     )
     try expect_equal(rsa_generate(1024).err(), CryptoError.InvalidInput)
     try expect_equal(
-        widened_sign(bad).err().message(),
-        CryptoError.InvalidInput.message()
+        widened_sign(bad).err().message(), CryptoError.InvalidInput.message()
     )
     try expect_true(widened_sign(private).is_ok())
 
@@ -113,15 +97,16 @@ test "RSA OAEP rejects ciphertext and oversized plaintext with domain errors":
         rsa_decrypt(private, HashAlgorithm.Sha384, ciphertext).err(),
         CryptoError.AuthenticationFailed
     )
+
     let oversized = try "x".repeat(127)
     try expect_equal(
         rsa_encrypt(public, HashAlgorithm.Sha512, oversized.to_bytes()).err(),
         CryptoError.InvalidInput
     )
+
     let empty = try rsa_encrypt(public, HashAlgorithm.Sha256, "".to_bytes())
     try expect_equal(
-        try rsa_decrypt(private, HashAlgorithm.Sha256, empty),
-        "".to_bytes()
+        try rsa_decrypt(private, HashAlgorithm.Sha256, empty), "".to_bytes()
     )
     try expect_equal(
         widened_decrypt(private, "bad".to_bytes()).err().message(),
@@ -141,28 +126,27 @@ test "RSA native function values preserve argument order and borrowed bytes":
     let decrypt = rsa_decrypt
     var calls: List[Int] = []
     let direct = try rsa_sign(
-        data: marked(var calls, 1, data.clone()),
-        hash: HashAlgorithm.Sha256,
+        data: marked(var calls, 1, data.clone()), hash: HashAlgorithm.Sha256,
         private_key: marked(var calls, 2, private.clone())
     )
     try expect_equal(calls, [1, 2])
+
     let signature = try sign_message(
-        data: marked(var calls, 3, data.clone()),
-        hash: HashAlgorithm.Sha256,
+        data: marked(var calls, 3, data.clone()), hash: HashAlgorithm.Sha256,
         private_key: marked(var calls, 4, private.clone())
     )
     try expect_equal(calls, [1, 2, 3, 4])
     try expect_equal(signature, direct)
     try expect_true(
         verify_message(
-            signature: signature,
-            data: data,
-            hash: HashAlgorithm.Sha256,
+            signature: signature, data: data, hash: HashAlgorithm.Sha256,
             public_key: public
         )
     )
+
     let pss = try sign_pss(private, HashAlgorithm.Sha512, data)
     try expect_true(verify_pss(public, HashAlgorithm.Sha512, data, pss))
+
     let ciphertext = try encrypt(public, HashAlgorithm.Sha384, data)
     try expect_equal(try decrypt(private, HashAlgorithm.Sha384, ciphertext), data)
     try expect_equal(try sign_message(private, HashAlgorithm.Sha256, data), signature)

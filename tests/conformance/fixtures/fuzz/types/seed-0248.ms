@@ -13,24 +13,30 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("fib(45) = {fib(45)}")
+
     let s1 = ("quote\"d" + "ms".trim().trim())
     say("s1 = [{s1}]")
+
     let s2 = s1
     say("s2 = [{s2}]")
+
     let bad = missing_function(3)
     var acc3 = 0
     for i in range(0, 3):
         acc3 += i * 9
     say("acc3 = {acc3}")
+
     let i4 = (-(((-38) * 705782) + ((-21) * (-16))))
     say("i4 = {i4}")
     return 0

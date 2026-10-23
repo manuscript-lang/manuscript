@@ -11,15 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-35) / 665668)
     say("i1 = {i1}")
+
     let f2 = 331.214
     say("f2 = {f2}")
+
     let i3 = (i1 * ((i1 + i1) - 49))
     say("i3 = {i3}")
+
     let f4 = 3.0e16
     say("f4 = {f4}")
+
     let bad = missing_function(3)
     let i5 = 229604
     say("i5 = {i5}")
+
     let s6 = ""
     say("s6 = [{s6}]")
     return 0

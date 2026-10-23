@@ -12,16 +12,16 @@
         "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
         "position": {
           "file": "tests-e2e-testinherentimplrejections-7.ms",
-          "line": 7,
+          "line": 8,
           "column": 8,
-          "offset": 197
+          "offset": 198
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-7.ms:7:8: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-7.ms:8:8: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

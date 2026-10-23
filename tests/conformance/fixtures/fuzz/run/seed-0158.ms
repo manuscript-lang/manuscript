@@ -11,28 +11,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (8 + ((42 / (-38)) + 3))
     say("i1 = {i1}")
+
     let b2 = (not "beta".is_empty())
     say("b2 = {b2}")
-    let b3 = ("hello world".replace("beta", "brace\{s\}").is_empty() and ((not b2) and (false and b2)))
+
+    let b3 = (
+        "hello world".replace("beta", "brace\{s\}").is_empty()
+        and ((not b2) and (false and b2))
+    )
     say("b3 = {b3}")
+
     if ("MiXeD CaSe".ends_with("42") and (true or false)):
         say("gamma".lower())
     else:
         say("MiXeD CaSe".trim())
+
     let f4 = (368.318 * ((925.209 + 4.5) * (586.25 + 6.0e18)))
     say("f4 = {f4}")
+
     let b5 = (114.290 > ((f4 * 787.641) / (f4 * 7.5)))
     say("b5 = {b5}")
+
     let l6 = [(-16), (-3), (-7)]
     say("l6 = {l6} len {l6.length()}")
+
     let s7 = "quote\"d"
     say("s7 = [{s7}]")
+
     var acc8 = 0
     var stepacc8 = 0
+
     while stepacc8 < 5:
         stepacc8 += 1
         acc8 += stepacc8 * stepacc8 + (-2)
+
     say("acc8 = {acc8}")
+
     let s9 = ("{(i1 * (-45))}:" + "gamma").trim()
     say("s9 = [{s9}]")
     return 0

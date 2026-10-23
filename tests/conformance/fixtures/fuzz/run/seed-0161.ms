@@ -11,18 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-5)
     say("i1 = {i1}")
+
     let l2 = [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
+
     let i3 = i1
     say("i3 = {i3}")
+
     let i4 = (((19 + (-38)) * (i1 + (-11))) - i1)
     say("i4 = {i4}")
+
     let s5 = "42"
     say("s5 = [{s5}]")
+
     let s6 = (s5 + s5)
     say("s6 = [{s6}]")
+
     let i7 = (l2.length() + (((-31) + i3) - i1))
     say("i7 = {i7}")
+
     let big8 = -9223372036854775808
     say("{big8 - 3}")
     return 0

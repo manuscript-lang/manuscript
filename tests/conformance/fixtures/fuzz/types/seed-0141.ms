@@ -11,29 +11,36 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("gcd(1637, 325) = {gcd(1637, 325)}")
+
     let f1 = (9.0e11 * 3.5)
     say("f1 = {f1}")
+
     let i2 = (7 * 4)
     say("i2 = {i2}")
     say("fib(36) = {fib(36)}")
+
     let s3 = "hello world".replace("delta", "MiXeD CaSe")
     say("s3 = [{s3}]")
     return "not an int"
+
     let b4 = ("{i2}:" + s3.trim()).is_empty()
     say("b4 = {b4}")
     say("fib(28) = {fib(28)}")

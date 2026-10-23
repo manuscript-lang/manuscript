@@ -11,38 +11,53 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = 28
     say("i1 = {i1}")
+
     let s2 = "beta"
     say("s2 = [{s2}]")
+
     let b3 = ((s2 + s2).is_empty() and (0.0 > 687.720))
     say("b3 = {b3}")
+
     let i4 = (-i1)
     say("i4 = {i4}")
     say("collatz(1230) = {collatz(1230)}")
+
     let i5 = ((i4 - ((-14) * 49)) % (i4 + (i4 % i4)))
     say("i5 = {i5}")
+
     let i6 = i1
     say("i6 = {i6}")
+
     let s7 = "MiXeD CaSe"
     say("s7 = [{s7}]")
+
     let f8 = (938.963 - ((4.0e12 * 0.0) + (622.384 + 209.374)))
     say("f8 = {f8}")
+
     let i9 = (((1 + i1) - i4) + ((316623 / 6) - i6))
     say("i9 = {i9}")
+
     let f10 = 748.105
     say("f10 = {f10}")
     say("{i6} {i5} {(i6 < i5)} sum {i6 + i5}")
+
     let b11 = b3
     say("b11 = {b11}")
-    say("{i9} {(i1 * (i6 + 885498))} {(i9 < (i1 * (i6 + 885498)))} sum {i9 + (i1 * (i6 + 885498))}")
+    say(
+        "{i9} {(i1 * (i6 + 885498))} {(i9 < (i1 * (i6 + 885498)))} sum {i9 + (i1 * (i6 + 885498))}"
+    )
     return 0

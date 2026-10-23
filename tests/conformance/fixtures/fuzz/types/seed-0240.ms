@@ -13,11 +13,14 @@ export fn main() Int:
         say("日本語")
     else:
         say(("ms" + "héllo"))
+
     let bad = true + 1
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let s2 = ((("x" + "quote\"d") + "ms") + ("" + "alpha".replace("beta", "42")))
     say("s2 = [{s2}]")
+
     let s3 = s2
     say("s3 = [{s3}]")
     return 0

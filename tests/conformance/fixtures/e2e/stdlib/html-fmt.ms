@@ -60,10 +60,7 @@ test "HTML parses nested elements attributes entities and comments":
             try expect_false(
                 (
                     items.get(4) != HtmlNode.Element(
-                        tag: "br",
-                        namespace: "",
-                        attributes: [],
-                        children: []
+                        tag: "br", namespace: "", attributes: [], children: []
                     )
                 )
             )
@@ -89,6 +86,7 @@ test "HTML recovers unclosed tags and inserts document and table structure":
         _: return fail("expected tbody")
 
     try expect_equal(text_content(nodes.get(1).clone()), "cell")
+
     let empty = try parse("")
     try expect_equal(children(children(empty).get(0)).length(), 2)
 
@@ -100,13 +98,12 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     try expect_false(
         (
             nodes.get(0) != HtmlNode.Doctype(
-                name: "html",
-                public_id: "public",
-                system_id: "system"
+                name: "html", public_id: "public", system_id: "system"
             )
         )
     )
     try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
+
     let body = children(children(nodes.get(2).clone()).get(1))
 
     let svg_items = match body.get(0):
@@ -121,9 +118,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
                 (
                     child_namespace != "svg"
                     or attributes.get(0) != HtmlAttribute(
-                        "href",
-                        "xlink",
-                        "#icon"
+                        "href", "xlink", "#icon"
                     )
                 )
             )
@@ -135,10 +130,12 @@ test "HTML honors optional byte depth and node limits":
     let empty = try parse("")
     try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
+
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
+
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
     try expect_not_equal(HtmlError.InvalidData.message(), "")

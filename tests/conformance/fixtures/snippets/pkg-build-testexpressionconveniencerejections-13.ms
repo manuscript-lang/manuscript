@@ -3,6 +3,7 @@
 # conform: origin=pkg/build/expression_conveniences_test.go:24 TestExpressionConvenienceRejections
 fn p() Result[Int, Error]:
     return ok(1)
+
 fn f(x: Optional[Int]) Result[Unit, Error]:
     match x:
         some(n):

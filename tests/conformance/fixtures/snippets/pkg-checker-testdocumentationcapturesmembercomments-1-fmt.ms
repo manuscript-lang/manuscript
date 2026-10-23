@@ -7,7 +7,6 @@ export type Counter:
     # May start at zero.
     count: Int = 0
     # Detached description.
-
     undocumented: Int = 1
 
 export type Outcome:

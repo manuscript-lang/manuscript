@@ -13,17 +13,23 @@ export fn main() Int:
         say(("brace\{s\}" + "emoji 😀"))
     else:
         say("  padded  ".reverse())
+
     let b1 = (not ("42".upper() != "ms"))
     say("b1 = {b1}")
+
     let bad = missing_function(3)
     let f2 = 280.25
     say("f2 = {f2}")
+
     let s3 = "alpha"
     say("s3 = [{s3}]")
+
     let b4 = ("emoji 😀".contains(s3) and "héllo".trim().is_empty())
     say("b4 = {b4}")
+
     if (s3.is_empty() and (false and false)):
         say("alpha".trim())
     else:
         say("  padded  ")
+
     return 0

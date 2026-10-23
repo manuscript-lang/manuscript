@@ -11,19 +11,24 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let s1 = "emoji 😀".lower().trim().trim()
     say("s1 = [{s1}]")
+
     let l2 = [4]
     say("l2 = {l2} len {l2.length()}")
     say("collatz(705) = {collatz(705)}")
+
     let bad: Int = "text"
     return 0

@@ -11,38 +11,54 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let b1 = (829.865 < ((541.717 - 732.202) + 777.840))
     say("b1 = {b1}")
+
     let s2 = "42"
     say("s2 = [{s2}]")
+
     let s3 = (("42" + s2) + "MiXeD CaSe").replace("héllo", "ms")
     say("s3 = [{s3}]")
-    let f4 = (((194.949 - 564.425) * (643.511 / 37.440)) - ((395.462 * 9.0e20) + (526.25 + 413.769)))
+
+    let f4 = (
+        ((194.949 - 564.425) * (643.511 / 37.440))
+        - ((395.462 * 9.0e20) + (526.25 + 413.769))
+    )
     say("f4 = {f4}")
+
     let l5 = [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
     say("collatz(2371) = {collatz(2371)}")
     say("fib(37) = {fib(37)}")
-    let big6 = ((763003567524 - (-11)) - ((-38) + (-38))) - ((763003567524 - (-11)) - ((-38) + (-38)))
+
+    let big6 = (
+        ((763003567524 - (-11)) - ((-38) + (-38)))
+        - ((763003567524 - (-11)) - ((-38) + (-38)))
+    )
     say("{((763003567524 - (-11)) - ((-38) + (-38))) / big6}")
     return 0

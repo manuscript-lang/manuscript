@@ -13,17 +13,13 @@ type EntityCase:
 
 test "HTML unescape recognizes named numeric and multi-scalar references":
     let cases = [
-        EntityCase("", ""),
-        EntityCase("plain é🙂", "plain é🙂"),
+        EntityCase("", ""), EntityCase("plain é🙂", "plain é🙂"),
         EntityCase("&lt;&gt;&amp;&quot;&apos;", "<>&\"'"),
         EntityCase("&aacute;&eacute;&copy;", "áé©"),
-        EntityCase("&#225;&#xE1;&#XE1;", "ááá"),
-        EntityCase("&#x1F680;", "🚀"),
+        EntityCase("&#225;&#xE1;&#XE1;", "ááá"), EntityCase("&#x1F680;", "🚀"),
         EntityCase("&NotEqualTilde;", "\u{2242}\u{338}"),
-        EntityCase("&#101;&#x301;", "e\u{301}"),
-        EntityCase("&#13;&#10;", "\r\n"),
-        EntityCase("&NewLine;", "\n"),
-        EntityCase("a\u{0}b", "a\u{0}b")
+        EntityCase("&#101;&#x301;", "e\u{301}"), EntityCase("&#13;&#10;", "\r\n"),
+        EntityCase("&NewLine;", "\n"), EntityCase("a\u{0}b", "a\u{0}b")
     ]
     for entity in cases:
         if unescape(entity.encoded) != entity.decoded: return fail(
@@ -56,6 +52,7 @@ test "HTML escape and unescape retain immutable text":
     let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
+
     let original = "&lt;é&gt;"
     let alias = original
     let decoded = unescape(original)

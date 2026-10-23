@@ -2,6 +2,7 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/navigation_test.go:120 TestCommonErrorNavigation
 import JsonError from "@std/json.ms"
+
 fn describe(cause: Error) String:
     match cause:
         JsonError(json):

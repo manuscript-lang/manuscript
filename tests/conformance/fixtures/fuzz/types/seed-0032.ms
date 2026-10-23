@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "quote\"d".lower()
     say("s1 = [{s1}]")
+
     let i2 = (37 + ((12 * (-33)) * (0 - 44)))
     say("i2 = {i2}")
+
     let i3 = ((s1.length() - (i2 + (-16))) - s1.length())
     say("i3 = {i3}")
+
     let bad = (1 < 2) < 3
     let l4 = [(-13), 29, 20, 1]
     say("l4 = {l4} len {l4.length()}")

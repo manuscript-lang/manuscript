@@ -11,40 +11,58 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f1 = ((216.084 - (8.339 - 724.515)) - ((2.0e16 - 519.575) / (200.030 + 434.452)))
+    let f1 = (
+        (216.084 - (8.339 - 724.515))
+        - ((2.0e16 - 519.575) / (200.030 + 434.452))
+    )
     say("f1 = {f1}")
+
     let s3 = ("日本語" + ("{(-22)}:" + "a".trim()))
     say("s3 = [{s3}]")
+
     let f4 = (473.849 + ((3.0e11 + f1) + 800.406))
     say("f4 = {f4}")
+
     let l5 = [14]
     say("l5 = {l5} len {l5.length()}")
+
     let s6 = (s3.trim() + s3.replace(s3, s3)).replace(s3, s3)
     say("s6 = [{s6}]")
     say("fact(17) = {fact(17)}")
+
     let s7 = ("{(753806 * 29)}:" + (("gamma" + "ms") + s6))
     say("s7 = [{s7}]")
+
     let f8 = (((241.655 + 207.716) * 586.609) / ((f4 / f1) * f1))
     say("f8 = {f8}")
     say("{0} {3} {(0 < 3)} sum {0 + 3}")
+
     let i9 = 47
     say("i9 = {i9}")
     say("{((i9 * i9) / 44)} {35} {(((i9 * i9) / 44) < 35)} sum {((i9 * i9) / 44) + 35}")
+
     let s10 = s6
     say("s10 = [{s10}]")
+
     let l11 = l5.map(fn(x): x * 7)
     say("l11 = {l11} len {l11.length()}")
+
     let i12 = ((18 % (i9 % 48)) + i9)
     say("i12 = {i12}")
+
     let l13 = l5.sorted(fn(a, b): a.compare(b))
     say("l13 = {l13} len {l13.length()}")
+
     let l14 = l11.reversed()
     say("l14 = {l14} len {l14.length()}")
+
     let s15 = "brace\{s\}"
     say("s15 = [{s15}]")
+
     let big16 = 9223372036854775807
     say("{big16 * 3}")
     return 0

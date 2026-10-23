@@ -11,24 +11,33 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-(((-48) + 579330) - (-222784)))
     say("i1 = {i1}")
+
     let i2 = 266954744164
     say("i2 = {i2}")
+
     let i3 = (-9223372036854775807)
     say("i3 = {i3}")
+
     let f4 = ((6.0e-9 * 383.741) * 550.841)
     say("f4 = {f4}")
+
     let b5 = ("{(i1 + (-182904))}:" + "alpha").trim().ends_with("x")
     say("b5 = {b5}")
+
     let i6 = 1
     say("i6 = {i6}")
+
     let i7 = (i3 % (-i6))
     say("i7 = {i7}")
+
     let i8 = ((-19) + (-((-19) / i6)))
     say("i8 = {i8}")
+
     if b5:
         say("Tab\there")
     else:
         say("x")
+
     let i9 = (i3 % ((-61124) + ((-18) * 48)))
     say("i9 = {i9}")
     return 0

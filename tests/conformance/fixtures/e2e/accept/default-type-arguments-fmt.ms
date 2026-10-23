@@ -29,6 +29,7 @@ test "constructors fall back to defaults":
 test "calls infer first and only then use the default":
     let inferred = make()
     try expect_false(not (inferred.is_none()))
+
     let explicit: Optional[Int] = make()
     try expect_false(not (explicit.is_none()))
     try expect_equal(pick([1, 2, 3]), 3)

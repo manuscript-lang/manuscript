@@ -12,28 +12,28 @@
         "message": "redundant prelude import List; remove List from this import and use its prelude declaration directly",
         "position": {
           "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
-          "line": 6,
+          "line": 5,
           "column": 22,
-          "offset": 223
+          "offset": 222
         },
         "end": {
           "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
-          "line": 6,
+          "line": 5,
           "column": 26,
-          "offset": 227
+          "offset": 226
         },
         "fix": {
           "position": {
             "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
-            "line": 6,
+            "line": 5,
             "column": 20,
-            "offset": 221
+            "offset": 220
           },
           "end": {
             "file": "internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms",
-            "line": 6,
+            "line": 5,
             "column": 26,
-            "offset": 227
+            "offset": 226
           },
           "replacement": ""
         }
@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms:6:22: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms:5:22: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

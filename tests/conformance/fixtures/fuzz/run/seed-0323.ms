@@ -11,30 +11,44 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f3 = (((697.586 * 342.523) / (0.0 * 890.25)) * ((0.0 / 0.0) * (544.300 / 714.286)))
+    let f3 = (
+        ((697.586 * 342.523) / (0.0 * 890.25))
+        * ((0.0 / 0.0) * (544.300 / 714.286))
+    )
     say("f3 = {f3}")
+
     let s4 = ("gamma".reverse() + ("42" + "héllo").lower())
     say("s4 = [{s4}]")
+
     let b5 = (((true and true) and ((-6) == (-990582))) or "ms".is_empty())
     say("b5 = {b5}")
+
     let b6 = "42".contains(s4)
     say("b6 = {b6}")
+
     let b7 = (s4 != "back\\slash")
     say("b7 = {b7}")
+
     let i8 = ((-45) - ((-(-37)) + (17 + (-802116697712))))
     say("i8 = {i8}")
+
     let l9 = [18]
     say("l9 = {l9} len {l9.length()}")
     say("fact(16) = {fact(16)}")
+
     let b10 = true
     say("b10 = {b10}")
+
     let b11 = (("{(i8 % i8)}:" + s4).ends_with(s4) and b5)
     say("b11 = {b11}")
+
     let l12 = l9.sorted(fn(a, b): a.compare(b))
     say("l12 = {l12} len {l12.length()}")
+
     let i13 = (-((i8 % (-559552)) * s4.length()))
     say("i13 = {i13}")
     return 0

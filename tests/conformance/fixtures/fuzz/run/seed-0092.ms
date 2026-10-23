@@ -11,14 +11,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("{(-709125)}:" + "x").replace("héllo", "  padded  ")
     say("s1 = [{s1}]")
+
     let l2 = [6, 0]
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = (8.0e4 * 142.25)
     say("f3 = {f3}")
+
     let f4 = ((f3 * (f3 * 979.285)) - (f3 - (f3 * f3)))
     say("f4 = {f4}")
+
     let l5 = l2.filter(fn(x): x > 5)
     say("l5 = {l5} len {l5.length()}")
+
     let f6 = 264.284
     say("f6 = {f6}")
     return 0

@@ -13,22 +13,27 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -36,38 +41,53 @@ export fn main() Int:
         say("line\nbreak".upper())
     else:
         say("a")
+
     var acc1 = 0
     for i in range(0, 2):
         acc1 += i * 9
     say("acc1 = {acc1}")
+
     let s2 = ("{138580478251}:" + "gamma")
     say("s2 = [{s2}]")
+
     let s3 = ((s2 + "  padded  ").upper() + (("quote\"d" + s2) + (s2 + "Tab\there")))
     say("s3 = [{s3}]")
+
     let i4 = (789846354915 % 15)
     say("i4 = {i4}")
+
     let s5 = (s2.trim() + s2)
     say("s5 = [{s5}]")
+
     let l6 = [4, 22, 17, (-29), 28]
     say("l6 = {l6} len {l6.length()}")
     say("fib(31) = {fib(31)}")
     say("collatz(2205) = {collatz(2205)}")
+
     let i7 = i4
     say("i7 = {i7}")
+
     let i8 = (24 + (i7 - i7))
     say("i8 = {i8}")
+
     let s9 = ("{(i8 - (-27))}:" + s3)
     say("s9 = [{s9}]")
+
     let s10 = ("{i8}:" + s5).reverse().lower()
     say("s10 = [{s10}]")
+
     let s11 = ("{((-5) / i8)}:" + ("ms" + "").lower())
     say("s11 = [{s11}]")
+
     let b12 = true
     say("b12 = {b12}")
+
     let i13 = ((-2) + l6.get(4))
     say("i13 = {i13}")
+
     let i14 = (((i4 + i4) - (i4 - i8)) * l6.get(0))
     say("i14 = {i14}")
+
     let s15 = "gamma"
     say("s15 = [{s15}]")
     return 0

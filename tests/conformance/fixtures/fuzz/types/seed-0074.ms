@@ -12,28 +12,39 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     say("fib(28) = {fib(28)}")
     say("gcd(3181, 3274) = {gcd(3181, 3274)}")
+
     let i1 = (-0)
     say("i1 = {i1}")
-    say("{(i1 + (216835 / (-50)))} {i1} {((i1 + (216835 / (-50))) < i1)} sum {(i1 + (216835 / (-50))) + i1}")
+    say(
+        "{(i1 + (216835 / (-50)))} {i1} {((i1 + (216835 / (-50))) < i1)} sum {(i1 + (216835 / (-50))) + i1}"
+    )
+
     let bad = 1.5 + 2
-    say("{((i1 % 6) - i1)} {(((-29) / 528576467809) * 16)} {(((i1 % 6) - i1) < (((-29) / 528576467809) * 16))} sum {((i1 % 6) - i1) + (((-29) / 528576467809) * 16)}")
+    say(
+        "{((i1 % 6) - i1)} {(((-29) / 528576467809) * 16)} {(((i1 % 6) - i1) < (((-29) / 528576467809) * 16))} sum {((i1 % 6) - i1) + (((-29) / 528576467809) * 16)}"
+    )
+
     let l2 = [(-26), (-23), (-12), 10, 26]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = ("back\\slash" + ("back\\slash" + "")).ends_with("back\\slash")
     say("b3 = {b3}")
     return 0

@@ -12,8 +12,10 @@ export fn main() Int:
     let bad = Map[Int, Int]().get(1, 2, 3)
     let i2 = 39
     say("i2 = {i2}")
+
     let s3 = "a"
     say("s3 = [{s3}]")
+
     let s4 = ("{i2}:" + (s3 + "beta")).trim()
     say("s4 = [{s4}]")
     return 0

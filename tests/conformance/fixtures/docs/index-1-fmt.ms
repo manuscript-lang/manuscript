@@ -9,4 +9,5 @@ export fn main() Int:
     let message = "Hello, {name}!\n"
     if stdout().write(message).is_error():
         return 1
+
     return 0

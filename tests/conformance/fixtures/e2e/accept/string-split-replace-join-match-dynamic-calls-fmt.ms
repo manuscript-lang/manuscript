@@ -13,9 +13,7 @@ test "omitted and supplied caps":
     try expect_true(
         (
             "a-b-c".replace(
-                old: "-",
-                new: "+",
-                max_replacements: some(2)
+                old: "-", new: "+", max_replacements: some(2)
             ) == "a+b+c"
         )
     )
@@ -23,8 +21,10 @@ test "omitted and supplied caps":
     try expect_true(("ab".replace(old: "", new: "_") == "_ab"))
     try expect_true(("".replace(old: "x", new: "y") == ""))
     try expect_true((["a", "b", "c"].join(separator: "-") == "a-b-c"))
+
     let none_left: List[String] = []
     try expect_true((none_left.join(separator: "-") == ""))
+
     var parts = ["x"]
     parts.append(value: "y")
     try expect_true((parts.join(separator: "") == "xy"))

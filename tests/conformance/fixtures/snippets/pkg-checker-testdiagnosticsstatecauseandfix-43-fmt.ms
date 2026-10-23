@@ -4,6 +4,7 @@
 type S:
     case A
     case B
+
 fn f(s: S) Int:
     match s:
         A:

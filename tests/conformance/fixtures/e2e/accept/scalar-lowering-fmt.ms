@@ -30,6 +30,7 @@ test "primitive equality captures operands once in order":
     var counter = Counter()
     try expect_not_equal(mark(var counter, 1), mark(var counter, 2))
     try expect_equal(counter.value, 12)
+
     var original = 1
     let captured = original == match some(1):
         some(value):
@@ -37,6 +38,7 @@ test "primitive equality captures operands once in order":
             value
         none: 0
     try expect_false(not captured or original != 2)
+
     let skipped = false and mark(var counter, 3) == 3
     let skipped_again = true or mark(var counter, 4) == 4
     try expect_false((skipped or not skipped_again or counter.value != 12))
@@ -97,6 +99,7 @@ fn nested_results(counter: Counter) Result[Int, TextError]:
             return ok(value)
 
         return ok(false)
+
     let _ignored = child()
     let value = try failed()
     return ok(value)
@@ -171,13 +174,12 @@ test "cleanup remains owned by its source callable":
         )
     )
     try expect_equal(
-        bare_propagate(),
-        Result[Int, TextError].error(TextError("expected"))
+        bare_propagate(), Result[Int, TextError].error(TextError("expected"))
     )
     try expect_equal(
-        equality_propagate(),
-        Result[Bool, TextError].error(TextError("expected"))
+        equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
     )
+
     var index = 0
 
     while index < 3:

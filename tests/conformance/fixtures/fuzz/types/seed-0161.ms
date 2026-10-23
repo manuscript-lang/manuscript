@@ -11,17 +11,21 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
@@ -29,17 +33,23 @@ export fn main() Int:
         say("x".replace("  padded  ", "Tab\there"))
     else:
         say("日本語")
+
     if (("emoji 😀" != "") and (false and true)):
         say(("{(-(-46))}:" + "quote\"d"))
     else:
         say("Tab\there".trim())
+
     say("collatz(1545) = {collatz(1545)}")
     say("fact(10) = {fact(10)}")
+
     let s1 = ("{(3 - (-41492))}:" + "brace\{s\}").replace("ms", "alpha").reverse()
     say("s1 = [{s1}]")
+
     let s2 = s1
     say("s2 = [{s2}]")
+
     let i3 = (-(-(848399 * 0)))
     say("i3 = {i3}")
+
     let bad = "abc".no_such_method()
     return 0

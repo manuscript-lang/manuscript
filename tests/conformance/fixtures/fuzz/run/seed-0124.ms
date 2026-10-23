@@ -12,47 +12,66 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let b1 = (((34 % (-5)) + (-558650)) <= (-301215850155))
     say("b1 = {b1}")
+
     let b2 = ("{46}:" + "héllo".replace("line\nbreak", "Tab\there")).ends_with("ms")
     say("b2 = {b2}")
+
     let i3 = ((((-28) / (-474868634950)) - 497097) * 624828)
     say("i3 = {i3}")
+
     let f4 = (((374.959 + 1.0e18) + (811.480 + 532.905)) - (829.006 / 759.25))
     say("f4 = {f4}")
+
     let s5 = (("line\nbreak".reverse() + "x") + ("{134093}:" + "brace\{s\}"))
     say("s5 = [{s5}]")
+
     let i6 = (i3 % ((764079 / i3) - (i3 + i3)))
     say("i6 = {i6}")
+
     if ((i6 != 1) or (s5 == "alpha")):
         say(s5)
     else:
         say((s5 + "Tab\there"))
-    say("{((864236 - 49) % (17 * 37))} {i6} {(((864236 - 49) % (17 * 37)) < i6)} sum {((864236 - 49) % (17 * 37)) + i6}")
+
+    say(
+        "{((864236 - 49) % (17 * 37))} {i6} {(((864236 - 49) % (17 * 37)) < i6)} sum {((864236 - 49) % (17 * 37)) + i6}"
+    )
+
     let i7 = (-((-30) - (i6 / 503568)))
     say("i7 = {i7}")
+
     var acc8 = 0
     for i in range(0, 7):
         acc8 += i * 5
     say("acc8 = {acc8}")
+
     let b9 = "ms".ends_with("a")
     say("b9 = {b9}")
+
     let i10 = ((((-49) + i6) - (i7 - i6)) * (i3 / (-i6)))
     say("i10 = {i10}")
+
     let l11 = [(-15), (-29)]
     say("l11 = {l11} len {l11.length()}")
     say("gcd(2475, 4530) = {gcd(2475, 4530)}")
+
     let f12 = (((554.25 - f4) * (f4 / 733.926)) * ((f4 - 5.5) * (201.25 - f4)))
     say("f12 = {f12}")
+
     var acc13 = 0
     for i in range(0, 1):
         acc13 += i * (-5)
     say("acc13 = {acc13}")
+
     let s14 = (s5.upper() + ("ms" + s5)).lower()
     say("s14 = [{s14}]")
+
     let l15 = l11.concat(l11)
     say("l15 = {l15} len {l15.length()}")
     return 0

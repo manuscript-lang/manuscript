@@ -48,6 +48,7 @@ test "range is half open and spans chunks":
     var map = SortedMap[Int, Int]()
     for key in range(0, 3000):
         map.add(key * 2, key)
+
     let hits = map.range(1000, 1010)
     try expect_equal(hits.length(), 5)
     try expect_equal(hits.get(0).key, 1000)
@@ -63,6 +64,7 @@ test "many random operations agree with Map":
 
     for step in range(0, 20000):
         seed = (seed * 1103515245 + 12345) % 2147483648
+
         let key = seed % 2000
 
         if seed % 4 == 0:
@@ -73,6 +75,7 @@ test "many random operations agree with Map":
             plain.add(key, step)
 
     try expect_equal(sorted.length(), plain.length())
+
     var previous = -1
 
     for entry in sorted.entries():
@@ -82,6 +85,7 @@ test "many random operations agree with Map":
 
     for key in range(0, 2000):
         try expect_equal(sorted.contains(key), plain.contains(key))
+
         var expected: Optional[Int] = none
         for candidate in sorted.keys():
             if candidate <= key:
@@ -95,6 +99,7 @@ test "many random operations agree with Map":
 test "copies are independent":
     var a = SortedMap[Int, Int]()
     a.add(1, 1)
+
     var b = a.clone()
     b.add(2, 2)
     try expect_equal(a.keys(), [1])

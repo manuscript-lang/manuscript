@@ -11,55 +11,77 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = (((208871 + (-687414)) + (828064 * 27)) - (-39))
     say("i1 = {i1}")
     say("gcd(636, 1285) = {gcd(636, 1285)}")
+
     let f2 = 662.533
     say("f2 = {f2}")
+
     let f3 = f2
     say("f3 = {f3}")
+
     let l4 = [(-22), 22, (-6), (-29), 26]
     say("l4 = {l4} len {l4.length()}")
     say("fact(3) = {fact(3)}")
-    let b5 = (("beta".ends_with("Tab\there") and "back\\slash".ends_with("  padded  ")) and (("ms" == "gamma") or false))
+
+    let b5 = (
+        (
+            "beta".ends_with("Tab\there")
+            and "back\\slash".ends_with("  padded  ")
+        )
+        and (("ms" == "gamma") or false)
+    )
     say("b5 = {b5}")
+
     if (not (true and b5)):
         say(("{(i1 + i1)}:" + "emoji 😀"))
     else:
         say("quote\"d")
+
     let f6 = (666.414 / ((85.993 * f2) + 832.032))
     say("f6 = {f6}")
+
     let i7 = (35 * i1)
     say("i7 = {i7}")
+
     let f8 = (f2 + 970.081)
     say("f8 = {f8}")
     say("collatz(1127) = {collatz(1127)}")
     say("gcd(3895, 1044) = {gcd(3895, 1044)}")
+
     if (not (i1 <= i7)):
         say("  padded  ")
     else:
         say("MiXeD CaSe".replace("héllo", "alpha"))
+
     let i9 = i1
     say("i9 = {i9}")
+
     let s10 = "naïve"
     say("s10 = [{s10}]")
     return 0

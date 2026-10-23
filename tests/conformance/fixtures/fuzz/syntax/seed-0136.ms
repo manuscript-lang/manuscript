@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 0:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + (-4)
+
     say("acc1 = {acc1}")
+
     let f2 = 147.25
     say("f2 = {f2}")
     return 0

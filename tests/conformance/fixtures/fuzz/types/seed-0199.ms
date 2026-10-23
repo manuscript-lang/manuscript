@@ -11,14 +11,18 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((871.366 - 324.597) / 368.263) * 687.542)
     say("f1 = {f1}")
+
     let i2 = ((((-20) / (-12)) * (-(-331850108300))) + (-9))
     say("i2 = {i2}")
+
     let f3 = f1
     say("f3 = {f3}")
     if 1:
         say("truthy")
+
     let b4 = true
     say("b4 = {b4}")
+
     let i5 = (13 + (-49))
     say("i5 = {i5}")
     return 0

@@ -11,9 +11,11 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-4), (-6)]
     say("l1 = {l1} len {l1.length()}")
+
     if ((-158249) > (900242 * 10)):
         say(("quote\"d" + "42"))
     else:
         say("line\nbreak".reverse())
+
     let bad = not 5
     return 0

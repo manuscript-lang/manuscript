@@ -11,47 +11,67 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let b1 = false
     say("b1 = {b1}")
+
     let f2 = 878.264
     say("f2 = {f2}")
+
     let s3 = "quote\"d"
     say("s3 = [{s3}]")
+
     let b4 = ((312.427 * (105.854 - f2)) < f2)
     say("b4 = {b4}")
+
     let s5 = ("日本語".trim() + "x").replace(s3, "")
     say("s5 = [{s5}]")
+
     let i6 = ((-50) + ((-33) * 27))
     say("i6 = {i6}")
+
     if (6 > (i6 * i6)):
         say("42")
     else:
         say("back\\slash")
+
     let s7 = "beta"
     say("s7 = [{s7}]")
+
     let f8 = 441.462
     say("f8 = {f8}")
+
     let i9 = i6
     say("i9 = {i9}")
     say("gcd(4287, 140) = {gcd(4287, 140)}")
+
     let s10 = "gamma"
     say("s10 = [{s10}]")
+
     var acc11 = 0
     var stepacc11 = 0
+
     while stepacc11 < 3:
         stepacc11 += 1
         acc11 += stepacc11 * stepacc11 + 6
+
     say("acc11 = {acc11}")
+
     let s12 = (s3 + "naïve")
     say("s12 = [{s12}]")
+
     let i13 = (i6 + (s12.length() - ((-22) * i9)))
     say("i13 = {i13}")
+
     let f14 = 746.927
     say("f14 = {f14}")
+
     let b15 = (((-i6) + (i13 - i13)) >= (i6 - 940638))
     say("b15 = {b15}")
-    say("{i6} {((i9 + i13) + i6)} {(i6 < ((i9 + i13) + i6))} sum {i6 + ((i9 + i13) + i6)}")
+    say(
+        "{i6} {((i9 + i13) + i6)} {(i6 < ((i9 + i13) + i6))} sum {i6 + ((i9 + i13) + i6)}"
+    )
     return 0
