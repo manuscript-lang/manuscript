@@ -379,8 +379,10 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     unsafe {
         walk_fault_frames(fp, t, |ret| {
             let Some(func) = find_func(t, ret) else {
+                std::eprintln!("DBG ret={ret:#x} no func (funcs={} ", t.func_count);
                 return true;
             };
+            std::eprintln!("DBG ret={ret:#x} func addr={:#x} size={:#x} line={} lines={} first_pc={:#x}", func.addr, func.size, func.line, t.line_count, if t.line_count > 0 { unsafe { (*t.lines).pc } } else { 0 });
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
