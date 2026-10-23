@@ -206,6 +206,7 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     let mut facts = vec![Origin::Unknown; f.values.len()];
     let mut users = vec![Vec::new(); f.values.len()];
     let mut work = Vec::new();
+    let mut reads: HashMap<(Value, Value), Value> = HashMap::new();
     let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
     for p in &f.blocks[0].params {
         if is_list(p.value) {
@@ -224,7 +225,15 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
             ) {
                 users[i.args[0].index()].push(r);
             } else {
-                facts[r.index()] = Origin::One(r);
+                // Reading the same element of the same (immutable) list twice yields lists of
+                // one length.
+                let origin = match i.op {
+                    Op::ListGet | Op::ListGetNn | Op::ListGetU => {
+                        *reads.entry((i.args[0], i.args[1])).or_insert(r)
+                    }
+                    _ => r,
+                };
+                facts[r.index()] = Origin::One(origin);
                 work.push(r);
             }
         }
