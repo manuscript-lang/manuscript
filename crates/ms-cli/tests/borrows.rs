@@ -109,6 +109,17 @@ fn explicit_optional_defaults_preserve_owned_payloads() {
 }
 
 #[test]
+fn standard_library_source_copies_what_it_reads() {
+    let (status, text) = run_ms(&["run", &fixture("stdlib_source_copies.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(
+        text,
+        "a-longer-string-number-6;a-longer-string-number-1;a-longer-string-number-5;\
+         a-longer-string-number-2;a-longer-string-number-4;a-longer-string-number-3;\n"
+    );
+}
+
+#[test]
 fn borrow_identities_are_unique_across_the_standard_library() {
     let (status, text) = run_ms(&["run", &fixture("stdlib_binding_ids.ms")]);
     assert_eq!(status, Some(0), "{text}");

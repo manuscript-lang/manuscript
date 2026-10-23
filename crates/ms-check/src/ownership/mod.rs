@@ -172,7 +172,7 @@ impl Ownership {
 }
 
 /// Modules the user wrote: not the embedded standard library.
-pub(crate) fn is_user_module(file: Name) -> bool {
+pub fn is_user_module(file: Name) -> bool {
     !file.as_str().starts_with("@std/")
 }
 

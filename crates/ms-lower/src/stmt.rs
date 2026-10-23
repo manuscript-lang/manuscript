@@ -233,6 +233,7 @@ impl<'a> FnLower<'a> {
             && let Some(b) = self.hir.pattern_binding(pattern)
             && !b.mutable
             && !x.own
+            && self.ownership_checked()
             && !self.slotted.contains(&b.uid)
             && self.needs_drop(self.ty_of(x.v))
             && (matches!(
