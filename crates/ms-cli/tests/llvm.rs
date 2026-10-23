@@ -50,6 +50,32 @@ fn llvm_release_matches_cranelift_fault_frames() {
     );
 }
 
+#[test]
+fn llvm_native_calls_keep_distinct_fault_sites() {
+    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
+        return;
+    }
+    let source = format!(
+        "{}/../../tests/conformance/fixtures/snippets/tests-e2e-testreplacenretainsnegativefaultsandframes-1.ms",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let run = |backend| {
+        let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .env("MS_BACKEND", backend)
+            .args(["test", &source])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stderr.is_empty(), "{:?}", output.stderr);
+        String::from_utf8(output.stdout).unwrap()
+    };
+    let cranelift = run("cranelift");
+    let llvm = run("llvm");
+    assert_eq!(llvm, cranelift);
+    assert!(llvm.contains(".ms:8 in test required negative"), "{llvm}");
+    assert!(llvm.contains(".ms:15 in test empty negative"), "{llvm}");
+}
+
 /// Drop glue of nested collections stays out of line, so optimizing a deeply nested literal takes
 /// time linear in its depth instead of nesting one loop per level.
 #[test]
