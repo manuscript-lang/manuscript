@@ -372,6 +372,11 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     let t = unsafe { &*t };
     let mut shown = 0;
     let mut truncated = false;
+    for i in 0..t.func_count.min(8) {
+        let e = unsafe { &*t.funcs.add(i) };
+        std::eprintln!("DBG func[{i}] addr={:#x} size={:#x} line={}", e.addr, e.size, e.line);
+    }
+    std::eprintln!("DBG here={:#x}", describe_frames as usize);
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
