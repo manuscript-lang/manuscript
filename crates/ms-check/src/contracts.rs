@@ -161,7 +161,7 @@ impl Checker {
                 }
             }
         }
-        let mut receiver = self.resolve(Some(&imp.receiver), false);
+        let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
         let foreign_native = nominal
             .as_ref()
@@ -214,7 +214,7 @@ impl Checker {
             let rewritten: Vec<Ty> = v.bounds().iter().map(|b| sub(b, &specialized)).collect();
             *v.bounds.borrow_mut() = rewritten;
         }
-        let mut contract = self.resolve(imp.contract.as_ref(), false);
+        let mut contract = self.resolve(imp.contract.as_ref());
         if contract.kind != Kind::Contract && contract.id != "<invalid>" {
             self.type_error(
                 d.pos(),
@@ -239,8 +239,8 @@ impl Checker {
             }
         }
         // Resolution copies variable types, so refresh applications after adding bounds.
-        receiver = self.resolve(Some(&imp.receiver), false);
-        contract = self.resolve(imp.contract.as_ref(), false);
+        receiver = self.resolve(Some(&imp.receiver));
+        contract = self.resolve(imp.contract.as_ref());
         let overlapping = self.p.methods.iter().any(|m| {
             if !self.method_visible(m) {
                 return false;
