@@ -1,6 +1,8 @@
 #!/bin/sh
 # Every fixture under tests/e2e/testdata against the Rust ms on this host (`make e2e`, usable without make).
-# accept/ fixtures pass `ms test`; reject/ fixtures fail `ms check`.
+# accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
+# conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that exists.
+# project_check is a project whose check must fail.
 # Known failures are listed in tests/e2e/expect-fail.txt. E2E_BUILD_TYPE picks the build type (default Release,
 # which the deep-nesting fixtures need to finish quickly). Extra arguments are fixture paths to run instead.
 set -eu
@@ -20,8 +22,23 @@ cargo build --locked -q -p ms-cli
 if [ "$#" -gt 0 ]; then
     fixtures=$*
 else
-    fixtures=$(ls tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms)
+    fixtures=$(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/*)
 fi
+
+# A project directory passes when its tests pass, or its main.ms checks and prints expected-output.txt.
+project_passes() {
+    dir=$1
+    if [ -f "$dir/conformance_test.ms" ]; then
+        (cd "$dir" && "$ms" test conformance_test.ms --build-type "$build_type") >"$err" 2>&1
+    elif [ -f "$dir/ms.toml" ]; then
+        "$ms" check "$dir/ms.toml" >"$err" 2>&1
+    else
+        "$ms" check "$dir/main.ms" >"$err" 2>&1 || return 1
+        [ -f "$dir/expected-output.txt" ] || return 0
+        (cd "$dir" && "$ms" run main.ms --build-type "$build_type") >"$err.out" 2>&1 || return 1
+        cmp -s "$err.out" "$dir/expected-output.txt"
+    fi
+}
 
 err=$(mktemp)
 failed=0
@@ -29,6 +46,25 @@ count=0
 for fixture in $fixtures; do
     count=$((count + 1))
     case "$fixture" in
+        */projects/project_check)
+            if project_passes "$fixture"; then
+                echo "FAIL $fixture: a reject project checked clean" >&2
+                failed=$((failed + 1))
+            fi
+            ;;
+        */projects/*)
+            listed=$(grep -v '^#' "$expected" | cut -f1 | grep -Fx "$fixture" || true)
+            if project_passes "$fixture"; then
+                if [ -n "$listed" ]; then
+                    echo "FAIL $fixture: listed as failing but passes" >&2
+                    failed=$((failed + 1))
+                fi
+            elif [ -z "$listed" ]; then
+                echo "FAIL $fixture" >&2
+                grep -v '^RUN\|^PASS' "$err" | head -8 >&2
+                failed=$((failed + 1))
+            fi
+            ;;
         */reject/*)
             if "$ms" check "$fixture" >/dev/null 2>&1; then
                 echo "FAIL $fixture: a reject fixture checked clean" >&2
@@ -62,6 +98,6 @@ for fixture in $fixtures; do
             ;;
     esac
 done
-rm -f "$err"
+rm -f "$err" "$err.out"
 echo "e2e: $count fixtures, $failed failed ($build_type)"
 [ "$failed" -eq 0 ]

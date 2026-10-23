@@ -28,10 +28,10 @@ fn select(var output: WriteStream) fn(first: Int, second: Int) Int:
     output.write(data: "callable\n")
     return combine
 
-fn early(output: WriteStream) Int:
-    with outer = Resource(label: "outer", output: output.clone()):
-        with inner = Resource(label: "inner", output: output.clone()):
-            return report(output: output, label: "return value", value: 5)
+fn early(var output: WriteStream) Int:
+    with outer = Resource(label: "outer", output: stdout()):
+        with inner = Resource(label: "inner", output: stdout()):
+            return report(output: var output, label: "return value", value: 5)
 
 fn failure() Result[Int, TextError]:
     return error(TextError("expected"))
@@ -46,15 +46,22 @@ fn iterable(var output: WriteStream) List[Int]:
     return [1, 2]
 
 fn exercise() Result[Int, Error]:
-    let total = select(output: stdout())(
-        second: report(output: stdout(), label: "second", value: 2),
-        first: report(output: stdout(), label: "first", value: 1)
+    var chosen = stdout()
+    var second_out = stdout()
+    var first_out = stdout()
+    let total = select(output: var chosen)(
+        second: report(output: var second_out, label: "second", value: 2),
+        first: report(output: var first_out, label: "first", value: 1)
     )
     total | try expect_equal(3)
 
+    var pair_second_out = stdout()
+    var pair_first_out = stdout()
     let pair = Pair(
-        second: report(output: stdout(), label: "pair second", value: 2),
-        first: report(output: stdout(), label: "pair first", value: 1)
+        second: report(
+            output: var pair_second_out, label: "pair second", value: 2
+        ),
+        first: report(output: var pair_first_out, label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
     with resource = Resource(label: "normal", output: stdout()):
@@ -68,7 +75,9 @@ fn exercise() Result[Int, Error]:
             count = count + 1
             continue
 
-    for value in iterable(output: stdout()):
+    var iterable_out = stdout()
+
+    for value in iterable(output: var iterable_out):
         with resource = Resource(label: "break", output: stdout()):
             break
 
@@ -78,7 +87,9 @@ fn exercise() Result[Int, Error]:
         error(_):
             let completed = unit
 
-    early(output: stdout()) | try expect_equal(5)
+    var early_out = stdout()
+
+    early(output: var early_out) | try expect_equal(5)
     stdout().write(data: "finished\n")
     return ok(0)
 
