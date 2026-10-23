@@ -20,14 +20,12 @@ fn add(var values: List[Int]) Unit:
 
 fn next(var count: Int) Int:
     let result = count
-
     count += 1
     return result
 
 fn branch(var box: Box, take: Bool) Unit:
     if take:
         var count = box.count
-
         invoke(fn(): count += 3)
 
     box.count += 1
@@ -40,25 +38,21 @@ export fn main() Int:
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
     let append = fn(): first.append(9)
-
     append()
     append()
     stdout().write("{calls} {rows}\n")
 
     var box = Box(count: 1, items: [[3], [4]])
-
     branch(var box, false)
     branch(var box, true)
     stdout().write("{box.count}\n")
 
     var items = box.items
     var inner = items[1]
-
     invoke(fn(): invoke(fn(): inner.append(8)))
     stdout().write("{box.items}\n")
 
     var entries = Map[String, List[Int]]()
-
     entries.add("dynamic-1", [5])
     if var value = entries.get("dynamic-{calls}"):
         invoke(fn(): value.append(value.length()))
@@ -73,6 +67,7 @@ export fn main() Int:
             left.append(3)
             right.append(4)
     )
+
     stdout().write("{pair}\n")
 
     var local_rows = [[10]]
@@ -80,24 +75,21 @@ export fn main() Int:
     invoke(
         fn():
             var local = local_rows[0]
-
             invoke(fn(): local.append(11))
     )
+
     stdout().write("{local_rows}\n")
 
     var via_getter = contents(box)
-
     invoke(fn(): via_getter.append([6]))
     stdout().write("{box.items}\n")
 
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
-
     invoke(fn(): stored.bump())
     stdout().write("{boxes}\n")
 
     var target = rows[1]
-
     invoke(fn(): add(var target))
     stdout().write("{rows}\n")
     return 0
