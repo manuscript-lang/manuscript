@@ -1,0 +1,6 @@
+# Fixture tests that pass on Linux and macOS and fail on Windows; scripts/e2e.sh adds this file on Windows hosts.
+# Format as expect-fail.txt. Each test must still fail here, so a Windows fix shows up as an unexpected pass.
+# fs.glob returns backslash-separated paths on Windows; the fixture expects "/".
+tests/e2e/testdata/stdlib/fs.ms	^glob queries reuse patterns
+# Redirected streams report Unsupported instead of NotTerminal (terminal port not done on Windows).
+tests/e2e/testdata/stdlib/terminal.ms	^redirected streams report no terminal
