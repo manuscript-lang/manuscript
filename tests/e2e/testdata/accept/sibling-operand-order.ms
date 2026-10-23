@@ -14,7 +14,9 @@ test "list elements read before a later match assigns them":
         ,
         x
     ]
+
     try expect_equal(items, [1, 5, 50])
+
     let texts = [
         y,
         match some("b"):
@@ -23,6 +25,7 @@ test "list elements read before a later match assigns them":
                 value
             none: ""
     ]
+
     try expect_equal(texts, ["a", "b"])
 
 test "map keys read before a later match assigns them":
@@ -36,6 +39,7 @@ test "map keys read before a later match assigns them":
         ,
         key: key
     }
+
     try expect_equal(entries.length(), 2)
     try expect_equal(entries.get(key: 1), some(5))
 
@@ -46,6 +50,7 @@ test "generic binary operands read before a later match assigns them":
             amount = 100d
             value
         none: 0d
+
     try expect_equal(sum, 4d)
 
 type Cell:

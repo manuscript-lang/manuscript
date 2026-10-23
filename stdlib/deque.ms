@@ -23,9 +23,12 @@ impl Deque[T]:
     # Doubles the ring buffer, unwrapping values so the front lands at index 0.
     var fn grow() Unit:
         var next = self.slots.length() * 2
+
         if next == 0:
             next = 4
+
         var fresh: List[Optional[T]] = []
+
         for index in range(0, self.size):
             fresh.append(self.slots.get(self.slot_of(index)))
         for index in range(self.size, next):
@@ -65,6 +68,7 @@ impl Deque[T]:
             return none
 
         let value = self.slots.get(self.start)
+
         self.slots.set(self.start, none)
         self.start += 1
         if self.start == self.slots.length():
@@ -79,6 +83,7 @@ impl Deque[T]:
 
         let index = self.slot_of(self.size - 1)
         let value = self.slots.get(index)
+
         self.slots.set(index, none)
         self.size -= 1
         return value
@@ -114,6 +119,7 @@ impl Deque[T]:
     # Returns a new list of the values from front to back.
     fn to_list() List[T]:
         var out: List[T] = []
+
         for index in range(0, self.size):
             if let value = self.slots.get(self.slot_of(index)):
                 out.append(value)

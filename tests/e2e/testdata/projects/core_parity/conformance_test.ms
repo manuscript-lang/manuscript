@@ -14,13 +14,13 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()
     let by_label = second_mapped()
     (by_id.length() != 1 or by_label.length() != 2) | try expect_false
-    by_id.values().get(0).label | try expect_equal(expected: "1")
+    by_id.values().get(0).label | try expect_equal("1")
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
-  .clone()  mapped.length() | try expect_equal(expected: 1)
+  .clone()  mapped.length() | try expect_equal(1)
     let input = Set[Int]([1, 2])
-    first_generic_map(input).length() | try expect_equal(expected: 1)
-    first_lookup() | try expect_equal(expected: "found")
+    first_generic_map(input).length() | try expect_equal(1)
+    first_lookup() | try expect_equal("found")
 
 test "Result composition retains concrete Error and its local implementation":
     var cause = Cause(1)

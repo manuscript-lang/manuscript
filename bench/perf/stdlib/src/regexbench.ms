@@ -4,6 +4,7 @@ import {compile, Regex} from "@std/string.ms"
 
 fn run(re: Regex) Unit:
     let text = words(2000).join(" ")
+
     bench(
         "regex.find_all",
         2000,
@@ -18,6 +19,7 @@ fn run(re: Regex) Unit:
         10000,
         fn() Int:
             var n = 0
+
             for i in range(0, 10000):
                 if re.matches("xx word123 yy"): n += 1
             return n

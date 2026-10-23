@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type A:\n    case X(n: Int)\n\ntype B:\n    case X(n: Int)\n\nfn f() Int:\n    let a = X(n: 1)\n    return 1\n"
+    "fmt": "type A:\n    case X(n: Int)\n\ntype B:\n    case X(n: Int)\n\nfn f() Int:\n    let a = X(n: 1)\n\n    return 1\n"
   }
 }

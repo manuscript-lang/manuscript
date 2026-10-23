@@ -11,10 +11,12 @@ fn direct_omitted(data: Bytes) String: base64_encode(data)
 
 fn bound_explicit(data: Bytes) String:
     let encode = base64_encode
+
     return encode(data, false)
 
 fn bound_omitted(data: Bytes) String:
     let encode = base64_encode
+
     return encode(data)
 
 fn encode_bind() fn(data: Bytes, url_safe: Bool) String: base64_encode

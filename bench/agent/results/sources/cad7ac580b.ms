@@ -24,8 +24,10 @@ fn letter_base(value: Int) Int:
 fn valid_caesar_key(key: String) Bool:
     let values = key.scalar_values()
     var start = 0
+
     if key.starts_with("-"):
         start = 1
+
     let digits = values.length() - start
     if digits == 0 or digits > 7:
         return false
@@ -48,6 +50,7 @@ fn valid_vigenere_key(key: String) Bool:
 # Caesar shift for encryption, normalized to 0..25.
 fn caesar_shift(key: String) Int:
     let value = key.parse_int().get()
+
     return ((value % 26) + 26) % 26
 
 fn caesar(text: String, shift: Int) String:
@@ -56,6 +59,7 @@ fn caesar(text: String, shift: Int) String:
     for value in text.scalar_values():
         if is_ascii_letter(value):
             let base = letter_base(value)
+
             out.append(base + (value - base + shift) % 26)
         else:
             out.append(value)
@@ -71,9 +75,12 @@ fn vigenere(text: String, key: String, decrypt: Bool) String:
         if is_ascii_letter(value):
             let key_value = key_values.get(position % key_values.length())
             var shift = key_value - letter_base(key_value)
+
             if decrypt:
                 shift = 26 - shift
+
             let base = letter_base(value)
+
             out.append(base + (value - base + shift) % 26)
             position += 1
         else:
@@ -110,6 +117,7 @@ fn run_command(line: String) String:
             return "error: bad key"
 
         var shift = caesar_shift(key)
+
         if decrypt:
             shift = (26 - shift) % 26
         return caesar(text, shift)

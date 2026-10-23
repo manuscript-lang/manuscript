@@ -57,7 +57,7 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
         for value in values.clone():
             step(var seen, var visits, var values, value, mode, fill.clone())
 
-    visits.count | try expect_equal(expected: 3)
+    visits.count | try expect_equal(3)
     return ok(seen)
 
 fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
@@ -377,7 +377,7 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
     (seen == [1, 2, 3] and values == [9, 3] and clone == [1, 2, 3]) | try expect_true
     values.reverse_in_place()
     values.append(4)
-    values | try expect_equal(expected: [3, 9, 4])
+    values | try expect_equal([3, 9, 4])
     let separate = values.reversed()
     values.set(1, 5)
     (separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true

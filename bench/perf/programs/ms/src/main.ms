@@ -45,6 +45,7 @@ fn checked(n: Int) Result[Int, TextError]:
 
 fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
+
     return ok(v)
 
 fn area(s: Shape) Int:
@@ -70,6 +71,7 @@ fn bench_string() Int:
         i += 1
 
     let built = sb.freeze()
+
     report("string_append_50k", 50000, t)
     return built.byte_length()
 
@@ -97,6 +99,7 @@ fn bench_map() Int:
         i += 1
 
     var sum = 0
+
     i = 0
 
     while i < 8000:
@@ -181,7 +184,9 @@ fn bench_length() Int:
         i += 1
 
     let t = clock().now()
+
     i = 0
+
     var ln = 0
 
     while i < 100000000:
@@ -213,7 +218,9 @@ fn bench_for_list() Int:
 
 export fn main() Int:
     let built = bench_string()
+
     bench_read_line()
+
     let sum = bench_map()
     let hits = bench_int_eq()
     let g = bench_generic()
@@ -222,5 +229,6 @@ export fn main() Int:
     let ma = bench_match()
     let ln = bench_length()
     let fs = bench_for_list()
+
     say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
     return 0

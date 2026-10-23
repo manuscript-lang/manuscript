@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {TestHooks, expect_equal} from \"@std/testing.ms\"\n\ntype Counter:\n    count: Int\n\nfn make_fixture() Counter:\n    return Counter(0)\n\nimpl TestHooks for Counter:\n    fn before_each() Unit:\n        self.count = 0\n\ntest \"increments\":\n    fixture.count += 1\n    try expect_equal(fixture.count, 1)\n\ntest \"starts fresh\":\n    try expect_equal(fixture.count, 0)\n"
+    "fmt": "import {TestHooks, expect_equal} from \"@std/testing.ms\"\n\ntype Counter:\n    count: Int\n\nfn make_fixture() Counter:\n    return Counter(0)\n\nimpl TestHooks for Counter:\n    var fn before_each() Unit:\n        self.count = 0\n\ntest \"increments\":\n    fixture.count += 1\n    try expect_equal(fixture.count, 1)\n\ntest \"starts fresh\":\n    try expect_equal(fixture.count, 0)\n"
   }
 }

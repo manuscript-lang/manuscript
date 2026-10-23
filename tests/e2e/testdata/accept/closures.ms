@@ -11,21 +11,26 @@ fn countdown[T](value: T, count: Int) T:
 
 test "closures borrow the variable and shadowing":
     var offset = 1
+
     offset = 10
+
     let action = fn(value: Int):
         return value + offset
 
     if true:
         var offset = 20
+
         offset = 30
         try expect_equal(action(offset), 40)
 
     try expect_equal(action(3), 13)
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
+
     let factory = fn(value: Int) fn(value: Int) Int:
         return fn(value):
             return value + offset
     let nested = factory(value: 99)
+
     offset = 100
     try expect_equal(nested(1), 11)

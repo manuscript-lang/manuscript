@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn unknown(s: Shape) Int: return area(s)\n\nexport fn main() Int:\n    let shapes = [Shape.Circle(2)]\n    let good = area(shapes.get(0))\n    return unknown(Shape.Square(9223372036854775807))\n"
+    "fmt": "fn unknown(s: Shape) Int: return area(s)\n\nexport fn main() Int:\n    let shapes = [Shape.Circle(2)]\n    let good = area(shapes.get(0))\n\n    return unknown(Shape.Square(9223372036854775807))\n"
   }
 }

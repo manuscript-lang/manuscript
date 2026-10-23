@@ -22,6 +22,7 @@ impl ReadStream for Chunks:
                 none: return ok(none)
 
         let chunk = self.parts[self.next]
+
         self.next += 1
         return ok(some(chunk.to_bytes()))
 
@@ -38,7 +39,9 @@ test "request_stream uploads each chunk of a ReadStream":
                 ReadStream(value: upload)
             ):
                 try expect_equal(response.metadata().status, 200)
+
                 let body = try read_all(borrow_body(response))
+
                 try expect_equal(body, "alpha beta gamma".to_bytes())
 
 test "request_stream reports a failing ReadStream":
@@ -49,4 +52,5 @@ test "request_stream reports a failing ReadStream":
                 HttpMethod.Post, "http://{server.address()}/", headers(),
                 ReadStream(value: upload)
             )
+
             try expect_equal(sent.is_error(), true)

@@ -24,6 +24,7 @@ fn is_blank(line: String) Bool:
 
 fn lcs(a: List[Int], b: List[Int]) Int:
     var prev: List[Int] = []
+
     for j in range(0, b.length() + 1):
         prev.append(0)
 
@@ -42,6 +43,7 @@ fn lcs(a: List[Int], b: List[Int]) Int:
 
 fn edit(a: List[Int], b: List[Int]) Int:
     var prev: List[Int] = []
+
     for j in range(0, b.length() + 1):
         prev.append(j)
 
@@ -50,6 +52,7 @@ fn edit(a: List[Int], b: List[Int]) Int:
 
         for j in range(0, b.length()):
             var cost = 1
+
             if a[i] == b[j]:
                 cost = 0
             cur.append(min(min(prev[j + 1] + 1, cur[j] + 1), prev[j] + cost))
@@ -60,11 +63,14 @@ fn edit(a: List[Int], b: List[Int]) Int:
 
 fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
     var total = 0
+
     for w in weights:
         total += w
+
     # Capacity beyond the total weight never changes the answer.
     let limit = min(cap, total)
     var best: List[Int] = []
+
     for c in range(0, limit + 1):
         best.append(0)
 
@@ -75,6 +81,7 @@ fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
         # Walk capacities downward so each item is used at most once.
         for step in range(0, limit - w + 1):
             let c = limit - step
+
             best[c] = max(best[c], best[c - w] + v)
 
     return best[limit]
@@ -162,6 +169,7 @@ fn run(line: String) String:
 export fn main() Int:
     if let lines = read_lines(stdin()):
         var out: List[String] = []
+
         for line in lines:
             if not is_blank(line):
                 out.append(run(line))

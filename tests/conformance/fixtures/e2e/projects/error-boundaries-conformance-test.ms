@@ -13,7 +13,7 @@ test "Error boundaries retain selected local and generic implementations":
     (first.message() != "first 7" or second.message() != "second 7") | try expect_false
     let others: List[Error] = [first_generic(original), first_box(original)]
     for cause in others:
-        cause.message() | try expect_equal(expected: "first 7")
+        cause.message() | try expect_equal("first 7")
     original.code = 8
 
     for result in [first_result(original), first_propagated(original), relay(first)]:

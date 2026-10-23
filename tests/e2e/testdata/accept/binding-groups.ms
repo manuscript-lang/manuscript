@@ -17,6 +17,7 @@ test "a var group declares mutable locals":
         step = fn(value: Int) Int:
             return value + 1
     )
+
     total = step(total)
     try expect_equal(total, 1)
 
@@ -25,4 +26,5 @@ test "a let group declares immutable locals":
         name = "Ada"
         [first, second] = [1, 2]
     )
+
     try expect_false(not (name == "Ada" and first + second == 3))

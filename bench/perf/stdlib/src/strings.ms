@@ -4,11 +4,13 @@ import {StringBuilder} from "@std/string.ms"
 
 export fn bench_string() Unit:
     let text = words(2000).join(" ")
+
     bench(
         "string.append_builder",
         100000,
         fn() Int:
             var sb = StringBuilder()
+
             for i in range(0, 100000):
                 sb.append("x")
             return sb.freeze().byte_length()
@@ -18,6 +20,7 @@ export fn bench_string() Unit:
         20000,
         fn() Int:
             var s = ""
+
             for i in range(0, 20000):
                 s = s.concat("x")
             return s.length()
@@ -27,6 +30,7 @@ export fn bench_string() Unit:
         200,
         fn() Int:
             var n = 0
+
             for i in range(0, 200):
                 n += text.split(" ").length()
             return n
@@ -36,6 +40,7 @@ export fn bench_string() Unit:
         200,
         fn() Int:
             var n = 0
+
             for i in range(0, 200):
                 n = (n + text.replace_all("word", "w").get("").length())
             return n
@@ -45,6 +50,7 @@ export fn bench_string() Unit:
         2000,
         fn() Int:
             var n = 0
+
             for i in range(0, 2000):
                 if text.contains("word976 word0"): n += 1
             return n
@@ -54,6 +60,7 @@ export fn bench_string() Unit:
         200,
         fn() Int:
             var n = 0
+
             for i in range(0, 200):
                 n += text.upper().length()
             return n
@@ -63,6 +70,7 @@ export fn bench_string() Unit:
         100000,
         fn() Int:
             var n = 0
+
             for i in range(0, 100000):
                 n += "  padded  ".trim().length()
             return n
@@ -72,6 +80,7 @@ export fn bench_string() Unit:
         100000,
         fn() Int:
             var n = 0
+
             for i in range(0, 100000):
                 n += text.get(i % 5000, default: "").length()
             return n
@@ -81,6 +90,7 @@ export fn bench_string() Unit:
         20,
         fn() Int:
             var n = 0
+
             for i in range(0, 20):
                 n += text.chars().length()
             return n
@@ -90,6 +100,7 @@ export fn bench_string() Unit:
         100000,
         fn() Int:
             var n = 0
+
             for i in range(0, 100000):
                 n += "12345".parse_int().get(0)
             return n
@@ -99,6 +110,7 @@ export fn bench_string() Unit:
         100000,
         fn() Int:
             var n = 0
+
             for i in range(0, 100000):
                 n += "item {i} of {n}".length()
             return n

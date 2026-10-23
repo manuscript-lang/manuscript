@@ -18,6 +18,7 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         EntityCase("&#101;&#x301;", "e\u{301}"), EntityCase("&#13;&#10;", "\r\n"),
         EntityCase("&NewLine;", "\n"), EntityCase("a\u{0}b", "a\u{0}b")
     ]
+
     for entity in cases:
         if unescape(entity.encoded) != entity.decoded: return fail(
             "HTML reference: {entity.encoded}"
@@ -42,16 +43,20 @@ fn apply[T, U](text: T, operation: fn(text: T) U) U:
 test "HTML unescape stored and generic calls preserve labels":
     let convert = unescape
     let typed: fn(text: String) String = unescape
+
     try expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")
     try expect_equal(apply[String, String]("&amp;", unescape), "&")
 
 test "HTML escape and unescape retain immutable text":
     let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
+
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
+
     let original = "&lt;é&gt;"
     let alias = original.clone()
     let decoded = unescape(original)
+
     try expect_false((alias != "&lt;é&gt;" or original != alias or decoded != "<é>"))
 
 test "HTML unescape keeps a hexadecimal reference without digits literal":

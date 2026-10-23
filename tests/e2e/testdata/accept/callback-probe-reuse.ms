@@ -22,31 +22,39 @@ impl Error for Failure[T]:
 test "callback inference retains captures and contextual metadata":
     let offset = 7
     let values = [1, 2].map(
-        fn(outer): [3, 4].map(
-            fn(inner):
-                return outer + inner + offset
-        )
+        fn(outer): [3, 4].map(fn(inner): return outer + inner + offset)
     )
+
     try expect_equal(values, [[11, 12], [12, 13]])
+
     let callable: fn(value: Int) fn(input: Int) Int = apply(
         value: 1, transform: fn(base): fn(item): fn(extra): item + extra + base
     )
+
     try expect_equal(callable(value: 3)(input: 4), 8)
+
     let callback = Callback(fn(item: Int = 4): item + offset)
+
     try expect_equal(callback.transform(3), 10)
     try expect_equal(optional(value: 5, transform: fn(item): item + offset), 12)
+
     let missing = choose(first: fn(): none, second: fn(): some(3))
+
     try expect_false(not missing.is_none())
+
     let failure = with_result(
         fn():
             if true: return error(TextError("expected"))
 
             return ok(4)
     )
+
     try expect_equal(failure, Result[Int, TextError].error(TextError("expected")))
+
     let failed: Result[Int, Error] = apply(
         value: 9, transform: fn(item): error(Failure(item))
     )
+
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().message(), "9")
 
@@ -61,13 +69,16 @@ test "later returns repair incomplete and convertible evidence":
 
             return some(1)
     )
+
     try expect_false(not value.is_none())
+
     let cause = from_callback(
         fn():
             if false: return Error(Failure(1))
 
             return Failure(2)
     )
+
     try expect_equal(cause.message(), "2")
 
 fn operation() Result[Int, TextError]: ok(4)
@@ -76,6 +87,8 @@ test "try rechecks the inferred enclosing result":
     let value = from_callback(
         fn():
             let number = try operation()
+
             return Result[Int, TextError].ok(number)
     )
+
     try expect_equal(value, Result[Int, TextError].ok(4))

@@ -8,4 +8,5 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
 
 test "function label compatibility":
     let transform: fn(value: Int) Int = increase
+
     try expect_equal(apply(4, transform), 5)

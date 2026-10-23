@@ -47,6 +47,7 @@ fn suffix(fee: Int) String:
 impl Ledger:
     var fn blame(id: String) Unit:
         let acct = self.accounts.get(id).get()
+
         (
             self.accounts.add(
                 id,
@@ -80,6 +81,7 @@ impl Ledger:
             if self.accounts.contains(id) == false: return "error: unknown account {id}"
 
             let acct = self.accounts.get(id).get()
+
             (
                 self.accounts.add(
                     id,
@@ -124,6 +126,7 @@ impl Ledger:
             return "error: account frozen {id}"
 
         let new_balance = acct.balance + amount.get()
+
         (
             self.accounts.add(
                 id,
@@ -205,6 +208,7 @@ impl Ledger:
             return "error: overdraft limit exceeded {from}"
 
         let new_dst = dst.balance + amount.get()
+
         (
             self.accounts.add(
                 from,
@@ -233,8 +237,11 @@ impl Ledger:
 
         for id in ids:
             let acct = self.accounts.get(id).get()
+
             total += acct.balance
+
             let frozen = yes_no(acct.frozen)
+
             lines.append(
                 "{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={frozen}"
             )

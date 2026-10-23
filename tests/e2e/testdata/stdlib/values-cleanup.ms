@@ -27,6 +27,7 @@ impl Closeable for Resource:
     var fn close() Unit:
         let fs = filesystem()
         let inner_closed = fs.read_file("{self.dir}/2").is_ok()
+
         fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
 
 fn leave(dir: String) Int:
@@ -36,24 +37,33 @@ fn leave(dir: String) Int:
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     let found = try result
+
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
     let create = fn(): some(42)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
+
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
+
     let nested: Optional[Optional[Int]] = some(missing)
+
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
     let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
+
     try expect_equal(propagate(failed), failed)
+
     let success: Result[Int, JsonError] = ok(3)
     let expected: Result[Int, JsonError] = ok(4)
+
     try expect_equal(propagate(success), expected)
+
     let view = Error(JsonError.InvalidData)
+
     try expect_not_equal(view.message().byte_length(), 0)
 
     match view:
@@ -64,8 +74,11 @@ test "Result propagation and Error views preserve concrete causes":
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
     let second = Key(1, "second")
+
     try expect_false(first != second or first.hash() != second.hash())
+
     var map = Map[Key, String]()
+
     map.add(first.clone(), "a")
     map.add(second, "b")
     try expect_false(map.length() != 1 or map.get(first) != some("b"))
@@ -75,6 +88,7 @@ test "Closeable cleanup runs in reverse order before return delivery":
 
     with temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
         let dir = temporary.path()
+
         try expect_equal(leave(dir.clone()), 42)
         try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
         try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

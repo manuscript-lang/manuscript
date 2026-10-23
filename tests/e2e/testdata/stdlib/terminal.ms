@@ -7,6 +7,7 @@ test "redirected streams report no terminal and refuse raw mode":
 
     try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
     try expect_false(capabilities.resize_events)
+
     let raw = terminal().raw_mode(alternate_screen: false)
 
     if let active = raw:

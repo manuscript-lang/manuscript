@@ -66,11 +66,11 @@ test "one header type preserves repeated values through buffered requests":
             ) | try expect_ok
         )
         let metadata = response.metadata()
-        metadata.status | try expect_equal(expected: 200)
+        metadata.status | try expect_equal(200)
         (
             metadata.headers.text(
                 "x-dup"
-            ) | try expect_ok | try expect_equal(expected: some(["first", "second"]))
+            ) | try expect_ok | try expect_equal(some(["first", "second"]))
         )
         try expect_false(
             (
@@ -141,10 +141,10 @@ test "lookup returns membership and clone separates it":
     let fields = (try repeated_headers())
     let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
     let values = fields.values("X-DUP").get().clone()
-    values.length() | try expect_equal(expected: 3)
+    values.length() | try expect_equal(3)
     let copy = fields.clone()
     let copy_appended = (copy.append("x-dup", "copy".to_bytes()) | try expect_ok)
-    fields.values("x-dup").get().length() | try expect_equal(expected: 3)
+    fields.values("x-dup").get().length() | try expect_equal(3)
     (fields.values("missing").is_none()) | try expect_true
     let k = (fields.append("K", "ASCII".to_bytes()) | try expect_ok)
     (fields.values("K").is_none()) | try expect_true
@@ -190,4 +190,4 @@ test "empty options and an omitted request body use checked defaults":
                     headers: (try repeated_headers())
                 ) | try expect_ok
             ):
-                response.metadata().status | try expect_equal(expected: 200)
+                response.metadata().status | try expect_equal(200)

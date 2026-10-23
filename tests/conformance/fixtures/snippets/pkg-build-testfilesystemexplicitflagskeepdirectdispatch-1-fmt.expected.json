@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import filesystem from \"@std/fs.ms\"\n\nfn explicit() Unit:\n    let fs = filesystem()\n    fs.write_file(\"\", \"\", false)\n    fs.copy_file(\"\", \"\", true)\n    fs.copy_tree(\"\", \"\", false, max_entries: none, max_bytes: 3)\n    fs.create_directory(\"\", true)\n    fs.remove(\"\", false)\n"
+    "fmt": "import filesystem from \"@std/fs.ms\"\n\nfn explicit() Unit:\n    let fs = filesystem()\n\n    fs.write_file(\"\", \"\", false)\n    fs.copy_file(\"\", \"\", true)\n    fs.copy_tree(\"\", \"\", false, max_entries: none, max_bytes: 3)\n    fs.create_directory(\"\", true)\n    fs.remove(\"\", false)\n"
   }
 }

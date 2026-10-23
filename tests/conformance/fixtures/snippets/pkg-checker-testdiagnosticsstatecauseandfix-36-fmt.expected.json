@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:\n    return none\n\nfn f() Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) Bool: value > 1)\n    return hit.get(0)\n"
+    "fmt": "fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:\n    return none\n\nfn f() Int:\n    let nums = [1, 2]\n    let hit = pick(nums, fn(value: Int) Bool: value > 1)\n\n    return hit.get(0)\n"
   }
 }
