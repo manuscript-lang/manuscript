@@ -18,7 +18,6 @@ fn is_cell(b: Int) Bool:
 
 fn solve(data: Bytes) String:
     var end = data.length()
-
     while end > 0 and data.get(end - 1) == NEWLINE:
         end -= 1
 
@@ -54,7 +53,6 @@ fn solve(data: Bytes) String:
     lengths.append(length)
 
     let width = lengths.get(0)
-
     for n in range(0, lengths.length()):
         if lengths.get(n) != width:
             return "error: ragged grid"
@@ -86,7 +84,6 @@ fn solve(data: Bytes) String:
 
     let rows = lengths.length()
     var dist: List[Int] = []
-
     for k in range(0, cells.length()):
         dist.append(-1)
     dist.set(start, 0)
@@ -98,7 +95,6 @@ fn solve(data: Bytes) String:
 
     while head < queue.length():
         let cur = queue.get(head)
-
         head += 1
         if cur == goal:
             return "{dist.get(cur)}"
@@ -121,7 +117,6 @@ fn solve(data: Bytes) String:
 
 export fn main() Int:
     let data = read_all(stdin()).get()
-
     stdout().write("{solve(data)}\n").get()
     stdout().flush().get()
     return 0

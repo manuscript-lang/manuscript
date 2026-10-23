@@ -13,7 +13,6 @@ test "data constructor context":
     let failure: Result[Int, TextError] = error(TextError("unavailable"))
     let _absent: Optional[Int] = none
     let _nested: List[List[Int]] = [[], [1]]
-
     try expect_equal(outcome_value(success), 3)
     try expect_equal(outcome_value(failure), -1)
 
@@ -30,6 +29,5 @@ test "nested constructor arguments receive inferred context":
     let request = Request(Box(none))
     let provided = some(3)
     let selected = select(Box(none), Box(provided))
-
     try expect_false(not selected.value.is_none())
     try expect_false(not request.box.value.is_none())

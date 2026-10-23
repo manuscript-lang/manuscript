@@ -66,7 +66,6 @@ fn fee_suffix(charged: Bool) String:
 fn reject(var ledger: Ledger, id: String, message: String) String:
     if let account = ledger.accounts.get(id):
         var updated = account
-
         updated.rejected += 1
         ledger.accounts.add(id, updated)
 
@@ -105,7 +104,6 @@ fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
 fn set_frozen(var ledger: Ledger, id: String, frozen: Bool) String:
     if let account = ledger.accounts.get(id):
         var updated = account
-
         updated.frozen = frozen
         ledger.accounts.add(id, updated)
         return "ok"
@@ -119,7 +117,6 @@ fn deposit(var ledger: Ledger, id: String, amount_text: String) String:
                 return reject(var ledger, id, "error: account frozen {id}")
 
             var updated = account
-
             updated.balance += amount
             updated.ops += 1
             ledger.accounts.add(id, updated)
@@ -140,7 +137,6 @@ fn withdraw(var ledger: Ledger, id: String, amount_text: String) String:
                 return reject(var ledger, id, "error: overdraft limit exceeded {id}")
 
             var updated = account
-
             updated.balance = result.balance
             updated.ops += 1
             ledger.accounts.add(id, updated)
@@ -193,13 +189,11 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
             )
 
         var from_updated = source
-
         from_updated.balance = result.balance
         from_updated.ops += 1
         ledger.accounts.add(from_id, from_updated)
 
         var to_updated = target
-
         to_updated.balance += amount
         to_updated.ops += 1
         ledger.accounts.add(to_id, to_updated)
@@ -230,7 +224,6 @@ fn report(var ledger: Ledger) List[String]:
                 )
             )
         )
-
         total += account.balance
         lines.append(
             "{id} balance={account.balance} limit={account.limit} ops={account.ops} rejected={account.rejected} frozen={yes_no(account.frozen)}"
@@ -265,7 +258,6 @@ export fn main() Int:
 
     for line in read_lines(stdin()).get():
         let tokens = tokenize(line)
-
         if tokens.length() > 0:
             for text in handle(var ledger, tokens):
                 out.write("{text}\n").get()

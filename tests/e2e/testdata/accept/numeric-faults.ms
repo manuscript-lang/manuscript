@@ -20,7 +20,6 @@ test "add high overflows":
         fn():
             let bad = add(a: 9223372036854775807, b: 1)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "add low overflows":
@@ -28,7 +27,6 @@ test "add low overflows":
         fn():
             let bad = add(a: -9223372036854775808, b: -1)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "subtract high overflows":
@@ -36,7 +34,6 @@ test "subtract high overflows":
         fn():
             let bad = subtract(a: 9223372036854775807, b: -1)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "subtract low overflows":
@@ -44,7 +41,6 @@ test "subtract low overflows":
         fn():
             let bad = subtract(a: -9223372036854775808, b: 1)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "multiply high overflows":
@@ -52,7 +48,6 @@ test "multiply high overflows":
         fn():
             let bad = multiply(a: 9223372036854775807, b: 2)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "multiply minimum overflows":
@@ -60,7 +55,6 @@ test "multiply minimum overflows":
         fn():
             let bad = multiply(a: -9223372036854775808, b: -1)
     )
-
     message | try expect_contains("Int overflow;")
 
 test "divide minimum overflows":
@@ -68,7 +62,6 @@ test "divide minimum overflows":
         fn():
             let bad = divide(a: -9223372036854775808, b: -1)
     )
-
     message | try expect_contains("Int./: overflow;")
 
 test "divide by zero faults":
@@ -76,7 +69,6 @@ test "divide by zero faults":
         fn():
             let bad = divide(a: 1, b: 0)
     )
-
     message | try expect_contains("division by zero;")
 
 test "remainder by zero faults":
@@ -84,7 +76,6 @@ test "remainder by zero faults":
         fn():
             let bad = remainder(a: 1, b: 0)
     )
-
     message | try expect_contains("remainder by zero;")
 
 test "negation":
@@ -98,7 +89,6 @@ test "negation":
     (1.0 / -0.0 < 0.0) | try expect_true
 
     var count = -3
-
     count = count + 1
     (count == -2) | try expect_true
 
@@ -107,5 +97,4 @@ test "negating the minimum overflows":
         fn():
             let bad = negate(a: -9223372036854775808)
     )
-
     message | try expect_contains("Int overflow;")

@@ -8,12 +8,10 @@ import {max_int, min_int} from "@std/math.ms"
 
 fn shift_too_far() Unit:
     let value = shift_left(1, 64)
-
     return unit
 
 fn shift_negative() Unit:
     let value = shift_right(1, -1)
-
     return unit
 
 test "bitwise operators follow two's complement":

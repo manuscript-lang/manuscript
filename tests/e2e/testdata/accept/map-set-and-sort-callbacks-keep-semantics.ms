@@ -9,7 +9,6 @@ fn record(var into: List[Int], value: Int) Unit:
 test "map callbacks":
     let m = {"a": 1, "bb": 2, "ccc": 3}
     let sums = m.map(fn(key: String, value: Int) Int: key.length() + value)
-
     try expect_true((sums.get("bb") == some(4)))
     try expect_true(
         (m.filter(fn(key: String, value: Int) Bool: value > 1).length() == 2)
@@ -38,7 +37,6 @@ test "map callbacks":
     )
 
     var visited = List[Int]()
-
     m.for_each(
         fn(key: String, value: Int) Unit: record(
             into: var visited, value: value
@@ -47,7 +45,6 @@ test "map callbacks":
 
 test "set callbacks":
     let s = [1, 2, 3].to_set()
-
     try expect_true((s.map(fn(value: Int) Int: value % 2).length() == 2))
     try expect_true((s.filter(fn(value: Int) Bool: value > 1).length() == 2))
     try expect_true(
@@ -76,7 +73,6 @@ test "set callbacks":
 test "sort with a comparator":
     let words = ["ccc", "a", "bb"]
     let sorted = words.sorted(compare: byLength)
-
     try expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))
 
     let lambda = words.sorted(
@@ -85,5 +81,4 @@ test "sort with a comparator":
             - left.length()
         )
     )
-
     try expect_true((lambda.get(index: 0) == "ccc"))

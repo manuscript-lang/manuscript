@@ -49,7 +49,6 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
 
 fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
     var out = items
-
     if mode == "remove": out.remove(0)
     if mode == "splice": out.splice(
         start: 1, delete_count: 2, replacement: fill.clone()
@@ -73,7 +72,6 @@ test "Int consumers see the full snapshot while the live list shrinks":
             let seen = (try observe(var values, mode, [9], callback))
             var total = 0
             var wanted = 0
-
             for value in seen: total = total + value
             for value in clone: wanted = wanted + value
             (
@@ -94,7 +92,6 @@ test "Float consumers see the full snapshot while the live list shrinks":
             let seen = (try observe(var values, mode, [9.5], callback))
             var total = 0.0
             var wanted = 0.0
-
             for value in seen: total = total + value
             for value in clone: wanted = wanted + value
             (
@@ -114,7 +111,6 @@ test "String consumers see the full snapshot while the live list shrinks":
             let want = remaining(mode, values.clone(), ["replacement"])
             let seen = (try observe(var values, mode, ["replacement"], callback))
             var text = ""
-
             for value in seen: text = text + value
             (
                 not (
@@ -138,7 +134,6 @@ test "record consumers keep independent copies after shrink":
             let seen = (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
-
             for value in seen: total = total + value.value
             for value in clone: wanted = wanted + value.value
             (not (total == wanted and seen == clone and values == want)) | try expect_false
@@ -167,7 +162,6 @@ test "alternative consumers retain tags and payloads after shrink":
             let snapshot = [first, second, last]
             var total = 0
             var wanted = 0
-
             for value in seen: total = total + score(value.clone())
             for value in snapshot.clone(): wanted = wanted + score(value)
             (not (total == wanted and seen == snapshot and values == want)) | try expect_false
@@ -182,7 +176,6 @@ test "nested list consumers keep independent inner lists after shrink":
             let seen = (try observe(var values, mode, [[9]], callback))
             var total = 0
             var wanted = 0
-
             for value in seen: total = total + value.first().get()
             for value in clone: wanted = wanted + value.first().get()
             (not (total == wanted and seen == clone and values == want)) | try expect_false
@@ -192,6 +185,7 @@ test "nested list consumers keep independent inner lists after shrink":
 test "map and folds consume snapshots of the live list":
     var mapped = [1, 2, 3]
     var visits = Visits(0)
+
     let output = (
         mapped
         .clone()
@@ -206,7 +200,6 @@ test "map and folds consume snapshots of the live list":
     (output == [11, 12, 13] and mapped == [2, 3]) | try expect_true
 
     var folded = [1, 2, 3]
-
     visits.count = 0
 
     let total = (
@@ -226,7 +219,6 @@ test "map and folds consume snapshots of the live list":
     (total == 6 and folded.is_empty() and visits.count == 3) | try expect_true
 
     var reversed = [1, 2, 3]
-
     visits.count = 0
 
     let backwards = (
@@ -266,7 +258,6 @@ test "interface view consumers dispatch after shrink":
             )
             var total = 0
             var wanted = 0
-
             for value in seen: total = total + value.read()
             for value in clone.clone(): wanted = wanted + value.read()
             (not (total == wanted and values.length() == want.length())) | try expect_false
@@ -275,6 +266,7 @@ test "interface view consumers dispatch after shrink":
 
 test "find returns the value passed to a mutating predicate":
     var forward = [1, 2, 3]
+
     let found = forward.clone().find(
         fn(value):
             forward.remove(0)
@@ -284,6 +276,7 @@ test "find returns the value passed to a mutating predicate":
     (found.get() == 1 and forward == [2, 3]) | try expect_true
 
     var replaced = [1, 2, 3]
+
     let original = (
         replaced
         .clone()
@@ -297,6 +290,7 @@ test "find returns the value passed to a mutating predicate":
     (original.get() == 1 and replaced == [9, 2, 3]) | try expect_true
 
     var reverse = [1, 2, 3]
+
     let last = (
         reverse
         .clone()
@@ -310,6 +304,7 @@ test "find returns the value passed to a mutating predicate":
     (last.get() == 2 and reverse == [1, 3]) | try expect_true
 
     var last_replaced = [1, 2, 3]
+
     let before = (
         last_replaced
         .clone()
@@ -323,6 +318,7 @@ test "find returns the value passed to a mutating predicate":
     (before.get() == 3 and last_replaced == [1, 2, 9]) | try expect_true
 
     var indexes = [1, 2, 3]
+
     let index = (
         indexes
         .clone()
@@ -332,7 +328,9 @@ test "find returns the value passed to a mutating predicate":
                 return value == 1
         )
     )
+
     var reverse_indexes = [1, 2, 3]
+
     let last_index = (
         reverse_indexes
         .clone()
@@ -353,13 +351,11 @@ test "find returns the value passed to a mutating predicate":
         .find(
             fn(value):
                 let matches = value.value == 1
-
                 records.set(0, Payload(9))
                 return matches
         )
         .get()
     )
-
     (
         not (
             retained.value == 1
@@ -386,14 +382,12 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
     values | try expect_equal([3, 9, 4])
 
     let separate = values.reversed()
-
     values.set(1, 5)
     (separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true
 
     var child = Payload(1)
     var children = [child.clone(), Payload(2)]
     let shallow = children.reversed()
-
     child.value = 7
     children.remove(0)
     (shallow.last().get().value == 1 and children.length() == 1) | try expect_true

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn difference(values: List[Int]) Int:\n    let [first, second] = values\n\n    return first - second\n\ntest \"fault\":\n    let impossible = difference(values: [1])\n"
+    "fmt": "fn difference(values: List[Int]) Int:\n    let [first, second] = values\n    return first - second\n\ntest \"fault\":\n    let impossible = difference(values: [1])\n"
   }
 }

@@ -17,5 +17,4 @@ test "explicit contract conversion":
     let offset = Offset(1)
     let operation = Increment(offset)
     let same_view = Increment(operation)
-
     try expect_equal(use_increment(same_view), 5)

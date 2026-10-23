@@ -24,7 +24,6 @@ fn non_empty(text: String) Bool:
 
 fn is_blank(line: String) Bool:
     let bytes = line.to_bytes()
-
     for i in range(0, bytes.length()):
         if bytes.get(i) != 32:
             return false
@@ -32,7 +31,6 @@ fn is_blank(line: String) Bool:
 
 fn zeros(count: Int) List[Int]:
     var row = [0]
-
     for i in range(1, count):
         row.append(0)
     return row
@@ -72,18 +70,15 @@ fn lcs_length(a: Bytes, b: Bytes) Int:
 fn edit_distance(a: Bytes, b: Bytes) Int:
     let n = b.length()
     var prev = zeros(n + 1)
-
     for j in range(0, n + 1):
         prev.set(j, j)
 
     for i in range(0, a.length()):
         var cur = zeros(n + 1)
-
         cur.set(0, i + 1)
 
         for j in range(0, n):
             var cost = 1
-
             if a.get(i) == b.get(j):
                 cost = 0
             cur.set(
@@ -124,7 +119,6 @@ fn knapsack(tokens: List[String]) String:
         if w <= cap:
             for k in range(0, cap - w + 1):
                 let c = cap - k
-
                 best.set(c, max2(best.get(c), best.get(c - w) + v))
 
     return "{best.get(cap)}"
@@ -148,7 +142,6 @@ fn coin_change(tokens: List[String]) String:
 
     for x in range(1, amount + 1):
         var best = unreachable
-
         for c in coins:
             if c <= x and fewest.get(x - c) + 1 < best:
                 best = fewest.get(x - c) + 1

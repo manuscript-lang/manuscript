@@ -11,7 +11,6 @@ fn check_services() Result[Unit, Error]:
 
     let before = clock().now()
     let after = clock().now()
-
     (after - before < 0.milliseconds) | try expect_false
     (wall_clock().now().unix_seconds() <= 0) | try expect_false
     (system().info().cpu_count <= 0) | try expect_false
@@ -28,7 +27,6 @@ fn check_services() Result[Unit, Error]:
 
 test "host accessors work in callbacks":
     let check = check_services
-
     try check()
 
 test "repeated accessors retain closed root state":

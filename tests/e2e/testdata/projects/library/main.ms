@@ -24,7 +24,6 @@ fn exercise(path: String) Result[Unit, Error]:
             path: path, data: "hello", replace: false
         )
     )
-
     try expect_false(
         not (
             try common_result(
@@ -36,26 +35,21 @@ fn exercise(path: String) Result[Unit, Error]:
     let info = try common_result(
         result: filesystem().stat(path: path, follow_links: true)
     )
-
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
 
     let bytes = try common_result(result: entropy().bytes(count: 16))
-
     bytes.length() | try expect_equal(16)
 
     let identifier = try common_result(result: uuid_v4(entropy: entropy()))
-
     identifier.byte_length() | try expect_equal(36)
 
     let random = try common_result(
         result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
     )
-
     (random >= -2 and random < 3) | try expect_true
 
     let now = wall_clock().now()
-
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
         now
     )
@@ -65,7 +59,6 @@ fn exercise(path: String) Result[Unit, Error]:
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
         let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
-
         try expect_false(
             not (
                 try common_result(
@@ -76,7 +69,6 @@ fn exercise(path: String) Result[Unit, Error]:
 
         let synced = try common_result(result: file.sync())
         let resized = try common_result(result: file.truncate(size: 3))
-
         (try common_result(result: file.stat())).size | try expect_equal(3)
 
     with watcher = try common_result(
@@ -89,11 +81,9 @@ fn exercise(path: String) Result[Unit, Error]:
             result: filesystem().append_file(path: path, data: "!")
         )
         let events = try common_result(result: watcher.next())
-
         (events.length() > 0) | try expect_true
 
     let paths = posix()
-
     try expect_false(
         not (
             try common_result(
@@ -105,21 +95,17 @@ fn exercise(path: String) Result[Unit, Error]:
     )
 
     let windows = win32()
-
     windows.parse("C:/work/file.txt").extension | try expect_equal(".txt")
 
     let process_info = try common_result(result: control().info())
-
     (process_info.pid > 0) | try expect_true
 
     let memory = try common_result(result: control().memory_usage())
-
     (memory.heap_system > 0) | try expect_true
 
     let removed = try common_result(
         result: filesystem().remove(path: path, recursive: false)
     )
-
     return ok(unit)
 
 export fn main() Int:

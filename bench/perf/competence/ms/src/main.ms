@@ -84,7 +84,6 @@ fn sorting(n: Int) Int:
         i += 1
 
     let s = v.sorted(compare)
-
     return s.get(0) + s.get(n / 2) + s.get(n - 1)
 
 fn closures(n: Int) Int:
@@ -110,7 +109,6 @@ fn text_build_parse(n: Int) Int:
 
     let parts = b.freeze().split(",")
     var total = 0
-
     for p in parts:
         total += p.parse_int().get(0)
     return total
@@ -128,7 +126,6 @@ fn word_map(n: Int) Int:
 
     while j < n:
         let w = words.get(j * 7 % 1000)
-
         m.add(w.clone(), m.get(w).get(0) + 1)
         j += 1
 
@@ -142,7 +139,6 @@ fn check(i: Int) Result[Int, Fail]:
 
 fn step(i: Int) Result[Int, Fail]:
     let v = try check(i)
-
     return ok(v + 1)
 
 fn errors(n: Int) Int:
@@ -246,7 +242,6 @@ fn optionals(n: Int) Int:
 
     while i < n:
         var o: Optional[Int] = none
-
         if i % 5 != 0:
             o = some(i)
 
@@ -293,7 +288,6 @@ fn chars(n: Int) Int:
 fn timed(name: String, run: fn() Int) Unit:
     let t = clock().now()
     let r = run()
-
     say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 export fn main() Int:

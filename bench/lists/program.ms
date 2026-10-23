@@ -2,21 +2,18 @@ import range from "@std/collections.ms"
 
 fn build(count: Int) List[Int]:
     var values: List[Int] = []
-
     for i in range(0, count):
         values.append(i * 7919 % 100003)
     return values
 
 fn index(values: List[Int], count: Int) Int:
     var total = 0
-
     for i in range(0, count):
         total += values.get(i % values.length())
     return total
 
 fn iterate(values: List[Int]) Int:
     var total = 0
-
     for value in values:
         total += value
     return total
@@ -26,7 +23,6 @@ type Total:
 
 fn callbacks(values: List[Int]) Int:
     var total = Total(0)
-
     values.for_each(
         fn(value):
             total.value += value
@@ -55,4 +51,5 @@ fn callback_write(var values: List[Int]) Int:
                     values.set(0, 7)
         )
     )
+
     return total.value
