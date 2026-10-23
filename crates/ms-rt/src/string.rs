@@ -563,6 +563,97 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     }
 }
 
+/// Joins `parts` into one string with a single allocation (what a chain of `concat` calls
+/// would build with one allocation per link).
+unsafe fn concat_parts(parts: &[*const StrObj]) -> *mut StrObj {
+    // SAFETY: caller passes live strings.
+    unsafe {
+        let mut total = 0usize;
+        let mut scalars = Some(0usize);
+        let mut only = None;
+        let mut nonempty = 0;
+        for &p in parts {
+            let len = (*p).len;
+            if len == 0 {
+                continue;
+            }
+            total += len;
+            nonempty += 1;
+            only = Some(p);
+            scalars = match ((*p).scalars, scalars) {
+                (SCALARS_UNKNOWN, _) | (_, None) => None,
+                (n, Some(acc)) => Some(acc + n),
+            };
+        }
+        match (nonempty, only) {
+            (0, _) => return retained(msrt_string_empty()),
+            (1, Some(p)) => return retained(p as *mut StrObj),
+            _ => {}
+        }
+        let s = alloc_str(total);
+        let mut dst = data_ptr(s);
+        for &p in parts {
+            let len = (*p).len;
+            core::ptr::copy_nonoverlapping(bytes(p).as_ptr(), dst, len);
+            dst = dst.add(len);
+        }
+        if let Some(n) = scalars {
+            (*s).scalars = n;
+        }
+        s
+    }
+}
+
+/// `a + b + c` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat3(
+    a: *const StrObj,
+    b: *const StrObj,
+    c: *const StrObj,
+) -> *mut StrObj {
+    // SAFETY: caller passes live strings.
+    unsafe { concat_parts(&[a, b, c]) }
+}
+
+/// `a + b + c + d` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat4(
+    a: *const StrObj,
+    b: *const StrObj,
+    c: *const StrObj,
+    d: *const StrObj,
+) -> *mut StrObj {
+    // SAFETY: caller passes live strings.
+    unsafe { concat_parts(&[a, b, c, d]) }
+}
+
+/// `a + b + c + d + e` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat5(
+    a: *const StrObj,
+    b: *const StrObj,
+    c: *const StrObj,
+    d: *const StrObj,
+    e: *const StrObj,
+) -> *mut StrObj {
+    // SAFETY: caller passes live strings.
+    unsafe { concat_parts(&[a, b, c, d, e]) }
+}
+
+/// `a + b + c + d + e + f` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat6(
+    a: *const StrObj,
+    b: *const StrObj,
+    c: *const StrObj,
+    d: *const StrObj,
+    e: *const StrObj,
+    f: *const StrObj,
+) -> *mut StrObj {
+    // SAFETY: caller passes live strings.
+    unsafe { concat_parts(&[a, b, c, d, e, f]) }
+}
+
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
 pub struct StrBuf(Vec<u8>);
 
@@ -1714,6 +1805,23 @@ pub unsafe extern "C-unwind" fn msrt_string_quote(s: *const StrObj) -> *mut StrO
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn concat_parts_joins_and_skips_empties() {
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            let a = from_bytes(b"ab");
+            let e = msrt_string_empty();
+            let c = from_bytes("cé".as_bytes());
+            let d = from_bytes(b"xyz");
+            let j = msrt_string_concat4(a, e, c, d);
+            assert_eq!(bytes(j), "abcéxyz".as_bytes());
+            let one = msrt_string_concat3(e, d, e);
+            assert_eq!(bytes(one), b"xyz");
+            let none = msrt_string_concat3(e, e, e);
+            assert_eq!((*none).len, 0);
+        }
+    }
 
     #[test]
     fn hash_bytes_separates_lengths_and_contents() {

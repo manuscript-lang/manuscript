@@ -32,8 +32,10 @@ msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64
 msrt_hash_int(v: i64) -> i64
 msrt_hash_bytes(p: *const u8, len: usize) -> i64
 msrt_hash_combine(a: i64, b: i64) -> i64
-msrt_call_depth (data)
+msrt_stack_limit (data)
 msrt_cancel_flag (data)
+msrt_shield_enter()
+msrt_shield_exit()
 msrt_fault(msg: *const u8, len: usize) -> !
 msrt_fault_string(s: *mut ms_rt_abi::StrObj) -> !
 msrt_fault_depth() -> !
@@ -86,6 +88,11 @@ msrt_set_symmetric_difference( a: *const MapVal, b: *const MapVal, kd: *const Ty
 msrt_set_is_subset_of( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
 msrt_set_is_superset_of( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
 msrt_set_is_disjoint_from( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, ) -> u8
+memcpy(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void
+memmove(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void
+memset(dst: *mut c_void, c: c_int, n: usize) -> *mut c_void
+memcmp(a: *const c_void, b: *const c_void, n: usize) -> c_int
+bcmp(a: *const c_void, b: *const c_void, n: usize) -> c_int
 msrt_numbers_parse_int( text: *const StrObj, radix: i64, out: *mut i64, ) -> u8
 msrt_numbers_parse_float(text: *const StrObj, out: *mut f64) -> u8
 msrt_numbers_error_message(status: u8) -> *mut StrObj
@@ -127,6 +134,10 @@ msrt_string_ends_with(a: *const StrObj, v: *const StrObj) -> u8
 msrt_string_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_concat( a: *const StrObj, b: *const StrObj, ) -> *mut StrObj
+msrt_string_concat3( a: *const StrObj, b: *const StrObj, c: *const StrObj, ) -> *mut StrObj
+msrt_string_concat4( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, ) -> *mut StrObj
+msrt_string_concat5( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, e: *const StrObj, ) -> *mut StrObj
+msrt_string_concat6( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, e: *const StrObj, f: *const StrObj, ) -> *mut StrObj
 msrt_strbuf_new() -> *mut StrBuf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrObj)
 msrt_strbuf_finish(buf: *mut StrBuf) -> *mut StrObj
@@ -146,6 +157,8 @@ msrt_string_pad_end( s: *const StrObj, target: i64, padding: *const StrObj, has_
 msrt_string_slice_scalars( s: *const StrObj, start: i64, end: i64, out: *mut *mut StrObj, ) -> u8
 msrt_string_slice( s: *const StrObj, start: i64, end: i64, out: *mut *mut StrObj, ) -> u8
 msrt_string_chars(s: *const StrObj, out: *mut VecVal)
+msrt_string_char_at(s: *const StrObj, at: i64) -> *mut StrObj
+msrt_string_char_width(s: *const StrObj, at: i64) -> i64
 msrt_string_lines(s: *const StrObj, out: *mut VecVal)
 msrt_string_split( s: *const StrObj, sep: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, )
 msrt_string_split_iter( s: *mut StrObj, sep: *mut StrObj, has_max: u8, max: i64, ) -> *mut SplitIter
@@ -165,11 +178,17 @@ msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -
 msrt_task_yield()
 msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
+msrt_task_forget_fd(fd: i32)
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_current() -> u64
 msrt_task_count() -> usize
 msrt_task_cancel(handle: u64)
 msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8
+msrt_token_new(flags: u32) -> u64
+msrt_token_park( id: u64, timeout_ns: i64, value_out: *mut u64, ) -> u32
+msrt_token_post(id: u64, value: u64)
+msrt_token_post_remote(id: u64, value: u64)
+msrt_token_free(id: u64)
 msrt_trap_begin() -> u8
 msrt_trap_end() -> !
 msrt_trap_wait(out: *mut *mut StrObj) -> u8
@@ -207,6 +226,7 @@ msrt_list_distinct( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_keys(v: *const VecVal, out: *mut VecVal)
 msrt_list_join( v: *const VecVal, sep: *const StrObj, out: *mut *mut StrObj, )
 msrt_list_sort_in_place( v: *mut VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, )
+msrt_list_sort_ints(v: *mut VecVal, desc: i64)
 msrt_list_sorted( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, out: *mut VecVal, )
 msrt_list_filled( value: *const u8, d: *const TypeDesc, count: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_list_range(start: i64, end: i64, out: *mut VecVal)
@@ -236,221 +256,6 @@ msrt_strbuilder_append_int(b: *mut VecVal, n: i64)
 msrt_strbuilder_freeze(b: *mut VecVal) -> *mut StrObj
 msrt_strbuilder_drop(b: *mut VecVal)
 msrt_hash_list(v: *const VecVal, d: *const TypeDesc) -> i64
-msrt_archive_pack( entries: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_archive_unpack( data: *const VecVal, format: *const StrObj, has_limits: u8, has_entries: u8, max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut VecVal, ) -> u8
-msstd_bigint_from_int(value: i64) -> *mut BigObj
-msstd_bigint_from_u64(value: i64) -> *mut BigObj
-msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut BigObj
-msstd_bigint_parse( text: *const StrObj, radix: i64, has_max: u8, max: i64, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_add(a: *const BigObj, other: *const BigObj) -> *mut BigObj
-msstd_bigint_subtract( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
-msstd_bigint_multiply( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
-msstd_bigint_bit_and( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
-msstd_bigint_bit_or( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
-msstd_bigint_bit_xor( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
-msstd_bigint_divide( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_remainder( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64
-msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj
-msstd_bigint_negate(a: *const BigObj) -> *mut BigObj
-msstd_bigint_abs(a: *const BigObj) -> *mut BigObj
-msstd_bigint_sign(a: *const BigObj) -> i64
-msstd_bigint_pow( a: *const BigObj, exponent: i64, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_shift_left( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_shift_right( a: *const BigObj, count: i64, out: *mut *mut BigObj, ) -> u8
-msstd_bigint_to_float(a: *const BigObj) -> f64
-msstd_bigint_to_int(a: *const BigObj, out: *mut i64) -> u8
-msstd_bigint_to_string_radix(a: *const BigObj, radix: i64) -> *mut StrObj
-msstd_bigint_equal(a: *const BigObj, other: *const BigObj) -> u8
-msrt_compress_compress( data: *const VecVal, format: *const StrObj, level: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_compress_decompress( data: *const VecVal, format: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_compress_decoder_new( format: *const StrObj, has_max: u8, max: i64, out: *mut *mut DecoderObj, ) -> u8
-msrt_compress_decoder_feed(d: *mut DecoderObj, data: *const VecVal)
-msrt_compress_decoder_finish_input(d: *mut DecoderObj)
-msrt_compress_decoder_poll( d: *mut DecoderObj, max: i64, out: *mut VecVal, ) -> u8
-msrt_compress_encoder_new( format: *const StrObj, level: i64, out: *mut *mut EncoderObj, ) -> u8
-msrt_compress_encoder_feed(e: *mut EncoderObj, data: *const VecVal)
-msrt_compress_encoder_finish(e: *mut EncoderObj)
-msrt_compress_encoder_has_output(e: *const EncoderObj) -> u8
-msrt_compress_encoder_is_finished(e: *const EncoderObj) -> u8
-msrt_compress_encoder_take( e: *mut EncoderObj, max: i64, out: *mut VecVal, )
-msrt_crypto_ecdsa_sign( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_rsa_sign( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_rsa_sign_pss( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_rsa_encrypt( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_rsa_decrypt( private_key: *const VecVal, alg: i64, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_ecdsa_verify( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
-msrt_crypto_rsa_verify( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
-msrt_crypto_rsa_verify_pss( public_key: *const VecVal, alg: i64, data: *const VecVal, signature: *const VecVal, ) -> u8
-msrt_crypto_digest(alg: i64, data: *const VecVal, out: *mut VecVal)
-msrt_crypto_hmac( alg: i64, key: *const VecVal, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_derive_key( alg: i64, password: *const VecVal, salt: *const VecVal, iterations: i64, length: i64, out: *mut VecVal, ) -> u8
-msrt_crypto_hkdf( alg: i64, secret: *const VecVal, salt: *const VecVal, info: *const VecVal, length: i64, out: *mut VecVal, ) -> u8
-msrt_crypto_constant_time_equal( left: *const VecVal, right: *const VecVal, ) -> u8
-msrt_crypto_sign( seed: *const VecVal, data: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_public_key(seed: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_verify( key: *const VecVal, data: *const VecVal, signature: *const VecVal, ) -> u8
-msrt_crypto_hasher_new(alg: i64) -> *mut HasherObj
-msrt_crypto_hmac_hasher_new( alg: i64, key: *const VecVal, ) -> *mut HasherObj
-msrt_crypto_hasher_update(h: *mut HasherObj, data: *const VecVal)
-msrt_crypto_hasher_finish(h: *mut HasherObj, out: *mut VecVal)
-msrt_crypto_ecdsa_generate(curve: i64, out: *mut VecVal) -> u8
-msrt_crypto_public_key_der(key: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_ecdh_shared_secret( private_key: *const VecVal, peer: *const VecVal, out: *mut VecVal, ) -> u8
-msrt_crypto_rsa_generate(bits: i64, out: *mut VecVal) -> u8
-msrt_crypto_seal(key: *const VecVal, nonce: *const VecVal, data: *const VecVal, aad: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_open(key: *const VecVal, nonce: *const VecVal, data: *const VecVal, aad: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_aes_ctr(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_aes_cbc_encrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
-msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
-msstd_decimal_literal(text: *const StrObj, out: *mut Dec)
-msstd_decimal_from_int(n: i64, out: *mut Dec)
-msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
-msstd_decimal_negate(a: *const Dec, out: *mut Dec)
-msstd_decimal_compare(a: *const Dec, b: *const Dec) -> i64
-msstd_decimal_to_string(a: *const Dec) -> *mut StrObj
-msstd_decimal_to_float(a: *const Dec) -> f64
-msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
-msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
-msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut *mut StrObj, ) -> u8
-msrt_binary_read_integer( data: *const VecVal, offset: i64, width: i64, signed: u8, little: u8, out: *mut i64, ) -> u8
-msrt_binary_read_float( data: *const VecVal, offset: i64, little: u8, out: *mut f64, ) -> u8
-msrt_binary_write_integer( value: i64, width: i64, signed: u8, little: u8, out: *mut VecVal, ) -> u8
-msrt_binary_write_float(value: f64, little: u8, out: *mut VecVal)
-msrt_encoding_base64_encode( data: *const VecVal, url_safe: u8, ) -> *mut StrObj
-msrt_encoding_base64_decode( text: *const StrObj, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_fs_failure_message() -> *mut StrObj
-msstd_fs_read_file( path: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_fs_write_file( path: *const StrObj, data: *const VecVal, replace: u8, ) -> u8
-msstd_fs_append_file(path: *const StrObj, data: *const VecVal) -> u8
-msstd_fs_copy_file( source: *const StrObj, destination: *const StrObj, replace: u8, has_max: u8, max: i64, ) -> u8
-msstd_fs_stat(path: *const StrObj, follow: u8, out: *mut InfoOut) -> u8
-msstd_fs_list( path: *const StrObj, has_limit: u8, limit: i64, out: *mut VecVal, ) -> u8
-msstd_fs_create_directory(path: *const StrObj, recursive: u8) -> u8
-msstd_fs_remove(path: *const StrObj, recursive: u8) -> u8
-msstd_fs_rename(source: *const StrObj, destination: *const StrObj) -> u8
-msstd_fs_read_link(path: *const StrObj, out: *mut *mut StrObj) -> u8
-msstd_fs_create_link(path: *const StrObj, target: *const StrObj) -> u8
-msstd_fs_hard_link( source: *const StrObj, destination: *const StrObj, ) -> u8
-msstd_fs_canonicalize(path: *const StrObj, out: *mut *mut StrObj) -> u8
-msstd_fs_temporary_root() -> *mut StrObj
-msstd_fs_temporary_directory( pattern: *const StrObj, out: *mut *mut StrObj, ) -> u8
-msstd_fs_stat_filesystem(path: *const StrObj, out: *mut FsOut) -> u8
-msstd_fs_chmod(path: *const StrObj, mode: i64, follow: u8) -> u8
-msstd_fs_access(path: *const StrObj, mode: i64) -> u8
-msstd_fs_chown(path: *const StrObj, uid: i64, gid: i64, follow: u8) -> u8
-msstd_fs_truncate(path: *const StrObj, size: i64) -> u8
-msstd_fs_set_times( path: *const StrObj, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
-msstd_fs_file_open( path: *const StrObj, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
-msstd_fs_open( path: *const StrObj, flags: *const StrObj, mode: i64, out: *mut *mut FileHandle, ) -> u8
-msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream>
-msstd_fs_file_writer(h: *mut FileHandle) -> *mut Handle<stream::Stream>
-msstd_fs_open_flags(mode: *const StrObj, out: *mut i64) -> u8
-msstd_fs_file_read_at( h: *mut FileHandle, offset: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_fs_file_read_file( h: *mut FileHandle, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_fs_file_write_at( h: *mut FileHandle, offset: i64, data: *const VecVal, ) -> u8
-msstd_fs_file_read_vectors( h: *mut FileHandle, sizes: *const VecVal, offset: i64, out: *mut VecVal, ) -> u8
-msstd_fs_file_write_vectors( h: *mut FileHandle, buffers: *const VecVal, offset: i64, ) -> u8
-msstd_fs_file_seek( h: *mut FileHandle, offset: i64, origin: i64, out: *mut i64, ) -> u8
-msstd_fs_file_stat(h: *mut FileHandle, out: *mut InfoOut) -> u8
-msstd_fs_file_truncate(h: *mut FileHandle, size: i64) -> u8
-msstd_fs_file_sync(h: *mut FileHandle) -> u8
-msstd_fs_file_data_sync(h: *mut FileHandle) -> u8
-msstd_fs_file_chmod(h: *mut FileHandle, mode: i64) -> u8
-msstd_fs_file_chown(h: *mut FileHandle, uid: i64, gid: i64) -> u8
-msstd_fs_file_set_times( h: *mut FileHandle, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, ) -> u8
-msstd_fs_file_read_lines( h: *mut FileHandle, max_bytes: i64, max_lines: i64, out: *mut VecVal, ) -> u8
-msstd_fs_file_path(h: *mut FileHandle) -> *mut StrObj
-msstd_fs_directory_open( path: *const StrObj, out: *mut *mut DirHandle, ) -> u8
-msstd_fs_directory_read(h: *mut DirHandle, out: *mut EntryOut) -> u8
-msstd_fs_directory_close(h: *mut DirHandle)
-msstd_fs_directory_path(h: *mut DirHandle) -> *mut StrObj
-msstd_fs_temporary_open( prefix: *const StrObj, out: *mut *mut TempHandle, ) -> u8
-msstd_fs_temporary_path(h: *mut TempHandle) -> *mut StrObj
-msstd_fs_temporary_close(h: *mut TempHandle) -> u8
-msstd_fs_glob( path: *const StrObj, pattern: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_fs_copy_tree( source: *const StrObj, destination: *const StrObj, replace: u8, entries: i64, bytes: i64, ) -> u8
-msstd_fs_copy( source: *const StrObj, destination: *const StrObj, flags: i64, clone: *const StrObj, has_entries: u8, entries: i64, has_bytes: u8, bytes: i64, filter: *mut Closure, ) -> u8
-msstd_fs_glob_entries( path: *const StrObj, patterns: *const VecVal, exclude: *const VecVal, follow_links: u8, has_max_entries: u8, max_entries: i64, has_max_results: u8, max_results: i64, filter: *mut Closure, out: *mut VecVal, ) -> u8
-msstd_fs_constants(names: *mut VecVal, values: *mut VecVal)
-msstd_fs_watch( path: *const StrObj, recursive: u8, interval_ns: i64, has_max: u8, max: i64, out: *mut *mut WatchHandle, ) -> u8
-msstd_fs_watch_native( path: *const StrObj, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrObj, out: *mut *mut WatchHandle, ) -> u8
-msstd_fs_watch_next( h: *mut WatchHandle, paths: *mut VecVal, kinds: *mut VecVal, ) -> u8
-msstd_fs_watch_close(h: *mut WatchHandle)
-msrt_html_escape(text: *const StrObj) -> *mut StrObj
-msrt_html_unescape(text: *const StrObj) -> *mut StrObj
-msrt_html_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_nodes: u8, max_nodes: i64, out: *mut *mut TreeObj, root: *mut u32, ) -> u8
-msrt_html_kind(t: *const TreeObj, id: u32) -> u8
-msrt_html_data(t: *const TreeObj, id: u32) -> *mut StrObj
-msrt_html_namespace(t: *const TreeObj, id: u32) -> *mut StrObj
-msrt_html_doctype_id( t: *const TreeObj, id: u32, which: u8, ) -> *mut StrObj
-msrt_html_child_count(t: *const TreeObj, id: u32) -> i64
-msrt_html_child(t: *const TreeObj, id: u32, i: i64) -> u32
-msrt_html_first_child(t: *const TreeObj, id: u32) -> u32
-msrt_html_next_sibling(t: *const TreeObj, id: u32) -> u32
-msrt_html_attr_count(t: *const TreeObj, id: u32) -> i64
-msrt_html_attr( t: *const TreeObj, id: u32, i: i64, which: u8, ) -> *mut StrObj
-msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc
-msstd_io_acc_want(a: *const Acc) -> i64
-msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8
-msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
-msstd_io_acc_finish_count(a: *mut Acc, out: *mut i64) -> u8
-msstd_io_acc_finish_line(a: *mut Acc, out: *mut *mut StrObj) -> u8
-msstd_io_failure_message() -> *mut StrObj
-msstd_io_standard(which: i64) -> *mut Host
-msstd_io_open(path: *const StrObj, out: *mut *mut Host) -> u8
-msstd_io_read( h: *mut Host, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msstd_io_read_line( h: *mut Host, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
-msstd_io_write_bytes(h: *mut Host, data: *const VecVal) -> u8
-msstd_io_write(h: *mut Host, data: *const StrObj) -> u8
-msstd_io_flush(h: *mut Host) -> u8
-msstd_io_close(h: *mut Host)
-msstd_io_is_closed(h: *const Host) -> u8
-msrt_json_parse( text: *const StrObj, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, out: *mut *mut DocObj, root: *mut u32, ) -> u8
-msrt_json_kind(d: *const DocObj, id: u32) -> u8
-msrt_json_bool(d: *const DocObj, id: u32) -> u8
-msrt_json_text(d: *const DocObj, id: u32) -> *mut StrObj
-msrt_json_len(d: *const DocObj, id: u32) -> i64
-msrt_json_item(d: *const DocObj, id: u32, i: i64) -> u32
-msrt_json_key(d: *const DocObj, id: u32, i: i64) -> *mut StrObj
-msrt_json_builder_new() -> *mut DocObj
-msrt_json_add_null(d: *mut DocObj) -> u32
-msrt_json_add_bool(d: *mut DocObj, v: u8) -> u32
-msrt_json_add_number(d: *mut DocObj, text: *const StrObj) -> u32
-msrt_json_add_string(d: *mut DocObj, text: *const StrObj) -> u32
-msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32
-msrt_json_add_object( d: *mut DocObj, keys: *const *const StrObj, ids: *const u32, n: i64, ) -> u32
-msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut *mut StrObj, ) -> u8
-msrt_json_dec_int(text: *const StrObj, out: *mut i64) -> u8
-msrt_json_dec_float(text: *const StrObj, out: *mut f64) -> u8
-msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
-msrt_json_add_empty_array(d: *mut DocObj) -> u32
-msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
-msrt_json_add_empty_object(d: *mut DocObj) -> u32
-msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrObj, item: u32, )
-msrt_json_find(d: *const DocObj, id: u32, key: *const StrObj) -> i64
-msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
-msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
-msrt_json_enc_float(v: f64) -> *mut StrObj
-msrt_logcore_new_state( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
-msrt_logcore_child( l: *const LoggerObj, fields: *const StrObj, out: *mut *mut LoggerObj, ) -> u8
-msrt_logcore_enabled(l: *const LoggerObj, level: i64) -> u8
-msrt_logcore_level(l: *const LoggerObj) -> i64
-msrt_logcore_set_level(l: *const LoggerObj, level: i64)
-msrt_logcore_line( l: *const LoggerObj, level: i64, message: *const StrObj, now_ms: i64, out: *mut *mut StrObj, ) -> u8
-msrt_logcore_line_json( l: *const LoggerObj, level: i64, message: *const StrObj, fields: *const StrObj, now_ms: i64, out: *mut *mut StrObj, ) -> u8
-msrt_logcore_new_gate() -> *mut GateObj
-msrt_logcore_shut(g: *const GateObj)
-msrt_logcore_is_shut(g: *const GateObj) -> u8
-msrt_logcore_object_text(text: *const StrObj) -> *mut StrObj
-msstd_math_atan2(y: f64, x: f64) -> f64
-msstd_math_hypot(left: f64, right: f64) -> f64
-msstd_math_pow(base: f64, exponent: f64) -> f64
-msstd_math_remainder(left: f64, right: f64) -> f64
-msstd_math_abs_int(n: i64) -> i64
-msstd_math_sign_int(n: i64) -> i64
-msstd_math_is_integer(v: f64) -> u8
-msstd_math_is_safe_integer(v: f64) -> u8
 msstd_math_abs(value: f64) -> f64
 msstd_math_acos(value: f64) -> f64
 msstd_math_asin(value: f64) -> f64
@@ -495,287 +300,9 @@ msstd_math_log2e() -> f64
 msstd_math_log10e() -> f64
 msstd_math_sqrt2() -> f64
 msstd_math_sqrt_half() -> f64
-msrt_http_error_message(status: u8, failed: *const StrObj) -> *mut StrObj
-msrt_http_headers_new() -> *mut Obj
-msrt_http_headers_append( h: *const Obj, name: *const StrObj, value: *const VecVal, ) -> u8
-msrt_http_headers_values( h: *const Obj, name: *const StrObj, out: *mut VecVal, ) -> u8
-msrt_http_headers_text( h: *const Obj, name: *const StrObj, out: *mut VecVal, ) -> u8
-msrt_http_headers_names(h: *const Obj, out: *mut VecVal)
-msrt_http_headers_remove(h: *const Obj, name: *const StrObj) -> u8
-msrt_http_headers_clone(h: *const Obj) -> *mut Obj
-msrt_net_network_http_client( net: *const Obj, opts: *const HttpClientOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_client_close(c: *const Obj)
-msrt_http_client_request( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_client_request_bytes( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_client_request_stream( c: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, src: *mut Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_body_close(b: *const Obj)
-msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
-msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_request( net: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_request_bytes( net: *const Obj, method: *const StrObj, address: *const StrObj, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_serve( net: *const Obj, address: *const StrObj, env: *mut Obj, has_max_requests: u8, max_requests: i64, has_max_body: u8, max_body: i64, has_max_response: u8, max_response: i64, has_timeout: u8, timeout: i64, has_grace: u8, grace: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_serve_stream( net: *const Obj, address: *const StrObj, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_server_address(s: *const Obj) -> *mut StrObj
-msrt_http_server_close(s: *const Obj)
-msrt_http_server_wait(s: *const Obj) -> u8
-msrt_http_exchange_close(x: *const Obj)
-msrt_http_exchange_headers(x: *const Obj) -> *mut Obj
-msrt_http_exchange_method(x: *const Obj) -> *mut StrObj
-msrt_http_exchange_path(x: *const Obj) -> *mut StrObj
-msrt_http_exchange_protocol(x: *const Obj) -> *mut StrObj
-msrt_http_exchange_query(x: *const Obj) -> *mut StrObj
-msrt_http_exchange_read( x: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_exchange_write( x: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
-msrt_http_exchange_write_bytes( x: *const Obj, data: *const VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_net_parse_ip( text: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_parse_cidr( text: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_contains_ip( cidr: *const Obj, ip: *const Obj, out: *mut u8, ) -> u8
-msrt_net_ip_address_text(ip: *const Obj) -> *mut StrObj
-msrt_net_ip_address_family(ip: *const Obj) -> u8
-msrt_net_cidr_text(cidr: *const Obj) -> *mut StrObj
-msrt_net_ip_family_text(family: u8) -> *mut StrObj
-msrt_net_dns_kind_text(kind: u8) -> *mut StrObj
-msrt_net_error_message(status: u8, failed: *const StrObj) -> *mut StrObj
-msrt_net_network() -> *mut Obj
-msrt_net_network_close(net: *const Obj)
-msrt_net_network_connect( net: *const Obj, address: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_connect_unix( net: *const Obj, path: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_listen( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_listen_unix( net: *const Obj, path: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_bind_datagram( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_restrict( net: *const Obj, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_with_resolver( net: *const Obj, address: *const StrObj, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_lookup( net: *const Obj, name: *const StrObj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_resolve( net: *const Obj, name: *const StrObj, kind: u8, has_max: u8, max: i64, has_timeout: u8, timeout: i64, records: *mut *mut DnsRecordWire, count: *mut usize, err: *mut *mut StrObj, ) -> u8
-msrt_net_connection_close(c: *const Obj)
-msrt_net_connection_local_address(c: *const Obj) -> *mut StrObj
-msrt_net_connection_peer_address(c: *const Obj) -> *mut StrObj
-msrt_net_connection_read( c: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_net_connection_write( c: *const Obj, data: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
-msrt_net_connection_write_bytes( c: *const Obj, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
-msrt_net_connection_shutdown_write( c: *const Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_listener_accept( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_listener_address(l: *const Obj) -> *mut StrObj
-msrt_net_listener_close(l: *const Obj)
-msrt_net_datagram_address(sock: *const Obj) -> *mut StrObj
-msrt_net_datagram_close(sock: *const Obj)
-msrt_net_datagram_receive( sock: *const Obj, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut DatagramWire, err: *mut *mut StrObj, ) -> u8
-msrt_net_datagram_send( sock: *const Obj, data: *const StrObj, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
-msrt_net_datagram_send_bytes( sock: *const Obj, data: *const VecVal, address: *const StrObj, has_timeout: u8, timeout: i64, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_connect_tls( net: *const Obj, address: *const StrObj, server_name: *const StrObj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_connect_tls_config( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_network_listen_tls( net: *const Obj, address: *const StrObj, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_net_connection_tls_info(c: *const Obj, out: *mut TlsInfoWire) -> u8
-msrt_tls_parse_certificates( pem: *const StrObj, has_max: u8, max: i64, certs: *mut *mut CertificateInfoWire, count: *mut usize, ) -> u8
-msrt_tls_verify_certificates( chain: *const StrObj, roots: *const StrObj, server_name: *const StrObj, now_seconds: i64, _now_nanos: i32, ) -> u8
-msrt_tls_error_message(status: u8) -> *mut StrObj
-msrt_websocket_error_message( status: u8, failed: *const StrObj, ) -> *mut StrObj
-msrt_net_network_web_socket( net: *const Obj, address: *const StrObj, headers: *const Obj, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_http_exchange_upgrade( x: *const Obj, origins: *const VecVal, subprotocols: *const VecVal, has_max: u8, max: i64, out: *mut *mut Obj, err: *mut *mut StrObj, ) -> u8
-msrt_websocket_close(s: *const Obj)
-msrt_websocket_subprotocol(s: *const Obj) -> *mut StrObj
-msrt_websocket_ping( s: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
-msrt_websocket_ping_bytes( s: *const Obj, data: *const VecVal, err: *mut *mut StrObj, ) -> u8
-msrt_websocket_send( s: *const Obj, data: *const StrObj, err: *mut *mut StrObj, ) -> u8
-msrt_websocket_send_bytes( s: *const Obj, data: *const VecVal, text: u8, err: *mut *mut StrObj, ) -> u8
-msrt_websocket_receive( s: *const Obj, data: *mut VecVal, text: *mut u8, present: *mut u8, err: *mut *mut StrObj, ) -> u8
-msrt_path_basename(windows: u8, path: *const StrObj) -> *mut StrObj
-msrt_path_basename_without( windows: u8, path: *const StrObj, suffix: *const StrObj, ) -> *mut StrObj
-msrt_path_dirname(windows: u8, path: *const StrObj) -> *mut StrObj
-msrt_path_extension(windows: u8, path: *const StrObj) -> *mut StrObj
-msrt_path_is_absolute(windows: u8, path: *const StrObj) -> u8
-msrt_path_join(windows: u8, parts: *const VecVal) -> *mut StrObj
-msrt_path_normalize(windows: u8, path: *const StrObj) -> *mut StrObj
-msrt_path_relative( windows: u8, base: *const StrObj, target: *const StrObj, out: *mut *mut StrObj, ) -> u8
-msrt_path_resolve( windows: u8, base: *const StrObj, parts: *const VecVal, out: *mut *mut StrObj, ) -> u8
-msrt_path_parse(windows: u8, path: *const StrObj, out: *mut PartsRec)
-msrt_path_format(windows: u8, parts: *const PartsRec) -> *mut StrObj
-msrt_path_separator(windows: u8) -> *mut StrObj
-msrt_path_delimiter(windows: u8) -> *mut StrObj
-msrt_path_to_namespaced_path( windows: u8, path: *const StrObj, ) -> *mut StrObj
-msrt_path_matches_glob( windows: u8, value: *const StrObj, pattern: *const StrObj, out: *mut u8, ) -> u8
-msstd_process_failure_message() -> *mut StrObj
-msstd_process_monotonic_time() -> i64
-msstd_process_uptime() -> i64
-msstd_process_environment(names: *mut VecVal, values: *mut VecVal) -> u8
-msstd_process_set_environment( name: *const StrObj, has_value: u8, value: *const StrObj, ) -> u8
-msstd_process_load_environment( path: *const StrObj, has_max: u8, max: i64, ) -> u8
-msstd_process_working_directory(out: *mut *mut StrObj) -> u8
-msstd_process_change_directory(path: *const StrObj) -> u8
-msstd_process_send_signal(pid: i64, signal: i64) -> u8
-msstd_process_groups(out: *mut VecVal) -> u8
-msstd_process_set_groups(groups: *const VecVal) -> u8
-msstd_process_initialize_groups(username: *const StrObj, gid: i64) -> u8
-msstd_process_umask(mask: i64, out: *mut i64) -> u8
-msstd_process_set_identity(kind: *const StrObj, id: i64) -> u8
-msstd_process_title(out: *mut *mut StrObj) -> u8
-msstd_process_set_title(title: *const StrObj) -> u8
-msstd_process_constrained_memory(out: *mut i64) -> u8
-msstd_process_available_memory(out: *mut i64) -> u8
-msstd_process_resource_usage(out: *mut ResourceOut) -> u8
-msstd_process_watch_signals( signals: *const VecVal, has_capacity: u8, capacity: i64, out: *mut *mut SignalHandle, ) -> u8
-msstd_process_signal_next(h: *mut SignalHandle, out: *mut i64) -> u8
-msstd_process_signal_close(h: *mut SignalHandle)
-msstd_process_memory_usage(out: *mut MemoryOut) -> u8
-msstd_process_info(out: *mut InfoOut) -> u8
-msstd_process_replace( program: *const StrObj, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
-msstd_process_command_run( program: *const StrObj, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8
-msstd_process_command_spawn( program: *const StrObj, arguments: *const VecVal, out: *mut *mut ChildHandle, ) -> u8
-msstd_process_subprocess_stream( h: *mut ChildHandle, which: i64, ) -> *mut Handle<Stream>
-msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns: i64, out: *mut i64, ) -> u8
-msstd_process_subprocess_terminate(h: *mut ChildHandle)
-msstd_process_subprocess_kill(h: *mut ChildHandle)
-msstd_process_subprocess_close(h: *mut ChildHandle)
-msstd_process_elapsed(out: *mut i64) -> u8
-msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8
-msstd_process_info_pid() -> i64
-msstd_process_info_parent_pid() -> i64
-msstd_process_info_executable() -> *mut StrObj
-msstd_process_info_arguments(out: *mut VecVal)
-msstd_process_info_os() -> *mut StrObj
-msstd_process_info_architecture() -> *mut StrObj
-msstd_process_info_uid() -> i64
-msstd_process_info_gid() -> i64
-msstd_process_info_effective_uid() -> i64
-msstd_process_info_effective_gid() -> i64
+msrt_token_new(_: u32) -> u64
+msrt_token_park(_: u64, _: i64, _: *mut u64) -> u32
+msrt_token_post_remote(_: u64, _: u64)
+msrt_token_free(_: u64)
 msrt_argv(_: *mut ms_rt_abi::VecVal)
-msstd_random_failure_message() -> *mut StrObj
-msstd_random_os_bytes(count: i64, out: *mut VecVal) -> u8
-msstd_random_draw_new(kind: i64, a: i64, has_b: u8, b: i64) -> *mut Draw
-msstd_random_draw_want(d: *const Draw) -> i64
-msstd_random_draw_push(d: *mut Draw, data: *const VecVal) -> u8
-msstd_random_draw_swap(d: *const Draw, which: i64) -> i64
-msstd_random_draw_status(d: *const Draw) -> u8
-msstd_random_draw_int(d: *const Draw) -> i64
-msstd_random_draw_float(d: *const Draw) -> f64
-msstd_random_draw_text(d: *const Draw) -> *mut StrObj
-msstd_random_draw_free(d: *mut Draw)
-msrt_regex_compile(pattern: *const StrObj, out: *mut *mut RegexObj) -> u8
-msrt_regex_matches(re: *const RegexObj, text: *const StrObj) -> u8
-msrt_regex_find_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_regex_captures( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, )
-msrt_regex_captures_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_regex_named_captures( re: *const RegexObj, text: *const StrObj, out: *mut MapVal, )
-msrt_regex_find_span( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, ) -> u8
-msrt_regex_split( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_regex_replace_template( re: *const RegexObj, text: *const StrObj, template: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
-msrt_regex_replace_all( re: *const RegexObj, text: *const StrObj, replacement: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
-msstd_system_failure_message() -> *mut StrObj
-msstd_system_endianness() -> *mut StrObj
-msstd_system_end_of_line() -> *mut StrObj
-msstd_system_dev_null() -> *mut StrObj
-msstd_system_os_type() -> *mut StrObj
-msstd_system_info_os() -> *mut StrObj
-msstd_system_info_architecture() -> *mut StrObj
-msstd_system_info_cpu_count() -> i64
-msstd_system_working_directory() -> *mut StrObj
-msstd_system_hostname(out: *mut *mut StrObj) -> u8
-msstd_system_home_directory(out: *mut *mut StrObj) -> u8
-msstd_system_os_release(out: *mut *mut StrObj) -> u8
-msstd_system_os_version(out: *mut *mut StrObj) -> u8
-msstd_system_machine(out: *mut *mut StrObj) -> u8
-msstd_system_get_priority(pid: i64, out: *mut i64) -> u8
-msstd_system_set_priority(pid: i64, priority: i64) -> u8
-msstd_system_constants(out: *mut MapVal)
-msstd_system_user_info_status() -> u8
-msstd_system_user_info_username() -> *mut StrObj
-msstd_system_user_info_uid() -> i64
-msstd_system_user_info_gid() -> i64
-msstd_system_user_info_home() -> *mut StrObj
-msstd_system_user_info_shell() -> *mut StrObj
-msstd_system_network_interfaces_status() -> u8
-msstd_system_network_interfaces_count() -> i64
-msstd_system_network_interfaces_family(i: i64) -> i64
-msstd_system_network_interfaces_internal(i: i64) -> u8
-msstd_system_cpus_status() -> u8
-msstd_system_cpus_count() -> i64
-msstd_system_metrics_status() -> u8
-msstd_system_metrics_total_memory() -> i64
-msstd_system_metrics_free_memory() -> i64
-msstd_system_metrics_available_memory() -> i64
-msstd_system_metrics_uptime() -> i64
-msstd_system_metrics_available_parallelism() -> i64
-msstd_system_metrics_load_average(window: i64) -> f64
-msstd_system_network_interfaces_name(i: i64) -> *mut StrObj
-msstd_system_network_interfaces_address(i: i64) -> *mut StrObj
-msstd_system_network_interfaces_netmask(i: i64) -> *mut StrObj
-msstd_system_network_interfaces_mac(i: i64) -> *mut StrObj
-msstd_system_network_interfaces_scope_id(i: i64) -> i64
-msstd_system_cpus_model(i: i64) -> *mut StrObj
-msstd_system_cpus_speed_mhz(i: i64) -> i64
-msstd_system_cpus_user(i: i64) -> i64
-msstd_system_cpus_nice(i: i64) -> i64
-msstd_system_cpus_system(i: i64) -> i64
-msstd_system_cpus_idle(i: i64) -> i64
-msstd_system_cpus_irq(i: i64) -> i64
-msstd_terminal_failure_message() -> *mut StrObj
-msstd_terminal_capabilities_input_is_terminal() -> u8
-msstd_terminal_capabilities_output_is_terminal() -> u8
-msstd_terminal_capabilities_error_is_terminal() -> u8
-msstd_terminal_capabilities_raw_mode() -> u8
-msstd_terminal_capabilities_resize_events() -> u8
-msstd_terminal_capabilities_colors() -> i64
-msstd_terminal_size_status() -> u8
-msstd_terminal_size_columns() -> i64
-msstd_terminal_size_rows() -> i64
-msstd_terminal_raw_mode( alternate_screen: u8, out: *mut *mut RawHandle, ) -> u8
-msstd_terminal_raw_terminal_close(h: *mut RawHandle)
-msstd_terminal_raw_terminal_size_status(h: *mut RawHandle) -> u8
-msstd_terminal_raw_terminal_size_columns(h: *mut RawHandle) -> i64
-msstd_terminal_raw_terminal_size_rows(h: *mut RawHandle) -> i64
-msstd_terminal_raw_terminal_move_cursor( h: *mut RawHandle, row: i64, column: i64, ) -> u8
-msstd_terminal_raw_terminal_show_cursor( h: *mut RawHandle, visible: u8, ) -> u8
-msstd_terminal_raw_terminal_erase(h: *mut RawHandle, region: i64) -> u8
-msstd_terminal_raw_terminal_next_event( h: *mut RawHandle, has_timeout: u8, timeout_ns: i64, ) -> u8
-msstd_terminal_event_kind() -> i64
-msstd_terminal_event_text() -> *mut StrObj
-msstd_terminal_event_ctrl() -> u8
-msstd_terminal_event_alt() -> u8
-msstd_terminal_event_shift() -> u8
-msstd_terminal_event_columns() -> i64
-msstd_terminal_event_rows() -> i64
-msstd_time_duration_add(left: i64, other: i64) -> i64
-msstd_time_duration_plus(left: i64, right: i64) -> i64
-msstd_time_duration_minus(left: i64, right: i64) -> i64
-msstd_time_duration_subtract(left: i64, other: i64) -> i64
-msstd_time_int_milliseconds(n: i64) -> i64
-msstd_time_int_seconds(n: i64) -> i64
-msstd_time_int_minutes(n: i64) -> i64
-msstd_time_duration_multiply(value: i64, factor: i64) -> i64
-msstd_time_duration_divide(value: i64, divisor: i64) -> i64
-msstd_time_duration_negate(value: i64) -> i64
-msstd_time_duration_abs(value: i64) -> i64
-msstd_time_duration_compare(left: i64, other: i64) -> i64
-msstd_time_duration_to_microseconds(value: i64) -> i64
-msstd_time_duration_to_milliseconds(value: i64) -> i64
-msstd_time_duration_to_seconds(value: i64) -> f64
-msstd_time_duration_to_minutes(value: i64) -> f64
-msstd_time_duration_to_hours(value: i64) -> f64
-msstd_time_instant_shift( value: *const Instant, duration: i64, out: *mut Instant, )
-msstd_time_instant_unshift( value: *const Instant, duration: i64, out: *mut Instant, )
-msstd_time_instant_difference( left: *const Instant, other: *const Instant, ) -> i64
-msstd_time_instant_compare( left: *const Instant, other: *const Instant, ) -> i64
-msstd_time_instant_equal( left: *const Instant, other: *const Instant, ) -> u8
-msstd_time_clock_now(out: *mut Instant)
-msstd_time_wall_clock_now(out: *mut Timestamp)
-msstd_time_sleep(duration: i64)
-msstd_time_timestamp( seconds: i64, nanoseconds: i64, out: *mut Timestamp, ) -> u8
-msstd_time_parse_timestamp( text: *const StrObj, out: *mut Timestamp, ) -> u8
-msstd_time_timestamp_to_string( value: *const Timestamp, ) -> *mut StrObj
-msstd_time_timestamp_shift( value: *const Timestamp, duration: i64, out: *mut Timestamp, ) -> u8
-msstd_time_timestamp_difference( left: *const Timestamp, other: *const Timestamp, out: *mut i64, ) -> u8
-msstd_time_timestamp_compare( left: *const Timestamp, other: *const Timestamp, ) -> i64
-msstd_time_timestamp_calendar( value: *const Timestamp, zone: *const StrObj, out: *mut CalendarOut, ) -> u8
-msstd_time_timestamp_format( value: *const Timestamp, pattern: *const StrObj, zone: *const StrObj, out: *mut *mut StrObj, ) -> u8
-msstd_time_from_calendar( year: i64, month: i64, day: i64, hour: i64, minute: i64, second: i64, nanosecond: i64, zone: *const StrObj, out: *mut Timestamp, ) -> u8
-msstd_time_local_zone() -> *mut StrObj
-msstd_time_error_message(status: u8) -> *mut StrObj
-msrt_url_encode_component(text: *const StrObj) -> *mut StrObj
-msrt_url_decode_component( text: *const StrObj, out: *mut *mut StrObj, ) -> u8
-msrt_url_parse(text: *const StrObj, out: *mut UrlRec) -> u8
-msrt_url_resolve( base: *const UrlRec, reference: *const StrObj, out: *mut UrlRec, ) -> u8
-msrt_url_format(value: *const UrlRec, out: *mut *mut StrObj) -> u8
-msrt_url_parse_query( text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_url_format_query(entries: *const VecVal) -> *mut StrObj
 ```
