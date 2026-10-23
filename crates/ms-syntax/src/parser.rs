@@ -1455,7 +1455,7 @@ impl<'a> Parser<'a> {
             },
             ExprKind::Apply { left, types, value } => ExprKind::Apply {
                 left: Box::new(self.clone_chain(left)),
-                types: types.iter().map(|t| self.clone_type(t)).collect(),
+                types: self.copy_types(types),
                 value: value.as_ref().map(|v| Box::new(self.clone_chain(v))),
             },
             other => other.clone(),
@@ -1463,23 +1463,6 @@ impl<'a> Parser<'a> {
         Expr {
             id,
             pos: e.pos,
-            kind,
-        }
-    }
-
-    /// A single-name type with a fresh id (the type reading of an index name).
-    fn clone_type(&mut self, t: &TypeRef) -> TypeRef {
-        let id = self.id();
-        let kind = match &t.kind {
-            TypeKind::Named { name, args } => TypeKind::Named {
-                name: *name,
-                args: args.iter().map(|a| self.clone_type(a)).collect(),
-            },
-            other => other.clone(),
-        };
-        TypeRef {
-            id,
-            pos: t.pos,
             kind,
         }
     }
