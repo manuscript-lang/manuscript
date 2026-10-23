@@ -895,6 +895,12 @@ impl<'a> FnLower<'a> {
             self.chars_iter_for = None;
             return Ok(recv);
         }
+        if native == "string/scalar_values" && self.chars_iter_for == Some(e as *const Expr) {
+            // `for c in text.scalar_values()`: the loop decodes the string itself.
+            self.chars_iter_for = None;
+            self.scalars_scan = true;
+            return Ok(recv);
+        }
         if self.map_walk_for == Some(e as *const Expr)
             && let Some(walk) = self.walk_kind(m, recv.v)
         {

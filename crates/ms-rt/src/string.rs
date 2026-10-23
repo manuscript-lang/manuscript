@@ -1555,6 +1555,13 @@ pub unsafe extern "C-unwind" fn msrt_string_char_width(s: *const StrVal, at: i64
     unsafe { utf8::decode(&bytes(s)[at as usize..]).1 as i64 }
 }
 
+/// The Unicode scalar value of the character that starts at byte `at`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64 {
+    // SAFETY: caller passes a live string and an offset inside it.
+    unsafe { utf8::decode(&bytes(s)[at as usize..]).0 as i64 }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut VecVal) {
     // SAFETY: caller passes a live string and a writable out.

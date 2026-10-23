@@ -988,12 +988,16 @@ impl<'a> FnLower<'a> {
     /// `for c in text.chars()`: scans the bytes of `text`. An ASCII byte is the shared
     /// one-character string for it, borrowed and counted by nothing; any other character is
     /// built by the runtime and kept in a hidden variable until the next one replaces it.
+    /// With `scalars` (`for c in text.scalar_values()`), each step is the scalar value instead:
+    /// an ASCII byte is its own value, and the runtime decodes any other.
     fn chars_loop(
         &mut self,
         loop_var: &ms_check::types::BindingRef,
         text: Val,
+        scalars: bool,
         body: &[Stmt],
     ) -> Result<(), Error> {
+        let item = if scalars { MTy::INT } else { MTy::STR };
         let text_var = self.bind_hidden(text);
         let empty = self.b.str_lit("");
         let keep = self.bind_hidden(Val {
@@ -1005,7 +1009,7 @@ impl<'a> FnLower<'a> {
         let zero = self.b.iconst(0);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, zero);
-        let cur = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
+        let cur = self.b.declare_var(item, ms_mir::ir::Mode::Borrow);
         let (header, scan, fast, slow, join, exit) = (
             self.b.new_block(),
             self.b.new_block(),
@@ -1033,10 +1037,13 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(fast);
         self.b.seal_block(slow);
         self.enter(fast);
-        let ch = self
-            .b
-            .emit(Op::StrAscii, &[byte], Imm::None, Some(MTy::STR))
-            .expect("ascii");
+        let ch = if scalars {
+            byte
+        } else {
+            self.b
+                .emit(Op::StrAscii, &[byte], Imm::None, Some(MTy::STR))
+                .expect("ascii")
+        };
         let one = self.b.iconst(1);
         let next = self
             .b
@@ -1048,15 +1055,21 @@ impl<'a> FnLower<'a> {
         self.enter(slow);
         let s = self.b.use_var(text_var);
         let i = self.b.use_var(idx);
-        let ch = self.call_runtime("msrt_string_char_at", &[s, i], MTy::STR)?;
+        let ch = if scalars {
+            self.call_runtime("msrt_string_scalar_at_byte", &[s, i], MTy::INT)?
+        } else {
+            self.call_runtime("msrt_string_char_at", &[s, i], MTy::STR)?
+        };
         let width = self.call_runtime("msrt_string_char_width", &[s, i], MTy::INT)?;
         let next = self
             .b
             .emit(Op::IAdd, &[i, width], Imm::None, Some(MTy::INT))
             .expect("add");
-        let old = self.b.use_var(keep);
-        self.drop_value(old);
-        self.b.def_var(keep, ch);
+        if !scalars {
+            let old = self.b.use_var(keep);
+            self.drop_value(old);
+            self.b.def_var(keep, ch);
+        }
         self.b.def_var(cur, ch);
         self.b.def_var(idx, next);
         self.b.br(join, &[]);
@@ -1146,7 +1159,8 @@ impl<'a> FnLower<'a> {
                     return self.split_loop(&loop_var, it, body);
                 }
                 if ity == MTy::STR {
-                    return self.chars_loop(&loop_var, it, body);
+                    let scalars = std::mem::take(&mut self.scalars_scan);
+                    return self.chars_loop(&loop_var, it, scalars, body);
                 }
                 if crate::mapset::is_map_or_set(self.b.m, ity) {
                     // A map yields its entries and a set its values, as a list snapshot.
