@@ -912,13 +912,19 @@ fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> *mut StrObj 
             }
         }
     }
+    fill_replaced(text, old, new, matches)
+}
+
+/// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
+/// `matches` is the full count), written straight into one new string.
+fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> *mut StrObj {
     if matches == 0 {
         return from_bytes(text);
     }
     let len = text.len() - matches * old.len() + matches * new.len();
     if len < 2 {
         // from_bytes shares the empty and one-ASCII-byte strings.
-        return from_buf(replace_n_bytes(text, old, new, n));
+        return from_buf(replace_n_bytes(text, old, new, matches as i64));
     }
     let out = alloc_str(len);
     // SAFETY: `out` has room for `len` bytes, exactly what the loop below writes.
@@ -999,7 +1005,11 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        *out = from_buf(replace_n_bytes(text, o, n, -1));
+        *out = if o.is_empty() {
+            from_buf(replace_n_bytes(text, o, n, -1))
+        } else {
+            fill_replaced(text, o, n, count)
+        };
         STATUS_OK
     }
 }
