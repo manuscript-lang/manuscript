@@ -8,6 +8,10 @@ Decision: the compiler, runtime, standard library, and tools use Rust with Crane
 
 Verified: exclusivity must be enforced per borrowing construct and checked with both rejection cases and native execution. Well-formed programs and leak-free happy paths alone do not establish memory safety.
 
+Verified: a local aggregate copy used only for reading can borrow its original when the source stays alive. An intervening write or reference release can invalidate a projection even when it never directly consumes that projection: replacing a parent field may free its old payload. The local copy pass permits string-length caching and additional copies, but otherwise rejects writes and releases during the borrowed span.
+Evidence: [local copy elimination](../crates/ms-mir/src/opt/copyelim.rs), [record-copy lifetime regressions](../crates/ms-mir/tests/opt_copyelim.rs), [native payload lifetime checks](../crates/ms-clif/tests/native.rs).
+Verify: read-only record iteration loses its deep copy; dropping the source container or replacing its parent field keeps the independent copy.
+
 Apply when: changing ownership, borrowing, drop elaboration, or argument passing in the checker, MIR, or runtime.
 Evidence: [ownership corpus](../crates/ms-check/tests/ownership.rs), [ownership notes](../crates/ms-check/OWNERSHIP.md).
 Verify: `cargo nextest run -p ms-check`, including the accept and reject ownership fixtures; add the rejected aliasing case before relaxing a rule.
@@ -46,6 +50,19 @@ Apply when: adding overflow-check elimination, bounds narrowing, or constant fol
 Evidence: [overflow faults](../tests/e2e/testdata/accept/numeric-faults.ms), [bounded arithmetic](../tests/e2e/testdata/accept/bounded-int-arithmetic.ms), [counter step](../tests/e2e/testdata/accept/counter-steps-keep-overflow-faults.ms), [int identities](../tests/e2e/testdata/accept/int-identities.ms).
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
 
+Verified: checked signed remainder differs from checked division at `MIN, -1`: remainder is zero while division faults. Constant folding must follow that distinction, and a variable numerator with divisor `-1` can fold to zero without removing evaluation of the numerator.
+Evidence: [interpreter](../crates/ms-mir/src/interp.rs), [native lowering](../crates/ms-clif/src/lower.rs), [simplifier boundary regressions](../crates/ms-mir/tests/opt_simplify.rs).
+Verify: run `cargo test -p ms-mir --test opt_simplify`; preserve zero-divisor faults and the checked division overflow.
+
+Verified: an identical checked scalar operation can reuse an earlier dominating result because reaching the second operation proves the first succeeded. Keep the first check and its source location, even if only the repeat's result is used. This belongs in dominator-scoped value numbering; declaring checked operations globally pure would also permit unsafe speculation.
+Evidence: [simplifier and checked-CSE regressions](../crates/ms-mir/tests/opt_simplify.rs), [dominator-scoped value numbering](../crates/ms-mir/src/opt/simplify.rs).
+Verify: repeated checks across I/O and dominated blocks collapse; sibling checks, different operations, overflow and division faults keep their behavior.
+
+Verified: list element replacement preserves length across loop parameters only when every incoming list has the same length origin. Length equality does not establish element equality. Appending, shrinking, replacing a list, or reading it afresh from memory starts a new origin; propagating a saved length across those operations can incorrectly remove bounds checks.
+Literal-list sizes also bound indices and fold length reads; a new list's capacity does not make its initial length nonzero. Negative indexing still requires its normalization unless non-negativity is proven.
+Evidence: [range analysis](../crates/ms-mir/src/opt/range.rs), [saved-length regressions](../crates/ms-mir/tests/opt_range.rs).
+Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
+
 ### Native omissions are declared in the standard declaration
 
 Verified: defaults for native functions, methods, and constructor fields are written in the standard `.ms` declaration and checked as ordinary expressions. Constructor omission follows source metadata, application implementations inherit standard interface default permissions and receive concrete values, and native compositions pass `some(n)` through source-defined streams. Inferring permission or default expressions from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.
@@ -64,6 +81,10 @@ Apply when: adding lowered operations, inlining, source fault traces, or call fa
 Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
 Verify: `make conform` fault-location cases; preserve frame order, line numbers, and names.
 
+Verified: LLVM translation must preserve cold-edge hints and identify runtime fault calls as `cold noreturn` while keeping their distinct source sites. Use exact runtime identities rather than a symbol prefix for semantic attributes: user function names can share a prefix. LLVM fault-frame tests must check bundled LLVM availability, not an unrelated clang installation.
+Evidence: [LLVM translation and six-target object tests](../crates/ms-clif/src/llvm_ir.rs), [actual backend frame comparison](../crates/ms-cli/tests/llvm.rs), [runtime fault definitions](../crates/ms-rt/src/fault.rs).
+Verify: generate and verify ELF, Mach-O and COFF for x86-64 and ARM64; run LLVM/Cranelift fault-frame equality on supported native hosts. Cross-target object generation establishes code generation, not native execution or runtime ABI correctness on another operating system.
+
 ### Omitted library entries must stay empty through module loading
 
 Verified: executable manifests require an entry; libraries omit the key, and an explicitly empty or invalid entry remains an error. Resolving an empty entry as a source path would turn it into the project directory, so graph loading skips that resolution and discovers source and test roots instead. Application commands report the missing entry at the manifest's project table; source analysis and test lowering use the same graph without requiring `main`.
@@ -81,3 +102,7 @@ Verified (Go-era probes, still the cases to re-run): walking the type dependency
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies, many matches, deeply nested literals), time `ms check` and `ms build` separately, and profile any step that grows faster than 2x per doubling. Prefer a global memo or index over a per-query rescan, and keep cycle checks ahead of memo hits.
+
+Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
+Evidence: [dead-code elimination](../crates/ms-mir/src/opt/simplify.rs), [dead-graph and unused-check regressions](../crates/ms-mir/tests/opt_simplify.rs).
+Verify: simplify unused arithmetic chains at N/2N/4N; shared operands disappear without deleting an unused overflow check.

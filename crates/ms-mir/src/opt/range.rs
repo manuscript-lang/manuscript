@@ -23,9 +23,9 @@
 //!   inherited down the dominator tree, which is sound because values are immutable. The
 //!   same comparisons record relations `a < b` / `a <= b` between SSA values, used to
 //!   prove `i < list.len l` for the *same* list value `l`: list values are immutable SSA
-//!   values threaded through mutators, so one value has one length. The length of a
-//!   `list.set` result is not related to its operand's here, and `list.push` results
-//!   are new values, so a changed length never reuses a stale fact.
+//!   values threaded through mutators. Element replacement preserves length, including
+//!   through loop parameters whose incoming lists all have the same length origin.
+//!   Length-changing operations and fresh memory reads start new origins.
 //! * An induction variable (`i` stepping by `i + c`, `c > 0`, guarded by `i < n`) is
 //!   bounded by the upper bound of `n` because the guard refines the value that feeds
 //!   the back edge.
@@ -155,6 +155,7 @@ enum Edge {
 enum Edit {
     Op(usize, usize, Op),
     Const(usize, usize, bool),
+    Int(usize, usize, i64),
     Term(usize, Term),
 }
 
@@ -169,6 +170,74 @@ struct Fa<'a> {
     envs: Vec<Env>,
     widen: Vec<u32>,
     lenof: HashMap<Value, Value>,
+    lengths: Vec<Value>,
+}
+
+/// A list length can flow through replacement and block arguments without its
+/// elements flowing with it. Each fact changes at most twice, so this worklist
+/// also handles nested loops without rescanning the function to a fixpoint.
+fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    enum Origin {
+        Unknown,
+        One(Value),
+        Mixed,
+    }
+    let mut facts = vec![Origin::Unknown; f.values.len()];
+    let mut users = vec![Vec::new(); f.values.len()];
+    let mut work = Vec::new();
+    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    for p in &f.blocks[0].params {
+        if is_list(p.value) {
+            facts[p.value.index()] = Origin::One(p.value);
+            work.push(p.value);
+        }
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            let Some(r) = i.res.filter(|r| is_list(*r)) else {
+                continue;
+            };
+            if matches!(
+                i.op,
+                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill
+            ) {
+                users[i.args[0].index()].push(r);
+            } else {
+                facts[r.index()] = Origin::One(r);
+                work.push(r);
+            }
+        }
+        b.term.for_each_target(|t| {
+            for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                if is_list(p.value) {
+                    users[a.index()].push(p.value);
+                }
+            }
+        });
+    }
+    while let Some(v) = work.pop() {
+        for &u in &users[v.index()] {
+            let old = facts[u.index()];
+            let new = match (old, facts[v.index()]) {
+                (Origin::Unknown, x) => x,
+                (Origin::One(a), Origin::One(b)) if a == b => old,
+                _ => Origin::Mixed,
+            };
+            if new != old {
+                facts[u.index()] = new;
+                work.push(u);
+            }
+        }
+    }
+    facts
+        .into_iter()
+        .enumerate()
+        .map(|(i, fact)| match fact {
+            Origin::One(v) => v,
+            _ => Value(i as u32),
+        })
+        .collect()
 }
 
 /// Runs the pass over every function; returns whether anything changed.
@@ -194,6 +263,12 @@ pub fn run(m: &mut Module) -> bool {
                     inst.args.clear();
                     inst.imm = Imm::Bool(v);
                 }
+                Edit::Int(b, i, v) => {
+                    let inst = &mut f.blocks[b].insts[i];
+                    inst.op = Op::IConst;
+                    inst.args.clear();
+                    inst.imm = Imm::Int(v);
+                }
                 Edit::Term(b, t) => {
                     f.blocks[b].term = t;
                     terms = true;
@@ -218,6 +293,7 @@ fn type_top(ty: Ty) -> Itv {
 impl<'a> Fa<'a> {
     fn new(m: &'a Module, f: &'a Func) -> Self {
         let n = f.blocks.len();
+        let lengths = length_origins(m, f);
         let mut defs = vec![None; f.values.len()];
         let mut lenof = HashMap::new();
         for (bi, b) in f.blocks.iter().enumerate() {
@@ -225,7 +301,7 @@ impl<'a> Fa<'a> {
                 if let Some(r) = i.res {
                     defs[r.index()] = Some((bi, ii));
                     if i.op == Op::ListLen {
-                        lenof.insert(r, i.args[0]);
+                        lenof.insert(r, lengths[i.args[0].index()]);
                     }
                 }
             }
@@ -269,6 +345,7 @@ impl<'a> Fa<'a> {
             envs: vec![Env::default(); n],
             widen: vec![0; f.values.len()],
             lenof,
+            lengths,
         }
     }
 
@@ -281,6 +358,16 @@ impl<'a> Fa<'a> {
         let i = self.def_inst(v)?;
         match (i.op, i.imm) {
             (Op::IConst, Imm::Int(c)) => Some(c),
+            _ => None,
+        }
+    }
+
+    fn list_length(&self, v: Value) -> Option<i64> {
+        let d = self.def_inst(self.lengths[v.index()])?;
+        match d.op {
+            Op::ListLit => i64::try_from(d.args.len()).ok(),
+            // Capacity does not change a new list's initially empty length.
+            Op::ListNew => Some(0),
             _ => None,
         }
     }
@@ -740,7 +827,10 @@ impl<'a> Fa<'a> {
                     x.join(y)
                 }
             }
-            Op::ListLen | Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
+            Op::ListLen => self
+                .list_length(inst.args[0])
+                .map_or(Itv { lo: 0, hi: LEN_MAX }, Itv::point),
+            Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {
                     let n = self.m.alts[a.index()].cases.len() as i64;
@@ -758,9 +848,9 @@ impl<'a> Fa<'a> {
     /// `(a < b, a <= b)` as far as recorded relations and identity prove.
     fn rel_known(&self, a: Value, b: Value, env: &Env) -> (bool, bool) {
         let mut lt = false;
-        let mut le = a == b;
+        let mut le = self.same_value(a, b);
         for &(x, y, strict) in &env.rels {
-            if x == a && y == b {
+            if self.same_value(x, a) && self.same_value(y, b) {
                 lt |= strict;
                 le = true;
             }
@@ -768,12 +858,20 @@ impl<'a> Fa<'a> {
         (lt, le)
     }
 
+    fn same_value(&self, a: Value, b: Value) -> bool {
+        a == b
+            || self
+                .lenof
+                .get(&a)
+                .is_some_and(|l| self.lenof.get(&b) == Some(l))
+    }
+
     fn decide(&self, cc: Cc, a: Value, b: Value, x: Itv, y: Itv, env: &Env) -> Option<bool> {
         let (lt, le) = self.rel_known(a, b, env);
         let (gt, ge) = self.rel_known(b, a, env);
         let (ilt, ile) = (x.hi < y.lo, x.hi <= y.lo);
         let (igt, ige) = (x.lo > y.hi, x.lo >= y.hi);
-        let eq_true = (x.is_point() && y.is_point() && x.lo == y.lo) || a == b;
+        let eq_true = (x.is_point() && y.is_point() && x.lo == y.lo) || self.same_value(a, b);
         let ne_true = ilt || igt || lt || gt;
         match cc {
             Cc::Lt if ilt || lt => Some(true),
@@ -797,12 +895,17 @@ impl<'a> Fa<'a> {
     /// Proves `idx < list.len l` from recorded relations, following `<=`/`<` chains
     /// and `x - c` (c > 0) definitions.
     fn below_len(&self, idx: Value, l: Value, env: &Env) -> bool {
+        if let (Some(i), Some(n)) = (self.get(idx, env), self.list_length(l))
+            && i.hi < n
+        {
+            return true;
+        }
         let mut seen: Vec<(Value, bool)> = vec![(idx, false)];
         let mut i = 0;
         while i < seen.len() {
             let (v, strict) = seen[i];
             i += 1;
-            if strict && self.lenof.get(&v) == Some(&l) {
+            if strict && self.lenof.get(&v) == Some(&self.lengths[l.index()]) {
                 return true;
             }
             let mut next: Vec<(Value, bool)> = Vec::new();
@@ -841,6 +944,11 @@ impl<'a> Fa<'a> {
             for (ii, inst) in f.blocks[bi].insts.iter().enumerate() {
                 let get = |k: usize| self.get(inst.args[k], env);
                 match inst.op {
+                    Op::ListLen => {
+                        if let Some(n) = self.list_length(inst.args[0]) {
+                            out.push(Edit::Int(bi, ii, n));
+                        }
+                    }
                     Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                         let (Some(x), Some(y)) = (get(0), get(1)) else {
                             continue;

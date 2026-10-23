@@ -1,0 +1,23 @@
+module "record_copy_parent_update"
+record Item { values: list<int> }
+record Parent { child: Item }
+entry @main
+fn @main() -> int {
+b0:
+  %ten: int = iconst 10
+  %twenty: int = iconst 20
+  %zero: int = iconst 0
+  %values: list<int> = list.lit %ten
+  %item: Item = rec.new Item %values
+  %parent: Parent = rec.new Parent %item
+  %borrowed: Item = rec.get Parent.child %parent
+  %copy: Item = copy %borrowed
+  %newvalues: list<int> = list.lit %twenty
+  %newitem: Item = rec.new Item %newvalues
+  %updated: Parent = rec.set Parent.child %parent, %newitem
+  %field: list<int> = rec.get Item.values %copy
+  %r: int = list.get %field, %zero
+  drop %copy
+  drop %updated
+  ret %r
+}
