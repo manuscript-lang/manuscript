@@ -54,7 +54,6 @@ fn through(shape: Shape) Int:
 
 fn tried(rect: Rect, limit: Int) Result[Int, TextError]:
     let first = try rect.checked(limit: limit)
-
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
 fn order(rect: Rect, var log: List[String]) Int:
@@ -67,7 +66,6 @@ fn id(var log: List[String]) Int:
 
 test "direct methods":
     let rect = Rect(w: 3, h: 4)
-
     (rect.area() == 12) | try expect_true
     (rect.scaled(by: 3) == 36) | try expect_true
     (through(shape: Shape(value: rect)) == 24) | try expect_true
@@ -84,6 +82,5 @@ test "direct methods":
         error(cause): (cause.message() == "too big") | try expect_true
 
     var log = List[String]()
-
     (order(rect: rect, log: var log) == 12) | try expect_true
     (log.join(separator: ",") == "receiver,argument") | try expect_true

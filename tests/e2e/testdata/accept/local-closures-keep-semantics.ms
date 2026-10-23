@@ -3,11 +3,9 @@ import {expect_true} from "@std/testing.ms"
 
 fn bump(factor: Int) Int:
     var offset = 10
-
     offset = 99
 
     let scale = fn(value: Int) Int: value * factor + offset
-
     return scale(value: 2)
 
 fn lookup(limit: Int) Int:
@@ -16,6 +14,7 @@ fn lookup(limit: Int) Int:
             return some(key * 2)
 
         return none
+
     var total = 0
     var i = 0
 
@@ -36,29 +35,25 @@ fn parse(text: String) Result[Int, TextError]:
             return Result[Int, TextError].error(TextError("negative"))
 
         return Result[Int, TextError].ok(number)
-    let checked = try guard(number: text.length())
 
+    let checked = try guard(number: text.length())
     return Result[Int, TextError].ok(checked + 1)
 
 fn labels(prefix: String) String:
     let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
-
     return join(left: "a", right: "b")
 
 fn reordered() Int:
     let subtract = fn(left: Int, right: Int) Int: left - right
-
     return subtract(right: 2, left: 7)
 
 fn passed() List[Int]:
     let double = fn(value: Int) Int: value * 2
-
     return [1, 2, 3].map(double)
 
 fn nested(n: Int) Int:
     let inner = fn(x: Int) Int: x + 1
     let outer = fn(y: Int) Int: inner(x: y) * 2
-
     return outer(y: n)
 
 test "local closures":

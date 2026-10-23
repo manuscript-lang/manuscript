@@ -10,18 +10,15 @@ fn checked(n: Int) Result[Int, TextError]:
 
 fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
-
     return ok(v * 2)
 
 fn deeper(n: Int) Result[Int, TextError]:
     let a = try chain(n)
     let b = try chain(a)
-
     return ok(a + b)
 
 fn expression_try(n: Int) Result[Int, TextError]:
     let x = (try checked(n)) + 100
-
     return ok(x)
 
 fn passthrough(n: Int) Result[Int, TextError]:
@@ -29,7 +26,6 @@ fn passthrough(n: Int) Result[Int, TextError]:
 
 fn through_local(n: Int) Result[Int, TextError]:
     let r = checked(n)
-
     return r
 
 fn halve(n: Int) Optional[Int]:
@@ -73,18 +69,15 @@ fn sum_all(count: Int) Result[Int, TextError]:
 
     for i in range(0, count):
         let v = try checked(i)
-
         total += v
 
     return ok(total)
 
 test "result matching":
     let v = chain(3).get()
-
     try expect_equal(v, 8)
 
     let failure = chain(-1)
-
     try expect_false(not failure.is_error())
     try expect_equal(failure.err().message(), "negative")
 
@@ -93,12 +86,10 @@ test "try chains":
     if not (v == 4 + 10): return fail("deeper {v}")
 
     let deeper_failure = deeper(-5)
-
     try expect_false(not deeper_failure.is_error())
     try expect_equal(deeper_failure.err().message(), "negative")
 
     let x = expression_try(4).get()
-
     try expect_equal(x, 105)
     try expect_false(not expression_try(-4).is_error())
 
@@ -112,7 +103,6 @@ test "boxed consumers":
 
     let f = checked
     let v = f(6).get()
-
     try expect_equal(v, 7)
     try expect_equal(matched_value(3), 4)
     try expect_equal(matched_value(-3), -1)
@@ -126,11 +116,9 @@ test "optional and payload kinds":
     try expect_false(halve(7).is_some())
 
     let w = word(3).get()
-
     try expect_equal(w, "w3")
 
     let r = ratio(1).get()
-
     try expect_equal(r, 1.5)
     nothing(true).get()
 
@@ -140,17 +128,14 @@ test "optional and payload kinds":
         return fail("nested none")
 
     let odd = closure_return(5)
-
     try expect_false(not odd.is_error())
     try expect_equal(odd.err().message(), "odd")
 
     let even = closure_return(6).get()
-
     try expect_equal(even, 3)
 
 test "list at unwrap":
     let items = [10, 20, 30]
-
     try expect_equal(items.get(0), 10)
     try expect_equal(items.get(-1), 30)
     try expect_equal(items.get(1) + items.get(2), 50)

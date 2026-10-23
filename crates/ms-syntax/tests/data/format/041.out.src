@@ -11,12 +11,13 @@ fn example() Unit:
             # Keep the explanation.
             return 7
     )
+
     consume(
         fn():
             let result = 7
-
             return result
     )
+
     consume(
         fn():
             work()

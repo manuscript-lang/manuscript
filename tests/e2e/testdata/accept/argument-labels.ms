@@ -9,7 +9,6 @@ fn identity[T](value: T) T:
 
 fn sum(values: List[Int]) Int:
     var total = 0
-
     for value in values:
         total = total + value
     return total
@@ -38,7 +37,6 @@ type Counter:
 
 fn next(var state: Counter) Int:
     let value = state.value
-
     state.value = value + 1
     return value
 
@@ -52,14 +50,12 @@ fn prepare_function(var state: Counter) Result[fn(value: Int) Int, Error]:
 
 fn absent(value: Optional[Int]) Bool:
     let missing: Optional[Int] = none
-
     return value == missing
 
 test "optional labels on single-parameter functions":
     increment(3) | try expect_equal(increment(value: 3))
 
     let multiline = increment(3)
-
     multiline | try expect_equal(4)
     identity(7) | try expect_equal(7)
     identity[Int](7) | try expect_equal(7)
@@ -70,58 +66,47 @@ test "optional labels on single-parameter functions":
     select()(5) | try expect_equal(6)
 
     let specialized = identity[Int]
-
     specialized(8) | try expect_equal(8)
 
     let closure = fn(value: Int):
         return value * 2
-
     closure(3) | try expect_equal(6)
     apply(closure) | try expect_equal(8)
 
     let result = apply(fn(value): return value + 2)
-
     result | try expect_equal(6)
     subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(7)
 
 test "optional labels on methods and native functions":
     let offset = Offset(3)
-
     offset.apply(4) | try expect_equal(7)
 
     let view = Increment(offset)
-
     view.apply(4) | try expect_equal(7)
 
     let method = view.apply
-
     method(5) | try expect_equal(8)
     abs_int(-3) | try expect_equal(3)
 
     let native = abs_int
-
     native(-4) | try expect_equal(4)
     sum([]) | try expect_equal(0)
     sum([1, 2, 3]) | try expect_equal(6)
 
     var chain_1 = ([1, 2, 3])
-
     chain_1.reverse_in_place()
     chain_1 | try expect_equal([3, 2, 1])
 
     var chain_2 = [1, 2]
-
     chain_2.append(3)
     chain_2 | try expect_equal([1, 2, 3])
 
     let lookup = [4, 5].get
-
     lookup(1) | try expect_equal(5)
     [4, 5].get(0) | try expect_equal(4)
 
 test "omitted labels preserve evaluation order":
     var state = Counter(value: 0)
-
     (try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(3)
     state.value | try expect_equal(2)
     subtract(deduction: next(var state), amount: next(var state)) | try expect_equal(1)

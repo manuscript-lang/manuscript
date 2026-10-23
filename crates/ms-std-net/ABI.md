@@ -206,8 +206,10 @@ Every park can interleave other tasks calling into the same objects, so a native
 holds a `RefCell` borrow (or any guard on shared state) across a wait. Shared scratch
 buffers are taken out of a `Cell` for the read and put back after; an object whose read
 parks on its own state (`ResponseBody.read`) takes the state out of its cell and hands it
-back on every exit, and a second reader gets `IoErr::Failed("... another task")`. Tasks
-sharing one descriptor hit the runtime's single-waiter fault (ms-rt ABI §7), so a shared
+back on ordinary exit, and a second reader gets `IoErr::Failed("... another task")`.
+A runtime cleanup action closes a response body and abandons its connection or stream when
+cancellation or a fault skips the read's Rust destructor; subsequent reads return `Closed`.
+Tasks sharing one descriptor hit the runtime's single-waiter fault (ms-rt ABI §7), so a shared
 HTTP/2 session has one driver at a time: the task parked in the socket read or write.
 The others park on a token until it has filed events, and a task with only new output
 writes it without waiting and leaves any rest to the driver.

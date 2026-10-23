@@ -87,7 +87,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The place `if var name = recv.get(key)` (or `first`, `last`) names.
-    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<Alias, Error> {
+    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Val), Error> {
         let ExprKind::Call { callee, args } = &cond.kind else {
             return Err(Error::new(
                 "`if var` borrows the payload of a call such as `m.get(key)`, `xs.first()` or `xs.last()`",
@@ -99,6 +99,7 @@ impl<'a> FnLower<'a> {
         let mut a = self.alias_chain(left)?;
         let whole = self.alias_read(&a)?;
         let ty = self.ty_of(whole.v);
+        let mut values = Vec::new();
         match (self.b.m.types.kind(ty).clone(), name.as_str()) {
             (TyKind::List(_), "first") => {
                 let zero = self.b.iconst(0);
@@ -114,11 +115,14 @@ impl<'a> FnLower<'a> {
                 let i = self.expr(&args[0].value)?;
                 let at = self.borrow(i);
                 a.steps.push(AStep::Index(at));
+                values.push(Val { v: at, own: false });
             }
             (TyKind::Obj(..), "get") if args.len() == 1 => {
                 let k = self.expr(&args[0].value)?;
                 let key = self.bind_hidden(k);
                 a.steps.push(AStep::Key(key));
+                let v = self.b.use_var(key);
+                values.push(Val { v, own: false });
             }
             _ => {
                 return Err(Error::new(
@@ -126,7 +130,25 @@ impl<'a> FnLower<'a> {
                 ));
             }
         }
-        Ok(a)
+        let Resolution::Method(method) = self.hir.resolution(cond) else {
+            return Err(Error::new("`if var` needs a method call on a place"));
+        };
+        let args = method
+            .ty
+            .params
+            .iter()
+            .zip(values)
+            .map(|(p, val)| crate::native::NArg {
+                name: p.name,
+                val,
+                wrapped: false,
+            })
+            .collect::<Vec<_>>();
+        let result = self.emty(cond)?;
+        // Test the same receiver and key the borrow will name. Re-lowering `cond`
+        // would run calls in its receiver path or key a second time.
+        let value = self.bound_native_call(&method, whole, &args, result)?;
+        Ok((a, value))
     }
 
     /// The current value of a borrowed place, as a borrow.

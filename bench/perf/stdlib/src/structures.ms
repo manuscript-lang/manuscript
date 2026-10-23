@@ -21,31 +21,29 @@ export fn bench_structures() Unit:
             n * 2,
             fn() Int:
                 var queue = Queue[Int]()
-
                 for i in range(0, n):
                     queue.enqueue(i)
 
                 var total = 0
-
                 for i in range(0, n):
                     total += queue.dequeue().get(0)
                 return total
         )
+
         bench(
             "priority_queue.enqueue_dequeue_{n}",
             n * 2,
             fn() Int:
                 var queue = PriorityQueue[Int](ascending)
-
                 for i in range(0, n):
                     queue.enqueue((i * 7919) % 100003)
 
                 var total = 0
-
                 for i in range(0, n):
                     total += queue.dequeue().get(0)
                 return total
         )
+
         bench(
             "deque.push_pop_both_ends_{n}",
             n * 4,
@@ -57,27 +55,26 @@ export fn bench_structures() Unit:
                     deque.push_front(i)
 
                 var total = 0
-
                 for i in range(0, n):
                     total += deque.pop_front().get(0) + deque.pop_back().get(0)
                 return total
         )
+
         bench(
             "bitset.add_contains_{n}",
             n * 2,
             fn() Int:
                 var set = BitSet()
-
                 for i in range(0, n):
                     set.add((i * 7919) % 1000003)
 
                 var hits = 0
-
                 for i in range(0, n):
                     if set.contains(i):
                         hits += 1
                 return hits + set.length()
         )
+
         bench(
             "sorted_map.add_contains_{n}",
             n * 2,
@@ -98,6 +95,7 @@ export fn bench_structures() Unit:
 
                 return hits + map.length()
         )
+
         bench(
             "list.insert_remove_middle_{n}",
             2000,

@@ -74,7 +74,6 @@ fn transform(text: String, cipher: String, decrypt: Bool, key: String) Optional[
     if cipher == "caesar":
         if let shift = caesar_shift(key):
             var amount = shift
-
             if decrypt:
                 amount = -shift
             for c in text.chars():
@@ -92,7 +91,6 @@ fn transform(text: String, cipher: String, decrypt: Bool, key: String) Optional[
             else:
                 let base = shifts[pos % shifts.length()]
                 var amount = base
-
                 if decrypt:
                     amount = -amount
                 out = out.concat(shift_char(c, amount))

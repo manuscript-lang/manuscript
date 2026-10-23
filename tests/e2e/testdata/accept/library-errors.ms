@@ -41,7 +41,6 @@ test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(
         Encoding(EncodingError.InvalidData)
     )
-
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
@@ -63,12 +62,10 @@ impl Error for TaggedError[T]:
 
 fn decode_generically() Result[Unit, Error]:
     let bytes = try hex_decode(text: "zz", max_bytes: 10)
-
     return ok(unit)
 
 fn propagate_generic() Result[Unit, Error]:
     let completed = try decode_generically()
-
     return ok(unit)
 
 fn describe_error(cause: Error) String:
@@ -107,19 +104,15 @@ fn generic_type_pattern[T](cause: Error, expected: T) Bool:
 
 test "generic handling preserves the concrete error and its payload":
     let json = Error(JsonError.InvalidData)
-
     describe_error(json) | try expect_equal("malformed JSON")
 
     let io = Error(IoError.Failed("disk diagnostic"))
-
     describe_error(io) | try expect_equal("I/O: disk diagnostic")
 
     let custom = Error(CustomError("application diagnostic"))
-
     describe_error(custom) | try expect_equal("application diagnostic")
 
     let wrapped = Error(json)
-
     describe_error(wrapped) | try expect_equal("malformed JSON")
 
     let cause = match propagate_generic():
@@ -136,7 +129,6 @@ test "generic handling preserves the concrete error and its payload":
 test "type patterns compare exact generic applications":
     let integer = Error(TaggedError(7))
     let text = Error(TaggedError("text diagnostic"))
-
     (
         (
             tagged_detail(Error(TaggedError(7))) != "integer 7"
@@ -177,7 +169,6 @@ fn failed_read() Result[Unit, ReadError]:
 
 fn propagate_read() Result[Unit, ReadError]:
     let completed = try failed_read()
-
     return ok(unit)
 
 test "domain error fields survive propagation without a wrapper":
@@ -189,7 +180,6 @@ test "domain error fields survive propagation without a wrapper":
     (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable) | try expect_false
 
     let message = cause.message
-
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
 
     let generic: Error = cause
@@ -213,7 +203,6 @@ fn read_failure(cause: ReadError) Result[Unit, ReadError]:
 
 fn general_read(cause: ReadError) Result[Unit, Error]:
     let completed = try read_failure(cause)
-
     return ok(unit)
 
 fn forward_read(cause: ReadError) Result[Unit, Error]:
@@ -224,7 +213,6 @@ fn generic_failure[E: Error](cause: E) Result[Unit, E]:
 
 fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
     let completed = try generic_failure(cause)
-
     return ok(unit)
 
 fn describe_direct(cause: Error) String:
@@ -235,7 +223,6 @@ test "specific errors pass directly into Error boundaries":
         diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: true
     )
     let shared: Error = Error(original.clone())
-
     (
         describe_direct(
             original.clone()
@@ -308,7 +295,6 @@ test "domain case payloads need no Error implementation":
 test "standard error diagnostics work directly":
     let cause = IoError.Failed("read failed")
     let message = cause.message
-
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
     JsonError.InvalidData.message() | try expect_equal("JSON: invalid data")
 
@@ -318,11 +304,9 @@ import {CommandError} from "@std/process.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
-
     Error(sink).message() | try expect_equal("sink diagnostic")
 
     let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
-
     Error(file_sink).message() | try expect_equal("file sink diagnostic")
     (
         (
@@ -369,7 +353,6 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     count.value | try expect_equal(1)
 
     let view = Label[String](Labelled("separate handler"))
-
     match_label(view) | try expect_equal("separate handler")
 
 import filesystem from "@std/fs.ms"
@@ -406,7 +389,6 @@ fn check_missing_file() Result[Unit, Error]:
             try expect_equal(cause.message(), "filesystem: file or directory not found")
 
     let removed = try fs.remove(path: directory, recursive: false)
-
     return ok(unit)
 
 test "missing file diagnostics preserve the filesystem case":

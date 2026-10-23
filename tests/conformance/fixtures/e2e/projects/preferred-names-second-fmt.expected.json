@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Key from \"./domain.ms\"\nimport {add_generic, remove_generic} from \"./helpers.ms\"\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.label == value.label\n            _: return false\n\nimpl Hashable for Key:\n    fn hash() Int: self.label.scalar_length()\n\nexport fn second_run() Set[Key]:\n    var items = Set[Key]([Key(1, \"original\")])\n    let add = items.add\n    let remove = items.remove\n\n    add(Key(1, \"duplicate\"))\n    add_generic(var items, Key(2, \"original\"))\n    remove(Key(99, \"duplicate\"))\n    remove_generic(var items, Key(1, \"absent\"))\n    return items\n"
+    "fmt": "import Key from \"./domain.ms\"\nimport {add_generic, remove_generic} from \"./helpers.ms\"\n\nimpl Equal for Key:\n    fn equals(other: Equal) Bool:\n        match other:\n            Key(value): return self.label == value.label\n            _: return false\n\nimpl Hashable for Key:\n    fn hash() Int: self.label.scalar_length()\n\nexport fn second_run() Set[Key]:\n    var items = Set[Key]([Key(1, \"original\")])\n    let add = items.add\n    let remove = items.remove\n    add(Key(1, \"duplicate\"))\n    add_generic(var items, Key(2, \"original\"))\n    remove(Key(99, \"duplicate\"))\n    remove_generic(var items, Key(1, \"absent\"))\n    return items\n"
   }
 }

@@ -81,7 +81,6 @@ fn cmd_stock(var shop: Shop, parts: List[String]) Unit:
 
     if let qty = parse_qty(parts[2]):
         let stock = shop.stock.get_or(sku, 0) + qty
-
         if not shop.stock.contains(sku): shop.price.add(sku, 0)
         shop.stock.add(sku, stock)
         emit("ok {sku} stock={stock}")
@@ -257,7 +256,6 @@ fn cmd_report(var shop: Shop, parts: List[String]) Unit:
     for sku in shop.stock.keys().sorted(fn(a: String, b: String) Int: a.compare(b)):
         let stock = shop.stock.get_or(sku, 0)
         let price = shop.price.get_or(sku, 0)
-
         emit(
             "{sku} stock={stock} price={money(price)} reserved={reserved.get_or(sku, 0)}"
         )
@@ -288,7 +286,6 @@ fn run(var shop: Shop, text: String) Unit:
 
 export fn main() Int:
     var shop = Shop()
-
     for text in read_lines(stdin()).get():
         run(var shop, text)
     return 0

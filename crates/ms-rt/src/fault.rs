@@ -139,6 +139,25 @@ pub(crate) fn live_shielded() -> bool {
     unsafe { *SHIELD.ptr() > 0 }
 }
 
+/// Starts an independent fault boundary in an `expect_fault` fork child. Inherited cleanup
+/// actions and guard targets belong to the caller, whose external resources remain live.
+/// Cancellation, shielding and stack limits still describe the running operation.
+///
+/// # Safety
+/// Only call in the fork child before running the asserted operation.
+#[cfg(unix)]
+pub(crate) unsafe fn isolate_trap_child() {
+    // SAFETY: fork gives this child its own copy of the single-threaded runtime state.
+    unsafe {
+        (*CLEANUPS.ptr()).clear();
+        (*GUARDS.ptr()).clear();
+        *FAULTING.ptr() = false;
+        *PRIMARY.ptr() = None;
+        (*SECONDARY.ptr()).clear();
+    }
+    crate::desc::eq_truncate(0);
+}
+
 /// Exchanges `c` with the live per-task state.
 ///
 /// # Safety
@@ -1137,6 +1156,57 @@ mod tests {
 
     static LOG: Global<[u8; 8]> = Global::new([0; 8]);
     static LOG_N: Global<usize> = Global::new(0);
+
+    #[cfg(unix)]
+    #[test]
+    fn trap_child_reset_preserves_cancellation_shield_and_stack_state() {
+        let _lock = lock();
+        // Temporarily install an isolated context instead of forking to inspect every field.
+        let mut saved = Ctx::new(0, 0);
+        let signal = PENDING_SIGNAL.swap(15, Ordering::Relaxed);
+        unsafe {
+            swap_ctx(&mut saved);
+            *SHIELD.ptr() = 2;
+            *TASK_CANCEL.ptr() = 1;
+            msrt_cancel_flag.store(0, Ordering::Relaxed);
+            *STACK_LO.ptr() = 100;
+            *STACK_HI.ptr() = 1000;
+            msrt_stack_limit = 200;
+            (*CLEANUPS.ptr()).push((0, 0));
+            (*GUARDS.ptr()).push(GuardFrame {
+                jmp: 0,
+                cleanups: 1,
+                limit: 200,
+                shield: 2,
+                eq_pairs: 1,
+                trap: false,
+            });
+            *FAULTING.ptr() = true;
+            *PRIMARY.ptr() = Some(b"inherited".to_vec());
+            (*SECONDARY.ptr()).push(b"secondary".to_vec());
+            crate::desc::swap_eq_pairs(&mut vec![(1, 2)]);
+
+            isolate_trap_child();
+
+            assert!((*CLEANUPS.ptr()).is_empty());
+            assert!((*GUARDS.ptr()).is_empty());
+            assert!(!*FAULTING.ptr());
+            assert!((*PRIMARY.ptr()).is_none());
+            assert!((*SECONDARY.ptr()).is_empty());
+            assert_eq!(crate::desc::eq_len(), 0);
+            assert_eq!(*SHIELD.ptr(), 2);
+            assert_eq!(*TASK_CANCEL.ptr(), 1);
+            assert_eq!(PENDING_SIGNAL.load(Ordering::Relaxed), 15);
+            assert_eq!(msrt_cancel_flag.load(Ordering::Relaxed), 0);
+            assert_eq!(*STACK_LO.ptr(), 100);
+            assert_eq!(*STACK_HI.ptr(), 1000);
+            let limit = msrt_stack_limit;
+            assert_eq!(limit, 200);
+
+            PENDING_SIGNAL.store(signal, Ordering::Relaxed);
+            swap_ctx(&mut saved);
+        }
+    }
 
     unsafe extern "C-unwind" fn log_action(arg: *mut u8) {
         // SAFETY: tests hold the lock; LOG has room for 8 entries.

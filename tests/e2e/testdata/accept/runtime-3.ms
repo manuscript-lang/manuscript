@@ -11,7 +11,6 @@ fn probe() Result[Unit, Error]:
         return true
     let number = identity(first)()
     let flag = second()
-
     (flag) | try expect_true
 
     match number:
@@ -45,10 +44,8 @@ fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
 test "explicit error conversion":
     let failed: Result[Int, Code] = error(Code(7))
     let expected: Result[Int, TextError] = error(TextError("Error 7"))
-
     describe(outcome: failed) | try expect_equal(expected)
 
     let succeeded: Result[Int, Code] = ok(3)
     let unchanged: Result[Int, TextError] = ok(3)
-
     describe(outcome: succeeded) | try expect_equal(unchanged)

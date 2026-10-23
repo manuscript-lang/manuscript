@@ -2,7 +2,6 @@ import {expect_true} from "@std/testing.ms"
 
 test "literal divisors":
     let n = -7
-
     try expect_true((n / 2 == -3))
     try expect_true((n % 3 == -1))
     try expect_true((9 % 2 == 1))

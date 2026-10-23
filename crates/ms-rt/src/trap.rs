@@ -29,6 +29,7 @@ pub extern "C" fn msrt_trap_begin() -> u8 {
             crate::fault!("expect_fault: cannot fork");
         }
         if pid == 0 {
+            crate::fault::isolate_trap_child();
             sys::close(fds[0]);
             sys::dup2(fds[1], sys::STDERR);
             sys::close(fds[1]);

@@ -20,7 +20,6 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 
     with temporary = (fs.temporary("manuscript-glob-") | try expect_ok):
         let root = temporary.path()
-
         (fs.create_directory(path: "{root}/sub", recursive: false) | try expect_ok)
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
             (
@@ -30,7 +29,6 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             )
 
         let matches = (fs.glob(path: root, pattern: "**/*.\{txt,md\}") | try expect_ok)
-
         matches | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
         (
             fs.glob(
@@ -57,7 +55,6 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
                 )
             )
         )
-
         entries.length() | try expect_equal(1)
         entries.get(0).path | try expect_equal("a.txt")
         options.patterns | try expect_equal(["*.txt"])
@@ -83,7 +80,6 @@ test "ordinary filesystem misuse retains typed cases":
                 path: file, data: "abc", replace: false
             ) | try expect_ok
         )
-
         (
             fs.remove(
                 path: directory, recursive: false
@@ -131,7 +127,6 @@ test "filesystem scoped temporary directories and bounded file reads":
                 path: path, data: "hello", replace: false
             ) | try expect_ok
         )
-
         fs.read_file(path: path, max_bytes: 5) | try expect_ok | try expect_equal(
             "hello".to_bytes()
         )
@@ -139,11 +134,9 @@ test "filesystem scoped temporary directories and bounded file reads":
         let limited: Result[Bytes, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-
         fs.read_file(path: path, max_bytes: 4) | try expect_equal(limited)
 
         let exists: Result[Unit, FileSystemError] = error(FileSystemError.AlreadyExists)
-
         ((fs.write_file(path: path, data: "changed", replace: false) != exists)) | try expect_false
         (fs.stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(
             5
@@ -168,25 +161,21 @@ test "file handles positional I/O stream adapters and closed errors":
             ) | try expect_ok
         )
         let handle = (fs.open(path: path, flags: "r+", mode: 384) | try expect_ok)
-
         handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
             "cd".to_bytes()
         )
         (handle.write_at(offset: 1, data: "XY") | try expect_ok)
 
         let resized = (handle.truncate(4) | try expect_ok)
-
         (handle.stat() | try expect_ok).size | try expect_equal(4)
 
         let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
-
         read_all(input: handle.reader()) | try expect_ok | try expect_equal(
             "aXYd".to_bytes()
         )
         handle.close()
 
         let closed: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
-
         handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
         handle.close()
 
@@ -195,7 +184,6 @@ test "empty paths are rejected instead of resolving to the working directory":
     let invalid: Result[Unit, FileSystemError] = error(
         cause: FileSystemError.InvalidInput
     )
-
     fs.remove(path: "", recursive: true) | try expect_equal(invalid)
     fs.create_directory(path: "", recursive: true) | try expect_equal(invalid)
     fs.write_file(path: "", data: "x", replace: true) | try expect_equal(invalid)

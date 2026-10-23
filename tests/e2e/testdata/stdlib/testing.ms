@@ -20,30 +20,25 @@ test "testing assertions":
 
     let present: Optional[Int] = some(7)
     let absent: Optional[Int] = none
-
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
 
     let success: Result[Int, TextError] = ok(9)
     let failure: Result[Int, TextError] = error(TextError("bad"))
-
     ((success | try expect_ok)) | try expect_equal(9)
     ((failure | try expect_error)) | try expect_equal(TextError("bad"))
 
     let mismatch = expect_equal(1, 2)
     let mismatch_cause = (mismatch | try expect_error)
-
     mismatch_cause.message() | try expect_contains("expected 2, got 1")
 
     let quiet = expect_fault(fn(): unit)
     let quiet_cause = (quiet | try expect_error)
-
     quiet_cause.message() | try expect_contains("returned normally")
 
 test "failure helpers return errors":
     let failed = fail("custom failure")
     let failed_cause = (failed | try expect_error)
-
     failed_cause.message() | try expect_contains("custom failure")
 
 type Key:

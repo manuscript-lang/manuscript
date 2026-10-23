@@ -13,6 +13,7 @@ crate-type = ["staticlib", "rlib"]
 stats = []
 
 [dependencies]
+memchr = "2.8.3"
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-rt = { path = "../ms-std-rt" }
 ms-std-math = { path = "../ms-std-math" }

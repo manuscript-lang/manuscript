@@ -8,12 +8,10 @@ fn say(text: String) Result[Unit, Error]:
 export fn main() Int:
     let lines = read_lines(stdin()).get()
     var last = lines.length()
-
     while last > 0 and lines[last - 1].length() == 0:
         last -= 1
 
     var grid: List[List[String]] = []
-
     for r in range(0, last):
         grid.append(lines[r].chars())
 
@@ -26,7 +24,6 @@ export fn main() Int:
                 return 0
 
     var width = 0
-
     if grid.length() > 0:
         width = grid[0].length()
 
@@ -70,7 +67,6 @@ export fn main() Int:
 
     let total = grid.length() * width
     var dist: List[Int] = []
-
     for i in range(0, total):
         dist.append(-1)
     dist[start] = 0
@@ -80,7 +76,6 @@ export fn main() Int:
 
     while head < queue.length():
         let cur = queue[head]
-
         head += 1
 
         let r = cur / width
@@ -89,7 +84,6 @@ export fn main() Int:
         for step in range(0, 4):
             var nr = r
             var nc = c
-
             if step == 0:
                 nr = r - 1
             if step == 1:
