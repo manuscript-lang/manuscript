@@ -4,6 +4,7 @@
 //! line reader took beyond the current line wait in `pending` for the next read.
 use crate::err::describe;
 use crate::sys::{self, CPath, Interest};
+use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
@@ -65,7 +66,8 @@ pub struct Stream {
     pub(crate) no_write: bool,
     /// An `@std/fs` file handle: flushing synchronizes the file.
     pub(crate) file: bool,
-    pub(crate) name: Vec<u8>,
+    /// The path for error messages; standard streams borrow a constant.
+    pub(crate) name: Cow<'static, [u8]>,
     /// Read-ahead bytes, from `head` on; a line reader consumes them by advancing `head`.
     pub(crate) pending: Vec<u8>,
     head: usize,
@@ -80,10 +82,10 @@ impl Stream {
         let pollable = sys::fstat(fd)
             .map(|st| sys::is_pollable(&st))
             .unwrap_or(true);
-        Stream::with_pollable(fd, owned, name, pollable)
+        Stream::with_pollable(fd, owned, Cow::Owned(name.to_vec()), pollable)
     }
 
-    fn with_pollable(fd: sys::Fd, owned: bool, name: &[u8], pollable: bool) -> Stream {
+    fn with_pollable(fd: sys::Fd, owned: bool, name: Cow<'static, [u8]>, pollable: bool) -> Stream {
         let shares_output = !owned && sys::is_output(fd);
         Stream {
             fd,
@@ -94,7 +96,7 @@ impl Stream {
             no_read: false,
             no_write: false,
             file: false,
-            name: name.to_vec(),
+            name,
             pending: Vec::new(),
             head: 0,
         }
@@ -102,7 +104,7 @@ impl Stream {
 
     /// Standard input (0), output (1) or error (2); the descriptor stays open.
     pub fn standard(which: i64) -> Stream {
-        let name: &[u8] = match which {
+        let name: &'static [u8] = match which {
             0 => b"/dev/stdin",
             1 => b"/dev/stdout",
             _ => b"/dev/stderr",
@@ -122,7 +124,7 @@ impl Stream {
                 p
             }
         };
-        let mut stream = Stream::with_pollable(fd, false, name, pollable);
+        let mut stream = Stream::with_pollable(fd, false, Cow::Borrowed(name), pollable);
         if which == 0 {
             // Each `stdin()` call makes a new handle: pick up what the previous one read ahead.
             (stream.pending, stream.head) = take_stdin_pending();
