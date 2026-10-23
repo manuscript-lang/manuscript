@@ -470,15 +470,19 @@ pub(crate) fn give_up_reactor_role() {
 impl Reactor {
     /// Whether any open server or connection asked to drain in-flight requests on a stop.
     fn drains(&self) -> bool {
-        self.targets.borrow().values().any(|t| {
-            let limits = match t {
-                Target::Listener(s) => s.upgrade().map(|s| s.limits.grace),
-                Target::Conn(c) => c
-                    .upgrade()
-                    .and_then(|c| c.server.upgrade())
-                    .map(|s| s.limits.grace),
-            };
-            limits.flatten().is_some_and(|g| !g.is_zero())
+        // Grace belongs to a server, not a connection. In particular, a server with no
+        // grace must not revisit every idle connection before each reactor park.
+        SERVERS.with(|servers| {
+            servers
+                .borrow()
+                .values()
+                .filter_map(Weak::upgrade)
+                .any(|s| {
+                    s.limits.grace.is_some_and(|g| !g.is_zero())
+                    // Closing removes the listener before draining its connections.
+                    && (self.targets.borrow().contains_key(&s.token)
+                        || !s.st.borrow().conns.is_empty())
+                })
         })
     }
 
@@ -2043,5 +2047,82 @@ pub(crate) mod tests {
         assert!(server.is_closed());
         assert!(TcpStream::connect(&addr).is_err());
         net.close();
+    }
+
+    #[test]
+    fn drain_policy_tracks_servers_through_connection_lifetimes() {
+        // The former target traversal is an independent oracle for the shutdown policy.
+        fn assert_policy(reactor: &Reactor, expected: bool) {
+            let from_targets = reactor.targets.borrow().values().any(|target| {
+                let grace = match target {
+                    Target::Listener(server) => server.upgrade().map(|s| s.limits.grace),
+                    Target::Conn(conn) => conn
+                        .upgrade()
+                        .and_then(|c| c.server.upgrade())
+                        .map(|s| s.limits.grace),
+                };
+                grace.flatten().is_some_and(|g| !g.is_zero())
+            });
+            assert_eq!(from_targets, expected);
+            assert_eq!(reactor.drains(), expected);
+        }
+
+        let (plain_net, plain) = start(opts(Limits::default()));
+        let reactor = Reactor::get();
+        assert_policy(&reactor, false);
+
+        let (zero_net, zero) = start(opts(Limits {
+            grace: Some(Duration::ZERO),
+            ..Limits::default()
+        }));
+        let _plain_client = TcpStream::connect(plain.address()).unwrap();
+        plain.accept_all(&reactor);
+        assert_policy(&reactor, false);
+
+        for hijack in [false, true] {
+            let (net, server) = start(opts(Limits {
+                grace: Some(Duration::from_secs(1)),
+                ..Limits::default()
+            }));
+            assert_policy(&reactor, true);
+            let _client = TcpStream::connect(server.address()).unwrap();
+            server.accept_all(&reactor);
+            let conn = server.st.borrow().conns.values().next().unwrap().clone();
+            assert_policy(&reactor, true);
+
+            // A close stops listening before it parks to drain the last connection.
+            // Keep the registry entry throughout this state, just as close_inner does.
+            reactor.targets.borrow_mut().remove(&server.token);
+            assert_policy(&reactor, true);
+            if hijack {
+                let (io, _) = server.hijack(&conn, &reactor).unwrap();
+                io.shutdown_both();
+            } else {
+                server.close_conn(&conn, &reactor);
+            }
+            // A registered server with no remaining targets must not shield the reactor.
+            assert_policy(&reactor, false);
+            server.close().unwrap();
+            server.close().unwrap();
+            net.close();
+            assert_policy(&reactor, false);
+        }
+
+        let (net, server) = start(opts(Limits {
+            grace: Some(Duration::from_secs(1)),
+            ..Limits::default()
+        }));
+        assert_policy(&reactor, true);
+        let weak = Rc::downgrade(&server);
+        drop(server);
+        assert!(weak.upgrade().is_none());
+        // Both registries can retain dead weak entries; neither should enable draining.
+        assert_policy(&reactor, false);
+        net.close();
+        zero.close().unwrap();
+        zero_net.close();
+        plain.close().unwrap();
+        plain_net.close();
+        assert_policy(&reactor, false);
     }
 }
