@@ -443,6 +443,21 @@ impl<'a> FnLower<'a> {
 
     // -------------------------------------------------------------- locals
 
+    /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
+    pub fn bind_lent(&mut self, binding: &BindingRef, v: Value) {
+        let ty = self.ty_of(v);
+        let var = self.b.declare_var(ty, Mode::Borrow);
+        self.b.def_var(var, v);
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
+    }
+
     /// Declares the local of `binding` holding `value`.
     pub fn bind_local(&mut self, binding: &BindingRef, x: Val) {
         let ty = self.ty_of(x.v);

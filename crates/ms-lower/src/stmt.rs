@@ -975,7 +975,12 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
-        self.bind_local(&loop_var, Val { v: e, own: false });
+        if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+            // The loop holds the list and the body cannot change it: the element is a borrow.
+            self.bind_lent(&loop_var, e);
+        } else {
+            self.bind_local(&loop_var, Val { v: e, own: false });
+        }
         self.stmts(body)?;
         self.pop_scope();
         let ctx = self.loops.pop().expect("loop");
