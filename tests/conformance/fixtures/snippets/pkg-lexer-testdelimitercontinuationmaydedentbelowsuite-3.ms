@@ -3,8 +3,7 @@
 # conform: origin=pkg/lexer/lexer_test.go:132 TestDelimiterContinuationMayDedentBelowSuite
 fn f() Int:
     if true:
-        let x = [
-1
-]
+        let x = [1]
         return 0
+
     return 1

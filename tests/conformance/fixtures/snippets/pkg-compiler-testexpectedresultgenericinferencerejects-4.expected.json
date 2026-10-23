@@ -12,9 +12,9 @@
         "message": "unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-4.ms",
-          "line": 6,
+          "line": 7,
           "column": 40,
-          "offset": 274
+          "offset": 275
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "missing argument value: Int in call to callback; add 'value: <Int>'",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-4.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 349
+          "offset": 350
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:6:40: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:8:5: type: missing argument value: Int in call to callback; add 'value: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:7:40: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:9:5: type: missing argument value: Int in call to callback; add 'value: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

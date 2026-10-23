@@ -12,20 +12,25 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("fib(17) = {fib(17)}")
+
     let bad = say(1, 2)
     let i2 = (((-46) - 0) + (-674414))
     say("i2 = {i2}")
+
     let l3 = [17, (-30), (-6)]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = (-i2)
     say("i4 = {i4}")
     return 0

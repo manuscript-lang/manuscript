@@ -11,7 +11,9 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-26)
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
+
     let bad: String = 5
     return 0

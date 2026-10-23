@@ -12,13 +12,17 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-27), (-26), (-2), 15]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = l1.concat(l1)
     say("l2 = {l2} len {l2.length()}")
+
     var acc3 = 0
     for i in range(0, 0):
         acc3 += i * (-2)
     say("acc3 = {acc3}")
+
     let b4 = false
     say("b4 = {b4}")
+
     let bad: Bool = 1
     return 0

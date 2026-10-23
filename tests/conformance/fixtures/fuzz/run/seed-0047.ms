@@ -11,49 +11,73 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let l1 = [24, (-19)]
     say("l1 = {l1} len {l1.length()}")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 4:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-5)
+
     say("acc2 = {acc2}")
+
     let i3 = (-29)
     say("i3 = {i3}")
-    say("{((i3 + i3) * ((-3) / i3))} {((-(-10)) / (i3 + i3))} {(((i3 + i3) * ((-3) / i3)) < ((-(-10)) / (i3 + i3)))} sum {((i3 + i3) * ((-3) / i3)) + ((-(-10)) / (i3 + i3))}")
+    say(
+        "{((i3 + i3) * ((-3) / i3))} {((-(-10)) / (i3 + i3))} {(((i3 + i3) * ((-3) / i3)) < ((-(-10)) / (i3 + i3)))} sum {((i3 + i3) * ((-3) / i3)) + ((-(-10)) / (i3 + i3))}"
+    )
+
     let s4 = "日本語".trim()
     say("s4 = [{s4}]")
+
     if ((i3 + (-4)) >= (20 % i3)):
         say((s4 + "emoji 😀"))
     else:
         say(s4)
+
     if ((-22) >= i3):
         say(s4.upper())
     else:
         say("hello world".replace("emoji 😀", "delta"))
+
     say("gcd(3648, 1897) = {gcd(3648, 1897)}")
+
     let b5 = true
     say("b5 = {b5}")
+
     let i6 = 28
     say("i6 = {i6}")
+
     let i7 = (-42)
     say("i7 = {i7}")
-    say("{((i6 + i3) * (731860 - i7))} {(-(i6 + i3))} {(((i6 + i3) * (731860 - i7)) < (-(i6 + i3)))} sum {((i6 + i3) * (731860 - i7)) + (-(i6 + i3))}")
+    say(
+        "{((i6 + i3) * (731860 - i7))} {(-(i6 + i3))} {(((i6 + i3) * (731860 - i7)) < (-(i6 + i3)))} sum {((i6 + i3) * (731860 - i7)) + (-(i6 + i3))}"
+    )
+
     let i8 = ((-(i7 + i7)) / i3)
     say("i8 = {i8}")
-    say("{((i6 + 210840) * i8)} {((-i3) - i8)} {(((i6 + 210840) * i8) < ((-i3) - i8))} sum {((i6 + 210840) * i8) + ((-i3) - i8)}")
+    say(
+        "{((i6 + 210840) * i8)} {((-i3) - i8)} {(((i6 + 210840) * i8) < ((-i3) - i8))} sum {((i6 + 210840) * i8) + ((-i3) - i8)}"
+    )
+
     let l9 = l1.take(0)
     say("l9 = {l9} len {l9.length()}")
+
     let i10 = l9.length()
     say("i10 = {i10}")
+
     let b11 = (("back\\slash".starts_with(s4) and true) or (s4 + "a").is_empty())
     say("b11 = {b11}")
+
     let i12 = (-i6)
     say("i12 = {i12}")
+
     let i13 = (-15)
     say("i13 = {i13}")
     return 0

@@ -48,6 +48,7 @@ test "escaped map results keep insertion order":
     var values = returned_alias()
     values.add(1, 10)
     values.add(2, 21)
+
     var seen: List[Int] = []
     for entry in values:
         seen.append(entry.key)
@@ -57,5 +58,6 @@ test "escaped map results keep insertion order":
 test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
     values.add(1, 10)
+
     let callback = fn() Int: values.get(1).get()
     callback() | try expect_equal(10)

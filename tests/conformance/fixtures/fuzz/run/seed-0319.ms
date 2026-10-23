@@ -11,30 +11,45 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let l1 = [1]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (49 + (33 + (-35)))
     say("i2 = {i2}")
-    let s3 = (("{(i2 * 8)}:" + ("{(-24)}:" + "alpha")) + (("line\nbreak" + "beta") + "back\\slash"))
+
+    let s3 = (
+        ("{(i2 * 8)}:" + ("{(-24)}:" + "alpha"))
+        + (("line\nbreak" + "beta") + "back\\slash")
+    )
     say("s3 = [{s3}]")
+
     let l4 = [(-26), (-26), (-21), (-26), 16]
     say("l4 = {l4} len {l4.length()}")
+
     let b5 = (i2 <= (-(-(-793245))))
     say("b5 = {b5}")
+
     let i6 = ((-11) + ((41 % i2) % (-28)))
     say("i6 = {i6}")
-    say("{i6} {((i6 % i6) - (i2 % i2))} {(i6 < ((i6 % i6) - (i2 % i2)))} sum {i6 + ((i6 % i6) - (i2 % i2))}")
+    say(
+        "{i6} {((i6 % i6) - (i2 % i2))} {(i6 < ((i6 % i6) - (i2 % i2)))} sum {i6 + ((i6 % i6) - (i2 % i2))}"
+    )
+
     let b7 = ("back\\slash".lower() + "").contains(s3)
     say("b7 = {b7}")
+
     let b8 = true
     say("b8 = {b8}")
     say("collatz(815) = {collatz(815)}")

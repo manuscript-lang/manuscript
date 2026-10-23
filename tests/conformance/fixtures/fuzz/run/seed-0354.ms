@@ -11,20 +11,27 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 3.5
     say("f1 = {f1}")
+
     let s2 = ("alpha" + (("MiXeD CaSe" + "naïve") + "alpha".trim()))
     say("s2 = [{s2}]")
+
     if true:
         say("42".reverse())
     else:
         say("emoji 😀".reverse())
+
     let l3 = [(-24), (-10), 10, (-28), (-27)]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = (33 / (-46))
     say("i4 = {i4}")
+
     let i5 = (-28)
     say("i5 = {i5}")
+
     let b6 = (((i4 + i4) - ((-6) % 267480)) <= 2)
     say("b6 = {b6}")
+
     let i7 = ((-(i5 % (-15))) + (-23))
     say("i7 = {i7}")
     return 0

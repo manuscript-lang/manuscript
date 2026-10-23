@@ -11,17 +11,23 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 45
     say("i1 = {i1}")
+
     let i2 = (((i1 / i1) * i1) + ((i1 + i1) + i1))
     say("i2 = {i2}")
+
     let l3 = [(-2), (-26), (-25)]
     say("l3 = {l3} len {l3.length()}")
+
     let f4 = (((0.0 * 527.843) * (901.274 * 555.675)) + (0.0 * (151.615 / 272.193)))
     say("f4 = {f4}")
+
     let bad = [1, "two"]
     let b5 = (f4 != 612.25)
     say("b5 = {b5}")
+
     let f6 = (f4 / (f4 * (f4 / 391.685)))
     say("f6 = {f6}")
+
     let l7 = l3.take(0)
     say("l7 = {l7} len {l7.length()}")
     return 0

@@ -2,5 +2,6 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/hints_test.go:48 TestDiagnosticsStateCauseAndFix
 import nope from "@std/core.ms"
+
 fn f() Unit:
     return

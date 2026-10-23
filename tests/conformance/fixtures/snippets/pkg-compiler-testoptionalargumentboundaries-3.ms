@@ -2,4 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/optional_test.go:26 TestOptionalArgumentBoundaries
 fn f(value: Optional[Int]) Unit: return
+
 fn call() Unit: f()

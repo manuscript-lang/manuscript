@@ -12,23 +12,28 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fib(21) = {fib(21)}")
     say("fact(5) = {fact(5)}")
+
     let i1 = (((-46) + (23616605801 + 29)) % ((41 + 34) * ((-633962340002) - (-39))))
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
     return 0

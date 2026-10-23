@@ -12,18 +12,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 693.704
     say("f1 = {f1}")
+
     let i2 = (-42)
     say("i2 = {i2}")
+
     let s3 = ""
     say("s3 = [{s3}]")
+
     var acc4 = 0
     for i in range(0, 8):
         acc4 += i * 6
     say("acc4 = {acc4}")
+
     let s5 = s3
     say("s5 = [{s5}]")
+
     let b6 = "brace\{s\}".is_empty()
     say("b6 = {b6}")
+
     let big8 = -9223372036854775808
     say("{big8 - 3}")
     return 0

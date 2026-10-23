@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=documentation/core-language/basics/text-and-bytes.md:110
 import panic from "@std/core.ms"
-
 import Bytes from "@std/bytes.ms"
 
 test "explicit byte conversion":
@@ -10,6 +9,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == some("é")):
         return panic("check failed")
+
     let invalid: Optional[String] = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")

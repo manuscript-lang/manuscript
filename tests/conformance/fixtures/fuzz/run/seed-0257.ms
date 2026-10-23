@@ -11,34 +11,49 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = (-704938)
     say("i1 = {i1}")
+
     let l2 = [(-5)]
     say("l2 = {l2} len {l2.length()}")
+
     let l3 = [(-17), (-28), 15, (-20)]
     say("l3 = {l3} len {l3.length()}")
-    let s4 = (("  padded  ".replace("ms", "42") + ("alpha" + "brace\{s\}")) + "emoji 😀".reverse().lower())
+
+    let s4 = (
+        ("  padded  ".replace("ms", "42") + ("alpha" + "brace\{s\}"))
+        + "emoji 😀".reverse().lower()
+    )
     say("s4 = [{s4}]")
     say("collatz(2631) = {collatz(2631)}")
+
     let l5 = l2.filter(fn(x): x > (-4))
     say("l5 = {l5} len {l5.length()}")
+
     let s6 = "x"
     say("s6 = [{s6}]")
+
     let i7 = (((i1 / i1) + (16 * i1)) + (l2.get(0) + i1))
     say("i7 = {i7}")
+
     let l8 = l2.drop(0)
     say("l8 = {l8} len {l8.length()}")
+
     let s9 = ("{i7}:" + s4)
     say("s9 = [{s9}]")
+
     let b10 = (not ("ms" != ("back\\slash" + s9)))
     say("b10 = {b10}")
     return 0

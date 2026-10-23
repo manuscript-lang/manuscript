@@ -13,7 +13,9 @@ export fn main() Int:
         say("emoji 😀".lower())
     else:
         say("")
+
     let s1 = "日本語".trim().reverse()
     say("s1 = [{s1}]")
+
     let bad: Int = "text"
     return 0

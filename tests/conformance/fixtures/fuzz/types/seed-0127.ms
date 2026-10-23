@@ -11,19 +11,24 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let f1 = 182.678
     say("f1 = {f1}")
+
     let bad: Int = "text"
     say("collatz(2195) = {collatz(2195)}")
+
     let i2 = (-938389)
     say("i2 = {i2}")
     return 0

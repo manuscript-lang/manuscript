@@ -11,12 +11,10 @@ test "Bytes split is binary safe":
 test "Bytes split handles exact and nonoverlapping separators":
     let empty = Bytes([])
     try expect_equal(
-        Bytes([0, 7, 0]).split(Bytes([0])),
-        [empty.clone(), Bytes([7]), empty.clone()]
+        Bytes([0, 7, 0]).split(Bytes([0])), [empty.clone(), Bytes([7]), empty.clone()]
     )
     try expect_equal(
-        Bytes([0, 0]).split(Bytes([0])),
-        [empty.clone(), empty.clone(), empty.clone()]
+        Bytes([0, 0]).split(Bytes([0])), [empty.clone(), empty.clone(), empty.clone()]
     )
     try expect_equal(
         Bytes([255, 0, 9, 255, 0]).split(Bytes([255, 0])),
@@ -30,9 +28,9 @@ test "Bytes empty separator splits bytes without decoding":
     let empty = Bytes([])
     try expect_false(not (empty.split(empty).is_empty()))
     try expect_equal(
-        Bytes([0, 255, 128]).split(empty),
-        [Bytes([0]), Bytes([255]), Bytes([128])]
+        Bytes([0, 255, 128]).split(empty), [Bytes([0]), Bytes([255]), Bytes([128])]
     )
+
     let scalars = "é".to_bytes().split(empty)
     try expect_equal(scalars, [Bytes([195]), Bytes([169])])
     try expect_false(scalars.get(0).decode_utf8().is_some())
@@ -78,9 +76,7 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     try expect_false(
         (
             split_then[Bool](
-                Bytes([1, 0, 2]),
-                Bytes([0]),
-                fn(value): value.length() == 2
+                Bytes([1, 0, 2]), Bytes([0]), fn(value): value.length() == 2
             ) != true
         )
     )
@@ -103,10 +99,12 @@ test "Bytes split returns independent List storage and immutable views":
         )
     )
     try expect_equal(second, [Bytes([1]), Bytes([2])])
+
     let empty = Bytes([])
     var zero_parts = data.split(Bytes([0]), 0)
     zero_parts.append(empty.clone())
     try expect_false(not (data.split(Bytes([0]), 0).is_empty()))
+
     var no_parts = empty.split(empty)
     no_parts.append(Bytes([1]))
     try expect_false(not (empty.split(empty).is_empty()))

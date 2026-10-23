@@ -116,9 +116,7 @@ test "Result payload bounds retain intermediate overflow":
     (try expect_fault(fn(): let ignored = prefix())) | try expect_contains(
         "Int overflow"
     )
-    (try expect_fault(fn(): let ignored = peer())) | try expect_contains(
-        "Int overflow"
-    )
+    (try expect_fault(fn(): let ignored = peer())) | try expect_contains("Int overflow")
 
 test "Result helper overflow still occurs in the original call":
     (try expect_fault(fn(): let ignored = checked(9223372036854775807))) | try expect_contains(

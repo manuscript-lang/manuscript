@@ -12,6 +12,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     for format in ["gzip", "zlib", "deflate"]:
         let packed = try compress(input, format, 6)
         try expect_equal((try decompress(packed, format, 17)), input)
+
         let limited: Result[Bytes, CompressionError] = error(
             CompressionError.LimitExceeded
         )
@@ -21,6 +22,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         CompressionError.Unsupported
     )
     try expect_equal(compress(input, "invalid", 6), unsupported)
+
     let malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
     try expect_equal(decompress(input, "gzip"), malformed)
 
@@ -33,17 +35,16 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     for format in ["zip", "tar"]:
         let packed = try pack(entries, format)
         try expect_equal((try unpack(packed, format)), entries)
+
         let limited: Result[List[ArchiveEntry], ArchiveError] = error(
             ArchiveError.LimitExceeded
         )
         try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
         try expect_equal(
-            unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)),
-            limited
+            unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)), limited
         )
         try expect_equal(
-            unpack(packed, format, ArchiveLimits(max_total_bytes: 7)),
-            limited
+            unpack(packed, format, ArchiveLimits(max_total_bytes: 7)), limited
         )
 
 test "archives reject traversal paths":

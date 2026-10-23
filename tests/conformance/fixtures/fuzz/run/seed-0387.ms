@@ -11,38 +11,58 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 532.25
     say("f1 = {f1}")
+
     let i2 = ((-38) / (((-27) * (-19)) + 401791))
     say("i2 = {i2}")
+
     let b3 = ("delta" != "42")
     say("b3 = {b3}")
+
     let i4 = 376139110335
     say("i4 = {i4}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 1:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 1
+
     say("acc5 = {acc5}")
+
     let i6 = (-22)
     say("i6 = {i6}")
+
     var acc7 = 0
     var stepacc7 = 0
+
     while stepacc7 < 0:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 2
+
     say("acc7 = {acc7}")
+
     let i8 = ((i2 - i4) - i6)
     say("i8 = {i8}")
+
     let f9 = (((0.0 * 208.959) * (f1 * f1)) * ((8.0e-3 / f1) + f1))
     say("f9 = {f9}")
+
     let f10 = (6.0e0 * ((f1 * f1) + (749.201 / f1)))
     say("f10 = {f10}")
+
     let f11 = ((f9 * (f1 * 616.25)) / ((833.327 + f1) + 502.658))
     say("f11 = {f11}")
-    let f12 = (((353.737 + 244.292) * (441.377 * f1)) / ((197.177 + 577.555) + (4.0e22 * 252.871)))
+
+    let f12 = (
+        ((353.737 + 244.292) * (441.377 * f1))
+        / ((197.177 + 577.555) + (4.0e22 * 252.871))
+    )
     say("f12 = {f12}")
+
     let b13 = (f1 < 816.25)
     say("b13 = {b13}")
+
     let l14 = [18, 5, (-29), (-9)]
     say("l14 = {l14} len {l14.length()}")
     return 0

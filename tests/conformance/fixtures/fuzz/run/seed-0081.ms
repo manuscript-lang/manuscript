@@ -11,17 +11,28 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-11) + 47)
     say("i1 = {i1}")
+
     let f2 = ((517.663 + (44.700 + 517.346)) + ((964.022 + 206.25) * (0.0 + 213.682)))
     say("f2 = {f2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let l4 = l3.map(fn(x): x * 8)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = (((i1 + i1) - (29 - (-8))) + (((-50858) - (-25)) - (-24)))
     say("i5 = {i5}")
-    say("{i5} {(i5 + l3.length())} {(i5 < (i5 + l3.length()))} sum {i5 + (i5 + l3.length())}")
-    let b6 = (("alpha".trim() == "MiXeD CaSe".trim()) and ((f2 < f2) and (false and true)))
+    say(
+        "{i5} {(i5 + l3.length())} {(i5 < (i5 + l3.length()))} sum {i5 + (i5 + l3.length())}"
+    )
+
+    let b6 = (
+        ("alpha".trim() == "MiXeD CaSe".trim())
+        and ((f2 < f2) and (false and true))
+    )
     say("b6 = {b6}")
+
     let l7 = l3.take(4)
     say("l7 = {l7} len {l7.length()}")
     return 0

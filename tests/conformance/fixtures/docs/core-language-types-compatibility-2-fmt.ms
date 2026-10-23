@@ -2,6 +2,7 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/compatibility.md:43
 import {TextError} from "@std/core.ms"
+
 type Input:
     names: List[Optional[String]]
 

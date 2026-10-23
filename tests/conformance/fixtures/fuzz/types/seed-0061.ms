@@ -11,15 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = true
     say("b1 = {b1}")
+
     let f2 = 372.247
     say("f2 = {f2}")
+
     let i3 = 1
     say("i3 = {i3}")
+
     let bad = not 5
     let b4 = ("emoji 😀".lower() + "ms").starts_with("x")
     say("b4 = {b4}")
+
     let s5 = "héllo".trim()
     say("s5 = [{s5}]")
+
     let s6 = "delta".reverse()
     say("s6 = [{s6}]")
     return 0

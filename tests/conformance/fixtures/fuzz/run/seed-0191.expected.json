@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "s1 = [64502219150:  padded]\nacc2 = 7\ns3 = [gamma]\ns4 = [naïve]\n2 42 true sum 44\nb6 = true\ns7 = [naïve]\nf8 = 203725.30330125\ni9 = -11960122\ns10 = [gamma]\nf11 = 156.551\ni12 = 0\ns14 = [}s{ecarbgammaTab\there64502219150:  paddedx]\n",
-    "stderr": "index 8 out of range for length 3; pass a default: get(index:, default: ...)\n  at seed-0191.ms:41 in main\n"
+    "stderr": "index 8 out of range for length 3; pass a default: get(index:, default: ...)\n  at seed-0191.ms:62 in main\n"
   }
 }

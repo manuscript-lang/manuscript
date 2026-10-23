@@ -2,6 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/tooling/lint_program_test.go:11 TestSemanticLintUsesReadsAndControlFlow
 import ListBuilder from "@std/collections.ms"
+
 fn answer() Int:
     let unused = 1
     var written = 2

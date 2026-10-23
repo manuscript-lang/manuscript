@@ -2,6 +2,7 @@
 # conform: phase=parse
 # conform: origin=pkg/build/filesystem_defaults_test.go:52 TestFilesystemExplicitFlagsKeepDirectDispatch
 import filesystem from "@std/fs.ms"
+
 fn explicit() Unit:
     let fs = filesystem()
     fs.write_file("", "", false)

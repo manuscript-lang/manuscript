@@ -11,18 +11,23 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let s1 = ("ms" + "MiXeD CaSe")
     say("s1 = [{s1}]")
+
     let b2 = (true and (not true))
     say("b2 = {b2}")
+
     let s3 = ("{((-21) / (-7))}:" + (s1.upper() + s1.replace("emoji 😀", "")))
     say("s3 == [{s3}]")
     say("fact(20) = {fact(20)}")
+
     let f4 = 0.0
     say("f4 = {f4}")
+
     let b5 = (not (b2 or s3.contains("日本語")))
     say("b5 = {b5}")
     return 0

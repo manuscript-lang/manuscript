@@ -11,30 +11,40 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("fact(18) = {fact(18)}")
+
     let i1 = ((-575426) / (-(-17)))
     say("i1 = {i1}")
+
     let f2 = (2.0e5 + ((0.0 * 60.240) * (141.538 - 535.25)))
     say("f2 = {f2}")
-    say("{(i1 + (-42))} {((i1 % 747839) / (316128 - 34))} {((i1 + (-42)) < ((i1 % 747839) / (316128 - 34)))} sum {(i1 + (-42)) + ((i1 % 747839) / (316128 - 34))}")
+    say(
+        "{(i1 + (-42))} {((i1 % 747839) / (316128 - 34))} {((i1 + (-42)) < ((i1 % 747839) / (316128 - 34)))} sum {(i1 + (-42)) + ((i1 % 747839) / (316128 - 34))}"
+    )
+
     let i3 = i1
     say("i3 = {i3}")
+
     let s4 = "naïve".upper()
     say("s4 = [{s4}]")
+
     let i5 = ((269204 + i3) - ((i1 + i3) % (i1 + i1)))
     say("i5 = {i5}")
     say("fib(16) = {fib(16)}")

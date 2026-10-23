@@ -12,23 +12,29 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let b1 = "  padded  ".ends_with("42")
     say("b1 = {b1}")
+
     let l2 = [0]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = b1
     say("b3 = {b3}")
     say("fib(48) = {fib(48)}")
+
     let l4 = [(-19)]
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = 19
     say("i5 = {i5}")
     return 0

@@ -23,8 +23,10 @@ test "compound assignment on bindings":
     number *= 2
     number /= 4
     number %= 7
+
     var ratio = 1.5
     ratio *= 2.0
+
     var text = "a"
     text += "b"
     try expect_false(number != 4 or ratio != 3.0 or text != "ab")
@@ -40,6 +42,7 @@ test "compound assignment on fields":
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
+
     var outer = Outer(counter.clone())
     outer.inner.count -= 5
     try expect_false(

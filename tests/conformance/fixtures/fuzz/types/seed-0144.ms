@@ -11,16 +11,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((837.088 * 361.160) * 701.228) * (6.5 * (347.25 + 522.25)))
     say("f1 = {f1}")
+
     let i2 = (((-4) + ((-3) - 880774)) - ((-6) - ((-9) - (-7))))
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let bad = [1, "two"]
-    say("{(i2 * (i2 * i2))} {(((-40) - i2) + l3.length())} {((i2 * (i2 * i2)) < (((-40) - i2) + l3.length()))} sum {(i2 * (i2 * i2)) + (((-40) - i2) + l3.length())}")
+    say(
+        "{(i2 * (i2 * i2))} {(((-40) - i2) + l3.length())} {((i2 * (i2 * i2)) < (((-40) - i2) + l3.length()))} sum {(i2 * (i2 * i2)) + (((-40) - i2) + l3.length())}"
+    )
+
     let i4 = ((l3.length() - l3.length()) - ((i2 * (-9)) * (i2 + i2)))
     say("i4 = {i4}")
+
     let b5 = (not ("beta".is_empty() and (true or false)))
     say("b5 = {b5}")
+
     let f6 = f1
     say("f6 = {f6}")
     return 0

@@ -11,10 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (((857.678 + 16.786) + (1.0e-8 - 331.701)) == 495.25)
     say("b1 = {b1}")
+
     let l2 = [9, 28, 7, (-11)]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = true
     say("b3 = {b3}")
+
     let l4 = l2.clone().append(38)
     say("l4 = {l4} len {l4.length()}")
-

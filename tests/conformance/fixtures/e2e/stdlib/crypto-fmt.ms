@@ -3,34 +3,11 @@
 # conform: origin=tests/e2e/testdata/stdlib/crypto.ms
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import {
-    sha256,
-    sha384,
-    sha512,
-    derive_key,
-    seal,
-    open,
-    public_key,
-    sign,
-    verify,
-    constant_time_equal,
-    aes_ctr,
-    aes_cbc_encrypt,
-    aes_cbc_decrypt,
-    ecdsa_generate,
-    ecdsa_sign,
-    ecdsa_verify,
-    ecdh_shared_secret,
-    public_key_der,
-    rsa_generate,
-    rsa_sign,
-    rsa_verify,
-    rsa_sign_pss,
-    rsa_verify_pss,
-    rsa_encrypt,
-    rsa_decrypt,
-    Curve,
-    CryptoError,
-    HashAlgorithm
+    sha256, sha384, sha512, derive_key, seal, open, public_key, sign, verify,
+    constant_time_equal, aes_ctr, aes_cbc_encrypt, aes_cbc_decrypt, ecdsa_generate,
+    ecdsa_sign, ecdsa_verify, ecdh_shared_secret, public_key_der, rsa_generate,
+    rsa_sign, rsa_verify, rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt, Curve,
+    CryptoError, HashAlgorithm
 } from "@std/crypto.ms"
 import {hex_encode, hex_decode} from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
@@ -49,12 +26,12 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
             or sha512("abc".to_bytes()).length() != 64
         )
     )
+
     let mac = (
         try HashAlgorithm
         .Sha256
         .hmac(
-            "key".to_bytes(),
-            "The quick brown fox jumps over the lazy dog".to_bytes()
+            "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
         )
     )
     try expect_false(
@@ -64,6 +41,7 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
             ) != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
         )
     )
+
     let derived = try derive_key("password".to_bytes(), "salt".to_bytes(), 1, 32)
     try expect_false(
         (
@@ -78,15 +56,15 @@ test "authenticated encryption detects wrong associated data":
     let nonce = "012345678901".to_bytes()
     let encrypted = try seal(key, nonce, "secret".to_bytes(), "header".to_bytes())
     try expect_equal(
-        (try open(key, nonce, encrypted, "header".to_bytes())),
-        "secret".to_bytes()
+        (try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
     )
+
     let failed: Result[Bytes, CryptoError] = error(CryptoError.AuthenticationFailed)
     try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
+
     let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     try expect_equal(
-        seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()),
-        invalid
+        seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
     )
 
 test "Ed25519 signatures verify only the signed data":
@@ -101,8 +79,7 @@ test "Ed25519 signatures verify only the signed data":
 test "additional hash algorithms match published vectors":
     let abc = "abc".to_bytes()
     try expect_equal(
-        hex_encode(HashAlgorithm.Md5.digest(abc)),
-        "900150983cd24fb0d6963f7d28e17f72"
+        hex_encode(HashAlgorithm.Md5.digest(abc)), "900150983cd24fb0d6963f7d28e17f72"
     )
     try expect_equal(
         hex_encode(HashAlgorithm.Sha1.digest(abc)),
@@ -126,6 +103,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
         .derive_key("password".to_bytes(), "salt".to_bytes(), 1, 20)
     )
     try expect_equal(hex_encode(pbkdf2), "0c60c80f961f0e71f3a9b524af6012062fe037a6")
+
     let secret = try hex_decode("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b")
     let salt = try hex_decode("000102030405060708090a0b0c")
     let info = try hex_decode("f0f1f2f3f4f5f6f7f8f9")
@@ -134,10 +112,10 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
         hex_encode(okm),
         "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
     )
+
     let invalid: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     try expect_equal(
-        HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1),
-        invalid
+        HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
     )
     try expect_equal(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16), invalid)
 
@@ -148,8 +126,7 @@ test "AES-GCM accepts 128 and 192 bit keys":
         let key = try "0123456789012345678901234567890123".to_bytes().slice(0, size)
         let boxed = try seal(key, nonce, "secret".to_bytes(), "".to_bytes())
         try expect_equal(
-            try open(key, nonce, boxed, "".to_bytes()),
-            "secret".to_bytes()
+            try open(key, nonce, boxed, "".to_bytes()), "secret".to_bytes()
         )
 
 test "incremental hashers match one-shot digests":
@@ -159,6 +136,7 @@ test "incremental hashers match one-shot digests":
     try expect_equal(hasher.finish(), sha256("abc".to_bytes()))
     hasher.update("abc".to_bytes())
     try expect_equal(hasher.finish(), sha256("abc".to_bytes()))
+
     let mac = HashAlgorithm.Sha256.hmac_hasher("key".to_bytes())
     mac.update("The quick brown fox jumps over the lazy dog".to_bytes())
     try expect_equal(
@@ -172,9 +150,11 @@ test "AES CTR and CBC round trip":
     let message = "attack at dawn, attack at dawn".to_bytes()
     let stream = try aes_ctr(key, iv, message)
     try expect_equal(try aes_ctr(key, iv, stream), message)
+
     let boxed = try aes_cbc_encrypt(key, iv, message)
     try expect_equal(boxed.length(), 32)
     try expect_equal(try aes_cbc_decrypt(key, iv, boxed), message)
+
     let bad: Result[Bytes, CryptoError] = error(CryptoError.InvalidInput)
     try expect_equal(aes_cbc_decrypt(key, "short".to_bytes(), boxed), bad)
 
@@ -205,7 +185,9 @@ test "RSA signs and encrypts":
     try expect_false(
         rsa_verify(public, HashAlgorithm.Sha256, "other".to_bytes(), signature)
     )
+
     let pss = try rsa_sign_pss(private, HashAlgorithm.Sha256, data)
     try expect_true(rsa_verify_pss(public, HashAlgorithm.Sha256, data, pss))
+
     let sealed = try rsa_encrypt(public, HashAlgorithm.Sha256, data)
     try expect_equal(try rsa_decrypt(private, HashAlgorithm.Sha256, sealed), data)

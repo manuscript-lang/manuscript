@@ -11,20 +11,27 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (((44 % 17) * (34 * 11)) - 25)
     say("i1 = {i1}")
+
     let i2 = (-29)
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = ((i1 - ((-13) * i1)) / (i2 - ((-18) * 11)))
     say("i4 = {i4}")
+
     let s5 = ("42".upper() + "hello world".upper().trim())
     say("s5 = [{s5}]")
+
     if (((-20) + 15) != ((-23) * i2)):
         say(("back\\slash" + "ms"))
     else:
         say("naïve")
+
     let f6 = 786.621
     say("f6 = {f6}")
+
     let i7 = (-(233761 - i1))
     say("i7 = {i7}")
     return 0

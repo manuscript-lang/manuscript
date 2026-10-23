@@ -12,16 +12,16 @@
         "message": "operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)",
         "position": {
           "file": "seed-0008.ms",
-          "line": 18,
+          "line": 21,
           "column": 17,
-          "offset": 523
+          "offset": 526
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0008.ms:18:17: type: operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0008.ms:21:17: type: operator operands require the same independently known type, found Int + String; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

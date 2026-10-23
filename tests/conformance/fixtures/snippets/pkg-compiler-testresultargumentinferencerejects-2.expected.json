@@ -23,9 +23,9 @@
         "message": "cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-2.ms",
-          "line": 5,
+          "line": 6,
           "column": 18,
-          "offset": 246
+          "offset": 247
         }
       },
       {
@@ -34,16 +34,16 @@
         "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-2.ms",
-          "line": 5,
+          "line": 6,
           "column": 25,
-          "offset": 253
+          "offset": 254
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:4:27: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:5:18: type: cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:5:25: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:4:27: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:18: type: cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-2.ms:6:25: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

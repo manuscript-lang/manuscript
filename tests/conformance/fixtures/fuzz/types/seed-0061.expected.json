@@ -12,16 +12,16 @@
         "message": "not requires Bool, found Int; compare explicitly, e.g. not (x == 0)",
         "position": {
           "file": "seed-0061.ms",
-          "line": 18,
+          "line": 21,
           "column": 15,
-          "offset": 490
+          "offset": 493
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0061.ms:18:15: type: not requires Bool, found Int; compare explicitly, e.g. not (x == 0)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0061.ms:21:15: type: not requires Bool, found Int; compare explicitly, e.g. not (x == 0)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

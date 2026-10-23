@@ -11,6 +11,7 @@
 use ms_rt as _;
 
 mod alias;
+mod bound_alias;
 mod call;
 mod category;
 mod closure;

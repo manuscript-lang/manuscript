@@ -4,7 +4,6 @@
 fn work() Unit:
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
-            ["line\n\nbreak"],
-            [""]
+            ["line\n\nbreak"], [""]
         ]
     )

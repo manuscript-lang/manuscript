@@ -47,6 +47,7 @@ test "second local extensions":
     let item = Item(2)
     (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
     as_view(item).get() | try expect_equal(22)
+
     let holder = Holder(item)
     (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | try expect_false
     Box("hello").get() | try expect_equal("hello")

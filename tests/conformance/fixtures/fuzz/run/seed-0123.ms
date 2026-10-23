@@ -11,11 +11,13 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
@@ -23,15 +25,21 @@ export fn main() Int:
     say("f1 = {f1}")
     say("gcd(1893, 4201) = {gcd(1893, 4201)}")
     say("{(-7)} {(-1)} {((-7) < (-1))} sum {(-7) + (-1)}")
+
     let l2 = [9, (-19)]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = false
     say("b3 = {b3}")
     say("{(-(-26))} {43} {((-(-26)) < 43)} sum {(-(-26)) + 43}")
+
     let i4 = ((24 / (49 * (-15))) + 916130)
     say("i4 = {i4}")
-    say("{i4} {((31 * i4) % l2.length())} {(i4 < ((31 * i4) % l2.length()))} sum {i4 + ((31 * i4) % l2.length())}")
+    say(
+        "{i4} {((31 * i4) % l2.length())} {(i4 < ((31 * i4) % l2.length()))} sum {i4 + ((31 * i4) % l2.length())}"
+    )
     say("fact(11) = {fact(11)}")
+
     let b5 = (false and ((true and false) and "x".is_empty()))
     say("b5 = {b5}")
     return 0

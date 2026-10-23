@@ -11,24 +11,37 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("MiXeD CaSe".upper() + "日本語").upper()
     say("s1 = [{s1}]")
+
     let i2 = (s1.length() % ((27 % (-873517372493)) - (29 - 3)))
     say("i2 = {i2}")
+
     let s3 = ("{(-20)}:" + s1).upper()
     say("s3 = [{s3}]")
-    let s4 = (("{(i2 * 42)}:" + ("brace\{s\}" + "naïve")) + s3.upper().replace(s1, "日本語"))
+
+    let s4 = (
+        ("{(i2 * 42)}:" + ("brace\{s\}" + "naïve"))
+        + s3.upper().replace(s1, "日本語")
+    )
     say("s4 = [{s4}]")
+
     let b5 = (not ((336.658 / 8.0e0) != (984.951 * 86.838)))
     say("b5 = {b5}")
+
     let f6 = 2.442
     say("f6 = {f6}")
+
     let i7 = s1.length()
     say("i7 = {i7}")
+
     let b8 = ("line\nbreak".reverse().is_empty() or ((i2 * i7) < (i7 * i7)))
     say("b8 = {b8}")
+
     let l9 = [1, 2, 3].take(0)
     say("l9 = {l9} len {l9.length()}")
+
     let s10 = "x".upper().replace("MiXeD CaSe", "delta").replace("x", "")
     say("s10 = [{s10}]")
+
     let i11 = (-36811410622)
     say("i11 = {i11}")
     return 0

@@ -12,16 +12,16 @@
         "message": "unknown binding CommandError; add: import CommandError from \"@std/process.ms\"",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-67.ms",
-          "line": 5,
-          "column": 25,
-          "offset": 192
+          "line": 7,
+          "column": 20,
+          "offset": 215
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-67.ms:5:25: resolution: unknown binding CommandError; add: import CommandError from \"@std/process.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-67.ms:7:20: resolution: unknown binding CommandError; add: import CommandError from \"@std/process.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

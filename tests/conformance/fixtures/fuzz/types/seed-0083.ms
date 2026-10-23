@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
@@ -18,9 +19,11 @@ export fn main() Int:
         say(("Tab\there" + "Tab\there"))
     else:
         say("naïve".upper())
+
     let f1 = 523.713
     say("f1 = {f1}")
     say("gcd(2218, 1953) = {gcd(2218, 1953)}")
+
     let bad = say
     let i2 = (-19)
     say("i2 = {i2}")

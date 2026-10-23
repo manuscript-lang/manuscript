@@ -4,5 +4,6 @@
 fn answer() Int:
     let number = 42
     return number
+
 fn later() Int:
     return 2

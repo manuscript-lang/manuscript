@@ -21,8 +21,10 @@ fn status_label(status: Status) String:
 test "publish a help page":
     var todo = Todo("Update the help page")
     todo.completed = true
+
     let backup = todo.clone()
     todo.title = "Update the contact page"
+
     let label = status_label(Status.Published("/help"))
     try expect_equal(backup.title, "Update the help page")
     try expect_equal(backup.completed, true)

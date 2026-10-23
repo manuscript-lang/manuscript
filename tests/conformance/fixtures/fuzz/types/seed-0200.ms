@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(19) = {fact(19)}")
+
     let s1 = "42".reverse().replace("  padded  ", "gamma").upper()
     say("s1 = [{s1}]")
+
     let bad: Int = "text"
     return 0

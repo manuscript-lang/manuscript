@@ -4,4 +4,5 @@
 type Options:
     count: Int = 1
     required: Int
+
 fn f() Options: return Options()

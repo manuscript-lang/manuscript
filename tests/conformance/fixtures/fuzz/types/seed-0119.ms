@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ((("back\\slash" + "hello world") + "x".reverse()) + "x")
     say("s1 = [{s1}]")
+
     let i2 = (273733932161 * (((-5) * 5) * (46 * 20)))
     say("i2 = {i2}")
+
     let bad = 1 + "one"
     let s3 = "x".replace(s1, s1).lower().lower()
     say("s3 = [{s3}]")

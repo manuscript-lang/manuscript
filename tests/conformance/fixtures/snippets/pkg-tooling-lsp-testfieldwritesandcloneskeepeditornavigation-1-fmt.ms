@@ -8,6 +8,7 @@ fn work(var value: Val) Unit:
     let callback = fn() Unit:
         value.val = value.val + 1
     callback()
+
     let copy = value.clone()
     let list = [copy]
     list.clone().append(value)

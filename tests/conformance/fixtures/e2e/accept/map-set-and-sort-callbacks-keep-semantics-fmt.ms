@@ -38,11 +38,11 @@ test "map callbacks":
             ) == 321
         )
     )
+
     var visited = List[Int]()
     m.for_each(
         fn(key: String, value: Int) Unit: record(
-            into: var visited,
-            value: value
+            into: var visited, value: value
         )
     )
 
@@ -77,6 +77,7 @@ test "sort with a comparator":
     let words = ["ccc", "a", "bb"]
     let sorted = words.sorted(compare: byLength)
     try expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))
+
     let lambda = words.sorted(
         compare: fn(left: String, right: String) Int: (
             right.length()

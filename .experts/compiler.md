@@ -16,6 +16,10 @@ Apply when: changing ownership, borrowing, drop elaboration, or argument passing
 Evidence: [ownership corpus](../crates/ms-check/tests/ownership.rs), [ownership notes](../crates/ms-check/OWNERSHIP.md).
 Verify: `cargo nextest run -p ms-check`, including the accept and reject ownership fixtures; add the rejected aliasing case before relaxing a rule.
 
+Verified: a closure or method value that changes a mutable alias must retain the owner's storage and the already evaluated path operands. Capturing the leaf copies it; retaining parent-function SSA identifiers is invalid in the child function. A borrowed slot still permits source-call writeback, but the child must not drop its owner. Bound-method writeback must update the current root after the call so a callback's changes to disjoint fields survive.
+Evidence: [closure alias regressions](../crates/ms-cli/tests/closure_aliases.rs), [bound alias regressions](../crates/ms-cli/tests/bound_aliases.rs).
+Verify: native Debug and Release runs cover indexed/keyed paths, nested callbacks, source/native methods, owned results, and rejected escape/reentry.
+
 ### Generic instances resolve contract evidence in the instantiating module
 
 Verified (carried from the retired implementation; the semantics are language rules): a module-local `impl` is visible only in its module, but a generic function from another module is instantiated with the caller's evidence for its bounded type variables, while operations on concrete types inside the body keep the declaring module's choice. A `Map` or `Set` keeps the equality and hashing it was created with, so a bound operation from another module does not change how the collection matches. Views, bound methods, and cleanup dispatch must carry the lexical module as part of their identity: two views of the same concrete receiver can select different module-local implementations at one call site, so a cache keyed by receiver type alone is wrong. Cached targets must never capture receiver values.

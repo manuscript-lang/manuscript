@@ -12,6 +12,7 @@ export fn main() Int:
     let i1 = ((-40) - ((-313228) / (337834 - 29)))
     say("i1 = {i1}")
     return "not an int"
+
     let f2 = ((941.076 * (386.864 * 0.0)) * 175.626)
     say("f2 = {f2}")
     return 0

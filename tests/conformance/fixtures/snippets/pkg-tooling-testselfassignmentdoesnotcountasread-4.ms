@@ -6,4 +6,5 @@ fn answer() Int:
     total = total + 2
     if total > 1:
         return 1
+
     return 0

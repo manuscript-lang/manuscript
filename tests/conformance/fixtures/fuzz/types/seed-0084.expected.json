@@ -12,16 +12,16 @@
         "message": "expected Int, found String (in argument 'index' of get)",
         "position": {
           "file": "seed-0084.ms",
-          "line": 13,
+          "line": 16,
           "column": 26,
-          "offset": 557
+          "offset": 572
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0084.ms:13:26: type: expected Int, found String (in argument 'index' of get)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0084.ms:16:26: type: expected Int, found String (in argument 'index' of get)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

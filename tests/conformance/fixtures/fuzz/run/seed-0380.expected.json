@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "delta\nb1 = false\ni2 = -40\nl3 = [] len 0\nb4 = false\ni5 = -6400\ni6 = 3\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0380.ms:29 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0380.ms:36 in main\n"
   }
 }

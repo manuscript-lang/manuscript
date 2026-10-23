@@ -9,12 +9,16 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((((-283345) / (-125119472477)) + (-113007)) + (31 + ((-31) / (-28944804397))))
+    let i1 = (
+        (((-283345) / (-125119472477)) + (-113007))
+        + (31 + ((-31) / (-28944804397)))
+    )
     say("i1 = {i1}")
+
     let f2 = 345.25
     say("f2 = {f2}")
     say("{i1} {(-i1)} {(i1 < (-i1))} sum {i1 + (-i1)}")
-    let b3 = ((true or (false and true)) and (not "beta".contains("hello world")))
 
+    let b3 = ((true or (false and true)) and (not "beta".contains("hello world")))
     say("{i1} {840178} {(i1 < 840178)} sum {i1 + 840178}")
     return 0

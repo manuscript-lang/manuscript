@@ -11,27 +11,41 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (((46 + 47) / 32) + 24)
     say("i1 = {i1}")
-    let b2 = (("{(i1 % i1)}:" + "héllo") + ("brace\{s\}" + "brace\{s\}")).starts_with("ms")
+
+    let b2 = (("{(i1 % i1)}:" + "héllo") + ("brace\{s\}" + "brace\{s\}")).starts_with(
+        "ms"
+    )
     say("b2 = {b2}")
+
     let i3 = i1
     say("i3 = {i3}")
+
     let s4 = ("  padded  " + ("naïve" + "line\nbreak").replace("Tab\there", "naïve"))
     say("s4 = [{s4}]")
+
     let f5 = (((332.25 + 4.5) * 0.0) * (225.25 * (995.267 + 3.0e20)))
     say("f5 = {f5}")
+
     let s6 = "brace\{s\}"
     say("s6 = [{s6}]")
+
     let f7 = 992.756
     say("f7 = {f7}")
+
     if ((125249 / 21) >= (-2)):
         say(s4.replace("hello world", "42"))
     else:
         say(s6.reverse())
+
     let f8 = f5
     say("f8 = {f8}")
+
     let i9 = ((((-45) + 16) - 1) * ((i3 - (-466816)) * i3))
     say("i9 = {i9}")
-    say("{((i1 / i1) / i1)} {(-793237)} {(((i1 / i1) / i1) < (-793237))} sum {((i1 / i1) / i1) + (-793237)}")
+    say(
+        "{((i1 / i1) / i1)} {(-793237)} {(((i1 / i1) / i1) < (-793237))} sum {((i1 / i1) / i1) + (-793237)}"
+    )
+
     let big10 = 9223372036854775807
     say("{big10 * 4}")
     return 0

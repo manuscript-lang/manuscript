@@ -11,16 +11,22 @@ fn say(text: String) Unit:
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 3:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 3
+
     say("acc1 = {acc1}")
+
     let s2 = "delta"
     say("s2 = [{s2}]")
+
     let i3 = 1
     say("i3 = {i3}")
+
     let i4 = 3
     say("i4 = {i4}")
+
     let i5 = ((((-45) * i3) + i3) / ((12 + i3) - (30 + (-420062))))
     say("i5 = {i5}")
     return 0

@@ -13,7 +13,9 @@ export fn main() Int:
         say("gamma".upper())
     else:
         say("hello world".lower())
+
     return "not an int"
+
     let s1 = ("".upper().upper() + "naïve".lower())
     say("s1 = [{s1}]")
     return 0

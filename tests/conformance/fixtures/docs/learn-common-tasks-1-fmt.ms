@@ -10,4 +10,5 @@ fn run() Result[Unit, Error]:
 export fn main() Int:
     if run().is_error():
         return 1
+
     return 0

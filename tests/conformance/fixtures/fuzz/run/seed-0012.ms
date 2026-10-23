@@ -11,22 +11,31 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (((3.5 * 563.022) - (107.25 * 396.25)) != 285.863)
     say("b1 = {b1}")
+
     let i2 = 31
     say("i2 = {i2}")
+
     let l3 = [(-10)]
     say("l3 = {l3} len {l3.length()}")
+
     let b4 = (not "  padded  ".ends_with(""))
     say("b4 = {b4}")
+
     let i5 = i2
     say("i5 = {i5}")
+
     let l6 = l3.concat(l3)
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = ("hello world" + "naïve").is_empty()
     say("b7 = {b7}")
+
     let b8 = b1
     say("b8 = {b8}")
+
     let f9 = 4.0e7
     say("f9 = {f9}")
+
     let i10 = (((-(-28)) * i5) - ((-24) - (i2 - i5)))
     say("i10 = {i10}")
     return 0

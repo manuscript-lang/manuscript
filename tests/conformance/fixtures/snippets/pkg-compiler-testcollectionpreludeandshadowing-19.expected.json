@@ -44,16 +44,16 @@
         "message": "declaration Set reuses a prelude name; rename it, because Set always refers to the standard declaration",
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-19.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 225
+          "offset": 226
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-19.ms:4:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-19.ms:5:1: resolution: declaration Set reuses a prelude name; rename it, because Set always refers to the standard declaration\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-19.ms:4:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-19.ms:6:1: resolution: declaration Set reuses a prelude name; rename it, because Set always refers to the standard declaration\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

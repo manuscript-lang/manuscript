@@ -1,7 +1,6 @@
 # conform: tags=control-flow,formatter,lists,mutation,parser,records,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/modules/boundaries.md:12
-
 export type Item:
     price: Int
     quantity: Int

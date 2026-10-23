@@ -11,9 +11,11 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = true
     say("b1 = {b1}")
+
     let bad = say
     let l2 = [(-7)]
     say("l2 = {l2} len {l2.length()}")
+
     let s3 = "line\nbreak"
     say("s3 = [{s3}]")
     return 0

@@ -9,6 +9,7 @@ import {Rng, next, text, mutate} from "./support/generator.ms"
 fn generated(var rng: Rng, depth: Int) TomlValue:
     var choices = 7
     if depth > 2: choices = 4
+
     let kind = next(var rng, choices)
     if kind == 0: return TomlValue.BoolValue(next(var rng, 2) == 0)
     if kind == 1: return TomlValue.IntValue(next(var rng, 200000) - 100000)

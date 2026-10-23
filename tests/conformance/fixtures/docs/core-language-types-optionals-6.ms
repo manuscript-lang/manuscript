@@ -4,4 +4,5 @@
 fn greet(name: Optional[String]) String:
     if let value = name:
         return "Hello, " + value
+
     return "Hello!"

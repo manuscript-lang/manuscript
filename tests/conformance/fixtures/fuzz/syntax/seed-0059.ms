@@ -12,18 +12,20 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = ((-6) / ((227939817206 * (-35)) * (1 * (-38))))
-
     let s2 = ("naïve" + "alpha").reverse().reverse()
     say("s2 = [{s2}]")
+
     let i3 = 441504793718
     say("i3 = {i3}")
     say("fib(13) = {fib(13)}")

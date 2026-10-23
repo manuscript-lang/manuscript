@@ -7,12 +7,7 @@ use std::path::{Path, PathBuf};
 mod lld;
 pub(crate) use lld::llvm_tools;
 
-/// Links `object` and the runtime static library into the executable `out`.
-pub fn link(object: &Path, runtime: &Path, out: &Path) -> Result<(), Error> {
-    link_all(object, &[runtime], out)
-}
-
-/// Like [`link`] with several runtime inputs (objects or static libraries), in order.
+/// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
     link_with(object, inputs, out, false)
 }

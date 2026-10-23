@@ -11,45 +11,69 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let i1 = ((-((-36) * 29)) * 27)
     say("i1 = {i1}")
-    let b2 = (not (("Tab\there" == "line\nbreak") and "emoji 😀".ends_with("hello world")))
+
+    let b2 = (
+        not (
+            ("Tab\there" == "line\nbreak")
+            and "emoji 😀".ends_with("hello world")
+        )
+    )
     say("b2 = {b2}")
+
     let l3 = [27, (-3), (-21)]
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = (("x" + "ms") + ("{(i1 / i1)}:" + "delta")).upper()
     say("s4 = [{s4}]")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 8:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 6
+
     say("acc5 = {acc5}")
     say("{i1} {32} {(i1 < 32)} sum {i1 + 32}")
+
     let l6 = [8, (-12), (-19)]
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = ("{(i1 - i1)}:" + "x".reverse()).is_empty()
     say("b7 = {b7}")
+
     let s8 = s4
     say("s8 = [{s8}]")
+
     let i9 = (8 + ((-i1) - (-i1)))
     say("i9 = {i9}")
+
     let i10 = 37
     say("i10 = {i10}")
-    say("{i1} {((i1 + 685465) + l6.get(1))} {(i1 < ((i1 + 685465) + l6.get(1)))} sum {i1 + ((i1 + 685465) + l6.get(1))}")
+    say(
+        "{i1} {((i1 + 685465) + l6.get(1))} {(i1 < ((i1 + 685465) + l6.get(1)))} sum {i1 + ((i1 + 685465) + l6.get(1))}"
+    )
+
     var acc11 = 0
+
     for x in l3:
         if x % 2 == 0:
             acc11 += x
         else:
             acc11 -= 1
+
     say("acc11 = {acc11}")
     say("gcd(1507, 2920) = {gcd(1507, 2920)}")
+
     if ((420.375 + 4.5) > (159.25 / 1.5)):
         say(s8.reverse())
     else:
         say(s8)
+
     return 0

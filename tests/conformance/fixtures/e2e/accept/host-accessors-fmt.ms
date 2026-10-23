@@ -11,11 +11,13 @@ import network from "@std/net.ms"
 
 fn check_services() Result[Unit, Error]:
     arguments().length() | try expect_equal(0)
+
     let before = clock().now()
     let after = clock().now()
     (after - before < 0.milliseconds) | try expect_false
     (wall_clock().now().unix_seconds() <= 0) | try expect_false
     (system().info().cpu_count <= 0) | try expect_false
+
     let variables = try control().environment()
 
     match entropy().bytes(0):

@@ -890,9 +890,58 @@ unsafe fn replace_limited(
         } else {
             text.len() as i64
         };
-        let out = replace_n_bytes(text, o, bytes(new), n.min(bound));
-        from_buf(out)
+        let n = n.min(bound);
+        if o.is_empty() {
+            return from_buf(replace_n_bytes(text, o, bytes(new), n));
+        }
+        replace_into_str(text, o, bytes(new), n)
     }
+}
+
+/// `replace_n_bytes` for a non-empty `old`, written straight into the result string: one allocation,
+/// and an unchanged text is a plain copy.
+fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> *mut StrObj {
+    let mut matches = 0usize;
+    let mut i = 0;
+    while (matches as i64) < n {
+        match find(&text[i..], old) {
+            None => break,
+            Some(p) => {
+                i += p + old.len();
+                matches += 1;
+            }
+        }
+    }
+    fill_replaced(text, old, new, matches)
+}
+
+/// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
+/// `matches` is the full count), written straight into one new string.
+fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> *mut StrObj {
+    if matches == 0 {
+        return from_bytes(text);
+    }
+    let len = text.len() - matches * old.len() + matches * new.len();
+    if len < 2 {
+        // from_bytes shares the empty and one-ASCII-byte strings.
+        return from_buf(replace_n_bytes(text, old, new, matches as i64));
+    }
+    let out = alloc_str(len);
+    // SAFETY: `out` has room for `len` bytes, exactly what the loop below writes.
+    unsafe {
+        let mut dst = data_ptr(out);
+        let mut i = 0;
+        for _ in 0..matches {
+            let p = find(&text[i..], old).unwrap_or(0);
+            core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
+            dst = dst.add(p);
+            core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+            dst = dst.add(new.len());
+            i += p + old.len();
+        }
+        core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, text.len() - i);
+    }
+    out
 }
 
 #[unsafe(no_mangle)]
@@ -956,7 +1005,11 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        *out = from_buf(replace_n_bytes(text, o, n, -1));
+        *out = if o.is_empty() {
+            from_buf(replace_n_bytes(text, o, n, -1))
+        } else {
+            fill_replaced(text, o, n, count)
+        };
         STATUS_OK
     }
 }

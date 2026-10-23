@@ -12,16 +12,16 @@
         "message": "Pair[Int, String] does not implement I; declare 'impl I for Pair[Int, String]:' with every operation of the interface",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-12.ms",
-          "line": 13,
+          "line": 16,
           "column": 12,
-          "offset": 331
+          "offset": 334
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-12.ms:13:12: type: Pair[Int, String] does not implement I; declare 'impl I for Pair[Int, String]:' with every operation of the interface\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-12.ms:16:12: type: Pair[Int, String] does not implement I; declare 'impl I for Pair[Int, String]:' with every operation of the interface\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

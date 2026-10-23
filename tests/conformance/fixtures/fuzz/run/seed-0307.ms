@@ -11,12 +11,15 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -24,36 +27,54 @@ export fn main() Int:
         say("ms".upper())
     else:
         say(("{28}:" + "naïve"))
+
     let i1 = ((12 * (-72803)) + (-24506))
     say("i1 = {i1}")
     say("collatz(1197) = {collatz(1197)}")
+
     if ((true or false) and "gamma".is_empty()):
         say(("a" + "  padded  "))
     else:
         say(("" + "alpha"))
-    say("{((i1 * 17) * (19 % i1))} {((9 + i1) % i1)} {(((i1 * 17) * (19 % i1)) < ((9 + i1) % i1))} sum {((i1 * 17) * (19 % i1)) + ((9 + i1) % i1)}")
+
+    say(
+        "{((i1 * 17) * (19 % i1))} {((9 + i1) % i1)} {(((i1 * 17) * (19 % i1)) < ((9 + i1) % i1))} sum {((i1 * 17) * (19 % i1)) + ((9 + i1) % i1)}"
+    )
+
     let i2 = (((i1 + i1) + ((-643286) + 38)) / ((i1 * i1) / (-40)))
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
-    say("{((-i1) * (i2 + i1))} {((i2 + i2) % ((-2272) - i1))} {(((-i1) * (i2 + i1)) < ((i2 + i2) % ((-2272) - i1)))} sum {((-i1) * (i2 + i1)) + ((i2 + i2) % ((-2272) - i1))}")
+    say(
+        "{((-i1) * (i2 + i1))} {((i2 + i2) % ((-2272) - i1))} {(((-i1) * (i2 + i1)) < ((i2 + i2) % ((-2272) - i1)))} sum {((-i1) * (i2 + i1)) + ((i2 + i2) % ((-2272) - i1))}"
+    )
+
     let i4 = l3.length()
     say("i4 = {i4}")
+
     var acc5 = 0
+
     for x in l3:
         if x % 2 == 0:
             acc5 += x
         else:
             acc5 -= 1
+
     say("acc5 = {acc5}")
+
     let i6 = (-((i1 * 708313) * (-28)))
     say("i6 = {i6}")
+
     let i7 = ((6 + (i4 % 24)) + (-(i4 - (-3))))
     say("i7 = {i7}")
+
     let s8 = "42".trim().lower()
     say("s8 = [{s8}]")
+
     let l9 = l3.take(4)
     say("l9 = {l9} len {l9.length()}")
+
     let big10 = l3.length() - l3.length()
     say("{l3.length() % big10}")
     return 0

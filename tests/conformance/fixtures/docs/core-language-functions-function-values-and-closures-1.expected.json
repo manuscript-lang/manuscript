@@ -23,16 +23,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-functions-function-values-and-closures-1.ms",
-          "line": 11,
+          "line": 10,
           "column": 14,
-          "offset": 345
+          "offset": 344
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-functions-function-values-and-closures-1.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-function-values-and-closures-1.ms:11:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-functions-function-values-and-closures-1.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-function-values-and-closures-1.ms:10:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -17,12 +17,16 @@ test "inlined callbacks":
     let offset = 10
     let shifted = items.map(fn(v: Int) Int: v + offset)
     try expect_true((shifted.length() == 5 and shifted.get(index: 4) == 14))
+
     let labels = items.map(fn(v: Int) String: "n{v}")
     try expect_true((labels.get(index: 2) == "n2"))
+
     let floats = items.map(fn(v: Int) Float: 0.5)
     try expect_true((floats.length() == 5))
+
     let points = items.map(fn(v: Int) Point: Point(x: v))
     try expect_true((points.get(index: 3) == Point(x: 3)))
+
     let evens = items.filter(fn(v: Int) Bool: v % 2 == 0)
     try expect_true((evens.length() == 3))
     try expect_true((points.filter(fn(p: Point) Bool: p.x > 2).length() == 2))
@@ -30,8 +34,7 @@ test "inlined callbacks":
     try expect_true(
         (
             items.fold(
-                initial: "",
-                step: fn(a: String, v: Int) String: (a + "{v}")
+                initial: "", step: fn(a: String, v: Int) String: (a + "{v}")
             ) == "01234"
         )
     )
@@ -40,6 +43,7 @@ test "inlined callbacks":
     try expect_true((not items.some(predicate: fn(v: Int) Bool: v == 9)))
     try expect_true((items.every(predicate: fn(v: Int) Bool: v < 5)))
     try expect_true((not items.every(predicate: fn(v: Int) Bool: v < 4)))
+
     # Closures cannot mutate captures, so iterate a clone while growing the original.
     var seen = List[Int]()
 

@@ -12,16 +12,16 @@
         "message": "unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)",
         "position": {
           "file": "pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-5.ms",
-          "line": 6,
+          "line": 7,
           "column": 32,
-          "offset": 286
+          "offset": 287
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-5.ms:6:32: resolution: unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testtypedcodecselectorsrejectinvalidcasesandtyp-5.ms:7:32: resolution: unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

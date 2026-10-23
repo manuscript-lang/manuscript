@@ -29,6 +29,8 @@ pub enum JobKind {
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
     BoundNative(Rc<BoundNativeJob>),
+    /// A mutating method value bound to a mutable alias.
+    BoundAlias(Rc<crate::bound_alias::BoundAliasJob>),
     /// A source callable used as a value whose omittable parameters are optionals.
     DefaultThunk(Rc<DefaultThunkJob>),
     /// An interface method used as a value whose function type takes optionals.
@@ -90,8 +92,8 @@ pub struct LambdaJob {
     pub hir: Rc<ModuleHir>,
     /// Type variables of the enclosing instance.
     pub subst: Subst,
-    /// Captured variables in closure-object order.
-    pub captures: Vec<ct::BindingRef>,
+    /// Source captures and their slots in the closure environment.
+    pub captures: Vec<crate::closure::LambdaCapture>,
 }
 
 /// A source callable behind a function value that fills omitted defaults.

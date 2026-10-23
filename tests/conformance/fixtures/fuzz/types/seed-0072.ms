@@ -11,18 +11,26 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(16) = {fact(16)}")
+
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 1:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 1
+
     say("acc1 = {acc1}")
-    say("{7} {((-(-845159)) - (-415598506378))} {(7 < ((-(-845159)) - (-415598506378)))} sum {7 + ((-(-845159)) - (-415598506378))}")
+    say(
+        "{7} {((-(-845159)) - (-415598506378))} {(7 < ((-(-845159)) - (-415598506378)))} sum {7 + ((-(-845159)) - (-415598506378))}"
+    )
+
     let f2 = 948.285
     say("f2 = {f2}")
+
     let bad = 1 + "one"
     return 0

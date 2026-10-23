@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "l1 = [22, -30, 23] len 3\nl2 = [23, -30, 22] len 3\nb3 = false\nf4 = 434818.9348050562\nemoji 😀\nl5 = [-17, -2, 6, 25, -28] len 5\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0165.ms:27 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0165.ms:36 in main\n"
   }
 }

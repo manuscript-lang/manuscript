@@ -11,40 +11,53 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let b1 = "Tab\there".upper().is_empty()
     say("b1 = {b1}")
     say("collatz(1706) = {collatz(1706)}")
+
     let f2 = ((5.0e3 + 477.078) + ((416.077 + 0.0) + 9.5))
     say("f2 = {f2}")
     say("fact(0) = {fact(0)}")
+
     let l3 = [(-22), 22, 19, (-28), 4]
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = "delta"
     say("s4 = [{s4}]")
+
     let s5 = "  padded  ".reverse()
     say("s5 = [{s5}]")
+
     let i6 = (-640393364026)
     say("i6 = {i6}")
+
     let i7 = ((l3.get(3) * (-16)) * (s5.length() - (547996 % 47)))
     say("i7 = {i7}")
+
     let f8 = f2
     say("f8 = {f8}")
+
     let s9 = s5
     say("s9 = [{s9}]")
+
     let l10 = [(-26), (-1), 9, 26]
     say("l10 = {l10} len {l10.length()}")
     return 0

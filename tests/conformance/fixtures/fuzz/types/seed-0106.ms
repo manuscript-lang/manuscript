@@ -11,7 +11,9 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (((-0) + 12) - ((5 * (-38)) * ((-15) % 47)))
     say("i1 = {i1}")
+
     let b2 = "ms".trim().is_empty()
     say("b2 = {b2}")
+
     let bad = Map[Int, Int]().get(1, 2, 3)
     return 0

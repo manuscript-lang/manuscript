@@ -11,12 +11,15 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -24,7 +27,9 @@ export fn main() Int:
         say(("{(-35)}:" + "alpha"))
     else:
         say(("MiXeD CaSe" + "ms"))
+
     say("collatz(2228) = {collatz(2228)}")
+
     let bad = [1, "two"]
     let s1 = ("".upper() + ("x" + "delta")).trim()
     say("s1 = [{s1}]")

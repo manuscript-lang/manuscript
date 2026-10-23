@@ -11,42 +11,59 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 930.437
     say("f1 = {f1}")
+
     let s2 = "42"
     say("s2 = [{s2}]")
+
     if ((14 * (-47)) < (7 - 4)):
         say("beta".lower())
     else:
         say(s2)
+
     let i3 = (((11 + 4) * 49) + (37 % (0 - (-36))))
     say("i3 = {i3}")
+
     let i4 = (i3 - (-17))
     say("i4 = {i4}")
+
     let i5 = (-9)
     say("i5 = {i5}")
+
     let b6 = s2.lower().ends_with("héllo")
     say("b6 = {b6}")
+
     var acc7 = 0
     var stepacc7 = 0
+
     while stepacc7 < 4:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 3
+
     say("acc7 = {acc7}")
+
     let s8 = (s2 + s2)
     say("s8 = [{s8}]")
+
     let i9 = (-17)
     say("i9 = {i9}")
+
     let i10 = ((i9 * 44) + i5)
     say("i10 = {i10}")
+
     let l11 = [(-19), (-10), (-28), 3]
     say("l11 = {l11} len {l11.length()}")
+
     let l12 = l11.sorted(fn(a, b): a.compare(b))
     say("l12 = {l12} len {l12.length()}")
+
     let f13 = (((988.700 / f1) + (f1 - f1)) + (f1 + f1))
     say("f13 = {f13}")
+
     if b6:
         say("x".upper())
     else:
         say(s8)
+
     let i14 = (-37)
     say("i14 = {i14}")
     return 0

@@ -8,6 +8,7 @@ test "literal divisors":
     try expect_true((n / 2 == -3))
     try expect_true((n % 3 == -1))
     try expect_true((9 % 2 == 1))
+
     var i = 0
     var hits = 0
 

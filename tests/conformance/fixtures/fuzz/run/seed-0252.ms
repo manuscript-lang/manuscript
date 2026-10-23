@@ -13,49 +13,64 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let b1 = "42".upper().upper().is_empty()
     say("b1 = {b1}")
+
     let i2 = ((((-6) * 47) / (4 % 34)) - 27)
     say("i2 = {i2}")
     say("fib(19) = {fib(19)}")
+
     let i3 = (i2 * (((-35) + i2) * i2))
     say("i3 = {i3}")
+
     let f4 = 910.423
     say("f4 = {f4}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 8:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + (-1)
+
     say("acc5 = {acc5}")
+
     var acc6 = 0
     for i in range(0, 4):
         acc6 += i * 4
     say("acc6 = {acc6}")
+
     let l7 = [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
     say("collatz(1112) = {collatz(1112)}")
+
     let f8 = (((f4 + 401.106) + (f4 + f4)) + f4)
     say("f8 = {f8}")
+
     let l9 = l7.map(fn(x): x * 3)
     say("l9 = {l9} len {l9.length()}")
     return 0

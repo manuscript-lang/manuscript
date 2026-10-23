@@ -11,18 +11,27 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [22, (-30), 23]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = l1.reversed()
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = ("  padded  ".lower().is_empty() or ((0 > 44) or false))
     say("b3 = {b3}")
-    let f4 = (((83.966 * 602.324) * (775.25 / 209.25)) + ((292.572 - 132.880) * (573.883 + 975.629)))
+
+    let f4 = (
+        ((83.966 * 602.324) * (775.25 / 209.25))
+        + ((292.572 - 132.880) * (573.883 + 975.629))
+    )
     say("f4 = {f4}")
+
     if ((false and b3) and ("beta" == "MiXeD CaSe")):
         say("back\\slash")
     else:
         say("emoji 😀".trim())
+
     let l5 = [(-17), (-2), 6, 25, (-28)]
     say("l5 = {l5} len {l5.length()}")
+
     let big6 = -9223372036854775808
     say("{-big6}")
     return 0

@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=internal/cli/cli_test.go:188 TestFormattingCheckAndPermissionPreservation
 fn value() Int:
-    return sum(left:read(1),right:2)
+    return sum(left: read(1), right: 2)

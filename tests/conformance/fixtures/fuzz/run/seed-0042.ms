@@ -11,43 +11,63 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((38 + ((-263811381939) * 23)) + ((2 - (-30)) + 28))
     say("i1 = {i1}")
+
     let b2 = ((i1 / 324396) >= (21 / (-12)))
     say("b2 = {b2}")
+
     let f3 = (((973.012 + 9.5) / 210.588) / (438.312 / 0.0))
     say("f3 = {f3}")
-    say("{((i1 / i1) / (6 % i1))} {((14 + 184245) / i1)} {(((i1 / i1) / (6 % i1)) < ((14 + 184245) / i1))} sum {((i1 / i1) / (6 % i1)) + ((14 + 184245) / i1)}")
+    say(
+        "{((i1 / i1) / (6 % i1))} {((14 + 184245) / i1)} {(((i1 / i1) / (6 % i1)) < ((14 + 184245) / i1))} sum {((i1 / i1) / (6 % i1)) + ((14 + 184245) / i1)}"
+    )
+
     let f4 = 305.993
     say("f4 = {f4}")
+
     let l5 = [(-21), (-21), 22, (-14), (-12)]
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = [22, 10, (-24), (-20)]
     say("l6 = {l6} len {l6.length()}")
+
     let l7 = [13, (-25), (-2), 17]
     say("l7 = {l7} len {l7.length()}")
+
     let l8 = l7.drop(4)
     say("l8 = {l8} len {l8.length()}")
+
     var acc9 = 0
+
     for x in l5:
         if x % 2 == 0:
             acc9 += x
         else:
             acc9 -= 1
+
     say("acc9 = {acc9}")
+
     let i10 = (-(i1 % 985047736459))
     say("i10 = {i10}")
+
     let l11 = [(-14), (-15), (-8)]
     say("l11 = {l11} len {l11.length()}")
+
     var acc12 = 0
+
     for x in l6:
         if x % 2 == 0:
             acc12 += x
         else:
             acc12 -= 1
+
     say("acc12 = {acc12}")
+
     let b13 = (f4 > 99.182)
     say("b13 = {b13}")
+
     let i14 = i10
     say("i14 = {i14}")
+
     let i15 = (-21)
     say("i15 = {i15}")
     return 0

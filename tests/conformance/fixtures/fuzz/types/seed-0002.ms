@@ -13,27 +13,35 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [12, (-29), 5, (-14), (-12)]
     say("l1 = {l1} len {l1.length()}")
+
     var acc2 = 0
     for i in range(0, 6):
         acc2 += i * 7
     say("acc2 = {acc2}")
     say("fib(49) = {fib(49)}")
+
     let f3 = 522.754
     say("f3 = {f3}")
-    say("{((-41) * ((-15) - (-604487420722)))} {(26 - (-(-4)))} {(((-41) * ((-15) - (-604487420722))) < (26 - (-(-4))))} sum {((-41) * ((-15) - (-604487420722))) + (26 - (-(-4)))}")
+    say(
+        "{((-41) * ((-15) - (-604487420722)))} {(26 - (-(-4)))} {(((-41) * ((-15) - (-604487420722))) < (26 - (-(-4))))} sum {((-41) * ((-15) - (-604487420722))) + (26 - (-(-4)))}"
+    )
+
     let bad = undefined_name + 1
     let s4 = "hello world".lower()
     say("s4 = [{s4}]")
+
     let s5 = "  padded  "
     say("s5 = [{s5}]")
     return 0

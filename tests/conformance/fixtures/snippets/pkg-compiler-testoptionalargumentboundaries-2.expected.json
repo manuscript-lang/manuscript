@@ -12,16 +12,16 @@
         "message": "expected Optional[Float], found Int (in argument 'value' of f)",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-2.ms",
-          "line": 5,
+          "line": 6,
           "column": 19,
-          "offset": 220
+          "offset": 221
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-2.ms:5:19: type: expected Optional[Float], found Int (in argument 'value' of f)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-2.ms:6:19: type: expected Optional[Float], found Int (in argument 'value' of f)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

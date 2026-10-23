@@ -11,18 +11,23 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "héllo".replace("héllo", "  padded  ").upper()
     say("s1 = [{s1}]")
+
     let b2 = "Tab\there".is_empty()
     say("b2 = {b2}")
-
     say("s3 = [{s3}]")
+
     let l4 = [(-30), (-7), (-6), 5, (-22)]
     say("l4 = {l4} len {l4.length()}")
+
     let s5 = ("beta" + ("{(37 % 40)}:" + "emoji 😀").lower())
     say("s5 = [{s5}]")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 7:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 3
+
     say("acc6 = {acc6}")
     return 0

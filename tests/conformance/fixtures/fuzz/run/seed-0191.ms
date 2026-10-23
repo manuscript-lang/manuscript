@@ -10,33 +10,54 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("{((-322511095751) / (-5))}:" + "  padded  ").replace("x", "brace\{s\}").trim()
+    let s1 = (
+        ("{((-322511095751) / (-5))}:" + "  padded  ")
+        .replace("x", "brace\{s\}")
+        .trim()
+    )
     say("s1 = [{s1}]")
+
     var acc2 = 0
     for i in range(0, 2):
         acc2 += i * 7
     say("acc2 = {acc2}")
+
     let s3 = "gamma".lower().lower()
     say("s3 = [{s3}]")
+
     let s4 = "naïve"
     say("s4 = [{s4}]")
-    say("{(-(30 - 32))} {(4 - (-38))} {((-(30 - 32)) < (4 - (-38)))} sum {(-(30 - 32)) + (4 - (-38))}")
+    say(
+        "{(-(30 - 32))} {(4 - (-38))} {((-(30 - 32)) < (4 - (-38)))} sum {(-(30 - 32)) + (4 - (-38))}"
+    )
+
     let b6 = true
     say("b6 = {b6}")
+
     let s7 = s4.clone()
     say("s7 = [{s7}]")
-    let f8 = (((3.0e21 * 854.955) * (665.241 - 29.807)) / ((637.878 + 8.5) + (357.830 + 8.0e21)))
+
+    let f8 = (
+        ((3.0e21 * 854.955) * (665.241 - 29.807))
+        / ((637.878 + 8.5) + (357.830 + 8.0e21))
+    )
     say("f8 = {f8}")
+
     let i9 = (16550 + (998056 * (-12)))
     say("i9 = {i9}")
+
     let s10 = s3.replace(s4, "beta").lower()
     say("s10 = [{s10}]")
+
     let f11 = 156.551
     say("f11 = {f11}")
+
     let i12 = (((-i9) / i9) / i9)
     say("i12 = {i12}")
+
     let s14 = (("brace\{s\}".reverse() + (s3 + "Tab\there")) + (s1 + "x".lower()))
     say("s14 = [{s14}]")
+
     let big15 = [1, 2, 3]
     say("{big15.get(8)}")
     return 0

@@ -11,18 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 2.0e8
     say("f1 = {f1}")
+
     let i2 = 0
     say("i2 = {i2}")
+
     let i3 = (527843 + 37)
     say("i3 = {i3}")
+
     let b4 = "x".upper().is_empty()
     say("b4 = {b4}")
+
     let f5 = (f1 * (f1 / f1))
     say("f5 = {f5}")
+
     let s6 = ""
     say("s6 = [{s6}]")
+
     if ((s6 == s6) and b4):
         say(("{(i2 + 18)}:" + "delta"))
     else:
         say((s6 + s6))
+
     return 0

@@ -4,8 +4,10 @@
 type Failure:
     case NotFound
     case Denied
+
 type Envelope:
     case Pair(left: Failure, right: Failure)
+
 fn use(value: Envelope) Int:
     match value:
         Pair(payload, NotFound): return 1

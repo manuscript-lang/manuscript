@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testfaultsourcelocations-3.ms:8 in checked\n  at tests-e2e-testfaultsourcelocations-3.ms:10 in chain\n  at tests-e2e-testfaultsourcelocations-3.ms:13 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testfaultsourcelocations-3.ms:10 in checked\n  at tests-e2e-testfaultsourcelocations-3.ms:13 in chain\n  at tests-e2e-testfaultsourcelocations-3.ms:17 in main\n"
   }
 }

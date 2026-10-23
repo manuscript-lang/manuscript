@@ -2,6 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/compiler/compression_defaults_test.go:36 TestCompressionExplicitLevelsKeepDirectDispatch
 import {compress, CompressionFormat} from "@std/archive.ms"
+
 fn explicit() Unit:
     let data = "".to_bytes()
     compress(data, "gzip", 6)

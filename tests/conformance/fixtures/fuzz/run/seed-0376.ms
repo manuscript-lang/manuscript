@@ -12,26 +12,33 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [25, 21]
     say("l1 = {l1} len {l1.length()}")
+
     let f2 = (771.454 - ((971.941 * 8.0e25) * (5.0e-6 + 22.396)))
     say("f2 = {f2}")
+
     let s3 = "back\\slash"
     say("s3 = [{s3}]")
+
     let i4 = (24 - ((2 * (-906878359635)) * ((-20669) * 49)))
     say("i4 = {i4}")
+
     if s3.is_empty():
         say("gamma")
     else:
         say(s3.trim())
+
     let i5 = i4
     say("i5 = {i5}")
     say("fib(16) = {fib(16)}")

@@ -11,43 +11,59 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = (-18)
     say("i1 = {i1}")
+
     let f2 = 915.619
     say("f2 = {f2}")
+
     let s3 = "  padded  "
     say("s3 = [{s3}]")
     say("collatz(2256) = {collatz(2256)}")
+
     let f4 = (2.0e-3 - ((f2 + 579.208) + (f2 + 335.651)))
     say("f4 = {f4}")
+
     if (("alpha" + "42") == "Tab\there".lower()):
         say("héllo".lower())
     else:
         say(s3.replace("naïve", "42"))
+
     if (true and (false or true)):
         say(s3.replace("héllo", s3))
     else:
         say(s3.trim())
+
     let i5 = (((i1 + i1) * (-i1)) - i1)
     say("i5 = {i5}")
+
     let b6 = ("gamma" + "42".upper()).starts_with("delta")
     say("b6 = {b6}")
+
     if (s3.trim() != ("gamma" + "MiXeD CaSe")):
         say(s3)
     else:
         say(s3.replace("emoji 😀", "back\\slash"))
-    say("{(((-46) % i1) % (i5 - i1))} {s3.length()} {((((-46) % i1) % (i5 - i1)) < s3.length())} sum {(((-46) % i1) % (i5 - i1)) + s3.length()}")
+
+    say(
+        "{(((-46) % i1) % (i5 - i1))} {s3.length()} {((((-46) % i1) % (i5 - i1)) < s3.length())} sum {(((-46) % i1) % (i5 - i1)) + s3.length()}"
+    )
+
     let f7 = (131.631 * ((152.238 + f4) * (f2 * f4)))
     say("f7 = {f7}")
+
     let b8 = ("{i1}:" + "x".lower()).starts_with("naïve")
     say("b8 = {b8}")
     say("collatz(2335) = {collatz(2335)}")

@@ -4,4 +4,5 @@
 fn use(value: Optional[Int]) Int:
     if let n = value:
         return n
+
     return 0

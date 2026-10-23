@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-7), 26]
     say("l1 = {l1} len {l1.length()}")
+
     let bad = [1, "two"]
     let f2 = ((577.357 / (987.953 * 444.445)) * (327.25 - (997.25 + 1.5)))
     say("f2 = {f2}")

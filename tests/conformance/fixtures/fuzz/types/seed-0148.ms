@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-17)
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
+
     if false:
         say("a".upper())
     else:
         say("hello world".trim())
+
     let bad = missing_function(3)
     return 0

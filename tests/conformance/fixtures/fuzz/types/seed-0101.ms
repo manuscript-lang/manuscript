@@ -11,9 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("{((-493970770709) % (-413051))}:" + ("naïve".reverse() + "héllo"))
     say("s1 = [{s1}]")
+
     let f2 = 221.379
     say("f2 = {f2}")
+
     let i3 = (((11 * (-49)) + (-4)) + (((-624328) / (-1)) + ((-1) + 386484)))
     say("i3 = {i3}")
+
     let bad: String = 5
     return 0

@@ -23,16 +23,16 @@
         "message": "unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatmovessuitewithmisindentedheader-3.ms",
-          "line": 8,
-          "column": 16,
-          "offset": 256
+          "line": 6,
+          "column": 12,
+          "offset": 230
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-3.ms:5:11: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'fn foo(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-3.ms:8:16: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-3.ms:5:11: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'fn foo(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-3.ms:6:12: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

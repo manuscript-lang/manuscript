@@ -12,16 +12,16 @@
         "message": "cannot find module ./missing.ms (looked for missing.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file",
         "position": {
           "file": "pkg-frontend-testrecoveredgraphretainsimportdiagnosticpositi-1.ms",
-          "line": 5,
+          "line": 4,
           "column": 1,
-          "offset": 169
+          "offset": 168
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-frontend-testrecoveredgraphretainsimportdiagnosticpositi-1.ms:5:1: resolution: cannot find module ./missing.ms (looked for missing.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-frontend-testrecoveredgraphretainsimportdiagnosticpositi-1.ms:4:1: resolution: cannot find module ./missing.ms (looked for missing.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

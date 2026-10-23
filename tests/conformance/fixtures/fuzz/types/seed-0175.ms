@@ -9,15 +9,23 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("{(-9223372036854775808)}:" + ("gamma".replace("Tab\there", "héllo") + "  padded  ".lower()))
+    let s1 = (
+        "{(-9223372036854775808)}:"
+        + ("gamma".replace("Tab\there", "héllo") + "  padded  ".lower())
+    )
     say("s1 = [{s1}]")
+
     let i2 = (((3 - (-227493)) * ((-104102) / (-134668976553))) - (-404755481940))
     say("i2 = {i2}")
+
     let s3 = "x".replace("alpha", s1)
     say("s3 = [{s3}]")
+
     let bad = "abc".no_such_method()
+
     if (297.619 < (2.5 / 172.25)):
         say(s1)
     else:
         say(s3)
+
     return 0

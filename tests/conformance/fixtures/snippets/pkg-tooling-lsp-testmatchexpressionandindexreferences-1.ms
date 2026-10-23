@@ -7,4 +7,5 @@ fn read(values: List[Int], index: Int) Int:
             let doubled = number * 2
             doubled
         none: 0
+
     return result

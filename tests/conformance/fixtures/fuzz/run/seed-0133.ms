@@ -11,44 +11,62 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 8.5
     say("f1 = {f1}")
+
     let i2 = ((-438577452767) * 3)
     say("i2 = {i2}")
+
     let f3 = (152.507 - (f1 + (f1 + 2.0e0)))
     say("f3 = {f3}")
+
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = (-29)
     say("i5 = {i5}")
+
     let i6 = i2
     say("i6 = {i6}")
+
     let b7 = true
     say("b7 = {b7}")
+
     if "alpha".is_empty():
         say("alpha".reverse())
     else:
         say(("delta" + "héllo"))
+
     let i8 = (379685214242 - i5)
     say("i8 = {i8}")
+
     let b9 = ("Tab\there".ends_with("42") or b7)
     say("b9 = {b9}")
+
     let i10 = ((-(i2 * 28)) + (i8 + (i2 % (-32))))
     say("i10 = {i10}")
+
     let s11 = "MiXeD CaSe".upper()
     say("s11 = [{s11}]")
+
     let f12 = (f3 / 6.5)
     say("f12 = {f12}")
+
     let i13 = i2
     say("i13 = {i13}")
+
     let s14 = s11.reverse()
     say("s14 = [{s14}]")
+
     let s15 = s11
     say("s15 = [{s15}]")
+
     if ((not b9) or (not true)):
         say("x")
     else:
         say("emoji 😀".trim())
+
     let l16 = l4.take(2)
     say("l16 = {l16} len {l16.length()}")
+
     let s17 = "alpha"
     say("s17 = [{s17}]")
     return 0

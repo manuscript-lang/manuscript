@@ -12,48 +12,66 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let s1 = "42".replace("beta", "Tab\there")
     say("s1 = [{s1}]")
+
     let i2 = ((((-35) - (-40)) - (-32)) / (-40))
     say("i2 = {i2}")
     say("fib(52) = {fib(52)}")
+
     let f3 = (706.113 / ((785.826 + 461.275) * (664.559 + 741.377)))
     say("f3 = {f3}")
+
     let f4 = 18.25
     say("f4 = {f4}")
+
     let f5 = f3
     say("f5 = {f5}")
+
     let i7 = i2
     say("i7 = {i7}")
+
     let i8 = (26 - (i7 + (i7 + i2)))
     say("i8 = {i8}")
+
     let b9 = (true and ((610.25 * f3) > f4))
     say("b9 = {b9}")
+
     var acc10 = 0
     var stepacc10 = 0
+
     while stepacc10 < 0:
         stepacc10 += 1
         acc10 += stepacc10 * stepacc10 + 4
+
     say("acc10 = {acc10}")
+
     let b11 = (s1.trim() + "".trim()).is_empty()
     say("b11 = {b11}")
+
     let b12 = false
     say("b12 = {b12}")
+
     let f13 = 4.0e21
     say("f13 = {f13}")
     say("fib(26) = {fib(26)}")
+
     let f14 = f4
     say("f14 = {f14}")
+
     let b15 = true
     say("b15 = {b15}")
+
     let big16 = (i8 + (i7 + 50)) - (i8 + (i7 + 50))
     say("{(i8 + (i7 + 50)) / big16}")
     return 0

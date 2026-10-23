@@ -11,9 +11,11 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (16 - (-44))
     say("i1 = {i1}")
+
     if ((163.843 - 548.061) > 992.155):
         say("gamma".trim())
     else:
         say(("{(i1 - (-24))}:" + "quote\"d"))
+
     say("{i1} {((11 * i1) + 22)} {(i1 < ((11 * i1) + 22))} sum {i1 + ((11 * i1) + 22)}")
     return 0

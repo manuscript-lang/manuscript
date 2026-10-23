@@ -23,16 +23,16 @@
         "message": "cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms",
-          "line": 7,
+          "line": 9,
           "column": 17,
-          "offset": 287
+          "offset": 289
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:4:18: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:7:17: type: cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:4:18: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:9:17: type: cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

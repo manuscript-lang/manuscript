@@ -12,23 +12,30 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let s1 = (("line\nbreak" + "naïve".trim()) + "alpha")
     say("s1 = [{s1}]")
+
     let b2 = (true and true)
     say("b2 = {b2}")
+
     let f3 = 103.367
     say("f3 = {f3}")
+
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
+
     var acc5 = 0
     for i in range(0, 8):
         acc5 += i * 3

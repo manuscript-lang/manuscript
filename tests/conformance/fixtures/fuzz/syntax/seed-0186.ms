@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [23, 14, (-15), (-19), 18]
     say("l1 = {l1} len {l1.length()}")
+
     let s2 = (("a" + "brace\{s\}") + "alpha").replace("naïve", "a")
     say("s2 = [{s2}]")
     return 0

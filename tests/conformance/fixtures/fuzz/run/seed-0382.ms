@@ -11,47 +11,66 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = 241521
     say("i1 = {i1}")
-    say("{(((-50) + i1) - (-i1))} {((i1 - i1) * (-i1))} {((((-50) + i1) - (-i1)) < ((i1 - i1) * (-i1)))} sum {(((-50) + i1) - (-i1)) + ((i1 - i1) * (-i1))}")
+    say(
+        "{(((-50) + i1) - (-i1))} {((i1 - i1) * (-i1))} {((((-50) + i1) - (-i1)) < ((i1 - i1) * (-i1)))} sum {(((-50) + i1) - (-i1)) + ((i1 - i1) * (-i1))}"
+    )
+
     let l2 = [30, 28, 15]
     say("l2 = {l2} len {l2.length()}")
+
     let i3 = (l2.get(1) + (((-41) + i1) - (i1 + (-42))))
     say("i3 = {i3}")
     say("collatz(1871) = {collatz(1871)}")
+
     if (not "日本語".contains("Tab\there")):
         say("naïve")
     else:
         say("42")
+
     let f4 = (((109.25 * 343.486) * (4.5 / 890.372)) * ((117.194 / 232.041) * 825.251))
     say("f4 = {f4}")
+
     if false:
         say("日本語")
     else:
         say(("  padded  " + "x"))
-    say("{((i3 / i1) * (i1 + 392835))} {i1} {(((i3 / i1) * (i1 + 392835)) < i1)} sum {((i3 / i1) * (i1 + 392835)) + i1}")
+
+    say(
+        "{((i3 / i1) * (i1 + 392835))} {i1} {(((i3 / i1) * (i1 + 392835)) < i1)} sum {((i3 / i1) * (i1 + 392835)) + i1}"
+    )
+
     let s5 = ("{i1}:" + "x".replace("hello world", "hello world").reverse())
     say("s5 = [{s5}]")
+
     let f6 = 216.875
     say("f6 = {f6}")
+
     if true:
         say("back\\slash".replace(s5, "Tab\there"))
     else:
         say(s5.replace("a", s5))
+
     say("{(-24)} {l2.get(0)} {((-24) < l2.get(0))} sum {(-24) + l2.get(0)}")
+
     if ("gamma".is_empty() or s5.is_empty()):
         say("Tab\there".upper())
     else:
         say(s5.trim())
+
     let f7 = ((170.569 * (533.216 * f4)) / ((f6 - f6) - (218.275 * 327.558)))
     say("f7 = {f7}")
     return 0

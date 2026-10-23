@@ -58,6 +58,7 @@ test "indexing and generic applications coexist":
     (items[counter.count] != 10 or [items][0][1] != 20) | try expect_false
     (values(var counter) [(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
     identity[Int](items[0]) | try expect_equal(10)
+
     let callbacks: List[fn(value: Int) Int] = [identity[Int]]
     (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
@@ -67,6 +68,7 @@ test "empty list constructors have fresh typed storage":
     let other = List[String]()
     empty.append("a")
     (empty[0] != "a" or other.length() != 0 or contextual.length() != 0) | try expect_false
+
     let map = Map[String, Int]()
     map.length() | try expect_equal(0)
 
@@ -77,6 +79,7 @@ test "string concatenation and scalar ordering":
     ("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b") | try expect_false
     ("" + "value" != "value" or "value" + "" != "value") | try expect_false
     ("\u{e000}" < "\u{10000}") | try expect_true
+
     let sorted = ["z", "a", "b"].sorted(
         fn(left: String, right: String) Int:
             if left < right: return -1
@@ -84,15 +87,18 @@ test "string concatenation and scalar ordering":
 
             return 0
     )
+
     sorted | try expect_equal(["a", "b", "z"])
 
 test "match expressions preserve returns and cleanup":
     let present: Optional[Int] = some(value: 4)
     let absent: Optional[Int] = none
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
+
     let counter = Counter(count: 0)
     let parsed = amount(text: "3", counter: counter)
     (parsed != Result[Int, TextError].ok(value: 4) or counter.count != 1) | try expect_false
+
     let invalid = amount(text: "invalid", counter: counter)
     (
         (
@@ -118,18 +124,21 @@ test "match expressions preserve returns and cleanup":
         none: []
 
     contextual.length() | try expect_equal(0)
+
     let result = identity[Int](
         match present:
             some(value): value
             none: 0
     )
     result | try expect_equal(4)
+
     let callback = fn(value: Optional[Int]) Int:
         let number = match value:
             some(number): number
             none: return 42
 
         return number
+
     callback(absent) | try expect_equal(42)
 
 test "indexes read elements and get supplies defaults":
@@ -150,6 +159,7 @@ test "match blocks produce their final value":
         none: 0
 
     result | try expect_equal(11)
+
     var count = 0
 
     while true:
@@ -223,9 +233,11 @@ test "expression exits preserve caller boundaries and evaluation order":
     propagated("no") | try expect_equal(
         Result[Int, TextError].error(cause: TextError("missing"))
     )
+
     let present: Optional[Int] = some(value: 1)
     let absent: Optional[Int] = none
     (returned_loop(present) != 23 or returned_loop(absent) != 24) | try expect_false
+
     var iterations = 0
 
     while true:
@@ -260,6 +272,7 @@ test "match in a loop header exits its lexical enclosing loop":
 test "indexing preserves zero and nested optionals":
     let numbers = [0]
     (numbers[0] != 0 or numbers.get(0, default: 99) != 0) | try expect_false
+
     let nested: List[Optional[Int]] = [none, some(value: 0)]
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
@@ -292,6 +305,7 @@ test "match composes with inferred callbacks and map literals":
             none: 0
     )
     (mapped[0] != 4 or mapped[1] != 0) | try expect_false
+
     let lookup = {
         "value": match values[0]:
             some(number): number

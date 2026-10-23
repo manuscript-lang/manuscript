@@ -3,19 +3,9 @@
 # conform: origin=tests/e2e/testdata/stdlib/testing.ms
 import {TextError} from "@std/core.ms"
 import {
-    assert_equal,
-    expect_close,
-    expect_contains,
-    expect_equal,
-    expect_error,
-    expect_false,
-    expect_fault,
-    expect_none,
-    expect_not_equal,
-    expect_ok,
-    expect_some,
-    expect_true,
-    fail
+    assert_equal, expect_close, expect_contains, expect_equal, expect_error,
+    expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some,
+    expect_true, fail
 } from "@std/testing.ms"
 
 fn identity[T](value: T) T:
@@ -30,17 +20,21 @@ test "testing assertions":
     1 | try expect_not_equal(2)
     try expect_close(1.01, 1.0, 0.02)
     "Manuscript" | try expect_contains("script")
+
     let present: Optional[Int] = some(7)
     let absent: Optional[Int] = none
     ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
+
     let success: Result[Int, TextError] = ok(9)
     let failure: Result[Int, TextError] = error(TextError("bad"))
     ((success | try expect_ok)) | try expect_equal(9)
     ((failure | try expect_error)) | try expect_equal(TextError("bad"))
+
     let mismatch = expect_equal(1, 2)
     let mismatch_cause = (mismatch | try expect_error)
     mismatch_cause.message() | try expect_contains("expected 2, got 1")
+
     let quiet = expect_fault(fn(): unit)
     let quiet_cause = (quiet | try expect_error)
     quiet_cause.message() | try expect_contains("returned normally")
@@ -62,6 +56,4 @@ impl Equal for Key:
 
 test "assertions preserve domain equality":
     Key(id: 1, label: "first") | try expect_equal(Key(id: 1, label: "second"))
-    Key(id: 1, label: "first") | try expect_not_equal(
-        Key(id: 2, label: "first")
-    )
+    Key(id: 1, label: "first") | try expect_not_equal(Key(id: 2, label: "first"))

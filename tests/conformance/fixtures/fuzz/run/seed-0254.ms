@@ -9,16 +9,24 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("alpha".trim().upper() + ("{(-969468989409)}:" + ("back\\slash" + "  padded  ")))
+    let s1 = (
+        "alpha".trim().upper()
+        + ("{(-969468989409)}:" + ("back\\slash" + "  padded  "))
+    )
     say("s1 = [{s1}]")
+
     let i2 = ((((-30) + (-845579)) * (45 / 25)) / ((-4) % (-25)))
     say("i2 = {i2}")
+
     let i3 = ((12 / i2) * i2)
     say("i3 = {i3}")
+
     let l4 = [2]
     say("l4 = {l4} len {l4.length()}")
+
     let l5 = l4.map(fn(x): x + 3).filter(fn(x): x % 2 == 0)
     say("l5 = {l5} len {l5.length()}")
+
     let b6 = s1.is_empty()
     say("b6 = {b6}")
     return 0

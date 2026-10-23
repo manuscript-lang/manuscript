@@ -2,6 +2,7 @@
 # conform: phase=check
 # conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 import {TextError} from "@std/core.ms"
+
 type Cents:
     case Valid(amount: Int)
     case Invalid
@@ -12,4 +13,5 @@ fn total(cents: Cents) Result[Int, TextError]:
             value
         Invalid:
             return error(TextError("Invalid amount"))
+
     return ok(amount)

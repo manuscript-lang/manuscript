@@ -6,23 +6,29 @@ import IpFamily from "@std/net.ms"
 
 test "network interfaces describe each address and include a loopback":
     let found = system().network_interfaces()
+
     if let items = found:
         var loopback = false
+
         for item in items:
             try expect_false(item.name.byte_length() == 0)
             try expect_false(item.address.byte_length() == 0)
             try expect_false(item.netmask.byte_length() == 0)
             try expect_true(item.scope_id > 0)
             try expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))
+
             if item.internal:
                 loopback = true
                 try expect_equal(item.mac, "")
+
         try expect_true(loopback)
 
 test "cpus report non-negative cumulative times":
     let found = system().cpus()
+
     if let cpus = found:
         try expect_false(cpus.is_empty())
+
         for cpu in cpus:
             try expect_true(cpu.speed_mhz >= 0)
             try expect_true(cpu.user >= 0 and cpu.nice >= 0)
@@ -30,6 +36,7 @@ test "cpus report non-negative cumulative times":
 
 test "metrics report memory, uptime, load averages and parallelism":
     let found = system().metrics()
+
     if let m = found:
         try expect_true(m.total_memory > 0)
         try expect_true(m.free_memory <= m.total_memory)

@@ -12,16 +12,16 @@
         "message": "expected Shape, found T (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)",
         "position": {
           "file": "pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-3.ms",
-          "line": 6,
+          "line": 7,
           "column": 26,
-          "offset": 262
+          "offset": 263
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-3.ms:6:26: type: expected Shape, found T (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-3.ms:7:26: type: expected Shape, found T (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

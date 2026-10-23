@@ -7,4 +7,5 @@ export fn main() Int:
     if area(shapes.get(1)) != 6: return 2
     if area(shapes.get(2)) != -1: return 3
     if area(shapes.get(-1)) != -1: return 4
+
     return 0

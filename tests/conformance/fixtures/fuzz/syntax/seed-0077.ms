@@ -11,8 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (((33 * (-2)) % ((-7) + 4)) + 4)
     say("i1 = {i1}")
+
     let l2 = [(-22), (-3), 0]
     say("l2 = {l2} len {l2.length()}")
-    let b3 = (((8.5 * 321.074) < 843.25) and ("MiXeD CaSe".starts_with("héllo") and (true and true)))
+
+    let b3 = (
+        ((8.5 * 321.074) < 843.25)
+        and ("MiXeD CaSe".starts_with("héllo") and (true and true))
+    )
     say("b3 = {b3}")
     return 0

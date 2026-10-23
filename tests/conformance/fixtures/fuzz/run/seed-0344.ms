@@ -11,36 +11,50 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 22
     say("i1 = {i1}")
+
     let f2 = (((9.5 * 1.0e11) / (473.696 + 17.493)) * 736.398)
     say("f2 = {f2}")
+
     let i3 = (((i1 + i1) + (i1 + 34)) + (((-7) - i1) - 14))
     say("i3 = {i3}")
+
     let i4 = (2 / ((38 % 49) + (i1 + (-411207657671))))
     say("i4 = {i4}")
+
     let s5 = (("日本語" + ("MiXeD CaSe" + "line\nbreak")) + "MiXeD CaSe".upper().reverse())
     say("s5 = [{s5}]")
+
     let l6 = [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
+
     let i7 = (-1)
     say("i7 = {i7}")
+
     if (s5 + s5).contains(s5):
         say("42")
     else:
         say((s5 + s5))
+
     if ((f2 * f2) < (f2 * 166.25)):
         say(s5.replace(s5, "emoji 😀"))
     else:
         say(("{s5.length()}:" + s5))
+
     let b8 = (((f2 + f2) * (284.25 + 289.366)) > (f2 - (f2 / 67.534)))
     say("b8 = {b8}")
+
     let s9 = ("{(i7 - (-26))}:" + "MiXeD CaSe").trim()
     say("s9 = [{s9}]")
+
     let b10 = ("emoji 😀".reverse() + "42".upper()).contains("ms")
     say("b10 = {b10}")
+
     let f11 = 2.0e19
     say("f11 = {f11}")
+
     let b12 = true
     say("b12 = {b12}")
+
     let l13 = l6.sorted(fn(a, b): a.compare(b))
     say("l13 = {l13} len {l13.length()}")
     return 0

@@ -7,7 +7,6 @@ fn subtract_one(amount: Int) Int:
 fn adapt() Unit:
     # Rejected: amount and value are different function-type labels.
     let invalid: fn(value: Int) Int = subtract_one
-
     let renamed = fn(value: Int) Int:
         return subtract_one(amount: value)
     let result = apply(value: 3, transform: renamed)

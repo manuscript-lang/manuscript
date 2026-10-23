@@ -17,6 +17,7 @@ fn ordinary() Outcome:
 
 test "non-prelude spellings are ordinary names":
     try expect_equal(Items(2).count, 2)
+
     let forward = compute
     try expect_equal(forward(4), 4)
 

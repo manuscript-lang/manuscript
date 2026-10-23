@@ -17,10 +17,13 @@ export fn main() Int:
         with server = acquired:
             if let conn = network().connect(server.address()):
                 let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+
                 # Let the handler start.
                 sleep(duration(50000000))
+
                 let start = control().monotonic_time()
                 server.close()
+
                 let close_ms = (control().monotonic_time() - start) / 1000000
                 var text = ""
 
@@ -33,6 +36,7 @@ export fn main() Int:
                     break
 
                 conn.close()
+
                 let _status = stdout().write(
                     "answered: {text.starts_with("HTTP/1.1 200 OK")}\n"
                 )

@@ -12,24 +12,34 @@ fn say(text: String) Unit:
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 2:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 1
+
     say("acc1 = {acc1}")
+
     let i2 = (((-41) * (17 * 298094)) + ((28 * 49) / (-663377)))
     say("i2 = {i2}")
+
     let s3 = ("héllo".upper() + "  padded  ")
     say("s3 = [{s3}]")
+
     let b4 = (s3.contains(s3) and false)
     say("b4 = {b4}")
+
     let s5 = (s3 + ("beta".trim() + s3.upper()))
     say("s5 = [{s5}]")
+
     let b6 = (0.0 > ((811.25 * 905.500) / 190.583))
     say("b6 = {b6}")
+
     let i7 = (-254195)
     say("i7 = {i7}")
+
     let b8 = ("brace\{s\}".upper().starts_with(s3) and ("日本語" != s5))
     say("b8 = {b8}")
+
     var acc9 = 0
     for i in range(0, 6):
         acc9 += i * 3

@@ -12,22 +12,30 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((514.734 - 450.037) / (0.0 / 104.426)) - 892.986)
     say("f1 = {f1}")
+
     let l2 = [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
+
     var acc3 = 0
     for i in range(0, 0):
         acc3 += i * (-2)
     say("acc3 = {acc3}")
+
     let f4 = 639.527
     say("f4 = {f4}")
+
     let b5 = ((((-44) - (-31)) - (61933 * 7)) == 21)
     say("b5 = {b5}")
+
     let i6 = (-50)
     say("i6 = {i6}")
+
     let i7 = i6
     say("i7 = {i7}")
+
     let f8 = (((f1 + f1) + (0.0 + f4)) / 611.413)
     say("f8 = {f8}")
+
     let f9 = 115.905
     say("f9 = {f9}")
     return 0

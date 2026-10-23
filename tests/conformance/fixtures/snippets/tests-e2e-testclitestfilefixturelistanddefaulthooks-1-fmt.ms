@@ -3,15 +3,19 @@
 # conform: origin=tests/e2e/test_fixture_test.go:106 TestCLITestFileFixtureListAndDefaultHooks
 import {TestHooks, expect_equal} from "@std/testing.ms"
 import stdout from "@std/io.ms"
+
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()
 
 type State:
     value: Int
+
 fn make_fixture() State:
     println("FACTORY")
     return State(7)
+
 impl TestHooks for State:
+
 test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()

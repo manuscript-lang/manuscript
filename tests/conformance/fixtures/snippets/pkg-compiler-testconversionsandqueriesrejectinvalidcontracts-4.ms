@@ -4,4 +4,5 @@
 type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
+
 fn wrong(value: Result[Int, String]) Optional[Int]: value.to_optional()
