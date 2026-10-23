@@ -58,7 +58,6 @@ test "infer success and preserve concrete error identity":
         try expect_false(not value.is_error())
 
         let view = value.err()
-
         try expect_equal(view.message(), "11")
 
         match view:
@@ -68,11 +67,9 @@ test "infer success and preserve concrete error identity":
 
     let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
     let failed = erase(generic)
-
     try expect_false(not failed.is_error())
 
     let view = failed.err()
-
     try expect_equal(view.message(), "tagged 31")
 
     match view:
@@ -84,12 +81,10 @@ test "nested success preserves its domain and inferred errors remain exact":
     let inner: Result[Int, Failure] = error(Failure(41))
     let outer: Result[Result[Int, Failure], Tagged[Int]] = ok(inner)
     let value = erase(outer).get()
-
     try expect_false(not value.is_error())
     try expect_equal(value.err().code, 41)
 
     let exact = same(inner)
-
     try expect_false(not exact.is_error())
     try expect_equal(exact.err().code, 41)
 
@@ -103,9 +98,7 @@ test "inference and widening evaluate once in written order before defaults":
     let result = ordered(
         second: record(var events, 2), first: record(var events, 1), var events
     )
-
     try expect_equal(events.values, [2, 1, 3, 4])
 
     let value = try result
-
     try expect_equal(value, 1)

@@ -48,7 +48,6 @@ impl Read[Int] for DefaultReader:
 test "nested view receiver prepares once and calls later":
     var log = Log("")
     let view = Read[Int](Reader(prepare(var log, 7)))
-
     try expect_equal(log.events, "prepare;")
     try expect_equal(view.read(), 7)
 
@@ -61,7 +60,6 @@ test "constructor arguments retain written order and capture snapshots":
             operation: (
                 fn() Int:
                     let nested = fn() Int: value
-
                     return nested()
             ),
             match some(2):
@@ -71,24 +69,22 @@ test "constructor arguments retain written order and capture snapshots":
                 none: 0
         )
     )
-
     value = 90
     try expect_equal(log.events, "last;first;")
     try expect_equal(view.read(), 9)
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
+
     let view = wrap(
         fn() Int:
             let nested = fn() Int: value
-
             return nested()
     )
 
     value = 80
 
     let bound = view.read
-
     try expect_equal(bound(), 5)
     try expect_equal(invoke(view), 5)
     try expect_equal(Read[Int](Read[Int](Reader(fn() Int: 6))).read(), 6)
@@ -98,7 +94,6 @@ test "explicit nested views and bound methods retain generic dispatch":
 test "source constructors with callable defaults prepare once":
     var log = Log("")
     let view = Read[Int](DefaultReader(mark(var log, "base;", 12)))
-
     try expect_equal(log.events, "base;")
     try expect_equal(view.read(), 12)
 
@@ -113,6 +108,5 @@ test "match receiver side effects and callable body remain ordered":
                 mark(var log, "wrong;", 0)
                 Reader(fn() Int: 0)
     )
-
     try expect_equal(log.events, "select;chosen;")
     try expect_equal(view.read(), 9)

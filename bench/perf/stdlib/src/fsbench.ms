@@ -11,7 +11,6 @@ fn run(fs: FileSystem, root: String) Unit:
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
                 if (
                     fs
@@ -23,28 +22,29 @@ fn run(fs: FileSystem, root: String) Unit:
                     n += 1
             return n
     )
+
     bench(
         "fs.read_file_64k",
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
                 if let b = fs.read_file("{root}/f{i}.bin"):
                     n += b.length()
             return n
     )
+
     bench(
         "fs.stat",
         200,
         fn() Int:
             var n = 0
-
             for i in range(0, 200):
                 if fs.stat("{root}/f{i}.bin", follow_links: true).is_ok():
                     n += 1
             return n
     )
+
     bench(
         "fs.list_200",
         1,
@@ -69,7 +69,6 @@ fn log_many(logger: Logger) Unit:
         20000,
         fn() Int:
             var n = 0
-
             for i in range(0, 20000):
                 if logger.info("request {i} handled").is_ok():
                     n += 1

@@ -101,7 +101,6 @@ export fn main() Int:
     let sorted_latencies = latencies.sorted(fn(a, b): a - b)
     let n = sorted_latencies.length()
     var p95 = 0
-
     if n > 0: p95 = sorted_latencies[(95 * n + 99) / 100 - 1]
     report("p95: {p95}")
     if let best = slowest:
@@ -114,14 +113,12 @@ export fn main() Int:
 
     for path in counts.keys():
         let count = counts.get_or(path, 0)
-
         stats.append(PathStat(path: path, count: count, total: totals.get_or(path, 0)))
 
     let paths = stats.sorted(fn(a, b): compare_paths(a, b))
 
     for i in range(0, min(3, paths.length())):
         let stat = paths[i]
-
         report("{stat.path} {stat.count} avg={stat.total / stat.count}")
 
     return 0

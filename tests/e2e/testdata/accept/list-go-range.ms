@@ -52,11 +52,13 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
             seen.append(value)
             values.fill(8, 0, 3)
     )
+
     try expect_false(
         not (seen == [1, 2, 3] and clone == [1, 2, 3] and values == [8, 8, 8])
     )
 
     var mapped = [1, 2, 3]
+
     let output = mapped.clone().map(
         fn(value):
             mapped.fill(9, 0, 3)
@@ -114,7 +116,6 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 
     var shrinking = [1, 2, 3]
     var seen_shrinking: List[Int] = []
-
     count = 0
 
     for value in shrinking.clone():
@@ -133,7 +134,6 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 
     var self_list = [1, 2, 3]
     var seen_self: List[Int] = []
-
     count = 0
 
     for value in self_list.clone():
@@ -164,6 +164,7 @@ test "clone slice and nested values keep their own contracts":
                 values.fill(Child(9), 0, 2)
         )
     )
+
     try expect_false(
         not (
             seen == [1, 1]
@@ -176,7 +177,6 @@ test "clone slice and nested values keep their own contracts":
 
     var children: List[Node] = [Node([])]
     var count = 0
-
     children.clone().for_each(
         fn(value):
             children.append(Node([value.clone()]))
@@ -200,6 +200,7 @@ test "function values can replace later backing elements":
                 functions.fill(replacement, 0, 2)
         )
     )
+
     try expect_false(
         not (
             seen == [7, 7]

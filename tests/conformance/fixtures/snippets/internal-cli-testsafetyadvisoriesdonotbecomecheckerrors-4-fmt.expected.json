@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import network from \"@std/net.ms\"\nimport {HttpResponse} from \"@std/http.ms\"\nimport panic from \"@std/core.ms\"\n\nfn use() Unit:\n    let shared = Map[Int, Int]()\n    let _server = network().serve(\n        address: \"127.0.0.1:0\",\n        handler: fn(request) HttpResponse:\n            let seen = shared.length()\n\n            return panic(\"unreached\")\n    )\n"
+    "fmt": "import network from \"@std/net.ms\"\nimport {HttpResponse} from \"@std/http.ms\"\nimport panic from \"@std/core.ms\"\n\nfn use() Unit:\n    let shared = Map[Int, Int]()\n\n    let _server = network().serve(\n        address: \"127.0.0.1:0\",\n        handler: fn(request) HttpResponse:\n            let seen = shared.length()\n            return panic(\"unreached\")\n    )\n"
   }
 }

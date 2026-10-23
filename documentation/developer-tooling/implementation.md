@@ -222,11 +222,13 @@ Implicit imports (such as `List` for list literals) count as uses. Unused-import
 - `--drop-labels` removes redundant labels (`key: key` where the parameter binds by position anyway) using the checked program. It leaves the file untouched and reports the first diagnostic if it does not check; with `--check` it reports files that would change.
 - It preserves comments and token spellings, validates input and output, and writes atomically. Import sorting keeps comment and blank-line group boundaries.
 
-Blank lines come only from these structural rules; authored ones are discarded. Rules also apply inside anonymous functions.
+Format code as paragraphs: keep related steps together and put space between new sections. Blank lines come only from these structural rules; authored ones are discarded. Rules also apply inside anonymous functions.
 
 - Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, record fields, and alternative cases stay compact.
 - Separate substantial conditionals, loops, resource scopes, and matches from neighbors. A single-step branch or loop without `else` stays with adjacent work.
-- Keep consecutive local bindings together, with a blank line between them and surrounding work. Guard checks stay attached to preceding setup.
+- Keep local bindings with the actions, checks, or simple return that follow them. Start a new paragraph when another binding follows completed work.
+- Start a paragraph before a leading comment between statements; keep the comment attached to the code it introduces.
+- Give multi-statement callback definitions and calls their own paragraphs, like other substantial blocks. A short callback stays with adjacent work.
 - A guard (`if` without `else` and one `return`, `break`, or `continue`) stays with preceding setup and other guards, then a blank line follows.
 - Keep each `if`/`else if`/`else` family and all match arms together. Inserted breaks go before leading comments.
 

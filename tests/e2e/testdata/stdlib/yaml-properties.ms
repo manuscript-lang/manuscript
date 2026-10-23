@@ -5,7 +5,6 @@ import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) YamlValue:
     var choices = 6
-
     if depth > 2: choices = 4
 
     let kind = next(var rng, choices)
@@ -16,13 +15,11 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 
     if kind == 4:
         var items: List[YamlValue] = []
-
         for item in range(0, next(var rng, 4)):
             items.append(generated(var rng, depth + 1))
         return YamlValue.ArrayValue(items)
 
     var entries: Map[String, YamlValue] = {}
-
     for item in range(0, next(var rng, 4)):
         entries.add(text(var rng), generated(var rng, depth + 1))
     return YamlValue.ObjectValue(entries)

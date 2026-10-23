@@ -48,7 +48,6 @@ test "reassigned counter still faults":
         fn():
             let ignored = reset_then_step()
     )
-
     message | try expect_contains("Int overflow;")
 
 test "conditionally reassigned counter still faults":
@@ -56,5 +55,4 @@ test "conditionally reassigned counter still faults":
         fn():
             let ignored = nested_reset(flag: true)
     )
-
     message | try expect_contains("Int overflow;")
