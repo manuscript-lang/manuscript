@@ -1716,9 +1716,8 @@ impl<'a> FnLower<'a> {
                                 s.owned(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
-                                let o = s.owned(Val { v: p, own: false });
                                 s.finish(d.val);
-                                o
+                                p
                             };
                             s.finish(recv);
                             Ok(Some(v))
@@ -1819,9 +1818,8 @@ impl<'a> FnLower<'a> {
                         s.owned(c.val)
                     } else {
                         let p = s.b.opt_unwrap(c.val.v);
-                        let o = s.owned(Val { v: p, own: false });
                         s.finish(c.val);
-                        o
+                        p
                     }
                 } else {
                     // `MissingValue` names the source line of the call.
@@ -1879,7 +1877,8 @@ impl<'a> FnLower<'a> {
                                 s.owned(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
-                                s.owned(Val { v: p, own: false })
+                                s.finish(d.val);
+                                p
                             };
                             s.finish(recv);
                             Ok(Some(v))
@@ -2651,7 +2650,7 @@ impl<'a> FnLower<'a> {
             self.b.seal_block(give);
             self.b.seal_block(fault);
             self.b.switch_to(give);
-            let inner = self.b.opt_unwrap(default.val.v);
+            let inner = self.b.opt_get(default.val.v);
             let d = self.owned(Val {
                 v: inner,
                 own: false,

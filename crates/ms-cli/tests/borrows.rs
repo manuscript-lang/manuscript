@@ -82,3 +82,28 @@ fn var_of_a_scalar_part_writes_through() {
     assert_eq!(status, Some(0), "{text}");
     assert_eq!(text, "4 Optional.some(2) [11, 2, 3] 104\n");
 }
+
+#[test]
+fn explicit_optional_defaults_preserve_owned_payloads() {
+    for build_type in ["Debug", "Release"] {
+        let (status, text) = run_ms(&[
+            "run",
+            &fixture("optional_defaults.ms"),
+            "--build-type",
+            build_type,
+        ]);
+        assert_eq!(status, Some(0), "{text}");
+        assert_eq!(
+            text,
+            "[99] [1]\n\
+         [99] [2]\n\
+         [99] [3] [3]\n\
+         [88] [88] [88] Optional.some([88])\n\
+         missing 7\n\
+         [1] [2] [3]\n\
+         [1] [99] [2] [99] [3] [99] 6\n\
+         fallback fallback fallback Optional.some(fallback)\n\
+         [4] [5]\n"
+        );
+    }
+}
