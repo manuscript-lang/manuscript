@@ -203,9 +203,6 @@ fn windows_arguments(
         .args(["--subsystem", "console"])
         .arg("-o")
         .arg(out);
-    if let Some(extra) = std::env::var_os("MS_LLD_EXTRA") {
-        command.args(extra.to_string_lossy().split_whitespace());
-    }
     if strip {
         command.arg("--strip-all");
     }
