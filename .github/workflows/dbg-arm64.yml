@@ -7,7 +7,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
-      - run: cargo build --locked -q -p ms-cli -p ms-conform 2>&1 | tail -3
+      - run: cargo build --locked -p ms-cli -p ms-conform 2>&1 | tail -30; ls target/debug | head -20
       - run: |
           for n in 5 7 6; do
             f=tests/conformance/fixtures/snippets/tests-e2e-testfaultsourcelocations-$n.ms
