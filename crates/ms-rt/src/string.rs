@@ -348,21 +348,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 #[inline]
 pub unsafe fn equal(a: *const StrObj, b: *const StrObj) -> bool {
     // SAFETY: caller contract.
-    unsafe {
-        if a == b {
-            return true;
-        }
-        let n = (*a).len;
-        if n != (*b).len {
-            return false;
-        }
-        let (x, y) = (bytes(a), bytes(b));
-        if n <= 8 {
-            // Short keys and one-character comparisons: skip the memcmp call.
-            return (0..n).all(|i| *x.get_unchecked(i) == *y.get_unchecked(i));
-        }
-        x == y
-    }
+    unsafe { a == b || bytes_eq(a, b) }
 }
 
 #[unsafe(no_mangle)]
