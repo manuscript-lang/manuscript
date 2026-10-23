@@ -493,6 +493,34 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::find(hay, needle)
 }
 
+/// A non-empty needle searched for repeatedly: one byte goes straight to `memchr`, longer ones
+/// build their `memmem` searcher once instead of on every search.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "lives on the stack for one call; boxing would allocate"
+)]
+enum Needle<'a> {
+    Byte(u8),
+    Bytes(memchr::memmem::Finder<'a>),
+}
+
+impl<'a> Needle<'a> {
+    fn new(needle: &'a [u8]) -> Self {
+        match needle {
+            [b] => Needle::Byte(*b),
+            _ => Needle::Bytes(memchr::memmem::Finder::new(needle)),
+        }
+    }
+
+    #[inline]
+    fn find(&self, hay: &[u8]) -> Option<usize> {
+        match self {
+            Needle::Byte(b) => memchr(*b, hay),
+            Needle::Bytes(f) => f.find(hay),
+        }
+    }
+}
+
 /// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
 #[inline]
 fn memchr(c: u8, hay: &[u8]) -> Option<usize> {
@@ -946,7 +974,7 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    let f = memchr::memmem::Finder::new(old);
+    let f = Needle::new(old);
     while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
@@ -1031,7 +1059,7 @@ unsafe fn replace_limited(
 fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> *mut StrObj {
     let mut matches = 0usize;
     let mut i = 0;
-    let f = memchr::memmem::Finder::new(old);
+    let f = Needle::new(old);
     while (matches as i64) < n {
         match f.find(&text[i..]) {
             None => break,
@@ -1060,7 +1088,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> *mut St
     unsafe {
         let mut dst = data_ptr(out);
         let mut i = 0;
-        let f = memchr::memmem::Finder::new(old);
+        let f = Needle::new(old);
         for _ in 0..matches {
             let p = f.find(&text[i..]).unwrap_or(0);
             core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
