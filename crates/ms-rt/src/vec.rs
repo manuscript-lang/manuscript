@@ -73,6 +73,28 @@ pub unsafe fn drop_list(v: *mut VecVal, d: &TypeDesc) {
     }
 }
 
+/// Copies a borrowed range into disjoint, uninitialised slots. Plain values copy in bulk;
+/// values with ownership or custom copy behaviour keep their element order.
+unsafe fn copy_range(d: &TypeDesc, src: *const u8, dst: *mut u8, count: usize) {
+    if count == 0 {
+        return;
+    }
+    let size = d.size as usize;
+    // SAFETY: both ranges hold `count` slots and do not overlap. Empty ranges may be null;
+    // zero-sized plain slots require no memory access, but custom copy hooks still run.
+    unsafe {
+        if is_plain(d) {
+            if size != 0 {
+                core::ptr::copy_nonoverlapping(src, dst, count * size);
+            }
+        } else {
+            for i in 0..count {
+                slot_copy(d, src.add(i * size), dst.add(i * size));
+            }
+        }
+    }
+}
+
 /// Deep copy of a list into `out`.
 ///
 /// # Safety
@@ -87,13 +109,7 @@ pub unsafe fn copy_list(src: *const VecVal, d: &TypeDesc, out: *mut VecVal) {
         }
         let size = d.size as usize;
         let p = alloc::alloc(s.len * size.max(1));
-        if is_plain(d) {
-            core::ptr::copy_nonoverlapping(s.ptr, p, s.len * size);
-        } else {
-            for i in 0..s.len {
-                slot_copy(d, elem(s, d, i), p.add(i * size));
-            }
-        }
+        copy_range(d, s.ptr, p, s.len);
         *out = VecVal {
             ptr: p,
             len: s.len,
@@ -629,6 +645,16 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
             return;
         }
         let count = ((end - start) as usize).min(n - target as usize);
+        if is_plain(d) {
+            if d.size != 0 {
+                core::ptr::copy(
+                    elem(v, d, start as usize),
+                    elem(v, d, target as usize),
+                    count * d.size as usize,
+                );
+            }
+            return;
+        }
         // Overwritten slots are dropped, the sources copied (overlap safe via a temporary).
         let mut tmp = EMPTY;
         let src = VecVal {
@@ -740,19 +766,47 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        copy_list(a, &*d, out);
-        extend_copy(&mut *out, &*d, &*b);
+        let (a, b, d) = (&*a, &*b, &*d);
+        let len = a
+            .len
+            .checked_add(b.len)
+            .unwrap_or_else(|| fault::fault(b"list size overflow"));
+        if len == 0 {
+            *out = EMPTY;
+            return;
+        }
+        // Keep the spare capacity the previous copy-then-extend path provided, without
+        // allocating A's exact buffer first and relocating it when B is appended.
+        let cap = if b.len == 0 {
+            a.len
+        } else if a.len == 0 {
+            len.max(4)
+        } else {
+            a.len
+                .checked_mul(2)
+                .unwrap_or_else(|| fault::fault(b"list size overflow"))
+                .max(len)
+        };
+        let size = d.size as usize;
+        let bytes = cap
+            .checked_mul(size.max(1))
+            .unwrap_or_else(|| fault::fault(b"list size overflow"));
+        let ptr = alloc::alloc(bytes);
+        copy_range(d, a.ptr, ptr, a.len);
+        copy_range(d, b.ptr, ptr.add(a.len * size), b.len);
+        *out = VecVal { ptr, len, cap };
     }
 }
 
 unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
     // SAFETY: `other` is a distinct live list of `d`.
     unsafe {
+        if other.len == 0 {
+            return;
+        }
         reserve(v, d, other.len);
         let size = d.size as usize;
-        for i in 0..other.len {
-            slot_copy(d, elem(other, d, i), v.ptr.add((v.len + i) * size));
-        }
+        copy_range(d, other.ptr, v.ptr.add(v.len * size), other.len);
         v.len += other.len;
     }
 }
@@ -1685,6 +1739,148 @@ mod tests {
         unsafe { msrt_list_push(v, &msrt_desc_int, &x as *const i64 as *const u8) }
     }
 
+    fn plain_desc(size: u32, kind: u32) -> TypeDesc {
+        TypeDesc {
+            size,
+            align: if size == 1 { 1 } else { 8 },
+            kind,
+            reserved: 0,
+            inner0: core::ptr::null(),
+            inner1: core::ptr::null(),
+            drop: None,
+            copy: None,
+            eq: None,
+            hash: None,
+        }
+    }
+
+    unsafe fn list_data(v: &VecVal, size: usize) -> &[u8] {
+        if v.len == 0 || size == 0 {
+            return &[];
+        }
+        // SAFETY: test values hold `len` slots of `size` bytes.
+        unsafe { core::slice::from_raw_parts(v.ptr, v.len * size) }
+    }
+
+    #[test]
+    fn plain_ranges_match_snapshot_model() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for (size, kind) in [(1, KIND_BOOL), (8, KIND_INT), (24, KIND_POD)] {
+            let d = plain_desc(size as u32, kind);
+            for n in [0, 1, 7, 257] {
+                let data: Vec<u8> = (0..n * size)
+                    .map(|i| {
+                        if size == 1 {
+                            (i % 2) as u8
+                        } else {
+                            ((i * 37 + i / size * 11) % 251) as u8
+                        }
+                    })
+                    .collect();
+                // SAFETY: the input and every result own aligned allocations of their slot sizes.
+                unsafe {
+                    let mut input = EMPTY;
+                    reserve(&mut input, &d, n);
+                    if !data.is_empty() {
+                        core::ptr::copy_nonoverlapping(data.as_ptr(), input.ptr, data.len());
+                    }
+                    input.len = n;
+                    let mut cat = EMPTY;
+                    msrt_list_concat(&input, &input, &d, &mut cat);
+                    let expected = [data.as_slice(), data.as_slice()].concat();
+                    assert_eq!(list_data(&cat, size), expected);
+                    let mut parts = [EMPTY, input, EMPTY, input, EMPTY];
+                    let lists = VecVal {
+                        ptr: parts.as_mut_ptr().cast(),
+                        len: parts.len(),
+                        cap: parts.len(),
+                    };
+                    let mut flat = EMPTY;
+                    msrt_list_flatten(&lists, &d, &mut flat);
+                    assert_eq!(list_data(&flat, size), expected);
+                    drop_list(&mut cat, &d);
+                    drop_list(&mut flat, &d);
+                    // Exhaustive overlaps for small inputs, including truncation at the end.
+                    if n <= 7 {
+                        for start in 0..=n {
+                            for end in start..=n {
+                                for target in 0..=n {
+                                    let mut copied = EMPTY;
+                                    copy_list(&input, &d, &mut copied);
+                                    msrt_list_copy_within(
+                                        &mut copied,
+                                        &d,
+                                        target as i64,
+                                        start as i64,
+                                        end as i64,
+                                    );
+                                    let mut expected = data.clone();
+                                    let count = (end - start).min(n - target);
+                                    expected[target * size..(target + count) * size]
+                                        .copy_from_slice(
+                                            &data[start * size..(start + count) * size],
+                                        );
+                                    assert_eq!(list_data(&copied, size), expected);
+                                    drop_list(&mut copied, &d);
+                                }
+                            }
+                        }
+                    }
+                    assert_eq!(list_data(&input, size), data);
+                    drop_list(&mut input, &d);
+                }
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
+
+    static ZERO_COPIES: crate::global::Global<usize> = crate::global::Global::new(0);
+
+    unsafe extern "C" fn copy_zero(_src: *const u8, _dst: *mut u8) {
+        // SAFETY: tests hold the runtime-global lock.
+        unsafe { *ZERO_COPIES.ptr() += 1 };
+    }
+
+    #[test]
+    fn zero_sized_ranges_preserve_custom_copy_hooks() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for custom in [false, true] {
+            let mut d = plain_desc(0, KIND_CUSTOM);
+            d.align = 1;
+            d.copy = custom.then_some(copy_zero);
+            // SAFETY: nonempty zero-sized lists still have owned backing allocations.
+            unsafe {
+                *ZERO_COPIES.ptr() = 0;
+                let mut input = VecVal {
+                    ptr: alloc::alloc(3),
+                    len: 3,
+                    cap: 3,
+                };
+                let mut copied = EMPTY;
+                copy_list(&input, &d, &mut copied);
+                let mut cat = EMPTY;
+                msrt_list_concat(&input, &input, &d, &mut cat);
+                let mut parts = [EMPTY, input, EMPTY, input];
+                let lists = VecVal {
+                    ptr: parts.as_mut_ptr().cast(),
+                    len: parts.len(),
+                    cap: parts.len(),
+                };
+                let mut flat = EMPTY;
+                msrt_list_flatten(&lists, &d, &mut flat);
+                msrt_list_copy_within(&mut copied, &d, 1, 0, 2);
+                assert_eq!((copied.len, cat.len, flat.len), (3, 6, 6));
+                assert_eq!(*ZERO_COPIES.ptr(), if custom { 17 } else { 0 });
+                for v in [&mut input, &mut copied, &mut cat, &mut flat] {
+                    drop_list(v, &d);
+                }
+            }
+        }
+        assert_eq!(alloc::live_blocks(), before);
+    }
+
     unsafe extern "C-unwind" fn by_value(_: *mut u8, a: *const u8, b: *const u8) -> i64 {
         // SAFETY: int slots.
         unsafe { (*(a as *const i64)).cmp(&*(b as *const i64)) as i64 }
@@ -1778,6 +1974,7 @@ mod tests {
     #[test]
     fn nested_lists_copy_and_equality() {
         let _g = testutil::lock();
+        let before = alloc::live_blocks();
         unsafe {
             let inner = TypeDesc {
                 size: 24,
@@ -1799,8 +1996,28 @@ mod tests {
             let mut c = EMPTY;
             copy_list(&outer, &inner, &mut c);
             assert!(eq_list(&outer, &c, &inner));
+            let mut cat = EMPTY;
+            msrt_list_concat(&outer, &outer, &inner, &mut cat);
+            let first = cat.ptr as *mut VecVal;
+            let changed = string::from_bytes(b"changed");
+            msrt_list_set(first, &msrt_desc_string, 0, &changed as *const _ as _);
+            assert!(eq_list(&outer, &c, &inner));
+            msrt_list_copy_within(&mut cat, &inner, 1, 0, 1);
+            assert_ne!((*first).ptr, (*first.add(1)).ptr);
+            let mut flat = EMPTY;
+            msrt_list_flatten(&cat, &msrt_desc_string, &mut flat);
+            drop_list(&mut cat, &inner);
+            assert_eq!(flat.len, 2);
+            for i in 0..flat.len {
+                assert_eq!(
+                    string::bytes((flat.ptr as *const StrVal).add(i)),
+                    b"changed"
+                );
+            }
+            drop_list(&mut flat, &msrt_desc_string);
             drop_list(&mut outer, &inner);
             drop_list(&mut c, &inner);
         }
+        assert_eq!(alloc::live_blocks(), before);
     }
 }
