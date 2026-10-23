@@ -7,6 +7,7 @@ use crate::sys::{self, CPath, Interest};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
+use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_NONE, STATUS_UNAVAILABLE,
@@ -79,6 +80,10 @@ impl Stream {
         let pollable = sys::fstat(fd)
             .map(|st| sys::is_pollable(&st))
             .unwrap_or(true);
+        Stream::with_pollable(fd, owned, name, pollable)
+    }
+
+    fn with_pollable(fd: sys::Fd, owned: bool, name: &[u8], pollable: bool) -> Stream {
         let shares_output = !owned && sys::is_output(fd);
         Stream {
             fd,
@@ -102,7 +107,22 @@ impl Stream {
             1 => b"/dev/stdout",
             _ => b"/dev/stderr",
         };
-        let mut stream = Stream::new(sys::standard(which), false, name);
+        // Programs call `stdin()` once per read: classify each standard descriptor once, not per handle.
+        static KIND: [AtomicU8; 3] = [const { AtomicU8::new(0) }; 3];
+        let fd = sys::standard(which);
+        let slot = &KIND[which.clamp(0, 2) as usize];
+        let pollable = match slot.load(Ordering::Relaxed) {
+            1 => false,
+            2 => true,
+            _ => {
+                let p = sys::fstat(fd)
+                    .map(|st| sys::is_pollable(&st))
+                    .unwrap_or(true);
+                slot.store(if p { 2 } else { 1 }, Ordering::Relaxed);
+                p
+            }
+        };
+        let mut stream = Stream::with_pollable(fd, false, name, pollable);
         if which == 0 {
             // Each `stdin()` call makes a new handle: pick up what the previous one read ahead.
             (stream.pending, stream.head) = take_stdin_pending();
