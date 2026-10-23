@@ -38,6 +38,13 @@ fn search(a: List[Int], want: Int) Int:
             hi = mid - 1
     return -1
 
+fn nested(g: List[List[Int]]) Int:
+    var t = 0
+    for i in range(0, g.length()):
+        for j in range(0, g[i].length()):
+            t = t + g[i][j]
+    return t
+
 fn checked(a: List[Int], i: Int) Int:
     return a.get(index: i, default: -1)
 
@@ -45,5 +52,6 @@ export fn main() Int:
     let a = [3, 1, 4, 1, 5, 9, 2, 6]
     stdout().write("{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n")
     stdout().write("{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n")
+    stdout().write("{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
     stdout().write("{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n")
     return 0
