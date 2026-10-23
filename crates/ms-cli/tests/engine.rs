@@ -202,6 +202,7 @@ fn library_projects_have_no_executable_entry() {
         err.contains("library project has no executable entry"),
         "{err}"
     );
+    assert!(!err.contains("lock"), "{err}");
 }
 
 const TESTS: &str = "import {expect_equal} from \"@std/testing.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";

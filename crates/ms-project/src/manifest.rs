@@ -261,7 +261,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             if !valid_alias(&key) || key == "@std" {
                 return Err(fail.at(
                     &key_location,
-                    format!("invalid or reserved alias {key}{}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", if valid_alias(&format!("@{key}")) { format!(" (did you mean @{key}?)") } else { String::new() }),
+                    format!("invalid or reserved alias {key}{}; aliases look like @lib (start with @, letters/digits/underscore), cannot be @std, and must map to a path, not another alias", if key != "std" && valid_alias(&format!("@{key}")) { format!(" (did you mean @{key}?)") } else { String::new() }),
                 ));
             }
             if value.starts_with('@') {
