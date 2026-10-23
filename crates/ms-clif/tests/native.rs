@@ -943,3 +943,37 @@ b0:
         }
     }
 }
+
+#[test]
+fn saved_list_lengths_keep_bounds_faults_after_optimization() {
+    let replaced = same(
+        include_str!("../../ms-mir/tests/fixtures-opt/list_saved_length.mir"),
+        "saved-list-length",
+    );
+    assert_eq!(replaced.code, 12);
+    let shrunk = same(
+        include_str!("../../ms-mir/tests/fixtures-opt/list_saved_length_shrink.mir"),
+        "saved-list-length-shrink",
+    );
+    assert_eq!(shrunk.code, 70);
+}
+
+#[test]
+fn readonly_record_copies_keep_payloads_alive_after_the_owner_is_dropped() {
+    for (source, name) in [
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_readonly_copy.mir"),
+            "record-readonly-copy",
+        ),
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_owner_drop.mir"),
+            "record-copy-owner-drop",
+        ),
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_parent_update.mir"),
+            "record-copy-parent-update",
+        ),
+    ] {
+        assert_eq!(same(source, name).code, 10);
+    }
+}

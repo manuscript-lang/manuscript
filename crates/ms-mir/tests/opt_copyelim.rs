@@ -251,3 +251,24 @@ fn a_closure_copy_that_only_feeds_calls_is_removed() {
     assert_eq!(count(&m, "main", Op::Drop), 1);
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
+
+#[test]
+fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
+    for (source, copies) in [
+        (include_str!("fixtures-opt/record_readonly_copy.mir"), 0),
+        (include_str!("fixtures-opt/record_copy_owner_drop.mir"), 1),
+        (
+            include_str!("fixtures-opt/record_copy_parent_update.mir"),
+            1,
+        ),
+    ] {
+        let mut m = parse_module(source).unwrap();
+        verify_module(&m).unwrap();
+        let before = Interp::new(&m).run_entry().map_err(|e| e.message);
+        opt::copyelim::run(&mut m);
+        verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+        assert_eq!(count(&m, "main", Op::Copy), copies, "{}", print_module(&m));
+        assert_eq!(before, Interp::new(&m).run_entry().map_err(|e| e.message));
+        assert_eq!(before, Ok(10));
+    }
+}

@@ -316,3 +316,151 @@ b5():
   ret %31
 }
 "#;
+
+#[test]
+fn saved_lengths_survive_replacement_in_nested_loops() {
+    let (before, after) = optimized("list_saved_length.mir");
+    assert_eq!(exec(&before), exec(&after));
+    assert_eq!(exec(&after).0, Ok(12));
+    assert_eq!(count(&before, "list.get"), 2);
+    // The loop read and update use the entry length through two loop parameters.
+    // The read after the loops is not guarded by non-emptiness and stays checked.
+    assert_eq!(count(&after, "list.get.u"), 1, "{}", print_module(&after));
+    assert_eq!(count(&after, "list.set.u"), 1, "{}", print_module(&after));
+    assert_eq!(count(&after, "br_if"), 2, "{}", print_module(&after));
+}
+
+#[test]
+fn saved_lengths_do_not_survive_shrinking_a_loop_carried_list() {
+    let (before, after) = optimized("list_saved_length_shrink.mir");
+    assert_eq!(exec(&before), exec(&after));
+    assert!(exec(&after).0.is_err());
+    assert_eq!(count(&after, "list.get.u"), 0, "{}", print_module(&after));
+}
+
+#[test]
+fn a_conditional_replacement_does_not_keep_the_saved_length() {
+    for choice in [true, false] {
+        let src = format!(
+            "module \"different_lengths\"
+entry @main
+fn @walk(%start: own list<int>, %choose: bool) -> int {{
+b0:
+  %n: int = list.len %start
+  %one: int = iconst 1
+  br_if %choose, keep(), replace()
+keep:
+  br join(%start)
+replace:
+  %shorter: list<int> = list.lit %one
+  drop %start
+  br join(%shorter)
+join(%current: own list<int>):
+  %inside: bool = icmp.lt %one, %n
+  br_if %inside, read(), done()
+read:
+  %x: int = list.get %current, %one
+  drop %current
+  ret %x
+done:
+  drop %current
+  ret %one
+}}
+fn @main() -> int {{
+b0:
+  %one: int = iconst 1
+  %l: list<int> = list.lit %one, %one
+  %choose: bool = bconst {choice}
+  %r: int = call @walk(%l, %choose)
+  ret %r
+}}"
+        );
+        let before = parse(&src);
+        let mut after = before.clone();
+        range::run(&mut after);
+        verify_module(&after).unwrap();
+        assert_eq!(exec(&before), exec(&after));
+        assert_eq!(count(&after, "list.get.u"), 0, "{}", print_module(&after));
+        assert_eq!(exec(&after).0.is_err(), !choice);
+    }
+}
+
+#[test]
+fn literal_list_lengths_bound_modulo_indices() {
+    let before = parse(
+        "module \"literal_length\"
+entry @main
+fn @read(%x: int) -> int {
+b0:
+  %z: int = iconst 0
+  %n: int = iconst 4
+  %positive: bool = icmp.ge %x, %z
+  br_if %positive, read(), negative()
+read:
+  %list: list<int> = list.lit %n, %n, %n, %n
+  %i: int = srem.chk %x, %n
+  %v: int = list.get %list, %i
+  %len: int = list.len %list
+  %r: int = iadd %v, %len
+  drop %list
+  ret %r
+negative:
+  ret %z
+}
+fn @main() -> int {
+b0:
+  %x: int = iconst 9223372036854775807
+  %r: int = call @read(%x)
+  ret %r
+}",
+    );
+    let mut after = before.clone();
+    range::run(&mut after);
+    verify_module(&after).unwrap();
+    assert_eq!(exec(&before), exec(&after));
+    assert_eq!(exec(&after).0, Ok(8));
+    assert_eq!(count(&after, "list.len"), 0);
+    assert_eq!(count(&after, "list.get.u"), 1, "{}", print_module(&after));
+}
+
+#[test]
+fn literal_lengths_preserve_negative_indices_and_out_of_bounds_faults() {
+    for (idx, elements) in [(-1, "%one, %one"), (2, "%one, %one"), (0, "")] {
+        let before = parse(&format!(
+            "module \"literal_bounds\"
+entry @main
+fn @main() -> int {{
+b0:
+  %one: int = iconst 1
+  %list: list<int> = list.lit {elements}
+  %i: int = iconst {idx}
+  %r: int = list.get %list, %i
+  drop %list
+  ret %r
+}}"
+        ));
+        let mut after = before.clone();
+        range::run(&mut after);
+        verify_module(&after).unwrap();
+        assert_eq!(exec(&before), exec(&after));
+        assert_eq!(count(&after, "list.get.u"), 0, "{}", print_module(&after));
+    }
+    let before = parse(
+        "module \"capacity_is_not_length\"
+entry @main
+fn @main() -> int {
+b0:
+  %capacity: int = iconst 100
+  %list: list<int> = list.new %capacity
+  %n: int = list.len %list
+  drop %list
+  ret %n
+}",
+    );
+    let mut after = before.clone();
+    range::run(&mut after);
+    verify_module(&after).unwrap();
+    assert_eq!(exec(&before), exec(&after));
+    assert_eq!(exec(&after).0, Ok(0));
+    assert_eq!(count(&after, "list.len"), 0);
+}
