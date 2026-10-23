@@ -1,0 +1,5 @@
+# Fixtures that cannot pass yet, each with the missing feature. scripts/e2e.sh runs the file's other tests
+# and requires the listed ones to still fail, so a fix shows up as an unexpected pass.
+# Format: <fixture> [<TAB><regex of the test names that fail>]. Without a regex the whole fixture must fail to build or run.
+tests/e2e/testdata/stdlib/tls.ms
+tests/e2e/testdata/stdlib/http-websocket.ms	WebSocket negotiates a protocol

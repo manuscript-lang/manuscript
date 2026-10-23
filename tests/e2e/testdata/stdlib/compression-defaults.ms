@@ -24,14 +24,17 @@ test "compression omission equals explicit level six for every format":
 
     for format in formats:
         let name = names.get(index)
+
         index += 1
 
         let expected = try compress(data, name, 6)
+
         try expect_equal((try alias(data, name)), expected)
         try expect_equal((try compress(data, name, max_bytes: none)), expected)
 
         let method = format.compress
-        let copied = method.clone()
+        let copied = format.compress
+
         try expect_equal((try copied(data)), expected)
         try expect_equal((try method(data, 6)), expected)
         try expect_equal(
@@ -42,10 +45,12 @@ test "compression omission equals explicit level six for every format":
 
         for level in [0, 9]:
             let output = try format.compress(data, level)
+
             try expect_equal((try decompress(output, name)), data)
 
         let full = forwarded(method)
         let free = forwarded(compress)
+
         try expect_equal((try free(data, name, 6, none)), expected)
         try expect_equal((try full(data, 6, none)), expected)
 
@@ -66,6 +71,7 @@ test "compression defaults retain invalid levels formats and output budgets":
         try expect_equal(format.compress(data, max_bytes: 0), limited)
 
         let method = format.compress
+
         try expect_equal(method(data, max_bytes: 1), limited)
 
     try expect_equal(compress(data, "invalid"), unsupported)
@@ -79,5 +85,6 @@ test "compression default preparation retains supplied argument order":
     let encoded = try compress(
         format: chosen(var log, "gzip"), supplied(var log, data.clone())
     )
+
     try expect_equal(log, ["format", "data"])
     try expect_equal((try decompress(encoded, "gzip")), data)

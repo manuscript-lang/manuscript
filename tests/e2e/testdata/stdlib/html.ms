@@ -13,16 +13,19 @@ fn text_content(node: HtmlNode) String:
         Text(text): return text
         Document(items):
             var text = ""
+
             for item in items: text = "{text}{text_content(item)}"
             return text
         Element(_, _, _, items):
             var text = ""
+
             for item in items: text = "{text}{text_content(item)}"
             return text
         _: return ""
 
 fn body_nodes(node: HtmlNode) List[HtmlNode]:
     let html = children(node).get(0)
+
     return children(children(html).get(1))
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
@@ -69,23 +72,25 @@ test "HTML parses nested elements attributes entities and comments":
 test "HTML recovers unclosed tags and inserts document and table structure":
     let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
     let nodes = body_nodes(doc)
-    let entries = children(nodes.get(0))
+    let entries = children(nodes.get(0).clone())
+
     try expect_false(
         (
             entries.length() != 2
-            or text_content(entries.get(0)) != "one"
-            or text_content((entries.get(1))) != "two"
+            or text_content(entries.get(0).clone()) != "one"
+            or text_content(entries.get(1).clone()) != "two"
         )
     )
 
-    match children(nodes.get(1)).get(0):
+    match children(nodes.get(1).clone()).get(0):
         Element(tag, _, _, _):
             try expect_equal(tag, "tbody")
         _: return fail("expected tbody")
 
-    try expect_equal(text_content(nodes.get(1)), "cell")
+    try expect_equal(text_content(nodes.get(1).clone()), "cell")
 
     let empty = try parse("")
+
     try expect_equal(children(children(empty).get(0)).length(), 2)
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
@@ -93,6 +98,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
         "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
     )
     let nodes = children(doc)
+
     try expect_false(
         (
             nodes.get(0) != HtmlNode.Doctype(
@@ -102,7 +108,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
     try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
 
-    let body = children(children(nodes.get(2)).get(1))
+    let body = children(children(nodes.get(2).clone()).get(1).clone())
 
     let svg_items = match body.get(0):
         Element(tag, namespace, _, items):
@@ -122,19 +128,22 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
             )
         _: return fail("expected SVG anchor")
 
-    try expect_equal(text_content(body.get(1)), "if (a < b) x = '&amp;';")
+    try expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")
 
 test "HTML honors optional byte depth and node limits":
     let empty = try parse("")
+
     try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
     try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
 
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
+
     try expect_equal(parse("é", HtmlLimits(1)), limited)
     try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
 
     let invalid: Result[HtmlNode, HtmlError] = error(HtmlError.InvalidInput)
+
     try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
     try expect_not_equal(HtmlError.InvalidData.message(), "")
 
@@ -143,6 +152,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
     let nested = "<div>".repeat(60000).get()
     let started = clock().now()
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
+
     try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
 
     let elapsed = clock().now().difference(started).to_milliseconds()
@@ -151,7 +161,9 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 test "HTML parse without limits applies defaults and an empty limits record lifts them":
     let nested = "<div>".repeat(20000).get()
     let limited: Result[HtmlNode, HtmlError] = error(HtmlError.LimitExceeded)
+
     try expect_equal(parse(nested), limited)
 
     let lifted = parse(nested, HtmlLimits())
+
     try expect_false(lifted.is_error())

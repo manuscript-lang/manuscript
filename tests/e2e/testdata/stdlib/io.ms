@@ -1,26 +1,35 @@
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {ReadStream, WriteStream, IoError, read_all, read_line, copy} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
+import filesystem from "@std/fs.ms"
 import MemoryStream from "./support/streams.ms"
 
 test "stream compositions invoke source implementations and preserve EOF":
     let reader = MemoryStream("one\r\ntwo\nlast".to_bytes(), 0, closed: false)
     let input = ReadStream(reader)
+
     try expect_equal((try read_line(input)), some("one"))
     try expect_equal((try read_line(input)), some("two"))
     try expect_equal((try read_line(input)), some("last"))
     try expect_false(not (try read_line(input)).is_none())
 
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
-    let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
-    try expect_equal((try copy(ReadStream(source), WriteStream(output.clone()), 6)), 6)
-    try expect_equal(output.data, "é🙂".to_bytes())
+    let fs = filesystem()
+
+    with directory = try fs.temporary("manuscript-io-"):
+        let path = "{directory.path()}/copy.bin"
+        let file = try fs.open(path: path, flags: "w", mode: 420)
+        let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
+
+        try expect_equal((try copy(ReadStream(source), file.writer(), 6)), 6)
+        try expect_equal((try fs.read_file(path)), "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
     var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
     let limited: Result[Bytes, IoError] = error(IoError.LimitExceeded)
+
     try expect_equal(read_all(ReadStream(reader.clone()), 2), limited)
     reader.closed = true
 
     let closed: Result[Bytes, IoError] = error(IoError.Closed)
+
     try expect_equal(read_all(ReadStream(reader)), closed)

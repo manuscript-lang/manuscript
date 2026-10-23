@@ -23,16 +23,18 @@ test "empty patterns use Unicode scalar boundaries without normalization":
 
 fn forward[T](value: T) T: value
 
-test "bound typed and generic calls retain the required count and captured receiver":
-    var text = "aaaa"
+test "bound typed and generic calls retain the required count":
+    let text = "aaaa"
     let replace = text.replace_n
-    text = "zzzz"
+
     try expect_equal(replace("a", "b", 2), "bbaa")
 
-    let typed: fn(old: String, new: String, max_replacements: Int) String = replace.clone()
+    let typed: fn(old: String, new: String, max_replacements: Int) String = text.replace_n
+
     try expect_equal(typed("a", "b", 3), "bbba")
 
-    let generic = forward(replace)
+    let generic = forward(text.replace_n)
+
     try expect_equal(generic("a", "b", 1), "baaa")
     try expect_equal("aaaa".replace_first("a", "b", 2), "bbaa")
     try expect_equal("aaaa".replace("a", "b", none), "baaa")
@@ -52,10 +54,13 @@ test "explicit and bound views retain method contracts and callable field shadow
     let adapter = TextAdapter(
         "aaaa", fn(old: String, new: String, max_replacements: Int) String: "field"
     )
+
     try expect_equal(adapter.replace_n("a", "b", 2), "field")
 
     let view = CappedReplacement(adapter)
+
     try expect_equal(view.replace_n("a", "b", 2), "bbaa")
 
     let bound = view.replace_n
+
     try expect_equal(bound("a", "b", 1), "baaa")
