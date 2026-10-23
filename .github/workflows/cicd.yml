@@ -364,12 +364,18 @@ jobs:
     name: Build design book
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 1G
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
-      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
+      - name: Keep the sccache directory in runner storage
+        run: echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
       - name: Restore cargo cache
         id: cargo-cache
         uses: actions/cache/restore@v6
@@ -378,9 +384,9 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            target
-          key: cargo-rust-docs-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: cargo-rust-docs-
+            ${{ runner.temp }}/sccache
+          key: cargo-sccache-docs-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-sccache-docs-
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -402,7 +408,7 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            target
+            ${{ runner.temp }}/sccache
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - uses: actions/upload-pages-artifact@v5
         with:
