@@ -44,6 +44,16 @@ unsafe extern "C" fn string_drop(o: *mut Obj) {
     }
 }
 
+/// Frees a string whose count reached zero (strings hold no references, so no drop queue).
+///
+/// # Safety
+/// `s` must be a dead string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_drop(s: *mut Obj) {
+    // SAFETY: forwarded contract.
+    unsafe { string_drop(s) }
+}
+
 /// Allocates an uninitialised string of `len` bytes (rc 1, NUL terminated).
 pub fn alloc_str(len: usize) -> *mut StrObj {
     if len > MAX_BYTES {
@@ -936,7 +946,8 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    while let Some(p) = find(&text[i..], old) {
+    let f = memchr::memmem::Finder::new(old);
+    while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
     }
@@ -1007,6 +1018,10 @@ unsafe fn replace_limited(
         if o.is_empty() {
             return from_buf(replace_n_bytes(text, o, bytes(new), n));
         }
+        if n == 0 || find(text, o).is_none() {
+            // Nothing to replace: share the unchanged input.
+            return retained(s as *mut StrObj);
+        }
         replace_into_str(text, o, bytes(new), n)
     }
 }
@@ -1016,8 +1031,9 @@ unsafe fn replace_limited(
 fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> *mut StrObj {
     let mut matches = 0usize;
     let mut i = 0;
+    let f = memchr::memmem::Finder::new(old);
     while (matches as i64) < n {
-        match find(&text[i..], old) {
+        match f.find(&text[i..]) {
             None => break,
             Some(p) => {
                 i += p + old.len();
@@ -1044,8 +1060,9 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> *mut St
     unsafe {
         let mut dst = data_ptr(out);
         let mut i = 0;
+        let f = memchr::memmem::Finder::new(old);
         for _ in 0..matches {
-            let p = find(&text[i..], old).unwrap_or(0);
+            let p = f.find(&text[i..]).unwrap_or(0);
             core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
             dst = dst.add(p);
             core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
@@ -1118,7 +1135,10 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        *out = if o.is_empty() {
+        *out = if count == 0 {
+            // Nothing to replace: share the unchanged input.
+            retained(s as *mut StrObj)
+        } else if o.is_empty() {
             from_buf(replace_n_bytes(text, o, n, -1))
         } else {
             fill_replaced(text, o, n, count)

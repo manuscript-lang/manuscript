@@ -64,6 +64,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_free", "i", ""),
     ("msrt_realloc", "ii", "i"),
     ("msrt_drop_slow", "i", ""),
+    ("msrt_string_drop", "i", ""),
     ("msrt_fault", "ii", ""),
     ("msrt_fault_int_overflow", "", ""),
     ("msrt_fault_div_zero", "", ""),
