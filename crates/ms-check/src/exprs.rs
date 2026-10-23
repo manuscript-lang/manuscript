@@ -805,6 +805,19 @@ impl Checker {
         right: &Expr,
         mut i: Info,
     ) -> Info {
+        if matches!(op, BinaryOp::Eq | BinaryOp::Ne) && (is_none_name(left) || is_none_name(right))
+        {
+            let other = if is_none_name(left) { right } else { left };
+            let other = self.expression(other, None);
+            if !invalid_ty(&other.t()) {
+                self.type_error(
+                    e.pos,
+                    "none has no type of its own here; test absence with is_none() or is_some() (or compare with some(value))",
+                );
+            }
+            i.ty = Some(bool_());
+            return i;
+        }
         let a = self.expression(left, None);
         let b = self.expression(right, None);
         let (at, bt) = (a.t(), b.t());
@@ -951,4 +964,8 @@ pub(crate) fn callee_name(e: &Expr) -> String {
         ExprKind::Apply { left, .. } => callee_name(left),
         _ => String::new(),
     }
+}
+
+fn is_none_name(e: &Expr) -> bool {
+    matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none")
 }
