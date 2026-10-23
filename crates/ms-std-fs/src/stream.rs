@@ -105,7 +105,7 @@ impl Stream {
         let mut stream = Stream::new(sys::standard(which), false, name);
         if which == 0 {
             // Each `stdin()` call makes a new handle: pick up what the previous one read ahead.
-            stream.pending = take_stdin_pending();
+            (stream.pending, stream.head) = take_stdin_pending();
         }
         stream
     }
@@ -340,8 +340,8 @@ impl Stream {
 impl Drop for Stream {
     fn drop(&mut self) {
         if self.fd == sys::standard(0) && !self.owned && !self.available().is_empty() {
-            let rest = self.take_pending();
-            stash_stdin_pending(rest);
+            stash_stdin_pending(core::mem::take(&mut self.pending), self.head);
+            self.head = 0;
         }
         let _ = self.close();
     }
@@ -411,9 +411,10 @@ mod tests {
         output.close().unwrap();
         assert_eq!(input.read_line(None).unwrap().unwrap(), b"a");
         assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"bb");
-        stash_stdin_pending(input.take_pending());
-        assert_eq!(take_stdin_pending(), b"\nccc\n");
-        assert!(take_stdin_pending().is_empty());
+        stash_stdin_pending(core::mem::take(&mut input.pending), input.head);
+        let (bytes, head) = take_stdin_pending();
+        assert_eq!(&bytes[head..], b"\nccc\n");
+        assert!(take_stdin_pending().0.is_empty());
     }
 
     #[test]
