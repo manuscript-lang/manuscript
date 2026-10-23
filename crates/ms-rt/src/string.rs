@@ -373,6 +373,41 @@ pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrObj, b: *const 
     }
 }
 
+/// Equality of two live strings; short ones compare as overlapping words instead of a call.
+///
+/// # Safety
+/// Both must be live strings.
+#[inline(always)]
+pub unsafe fn bytes_eq(a: *const StrObj, b: *const StrObj) -> bool {
+    // SAFETY: the data of a live string is `len` readable bytes.
+    unsafe {
+        let n = (*a).len;
+        if n != (*b).len {
+            return false;
+        }
+        let (p, q) = (
+            (a as *const u8).add(STR_DATA_OFFSET),
+            (b as *const u8).add(STR_DATA_OFFSET),
+        );
+        let word = |x: *const u8, at: usize| (x.add(at) as *const u64).read_unaligned();
+        let half = |x: *const u8, at: usize| (x.add(at) as *const u32).read_unaligned();
+        if (8..=16).contains(&n) {
+            return word(p, 0) == word(q, 0) && word(p, n - 8) == word(q, n - 8);
+        }
+        if (4..8).contains(&n) {
+            return half(p, 0) == half(q, 0) && half(p, n - 4) == half(q, n - 4);
+        }
+        if n < 4 {
+            // The first, middle and last bytes cover every byte of a string of up to three.
+            return n == 0
+                || (*p == *q
+                    && *p.add(n >> 1) == *q.add(n >> 1)
+                    && *p.add(n - 1) == *q.add(n - 1));
+        }
+        core::slice::from_raw_parts(p, n) == core::slice::from_raw_parts(q, n)
+    }
+}
+
 /// Deterministic 64-bit hash of bytes: eight bytes per multiply-fold step, with the tail read as
 /// one overlapping word, then a final avalanche. Hashes are lookup aids, not stable identifiers.
 pub fn hash_bytes(b: &[u8]) -> u64 {
@@ -411,7 +446,7 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
     } else {
         0
     };
-    mix(fold(h ^ tail, K0))
+    fold(h ^ tail, K0)
 }
 
 /// Hash of an `Int` key: one widening multiply folded to 64 bits.
@@ -1807,6 +1842,26 @@ mod tests {
             assert_eq!(bytes(one), b"xyz");
             let none = msrt_string_concat3(e, e, e);
             assert_eq!((*none).len, 0);
+        }
+    }
+
+    #[test]
+    fn bytes_eq_matches_slice_equality() {
+        let _g = crate::testutil::lock();
+        unsafe {
+            for len in 0..40usize {
+                let base: Vec<u8> = (0..len).map(|i| b'a' + (i % 7) as u8).collect();
+                let a = from_bytes(&base);
+                assert!(bytes_eq(a, from_bytes(&base)), "equal at len {len}");
+                for at in 0..len {
+                    let mut other = base.clone();
+                    other[at] ^= 1;
+                    assert!(!bytes_eq(a, from_bytes(&other)), "byte {at} of {len}");
+                }
+                let mut longer = base.clone();
+                longer.push(b'z');
+                assert!(!bytes_eq(a, from_bytes(&longer)));
+            }
         }
     }
 

@@ -2316,8 +2316,10 @@ impl<'a> FnLower<'a> {
                     // The lookup only reads the key, so it lends the key itself.
                     let kslot = s.lend_slot(k);
                     let m = s.b.use_var(acc);
-                    let found =
-                        s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+                    let sym = s
+                        .word_map_symbol("msrt_map_get_ptr", out)
+                        .unwrap_or("msrt_map_get_ptr");
+                    let found = s.call_runtime(sym, &[m, kd, vd, kslot], MTy::PTR)?;
                     let missing =
                         s.b.emit(
                             ms_mir::ir::Op::PtrIsNull,

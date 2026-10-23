@@ -71,6 +71,9 @@ msrt_map_remove( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: 
 msrt_map_contains( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
 msrt_map_get_ptr( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> *const u8
 msrt_map_get( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8, ) -> u8
+msrt_map_contains_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
+msrt_map_get_ptr_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> *const u8
+msrt_map_get_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8, ) -> u8
 msrt_map_clear( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_length(m: *const MapVal) -> i64
 msrt_map_slot_count(m: *const MapVal) -> i64
