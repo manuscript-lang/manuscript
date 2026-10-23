@@ -53,12 +53,10 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 
     with temporary = (fs.temporary("manuscript-default-write-") | try expect_ok):
         let path = "{temporary.path()}/file"
-
         (fs.write_file(path, "first") | try expect_ok)
 
         let write = fs.write_file
         let alias = fs.write_file
-
         (try rejected(alias(path, "second")))
         (try rejected(write(path, "second", replace: false)))
         (try rejected(generic_write(fs, path, "second")))
@@ -74,12 +72,10 @@ test "filesystem file copies default to no replacement and retain byte limits":
     with temporary = (fs.temporary("manuscript-default-copy-") | try expect_ok):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-
         (fs.write_file(source, "source") | try expect_ok)
 
         let copy = fs.copy_file
         let alias = fs.copy_file
-
         (alias(source, destination) | try expect_ok)
         (fs.write_file(source, "changed", true) | try expect_ok)
         (try rejected(copy(source, destination)))
@@ -93,7 +89,6 @@ test "filesystem file copies default to no replacement and retain byte limits":
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-
         fs.copy_file(source, "{temporary.path()}/limited", max_bytes: 0) | try expect_equal(
             limited
         )
@@ -102,7 +97,6 @@ test "filesystem file copies default to no replacement and retain byte limits":
         )
 
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-
         (
             (
                 fs.copy_file(
@@ -118,13 +112,11 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     with temporary = (fs.temporary("manuscript-default-tree-") | try expect_ok):
         let source = "{temporary.path()}/source"
         let destination = "{temporary.path()}/destination"
-
         (fs.create_directory(source) | try expect_ok)
         (fs.write_file("{source}/data", "abc") | try expect_ok)
 
         let copy = fs.copy_tree
         let alias = fs.copy_tree
-
         (alias(source, destination) | try expect_ok)
         (fs.write_file("{source}/data", "xyz", true) | try expect_ok)
         (try rejected(copy(source, destination)))
@@ -142,7 +134,6 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-
         copy(source, "{temporary.path()}/entries", max_entries: 1) | try expect_equal(
             limited
         )
@@ -151,7 +142,6 @@ test "filesystem tree copies default to no replacement with distinct budgets":
         )
 
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
-
         (
             (
                 copy(
@@ -175,7 +165,6 @@ test "filesystem directory creation defaults to requiring an existing parent":
         let create = fs.create_directory
         let alias = fs.create_directory
         let child = "{temporary.path()}/missing/child"
-
         (try rejected(alias(child)))
         (try rejected(create(child, false)))
         (try rejected(generic_directory(fs, child)))
@@ -191,13 +180,11 @@ test "filesystem removal defaults to retaining nonempty trees":
     with temporary = (fs.temporary("manuscript-default-remove-") | try expect_ok):
         let directory = "{temporary.path()}/nonempty"
         let path = "{directory}/keep"
-
         (fs.create_directory(directory) | try expect_ok)
         (fs.write_file(path, "keep") | try expect_ok)
 
         let remove = fs.remove
         let alias = fs.remove
-
         (try rejected(alias(directory)))
         (try rejected(remove(directory, false)))
         (try rejected(generic_remove(fs, directory)))
@@ -205,7 +192,6 @@ test "filesystem removal defaults to retaining nonempty trees":
         (remove(directory, recursive: true) | try expect_ok)
 
         let empty = "{temporary.path()}/empty"
-
         (fs.create_directory(empty) | try expect_ok)
         (alias(empty) | try expect_ok)
         (fs.write_file("{temporary.path()}/file", "file") | try expect_ok)
@@ -217,7 +203,6 @@ test "filesystem default preparation retains written argument order":
 
     with temporary = (fs.temporary("manuscript-default-order-") | try expect_ok):
         var log: List[String] = []
-
         (
             fs.write_file_bytes(
                 data: data_argument(var log),
@@ -229,7 +214,6 @@ test "filesystem default preparation retains written argument order":
         log | try expect_equal(["data", "path"])
 
         let copy = fs.copy_file
-
         (
             copy(
                 destination: argument(

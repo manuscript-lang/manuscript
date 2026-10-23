@@ -76,7 +76,6 @@ fn exercise() Result[Int, Error]:
             continue
 
     var iterable_out = stdout()
-
     for value in iterable(output: var iterable_out):
         with resource = Resource(label: "break", output: stdout()):
             break
@@ -88,7 +87,6 @@ fn exercise() Result[Int, Error]:
             let completed = unit
 
     var early_out = stdout()
-
     early(output: var early_out) | try expect_equal(5)
     stdout().write(data: "finished\n")
     return ok(0)

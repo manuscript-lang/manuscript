@@ -42,12 +42,10 @@ export fn first_generic() fn(value: Item) Int:
 
 test "first local extensions":
     let item = Item(2)
-
     (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | try expect_false
     as_view(item).get() | try expect_equal(12)
 
     let holder = Holder(item)
-
     (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | try expect_false
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(12)
@@ -67,7 +65,6 @@ export fn first_resource(resource: Resource) Closeable:
 
 test "first local cleanup":
     var events = ListBuilder[Int]()
-
     leave(Resource(events))
     events.freeze().get(index: 0) | try expect_equal(10)
 

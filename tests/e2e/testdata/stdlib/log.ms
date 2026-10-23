@@ -22,7 +22,6 @@ type Payload:
 # The text a test's file sink received so far.
 fn written(path: String) Result[Optional[String], Error]:
     let data = try filesystem().read_file(path)
-
     return ok(data.decode_utf8())
 
 test "logger writes typed escaped records and protects metadata":
@@ -35,11 +34,9 @@ test "logger writes typed escaped records and protects metadata":
             let fields = Payload(
                 9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
             )
-
             try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
             let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
-
             try expect_equal((try written(path)), some(expected))
             try logger.flush()
 
@@ -52,12 +49,10 @@ test "non-object values are written under data":
 
         with transport = stream_transport(file.writer()):
             let logger = try create(transport, timestamp: false)
-
             try record(logger, LogLevel.Info, "n", 7)
             try record(logger, LogLevel.Warn, "l", ["a", "b"])
 
             let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
-
             try expect_equal((try written(path)), some(expected))
 
 test "levels filter methods and function values":
@@ -67,7 +62,6 @@ test "levels filter methods and function values":
 
         with transport = stream_transport(file.writer()):
             let logger = try create(transport, LogLevel.Warn, false)
-
             try expect_false(
                 (
                     logger.enabled(LogLevel.Info)
@@ -81,7 +75,6 @@ test "levels filter methods and function values":
             try logger.warn("warn")
 
             let error_log = logger.error
-
             try error_log("error")
             try logger.fatal("fatal")
             logger.set_level(LogLevel.Trace)
@@ -91,7 +84,6 @@ test "levels filter methods and function values":
             try logger.info("info")
 
             let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
-
             try expect_equal((try written(path)), some(expected))
             logger.set_level(LogLevel.Silent)
             try expect_false(
@@ -102,12 +94,10 @@ test "levels filter methods and function values":
             )
 
             let before = try written(path)
-
             try logger.fatal("filtered")
             try expect_equal((try written(path)), before)
 
             let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
-
             try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
@@ -125,14 +115,12 @@ test "child bindings snapshot values and merge without mutating inputs":
             let root = try create(transport, timestamp: false)
             let logger = try bind(root, Service("api"))
             let child = try bind(logger, Request(7))
-
             logger.set_level(LogLevel.Fatal)
             try expect_equal(child.level(), LogLevel.Info)
             try record(child, LogLevel.Info, "child", Service("worker"))
             try logger.fatal("parent")
 
             let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
-
             try expect_equal((try written(path)), some(expected))
 
 test "limits and unencodable values reject before writing":
@@ -145,17 +133,14 @@ test "limits and unencodable values reject before writing":
             let logger = try create(
                 transport, timestamp: false, max_bytes: (line.to_bytes().length())
             )
-
             try logger.info("x")
             try expect_equal((try written(path)), some(line))
 
             let before = try written(path)
             let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
-
             try expect_equal(logger.info("xx"), limited)
 
             let zero = try create(transport, timestamp: false, max_bytes: 0)
-
             try expect_equal(zero.info(""), limited)
             try expect_false(
                 (
@@ -170,7 +155,6 @@ test "limits and unencodable values reject before writing":
             let unlimited = try create(transport, timestamp: false)
             let bad = JsonValue.NumberValue("NaN")
             let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
-
             try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
             try expect_equal((try written(path)), before)
 
@@ -181,18 +165,15 @@ test "transport closure and stream errors preserve identity":
         )
         let transport = stream_transport(file.writer())
         let logger = try create(transport)
-
         file.close()
 
         let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
-
         try expect_equal(logger.info("closed"), io_closed)
         try expect_equal(logger.flush(), io_closed)
         transport.close()
         transport.close()
 
         let closed: Result[Unit, LogError] = error(LogError.Closed)
-
         try expect_equal(logger.info("closed"), closed)
         try expect_equal(logger.flush(), closed)
 
@@ -204,17 +185,14 @@ test "file transport appends and flushes with scoped cleanup":
 
         with transport = try file_transport(path):
             let logger = try create(transport, timestamp: false)
-
             try logger.info("first")
             try logger.flush()
 
         with transport = try file_transport(path):
             let logger = try create(transport, timestamp: false)
-
             try logger.warn("second")
 
         let data = try fs.read_file(path)
-
         try expect_false(
             (
                 data.decode_utf8() != some(
@@ -237,7 +215,6 @@ test "file transport appends and flushes with scoped cleanup":
 test "stdout transport accepts records and leaves stdout open":
     with transport = stdout_transport():
         let logger = try create(transport, timestamp: false)
-
         try logger.info("stdout log")
         try logger.flush()
 
@@ -275,7 +252,6 @@ test "source transports receive complete records and close through their contrac
 
         with transport = Transport(CaptureTransport(path.clone())):
             let logger = try create(transport, timestamp: false)
-
             try logger.info("source transport")
             try logger.flush()
             try expect_equal(
@@ -303,5 +279,4 @@ test "log_json and child_json accept only JSON objects":
             try record(logger, LogLevel.Info, "m", [1])
 
             let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
-
             try expect_equal((try written(path)), some(expected))

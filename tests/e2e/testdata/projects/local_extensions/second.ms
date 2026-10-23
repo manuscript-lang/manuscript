@@ -42,12 +42,10 @@ export fn second_generic() fn(value: Item) Int:
 
 test "second local extensions":
     let item = Item(2)
-
     (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
     as_view(item).get() | try expect_equal(22)
 
     let holder = Holder(item)
-
     (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | try expect_false
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(22)
@@ -67,7 +65,6 @@ export fn second_resource(resource: Resource) Closeable:
 
 test "second local cleanup":
     var events = ListBuilder[Int]()
-
     leave(Resource(events))
     events.freeze().get(index: 0) | try expect_equal(20)
 
@@ -75,5 +72,4 @@ import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
     let item = Item(2)
-
     mixed(value: item, concrete: item) | try expect_equal(34)

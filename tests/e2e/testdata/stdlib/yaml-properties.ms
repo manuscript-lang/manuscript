@@ -43,7 +43,6 @@ fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Unit, Error
 test "YAML stringify then parse preserves generated documents":
     for seed in range(1, 301):
         var rng = Rng(seed)
-
         try check_round_trip(seed, generated(var rng, 0))
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
