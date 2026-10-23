@@ -288,8 +288,34 @@ pub fn desc_bytes() -> *const TypeDesc {
 mod tests {
     use super::*;
 
+    use core::sync::atomic::{AtomicBool, Ordering};
+
+    /// The runtime allocator is single threaded: tests that allocate take turns.
+    static BUSY: AtomicBool = AtomicBool::new(false);
+
+    struct Turn;
+
+    impl Turn {
+        fn take() -> Turn {
+            while BUSY
+                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_err()
+            {
+                core::hint::spin_loop();
+            }
+            Turn
+        }
+    }
+
+    impl Drop for Turn {
+        fn drop(&mut self) {
+            BUSY.store(false, Ordering::Release);
+        }
+    }
+
     #[test]
     fn strings_and_bytes_roundtrip() {
+        let _turn = Turn::take();
         let s = new_string("héllo");
         // SAFETY: `s` is a fresh live string.
         assert_eq!(unsafe { str_ref(&s) }, "héllo");
@@ -306,6 +332,7 @@ mod tests {
 
     #[test]
     fn string_matrix_roundtrip() {
+        let _turn = Turn::take();
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: `v` is writable; every read borrows the live value.
         unsafe {
