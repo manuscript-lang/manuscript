@@ -77,29 +77,29 @@ fn arity(cmd: String) Int:
     return 0
 
 fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
-    var ids = [t.get(1)]
+    var ids = [t.get(1).clone()]
     if cmd == "transfer":
-        ids.append(t.get(2))
+        ids.append(t.get(2).clone())
     let amount_text = t.get(t.length() - 1)
     for id in ids:
         if not l.accounts.contains(id):
             return emit(var l, "error: unknown account {id}")
     let first = ids.get(0)
     if cmd == "transfer" and first == ids.get(1):
-        return reject(var l, first, "error: same account")
+        return reject(var l, first.clone(), "error: same account")
     if not all_digits(amount_text) or amount_text.parse_int().get(0) <= 0:
-        return reject(var l, first, "error: invalid amount")
+        return reject(var l, first.clone(), "error: invalid amount")
 
     for id in ids:
         if l.accounts.get(id).get().frozen:
-            return reject(var l, id, "error: account frozen {id}")
+            return reject(var l, id.clone(), "error: account frozen {id}")
     let n = amount_text.parse_int().get()
     var a = l.accounts.get(first).get()
 
     if cmd == "deposit":
         a.bal = a.bal + n
         a.ops = a.ops + 1
-        l.accounts.add(key: first, value: a)
+        l.accounts.add(key: first.clone(), value: a)
         return emit(var l, "ok {a.bal}")
 
     var next = a.bal - n
@@ -110,11 +110,11 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
         fee = 5
 
     if next < 0 - a.lim:
-        return reject(var l, first, "error: overdraft limit exceeded {first}")
+        return reject(var l, first.clone(), "error: overdraft limit exceeded {first}")
 
     a.bal = next
     a.ops = a.ops + 1
-    l.accounts.add(key: first, value: a)
+    l.accounts.add(key: first.clone(), value: a)
     l.fees = l.fees + fee
     var sfx = ""
     if fee > 0:
@@ -125,7 +125,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
     var b = l.accounts.get(ids.get(1)).get()
     b.bal = b.bal + n
     b.ops = b.ops + 1
-    l.accounts.add(key: ids.get(1), value: b)
+    l.accounts.add(key: ids.get(1).clone(), value: b)
     emit(var l, "ok {next} {b.bal}{sfx}")
 
 fn step(var l: Ledger, t: List[String]) Unit:
@@ -145,7 +145,7 @@ fn step(var l: Ledger, t: List[String]) Unit:
 
         (
             l.accounts.add(
-                key: id,
+                key: id.clone(),
                 value: Account(
                     bal: 0,
                     lim: lim.parse_int().get(),
@@ -165,7 +165,7 @@ fn step(var l: Ledger, t: List[String]) Unit:
 
         var a = found.get().clone()
         a.frozen = cmd == "freeze"
-        l.accounts.add(key: id, value: a)
+        l.accounts.add(key: id.clone(), value: a)
         return emit(var l, "ok")
 
     money(var l, cmd, t)

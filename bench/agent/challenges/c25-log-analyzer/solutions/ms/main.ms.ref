@@ -61,7 +61,7 @@ fn run() Result[Unit, Error]:
 
         valid = valid + 1
         let level = f.get(1)
-        levels.add(key: level, value: levels.get_or(key: level, fallback: 0) + 1)
+        levels.add(key: level.clone(), value: levels.get_or(key: level, fallback: 0) + 1)
         let first = f.get(4).scalar_at(0)
         var cls = 4
         if first >= 50 and first <= 53:
@@ -76,7 +76,7 @@ fn run() Result[Unit, Error]:
             slowest_text = "{lat} {f.get(2)} {path} {f.get(0)}"
 
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
-        stats.add(key: path, value: Stat(count: old.count + 1, total: old.total + lat))
+        stats.add(key: path.clone(), value: Stat(count: old.count + 1, total: old.total + lat))
 
     var out = List[String]()
     out.append("valid: {valid}")
