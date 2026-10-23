@@ -7,7 +7,7 @@ use crate::types::*;
 use crate::types::{Case, Param};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// The case or type name an arm path stands for.
@@ -1353,6 +1353,3 @@ fn same_qualifier(qualifier: &Ty, matched: &Ty) -> bool {
     }
     qualifier.id == matched.id
 }
-
-#[allow(dead_code)]
-fn _unused(_: HashMap<u8, u8>) {}
