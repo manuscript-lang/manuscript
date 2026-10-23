@@ -60,11 +60,13 @@ fn run_line(line: String) String:
     if mode != "enc" and mode != "dec": return "error: bad mode"
 
     var sign = -1
+
     if mode == "enc": sign = 1
 
     if cipher == "caesar":
         if let n = caesar_key(key):
             let shift = ((sign * n) % 26 + 26) % 26
+
             return from_scalars(scalars.map(fn(c): rotate(c, shift))).get()
 
         return "error: bad key"
@@ -76,6 +78,7 @@ fn run_line(line: String) String:
         for c in scalars:
             if is_letter(c):
                 let s = shifts[k % shifts.length()]
+
                 out.append(rotate(c, ((sign * s) % 26 + 26) % 26))
                 k += 1
             else:

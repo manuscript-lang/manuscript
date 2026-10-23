@@ -10,5 +10,5 @@ test "closures read the variable they borrow":
         return offset
     let second = fn():
         return true
-    first() | try expect_equal(expected: 99)
+    first() | try expect_equal(99)
     second() | try expect_true

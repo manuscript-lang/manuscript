@@ -51,6 +51,7 @@ fn verify_json() Result[Unit, Error]:
     let value = try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}", limits: limits
     )
+
     (
         not (
             try stringify(
@@ -62,7 +63,8 @@ fn verify_json() Result[Unit, Error]:
 
 fn verify_encoding() Result[Unit, Error]:
     let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
-    hex_encode(data: bytes) | try expect_equal(expected: "00ff42")
+
+    hex_encode(data: bytes) | try expect_equal("00ff42")
     (
         not (
             hex_encode(
@@ -74,16 +76,16 @@ fn verify_encoding() Result[Unit, Error]:
 
 fn verify_url() Result[Unit, Error]:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
-    query.length() | try expect_equal(expected: 3)
-    format_query(entries: query) | try expect_equal(
-        expected: "a=1&a=2&space=hello+world"
-    )
+
+    query.length() | try expect_equal(3)
+    format_query(entries: query) | try expect_equal("a=1&a=2&space=hello+world")
     return ok(unit)
 
 fn verify_binary() Result[Unit, Error]:
     let binary = try write_integer(
         value: -32768, width: 2, signed: true, little_endian: false
     )
+
     (
         not (
             try read_integer(
@@ -97,6 +99,7 @@ fn verify_compression() Result[Unit, Error]:
     let compressed = try compress(
         data: "hello hello hello".to_bytes(), format: "gzip", level: 6, max_bytes: 256
     )
+
     (
         not (
             try decompress(
@@ -113,6 +116,7 @@ fn verify_archive() Result[Unit, Error]:
         )
     ]
     let archive = try pack(entries: entries, format: "zip", max_bytes: 1024)
+
     (
         not (
             try unpack(
@@ -163,36 +167,47 @@ test "expanded packages run through compiler":
         error(_):
             return fail(message: "archive failed")
 
-    ("a,,b").split(separator: ",", max_parts: 2) | try expect_equal(expected: ["a", ""])
-    ("é🙂").scalar_length() | try expect_equal(expected: 2)
-    ("é").scalar_values() | try expect_equal(expected: [233])
+    ("a,,b").split(separator: ",", max_parts: 2) | try expect_equal(["a", ""])
+    ("é🙂").scalar_length() | try expect_equal(2)
+    ("é").scalar_values() | try expect_equal([233])
+
     let text_success: Result[String, StringError] = ok("é")
-    from_scalars(values: [233]) | try expect_equal(expected: text_success)
-    sqrt(value: 9.0) | try expect_equal(expected: 3.0)
-    round(value: 2.5) | try expect_equal(expected: 3.0)
-    ([1, 2]).map(transform: twice) | try expect_equal(expected: [2, 4])
-    ([-1, 3, 0, 2]).filter(predicate: positive) | try expect_equal(expected: [3, 2])
-    ([1, 2, 3]).fold(initial: 0, step: sum) | try expect_equal(expected: 6)
-    ([3, 1, 2]).sorted(compare: compare) | try expect_equal(expected: [1, 2, 3])
+
+    from_scalars(values: [233]) | try expect_equal(text_success)
+    sqrt(value: 9.0) | try expect_equal(3.0)
+    round(value: 2.5) | try expect_equal(3.0)
+    ([1, 2]).map(transform: twice) | try expect_equal([2, 4])
+    ([-1, 3, 0, 2]).filter(predicate: positive) | try expect_equal([3, 2])
+    ([1, 2, 3]).fold(initial: 0, step: sum) | try expect_equal(6)
+    ([3, 1, 2]).sorted(compare: compare) | try expect_equal([1, 2, 3])
+
     var flipped = [1, 2]
+
     flipped.reverse_in_place()
-    flipped | try expect_equal(expected: [2, 1])
+    flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":
     let failure1: Result[Bytes, EncodingError] = error(EncodingError.InvalidData)
+
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
-        expected: failure1
+        failure1
     )
+
     let failure2: Result[Bytes, EncodingError] = error(EncodingError.LimitExceeded)
-    hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(expected: failure2)
+
+    hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
+
     let limits = JsonLimits(max_bytes: 100, max_depth: 2, max_values: 10)
     let failure3: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
-    parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(
-        expected: failure3
-    )
+
+    parse(text: "\{\"a\":1,\"a\":2\}", limits: limits) | try expect_equal(failure3)
+
     let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
-    parse(text: "[[[]]]", limits: limits) | try expect_equal(expected: failure4)
+
+    parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)
+
     let failure5: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
+
     (
         not (
             write_integer(

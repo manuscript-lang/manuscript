@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(enabled: Bool) Int:\n    let count = 2\n    if enabled:\n        run(count)\n    for item in [1, 2]:\n        run(item)\n    with resource = acquire():\n        run(resource)\n    return count\n"
+    "fmt": "fn work(enabled: Bool) Int:\n    let count = 2\n\n    if enabled:\n        run(count)\n    for item in [1, 2]:\n        run(item)\n    with resource = acquire():\n        run(resource)\n    return count\n"
   }
 }

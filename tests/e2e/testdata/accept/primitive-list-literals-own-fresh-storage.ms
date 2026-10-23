@@ -6,12 +6,15 @@ fn fresh() List[Int]:
 test "literals":
     var a = fresh()
     let b = fresh()
+
     a.append(value: 4)
     try expect_true((a.length() == 4 and b.length() == 3))
+
     var floats = [1.5, 2.5]
     let flags = [true, false, true]
     var words = ["a", "b"]
     let empty = List[Int]()
+
     try expect_true(
         (
             floats.length() == 2
@@ -24,5 +27,7 @@ test "literals":
     words.append(value: "c")
     try expect_true((floats.get(index: 2) == 3.5 and words.get(index: 2) == "c"))
     try expect_true(([1, 2] == [1, 2] and not ([1, 2] == [2, 1])))
+
     let rows = [[1], [2, 3]]
+
     try expect_true((rows.get(index: 1) == [2, 3]))

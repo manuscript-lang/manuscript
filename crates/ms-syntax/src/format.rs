@@ -271,6 +271,9 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                 if paragraph_block(previous)
                     || paragraph_block(current)
                     || (guard_statement(previous) && !guard_statement(current))
+                    || (matches!(previous.kind, StmtKind::Bind { .. })
+                        != matches!(current.kind, StmtKind::Bind { .. })
+                        && !guard_statement(current))
                 {
                     self.before(line);
                 }
@@ -416,9 +419,14 @@ fn layout_token(kind: Tok) -> bool {
 }
 
 fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
-    let source = group_statement_expressions(file, source)?;
-    let module = parse(file, &source)?;
-    let tokens = lex(file, &source)?.tokens;
+    let mut source = group_statement_expressions(file, source)?;
+    let mut module = parse(file, &source)?;
+    let mut tokens = lex(file, &source)?.tokens;
+    if let Some(compact) = compact_callback_suites(&module, &tokens, &source) {
+        source = compact;
+        module = parse(file, &source)?;
+        tokens = lex(file, &source)?.tokens;
+    }
     let mut layout = Layout {
         src: &source,
         lines: source.split('\n').collect(),
@@ -471,6 +479,89 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
     }
     output.push_str(&source[offset..]);
     Ok(output)
+}
+
+/// Joining an explicit return to its callback header preserves its meaning.
+/// A bare call cannot be joined: an inline body would implicitly return it.
+fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> Option<String> {
+    struct Compact<'a> {
+        tokens: &'a [Token],
+        source: &'a str,
+        cuts: Vec<(usize, usize)>,
+        suites: HashSet<NodeId>,
+        stack: Vec<bool>,
+    }
+    impl Visitor for Compact<'_> {
+        fn expr(&mut self, e: &Expr) {
+            self.stack.push(matches!(
+                e.kind,
+                ExprKind::Lambda(_) | ExprKind::Match { .. }
+            ));
+        }
+
+        fn leave_expr(&mut self, e: &Expr) {
+            if self.stack.pop().unwrap() {
+                self.suites.insert(e.id);
+                if let Some(parent) = self.stack.last_mut() {
+                    *parent = true;
+                }
+            }
+            let ExprKind::Call { args, .. } = &e.kind else {
+                return;
+            };
+            for arg in args {
+                let ExprKind::Lambda(l) = &arg.value.kind else {
+                    continue;
+                };
+                let [body] = l.body.as_slice() else { continue };
+                let StmtKind::Return(Some(value)) = &body.kind else {
+                    continue;
+                };
+                // Nested suites retain indentation relative to this body.
+                if self.suites.contains(&value.id) {
+                    continue;
+                }
+                let start = self
+                    .tokens
+                    .partition_point(|t| t.pos.offset < body.pos.offset);
+                let Some(colon) = self.tokens[..start]
+                    .iter()
+                    .rev()
+                    .find(|t| !layout_token(t.kind))
+                else {
+                    continue;
+                };
+                let (from, to) = (colon.hi as usize, body.pos.offset as usize);
+                let gap = &self.source[from..to];
+                if colon.kind == Tok::Colon
+                    && gap.contains('\n')
+                    && gap.chars().all(char::is_whitespace)
+                {
+                    self.cuts.push((from, to));
+                }
+            }
+        }
+    }
+    let mut compact = Compact {
+        tokens,
+        source,
+        cuts: Vec::new(),
+        suites: HashSet::new(),
+        stack: Vec::new(),
+    };
+    for d in &module.decls {
+        visit::walk_decl(&mut compact, d);
+    }
+    if compact.cuts.is_empty() {
+        return None;
+    }
+    compact.cuts.sort_unstable_by(|a, b| b.cmp(a));
+    compact.cuts.dedup();
+    let mut result = source.to_string();
+    for (from, to) in compact.cuts {
+        result.replace_range(from..to, " ");
+    }
+    Some(result)
 }
 
 /// A lambda whose body is a suite of several statements; a one-expression

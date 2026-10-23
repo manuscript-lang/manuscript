@@ -28,6 +28,7 @@ test "runaway recursion is a fault":
         fn():
             let ignored = runaway(0)
     )
+
     message | try expect_contains(expected: "call depth limit exceeded")
 
 test "runaway method recursion faults like function recursion":
@@ -36,6 +37,7 @@ test "runaway method recursion faults like function recursion":
         fn():
             let ignored = walker.walk(n: 0)
     )
+
     message | try expect_contains(expected: "call depth limit exceeded")
 
 test "recursion below the limit runs normally":

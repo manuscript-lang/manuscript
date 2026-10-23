@@ -11,7 +11,7 @@ fn exercise() Result[Int, Error]:
         error(_):
             return ok(1)
         ok(output):
-            output.exit_code | try expect_equal(expected: 0)
+            output.exit_code | try expect_equal(0)
             stdout().write_bytes(data: output.stdout)
             return ok(0)
 
@@ -20,4 +20,5 @@ export fn main() Int:
         ok(status): return status
         error(cause):
             let written = stderr().write("{cause.message()}\n")
+
             return 1

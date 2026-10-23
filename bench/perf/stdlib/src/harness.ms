@@ -15,18 +15,21 @@ export fn bench(name: String, ops: Int, body: fn() Int) Unit:
     let started = clock().now()
     let checksum = body()
     let elapsed = clock().now().difference(started).to_nanoseconds()
+
     say("{name}\t{ops}\t{elapsed / ops}\n")
     say("# checksum {name} {checksum}\n")
     say("# elapsed {name} {elapsed}\n")
 
 export fn ints(count: Int) List[Int]:
     var out: List[Int] = []
+
     for i in range(0, count):
         out.append((i * 7919) % 10007)
     return out
 
 export fn words(count: Int) List[String]:
     var out: List[String] = []
+
     for i in range(0, count):
         out.append("word{i % 977}")
     return out

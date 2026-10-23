@@ -62,6 +62,7 @@ impl Ledger:
     # Records one rejected command against the account named in its error.
     var fn blame(id: String) Unit:
         var acct = self.accounts.get(id).get()
+
         acct.rejected += 1
         self.accounts.add(id, acct)
 
@@ -89,6 +90,7 @@ impl Ledger:
             return "error: unknown account {id}"
 
         var acct = self.accounts.get(id).get()
+
         acct.frozen = frozen
         self.accounts.add(id, acct)
         return "ok"
@@ -194,6 +196,7 @@ impl Ledger:
 
         for id in self.accounts.keys().sorted(by_compare):
             let acct = self.accounts.get(id).get()
+
             total += acct.balance
             lines.append(
                 "{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={yes_no(acct.frozen)}"
@@ -232,6 +235,7 @@ export fn main() Int:
 
     for line in text.split("\n"):
         let tokens = split_tokens(line)
+
         if not tokens.is_empty():
             stdout().write("{execute(var ledger, tokens)}\n").get()
 

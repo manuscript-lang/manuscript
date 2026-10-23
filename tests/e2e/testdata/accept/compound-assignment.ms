@@ -9,35 +9,45 @@ type Outer:
 
 fn tally(values: List[Int]) Int:
     var total = 0
+
     for value in values:
         total += value
     return total
 
 test "compound assignment on bindings":
     var number = 20
+
     number += 5
     number -= 3
     number *= 2
     number /= 4
     number %= 7
+
     var ratio = 1.5
+
     ratio *= 2.0
+
     var text = "a"
+
     text += "b"
     try expect_false(number != 4 or ratio != 3.0 or text != "ab")
 
 test "right side groups as one operand":
     var number = 10
+
     number -= 4 - 1
     number *= 1 + 1
     try expect_equal(number, 14)
 
 test "compound assignment on fields":
     var counter = Counter(1, "x")
+
     counter.count += 4
     counter.count *= counter.count
     counter.label += "y"
+
     var outer = Outer(counter.clone())
+
     outer.inner.count -= 5
     try expect_false(
         (

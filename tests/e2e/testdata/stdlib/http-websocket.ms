@@ -34,10 +34,13 @@ fn echo(exchange: HttpExchange) Result[Unit, HttpError]:
         return ok(unit)
 
     var chain_1 = Map[String, List[String]]()
+
     chain_1.add(key: "X-Test", value: ["manuscript"])
+
     let headers = (try list_headers(chain_1))
     let started = (try exchange.send_headers(status: 201, headers: headers))
     let written = (try http_result(exchange.write("hello")))
+
     return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -59,6 +62,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 timeout: 2.seconds
             ) | try expect_ok
         )
+
         try expect_false(
             (
                 response.metadata().status != 201
@@ -68,8 +72,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         (
             response.metadata().headers.text(
                 "X-Test"
-            ) | try expect_ok | try expect_equal(expected: some(["manuscript"]))
+            ) | try expect_ok | try expect_equal(some(["manuscript"]))
         )
+
         let client_options = HttpClientOptions(
             decompress: true, cookies: true, tls: tls_options()
         )
@@ -87,9 +92,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     timeout: 2.seconds
                 ) | try expect_ok
             ):
-                body.metadata().status | try expect_equal(expected: 201)
+                body.metadata().status | try expect_equal(201)
                 (body.read(5) | try expect_ok).get() | try expect_equal(
-                    expected: "hello".to_bytes()
+                    "hello".to_bytes()
                 )
                 ((body.read(5) | try expect_ok).is_none()) | try expect_true
 
@@ -125,15 +130,18 @@ test "WebSocket negotiates a protocol and echoes a text frame":
                 subprotocols: ["echo"], options: client_options
             ) | try expect_ok
         ):
-            socket.subprotocol() | try expect_equal(expected: "echo")
+            socket.subprotocol() | try expect_equal("echo")
+
             let sent = (socket.send(data: "é🙂") | try expect_ok)
             let message = (socket.receive() | try expect_ok).get()
+
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn report_host(exchange: HttpExchange) Result[Unit, HttpError]:
     let hosts = (try exchange.headers().text("Host")).get([])
     let started = (try exchange.send_headers(status: 200, headers: headers()))
     let written = (try http_result(exchange.write(hosts.join(","))))
+
     return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
@@ -154,7 +162,8 @@ test "HTTP streaming handlers see the Host request header":
                 timeout: 2.seconds
             ) | try expect_ok
         )
-        response.body | try expect_equal(expected: server.address().to_bytes())
+
+        response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
     let net = network()

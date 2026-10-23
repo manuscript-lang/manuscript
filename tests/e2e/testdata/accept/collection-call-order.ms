@@ -11,5 +11,6 @@ test "receiver before index":
                 i
             none: 0
     )
+
     try expect_equal(result, 7)
     try expect_equal(calls, 1)

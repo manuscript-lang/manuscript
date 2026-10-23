@@ -33,6 +33,7 @@ test "typed math":
     try expect_true((remainder(left: 7.0, right: 4.0) == 3.0))
     try expect_true((atan2(y: 0.0, x: 1.0) == 0.0))
     try expect_true((sqrt(value: 0.0 - 1.0).is_nan() and sqrt(value: 1.0).is_finite()))
+
     var total = 0.0
     var i = 0
 
@@ -44,6 +45,7 @@ test "typed math":
 
 test "typed string members":
     let text = "  Hello World  "
+
     try expect_true((text.trim() == "Hello World"))
     try expect_true(
         (

@@ -18,30 +18,30 @@ fn returned_alias() Map[Int, Int]:
 
 test "closed maps preserve lookup replacement and absence":
     var values = Map[Int, Int]()
-    values.length() | try expect_equal(expected: 0)
+    values.length() | try expect_equal(0)
     values.contains(7) | try expect_false
     values.get(7).is_none() | try expect_true
     values.add(7, 10)
     values.add(7, 20)
     values.add(-1, 30)
-    values.length() | try expect_equal(expected: 2)
+    values.length() | try expect_equal(2)
     values.contains(7) | try expect_true
-    values.get(7).get() | try expect_equal(expected: 20)
-    values.get(-1).get() | try expect_equal(expected: 30)
-    values.get(0).get(99) | try expect_equal(expected: 99)
+    values.get(7).get() | try expect_equal(20)
+    values.get(-1).get() | try expect_equal(30)
+    values.get(0).get(99) | try expect_equal(99)
 
 test "closed map arguments retain written evaluation order":
     var visits: List[Int] = []
     var values = Map[Int, Int]()
     values.add(value: effect(var visits, 20), key: effect(var visits, 2))
     values.add(key: effect(var visits, 3), value: effect(var visits, 30))
-    visits | try expect_equal(expected: [20, 2, 3, 30])
-    values.get(2).get() | try expect_equal(expected: 20)
-    values.get(3).get() | try expect_equal(expected: 30)
+    visits | try expect_equal([20, 2, 3, 30])
+    values.get(2).get() | try expect_equal(20)
+    values.get(3).get() | try expect_equal(30)
 
 test "missing local lookups keep Optional faults":
     (try expect_fault(fn(): let ignored = missing())) | try expect_contains(
-        expected: "Optional.get"
+        "Optional.get"
     )
 
 test "escaped map results keep insertion order":
@@ -51,11 +51,11 @@ test "escaped map results keep insertion order":
     var seen: List[Int] = []
     for entry in values:
         seen.append(entry.key)
-    seen | try expect_equal(expected: [2, 1])
-    values.get(2).get() | try expect_equal(expected: 21)
+    seen | try expect_equal([2, 1])
+    values.get(2).get() | try expect_equal(21)
 
 test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
     values.add(1, 10)
     let callback = fn() Int: values.get(1).get()
-    callback() | try expect_equal(expected: 10)
+    callback() | try expect_equal(10)

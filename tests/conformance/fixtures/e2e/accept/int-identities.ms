@@ -30,4 +30,4 @@ test "identities keep operand effects":
     ((touch(var log, 7) - 0 == 7)) | try expect_true
     ((touch(var log, 8) / 1 == 8)) | try expect_true
     ((touch(var log, 9) % 1 == 0)) | try expect_true
-    log | try expect_equal(expected: [1, 2, 3, 4, 5, 6, 7, 8, 9])
+    log | try expect_equal([1, 2, 3, 4, 5, 6, 7, 8, 9])

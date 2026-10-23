@@ -26,6 +26,7 @@ impl Queue[T]:
 
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
+
             for index in range(self.head, count):
                 live.append(self.items.get(index))
             self.items = live
@@ -40,6 +41,7 @@ impl Queue[T]:
             return none
 
         let value = self.items.get(self.head)
+
         self.items.set(self.head, none)
         self.head += 1
 
@@ -83,14 +85,18 @@ impl PriorityQueue[T]:
     # Reports whether the entry at `a` dequeues before the entry at `b`.
     fn before(a: Int, b: Int) Bool:
         let order = self.compare(self.heap.get(a), self.heap.get(b))
+
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
     # Exchanges two heap entries.
     var fn swap(a: Int, b: Int) Unit:
         let left = self.heap.get(a)
+
         self.heap.set(a, self.heap.get(b))
         self.heap.set(b, left)
+
         let left_order = self.orders.get(a)
+
         self.orders.set(a, self.orders.get(b))
         self.orders.set(b, left_order)
 
@@ -107,6 +113,7 @@ impl PriorityQueue[T]:
         self.heap.append(value)
         self.orders.append(self.next_order)
         self.next_order += 1
+
         var at = self.heap.length() - 1
 
         while at > 0:
@@ -135,6 +142,7 @@ impl PriorityQueue[T]:
             self.heap.set(0, entry)
         if let order = last_order:
             self.orders.set(0, order)
+
         let size = count - 1
         var at = 0
 

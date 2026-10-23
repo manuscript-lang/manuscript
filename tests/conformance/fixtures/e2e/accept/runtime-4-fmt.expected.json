@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {expect_equal, expect_false} from \"@std/testing.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport File from \"@std/io.ms\"\nimport IoError from \"@std/io.ms\"\n\ntype ClosedFile:\n    marker: Unit\n\nimpl File for ClosedFile:\n    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:\n        return error(IoError.Closed)\n\n    fn close() Unit:\n        return\n\ntest \"contract-valued cleanup\":\n    with file = File(ClosedFile(unit)):\n        let read = file.read(1)\n        try expect_false(read.is_ok())\n        try expect_equal(read.err(), IoError.Closed)\n"
+    "fmt": "import {expect_equal, expect_false} from \"@std/testing.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport File from \"@std/io.ms\"\nimport IoError from \"@std/io.ms\"\n\ntype ClosedFile:\n    marker: Unit\n\nimpl File for ClosedFile:\n    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:\n        return error(IoError.Closed)\n\n    fn close() Unit:\n        return\n\ntest \"contract-valued cleanup\":\n    with file = File(ClosedFile(unit)):\n        let read = file.read(1)\n\n        try expect_false(read.is_ok())\n        try expect_equal(read.err(), IoError.Closed)\n"
   }
 }

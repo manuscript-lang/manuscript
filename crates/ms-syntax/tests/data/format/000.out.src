@@ -4,4 +4,5 @@ import Bytes from "@std/bytes.ms"
 test "explicit byte conversion":
     try expect_equal("é".byte_length(), 2)
     try expect_equal("é".to_bytes().decode_utf8(), some("é"))
+
     let invalid: Optional[String] = n

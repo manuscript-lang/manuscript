@@ -9,6 +9,7 @@ fn lookup(m: Map[String, Int], key: String) Int:
 
 test "string map":
     var m = Map[String, Int]()
+
     m.add(key: "a", value: 1)
     m.add(key: "b", value: 2)
     m.add(key: "a", value: 3)
@@ -18,6 +19,7 @@ test "string map":
     try expect_true((lookup(m: Map[String, Int](), key: "a") == -1))
     m.add(key: "", value: 9)
     try expect_true((lookup(m: m, key: "") == 9))
+
     var seen = 0
 
     for entry in m:

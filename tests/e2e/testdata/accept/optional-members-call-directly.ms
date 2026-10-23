@@ -5,6 +5,7 @@ fn fallback() Int: 9
 test "optional members":
     let present = some(3)
     let absent: Optional[Int] = none
+
     try expect_true((present.is_some() and not present.is_none()))
     try expect_true((absent.is_none() and not absent.is_some()))
     try expect_true((present.get(default: 7) == 3))
@@ -17,7 +18,9 @@ test "optional members":
         )
     )
     try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))
+
     var items = List[Int]()
+
     try expect_equal(items.get(index: 0, default: -1), -1)
     items.append(value: 5)
     try expect_true(

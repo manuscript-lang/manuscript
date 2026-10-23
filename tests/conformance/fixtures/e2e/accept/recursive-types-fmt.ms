@@ -53,7 +53,7 @@ test "recursive alternatives construct match compare and clone":
     (evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
     let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     tree | try expect_equal(
-        expected: Tree[Int].Branch(
+        Tree[Int].Branch(
             left: Tree[Int].Leaf(1),
             right: Tree[Int].Leaf(2)
         )
@@ -88,7 +88,7 @@ test "recursive structural equality checks nested and unequal fields":
     var right = Node(value: 1, next: none)
     left.next = some(left.clone())
     right.next = some(right.clone())
-    left.clone() | try expect_equal(expected: right.clone())
+    left.clone() | try expect_equal(right.clone())
     var copy = left.clone()
     var inner = copy.next.get().clone()
     inner.value = 2
@@ -145,7 +145,7 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
     let person = Person(Entry(name: "Ada", nickname: some("A")))
-    person.primary.get().nickname.get() | try expect_equal(expected: "A")
+    person.primary.get().nickname.get() | try expect_equal("A")
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
@@ -164,7 +164,7 @@ test "finite nested generic composition constructs and extracts values":
         error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
-    box.value.value | try expect_equal(expected: 6)
+    box.value.value | try expect_equal(6)
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
         first: some(7),
         second: some(some("nested"))

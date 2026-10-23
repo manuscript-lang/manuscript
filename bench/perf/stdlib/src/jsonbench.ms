@@ -5,6 +5,7 @@ import {parse, stringify, JsonValue} from "@std/json.ms"
 
 fn json_doc(count: Int) String:
     var sb = StringBuilder()
+
     sb.append("[")
 
     for i in range(0, count):
@@ -24,6 +25,7 @@ fn encoded_length(value: JsonValue) Int:
 
 export fn bench_json() Unit:
     let doc = json_doc(5000)
+
     bench(
         "json.parse",
         5000,

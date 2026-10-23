@@ -10,7 +10,7 @@ import system from "@std/process.ms"
 import network from "@std/net.ms"
 
 fn check_services() Result[Unit, Error]:
-    arguments().length() | try expect_equal(expected: 0)
+    arguments().length() | try expect_equal(0)
     let before = clock().now()
     let after = clock().now()
     (after - before < 0.milliseconds) | try expect_false

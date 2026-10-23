@@ -87,7 +87,7 @@ fn exercise() Result[Unit, Error]:
                 headers: headers(), body: "", max_response_bytes: 1024,
                 timeout: 2.seconds
             ):
-                response.metadata().status | try expect_equal(expected: 200)
+                response.metadata().status | try expect_equal(200)
 
                 let part = match response.read(max_bytes: 1024):
                     ok(part): part
@@ -116,7 +116,8 @@ fn exercise() Result[Unit, Error]:
                 subprotocols: ["echo"], options: websocket_options
             )
         ):
-            socket.subprotocol() | try expect_equal(expected: "echo")
+            socket.subprotocol() | try expect_equal("echo")
+
             let sent = try socket_result(result: socket.send(data: "echo me"))
 
             match try socket_result(result: socket.receive()):

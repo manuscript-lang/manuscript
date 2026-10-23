@@ -37,7 +37,7 @@ It adds `make conform` (the conformance corpus), `make book-check`, and `make di
 
 `make leak-check` builds the runtime with allocation counters (`ms-rt` feature `stats`, via `MS_RT_LIB`) and runs the corpus programs that finish normally, failing when any leaves live heap blocks at exit. Pass files to sweep instead (`sh scripts/leak-check.sh path.ms`). Run it after changing lowering, ownership, or runtime code; valgrind covers the native `ms-std-*` crates that use the system allocator.
 
-Write source assertions with `@std/testing.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(expected: value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
+Write source assertions with `@std/testing.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
 
 `make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases in `bench/perf/stdlib/src/*.ms` with `bench(name, ops, body)`. It is a profiling guide, not a gate. `make agent-bench-check` runs the agent benchmark oracle.
 

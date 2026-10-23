@@ -22,7 +22,7 @@ export fn first() Result[Int, Error]:
     insert_bound(var m, Key(1.0), 3)
     let add = m.add
     add(value: 4, key: Key(2.0))
-    m.get(Key(1.0)).get() | try expect_equal(expected: 3)
+    m.get(Key(1.0)).get() | try expect_equal(3)
     original.code = 9.0
-    m.keys() [0].code | try expect_equal(expected: 9.0)
+    m.keys() [0].code | try expect_equal(9.0)
     return ok(m.length())

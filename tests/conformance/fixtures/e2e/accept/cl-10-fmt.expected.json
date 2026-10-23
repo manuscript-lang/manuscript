@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\ninterface Increment:\n    fn apply(value: Int) Int\n\ntype Offset:\n    delta: Int\n\nimpl Increment for Offset:\n    fn apply(value: Int) Int:\n        return value + self.delta\n\nfn use_increment(operation: Increment) Int:\n    return operation.apply(4)\n\ntest \"explicit contract conversion\":\n    let offset = Offset(1)\n    let operation = Increment(offset)\n    let same_view = Increment(operation)\n    try expect_equal(use_increment(same_view), 5)\n"
+    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\ninterface Increment:\n    fn apply(value: Int) Int\n\ntype Offset:\n    delta: Int\n\nimpl Increment for Offset:\n    fn apply(value: Int) Int:\n        return value + self.delta\n\nfn use_increment(operation: Increment) Int:\n    return operation.apply(4)\n\ntest \"explicit contract conversion\":\n    let offset = Offset(1)\n    let operation = Increment(offset)\n    let same_view = Increment(operation)\n\n    try expect_equal(use_increment(same_view), 5)\n"
   }
 }

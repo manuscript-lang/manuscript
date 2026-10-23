@@ -95,6 +95,7 @@ fn is_ident(s: String) Bool:
 
 fn wrap32(v: Int) Int:
     var m = v % WORD
+
     if m < 0:
         m += WORD
     if m >= HALF:
@@ -171,6 +172,7 @@ fn char_end(s: String, i: Int) Int:
 # Index of the first space or tab at or after 0, or the length of s.
 fn word_end(s: String) Int:
     var i = 0
+
     while i < s.length() and ch(s, i) != 32 and ch(s, i) != 9:
         i += 1
     return i
@@ -182,6 +184,7 @@ fn label_len(s: String) Int:
         return 0
 
     var k = 0
+
     while k < n and is_ident_char(ch(s, k)):
         k += 1
     if k < n and ch(s, k) == 58:
@@ -325,8 +328,10 @@ fn symbol_value(var a: Asm, name: String) Result[Int, AsmError]:
             return error(AsmError(msg: "circular definition of '{name}'"))
 
         a.busy.add(name)
+
         let text = a.equ_text.get_or(name, "")
         let v = try eval_expr(var a, text)
+
         a.equ_val.add(name, v)
         return ok(v)
 
@@ -386,6 +391,7 @@ fn parse_string(s: String) Result[List[Int], AsmError]:
             return error(AsmError(msg: "invalid string"))
         else:
             let bytes = sub(s, i, i + 1).to_bytes()
+
             for j in range(0, bytes.length()):
                 out.append(bytes.get(j))
             i += 1
@@ -416,6 +422,7 @@ fn parse_budget(s: String) Int:
 fn is_int_token(t: String) Bool:
     let n = t.length()
     var start = 0
+
     if n > 0 and ch(t, 0) == 45:
         start = 1
     if start >= n:
@@ -436,6 +443,7 @@ fn int_value(t: String) Int:
         start = 1
 
     var acc = 0
+
     for i in range(start, t.length()):
         acc = (acc * 10 + (ch(t, i) - 48)) % WORD
     if neg:
@@ -540,6 +548,7 @@ fn instruction(var a: Asm, ln: Int, name: String, rest: String) Result[Int, AsmE
 
     for arg in args:
         let o = try parse_operand(arg)
+
         ops.append(o)
 
     if ops.length() != arity(opc):
@@ -583,9 +592,12 @@ fn data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) Result[Int, A
         return error(AsmError(msg: "data directive in text section"))
 
     var vals = try parse_string(rest)
+
     if zero_term:
         vals.append(0)
+
     let words = vals.length()
+
     (
         a.items.append(
             Item(
@@ -610,9 +622,12 @@ fn data_space(var a: Asm, ln: Int, rest: String) Result[Int, AsmError]:
         return error(AsmError(msg: "invalid operand '{args.get(0)}'"))
 
     var fill = "0"
+
     if args.length() == 2:
         fill = args.get(1)
+
     var fills = List[String]()
+
     fills.append(fill)
     (
         a.items.append(
@@ -725,6 +740,7 @@ fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) R
             if j < item.ops.length():
                 let o = item.ops.get(j)
                 var v = 0
+
                 if o.kind != K_REG:
                     v = try operand_value(var a, o)
                 if is_jump(item.opc) and (v < 0 or v >= a.ninstr):
@@ -743,6 +759,7 @@ fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) R
     if item.kind == 1:
         for j in range(0, item.exprs.length()):
             let v = try eval_expr(var a, item.exprs.get(j))
+
             mem.set(item.addr + j, v)
 
         return ok(0)
@@ -753,6 +770,7 @@ fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) R
         return ok(0)
 
     let fill = try eval_expr(var a, item.exprs.get(0))
+
     for j in range(0, item.cnt):
         mem.set(item.addr + j, fill)
     return ok(0)
@@ -805,6 +823,7 @@ fn mem_write(var vm: Machine, addr: Int, value: Int) Result[Int, AsmError]:
 fn ea(var vm: Machine, base: Int, s: Int) Int:
     let r = vm.code.get(base + 3 + 3 * s)
     var addr = vm.code.get(base + 4 + 3 * s)
+
     if r >= 0:
         addr += vm.regs.get(r)
     return wrap32(addr)
@@ -817,6 +836,7 @@ fn read_op(var vm: Machine, base: Int, s: Int) Result[Int, AsmError]:
         return ok(vm.code.get(base + 4 + 3 * s))
 
     let addr = ea(var vm, base, s)
+
     return mem_read(var vm, addr)
 
 fn write_op(var vm: Machine, base: Int, s: Int, value: Int) Result[Int, AsmError]:
@@ -827,6 +847,7 @@ fn write_op(var vm: Machine, base: Int, s: Int, value: Int) Result[Int, AsmError
         return ok(0)
 
     let addr = ea(var vm, base, s)
+
     return mem_write(var vm, addr, value)
 
 fn jump_taken(opc: Int, z: Int, l: Int) Bool:
@@ -858,10 +879,12 @@ fn step(var vm: Machine) Result[Int, AsmError]:
         let src = try read_op(var vm, base, 1)
         let dst = vm.code.get(base + 3)
         let res = try alu(opc, vm.regs.get(dst), src)
+
         vm.regs.set(dst, res)
     else if opc == 12:
         let src = try read_op(var vm, base, 1)
         let x = vm.regs.get(vm.code.get(base + 3))
+
         vm.z = bool_int(x == src)
         vm.l = bool_int(x < src)
     else if opc >= 13 and opc <= 16:
@@ -878,6 +901,7 @@ fn step(var vm: Machine) Result[Int, AsmError]:
             vm.regs.set(dst, wrap32(x - 1))
     else if opc == 17:
         let addr = ea(var vm, base, 1)
+
         vm.regs.set(vm.code.get(base + 3), addr)
     else if opc == 18:
         let v = try read_op(var vm, base, 0)
@@ -886,6 +910,7 @@ fn step(var vm: Machine) Result[Int, AsmError]:
             return error(AsmError(msg: "stack overflow"))
 
         vm.regs.set(8, sp - 1)
+
         let stored = try mem_write(var vm, sp - 1, v)
     else if opc == 19:
         let sp = vm.regs.get(8)
@@ -893,10 +918,13 @@ fn step(var vm: Machine) Result[Int, AsmError]:
             return error(AsmError(msg: "stack underflow"))
 
         let v = try mem_read(var vm, sp)
+
         vm.regs.set(8, sp + 1)
+
         let stored = try write_op(var vm, base, 0, v)
     else if opc >= 20 and opc <= 26:
         let target = try read_op(var vm, base, 0)
+
         if jump_taken(opc, vm.z, vm.l):
             next = target
     else if opc == 27:
@@ -906,8 +934,11 @@ fn step(var vm: Machine) Result[Int, AsmError]:
             return error(AsmError(msg: "stack overflow"))
 
         let ret_addr = vm.pc + 1
+
         vm.regs.set(8, sp - 1)
+
         let stored = try mem_write(var vm, sp - 1, ret_addr)
+
         next = target
     else if opc == 28:
         let sp = vm.regs.get(8)
@@ -921,10 +952,13 @@ fn step(var vm: Machine) Result[Int, AsmError]:
             return error(AsmError(msg: "input exhausted"))
 
         let v = vm.inputs.get(vm.in_pos)
+
         vm.in_pos += 1
+
         let stored = try write_op(var vm, base, 0, v)
     else if opc == 30:
         let v = try read_op(var vm, base, 0)
+
         vm.outbuf.concat(v.to_string_radix(10).to_bytes())
         vm.outbuf.append(10)
         vm.last = 10
@@ -945,6 +979,7 @@ fn step(var vm: Machine) Result[Int, AsmError]:
 
 fn trap_text(vm: Machine, msg: String) String:
     var line = "-"
+
     if vm.pc >= 0 and vm.pc < vm.n:
         line = "{vm.code.get(vm.pc * 8 + 1)}"
     return "-- trap: {msg} (pc={vm.pc} line={line}) after {vm.steps} steps"
@@ -979,6 +1014,7 @@ fn prescan_equ(var a: Asm, raw: String) Int:
         return 0
 
     let args = split_args(sub(body, e, body.length()).trim())
+
     if (
         args.length() == 2
         and is_ident(args.get(0))
@@ -996,20 +1032,25 @@ export fn main() Int:
     let data = read_all(stdin()).get()
     let lines = data.decode_utf8().get("").split("\n")
     var src_end = lines.length()
+
     for i in range(0, lines.length()):
         if src_end == lines.length() and strip_cr(lines.get(i)) == "====":
             src_end = i
+
     var inputs = List[Int]()
+
     for i in range(src_end + 1, lines.length()):
         for piece in lines.get(i).replace("\t", " ").replace("\r", " ").split(" "):
             if is_int_token(piece):
                 inputs.append(int_value(piece))
+
     var a = Asm(
         section: 0, ninstr: 0, dcount: 0, budget: DEFAULT_BUDGET, items: List[Item](),
         symbols: Map[String, Int](), equ_text: Map[String, String](),
         busy: Set[String](), text_labels: Set[String](), seen_equ: Set[String](),
         equ_val: Map[String, Int]()
     )
+
     for i in range(0, src_end):
         prescan_equ(var a, strip_comment(strip_cr(lines.get(i))))
 
@@ -1020,6 +1061,7 @@ export fn main() Int:
 
     var code = List[Int]()
     var mem = List[Int]()
+
     for m in range(0, MEM_WORDS):
         mem.append(0)
 
@@ -1030,23 +1072,32 @@ export fn main() Int:
             return report(item.ln, r2.err().msg)
 
     var start = 0
+
     if a.text_labels.contains("main"):
         start = a.symbols.get_or("main", 0)
+
     var regs = List[Int]()
+
     for r in range(0, 10):
         regs.append(0)
     regs.set(8, MEM_WORDS)
+
     var vm = Machine(
         code: code, mem: mem, regs: regs, inputs: inputs, budget: a.budget, n: a.ninstr,
         pc: start, steps: 0, z: 0, l: 0, in_pos: 0, outbuf: BytesBuilder(), last: -1
     )
     let status = run(var vm)
+
     if vm.last != -1 and vm.last != 10:
         vm.outbuf.append(10)
+
     let body = vm.outbuf.freeze()
+
     stdout().write_bytes(body)
+
     let rv = vm.regs
     let summary = "{status}\nregs: r0={rv.get(0)} r1={rv.get(1)} r2={rv.get(2)} r3={rv.get(3)} r4={rv.get(4)} r5={rv.get(5)} r6={rv.get(6)} r7={rv.get(7)} sp={rv.get(8)} bp={rv.get(9)}\nflags: Z={vm.z} L={vm.l}\n"
+
     stdout().write(summary)
     stdout().flush()
     return 0

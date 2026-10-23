@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Unit:\n    use(\n        fn(value, other: Int):\n            return value + other\n    )\n"
+    "fmt": "fn f() Unit:\n    use(fn(value, other: Int): return value + other)\n"
   }
 }
