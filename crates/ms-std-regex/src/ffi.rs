@@ -26,8 +26,8 @@ native! {
         re.find_all(text, has_max.then_some(max))
     }
 
-    fn msrt_regex_captures(re: ObjRef<Regex>, text: &str) -> Result<Vec<String>, Fail> {
-        Ok(re.captures(text))
+    fn msrt_regex_captures(re: ObjRef<Regex>, text: &str) -> out Vec<String> {
+        re.captures(text)
     }
 
     fn msrt_regex_captures_all(
@@ -39,12 +39,12 @@ native! {
         re.captures_all(text, has_max.then_some(max))
     }
 
-    fn msrt_regex_named_captures(re: ObjRef<Regex>, text: &str) -> Result<StrMap, Fail> {
-        Ok(StrMap(re.named_captures(text)))
+    fn msrt_regex_named_captures(re: ObjRef<Regex>, text: &str) -> out StrMap {
+        StrMap(re.named_captures(text))
     }
 
-    fn msrt_regex_find_span(re: ObjRef<Regex>, text: &str) -> Result<IntList, Fail> {
-        Ok(IntList(re.find_span(text)))
+    fn msrt_regex_find_span(re: ObjRef<Regex>, text: &str) -> out IntList {
+        IntList(re.find_span(text))
     }
 
     fn msrt_regex_split(
