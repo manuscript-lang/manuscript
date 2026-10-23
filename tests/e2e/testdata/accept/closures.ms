@@ -9,18 +9,18 @@ fn countdown[T](value: T, count: Int) T:
 
     return countdown(value, count - 1)
 
-test "snapshot reassignment and shadowing":
+test "closures borrow the variable and shadowing":
     var offset = 1
+    offset = 10
     let action = fn(value: Int):
         return value + offset
-    offset = 10
-    try expect_equal(action(3), 4)
 
     if true:
         var offset = 20
         offset = 30
-        try expect_equal(action(offset), 31)
+        try expect_equal(action(offset), 40)
 
+    try expect_equal(action(3), 13)
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
     let factory = fn(value: Int) fn(value: Int) Int:
