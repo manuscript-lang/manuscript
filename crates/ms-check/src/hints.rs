@@ -485,6 +485,12 @@ impl Checker {
                 }
             }
         }
+        if receiver.is_std("Map") && name == "set" {
+            return format!(
+                "{message}; 'm[key] = value' assigns only into a List; write m.add(key, value) to insert or replace a Map entry; available: {}",
+                available.join(", ")
+            );
+        }
         if receiver.is_std("List") && name == "join" {
             return format!(
                 "{message}; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) String: \"{{value}}\").join(separator: \",\")"

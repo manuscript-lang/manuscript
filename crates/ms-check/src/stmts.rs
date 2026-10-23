@@ -1072,7 +1072,9 @@ impl Checker {
                 ..Info::default()
             };
         }
-        let index = self.expression(right, Some(&int()));
+        // Only a List is indexed by Int; do not push that expectation onto a Map key.
+        let list = rt.is_std("List") && rt.args.len() == 1;
+        let index = self.expression(right, list.then(int).as_ref());
         let mut info = Info {
             ty: Some(invalid()),
             native: Some(n("index")),
@@ -1082,11 +1084,13 @@ impl Checker {
         if rt.id == "<invalid>" {
             return info;
         }
-        if !rt.is_std("List") || rt.args.len() != 1 {
-            self.type_error(
-                e.pos,
-                "indexing requires List[T]; use the receiver's lookup method for other types",
-            );
+        if !list {
+            let hint = if rt.is_std("Map") {
+                "indexing requires List[T]; read a Map entry with m.get(key)"
+            } else {
+                "indexing requires List[T]; use the receiver's lookup method for other types"
+            };
+            self.type_error(e.pos, hint);
         } else {
             info.ty = Some(rt.args[0].clone());
         }
