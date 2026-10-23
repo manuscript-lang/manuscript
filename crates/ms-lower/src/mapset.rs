@@ -125,6 +125,76 @@ impl<'a> FnLower<'a> {
         Ok(Some(Val { v: u, own: false }))
     }
 
+    /// `m.add(key: k.clone(), value: v)` and `m.add_default(..)` on a `String`-keyed map held in a
+    /// local, with `k` a part of a variable that cannot change: the runtime copies the key only when
+    /// the entry is absent, so updating an existing entry allocates nothing.
+    pub(crate) fn lent_key_add(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(name, "add" | "add_default")
+            || self.discard != Some(e as *const Expr as usize)
+            || view.arguments.len() != 2
+        {
+            return Ok(None);
+        }
+        let declared: Vec<_> = m.ty.params.iter().map(|p| p.name).collect();
+        if declared.len() != 2
+            || view.arguments[0].slot.name != declared[0]
+            || view.arguments[1].slot.name != declared[1]
+        {
+            return Ok(None);
+        }
+        let (key_e, value_e) = (view.arguments[0].expr, view.arguments[1].expr);
+        let Some(inner) = clone_receiver(key_e) else {
+            return Ok(None);
+        };
+        if !self.is_place(recv_expr) || !self.is_place(inner) {
+            return Ok(None);
+        }
+        let base = crate::mutation::place_base(&self.hir, inner);
+        if !matches!(self.hir.resolution(base), Resolution::Local(b) if !b.mutable) {
+            return Ok(None);
+        }
+        let mt = self.emty(recv_expr)?;
+        let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
+            return Ok(None);
+        };
+        if n != "Map" || a.first() != Some(&MTy::STR) {
+            return Ok(None);
+        }
+        let k = self.expr(inner)?;
+        if self.dead {
+            return Ok(Some(k));
+        }
+        let k = self.borrow(k);
+        let v = self.expr(value_e)?;
+        if self.dead {
+            return Ok(Some(v));
+        }
+        let v = self.owned(v);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let sym = if name == "add" {
+            "msrt_map_add_lent"
+        } else {
+            "msrt_map_add_default_lent"
+        };
+        self.place_update(recv_expr, &mut |s, old| {
+            let slot = s.put_slot(old);
+            let ks = s.lend_slot(k);
+            let vs = s.put_slot(v);
+            s.call_runtime(sym, &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+            Ok(s.take_slot(slot, mt))
+        })?;
+        let u = self.b.unit();
+        Ok(Some(Val { v: u, own: false }))
+    }
+
     /// The default `d` of `recv.get(key).get(d)` when `e` is exactly that read of the same
     /// local map and an equal simple key, with `d` a number literal.
     fn counter_read<'e>(

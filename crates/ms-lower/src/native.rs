@@ -1509,6 +1509,9 @@ impl<'a> FnLower<'a> {
         {
             return Ok(done);
         }
+        if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
+            return Ok(done);
+        }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));

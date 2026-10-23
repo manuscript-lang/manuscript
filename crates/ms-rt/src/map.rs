@@ -702,6 +702,68 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
     }
 }
 
+/// `add(key, value)` with a borrowed `key`: it is copied into the map only when the entry is
+/// absent, so replacing the value of an existing key allocates nothing. `val` is consumed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_lent(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| {
+            let l = layout(kd, Some(vd));
+            let h = hash_key::<K>(kd, key);
+            if let Some(i) = find::<K>(m, kd, &l, key, h) {
+                let p = slot(m, &l, i).add(l.voff);
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, p);
+                }
+                copy_slot(val, p, l.vsize);
+                return;
+            }
+            let owned = alloc::alloc((kd.size as usize).max(8));
+            slot_copy(kd, key, owned);
+            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
+            alloc::free(owned);
+        })
+    }
+}
+
+/// `add_default(key, value)` with a borrowed `key`: nothing is copied or stored when the entry
+/// exists. `val` is consumed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| {
+            let l = layout(kd, Some(vd));
+            let h = hash_key::<K>(kd, key);
+            if find::<K>(m, kd, &l, key, h).is_some() {
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, val);
+                }
+                return;
+            }
+            let owned = alloc::alloc((kd.size as usize).max(8));
+            slot_copy(kd, key, owned);
+            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
+            alloc::free(owned);
+        })
+    }
+}
+
 /// `add_default(key, value)`: stores only when absent; both consumed.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_add_default(
