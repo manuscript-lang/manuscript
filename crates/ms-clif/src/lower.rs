@@ -289,12 +289,21 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// `rc -= 1; if rc == 0 { drop_slow }` on a non-null object pointer.
     fn release(&mut self, p: Value) {
+        self.release_with(p, "msrt_drop_slow")
+    }
+
+    /// `release` for a string, which has no children: freed without the generic drop path.
+    fn release_str(&mut self, p: Value) {
+        self.release_with(p, "msrt_string_drop")
+    }
+
+    fn release_with(&mut self, p: Value, f: &'static str) {
         let rc = self.b.ins().load(types::I64, flags(), p, 0);
         let n = self.b.ins().iadd_imm_s(rc, -1);
         self.b.ins().store(flags(), n, p, 0);
         let zero = self.b.ins().icmp_imm_s(IntCC::Equal, n, 0);
         self.if_then(zero, |s| {
-            s.rt_call("msrt_drop_slow", &[p]);
+            s.rt_call(f, &[p]);
         });
     }
 
@@ -311,7 +320,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             return;
         }
         match m.types.kind(ty) {
-            TyKind::Str | TyKind::Fn(..) => self.release(vs[0]),
+            TyKind::Str => self.release_str(vs[0]),
+            TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
             TyKind::Opt(inner)
                 if self.g.lay.opt_is_nullable(*inner) && !self.g.lay.opt_is_boxed(*inner) =>

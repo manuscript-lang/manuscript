@@ -117,6 +117,7 @@ msrt_start( main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc:
 msrt_argv(out: *mut VecVal)
 msrt_args_consume()
 msrt_args(out: *mut VecVal)
+msrt_string_drop(s: *mut Obj)
 msrt_string_empty() -> *mut StrObj
 msrt_string_hash(s: *const StrObj) -> i64
 msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj

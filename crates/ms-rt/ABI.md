@@ -362,7 +362,8 @@ declared parameters, flattened optionals, `out` last.
 
 Inline fast paths the code generator may open-code (part of the ABI):
 
-1. Retain `if p != null { p.rc += 1 }` / release `rc -= 1; if rc == 0 { msrt_drop_slow(p) }`.
+1. Retain `if p != null { p.rc += 1 }` / release `rc -= 1; if rc == 0 { msrt_drop_slow(p) }`;
+   a `String` release calls `msrt_string_drop(p)` instead, since a string holds no references.
 2. List element address `ptr + i * desc.size` when `(i as u64) < len` (else the slow path:
    negative index, default, or `msrt_index_fault`).
 3. List push: `if len < cap { store at ptr + len*size; len += 1 } else msrt_list_push*`.
