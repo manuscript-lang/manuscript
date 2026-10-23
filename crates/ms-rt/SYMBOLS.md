@@ -126,6 +126,10 @@ msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8
 msrt_string_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal)
+msrt_string_clone(s: *const StrVal, out: *mut StrVal)
+msrt_string_free(s: *const StrVal)
+msrt_str_free(ptr: *mut u8)
+msrt_str_dup(ptr: *const u8, len: i64) -> *mut u8
 msrt_strbuf_new() -> *mut StrBuf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal)
 msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal)
@@ -148,7 +152,7 @@ msrt_string_chars(s: *const StrVal, out: *mut VecVal)
 msrt_string_lines(s: *const StrVal, out: *mut VecVal)
 msrt_string_split( s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, )
 msrt_string_split_iter( s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, ) -> *mut SplitIter
-msrt_split_next(it: *mut SplitIter, out: *mut OptStr)
+msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8
 msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal)
 msrt_string_from_scalars( values: *const VecVal, out: *mut StrVal, ) -> u8
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal)

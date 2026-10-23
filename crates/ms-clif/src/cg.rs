@@ -23,10 +23,6 @@ use ms_mir::ir::{ExtId, Func, Module};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 
-/// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
-pub const STATIC_RC: u64 = 1 << 62;
-/// `ms_rt_abi::STR_HDR_SIZE`: the bytes of a string follow a 24-byte header.
-pub const STR_HDR_SIZE: usize = 24;
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
 /// Offset of the payload in a `Shared[T]` box.
@@ -65,6 +61,8 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_realloc", "ii", "i"),
     ("msrt_drop_slow", "i", ""),
     ("msrt_str_count", "ii", ""),
+    ("msrt_str_free", "i", ""),
+    ("msrt_str_dup", "ii", "i"),
     ("msrt_fault", "ii", ""),
     ("msrt_fault_int_overflow", "", ""),
     ("msrt_fault_div_zero", "", ""),
@@ -500,17 +498,13 @@ impl<'m> Gen<'m> {
         id
     }
 
-    /// A static `String` block for literal `i`: the header (count, no drop entry, scalar count)
-    /// then the bytes. The value of the literal points `STR_HDR_SIZE` bytes into it.
+    /// A static `String` block for literal `i`: the bytes then a NUL.
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
         }
         let s = &self.m.strings[i as usize];
-        let mut bytes = vec![0u8; STR_HDR_SIZE];
-        bytes[0..8].copy_from_slice(&STATIC_RC.to_le_bytes());
-        bytes[16..24].copy_from_slice(&(s.chars().count() as u64).to_le_bytes());
-        bytes.extend_from_slice(s.as_bytes());
+        let mut bytes = s.as_bytes().to_vec();
         bytes.push(0);
         let id = self
             .module

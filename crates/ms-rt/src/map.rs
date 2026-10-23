@@ -167,11 +167,7 @@ impl KeyOps for StrKey {
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
         // SAFETY: both slots hold live strings. A lookup of an inserted key hits the same object.
-        unsafe {
-            let (x, y) = (a as *const StrVal, b as *const StrVal);
-            (*x).ptr == (*y).ptr && (*x).len == (*y).len
-                || crate::string::bytes(x) == crate::string::bytes(y)
-        }
+        unsafe { crate::string::equal(a as *const StrVal, b as *const StrVal) }
     }
 }
 

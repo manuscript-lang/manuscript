@@ -44,17 +44,13 @@ pub const OBJ_HEADER_SIZE: usize = 16;
 // String
 // ---------------------------------------------------------------------------
 
-/// `scalars` value meaning "not counted yet".
-pub const SCALARS_UNKNOWN: usize = usize::MAX;
-
 /// `String`: three words in the owner's slot, the same shape as [`VecVal`] with `ptr` pointing at
 /// the UTF-8 bytes. `len` is the byte length and `cap` the byte capacity of the allocation (0
 /// for a literal). The bytes are followed by one NUL (not counted in `len`).
 ///
-/// A string is an owned value over immutable bytes. Transitional: the bytes live in a
-/// reference-counted block, a [`StrHdr`] immediately before `ptr`, so copying the value retains the
-/// block and dropping it releases it, until unique ownership replaces the count. `cap == 0` marks
-/// a static string with no count to change; a dynamic string always has `cap >= 1`.
+/// A string is an owned value over immutable bytes: copying it allocates and copies the bytes,
+/// dropping it frees them. `cap == 0` marks a static string (a literal or a shared one-byte ASCII
+/// string) that is never freed; an owned string always has `cap >= 1`.
 #[repr(C)]
 pub struct StrVal {
     pub ptr: *mut u8,
@@ -95,21 +91,8 @@ pub const STR_LEN_OFFSET: usize = 8;
 pub const STR_CAP_OFFSET: usize = 16;
 pub const STR_SIZE: usize = 24;
 
-/// Header of the block that holds a string's bytes, placed immediately before them.
-#[repr(C)]
-pub struct StrHdr {
-    pub hdr: Obj,
-    /// Scalar count or [`SCALARS_UNKNOWN`]. Written lazily by `length()`.
-    pub scalars: usize,
-}
-/// Size of [`StrHdr`]: the distance from the block to the bytes.
-pub const STR_HDR_SIZE: usize = 24;
-/// Distance from the bytes to the reference count.
-pub const STR_RC_BEFORE: usize = 24;
-/// Distance from the bytes to the cached scalar count.
-pub const STR_SCALARS_BEFORE: usize = 8;
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
-pub const ASCII_CHAR_STRIDE: usize = 32;
+pub const ASCII_CHAR_STRIDE: usize = 2;
 
 /// `Optional[String]`: a presence byte, then the string at offset 8 (32 bytes).
 #[repr(C)]
@@ -441,12 +424,6 @@ mod tests {
         assert_eq!(offset_of!(StrVal, len), STR_LEN_OFFSET);
         assert_eq!(offset_of!(StrVal, cap), STR_CAP_OFFSET);
         assert_eq!(size_of::<StrVal>(), STR_SIZE);
-        assert_eq!(size_of::<StrHdr>(), STR_HDR_SIZE);
-        assert_eq!(offset_of!(Obj, rc) + STR_RC_BEFORE, STR_HDR_SIZE);
-        assert_eq!(
-            offset_of!(StrHdr, scalars) + STR_SCALARS_BEFORE,
-            STR_HDR_SIZE
-        );
         assert_eq!(offset_of!(OptStr, value), OPT_STR_VALUE_OFFSET);
         assert_eq!(size_of::<OptStr>(), OPT_STR_SIZE);
         assert_eq!(offset_of!(VecVal, ptr), VEC_PTR_OFFSET);

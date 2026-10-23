@@ -31,9 +31,9 @@ pub use ms_rt_abi::{
 
 unsafe extern "C" {
     fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_retain(o: *mut ms_rt_abi::Obj);
-    fn msrt_release(o: *mut ms_rt_abi::Obj);
     fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
+    fn msrt_string_clone(s: *const StrVal, out: *mut StrVal);
+    fn msrt_string_free(s: *const StrVal);
     fn msrt_list_new(out: *mut VecVal);
     fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
     static msrt_desc_string: TypeDesc;
@@ -104,22 +104,26 @@ pub unsafe fn str_ref<'a>(p: *const StrVal) -> &'a str {
     unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts((*p).ptr, (*p).len)) }
 }
 
-/// Adds a reference to the block that holds `s`'s bytes.
+/// A copy of `s` that the caller owns.
 ///
 /// # Safety
 /// `s` is a live string.
-pub unsafe fn str_retain(s: &StrVal) {
-    // SAFETY: the reference-counted header sits immediately before the bytes.
-    unsafe { msrt_retain(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
+pub unsafe fn str_clone(s: &StrVal) -> StrVal {
+    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+    // SAFETY: `s` is live; `out` is written by the call.
+    unsafe {
+        msrt_string_clone(s, out.as_mut_ptr());
+        out.assume_init()
+    }
 }
 
-/// Drops a reference to the block that holds `s`'s bytes.
+/// Frees an owned string.
 ///
 /// # Safety
-/// `s` is a live string the caller owns a reference to.
+/// `s` is a live string the caller owns and does not use afterwards.
 pub unsafe fn str_release(s: &StrVal) {
-    // SAFETY: the reference-counted header sits immediately before the bytes.
-    unsafe { msrt_release(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
+    // SAFETY: caller contract.
+    unsafe { msrt_string_free(s) }
 }
 
 /// Creates an owned runtime string (+1).

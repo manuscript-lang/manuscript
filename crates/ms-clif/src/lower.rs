@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::{ASCII_CHAR_STRIDE, STR_HDR_SIZE, STR_RC_BEFORE, STR_SCALARS_BEFORE};
+use ms_rt_abi::ASCII_CHAR_STRIDE;
 use std::collections::HashMap;
 
 type Vs = Vec<Value>;
@@ -321,11 +321,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             TyKind::Str => {
                 self.count_str(0, vs[2]);
-                // `cap == 0` marks a static (literal or one-byte ASCII) string: no count to change.
+                // `cap == 0` marks a static (literal or one-byte ASCII) string: nothing to free.
                 let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
                 self.if_then(owned, |s| {
-                    let block = s.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
-                    s.release(block);
+                    s.rt_call("msrt_str_free", &[vs[0]]);
                 });
             }
             TyKind::Fn(..) => self.release(vs[0]),
@@ -352,12 +351,30 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             TyKind::Str => {
                 self.count_str(1, vs[2]);
+                // A static string is shared; an owned one is duplicated.
                 let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
-                self.if_then(owned, |s| {
-                    let block = s.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));
-                    s.retain(block);
-                });
-                vs.to_vec()
+                let (dup, join) = (self.b.create_block(), self.b.create_block());
+                for _ in 0..3 {
+                    self.b.append_block_param(join, types::I64);
+                }
+                let same = [vs[0], vs[1], vs[2]].map(BlockArg::Value);
+                self.b.ins().brif(owned, dup, &[], join, &same);
+                self.b.switch_to_block(dup);
+                let p = self.rt_call("msrt_str_dup", &[vs[0], vs[1]])[0];
+                // `cap` is `max(len, 1)`: an owned string never has capacity 0.
+                let empty = self.b.ins().icmp_imm_s(IntCC::Equal, vs[1], 0);
+                let empty = self.b.ins().uextend(types::I64, empty);
+                let cap = self.b.ins().bor(vs[1], empty);
+                self.b.ins().jump(
+                    join,
+                    &[
+                        BlockArg::Value(p),
+                        BlockArg::Value(vs[1]),
+                        BlockArg::Value(cap),
+                    ],
+                );
+                self.b.switch_to_block(join);
+                self.b.block_params(join).to_vec()
             }
             TyKind::Fn(..) => {
                 self.retain(vs[0]);
@@ -1438,10 +1455,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             FaultKind::Message(s) => {
                 let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
-                let p = self
-                    .b
-                    .ins()
-                    .iadd_imm_s(base, crate::cg::STR_HDR_SIZE as i64);
+                let p = base;
                 let n = self.iconst(self.g.m.strings[s.index()].len() as i64);
                 self.rt_call("msrt_fault", &[p, n]);
             }
@@ -1500,7 +1514,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     self.str_lits.insert(r.index(), s.0);
                 }
                 let base = self.data_addr(d);
-                let ptr = self.b.ins().iadd_imm_s(base, STR_HDR_SIZE as i64);
+                let ptr = base;
                 let len = self.iconst(self.g.m.strings[s.0 as usize].len() as i64);
                 let cap = self.iconst(0);
                 vec![ptr, len, cap]
@@ -1913,37 +1927,19 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.rt_data("msrt_ascii_chars");
                 let base = self.data_addr(d);
                 let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
-                let block = self.b.ins().iadd(base, off);
-                let ptr = self.b.ins().iadd_imm_s(block, STR_HDR_SIZE as i64);
+                let ptr = self.b.ins().iadd(base, off);
                 let len = self.iconst(1);
                 let cap = self.iconst(0);
                 vec![ptr, len, cap]
             }
             Op::StrLen => {
-                // Scalar count: cached in the object, else computed (and cached) by the runtime.
+                // Scalar count: computed by the runtime (long strings are remembered there).
                 let s = self.a(inst, 0);
-                let p = s[0];
-                let n = self
-                    .b
-                    .ins()
-                    .load(types::I64, flags(), p, -(STR_SCALARS_BEFORE as i32));
-                let unknown = self.b.ins().icmp_imm_s(IntCC::Equal, n, -1);
-                let join = self.b.create_block();
-                self.b.append_block_param(join, types::I64);
-                let slow = self.b.create_block();
-                self.b.set_cold_block(slow);
-                self.b
-                    .ins()
-                    .brif(unknown, slow, &[], join, &[BlockArg::Value(n)]);
-                self.b.switch_to_block(slow);
                 let at = match self.home_of(inst.args[0]) {
                     Some(h) => h.addr,
                     None => self.spill(&s, &[Leaf::I64; 3]),
                 };
-                let c = self.rt_call("msrt_string_length", &[at])[0];
-                self.b.ins().jump(join, &[BlockArg::Value(c)]);
-                self.b.switch_to_block(join);
-                vec![self.b.block_params(join)[0]]
+                vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
             Op::SharedNew => {
                 let t = self.g.m.types.kind(res_ty.expect("result")).clone();

@@ -734,8 +734,7 @@ impl AbiSlot for Str {
     }
     unsafe fn duplicate(&self) -> Str {
         // SAFETY: caller contract.
-        unsafe { crate::str_retain(&self.0) };
-        Str(self.0.alias())
+        Str(unsafe { crate::str_clone(&self.0) })
     }
 }
 

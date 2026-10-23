@@ -1,9 +1,11 @@
-//! `String`: immutable, reference-counted UTF-8 text with scalar-indexed operations.
+//! `String`: immutable UTF-8 text with scalar-indexed operations.
 //!
-//! The value is a [`StrVal`] (`{ ptr, len, cap }`, see `ms-rt-abi`): `ptr` points at the bytes
-//! and a [`StrHdr`] (count, drop entry, cached scalar count) sits in front of them, followed by one
-//! NUL after the bytes. Language level indices and lengths count Unicode scalars. A string whose
-//! scalar count equals its byte length is ASCII, which every indexing operation exploits.
+//! The value is a [`StrVal`] (`{ ptr, len, cap }`, see `ms-rt-abi`): `ptr` points at the bytes,
+//! which are followed by one NUL. An owned string (`cap >= 1`) is a single allocation that
+//! copying duplicates and dropping frees; a static one (`cap == 0`) is never freed. Language level
+//! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
+//! is ASCII, which every indexing operation exploits (the count of a long string is cached for
+//! the string last measured, see [`Hint`]).
 use crate::alloc;
 use crate::fault;
 use crate::global::Global;
@@ -11,8 +13,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, OptStr, SCALARS_UNKNOWN, STATIC_RC, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
-    STATUS_OK, STATUS_OUT_OF_RANGE, STR_HDR_SIZE, StrHdr, StrVal, VecVal,
+    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
+    VecVal,
 };
 
 /// Native allocation ceiling for built strings.
@@ -28,111 +30,111 @@ pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
     unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len) }
 }
 
-/// The header of the block that holds `s`'s bytes.
+/// A copy of `s` that the caller owns: a static string is shared, an owned one is duplicated.
 ///
 /// # Safety
 /// `s` must be a live string.
 #[inline(always)]
-pub unsafe fn hdr(s: *const StrVal) -> *mut StrHdr {
-    // SAFETY: the header sits immediately before the bytes.
-    unsafe { (*s).ptr.sub(STR_HDR_SIZE) as *mut StrHdr }
+pub unsafe fn cloned(s: &StrVal) -> StrVal {
+    if s.cap == 0 {
+        return s.alias();
+    }
+    // SAFETY: `s` is live and owned, so `ptr..ptr+len` is readable.
+    unsafe { owned_copy(bytes(s)) }
 }
 
-/// Adds a reference to the block of `s` and returns the same value.
-///
-/// # Safety
-/// `s` must be a live string.
-#[inline(always)]
-pub unsafe fn retained(s: &StrVal) -> StrVal {
-    // SAFETY: live block per the contract. `cap == 0` marks a static string: no count to change.
-    unsafe {
-        if s.cap != 0 {
-            obj::retain(hdr(s) as *mut Obj)
-        }
-    };
-    s.alias()
+/// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
+    // SAFETY: caller passes a live string and a writable `out`.
+    unsafe { cloned(&*s).write_to(out) }
 }
 
-/// Drops a reference to the block of `s`.
+/// Frees an owned string's bytes (the drop compiled code calls when `cap != 0`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
+    // SAFETY: `ptr` is the start of an owned string.
+    unsafe { free_owned(ptr) }
+}
+
+/// Copies `len` bytes at `ptr` into a new allocation with a NUL (the copy of an owned string).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_str_dup(ptr: *const u8, len: usize) -> *mut u8 {
+    // SAFETY: `ptr..ptr+len` is readable.
+    unsafe { owned_copy(core::slice::from_raw_parts(ptr, len)).ptr }
+}
+
+/// Frees an owned string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_free(s: *const StrVal) {
+    // SAFETY: caller owns `s`.
+    unsafe { release(&*s) }
+}
+
+#[inline(never)]
+fn owned_copy(data: &[u8]) -> StrVal {
+    let s = alloc_str(data.len());
+    // SAFETY: `s` has room for `len` bytes.
+    unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr, data.len()) };
+    s
+}
+
+/// Frees the bytes of `s` when it is owned.
 ///
 /// # Safety
-/// `s` must be a live string the caller owns a reference to.
+/// `s` must be a live string that the caller owns and does not use afterwards.
 #[inline(always)]
 pub unsafe fn release(s: &StrVal) {
-    // SAFETY: live block per the contract.
-    unsafe {
-        if s.cap != 0 {
-            obj::release(hdr(s) as *mut Obj)
-        }
+    if s.cap != 0 {
+        // SAFETY: an owned string is one allocation starting at `ptr`.
+        unsafe { free_owned(s.ptr) }
     }
 }
 
-unsafe extern "C" fn string_drop(o: *mut Obj) {
-    // SAFETY: `o` is a dead string block with a hint possibly pointing at its bytes.
+#[inline(never)]
+unsafe fn free_owned(ptr: *mut u8) {
+    // SAFETY: `ptr` came from `alloc_str`; the hint may name its bytes.
     unsafe {
         let h = HINT.ptr();
-        if (*h).s == (o as *const u8).add(STR_HDR_SIZE) {
+        if core::ptr::eq((*h).s, ptr) {
             (*h).s = core::ptr::null();
         }
-        alloc::free(o as *mut u8);
+        alloc::free(ptr);
     }
 }
 
-/// Allocates an uninitialised string of `len` bytes (rc 1, NUL terminated).
+/// Allocates an uninitialised string of `len` bytes (NUL terminated).
 pub fn alloc_str(len: usize) -> StrVal {
     if len > MAX_BYTES {
         fault::fault(b"string: limit exceeded");
     }
-    // SAFETY: header size plus payload plus NUL.
-    unsafe {
-        let o = obj::new_obj(STR_HDR_SIZE + len + 1, string_drop) as *mut StrHdr;
-        (*o).scalars = SCALARS_UNKNOWN;
-        let ptr = (o as *mut u8).add(STR_HDR_SIZE);
-        *ptr.add(len) = 0;
-        // Never 0: compiled code reads `cap == 0` as "static string, no count to change".
-        StrVal {
-            ptr,
-            len,
-            cap: len.max(1),
-        }
+    let ptr = alloc::alloc(len + 1);
+    // SAFETY: the allocation holds `len + 1` bytes.
+    unsafe { *ptr.add(len) = 0 };
+    // Never 0: compiled code reads `cap == 0` as "static string, never freed".
+    StrVal {
+        ptr,
+        len,
+        cap: len.max(1),
     }
 }
 
-#[repr(C)]
-struct Lit<const N: usize> {
-    hdr: Obj,
-    scalars: usize,
-    data: [u8; N],
-}
+static mut EMPTY: [u8; 1] = [0];
 
-const fn lit<const N: usize>(bytes: [u8; N], len: usize) -> Lit<N> {
-    Lit {
-        hdr: Obj {
-            rc: STATIC_RC,
-            drop: Some(string_drop),
-        },
-        scalars: len,
-        data: bytes,
-    }
-}
-
-static mut EMPTY: Lit<1> = lit([0], 0);
-
-const fn build_ascii() -> [Lit<2>; 128] {
-    let mut t = [const { lit([0, 0], 1) }; 128];
+const fn build_ascii() -> [[u8; 2]; 128] {
+    let mut t = [[0u8; 2]; 128];
     let mut i = 0;
     while i < 128 {
-        t[i] = lit([i as u8, 0], 1);
+        t[i] = [i as u8, 0];
         i += 1;
     }
     t
 }
 
 #[unsafe(export_name = "msrt_ascii_chars")]
-static mut ASCII: [Lit<2>; 128] = build_ascii();
+static mut ASCII: [[u8; 2]; 128] = build_ascii();
 
-const _: () = assert!(core::mem::size_of::<Lit<2>>() == ms_rt_abi::ASCII_CHAR_STRIDE);
-const _: () = assert!(core::mem::offset_of!(Lit<2>, data) == STR_HDR_SIZE);
+const _: () = assert!(core::mem::size_of::<[u8; 2]>() == ms_rt_abi::ASCII_CHAR_STRIDE);
 
 /// The null string: no bytes and no block, what an unwritten message slot holds.
 pub const NO_STR: StrVal = StrVal {
@@ -154,13 +156,10 @@ pub unsafe fn release_opt(s: &StrVal) {
 
 /// The static empty string (a literal: no ownership to give back).
 pub fn empty() -> StrVal {
-    // SAFETY: the static lives forever; counts on it are harmless.
-    unsafe {
-        StrVal {
-            ptr: core::ptr::addr_of_mut!(EMPTY.data) as *mut u8,
-            len: 0,
-            cap: 0,
-        }
+    StrVal {
+        ptr: core::ptr::addr_of_mut!(EMPTY) as *mut u8,
+        len: 0,
+        cap: 0,
     }
 }
 
@@ -175,7 +174,7 @@ fn ascii_char(b: u8) -> StrVal {
     // SAFETY: as above.
     unsafe {
         StrVal {
-            ptr: core::ptr::addr_of_mut!(ASCII[b as usize].data) as *mut u8,
+            ptr: core::ptr::addr_of_mut!(ASCII[b as usize]) as *mut u8,
             len: 1,
             cap: 0,
         }
@@ -228,32 +227,49 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 // Scalar shape and indexing
 // ---------------------------------------------------------------------------
 
-/// Scalar count, computed once per string object.
+/// Scalar count. A string of `HINT_MIN` bytes or more remembers its count in [`HINT`] while it is
+/// the one last measured, so loops over one long string do not rescan it.
 ///
 /// # Safety
 /// `s` must be live.
 #[inline]
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
-    // SAFETY: `scalars` is a lazily written cache of a pure function of the bytes.
+    // SAFETY: the hint is cleared when its string is freed.
     unsafe {
-        let n = (*hdr(s)).scalars;
-        if n != SCALARS_UNKNOWN {
-            return n;
+        let b = bytes(s);
+        if b.len() < HINT_MIN {
+            return utf8::count(b);
         }
-        let n = utf8::count(bytes(s));
-        (*hdr(s)).scalars = n;
+        let h = HINT.ptr();
+        if core::ptr::eq((*h).s, (*s).ptr) && (*h).len == b.len() && (*h).count != usize::MAX {
+            return (*h).count;
+        }
+        let n = utf8::count(b);
+        *h = Hint {
+            s: (*s).ptr,
+            len: b.len(),
+            count: n,
+            scalar: 0,
+            offset: 0,
+        };
         n
     }
 }
 
 struct Hint {
-    /// Bytes of the string the position belongs to.
+    /// Bytes of the string the figures belong to.
     s: *const u8,
+    len: usize,
+    /// Scalar count of the string, or `usize::MAX` when not counted.
+    count: usize,
+    /// A remembered position: scalar index and its byte offset.
     scalar: usize,
     offset: usize,
 }
 static HINT: Global<Hint> = Global::new(Hint {
     s: core::ptr::null(),
+    len: 0,
+    count: usize::MAX,
     scalar: 0,
     offset: 0,
 });
@@ -281,11 +297,13 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
             off -= utf8::decode_last(&b[..off]).1;
             sc -= 1;
         }
-        *h = Hint {
-            s: (*s).ptr,
-            scalar: sc,
-            offset: off,
-        };
+        if !core::ptr::eq((*h).s, (*s).ptr) || (*h).len != b.len() {
+            (*h).count = usize::MAX;
+        }
+        (*h).s = (*s).ptr;
+        (*h).len = b.len();
+        (*h).scalar = sc;
+        (*h).offset = off;
         off
     }
 }
@@ -296,15 +314,13 @@ unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
     unsafe {
         let text = bytes(s);
         if a == 0 && b == scalar_count(s) {
-            return retained(&*s);
+            return cloned(&*s);
         }
-        if (*hdr(s)).scalars == text.len() {
+        if scalar_count(s) == text.len() {
             return from_bytes(&text[a..b]);
         }
         let (ao, bo) = (scalar_offset(s, a), scalar_offset(s, b));
-        let out = from_bytes(&text[ao..bo]);
-        (*hdr(&out)).scalars = b - a;
-        out
+        from_bytes(&text[ao..bo])
     }
 }
 
@@ -372,10 +388,10 @@ unsafe fn string_get(
             if !has_default {
                 fault::msrt_index_fault(index, n as i64);
             }
-            return retained(&*default);
+            return cloned(&*default);
         };
         let text = bytes(s);
-        if (*hdr(s)).scalars == text.len() {
+        if scalar_count(s) == text.len() {
             return from_bytes(&text[i..i + 1]);
         }
         let off = scalar_offset(s, i);
@@ -405,7 +421,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
             return default;
         };
         let text = bytes(s);
-        if (*hdr(s)).scalars == text.len() {
+        if scalar_count(s) == text.len() {
             return text[i] as i64;
         }
         utf8::decode(&text[scalar_offset(s, i)..]).0 as i64
@@ -432,9 +448,25 @@ pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
             return false;
         }
         let (x, y) = (bytes(a), bytes(b));
-        if n <= 8 {
-            // Short keys and one-character comparisons: skip the memcmp call.
+        if n < 4 {
+            // One-character comparisons and tiny keys: skip the memcmp call.
             return (0..n).all(|i| *x.get_unchecked(i) == *y.get_unchecked(i));
+        }
+        if n <= 8 {
+            // Two overlapping words cover 4..=8 bytes.
+            let (p, q) = (x.as_ptr(), y.as_ptr());
+            let head = (p as *const u32).read_unaligned() == (q as *const u32).read_unaligned();
+            let tail = (p.add(n - 4) as *const u32).read_unaligned()
+                == (q.add(n - 4) as *const u32).read_unaligned();
+            return head && tail;
+        }
+        if n <= 16 {
+            // Two overlapping words cover 9..=16 bytes.
+            let (p, q) = (x.as_ptr(), y.as_ptr());
+            let head = (p as *const u64).read_unaligned() == (q as *const u64).read_unaligned();
+            let tail = (p.add(n - 8) as *const u64).read_unaligned()
+                == (q.add(n - 8) as *const u64).read_unaligned();
+            return head && tail;
         }
         x == y
     }
@@ -681,18 +713,14 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
     unsafe {
         let (la, lb) = ((*a).len, (*b).len);
         if lb == 0 {
-            return retained(&*a);
+            return cloned(&*a);
         }
         if la == 0 {
-            return retained(&*b);
+            return cloned(&*b);
         }
         let s = alloc_str(la + lb);
         core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr, la);
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr.add(la), lb);
-        let (sa, sb) = ((*hdr(a)).scalars, (*hdr(b)).scalars);
-        if sa != SCALARS_UNKNOWN && sb != SCALARS_UNKNOWN {
-            (*hdr(&s)).scalars = sa + sb;
-        }
         s
     }
 }
@@ -810,7 +838,7 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
         let text = bytes(s);
         let (a, b) = trim_range(text, start, end);
         if a == 0 && b == text.len() {
-            retained(&*s)
+            cloned(&*s)
         } else {
             from_bytes(&text[a..b])
         }
@@ -1198,7 +1226,7 @@ unsafe fn pad(
         let needed = target - scalar_count(s) as i64;
         let padb = bytes(padding);
         if needed <= 0 || padb.is_empty() {
-            *out = retained(&*s);
+            *out = cloned(&*s);
             return STATUS_OK;
         }
         let needed = needed as usize;
@@ -1343,7 +1371,7 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
             // or counting references (static objects have a huge count).
             let n = text.len();
             let p = alloc::alloc(n * ELEM) as *mut StrVal;
-            let base = (core::ptr::addr_of_mut!(ASCII) as *mut u8).add(STR_HDR_SIZE);
+            let base = core::ptr::addr_of_mut!(ASCII) as *mut u8;
             for (k, &b) in text.iter().enumerate() {
                 let q = p.add(k);
                 (*q).ptr = base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE);
@@ -1479,8 +1507,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 
 /// The state of `for piece in text.split(separator)` that does not build the list.
 ///
-/// The piece handed to the loop is owned by the iterator and rewritten in place for the
-/// next one when nothing else holds it (rc 1); a body that kept the piece gets a fresh one.
+/// The piece handed to the loop is owned by the iterator and lent to the body, which copies it
+/// to keep it; the iterator rewrites it in place for the next one.
 #[repr(C)]
 pub struct SplitIter {
     hdr: Obj,
@@ -1527,8 +1555,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
             left = max as usize;
         }
         let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
-        (*it).src = retained(&*s);
-        (*it).sep = retained(&*sep);
+        (*it).src = cloned(&*s);
+        (*it).sep = cloned(&*sep);
         (*it).cur = NO_STR;
         (*it).cap = 0;
         (*it).pos = 0;
@@ -1538,20 +1566,19 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
     }
 }
 
-/// Makes the next piece current and writes a counted reference to it to `out`; absent when the
-/// pieces are used up. The loop releases its reference before asking for the next piece, so a
-/// count of one then means the body kept nothing.
+/// Makes the next piece current and writes a borrow of it to `out` (the iterator owns the bytes
+/// until the next call); returns 0 when the pieces are used up.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut OptStr) {
+pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 {
     // SAFETY: caller passes a live iterator and a writable `out`.
     unsafe {
-        out.write(match split_next(it) {
-            Some(value) => OptStr { present: 1, value },
-            None => OptStr {
-                present: 0,
-                value: NO_STR,
-            },
-        })
+        match split_next(it) {
+            Some(value) => {
+                value.write_to(out);
+                1
+            }
+            None => 0,
+        }
     }
 }
 
@@ -1593,7 +1620,7 @@ unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
         };
         st.left -= 1;
         set_piece(st, piece);
-        Some(retained(&st.cur))
+        Some(st.cur.alias())
     }
 }
 
@@ -1636,14 +1663,13 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
             st.cur = from_bytes(piece);
             return;
         }
-        if st.cap >= piece.len() && !st.cur.ptr.is_null() && (*hdr(&st.cur)).hdr.rc == 1 {
-            // Nothing else holds it: rewrite in place.
+        if st.cap >= piece.len() && !st.cur.ptr.is_null() && st.cur.cap != 0 {
+            // The loop only borrows the piece: rewrite it in place.
             let h = HINT.ptr();
             if core::ptr::eq((*h).s, st.cur.ptr) {
                 (*h).s = core::ptr::null();
             }
             st.cur.len = piece.len();
-            (*hdr(&st.cur)).scalars = SCALARS_UNKNOWN;
             copy_short(piece.as_ptr(), st.cur.ptr, piece.len());
             *st.cur.ptr.add(piece.len()) = 0;
             return;

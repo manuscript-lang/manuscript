@@ -734,16 +734,16 @@ impl<'a> FnLower<'a> {
         self.b.br(header, &[]);
         self.enter(header);
         let iter = self.b.use_var(var);
-        let opt = self.b.m.types.opt(MTy::STR);
-        let piece = self.call_runtime("msrt_split_next", &[iter], opt)?;
-        let more = self.b.opt_is_some(piece);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        let more = self.call_runtime("msrt_split_next", &[iter, slot], MTy::BOOL)?;
         self.b.br_if(more, body_b, &[], done, &[]);
         self.b.seal_block(body_b);
         self.b.seal_block(done);
-        // The runtime hands out a counted reference to the piece; the end of the pieces is
-        // a null that still has to be released.
+        // The piece is a borrow of the iterator's buffer, valid until the next call.
         self.enter(done);
-        self.drop_value(piece);
         self.b.br(exit, &[]);
         self.enter(body_b);
         let depth = self.scopes.len();
@@ -755,14 +755,15 @@ impl<'a> FnLower<'a> {
             brk_used: false,
         });
         self.push_scope();
-        // The scope releases the counted piece on every way out of the body.
-        let held = self.bind_hidden(Val {
-            v: piece,
-            own: true,
-        });
-        let piece = self.b.use_var(held);
-        let e = self.b.opt_get(piece);
-        self.bind_local(loop_var, Val { v: e, own: false });
+        let e = self
+            .b
+            .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+            .expect("load");
+        if !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+            self.bind_lent(loop_var, e);
+        } else {
+            self.bind_local(loop_var, Val { v: e, own: false });
+        }
         self.stmts(body)?;
         self.pop_scope();
         self.loops.pop();
