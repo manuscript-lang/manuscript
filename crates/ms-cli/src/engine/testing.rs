@@ -386,11 +386,9 @@ impl Runner<'_> {
             out.line(format!("{} tests, {failed} failed", plan.len()));
         }
         document.finish(&reason, started.elapsed());
-        if reason == "cancelled" && failed == 0 {
-            1
-        } else {
-            failed
-        }
+        // Failure counts belong in the summary, not the process status: on Unix
+        // 256 failed tests would otherwise wrap to a successful exit status.
+        i32::from(failed > 0 || reason == "cancelled")
     }
 
     /// Run test `index` in its own process.
@@ -780,7 +778,7 @@ esac
     #[test]
     fn each_test_runs_in_its_own_process() {
         let (status, text, document) = run_script(&["--timeout=3s"]);
-        assert_eq!(status, 3, "failed + crashed + timed out: {text}");
+        assert_eq!(status, 1, "failed + crashed + timed out: {text}");
         let expected = [
             "RUN m::pass\nhello from pass\nPASS m::pass\n",
             "RUN m::fail\nFAIL m::fail: boom\n  at src/a.ms:3:4 in m::fail\n",
@@ -791,8 +789,18 @@ esac
         assert_eq!(text, expected.concat());
         let statuses: Vec<_> = document.tests.iter().map(|t| t.status.as_str()).collect();
         assert_eq!(statuses, ["passed", "failed", "failed", "failed"]);
+        assert_eq!(document.count(Status::Failed), 3);
         let json = document.to_json().pretty_line(ms_json::Escape::GoHtml);
         assert!(json.contains("\"position\""), "{json}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failure_count_cannot_wrap_to_a_successful_exit() {
+        let (status, text, document) = run_script(&["--test=m::fail", "--repeat=256"]);
+        assert_eq!(status, 1, "256 failures must not become exit status zero");
+        assert_eq!(document.count(Status::Failed), 256);
+        assert!(text.ends_with("256 tests, 256 failed\n"), "{text}");
     }
 
     #[cfg(unix)]
