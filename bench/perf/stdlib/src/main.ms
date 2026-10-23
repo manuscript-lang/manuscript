@@ -12,7 +12,7 @@ import {bench_toml} from "./tomlbench.ms"
 import {bench_html} from "./htmlbench.ms"
 import {bench_numbers} from "./numbers.ms"
 import {bench_host} from "./hostbench.ms"
-import {bench_fs} from "./fsbench.ms"
+import {bench_fs} .clone()from "./fsbench.ms"
 
 # Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`.
 # Run with bench/perf/stdlib-bench.sh. Add a case with one `bench(...)` call in the matching module file.

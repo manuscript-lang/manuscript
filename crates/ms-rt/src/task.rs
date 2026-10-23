@@ -752,7 +752,7 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
     }
 }
 
-/// Hook run by a task just before it parks in `msrt_task_wait_fd` or `msrt_task_sleep`; zero
+/// Hook run by a task just before it parks (on a descriptor, a timer, a token or a join); zero
 /// when none is installed. Single threaded like the scheduler.
 static PREPARK: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
 
@@ -776,7 +776,6 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }
-        before_park();
         let mut s = sched();
         if fd >= 0 {
             let fd_idx = fd as usize;
@@ -797,6 +796,8 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             s.fd_waiting += 1;
             (*cur).wait_fd = fd;
         }
+        // After the check above, so a file that is always ready does not count as a park.
+        before_park();
         (*cur).wait_events = events;
         set_deadline(cur, timeout_ns);
         (*cur).state = State::Waiting;
@@ -923,6 +924,10 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut S
             if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
                 return 2;
             }
+            before_park();
+        }
+        // The hook can run other code; look again.
+        if (*t).state != State::Done {
             (*t).joiner = (*cur).handle;
             (*cur).wait_events = 0;
             (*cur).state = State::Waiting;
@@ -1253,6 +1258,41 @@ mod tests {
             assert_eq!(msrt_task_join(fast, null_mut()), 0);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[5, 20]);
             assert_eq!(msrt_task_count(), 1);
+        }
+        reset_for_tests();
+    }
+
+    unsafe extern "C-unwind" fn hook() {
+        note(7);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn the_prepark_hook_runs_before_each_park_and_only_then() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_task_set_prepark(Some(hook));
+            let a = msrt_task_spawn(counter, core::ptr::without_provenance_mut(1), 0, 0);
+            // The join parks: the hook runs first. Each yield is not a park.
+            assert_eq!(msrt_task_join(a, null_mut()), 0);
+            let b = msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(1), 0, 0);
+            msrt_task_yield();
+            // `b` parked in its sleep; it has not finished, so this join parks too.
+            assert_eq!(msrt_task_join(b, null_mut()), 0);
+            let c = msrt_task_spawn(counter, core::ptr::without_provenance_mut(2), 0, 0);
+            for _ in 0..4 {
+                msrt_task_yield();
+            }
+            // `c` is done: joining it does not park.
+            assert_eq!(msrt_task_join(c, null_mut()), 0);
+            msrt_task_set_prepark(None);
+            assert_eq!(
+                &(&(*LOG.ptr()))[..*LOG_N.ptr()],
+                &[7, 10, 11, 12, 7, 7, 1, 20, 21, 22]
+            );
         }
         reset_for_tests();
     }

@@ -25,12 +25,12 @@ test "HTTP response bodies decode as SSE without being closed by the reader":
                 HttpMethod.Get, "http://{server.address()}/", headers()
             ):
                 let events = try reader(borrow_body(response))
-                let first = (try next_event(events)).get()
-                let second = (try next_event(events)).get()
+                let first = (try next_event(var events)).get()
+                let second = (try next_event(var events)).get()
                 if first.event != "greet" or first.data != "h\u{e9}!": return fail(
                     "first event {first.data}"
                 )
 
                 try expect_false(second.event != "message" or second.data != "second")
-                try expect_false((try next_event(events)).is_some())
+                try expect_false((try next_event(var events)).is_some())
                 try expect_equal(response.metadata().status, 200)

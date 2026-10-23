@@ -78,7 +78,7 @@ fn exercise() Result[Unit, Error]:
     ):
         let client_options = HttpClientOptions(
             max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
-            idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls
+            idle_timeout: 10.seconds, decompress: true, cookies: true, tls: tls.clone()
         )
 
         with client = try network().http_client(options: client_options):

@@ -6,6 +6,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
+use crate::rtcall::Input;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::Var;
@@ -16,6 +17,17 @@ use ms_syntax::ast::{BinaryOp, Expr, ExprKind, MapEntry};
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
     matches!(m.types.kind(t), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+}
+
+/// `x` of `x.clone()`.
+fn clone_receiver(e: &Expr) -> Option<&Expr> {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return None;
+    };
+    let ExprKind::Member { left, name } = &callee.kind else {
+        return None;
+    };
+    (name.as_str() == "clone" && args.is_empty()).then_some(&**left)
 }
 
 impl<'a> FnLower<'a> {
@@ -42,6 +54,9 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
+        // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
+        // is absent, so the runtime makes it then and the lookup borrows `w`.
+        let key = clone_receiver(key).unwrap_or(key);
         let ExprKind::Binary { op, left, right } = &value.kind else {
             return Ok(None);
         };
@@ -77,7 +92,7 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(Some(k));
         }
-        let k = self.owned(k);
+        let k = self.borrow(k);
         let x = self.expr(other)?;
         if self.dead {
             return Ok(Some(x));
@@ -89,9 +104,9 @@ impl<'a> FnLower<'a> {
         let at = e.pos;
         self.place_update(recv_expr, &mut |s, old| {
             let slot = s.put_slot(old);
-            let ks = s.put_slot(k);
+            let ks = s.lend_slot(k);
             let ds = s.put_slot(d.v);
-            let p = s.call_runtime("msrt_map_slot", &[slot, kd, vd, ks, ds], MTy::PTR)?;
+            let p = s.call_runtime("msrt_map_slot_lent", &[slot, kd, vd, ks, ds], MTy::PTR)?;
             let cur =
                 s.b.emit(Op::Load, &[p], Imm::Ty(MTy::INT), Some(MTy::INT))
                     .expect("load");
@@ -200,12 +215,29 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(ty));
         }
+        let wrapped = view
+            .arguments
+            .first()
+            .is_some_and(|a| a.wrap_optional.is_some());
         match (self.b.m.types.kind(ty).clone(), arg) {
             (TyKind::List(elem), None) => {
                 let v = self.b.list_lit(elem, &[]);
                 Ok(Val { v, own: true })
             }
-            (TyKind::List(_), Some(x)) => Ok(x),
+            // `List[T](reserve: n)`: an empty list with room for `n` items.
+            (TyKind::List(elem), Some(n)) => {
+                let input = Input {
+                    val: Some(n),
+                    wrapped,
+                };
+                let (has, n) = self.flatten_optional(input, "i64")?;
+                let zero = self.b.iconst(0);
+                let neg = self.b.icmp(Cc::Lt, n, zero);
+                let floor = self.b.select(neg, zero, n);
+                let cap = self.b.select(has, floor, zero);
+                let v = self.b.list_new(elem, cap);
+                Ok(Val { v, own: true })
+            }
             (TyKind::Bytes, Some(values)) if self.ty_of(values.v) != MTy::BYTES => {
                 let v = self.borrow(values);
                 let out = self.call_runtime("msrt_bytes_from_values", &[v], ty)?;

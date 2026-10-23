@@ -26,7 +26,7 @@ export fn main() Int:
     say("fact(12) = {fact(12)}")
     let s6 = ("back\\slash" + s5)
     say("s6 = [{s6}]")
-    let s7 = s5
+    let s7 = s5.clone()
     say("s7 = [{s7}]")
     let s8 = ("Tab\there" + s5)
     say("s8 = [{s8}]")

@@ -7,11 +7,11 @@ use std::collections::HashSet;
 /// How values of a type are passed around.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
-    /// Duplicated implicitly: scalars, immutable strings, records of those,
+    /// Duplicated implicitly: scalars, records of those,
     /// and handle types whose identity is shared (`Shared[T]`, native handles).
     Copy,
-    /// One owner. Moves at its last use into a consuming position; `.copy()`
-    /// duplicates it explicitly. Lists, maps, sets, bytes, records and
+    /// One owner. Moves at its last use into a consuming position; `.clone()`
+    /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
     /// alternatives holding any of those, recursive types, closures,
     /// interface values and unconstrained type parameters.
     Move,
@@ -43,6 +43,7 @@ impl Classifier {
 
     fn class_in(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
         match t.kind {
+            Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive => Class::Copy,
             Kind::Variable => {
                 if t.bounds().iter().any(|b| b.is_std("Closeable")) {

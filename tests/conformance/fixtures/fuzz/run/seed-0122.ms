@@ -24,7 +24,7 @@ export fn main() Int:
     say("l1 = {l1} len {l1.length()}")
     let s2 = "line\nbreak"
     say("s2 = [{s2}]")
-    let s3 = s2
+    let s3 = s2.clone()
     say("s3 = [{s3}]")
     say("collatz(955) = {collatz(955)}")
     let l4 = l1.drop(1)

@@ -3,7 +3,7 @@ import {expect_true} from "@std/testing.ms"
 fn lookup(m: Map[Int, String], key: Int) String:
     match m.get(key: key):
         some(v):
-            return v
+            return v.clone()
         none:
             return "missing"
 

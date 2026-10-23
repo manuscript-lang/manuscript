@@ -50,7 +50,7 @@ test "UDP loopback preserves datagram data and sender":
 
 test "network restriction denies admission and close rejects acquisitions":
     let restricted = try network().restrict([], [], allow_listen: false)
-    with scoped = restricted:
+    with scoped = restricted.clone():
         try expect_false(
             (
                 (

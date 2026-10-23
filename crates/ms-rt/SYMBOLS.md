@@ -63,6 +63,7 @@ msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
 msrt_map_add( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_slot( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, default: *mut u8, ) -> *mut u8
+msrt_map_slot_lent( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, default: *mut u8, ) -> *mut u8
 msrt_map_add_default( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_remove( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, )
 msrt_map_contains( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
@@ -661,6 +662,12 @@ msstd_random_draw_free(d: *mut Draw)
 msrt_regex_compile(pattern: *const StrObj, out: *mut *mut RegexObj) -> u8
 msrt_regex_matches(re: *const RegexObj, text: *const StrObj) -> u8
 msrt_regex_find_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msrt_regex_captures( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, ) -> u8
+msrt_regex_captures_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msrt_regex_named_captures( re: *const RegexObj, text: *const StrObj, out: *mut MapVal, ) -> u8
+msrt_regex_find_span( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, ) -> u8
+msrt_regex_split( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msrt_regex_replace_template( re: *const RegexObj, text: *const StrObj, template: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
 msrt_regex_replace_all( re: *const RegexObj, text: *const StrObj, replacement: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
 msrt_semver_parse(text: *const StrObj, out: *mut VersionRec) -> u8
 msrt_semver_format(v: *const VersionRec) -> *mut StrObj

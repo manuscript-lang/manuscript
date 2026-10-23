@@ -160,7 +160,7 @@ test "Map find returns fresh entry shells with copied payloads":
     let found = locate(
         values.clone(),
         fn(k, v):
-            visits.append(k)
+            visits.append(k.clone())
             return k == "a"
     ).get()
     (visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | try expect_false
@@ -283,7 +283,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
         initial.clone(),
         fn(acc, v):
             var next = acc
-            next.append(v.label)
+            next.append(v.label.clone())
             return next
     )
     visits | try expect_equal(expected: ["b", "a", "c"])

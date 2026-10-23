@@ -35,7 +35,7 @@ export fn main() Int:
     say("s4 = [{s4}]")
     let f5 = (((639.509 * 0.0) + 909.373) / ((996.741 * 6.0e17) + (1.5 * 4.5)))
     say("f5 = {f5}")
-    let s6 = s4
+    let s6 = s4.clone()
     say("s6 = [{s6}]")
     let i7 = i3
     say("i7 = {i7}")

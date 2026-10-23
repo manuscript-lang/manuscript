@@ -7,6 +7,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use crate::native::NArg;
 use crate::streamloop::{case, method};
 use ms_check::hir::CallView;
 use ms_mir::ir::{Cc, Mode, Value};
@@ -30,6 +31,22 @@ impl FnLower<'_> {
         view: &CallView<'_>,
         native: &str,
     ) -> Result<Val, Error> {
+        let args = self.native_args(view)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::UNIT));
+        }
+        let result = self.emty(e)?;
+        self.at(e.pos);
+        self.random_with(native, &args, result)
+    }
+
+    /// `random.<native>` on evaluated arguments.
+    pub(crate) fn random_with(
+        &mut self,
+        native: &str,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
         let op = match native {
             "random/secure_int" => Op::Int,
             "random/uuid_v4" => Op::Uuid,
@@ -37,13 +54,8 @@ impl FnLower<'_> {
             "random/shuffle" => Op::Shuffle,
             _ => Op::Choice,
         };
-        let args = self.native_args(view)?;
-        if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
-        }
         let find = |name: &str| args.iter().find(|a| a.name.as_str() == name).copied();
         let need = |name: &str| find(name).ok_or_else(|| Error::new(format!("missing {name}")));
-        let result = self.emty(e)?;
         let entropy = need("entropy")?;
         let entropy = self.borrow(entropy.val);
         let list = match op {
@@ -62,7 +74,6 @@ impl FnLower<'_> {
             }
             Op::Uuid | Op::Float => (self.b.iconst(0), self.b.bconst(false), self.b.iconst(0)),
         };
-        self.at(e.pos);
         self.random_draw(op, entropy, list, [a, has, b], result)
     }
 

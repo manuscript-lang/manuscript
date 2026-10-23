@@ -31,7 +31,7 @@ export fn main() Int:
     say("f9 = {f9}")
     let l10 = l4.sorted(fn(a, b): a.compare(b))
     say("l10 = {l10} len {l10.length()}")
-    let s11 = s6
+    let s11 = s6.clone()
     say("s11 = [{s11}]")
     say("{((47 * (-572545)) - ((-569457) + i5))} {(-10)} {(((47 * (-572545)) - ((-569457) + i5)) < (-10))} sum {((47 * (-572545)) - ((-569457) + i5)) + (-10)}")
     let s12 = ("{(i2 / 1)}:" + s6.upper()).reverse()

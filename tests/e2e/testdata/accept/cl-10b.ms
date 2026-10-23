@@ -36,10 +36,10 @@ test "contract views and callbacks":
     let box = Box[Int](7)
     let first = make_view(box)
     let forwarded = forward_view(box)
-    let identity = ReadValue[Int](forwarded)
-    let copied = ReadValue[Int](identity)
+    let identity = ReadValue[Int](forwarded.clone())
+    let copied = ReadValue[Int](identity.clone())
     let holder = ReaderHolder(identity)
-    let _readers: List[ReadValue[Int]] = [holder.reader]
+    let _readers: List[ReadValue[Int]] = [holder.reader.clone()]
     let _optional: Optional[ReadValue[Int]] = some(forwarded)
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)

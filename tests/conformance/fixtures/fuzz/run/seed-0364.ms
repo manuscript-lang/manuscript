@@ -13,7 +13,7 @@ export fn main() Int:
     say("i1 = {i1}")
     let s2 = ("日本語" + ("{(14 % (-7))}:" + ("line\nbreak" + "emoji 😀")))
     say("s2 = [{s2}]")
-    let s3 = s2
+    let s3 = s2.clone()
     say("s3 = [{s3}]")
     var acc4 = 0
     var stepacc4 = 0

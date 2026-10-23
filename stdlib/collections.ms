@@ -10,7 +10,10 @@ export type CollectionError:
 # An ordered mutable collection with indexing, iteration, and transformations.
 # Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
 # Lists are owned values; clone makes a deep copy and accessors can borrow elements.
+# `List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
 export type List[T]:
+    # Constructor-only capacity hint in items: room for this many elements is allocated up front. The list starts empty; none or a negative value reserves nothing.
+    reserve: Optional[Int] = none
 
 impl List[T]:
     # Returns a deep copy with independent list and nested value storage.

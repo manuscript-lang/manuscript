@@ -34,10 +34,16 @@ test "URL format rejects queries that would not round trip":
     let invalid: Result[String, UrlError] = error(UrlError.InvalidInput)
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
-        let bad = Url(base.scheme, base.host, base.port, base.path, query, "")
+        let bad = Url(
+            base.scheme.clone(), base.host.clone(), base.port, base.path.clone(),
+            query.clone(), ""
+        )
         if format(bad) != invalid: return fail("query {query}")
 
-    let good = Url(base.scheme, base.host, base.port, base.path, "a=%41&b", "")
+    let good = Url(
+        base.scheme.clone(), base.host.clone(), base.port, base.path.clone(), "a=%41&b",
+        ""
+    )
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
@@ -55,7 +61,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
     for scheme in [
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
-        let bad = Url(scheme, "host", none, "/path", "", "")
+        let bad = Url(scheme.clone(), "host", none, "/path", "", "")
         if format(bad) != invalid_text: return fail("invalid scheme accepted: {scheme}")
 
         try expect_equal(resolve(bad, "/next"), invalid_url)

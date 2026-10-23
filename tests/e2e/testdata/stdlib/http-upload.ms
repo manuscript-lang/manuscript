@@ -18,7 +18,7 @@ impl ReadStream for Chunks:
     var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.next == self.parts.length():
             match self.failure:
-                some(message): return error(IoError.Failed(message))
+                some(message): return error(IoError.Failed(message.clone()))
                 none: return ok(none)
 
         let chunk = self.parts[self.next]
@@ -26,7 +26,7 @@ impl ReadStream for Chunks:
         return ok(some(chunk.to_bytes()))
 
 fn echo(request: HttpRequest) HttpResponse:
-    return HttpResponse(status: 200, headers: headers(), body: request.body)
+    return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
 
 test "request_stream uploads each chunk of a ReadStream":
     with server = try network().serve("127.0.0.1:0", echo):

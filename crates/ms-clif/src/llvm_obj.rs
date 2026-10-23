@@ -75,10 +75,17 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         .arg(&bitcode);
     run(opt, "opt (LLVM optimizer)")?;
     let mut llc = Command::new(tools.join(format!("llc{}", std::env::consts::EXE_SUFFIX)));
-    llc.args([codegen, "-filetype=obj", "-relocation-model=pic"])
-        .arg(&bitcode)
-        .arg("-o")
-        .arg(&obj);
+    // The line tables address every function from one anchor, so code must stay in a single section; without this
+    // LLVM 20 and later move functions that only reach a noreturn call into `.text.unlikely.`.
+    llc.args([
+        codegen,
+        "-filetype=obj",
+        "-relocation-model=pic",
+        "-profile-guided-section-prefix=false",
+    ])
+    .arg(&bitcode)
+    .arg("-o")
+    .arg(&obj);
     run(llc, "llc (LLVM code generator)")?;
     Ok(this)
 }

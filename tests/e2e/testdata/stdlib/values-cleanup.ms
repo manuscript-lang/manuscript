@@ -30,7 +30,7 @@ impl Closeable for Resource:
         fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
 
 fn leave(dir: String) Int:
-    with outer = Resource(dir, 1):
+    with outer = Resource(dir.clone(), 1):
         with inner = Resource(dir, 2):
             return 42
 
@@ -66,7 +66,7 @@ test "custom equality and hashing define map key identity":
     let second = Key(1, "second")
     try expect_false(first != second or first.hash() != second.hash())
     var map = Map[Key, String]()
-    map.add(first, "a")
+    map.add(first.clone(), "a")
     map.add(second, "b")
     try expect_false(map.length() != 1 or map.get(first) != some("b"))
 
@@ -75,6 +75,6 @@ test "Closeable cleanup runs in reverse order before return delivery":
 
     with temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
         let dir = temporary.path()
-        try expect_equal(leave(dir), 42)
+        try expect_equal(leave(dir.clone()), 42)
         try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
         try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

@@ -82,7 +82,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
                             )
                         )
                     ),
-                    expected: example.expected
+                    expected: example.expected.clone()
                 )
             )
     parse(text: "'x\n\n  y'") | try expect_ok | try expect_equal(
@@ -137,7 +137,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
                             )
                         )
                     ),
-                    expected: example.expected
+                    expected: example.expected.clone()
                 )
             )
 
@@ -511,14 +511,14 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 
 test "YAML exact decimal syntax does not depend on binary64 conversion":
     for text in [".5", "1.", "1.e2", "1e999999", ".Inf", ".NAN", "-0", "0001"]:
-        if (parse(text: text) | try expect_ok) != YamlValue.NumberValue(text): return fail(
+        if (parse(text: text) | try expect_ok) != YamlValue.NumberValue(text.clone()): return fail(
             "YAML number treated as string: {text}"
         )
     for text in [
         ".", "1e", "1_000", "+0xFF", "-.nan", ".iNF", "it's plain",
         "text [with] punctuation"
     ]:
-        if (parse(text: text) | try expect_ok) != YamlValue.StringValue(text): return fail(
+        if (parse(text: text) | try expect_ok) != YamlValue.StringValue(text.clone()): return fail(
             "plain scalar resolved incorrectly: {text}"
         )
 
@@ -697,7 +697,7 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text
 
-    let half = repeated(text: text, count: count / 2)
+    let half = repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
@@ -740,9 +740,17 @@ test "YAML flow mapping keys without a colon map to null":
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)
     let double = parse(text: "a: \"{long}\"") | try expect_ok | try entries
-    double.get("a").get() | try expect_equal(expected: YamlValue.StringValue(long))
+    (
+        double.get("a").get() | try expect_equal(
+            expected: YamlValue.StringValue(long.clone())
+        )
+    )
     let single = parse(text: "a: '{long}'") | try expect_ok | try entries
-    single.get("a").get() | try expect_equal(expected: YamlValue.StringValue(long))
+    (
+        single.get("a").get() | try expect_equal(
+            expected: YamlValue.StringValue(long.clone())
+        )
+    )
     let lines = repeated(text: "word\n  ", count: 20000)
     let plain = parse(text: "a: {lines}end") | try expect_ok | try entries
     try expect_false(
@@ -803,7 +811,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 test "YAML stringify escapes C1 control characters so output reparses":
     for code in [127, 128, 133, 150, 159]:
         let text = try from_scalars([97, code, 98])
-        let encoded = try stringify(YamlValue.StringValue(text))
+        let encoded = try stringify(YamlValue.StringValue(text.clone()))
         try expect_equal((try parse(encoded)), YamlValue.StringValue(text))
 
 test "YAML parse without limits stops alias bombs and deep nesting":

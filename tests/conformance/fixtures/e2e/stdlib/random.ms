@@ -29,13 +29,12 @@ type FailedEntropy:
 
 impl Entropy for FailedEntropy:
     fn bytes(count: Int) Result[Bytes, RandomError]:
-        return error(RandomError.Failed(self.message))
+        return error(RandomError.Failed(self.message.clone()))
 
 test "random algorithms call Manuscript entropy implementations":
     try expect_equal((try secure_int(Entropy(ExactEntropy(1)), -2, 3)), -2)
     try expect_equal(
-        (try uuid_v4(Entropy(ExactEntropy(16)))),
-        "00000000-0000-4000-8000-000000000000"
+        (try uuid_v4(Entropy(ExactEntropy(16)))), "00000000-0000-4000-8000-000000000000"
     )
 
 test "random errors propagate and invalid ranges do not read entropy":
@@ -58,8 +57,7 @@ test "float shuffle and choice use the supplied entropy":
     let values = [1, 2, 3, 4, 5]
     let shuffled = try shuffle(entropy(), values)
     try expect_equal(
-        shuffled.sorted(fn(left: Int, right: Int) Int: left - right),
-        [1, 2, 3, 4, 5]
+        shuffled.sorted(fn(left: Int, right: Int) Int: left - right), [1, 2, 3, 4, 5]
     )
     try expect_equal(try choice(Entropy(value: zero), [7, 8, 9]), some(7))
     try expect_equal(try choice(entropy(), List[Int]()), none)

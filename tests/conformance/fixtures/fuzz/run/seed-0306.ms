@@ -26,7 +26,7 @@ export fn main() Int:
     say("i7 = {i7}")
     let s8 = ("{(469085 + i5)}:" + "line\nbreak").lower()
     say("s8 = [{s8}]")
-    let s9 = s8
+    let s9 = s8.clone()
     say("s9 = [{s9}]")
     if true:
         say("hello world")

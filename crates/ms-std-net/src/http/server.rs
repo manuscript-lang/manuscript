@@ -1059,6 +1059,8 @@ impl Server {
     }
 
     pub(super) fn close_conn(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        // Handlers parked on an HTTP/2 connection wake to find their stream gone.
+        h2serve::wake_waiters(conn);
         let queued = {
             let mut st = conn.st.borrow_mut();
             if matches!(st.phase, Phase::Closed) {
