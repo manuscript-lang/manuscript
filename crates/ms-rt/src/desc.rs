@@ -29,7 +29,7 @@ pub static msrt_desc_float: TypeDesc = builtin(8, 8, KIND_FLOAT);
 #[unsafe(no_mangle)]
 pub static msrt_desc_bool: TypeDesc = builtin(1, 1, KIND_BOOL);
 #[unsafe(no_mangle)]
-pub static msrt_desc_string: TypeDesc = builtin(24, 8, KIND_STRING);
+pub static msrt_desc_string: TypeDesc = builtin(ms_rt_abi::STR_SIZE as u32, 8, KIND_STRING);
 #[unsafe(no_mangle)]
 pub static msrt_desc_bytes: TypeDesc = builtin(24, 8, KIND_BYTES);
 

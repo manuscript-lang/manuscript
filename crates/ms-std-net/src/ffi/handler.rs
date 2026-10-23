@@ -26,11 +26,7 @@ unsafe extern "C" {
 }
 
 /// A string slot no one has written: the null string a thunk leaves when it reports no message.
-const NO_MESSAGE: StrVal = StrVal {
-    ptr: std::ptr::null_mut(),
-    len: 0,
-    cap: 0,
-};
+const NO_MESSAGE: StrVal = StrVal::literal(std::ptr::null_mut(), 0);
 
 // ------------------------------------------------------------------ wire types
 

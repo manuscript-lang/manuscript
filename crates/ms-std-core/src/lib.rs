@@ -101,7 +101,7 @@ pub fn int_overflow() -> ! {
 /// `p` is a live `StrVal` whose bytes outlive `'a`.
 pub unsafe fn str_ref<'a>(p: *const StrVal) -> &'a str {
     // SAFETY: caller contract; the runtime guarantees valid UTF-8.
-    unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts((*p).ptr, (*p).len)) }
+    unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts((*p).ptr, (*p).len())) }
 }
 
 /// A copy of `s` that the caller owns.
@@ -256,7 +256,7 @@ pub unsafe fn write_string_matrix<S: AsRef<str>, R: IntoIterator<Item = S>>(
 /// # Safety
 /// `v` is a live `List[String]`.
 pub unsafe fn read_string_list<'a>(v: *const VecVal) -> Vec<&'a str> {
-    // SAFETY: elements are `StrVal`s stored inline, 24 bytes apart.
+    // SAFETY: elements are `StrVal`s stored inline, 16 bytes apart.
     unsafe {
         let v = &*v;
         (0..v.len)

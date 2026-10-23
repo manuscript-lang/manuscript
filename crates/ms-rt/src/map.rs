@@ -106,7 +106,7 @@ fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
             vsize: 8,
         };
     }
-    // Word-multiple slots (a `String` is three words) need only additions.
+    // Word-multiple slots (a `String` is two words) need only additions.
     let (ks, ka) = (kd.size as usize, kd.align);
     if ka == 8 && ks % 8 == 0 {
         match vd {

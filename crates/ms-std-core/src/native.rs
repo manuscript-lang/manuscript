@@ -547,20 +547,10 @@ impl<T: AbiHandle> IntoAbi for ObjShare<T> {
     }
 }
 
-/// Compiled closure code takes a `String` as its three leaves `(ptr, len, cap)`, not a pointer.
-type PairCode =
-    unsafe extern "C-unwind" fn(*mut Closure, *mut u8, usize, usize, *mut u8, usize, usize) -> u8;
-type EntryCode = unsafe extern "C-unwind" fn(
-    *mut Closure,
-    *mut u8,
-    usize,
-    usize,
-    *mut u8,
-    usize,
-    usize,
-    u8,
-    u8,
-) -> u8;
+/// Compiled closure code takes a `String` as its two leaves `(ptr, tagged)`, not a pointer.
+type PairCode = unsafe extern "C-unwind" fn(*mut Closure, *mut u8, usize, *mut u8, usize) -> u8;
+type EntryCode =
+    unsafe extern "C-unwind" fn(*mut Closure, *mut u8, usize, *mut u8, usize, u8, u8) -> u8;
 
 /// Calls `code` with temporary strings made from `bytes`, released after the call.
 fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(&StrVal, &StrVal) -> R) -> R {
@@ -582,7 +572,7 @@ impl PairFilter {
         // SAFETY: the compiler built the closure with this signature (`FromAbi`).
         with_strings(
             [a, b],
-            |a, b| unsafe { (self.1)(self.0, a.ptr, a.len, a.cap, b.ptr, b.len, b.cap) } != 0,
+            |a, b| unsafe { (self.1)(self.0, a.ptr, a.tagged, b.ptr, b.tagged) } != 0,
         )
     }
 }
@@ -599,11 +589,9 @@ impl EntryFilter {
                 (self.1)(
                     self.0,
                     p.ptr,
-                    p.len,
-                    p.cap,
+                    p.tagged,
                     n.ptr,
-                    n.len,
-                    n.cap,
+                    n.tagged,
                     u8::from(directory),
                     u8::from(symlink),
                 )
@@ -1042,11 +1030,7 @@ impl ReadSource {
     pub fn read(&self, max: usize) -> Result<Option<Vec<u8>>, u8> {
         let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
         let mut present = 0u8;
-        let mut message = StrVal {
-            ptr: core::ptr::null_mut(),
-            len: 0,
-            cap: 0,
-        };
+        let mut message = StrVal::owned(core::ptr::null_mut(), 0);
         // SAFETY: the code follows the `Connection.read` convention, filling `out` with an owned
         // `Bytes` when it reports a chunk; the closure is borrowed for the call.
         unsafe {
@@ -1237,11 +1221,7 @@ impl IntoAbi for Option<String> {
             },
             None => OptStr {
                 present: 0,
-                value: StrVal {
-                    ptr: core::ptr::null_mut(),
-                    len: 0,
-                    cap: 0,
-                },
+                value: StrVal::owned(core::ptr::null_mut(), 0),
             },
         }
     }

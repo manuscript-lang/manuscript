@@ -239,15 +239,13 @@ mod fs_io {
     unsafe extern "C-unwind" fn skip_deep(
         env: *mut ms_rt_abi::Closure,
         ptr: *mut u8,
-        len: usize,
-        cap: usize,
+        tagged: usize,
         _destination: *mut u8,
-        _destination_len: usize,
-        _destination_cap: usize,
+        _destination_tagged: usize,
     ) -> u8 {
         // SAFETY: `env` is the `Counting` the test passed; the source is a live string.
         unsafe { (*env.cast::<Counting>()).count += 1 };
-        (!text(&StrVal { ptr, len, cap }).ends_with("deep")) as u8
+        (!text(&StrVal { ptr, tagged }).ends_with("deep")) as u8
     }
 
     #[test]

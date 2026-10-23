@@ -12,8 +12,8 @@ use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_LEN_OFFSET, STR_PTR_OFFSET, VEC_CAP_OFFSET, VEC_LEN_OFFSET,
-    VEC_PTR_OFFSET,
+    ASCII_CHAR_STRIDE, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET,
+    VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::HashMap;
 
@@ -323,14 +323,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
-                self.count_str(0, vs[2]);
-                // `cap == 0` marks a static (literal or one-byte ASCII) string and `1 << 63` a view:
-                // nothing to free. An owned capacity is in `1..1 << 63`.
-                let below = self.b.ins().iadd_imm_s(vs[2], -1);
+                self.count_str(0, vs[1]);
+                // A static or view string has the top tag bit set: nothing to free.
                 let owned = self
                     .b
                     .ins()
-                    .icmp_imm_s(IntCC::UnsignedLessThan, below, i64::MAX);
+                    .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, vs[1], 0);
                 self.if_then(owned, |s| {
                     s.rt_call("msrt_str_free", &[vs[0]]);
                 });
@@ -358,29 +356,22 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
-                self.count_str(1, vs[2]);
-                // A static string is shared; an owned one is duplicated.
-                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                self.count_str(1, vs[1]);
+                // A static string (tag `10`) is shared; an owned one or a view is duplicated.
+                let tag = self.b.ins().ushr_imm_u(vs[1], 62);
+                let shared = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 2);
                 let (dup, join) = (self.b.create_block(), self.b.create_block());
-                for _ in 0..3 {
+                for _ in 0..2 {
                     self.b.append_block_param(join, types::I64);
                 }
-                let same = [vs[0], vs[1], vs[2]].map(BlockArg::Value);
-                self.b.ins().brif(owned, dup, &[], join, &same);
+                let same = [vs[0], vs[1]].map(BlockArg::Value);
+                self.b.ins().brif(shared, join, &same, dup, &[]);
                 self.b.switch_to_block(dup);
-                let p = self.rt_call("msrt_str_dup", &[vs[0], vs[1]])[0];
-                // `cap` is `max(len, 1)`: an owned string never has capacity 0.
-                let empty = self.b.ins().icmp_imm_s(IntCC::Equal, vs[1], 0);
-                let empty = self.b.ins().uextend(types::I64, empty);
-                let cap = self.b.ins().bor(vs[1], empty);
-                self.b.ins().jump(
-                    join,
-                    &[
-                        BlockArg::Value(p),
-                        BlockArg::Value(vs[1]),
-                        BlockArg::Value(cap),
-                    ],
-                );
+                let len = self.b.ins().band_imm_s(vs[1], STR_LEN_MASK as i64);
+                let p = self.rt_call("msrt_str_dup", &[vs[0], len])[0];
+                self.b
+                    .ins()
+                    .jump(join, &[BlockArg::Value(p), BlockArg::Value(len)]);
                 self.b.switch_to_block(join);
                 self.b.block_params(join).to_vec()
             }
@@ -1523,9 +1514,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 let base = self.data_addr(d);
                 let ptr = base;
-                let len = self.iconst(self.g.m.strings[s.0 as usize].len() as i64);
-                let cap = self.iconst(0);
-                vec![ptr, len, cap]
+                let len = self.g.m.strings[s.0 as usize].len() as i64;
+                let tagged = self.iconst(len | STR_STATIC as i64);
+                vec![ptr, tagged]
             }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1936,16 +1927,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let base = self.data_addr(d);
                 let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
                 let ptr = self.b.ins().iadd(base, off);
-                let len = self.iconst(1);
-                let cap = self.iconst(0);
-                vec![ptr, len, cap]
+                let tagged = self.iconst(1 | STR_STATIC as i64);
+                vec![ptr, tagged]
             }
             Op::StrLen => {
                 // Scalar count: computed by the runtime (long strings are remembered there).
                 let s = self.a(inst, 0);
                 let at = match self.home_of(inst.args[0]) {
                     Some(h) => h.addr,
-                    None => self.spill(&s, &[Leaf::I64; 3]),
+                    None => self.spill(&s, &[Leaf::I64; 2]),
                 };
                 vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
@@ -2512,7 +2502,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             return None;
         }
         let unaligned = MemFlagsData::new().with_notrap();
-        let len = other[1];
+        let len = self.b.ins().band_imm_s(other[1], STR_LEN_MASK as i64);
         let same_len = self
             .b
             .ins()
@@ -2561,7 +2551,10 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// a call; only same-length distinct blocks reach the runtime.
     fn string_eq_inline(&mut self, f: &Func, inst: &Inst) -> Vs {
         let (a, b) = (self.a(inst, 0), self.a(inst, 1));
-        let same_len = self.b.ins().icmp(IntCC::Equal, a[1], b[1]);
+        // Equal lengths with any tags: the tag sits in the top two bits.
+        let diff = self.b.ins().bxor(a[1], b[1]);
+        let diff = self.b.ins().ishl_imm_u(diff, 2);
+        let same_len = self.b.ins().icmp_imm_s(IntCC::Equal, diff, 0);
         let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
         let join = self.b.create_block();
         self.b.append_block_param(join, types::I8);
@@ -2697,6 +2690,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
+        let size = self.b.ins().band_imm_s(size, STR_LEN_MASK as i64);
         let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
         let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
         let fast = self.b.ins().band(single, room);

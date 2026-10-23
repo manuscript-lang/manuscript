@@ -1513,7 +1513,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         // One byte (a character or punctuation) is the common append and needs no call:
         // this path keeps no registers live across a call, so it has no frame.
         let v = &mut *b;
-        if (*s).len == 1 && v.len < v.cap {
+        if (*s).len() == 1 && v.len < v.cap {
             *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
             v.len += 1;
             return;

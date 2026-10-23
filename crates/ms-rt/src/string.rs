@@ -13,8 +13,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, STR_VIEW_CAP,
-    StrVal, VecVal,
+    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
+    VecVal,
 };
 
 /// Native allocation ceiling for built strings.
@@ -27,7 +27,7 @@ pub const MAX_BYTES: usize = 1 << 30;
 #[inline(always)]
 pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
     // SAFETY: `ptr..ptr+len` holds the text.
-    unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len) }
+    unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len()) }
 }
 
 /// A copy of `s` that the caller owns: a static string is shared, an owned one is duplicated.
@@ -36,7 +36,7 @@ pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
 /// `s` must be a live string.
 #[inline(always)]
 pub unsafe fn cloned(s: &StrVal) -> StrVal {
-    if s.cap == 0 {
+    if s.is_static() {
         return s.alias();
     }
     // SAFETY: `s` is live and owned, so `ptr..ptr+len` is readable.
@@ -111,12 +111,7 @@ pub fn alloc_str(len: usize) -> StrVal {
     let ptr = alloc::alloc(len + 1);
     // SAFETY: the allocation holds `len + 1` bytes.
     unsafe { *ptr.add(len) = 0 };
-    // Never 0: compiled code reads `cap == 0` as "static string, never freed".
-    StrVal {
-        ptr,
-        len,
-        cap: len.max(1),
-    }
+    StrVal::owned(ptr, len)
 }
 
 static mut EMPTY: [u8; 1] = [0];
@@ -137,11 +132,7 @@ static mut ASCII: [[u8; 2]; 128] = build_ascii();
 const _: () = assert!(core::mem::size_of::<[u8; 2]>() == ms_rt_abi::ASCII_CHAR_STRIDE);
 
 /// The null string: no bytes and no block, what an unwritten message slot holds.
-pub const NO_STR: StrVal = StrVal {
-    ptr: null_mut(),
-    len: 0,
-    cap: 0,
-};
+pub const NO_STR: StrVal = StrVal::literal(null_mut(), 0);
 
 /// Releases `s` unless it is [`NO_STR`].
 ///
@@ -156,11 +147,7 @@ pub unsafe fn release_opt(s: &StrVal) {
 
 /// The static empty string (a literal: no ownership to give back).
 pub fn empty() -> StrVal {
-    StrVal {
-        ptr: core::ptr::addr_of_mut!(EMPTY) as *mut u8,
-        len: 0,
-        cap: 0,
-    }
+    StrVal::literal(core::ptr::addr_of_mut!(EMPTY) as *mut u8, 0)
 }
 
 /// Writes the static empty string to `out`.
@@ -172,13 +159,7 @@ pub unsafe extern "C-unwind" fn msrt_string_empty(out: *mut StrVal) {
 
 fn ascii_char(b: u8) -> StrVal {
     // SAFETY: as above.
-    unsafe {
-        StrVal {
-            ptr: core::ptr::addr_of_mut!(ASCII[b as usize]) as *mut u8,
-            len: 1,
-            cap: 0,
-        }
-    }
+    unsafe { StrVal::literal(core::ptr::addr_of_mut!(ASCII[b as usize]) as *mut u8, 1) }
 }
 
 /// New string from bytes (owned, rc 1). Short ASCII and empty results are the shared statics.
@@ -237,7 +218,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: the hint is cleared when its string is freed.
     unsafe {
         let b = bytes(s);
-        if b.len() < HINT_MIN || (*s).cap == STR_VIEW_CAP {
+        if b.len() < HINT_MIN || !(*s).owns() {
             return utf8::count(b);
         }
         let h = HINT.ptr();
@@ -280,7 +261,7 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
     // SAFETY: `s` live; the hint is cleared when its string dies.
     unsafe {
         let b = bytes(s);
-        if b.len() < HINT_MIN || (*s).cap == STR_VIEW_CAP {
+        if b.len() < HINT_MIN || !(*s).owns() {
             return utf8::offset_of(b, n);
         }
         let h = HINT.ptr();
@@ -339,13 +320,13 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
     // SAFETY: caller passes a live string.
-    unsafe { (*s).len as i64 }
+    unsafe { (*s).len() as i64 }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
     // SAFETY: caller passes a live string.
-    unsafe { ((*s).len == 0) as u8 }
+    unsafe { (*s).is_empty() as u8 }
 }
 
 /// Resolves a possibly negative index against `count`; `None` when out of range.
@@ -440,12 +421,12 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
     // SAFETY: caller contract.
     unsafe {
-        if (*a).ptr == (*b).ptr && (*a).len == (*b).len {
-            return true;
-        }
-        let n = (*a).len;
-        if n != (*b).len {
+        let n = (*a).len();
+        if n != (*b).len() {
             return false;
+        }
+        if (*a).ptr == (*b).ptr {
+            return true;
         }
         let (x, y) = (bytes(a), bytes(b));
         if n < 4 {
@@ -657,7 +638,7 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
 unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
     // SAFETY: caller passes live strings.
     unsafe {
-        let (la, lb) = ((*a).len, (*b).len);
+        let (la, lb) = ((*a).len(), (*b).len());
         if lb == 0 {
             return cloned(&*a);
         }
@@ -676,7 +657,7 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
 unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
     // SAFETY: caller passes live strings.
     unsafe {
-        let total: usize = parts.iter().map(|&p| (*p).len).sum();
+        let total: usize = parts.iter().map(|&p| (*p).len()).sum();
         let s = alloc_str(total);
         let mut dst = s.ptr;
         for &p in parts {
@@ -871,17 +852,9 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
         let (a, b) = trim_range(bytes(s), start, end);
         let view = if a == b {
             // An empty result borrows nothing.
-            StrVal {
-                ptr: (&raw mut EMPTY).cast(),
-                len: 0,
-                cap: 0,
-            }
+            StrVal::literal((&raw mut EMPTY).cast(), 0)
         } else {
-            StrVal {
-                ptr: (*s).ptr.add(a),
-                len: b - a,
-                cap: STR_VIEW_CAP,
-            }
+            StrVal::view((*s).ptr.add(a), b - a)
         };
         view.write_to(out)
     }
@@ -1497,9 +1470,7 @@ pub unsafe extern "C-unwind" fn msrt_string_chars(s: *const StrVal, out: *mut Ve
             let base = core::ptr::addr_of_mut!(ASCII) as *mut u8;
             for (k, &b) in text.iter().enumerate() {
                 let q = p.add(k);
-                (*q).ptr = base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE);
-                (*q).len = 1;
-                (*q).cap = 0;
+                *q = StrVal::literal(base.add((b as usize) * ms_rt_abi::ASCII_CHAR_STRIDE), 1);
             }
             *out = VecVal {
                 ptr: p as _,
@@ -1786,13 +1757,13 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
             st.cur = from_bytes(piece);
             return;
         }
-        if st.cap >= piece.len() && !st.cur.ptr.is_null() && st.cur.cap != 0 {
+        if st.cap >= piece.len() && !st.cur.ptr.is_null() && st.cur.owns() {
             // The loop only borrows the piece: rewrite it in place.
             let h = HINT.ptr();
             if core::ptr::eq((*h).s, st.cur.ptr) {
                 (*h).s = core::ptr::null();
             }
-            st.cur.len = piece.len();
+            st.cur.tagged = piece.len();
             copy_short(piece.as_ptr(), st.cur.ptr, piece.len());
             *st.cur.ptr.add(piece.len()) = 0;
             return;
@@ -1800,7 +1771,7 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         release_opt(&st.cur);
         let cap = piece.len().max(24);
         let mut fresh = alloc_str(cap);
-        fresh.len = piece.len();
+        fresh.tagged = piece.len();
         copy_short(piece.as_ptr(), fresh.ptr, piece.len());
         *fresh.ptr.add(piece.len()) = 0;
         st.cur = fresh;
@@ -2080,7 +2051,7 @@ pub static STR_COUNTS: Global<[u64; 4]> = Global::new([0; 4]);
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
     // SAFETY: single threaded access to the counters.
-    unsafe { (*STR_COUNTS.ptr())[(kind as usize) * 2 + (cap != 0) as usize] += 1 };
+    unsafe { (*STR_COUNTS.ptr())[(kind as usize) * 2 + (cap >= 0) as usize] += 1 };
 }
 
 #[cfg(test)]
@@ -2103,7 +2074,7 @@ mod tests {
             assert_eq!(bytes(&one), b"xyz");
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
-            assert_eq!(none.len, 0);
+            assert_eq!(none.len(), 0);
         }
     }
 

@@ -416,11 +416,7 @@ mod tests {
     }
 
     fn no_str() -> StrVal {
-        StrVal {
-            ptr: null_mut(),
-            len: 0,
-            cap: 0,
-        }
+        StrVal::literal(null_mut(), 0)
     }
 
     /// Reads and releases an owned string.

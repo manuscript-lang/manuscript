@@ -58,11 +58,7 @@ fn capture(operation: impl FnOnce()) -> Option<String> {
         operation();
         trap::msrt_trap_end();
     }
-    let mut message = ms_rt_abi::StrVal {
-        ptr: std::ptr::null_mut(),
-        len: 0,
-        cap: 0,
-    };
+    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
     // SAFETY: the message out pointer is writable and the trap belongs to this thread.
     let faulted = unsafe { trap::msrt_trap_wait(&mut message) };
     if faulted == 0 {
