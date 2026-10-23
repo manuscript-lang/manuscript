@@ -60,6 +60,19 @@ fn fmt_rejects_invalid_utf8_without_rewriting() {
 }
 
 #[test]
+fn fmt_leaves_empty_and_blank_files_empty() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fmt-empty-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("empty.ms"), "").unwrap();
+    assert_eq!(ms(&dir, &["fmt", "--check", "empty.ms"]).0, 0);
+    std::fs::write(dir.join("blank.ms"), "\n\n  \n").unwrap();
+    assert_eq!(ms(&dir, &["fmt", "blank.ms"]).0, 0);
+    assert_eq!(std::fs::read_to_string(dir.join("blank.ms")).unwrap(), "");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn guide_prints_the_cheat_sheet() {
     let (status, stdout, _) = ms(&std::env::temp_dir(), &["guide"]);
     assert_eq!(status, 0);
