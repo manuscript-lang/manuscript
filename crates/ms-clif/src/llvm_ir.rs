@@ -702,7 +702,9 @@ impl<'a> Tr<'a> {
             })
             .collect();
         let rt = ret_ty(&sig.returns);
-        let rhs = format!("call {rt} {callee}({})", a.join(", "));
+        // Any source call can fault, including ordinary native calls and callbacks.
+        // Merging calls from distinct source sites loses the caller's fault frame.
+        let rhs = format!("call {rt} {callee}({}) nomerge", a.join(", "));
         match sig.returns.len() {
             0 => {
                 self.line(rhs);
