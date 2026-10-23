@@ -65,7 +65,7 @@ fn align_up(n: usize, a: usize) -> usize {
 fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
     // 8-byte, 8-aligned keys and values (Int, Float, pointers) are the common case; a constant
     // layout spares the alignment arithmetic on every lookup.
-    if kd.size == 8 && kd.align == 8 && vd.is_some_and(|v| v.size == 8 && v.align == 8) {
+    if vd.is_some_and(|v| v.size == 8 && v.align == 8) && kd.size == 8 && kd.align == 8 {
         return Layout {
             koff: 8,
             voff: 16,
@@ -109,6 +109,8 @@ unsafe fn slot_hash_of(p: *mut u8) -> u64 {
 /// each key kind gets its own inlined probe loop. `Dyn` is the descriptor-driven fallback for
 /// every other key type.
 trait KeyOps {
+    /// True when key equality is cheap enough to skip the stored full-hash comparison.
+    const CHEAP_EQ: bool = false;
     /// Hash of the key slot (without the `LIVE` bit).
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64;
     /// Equality of two live key slots.
@@ -120,10 +122,11 @@ struct StrKey;
 struct DynKey;
 
 impl KeyOps for IntKey {
+    const CHEAP_EQ: bool = true;
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds an `Int`.
-        unsafe { crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) }
+        unsafe { crate::string::hash_int(*(key as *const u64)) }
     }
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
@@ -211,7 +214,7 @@ unsafe fn find<K: KeyOps>(
             if (e ^ h) >> 32 == 0 {
                 let i = (e as u32 - 1) as usize;
                 let p = slot(m, l, i);
-                if slot_hash_of(p) == h && K::eq(kd, p.add(l.koff), key) {
+                if (K::CHEAP_EQ || slot_hash_of(p) == h) && K::eq(kd, p.add(l.koff), key) {
                     return Some(i);
                 }
             }
@@ -730,16 +733,30 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     unsafe { value_ptr(&*m, &*kd, opt(vd), key) }
 }
 
-/// Borrowed pointer to the value of `key`, or null; one probe loop per key kind.
+/// Borrowed pointer to the value of `key`, or null. Each key kind gets its own out-of-line probe
+/// loop, so the hot Int and String paths keep a small frame.
 #[inline(always)]
 unsafe fn value_ptr(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> *const u8 {
     // SAFETY: caller contract.
+    unsafe { keyed!(kd, |K| value_ptr_k::<K>(m, kd, vd, key)) }
+}
+
+#[inline(never)]
+unsafe fn value_ptr_k<K: KeyOps>(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
     unsafe {
-        let p = keyed!(kd, |K| find_slot::<K>(m, kd, vd, key));
-        if p.is_null() {
-            p
-        } else {
-            p.add(layout(kd, vd).voff)
+        let l = layout(kd, vd);
+        match find::<K>(m, kd, &l, key, hash_key::<K>(kd, key)) {
+            Some(i) => slot(m, &l, i).add(l.voff),
+            None => core::ptr::null(),
         }
     }
 }
