@@ -29,6 +29,33 @@ const STACK_CLEANUP_RESERVE: usize = 16 << 10;
 /// Deepest stack recursion may use: a runaway recursion touches this much memory before it faults.
 const STACK_RECURSION_MAX: usize = 256 << 20;
 
+/// Bound fault/profiler traversal work independently of the recursion stack limit.
+const MAX_STACK_WALK_FRAMES: usize = 1_000_000;
+
+/// Windows unwinds walker-internal frames before reaching the same starting
+/// frame as the Unix walker. Only callers recovered after that anchor count.
+#[cfg(any(windows, test))]
+#[derive(Default)]
+pub(crate) struct NativeFrameBudget(Option<usize>);
+
+#[cfg(any(windows, test))]
+impl NativeFrameBudget {
+    pub(crate) fn visit(&mut self, is_anchor: bool) -> bool {
+        if let Some(remaining) = self.0 {
+            self.0 = remaining.checked_sub(1);
+            return self.0.is_some();
+        }
+        if is_anchor {
+            self.0 = Some(MAX_STACK_WALK_FRAMES);
+        }
+        true
+    }
+
+    pub(crate) fn remaining(&self) -> Option<usize> {
+        self.0
+    }
+}
+
 /// The recursion limit for a stack spanning `lo..hi`: recursion may use the top 256 MiB, minus
 /// a reserve of an eighth (64 KiB..1 MiB) for fault reporting. 0 when the bounds are unknown.
 pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
@@ -236,7 +263,7 @@ pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
     // SAFETY: reading the global stack bounds, set once at start.
     let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
     let mut steps = 0usize;
-    while fp != 0 && fp.is_multiple_of(8) && steps < 1_000_000 {
+    while fp != 0 && fp.is_multiple_of(8) && steps < MAX_STACK_WALK_FRAMES {
         if hi != 0 && (fp < lo || fp.checked_add(16).is_none_or(|end| end > hi)) {
             break;
         }
@@ -338,13 +365,15 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
 unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
-    let Some((pc, fp)) = sys::source_frame(|pc| find_func(t, pc).is_some()) else {
+    let Some((pc, fp, remaining)) = sys::source_frame(fault_vec as *const () as usize, |pc| {
+        find_func(t, pc).is_some()
+    }) else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
     // SAFETY: source_frame recovered the current generated frame and stack_limits
     // bounds the live thread stack.
-    unsafe { walk_source_frames(pc, fp, t, lo, hi, f) }
+    unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
 }
 
 #[cfg(any(windows, test))]
@@ -354,11 +383,13 @@ unsafe fn walk_source_frames(
     t: &Tables,
     lo: usize,
     hi: usize,
+    remaining: usize,
     mut f: impl FnMut(usize) -> bool,
 ) {
     // Each link must advance within the stack, so the stack bounds terminate
-    // even a malformed chain. A fixed frame count truncates legitimate recursion.
-    loop {
+    // even a malformed chain. Apply the shared raw-frame work budget after the
+    // native prefix, rather than imposing a separate Windows source-frame cap.
+    for _ in 0..remaining {
         if find_func(t, pc).is_none() || !f(pc) {
             break;
         }
@@ -1174,17 +1205,32 @@ mod tests {
     static LOG_N: Global<usize> = Global::new(0);
 
     #[test]
+    fn native_frame_budget_counts_only_callers_after_the_anchor() {
+        let mut budget = NativeFrameBudget::default();
+        assert!(budget.visit(false));
+        assert_eq!(budget.remaining(), None);
+        assert!(budget.visit(true));
+        assert_eq!(budget.remaining(), Some(MAX_STACK_WALK_FRAMES));
+        assert!(budget.visit(false));
+        assert!(budget.visit(false));
+        assert_eq!(budget.remaining(), Some(MAX_STACK_WALK_FRAMES - 2));
+        for _ in 2..MAX_STACK_WALK_FRAMES {
+            assert!(budget.visit(false));
+        }
+        assert_eq!(budget.remaining(), Some(0));
+        assert!(!budget.visit(false));
+    }
+
+    #[test]
     fn source_frame_walk_keeps_deep_recursion_and_stops_at_native_boundary() {
-        let mut chain = vec![[0usize, 0x1010usize]; 200_002];
+        let mut chain = vec![[0usize, 0x1010usize]; MAX_STACK_WALK_FRAMES + 2];
         let base = chain.as_mut_ptr();
         let len = chain.len();
-        // SAFETY: all frame links point inside this one allocation. The final
-        // source caller returns into unregistered native code.
+        // SAFETY: all frame links point inside this one allocation.
         unsafe {
             for index in 0..len - 1 {
                 (*base.add(index))[0] = base.add(index + 1).expose_provenance();
             }
-            (*base.add(len - 2))[1] = 0x9999;
         }
         let funcs = [FuncEntry {
             addr: 0x1000,
@@ -1208,10 +1254,30 @@ mod tests {
         };
         let lo = base.expose_provenance();
         let hi = lo + core::mem::size_of_val(chain.as_slice());
+        // Two native callers have already consumed the shared raw-frame budget.
+        let mut budget = NativeFrameBudget::default();
+        assert!(budget.visit(true));
+        assert!(budget.visit(false));
+        assert!(budget.visit(false));
+        for remaining in [0, 1, budget.remaining().unwrap(), MAX_STACK_WALK_FRAMES] {
+            let mut count = 0;
+            // SAFETY: the synthetic frame chain and tables outlive the walk.
+            unsafe {
+                walk_source_frames(0x1010, lo, &tables, lo, hi, remaining, |pc| {
+                    assert_eq!(pc, 0x1010);
+                    count += 1;
+                    true
+                });
+            }
+            assert_eq!(count, remaining);
+        }
+        // A real native boundary ends the source walk before its budget expires.
+        // SAFETY: the selected frame is inside the allocation.
+        unsafe { (*base.add(200_000))[1] = 0x9999 };
         let mut count = 0;
         // SAFETY: the synthetic frame chain and tables outlive the walk.
         unsafe {
-            walk_source_frames(0x1010, lo, &tables, lo, hi, |_| {
+            walk_source_frames(0x1010, lo, &tables, lo, hi, MAX_STACK_WALK_FRAMES, |_| {
                 count += 1;
                 true
             });
@@ -1224,7 +1290,7 @@ mod tests {
         count = 0;
         // SAFETY: the same valid synthetic chain, now ending immediately.
         unsafe {
-            walk_source_frames(0x1010, lo, &tables, lo, hi, |_| {
+            walk_source_frames(0x1010, lo, &tables, lo, hi, MAX_STACK_WALK_FRAMES, |_| {
                 count += 1;
                 true
             });
