@@ -394,7 +394,7 @@ pub unsafe fn bytes_eq(a: *const StrObj, b: *const StrObj) -> bool {
         if (8..=16).contains(&n) {
             return word(p, 0) == word(q, 0) && word(p, n - 8) == word(q, n - 8);
         }
-        if n >= 4 && n < 8 {
+        if (4..8).contains(&n) {
             return half(p, 0) == half(q, 0) && half(p, n - 4) == half(q, n - 4);
         }
         if n < 4 {
