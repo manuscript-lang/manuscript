@@ -5,7 +5,7 @@ weight = 4
 
 # Build caches
 
-Every `build`, `run`, `test`, and `profile` parses and checks source, lowers it to MIR, generates native object code with Cranelift (LLVM for Linux release builds), and links a fresh executable. Executables and compile/link plans are not cached.
+Every `build`, `run`, `test`, and `profile` parses and checks source, lowers it to MIR, generates native object code with Cranelift (LLVM for Linux and macOS release builds), and links a fresh executable. Executables and compile/link plans are not cached.
 
 The runtime and native standard library are already compiled into a static archive embedded in `ms`. The first link extracts `libms_native.a` into a cache keyed by the embedded runtime identity; later links reuse that archive. It is not rebuilt for each build level.
 
