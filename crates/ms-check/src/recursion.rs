@@ -22,6 +22,42 @@ struct Node {
     method: Option<FuncRef>,
 }
 
+/// Nodes that can reach a directed cycle. Removing sinks also removes their incoming edges;
+/// what remains is precisely the part of the graph that can reach an active ancestor.
+fn recursive_paths(edges: &HashMap<Name, Vec<Edge>>) -> HashSet<Name> {
+    let mut degree: HashMap<Name, usize> = HashMap::new();
+    let mut predecessors: HashMap<Name, Vec<Name>> = HashMap::new();
+    for (&id, outgoing) in edges {
+        degree.insert(id, outgoing.len());
+        for edge in outgoing {
+            predecessors.entry(edge.target).or_default().push(id);
+        }
+    }
+    // A declaration without a body can be a target without having an adjacency entry.
+    for &target in predecessors.keys() {
+        degree.entry(target).or_default();
+    }
+    let mut sinks: Vec<Name> = degree
+        .iter()
+        .filter_map(|(&id, &count)| (count == 0).then_some(id))
+        .collect();
+    while let Some(id) = sinks.pop() {
+        for pred in predecessors.get(&id).into_iter().flatten() {
+            let count = degree
+                .get_mut(pred)
+                .expect("predecessor has outgoing edges");
+            *count -= 1;
+            if *count == 0 {
+                sinks.push(*pred);
+            }
+        }
+    }
+    degree
+        .into_iter()
+        .filter_map(|(id, count)| (count != 0).then_some(id))
+        .collect()
+}
+
 struct EdgeScan<'a> {
     module: &'a ModRef,
     nodes: &'a HashMap<Name, Node>,
@@ -172,7 +208,17 @@ impl Checker {
             .iter()
             .map(|(id, node)| (*id, node.variables.clone()))
             .collect();
+        // An acyclic suffix cannot produce a recursive-application diagnostic. Prune it
+        // before walking paths, which otherwise revisits shared suffixes exponentially.
+        // Keep the original root/edge order and ancestor-dependent checks on recursive paths.
+        let recursive = recursive_paths(&edges);
+        for outgoing in edges.values_mut() {
+            outgoing.retain(|edge| recursive.contains(&edge.target));
+        }
         for root in &order {
+            if !recursive.contains(root) {
+                continue;
+            }
             let mut active: HashMap<Name, Vec<Ty>> = HashMap::new();
             self.visit_application(
                 *root,
