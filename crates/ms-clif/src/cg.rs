@@ -618,6 +618,22 @@ fn compile_with_isa(
             .declare_function(&name, g.func_linkage(exported), &sig)
             .map_err(|e| e.to_string())?;
         g.funcs.push(id);
+        if !exported && !f.noalias.is_empty() {
+            // The Cranelift parameter that carries each exclusive MIR pointer parameter.
+            let at = f
+                .noalias
+                .iter()
+                .map(|&k| {
+                    f.params[..k as usize]
+                        .iter()
+                        .map(|p| g.lay.width(p.ty))
+                        .sum()
+                })
+                .collect();
+            if let Some(llvm) = g.llvm.as_mut() {
+                llvm.set_exclusive(&name, at);
+            }
+        }
     }
     if opts.llvm.is_some() && internalize(g.module.isa().triple()) {
         let sig = g.module.make_signature();

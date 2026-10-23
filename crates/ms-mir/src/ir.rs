@@ -804,6 +804,9 @@ pub struct Func {
     pub blocks: Vec<BlockData>,
     /// Inlined-callee scopes referenced by [`Loc::scope`].
     pub scopes: Vec<Scope>,
+    /// Indexes of pointer parameters that no other parameter or memory the function reaches
+    /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
+    pub noalias: Vec<u32>,
 }
 
 impl Func {
@@ -820,6 +823,7 @@ impl Func {
             values: Vec::new(),
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
+            noalias: Vec::new(),
         };
         for p in params {
             let v = f.new_value(p.ty);

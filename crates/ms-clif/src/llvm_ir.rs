@@ -37,6 +37,9 @@ pub struct LlvmModule {
     data: BTreeMap<String, ()>,
     /// Symbols defined in this module.
     defined: Vec<String>,
+    /// Internal functions' parameters that are exclusive pointers, by symbol. They are passed as
+    /// `ptr noalias`, so LLVM knows nothing else the function reaches overlaps them.
+    exclusive: HashMap<String, Vec<usize>>,
 }
 
 /// Symbol of the empty function every module starts with: the fault and profile tables address
@@ -188,6 +191,7 @@ impl LlvmModule {
             decls: BTreeMap::new(),
             data: BTreeMap::new(),
             defined: Vec::new(),
+            exclusive: HashMap::new(),
         };
         // Placeholder slots for the fixed ids and one `DIFile` per file.
         m.di.meta.resize(FIRST_FILE + nfiles, String::new());
@@ -229,6 +233,28 @@ fn fault_function(name: &str) -> bool {
             | "msrt_list_index_fault"
             | "msrt_cancelled"
     )
+}
+
+/// What LLVM may assume about a runtime entry point that only inspects memory: it returns,
+/// does not unwind, and writes nothing except, for `argmem`, the outputs its pointer arguments
+/// name. Calls to these no longer clobber the caller's memory, so loads of list lengths, record
+/// fields and map headers survive them. Only lookups with no descriptor callbacks (which could
+/// run user code) and no fault belong here.
+fn pure_runtime_attrs(name: &str) -> Option<&'static str> {
+    match name {
+        "msrt_map_slot_count"
+        | "msrt_map_length"
+        | "msrt_map_get_ptr_sw8"
+        | "msrt_map_get_ptr_w8"
+        | "msrt_map_contains_sw8"
+        | "msrt_map_contains_w8"
+        | "msrt_string_eq"
+        | "msrt_string_hash"
+        | "msrt_string_compare"
+        | "msrt_string_is_empty"
+        | "msrt_string_byte_length" => Some(" nounwind willreturn memory(read)"),
+        _ => None,
+    }
 }
 
 fn ret_ty(rets: &[ir::AbiParam]) -> String {
@@ -316,11 +342,16 @@ struct Tr<'a> {
     tramps: Vec<(String, Block, Vec<String>)>,
     cur: String,
     decls: &'a mut BTreeMap<String, String>,
+    exclusive: &'a HashMap<String, Vec<usize>>,
     data: &'a mut BTreeMap<String, ()>,
     /// Debug location (`!dbg !N`) applied to emitted lines.
     dbg: Option<usize>,
     /// Fault call sites met so far.
     sites: u32,
+    /// Addresses known to be a stack slot or symbol plus a constant offset. Memory accesses
+    /// through them address the base directly instead of through `inttoptr`, so LLVM keeps
+    /// their provenance: a slot whose address never reaches a call stays promotable to registers.
+    bases: HashMap<Value, (String, i64)>,
 }
 
 impl<'a> Tr<'a> {
@@ -388,6 +419,21 @@ impl<'a> Tr<'a> {
     }
 
     fn ptr(&mut self, v: Value, off: i32) -> String {
+        if let Some((base, at)) = self.bases.get(&v).cloned() {
+            let at = at.wrapping_add(i64::from(off));
+            // A symbol's declared type or a parameter says nothing about its size, so only a
+            // stack slot's offsets are known to stay in bounds.
+            let inbounds = if base.starts_with("%ss") {
+                " inbounds"
+            } else {
+                ""
+            };
+            return if at == 0 {
+                base
+            } else {
+                self.def(format!("getelementptr{inbounds} i8, ptr {base}, i64 {at}"))
+            };
+        }
         let o = self.op(v);
         let p = self.def(format!("inttoptr i64 {o} to ptr"));
         if off == 0 {
@@ -511,6 +557,8 @@ impl<'a> Tr<'a> {
             } => {
                 let off: i32 = offset.into();
                 let base = format!("%ss{}", stack_slot.as_u32());
+                self.bases
+                    .insert(dfg.first_result(inst), (base.clone(), i64::from(off)));
                 let p = if off == 0 {
                     base
                 } else {
@@ -529,6 +577,8 @@ impl<'a> Tr<'a> {
                 };
                 self.data.insert(sym.0.clone(), ());
                 let base = format!("@\"{}\"", sym.0);
+                self.bases
+                    .insert(dfg.first_result(inst), (base.clone(), sym.1));
                 let p = if sym.1 == 0 {
                     base
                 } else {
@@ -603,13 +653,14 @@ impl<'a> Tr<'a> {
                 }
                 let sigref = self.ext_func(func_ref).signature;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
-                self.call(inst, sigref, &format!("@\"{name}\""), &vals);
+                let exclusive = self.exclusive.get(&name).cloned().unwrap_or_default();
+                self.call(inst, sigref, &format!("@\"{name}\""), &vals, &exclusive);
             }
             InstructionData::CallIndirect { args, sig_ref, .. } => {
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 let callee = self.op(vals[0]);
                 let p = self.def(format!("inttoptr i64 {callee} to ptr"));
-                self.call(inst, sig_ref, &p, &vals[1..]);
+                self.call(inst, sig_ref, &p, &vals[1..], &[]);
             }
             InstructionData::Jump { destination, .. } => {
                 let t = self.target(destination);
@@ -681,7 +732,7 @@ impl<'a> Tr<'a> {
         let attrs = if fault_function(&name) {
             " cold noreturn"
         } else {
-            ""
+            pure_runtime_attrs(&name).unwrap_or("")
         };
         let decl = format!(
             "declare {} @\"{name}\"({}){attrs}",
@@ -692,13 +743,26 @@ impl<'a> Tr<'a> {
         name
     }
 
-    fn call(&mut self, inst: Inst, sigref: ir::SigRef, callee: &str, args: &[Value]) {
+    /// A call; the `exclusive` arguments are pointers the callee takes as `ptr noalias`.
+    fn call(
+        &mut self,
+        inst: Inst,
+        sigref: ir::SigRef,
+        callee: &str,
+        args: &[Value],
+        exclusive: &[usize],
+    ) {
         let sig = self.f.dfg.signatures[sigref].clone();
         let a: Vec<String> = args
             .iter()
-            .map(|v| {
+            .enumerate()
+            .map(|(i, v)| {
                 let t = self.ty(*v);
-                format!("{}{} {}", llty(t), attr(t), self.op(*v))
+                if exclusive.contains(&i) && t == types::I64 {
+                    format!("ptr {}", self.ptr(*v, 0))
+                } else {
+                    format!("{}{} {}", llty(t), attr(t), self.op(*v))
+                }
             })
             .collect();
         let rt = ret_ty(&sig.returns);
@@ -725,6 +789,23 @@ impl<'a> Tr<'a> {
 
     fn binary(&mut self, inst: Inst, opc: Opcode, args: [Value; 2]) {
         let (a, b) = (self.op(args[0]), self.op(args[1]));
+        // A known address plus or minus a constant stays a known address.
+        let step = match opc {
+            Opcode::Iadd => self
+                .bases
+                .get(&args[0])
+                .zip(b.parse::<i64>().ok())
+                .or_else(|| self.bases.get(&args[1]).zip(a.parse::<i64>().ok())),
+            Opcode::Isub => self
+                .bases
+                .get(&args[0])
+                .zip(b.parse::<i64>().ok().map(|c| -c)),
+            _ => None,
+        };
+        if let Some(((base, at), c)) = step {
+            let known = (base.clone(), at.wrapping_add(c));
+            self.bases.insert(self.f.dfg.first_result(inst), known);
+        }
         let t = self.ty(args[0]);
         let lt = llty(t);
         let simple = |s: &str| format!("{s} {lt} {a}, {b}");
@@ -825,6 +906,12 @@ impl<'a> Tr<'a> {
 
 impl LlvmModule {
     /// Appends the definition of `f` named `name`; `local` makes the symbol internal.
+    /// Marks parameters `at` of the internal function `name` as exclusive pointers, before any
+    /// function that calls it is added.
+    pub fn set_exclusive(&mut self, name: &str, at: Vec<usize>) {
+        self.exclusive.insert(name.to_string(), at);
+    }
+
     pub fn add_function(
         &mut self,
         name: &str,
@@ -856,16 +943,29 @@ impl LlvmModule {
             tramps: Vec::new(),
             cur: String::new(),
             decls: &mut self.decls,
+            exclusive: &self.exclusive,
             data: &mut self.data,
             dbg: Some(none_loc),
             sites: self.sites,
+            bases: HashMap::new(),
         };
         // Entry parameters are the function parameters; other block parameters are phis.
         let mut params = Vec::new();
+        // Exclusive pointer parameters arrive as `ptr`; the body sees their integer value, and
+        // addresses them through the parameter itself so the `noalias` fact reaches each access.
+        let mut casts = String::new();
+        let all = tr.exclusive;
+        let exclusive = all.get(name).map(Vec::as_slice).unwrap_or(&[]);
         for (i, p) in f.dfg.block_params(entry).iter().enumerate() {
             let t = f.dfg.value_type(*p);
             tr.ops.insert(*p, format!("%a{i}"));
-            params.push(format!("{}{} %a{i}", llty(t), attr(t)));
+            if exclusive.contains(&i) && t == types::I64 {
+                params.push(format!("ptr noalias %x{i}"));
+                let _ = writeln!(casts, "  %a{i} = ptrtoint ptr %x{i} to i64");
+                tr.bases.insert(*p, (format!("%x{i}"), 0));
+            } else {
+                params.push(format!("{}{} %a{i}", llty(t), attr(t)));
+            }
         }
         for b in &blocks[1..] {
             for (i, p) in f.dfg.block_params(*b).iter().enumerate() {
@@ -925,6 +1025,7 @@ impl LlvmModule {
                 1u32 << data.align_shift
             );
         }
+        allocas.push_str(&casts);
         // Allocas must sit in the entry block, right after its label.
         let (first, rest) = text.split_once('\n').expect("entry label");
         let header = format!(
