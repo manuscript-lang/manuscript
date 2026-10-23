@@ -82,12 +82,10 @@ export fn main() Int:
     let input = read_all(stdin()).get()
     let text = input.decode_utf8().get()
     var lines = text.split("\n")
-
     if lines.length() > 0 and lines.get(lines.length() - 1) == "":
         lines.pop()
 
     let parsed = parse_blocks(lines)
-
     stdout().write(render_blocks(parsed.blocks.clone())).get()
     stdout().flush().get()
     return 0
@@ -129,12 +127,10 @@ fn esc(s: String) String:
     let a = s.replace_all("&", "&amp;").get()
     let b = a.replace_all("<", "&lt;").get()
     let c = b.replace_all(">", "&gt;").get()
-
     return c.replace_all("\"", "&quot;").get()
 
 fn run_length(cs: List[Int], i: Int, c: Int) Int:
     var k = i
-
     while at(cs, k) == c:
         k += 1
     return k - i
@@ -142,7 +138,6 @@ fn run_length(cs: List[Int], i: Int, c: Int) Int:
 fn indent_of(line: String) Int:
     let cs = line.scalar_values()
     var k = 0
-
     while at(cs, k) == SP:
         k += 1
     return k
@@ -167,7 +162,6 @@ fn strip_upto(line: String, k: Int) String:
 fn rtrim_sp(s: String) String:
     let cs = s.scalar_values()
     var b = cs.length()
-
     while b > 0 and cs.get(b - 1) == SP:
         b -= 1
     return to_str(cs.slice(0, b).get())
@@ -175,12 +169,10 @@ fn rtrim_sp(s: String) String:
 fn trim_sp(s: String) String:
     let cs = s.scalar_values()
     var a = 0
-
     while at(cs, a) == SP:
         a += 1
 
     var b = cs.length()
-
     while b > a and cs.get(b - 1) == SP:
         b -= 1
     return to_str(cs.slice(a, b).get())
@@ -188,7 +180,6 @@ fn trim_sp(s: String) String:
 fn has_hard_end(line: String) Bool:
     let cs = line.scalar_values()
     let n = cs.length()
-
     return at(cs, n - 1) == SP and at(cs, n - 2) == SP
 
 # ---------------------------------------------------------------- blocks
@@ -209,7 +200,6 @@ fn parse_blocks(lines: List[String]) Parsed:
             blank = false
 
             let step = parse_block(lines.clone(), i)
-
             blocks.append(step.block)
             i = step.next
 
@@ -301,7 +291,6 @@ fn fence_block(lines: List[String], i: Int, f: Fence) Step:
         j += 1
 
     var next = n
-
     if j < n:
         next = j + 1
 
@@ -309,7 +298,6 @@ fn fence_block(lines: List[String], i: Int, f: Fence) Step:
 
     if f.info.length() > 0:
         let word = f.info.split(" ").get(0)
-
         open = "<pre><code class=\"language-{esc(word)}\">"
 
     return Step(
@@ -333,12 +321,10 @@ fn heading_of(line: String) Optional[Heading]:
     let content = trim_sp(drop_cols(line, after))
     let ccs = content.scalar_values()
     var k = ccs.length()
-
     while k > 0 and ccs.get(k - 1) == HASH:
         k -= 1
 
     var text = content
-
     if k < ccs.length() and (k == 0 or ccs.get(k - 1) == SP):
         text = rtrim_sp(to_str(ccs.slice(0, k).get()))
     return some(Heading(level: h, content: text))
@@ -363,12 +349,10 @@ fn hr_line(line: String) Bool:
 
 fn is_quote_line(line: String) Bool:
     let ind = indent_of(line)
-
     return ind <= 3 and at(line.scalar_values(), ind) == GT
 
 fn strip_quote(line: String) String:
     var p = indent_of(line) + 1
-
     if at(line.scalar_values(), p) == SP:
         p += 1
     return drop_cols(line, p)
@@ -387,7 +371,6 @@ fn quote_block(lines: List[String], i: Int) Step:
         .concat(render_blocks(parsed.blocks.clone()))
         .concat("</blockquote>\n")
     )
-
     return Step(block: Html(text: html), next: j)
 
 fn indented_code(lines: List[String], i: Int) Step:
@@ -406,7 +389,6 @@ fn indented_code(lines: List[String], i: Int) Step:
             break
 
     var body = ""
-
     for k in range(i, last + 1):
         body = body.concat(esc(strip_upto(lines.get(k), 4))).concat("\n")
     return Step(
@@ -417,7 +399,6 @@ fn indented_code(lines: List[String], i: Int) Step:
 fn paragraph(lines: List[String], i: Int) Step:
     let n = lines.length()
     var j = i + 1
-
     while j < n and para_continues(lines.get(j)):
         j += 1
 
@@ -428,11 +409,9 @@ fn paragraph(lines: List[String], i: Int) Step:
 
         if k < j - 1:
             let hard = has_hard_end(line)
-
             line = rtrim_sp(line)
 
             var sep = "\n"
-
             if hard:
                 sep = sent_str()
             text = text.concat(line).concat(sep)
@@ -501,19 +480,16 @@ fn list_marker(line: String) Optional[Marker]:
 
     if p < n:
         var spaces = 0
-
         while at(cs, p + spaces) == SP:
             spaces += 1
         if spaces < 5:
             width = p + spaces
 
     let empty = is_blank(drop_cols(line, width))
-
     return some(Marker(ordered: ordered, ch: ch, num: num, width: width, empty: empty))
 
 fn run_digits(cs: List[Int], i: Int) Int:
     var k = i
-
     while is_digit(at(cs, k)):
         k += 1
     return k - i
@@ -557,14 +533,12 @@ fn parse_list(lines: List[String], i0: Int, first: Marker) Step:
             j += 1
 
         let parsed = parse_blocks(item)
-
         if parsed.loose:
             loose = true
         items.append(parsed.blocks.clone())
         stop = end
 
         var k = end
-
         while k < n and is_blank(lines.get(k)):
             k += 1
 
@@ -577,7 +551,6 @@ fn parse_list(lines: List[String], i0: Int, first: Marker) Step:
             go = false
 
     var body = ""
-
     for blocks in items:
         body = (
             body
@@ -621,12 +594,10 @@ fn separate(body: String) String:
 # ---------------------------------------------------------------- tables
 fn split_cells(line: String) List[String]:
     var cs = trim_sp(line).scalar_values()
-
     if at(cs, 0) == PIPE and cs.length() > 0:
         cs = cs.drop(1)
 
     let m = cs.length()
-
     if m > 0 and cs.get(m - 1) == PIPE and not (m >= 2 and cs.get(m - 2) == BS):
         cs = cs.take(m - 1)
 
@@ -649,12 +620,10 @@ fn is_delim_cell(cell: String) Bool:
     let cs = cell.scalar_values()
     let n = cs.length()
     var a = 0
-
     if at(cs, 0) == COLON:
         a = 1
 
     var b = n
-
     if b - 1 >= a and at(cs, b - 1) == COLON:
         b -= 1
     if b - a < 1:
@@ -695,7 +664,6 @@ fn table_at(lines: List[String], i: Int) Optional[Step]:
         return none
 
     let aligns = split_cells(delim)
-
     for cell in aligns:
         if not is_delim_cell(cell):
             return none
@@ -732,7 +700,6 @@ fn table_at(lines: List[String], i: Int) Optional[Step]:
 
             for c in range(0, heads.length()):
                 var cell = ""
-
                 if c < row.length():
                     cell = row.get(c)
                 html = (
@@ -797,7 +764,6 @@ fn scan(text: String) List[Node]:
             let flags = run_flags(
                 c, at_or_space(cs.clone(), i - 1), at_or_space(cs.clone(), i + run)
             )
-
             nodes.append(
                 Delim(
                     ch: to_str([c]), count: run, orig: run, can_open: flags.can_open,
@@ -813,7 +779,6 @@ fn scan(text: String) List[Node]:
             i += 1
         else if c == RBRACK:
             let step = close_bracket(cs.clone(), nodes, i)
-
             nodes = step.nodes.clone()
             i = step.next
         else:
@@ -821,7 +786,6 @@ fn scan(text: String) List[Node]:
             i += 1
 
     var out: List[Node] = []
-
     for node in nodes:
         out.append(opener_to_text(node))
     return resolve(out)
@@ -854,7 +818,6 @@ fn code_span(cs: List[Int], a: Int, b: Int) String:
 
     let n = codes.length()
     var all_space = true
-
     for c in codes:
         if c != SP:
             all_space = false
@@ -874,7 +837,6 @@ fn run_flags(c: Int, prev: Int, next: Int) Flags:
 
     let open = left and (not right or is_punct(prev))
     let close = right and (not left or is_punct(next))
-
     return Flags(can_open: open, can_close: close)
 
 fn close_bracket(cs: List[Int], nodes: List[Node], i: Int) Scan:
@@ -896,7 +858,6 @@ fn close_bracket(cs: List[Int], nodes: List[Node], i: Int) Scan:
     if let tail = parse_tail(cs.clone(), i + 1):
         let kids = resolve(list.drop(k + 1))
         var out = list.take(k)
-
         if not image:
             out = deactivate_openers(out)
         out.append(
@@ -916,7 +877,6 @@ fn close_bracket(cs: List[Int], nodes: List[Node], i: Int) Scan:
 
 fn deactivate_openers(nodes: List[Node]) List[Node]:
     var out: List[Node] = []
-
     for node in nodes:
         out.append(deactivate(node))
     return out
@@ -1028,7 +988,6 @@ fn parse_tail(cs: List[Int], start: Int) Optional[Tail]:
             return none
 
     let after_dest = p
-
     p = skip_ws(cs.clone(), p)
 
     var title: Optional[String] = none
@@ -1066,7 +1025,6 @@ fn parse_tail(cs: List[Int], start: Int) Optional[Tail]:
 
 fn skip_ws(cs: List[Int], p: Int) Int:
     var k = p
-
     while k < cs.length() and is_ws(cs.get(k)):
         k += 1
     return k
@@ -1152,7 +1110,6 @@ fn resolve(nodes: List[Node]) List[Node]:
 
         if delim_close(closer.clone()) and delim_count(closer.clone()) > 0:
             var o = c - 1
-
             while o >= 0 and not pair_ok(list.get(o).clone(), closer.clone()):
                 o -= 1
 
@@ -1160,22 +1117,18 @@ fn resolve(nodes: List[Node]) List[Node]:
                 let oc = delim_count(list.get(o).clone())
                 let cc = delim_count(closer.clone())
                 var use = 1
-
                 if oc >= 2 and cc >= 2:
                     use = 2
 
                 var kids: List[Node] = []
-
                 for k in range(o + 1, c):
                     kids.append(as_text(list.get(k).clone()))
 
                 var repl: List[Node] = []
-
                 if oc - use > 0:
                     repl.append(with_count(list.get(o).clone(), oc - use))
 
                 let em = o + repl.length()
-
                 repl.append(Emph(strong: use == 2, children: kids))
                 if cc - use > 0:
                     repl.append(with_count(closer.clone(), cc - use))
@@ -1186,14 +1139,12 @@ fn resolve(nodes: List[Node]) List[Node]:
         c += 1
 
     var out: List[Node] = []
-
     for node in list:
         out.append(as_text(node.clone()))
     return out
 
 fn render_nodes(nodes: List[Node]) String:
     var out = ""
-
     for node in nodes:
         out = out.concat(render_node(node.clone()))
     return out
@@ -1221,7 +1172,6 @@ fn render_node(node: Node) String:
         Link(image, dest, title, children):
             if image:
                 let alt = esc(plain(children.clone()))
-
                 return (
                     "<img src=\""
                     .concat(esc(dest))
@@ -1252,7 +1202,6 @@ fn title_attr(title: Optional[String]) String:
 
 fn plain(nodes: List[Node]) String:
     var out = ""
-
     for node in nodes:
         out = out.concat(plain_one(node.clone()))
     return out

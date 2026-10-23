@@ -3,12 +3,10 @@ import Bytes from "@std/bytes.ms"
 
 test "Bytes split is binary safe":
     let data = Bytes([255, 0, 1, 0, 254])
-
     try expect_equal(data.split(Bytes([0])), [Bytes([255]), Bytes([1]), Bytes([254])])
 
 test "Bytes split handles exact and nonoverlapping separators":
     let empty = Bytes([])
-
     try expect_equal(
         Bytes([0, 7, 0]).split(Bytes([0])), [empty.clone(), Bytes([7]), empty.clone()]
     )
@@ -25,14 +23,12 @@ test "Bytes split handles exact and nonoverlapping separators":
 
 test "Bytes empty separator splits bytes without decoding":
     let empty = Bytes([])
-
     try expect_false(not (empty.split(empty).is_empty()))
     try expect_equal(
         Bytes([0, 255, 128]).split(empty), [Bytes([0]), Bytes([255]), Bytes([128])]
     )
 
     let scalars = "é".to_bytes().split(empty)
-
     try expect_equal(scalars, [Bytes([195]), Bytes([169])])
     try expect_false(scalars.get(0).decode_utf8().is_some())
     try expect_equal("é".to_bytes().split(Bytes([169])), [Bytes([195]), empty])
@@ -41,7 +37,6 @@ test "Bytes split optional limits truncate parts":
     let data = Bytes([1, 0, 2, 0, 3, 0])
     let separator = Bytes([0])
     let expected = [Bytes([1]), Bytes([2]), Bytes([3]), Bytes([])]
-
     try expect_false(
         (
             data.split(separator) != expected
@@ -71,7 +66,6 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     let split = data.split
     let typed: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes] = data.split
-
     data = Bytes([9])
     try expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])
     try expect_equal(split(max_parts: 1, Bytes([0])), [Bytes([1])])
@@ -91,7 +85,6 @@ test "Bytes split returns independent List storage and immutable views":
     let payload = first.get(0)
     let edited = payload.with_value(0, 99)
     var extracted = payload.values()
-
     extracted.set(0, 88)
     first.set(0, Bytes([77]))
     first.append(Bytes([66]))
@@ -106,11 +99,9 @@ test "Bytes split returns independent List storage and immutable views":
 
     let empty = Bytes([])
     var zero_parts = data.split(Bytes([0]), 0)
-
     zero_parts.append(empty.clone())
     try expect_false(not (data.split(Bytes([0]), 0).is_empty()))
 
     var no_parts = empty.split(empty)
-
     no_parts.append(Bytes([1]))
     try expect_false(not (empty.split(empty).is_empty()))

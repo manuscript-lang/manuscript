@@ -9,7 +9,6 @@ fn describe(name: Optional[String]) String:
 
 fn total(items: List[Optional[Int]]) Int:
     var sum = 0
-
     for item in items:
         if let value = item:
             sum = sum + value
@@ -30,7 +29,6 @@ test "if let takes else when absent and keeps falsy payloads":
     (try check(value: describe(some("Ada")) == "Hello, Ada", message: "some"))
 
     let items: List[Optional[Int]] = [some(1), none, some(0), some(2)]
-
     (try check(value: total(items) == 3, message: "total"))
 
     let empty: List[Int] = []

@@ -137,7 +137,6 @@ fn split_words(text: String) List[String]:
 # Joins words with single spaces, dropping empty items.
 fn join_words(ws: List[String]) String:
     var kept: List[String] = []
-
     for w in ws:
         if w != "":
             kept.append(w)
@@ -168,14 +167,12 @@ fn last_index(cs: List[String], ch: String) Int:
 fn strip_tabs(text: String) String:
     let cs = text.chars()
     var k = 0
-
     while k < cs.length() and cs.get(k) == "\t":
         k += 1
     return cs.drop(k).join("")
 
 fn strip_quotes(w: String) String:
     var out = ""
-
     for c in w.chars():
         if c != "'" and c != "\"":
             out += c
@@ -318,7 +315,6 @@ fn subst_pct(repl: String, stem: String) String:
 
 fn subst_all(xs: List[String], stem: String) List[String]:
     var out: List[String] = []
-
     for x in xs:
         out.append(subst_pct(x, stem))
     return out
@@ -361,7 +357,6 @@ fn basename_of(w: String) String:
         return w
 
     let cs = w.chars()
-
     return cs.take(cs.length() - s.length()).join("")
 
 fn glob_match(p: List[String], pi: Int, s: List[String], si: Int) Bool:
@@ -467,7 +462,6 @@ fn lookup(var st: St, sc: Scope, stack: List[String], name: String) Result[
             )
 
         var s2 = stack
-
         s2.append(name)
         return expand(var st, sc, s2, v.value)
 
@@ -522,7 +516,6 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
     if name == "strip":
         let text = try arg(var st, sc, stack, raw, 0)
-
         return ok(join_words(split_words(text)))
 
     if name == "findstring":
@@ -540,7 +533,6 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
         for w in split_words(text):
             let hit = matches_any(pats.clone(), w)
-
             if hit == (name == "filter"):
                 outs.append(w)
 
@@ -551,13 +543,11 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
         let ws = split_words(text).sorted(
             fn(x: String, y: String) Int: return x.compare(y)
         )
-
         return ok(join_words(ws.distinct()))
 
     if name == "word":
         let k = int_arg(try arg(var st, sc.clone(), stack.clone(), raw, 0))
         let ws = split_words(try arg(var st, sc, stack, raw, 1))
-
         if let n = k:
             if n >= 1 and n <= ws.length():
                 return ok(ws.get(n - 1))
@@ -574,14 +564,12 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
                     return ok("")
 
                 let stop = if_min(last, ws.length())
-
                 return ok(join_words(ws.drop(first - 1).take(stop - first + 1)))
 
         return ok("")
 
     if name == "words":
         let ws = split_words(try arg(var st, sc, stack, raw, 0))
-
         return ok("{ws.length()}")
 
     if name == "firstword" or name == "lastword":
@@ -628,7 +616,6 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
         for p in pats:
             var hits: List[String] = []
-
             for f in st.files.keys():
                 if glob_match(p.chars(), 0, f.chars(), 0):
                     hits.append(f)
@@ -649,7 +636,6 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
         for w in items:
             var sc2 = sc.clone()
-
             sc2.binds = sc.binds.concat([Bind(name: vname, value: w)])
             outs.append(try expand(var st, sc2, stack.clone(), raw_at(raw, 2)))
 
@@ -664,13 +650,11 @@ fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: Str
 
     if name == "info":
         let t = try arg(var st, sc, stack, raw, 0)
-
         st.out.append(t)
         return ok("")
 
     # error
     let msg = try arg(var st, sc.clone(), stack, raw, 0)
-
     return error(fatal(sc.line, msg))
 
 fn if_min(a: Int, b: Int) Int:
@@ -724,7 +708,6 @@ fn reference(var st: St, sc: Scope, stack: List[String], inner: String) Result[
         return ok(join_words(outs))
 
     let nm = (try expand(var st, sc.clone(), stack.clone(), inner)).trim()
-
     return lookup(var st, sc, stack, nm)
 
 fn index_of_space(cs: List[String]) Int:
@@ -791,7 +774,6 @@ fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
 
         if d == "(" or d == "\{":
             var close = "\}"
-
             if d == "(":
                 close = ")"
 
@@ -800,7 +782,6 @@ fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
                 return error(fatal(sc.line, "unterminated variable reference"))
 
             let inner = cs.drop(k + 2).take(j - k - 2).join("")
-
             out += try reference(var st, sc.clone(), stack.clone(), inner)
             k = j + 1
             continue
@@ -841,7 +822,6 @@ fn cond_args(rest: String) Optional[Pair]:
 
     while k < n:
         let c = cs.get(k)
-
         if c == "(" or c == "\{":
             depth += 1
         if c == ")" or c == "\}":
@@ -864,7 +844,6 @@ fn cond_args(rest: String) Optional[Pair]:
 
     while j < inner.length():
         let c = inner.get(j)
-
         if c == "(" or c == "\{":
             d2 += 1
         if c == ")" or c == "\}":
@@ -897,7 +876,6 @@ fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Resul
         let name = (try expand(var st, plain(num), [], rest)).trim()
         let defined = is_defined(st, name)
         var cond = defined
-
         if word == "ifndef":
             cond = not defined
         return push_frame(var mk, true, cond, num)
@@ -910,7 +888,6 @@ fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Resul
             let a = (try expand(var st, plain(num), [], p.a.trim())).trim()
             let b = (try expand(var st, plain(num), [], p.b.trim())).trim()
             var cond = a == b
-
             if word == "ifneq":
                 cond = a != b
             return push_frame(var mk, true, cond, num)
@@ -968,7 +945,6 @@ fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
         st.vars.add(name, Var(value: value_raw, simple: false, cmd: false))
     else if op == ":":
         let v = try expand(var st, plain(num), [], value_raw)
-
         st.vars.add(name, Var(value: v, simple: true, cmd: false))
     else if op == "?":
         if not st.vars.contains(name):
@@ -977,7 +953,6 @@ fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
         if let old = st.vars.get(name):
             if old.simple:
                 let v = try expand(var st, plain(num), [], value_raw)
-
                 (
                     st.vars.add(
                         name,
@@ -1083,7 +1058,6 @@ fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
             )
         else if let old = mk.rules.get(t).clone():
             var e = old.clone()
-
             e.normal = old.normal.concat(r.normal)
             e.order = old.order.concat(r.order)
 
@@ -1172,7 +1146,6 @@ fn parse(var st: St, lines: List[String]) Result[Mk, Fatal]:
         rule: empty_rule(), frames: [], memo: Map[String, Bool](), stack: [],
         ran: false, dry: false
     )
-
     for lg in logical_lines(lines):
         try parse_line(var st, var mk, lg.num, lg.text)
     try close_rule(var st, var mk)
@@ -1212,7 +1185,6 @@ fn find_pattern(st: St, mk: Mk, name: String, depth: Int) Int:
 
     while i < mk.pats.length():
         let p = mk.pats.get(i)
-
         if p.recipe.length() > 0:
             if let s = match_stem(p.pattern, name):
                 if s != "" and prereqs_ok(st, mk, p, s, depth):
@@ -1255,7 +1227,6 @@ fn resolve(st: St, mk: Mk, name: String) Resolved:
 
 fn chain(stack: List[String], name: String) String:
     let i = stack.index_of(name).get(0)
-
     return stack.drop(i).concat([name]).join(" -> ")
 
 fn simulate(var st: St, cmd: String) Int:
@@ -1301,7 +1272,6 @@ fn simulate(var st: St, cmd: String) Int:
 
     if w0 == "echo":
         var parts: List[String] = []
-
         for a in args:
             parts.append(strip_quotes(a))
         st.out.append(parts.join(" "))
@@ -1319,7 +1289,6 @@ fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[Str
     mk.ran = true
 
     var first = ""
-
     if r.normal.length() > 0:
         first = r.normal.get(0)
 
@@ -1340,7 +1309,6 @@ fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[Str
 
         while k < cs.length():
             let c = cs.get(k)
-
             if c == "@":
                 silent = true
             if c == "-":
@@ -1414,7 +1382,6 @@ fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fat
 
     let existed = st.files.contains(name)
     let old = st.files.get(name).get(0)
-
     mk.stack.append(name)
 
     var any = false
@@ -1423,13 +1390,11 @@ fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fat
 
     for p in r.normal.distinct():
         let c = try update(var st, var mk, p, name)
-
         if c:
             any = true
 
         let mt = st.files.get(p).get(-1)
         let present = mt >= 0
-
         if existed and present and mt > old:
             newer = true
         if not existed or c or (present and mt > old):
@@ -1455,7 +1420,6 @@ fn build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool)
     Unit, Fatal
 ]:
     var mk = try parse(var st, lines)
-
     mk.dry = dry
 
     var goals = goals_in
@@ -1510,7 +1474,6 @@ fn deps_req(var st: St, lines: List[String], target: String) Result[Unit, Fatal]
     var stack = [target]
     var seen: List[String] = []
     var out: List[String] = []
-
     try dep_walk(var st, mk, target, var stack, var seen, var out)
     if out.length() == 0:
         out.append("(no prerequisites)")
@@ -1519,7 +1482,6 @@ fn deps_req(var st: St, lines: List[String], target: String) Result[Unit, Fatal]
 
 fn rule_text(head: String, normal: List[String], order: List[String]) String:
     var s = head + ":"
-
     if normal.length() > 0:
         s += " " + normal.join(" ")
     if order.length() > 0:
@@ -1529,7 +1491,6 @@ fn rule_text(head: String, normal: List[String], order: List[String]) String:
 fn targets_req(var st: St, lines: List[String]) Result[Unit, Fatal]:
     let mk = try parse(var st, lines)
     let d = default_goal(mk)
-
     if d != "":
         st.out.append("default: {d}")
     for e in mk.rules.values():
@@ -1544,7 +1505,6 @@ fn expand_req(var st: St, lines: List[String], text: String) Result[Unit, Fatal]
     try parse_only(var st, lines)
 
     let v = try expand(var st, plain(0), [], text)
-
     st.out.append("[{v}]")
     return ok(unit)
 
@@ -1581,7 +1541,6 @@ fn files_req(var st: St) Result[Unit, Fatal]:
         .keys()
         .sorted(fn(x: String, y: String) Int: return x.compare(y))
     )
-
     if names.length() == 0:
         st.out.append("(no files)")
     for f in names:
@@ -1612,7 +1571,6 @@ fn dispatch(var st: St, mk_lines: List[String], line: String, words: List[String
 
     if cmd == "build" or cmd == "dry":
         let goals = set_vars(var st, args)
-
         return build_req(var st, mk_lines, goals, cmd == "dry")
 
     if cmd == "deps":
@@ -1632,7 +1590,6 @@ fn dispatch(var st: St, mk_lines: List[String], line: String, words: List[String
         st.vars = Map[String, Var]()
 
         let text = line.chars().drop(6).join("").trim()
-
         return expand_req(var st, mk_lines, text)
 
     if cmd == "files":
@@ -1689,7 +1646,6 @@ export fn main() Int:
 
         if res.is_error():
             let msg = res.err().text
-
             if msg != "":
                 st.out.append(msg)
 

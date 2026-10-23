@@ -45,7 +45,6 @@ test "typed math":
 
 test "typed string members":
     let text = "  Hello World  "
-
     try expect_true((text.trim() == "Hello World"))
     try expect_true(
         (

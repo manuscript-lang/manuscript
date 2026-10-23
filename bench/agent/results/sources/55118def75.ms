@@ -145,7 +145,6 @@ fn contains_value(vals: List[Value], v: Value) Bool:
 
 fn nulls(n: Int) List[Value]:
     var out: List[Value] = []
-
     for i in range(0, n):
         out.append(VNull)
     return out
@@ -177,7 +176,6 @@ fn negate(v: Value) Result[Value, SqlError]:
         return ok(VNull)
 
     let n = try int_arg(v)
-
     return ok(VInt(n: 0 - n))
 
 fn logical_not(v: Value) Result[Value, SqlError]:
@@ -299,7 +297,6 @@ fn ascii_case(s: String, to_upper: Bool) String:
 
     for i in range(0, src.length()):
         var c = src.get(i)
-
         if to_upper and c >= 97 and c <= 122:
             c = c - 32
         if not to_upper and c >= 65 and c <= 90:
@@ -315,12 +312,10 @@ fn substring(s: String, start: Int, len: Int) String:
         return bytes_to_string(out.freeze())
 
     var first = start
-
     if first < 1:
         first = 1
 
     var last = start + len - 1
-
     if last > src.length():
         last = src.length()
     for k in range(first, last + 1):
@@ -363,12 +358,10 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
 
     if name == "UPPER" or name == "LOWER":
         let s = try text_arg(vals[0])
-
         return ok(VText(s: ascii_case(s, name == "UPPER")))
 
     if name == "LENGTH":
         let s = try text_arg(vals[0])
-
         return ok(VInt(n: s.byte_length()))
 
     if name == "ABS":
@@ -381,12 +374,10 @@ fn scalar_call(name: String, vals: List[Value]) Result[Value, SqlError]:
     let s = try text_arg(vals[0])
     let start = try int_arg(vals[1])
     let len = try int_arg(vals[2])
-
     return ok(VText(s: substring(s, start, len)))
 
 fn distinct_values(vals: List[Value]) List[Value]:
     var out: List[Value] = []
-
     for i in range(0, vals.length()):
         if not contains_value(out, vals[i]):
             out.append(vals[i])
@@ -454,7 +445,6 @@ fn aggregate(
     for i in range(0, c.group.length()):
         let inner = Ctx(scope: c.scope.clone(), row: c.group[i].clone(), group: [])
         let v = try eval(args[0].clone(), inner)
-
         if not is_null(v):
             vals.append(v)
 
@@ -470,7 +460,6 @@ fn aggregate(
 
         for i in range(0, vals.length()):
             let n = try int_arg(vals[i])
-
             total = total + n
 
         return ok(VInt(n: total))
@@ -483,7 +472,6 @@ fn aggregate(
 
     for k in range(1, vals.length()):
         let order = try ordering(vals[k], best)
-
         if name == "MIN" and order < 0:
             best = vals[k]
         if name == "MAX" and order > 0:
@@ -497,25 +485,20 @@ fn eval(e: Expr, c: Ctx) Result[Value, SqlError]:
             return ok(v)
         Col(qual, name):
             let idx = try resolve_col(c.scope, qual, name)
-
             return ok(c.row[idx])
         Neg(x):
             let v = try eval(x, c)
-
             return negate(v)
         Not(x):
             let v = try eval(x, c)
-
             return logical_not(v)
         Arith(op, l, r):
             let a = try eval(l, c)
             let b = try eval(r, c)
-
             return arith(op, a, b)
         Cmp(op, l, r):
             let a = try eval(l, c)
             let b = try eval(r, c)
-
             return compare_op(op, a, b)
         And(l, r):
             let a = try eval(l, c)
@@ -523,7 +506,6 @@ fn eval(e: Expr, c: Ctx) Result[Value, SqlError]:
                 return ok(VBool(truth: false))
 
             let b = try eval(r, c)
-
             return and_values(a, b)
         Or(l, r):
             let a = try eval(l, c)
@@ -531,16 +513,13 @@ fn eval(e: Expr, c: Ctx) Result[Value, SqlError]:
                 return ok(VBool(truth: true))
 
             let b = try eval(r, c)
-
             return or_values(a, b)
         IsNull(x, neg):
             let v = try eval(x, c)
-
             return ok(VBool(truth: is_null(v) != neg))
         Like(x, pattern, neg):
             let a = try eval(x, c)
             let b = try eval(pattern, c)
-
             return like_values(a, b, neg)
         InList(x, items, neg):
             let a = try eval(x, c)
@@ -554,7 +533,6 @@ fn eval(e: Expr, c: Ctx) Result[Value, SqlError]:
                     sawnull = true
                 else if not is_null(a):
                     let order = try ordering(a, v)
-
                     if order == 0:
                         found = true
 
@@ -591,7 +569,6 @@ fn eval(e: Expr, c: Ctx) Result[Value, SqlError]:
 
             for i in range(0, args.length()):
                 let v = try eval(args[i].clone(), c)
-
                 vals.append(v)
 
             return scalar_call(name, vals)
@@ -730,7 +707,6 @@ fn primary_index(cols: List[ColDef]) Int:
 
 fn table_scope(alias: String, cols: List[ColDef]) List[ScopeCol]:
     var out: List[ScopeCol] = []
-
     for k in range(0, cols.length()):
         out.append(ScopeCol(alias: alias, name: cols[k].name))
     return out
@@ -818,7 +794,6 @@ type Span:
 # A Unit value for Result[Unit, SqlError] successes.
 fn unit_value() Unit:
     var scratch: List[Int] = []
-
     return scratch.append(0)
 
 fn is_digit(c: Int) Bool:
@@ -883,7 +858,6 @@ fn split_statements(src: List[Int]) List[Span]:
 fn operator_at(src: List[Int], i: Int, stop: Int) String:
     let c = src[i]
     var next = -1
-
     if i + 1 < stop:
         next = src[i + 1]
     if c == 60 and next == 61:
@@ -963,7 +937,6 @@ fn lex(src: List[Int], start: Int, stop: Int) Result[List[Token], SqlError]:
             toks.append(Token(kind: "int", text: "", num: value, data: ""))
         else if c == 39:
             var text = BytesBuilder()
-
             i += 1
 
             var closed = false
@@ -1042,7 +1015,6 @@ fn expect_ident(var p: Parser) Result[String, SqlError]:
         return error(syntax_error())
 
     let name = p.toks[p.pos].text
-
     p.pos = p.pos + 1
     return ok(name)
 
@@ -1051,7 +1023,6 @@ fn expect_int(var p: Parser) Result[Int, SqlError]:
         return error(syntax_error())
 
     let n = p.toks[p.pos].num
-
     p.pos = p.pos + 1
     return ok(n)
 
@@ -1062,7 +1033,6 @@ fn parse_colref(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let second = try expect_ident(var p)
-
         return ok(Col(qual: first, name: second))
 
     return ok(Col(qual: "", name: first))
@@ -1081,14 +1051,12 @@ fn parse_call(var p: Parser, name: String) Result[Expr, SqlError]:
         p.pos = p.pos + 1
     else if not at_op(p, ")"):
         let first = try parse_expr(var p)
-
         args.append(first)
 
         while at_op(p, ","):
             p.pos = p.pos + 1
 
             let more = try parse_expr(var p)
-
             args.append(more)
 
     if distinct and args.is_empty() and not star:
@@ -1119,7 +1087,6 @@ fn parse_primary(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let e = try parse_expr(var p)
-
         try expect_op(var p, ")")
         return ok(e)
 
@@ -1137,7 +1104,6 @@ fn parse_unary(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let e = try parse_unary(var p)
-
         return ok(Neg(e: e))
 
     return parse_primary(var p)
@@ -1147,11 +1113,9 @@ fn parse_mul(var p: Parser) Result[Expr, SqlError]:
 
     while at_op(p, "*") or at_op(p, "/") or at_op(p, "%"):
         let op = p.toks[p.pos].text
-
         p.pos = p.pos + 1
 
         let right = try parse_unary(var p)
-
         left = Arith(op: op, l: left, r: right)
 
     return ok(left)
@@ -1161,11 +1125,9 @@ fn parse_add(var p: Parser) Result[Expr, SqlError]:
 
     while at_op(p, "+") or at_op(p, "-") or at_op(p, "||"):
         let op = p.toks[p.pos].text
-
         p.pos = p.pos + 1
 
         let right = try parse_mul(var p)
-
         left = Arith(op: op, l: left, r: right)
 
     return ok(left)
@@ -1173,7 +1135,6 @@ fn parse_add(var p: Parser) Result[Expr, SqlError]:
 fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
     let left = try parse_add(var p)
     var op = ""
-
     for candidate in ["=", "<>", "<", "<=", ">", ">="]:
         if at_op(p, candidate):
             op = candidate
@@ -1182,7 +1143,6 @@ fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let right = try parse_add(var p)
-
         return ok(Cmp(op: op, l: left, r: right))
 
     if at_kw(p, "IS"):
@@ -1209,7 +1169,6 @@ fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let pattern = try parse_add(var p)
-
         return ok(Like(e: left, pattern: pattern, neg: neg))
 
     if at_kw(p, "IN"):
@@ -1218,14 +1177,12 @@ fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
 
         var items: List[Expr] = []
         let first = try parse_expr(var p)
-
         items.append(first)
 
         while at_op(p, ","):
             p.pos = p.pos + 1
 
             let more = try parse_expr(var p)
-
             items.append(more)
 
         try expect_op(var p, ")")
@@ -1235,11 +1192,9 @@ fn parse_cmp(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let lo = try parse_add(var p)
-
         try expect_kw(var p, "AND")
 
         let hi = try parse_add(var p)
-
         return ok(Between(e: left, lo: lo, hi: hi, neg: neg))
 
     return ok(left)
@@ -1249,7 +1204,6 @@ fn parse_not(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let e = try parse_not(var p)
-
         return ok(Not(e: e))
 
     return parse_cmp(var p)
@@ -1261,7 +1215,6 @@ fn parse_and(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let right = try parse_not(var p)
-
         left = And(l: left, r: right)
 
     return ok(left)
@@ -1273,7 +1226,6 @@ fn parse_expr(var p: Parser) Result[Expr, SqlError]:
         p.pos = p.pos + 1
 
         let right = try parse_and(var p)
-
         left = Or(l: left, r: right)
 
     return ok(left)
@@ -1283,14 +1235,12 @@ fn parse_row(var p: Parser) Result[List[Expr], SqlError]:
 
     var exprs: List[Expr] = []
     let first = try parse_expr(var p)
-
     exprs.append(first)
 
     while at_op(p, ","):
         p.pos = p.pos + 1
 
         let more = try parse_expr(var p)
-
         exprs.append(more)
 
     try expect_op(var p, ")")
@@ -1327,19 +1277,16 @@ fn parse_create(var p: Parser) Result[Stmt, SqlError]:
     try expect_kw(var p, "TABLE")
 
     let name = try expect_ident(var p)
-
     try expect_op(var p, "(")
 
     var cols: List[ColDef] = []
     let first = try parse_coldef(var p)
-
     cols.append(first)
 
     while at_op(p, ","):
         p.pos = p.pos + 1
 
         let more = try parse_coldef(var p)
-
         cols.append(more)
 
     try expect_op(var p, ")")
@@ -1350,7 +1297,6 @@ fn parse_drop(var p: Parser) Result[Stmt, SqlError]:
     try expect_kw(var p, "TABLE")
 
     let name = try expect_ident(var p)
-
     return ok(Drop(name: name))
 
 fn parse_insert(var p: Parser) Result[Stmt, SqlError]:
@@ -1365,14 +1311,12 @@ fn parse_insert(var p: Parser) Result[Stmt, SqlError]:
 
         var list: List[String] = []
         let first = try expect_ident(var p)
-
         list.append(first)
 
         while at_op(p, ","):
             p.pos = p.pos + 1
 
             let more = try expect_ident(var p)
-
             list.append(more)
 
         try expect_op(var p, ")")
@@ -1382,14 +1326,12 @@ fn parse_insert(var p: Parser) Result[Stmt, SqlError]:
 
     var rows: List[List[Expr]] = []
     let first_row = try parse_row(var p)
-
     rows.append(first_row)
 
     while at_op(p, ","):
         p.pos = p.pos + 1
 
         let more = try parse_row(var p)
-
         rows.append(more)
 
     return ok(Insert(table: name, names: names, rows: rows))
@@ -1398,7 +1340,6 @@ fn parse_update(var p: Parser) Result[Stmt, SqlError]:
     try expect_kw(var p, "UPDATE")
 
     let name = try expect_ident(var p)
-
     try expect_kw(var p, "SET")
 
     var names: List[String] = []
@@ -1407,11 +1348,9 @@ fn parse_update(var p: Parser) Result[Stmt, SqlError]:
 
     while more:
         let col = try expect_ident(var p)
-
         try expect_op(var p, "=")
 
         let e = try parse_expr(var p)
-
         names.append(col)
         exprs.append(e)
 
@@ -1426,7 +1365,6 @@ fn parse_update(var p: Parser) Result[Stmt, SqlError]:
         p.pos = p.pos + 1
 
         let w = try parse_expr(var p)
-
         cond = some(w)
 
     return ok(Update(table: name, names: names, exprs: exprs, cond: cond))
@@ -1442,7 +1380,6 @@ fn parse_delete(var p: Parser) Result[Stmt, SqlError]:
         p.pos = p.pos + 1
 
         let w = try parse_expr(var p)
-
         cond = some(w)
 
     return ok(Delete(table: name, cond: cond))
@@ -1471,11 +1408,9 @@ fn parse_join(var p: Parser) Result[Join, SqlError]:
     try expect_kw(var p, "JOIN")
 
     let tref = try parse_tref(var p)
-
     try expect_kw(var p, "ON")
 
     let on = try parse_expr(var p)
-
     return ok(Join(left: left, tref: tref, on: on))
 
 fn parse_item(var p: Parser) Result[SelItem, SqlError]:
@@ -1485,7 +1420,6 @@ fn parse_item(var p: Parser) Result[SelItem, SqlError]:
 
     if at_kind(p, 0, "ident") and tok_is(p, 1, "op", ".") and tok_is(p, 2, "op", "*"):
         let table = p.toks[p.pos].text
-
         p.pos = p.pos + 3
         return ok(ItemTableStar(table: table))
 
@@ -1521,14 +1455,12 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
 
     var items: List[SelItem] = []
     let first = try parse_item(var p)
-
     items.append(first)
 
     while at_op(p, ","):
         p.pos = p.pos + 1
 
         let more = try parse_item(var p)
-
         items.append(more)
 
     var from_ref: Optional[TableRef] = none
@@ -1538,12 +1470,10 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         p.pos = p.pos + 1
 
         let base = try parse_tref(var p)
-
         from_ref = some(base)
 
         while at_kw(p, "JOIN") or at_kw(p, "INNER") or at_kw(p, "LEFT"):
             let join = try parse_join(var p)
-
             joins.append(join)
 
     var where_cond: Optional[Expr] = none
@@ -1552,7 +1482,6 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         p.pos = p.pos + 1
 
         let w = try parse_expr(var p)
-
         where_cond = some(w)
 
     var group_by: List[Expr] = []
@@ -1562,14 +1491,12 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         try expect_kw(var p, "BY")
 
         let g0 = try parse_colref(var p)
-
         group_by.append(g0)
 
         while at_op(p, ","):
             p.pos = p.pos + 1
 
             let g = try parse_colref(var p)
-
             group_by.append(g)
 
     var having_cond: Optional[Expr] = none
@@ -1578,7 +1505,6 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         p.pos = p.pos + 1
 
         let h = try parse_expr(var p)
-
         having_cond = some(h)
 
     var order_by: List[OrderItem] = []
@@ -1588,14 +1514,12 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         try expect_kw(var p, "BY")
 
         let o0 = try parse_order_item(var p)
-
         order_by.append(o0)
 
         while at_op(p, ","):
             p.pos = p.pos + 1
 
             let o = try parse_order_item(var p)
-
             order_by.append(o)
 
     var limit_n: Optional[Int] = none
@@ -1605,7 +1529,6 @@ fn parse_select(var p: Parser) Result[Select, SqlError]:
         p.pos = p.pos + 1
 
         let n = try expect_int(var p)
-
         limit_n = some(n)
 
         if at_kw(p, "OFFSET"):
@@ -1634,7 +1557,6 @@ fn parse_statement(var p: Parser) Result[Stmt, SqlError]:
 
     if at_kw(p, "SELECT"):
         let sel = try parse_select(var p)
-
         return ok(Query(sel: sel))
 
     return error(syntax_error())
@@ -1656,7 +1578,6 @@ fn out_name(e: Expr, alias: String) String:
 
 fn star_columns(scope: List[ScopeCol], table: String) List[OutCol]:
     var out: List[OutCol] = []
-
     for k in range(0, scope.length()):
         if table == "" or scope[k].alias == table:
             out.append(
@@ -1735,7 +1656,6 @@ fn join_rows(
 
 fn group_key(row: List[Value], idx: List[Int]) List[Value]:
     var key: List[Value] = []
-
     for i in range(0, idx.length()):
         key.append(row[idx[i]])
     return key
@@ -1749,7 +1669,6 @@ fn find_group(groups: List[Group], key: List[Value]) Int:
 fn compare_ids(a: Int, b: Int, keys: List[List[Value]], descs: List[Bool]) Int:
     for k in range(0, descs.length()):
         var c = value_order(keys[a][k], keys[b][k])
-
         if descs[k]:
             c = 0 - c
         if c != 0:
@@ -1805,7 +1724,6 @@ fn run_select(
     var out: BytesBuilder
 ) Result[Int, SqlError]:
     var refs: List[TableRef] = []
-
     if s.from_ref.is_some():
         refs.append(s.from_ref.get().clone())
     for j in range(0, s.joins.length()):
@@ -1833,7 +1751,6 @@ fn run_select(
             scope: prefixes[j + 1].clone(), allow_agg: false, aggregated: false,
             group_idx: []
         )
-
         try check_expr(s.joins[j].on.clone(), jc, false)
 
     # Stars, then GROUP BY, WHERE, select items, HAVING, ORDER BY.
@@ -1865,12 +1782,10 @@ fn run_select(
         let wc = Check(
             scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
-
         try check_expr(s.where_cond.get().clone(), wc, false)
 
     let has_group = s.group_by.length() > 0
     var aggregated = has_group or s.having_cond.is_some()
-
     for i in range(0, outs.length()):
         if contains_agg(outs[i].e.clone()):
             aggregated = true
@@ -1883,7 +1798,6 @@ fn run_select(
             scope: scope.clone(), allow_agg: true, aggregated: aggregated,
             group_idx: group_idx.clone()
         )
-
         try check_expr(outs[i].e.clone(), oc, false)
 
     if s.having_cond.is_some():
@@ -1891,7 +1805,6 @@ fn run_select(
             scope: scope.clone(), allow_agg: true, aggregated: aggregated,
             group_idx: group_idx.clone()
         )
-
         try check_expr(s.having_cond.get().clone(), hc, false)
 
     var order_out: List[Int] = []
@@ -1904,7 +1817,6 @@ fn run_select(
                 scope: scope.clone(), allow_agg: true, aggregated: aggregated,
                 group_idx: group_idx.clone()
             )
-
             try check_expr(s.order_by[i].e.clone(), rc, false)
 
         order_out.append(target)
@@ -1919,7 +1831,6 @@ fn run_select(
 
     for j in range(0, s.joins.length()):
         let jt = ref_tables[j + 1]
-
         rows = try join_rows(
             rows, tables[jt].rows.clone(), s.joins[j].on.clone(),
             prefixes[j + 1].clone(), s.joins[j].left, tables[jt].cols.length()
@@ -1933,7 +1844,6 @@ fn run_select(
         if s.where_cond.is_some():
             let wctx = Ctx(scope: scope.clone(), row: rows[i].clone(), group: [])
             let cond = try eval(s.where_cond.get().clone(), wctx)
-
             keep = is_true(cond)
 
         if keep:
@@ -1962,7 +1872,6 @@ fn run_select(
 
     for gi in range(0, groups.length()):
         var first: List[Value] = []
-
         if groups[gi].rows.length() > 0:
             first = groups[gi].rows[0].clone()
 
@@ -1973,7 +1882,6 @@ fn run_select(
 
         if s.having_cond.is_some():
             let h = try eval(s.having_cond.get().clone(), gctx.clone())
-
             keep = is_true(h)
 
         if keep:
@@ -1981,7 +1889,6 @@ fn run_select(
 
             for o in range(0, outs.length()):
                 let v = try eval(outs[o].e.clone(), gctx.clone())
-
                 vals.append(v)
 
             var keys: List[Value] = []
@@ -1991,14 +1898,12 @@ fn run_select(
                     keys.append(vals[order_out[k]])
                 else:
                     let kv = try eval(s.order_by[k].e.clone(), gctx.clone())
-
                     keys.append(kv)
 
             vals_list.append(vals)
             keys_list.append(keys)
 
     var ids: List[Int] = []
-
     for i in range(0, vals_list.length()):
         ids.append(i)
 
@@ -2007,7 +1912,6 @@ fn run_select(
 
         for i in range(0, ids.length()):
             var dup = false
-
             for u in range(0, unique.length()):
                 if rows_equal(vals_list[ids[i]].clone(), vals_list[unique[u]].clone()):
                     dup = true
@@ -2018,13 +1922,11 @@ fn run_select(
 
     if s.order_by.length() > 0:
         var descs: List[Bool] = []
-
         for i in range(0, s.order_by.length()):
             descs.append(s.order_by[i].desc)
         ids = sort_ids(ids.clone(), keys_list.clone(), descs.clone())
 
     var first_id = s.offset_n
-
     if first_id > ids.length():
         first_id = ids.length()
 
@@ -2032,12 +1934,10 @@ fn run_select(
 
     if s.limit_n.is_some():
         let lim = s.limit_n.get()
-
         if first_id + lim < end_id:
             end_id = first_id + lim
 
     var names: List[String] = []
-
     for i in range(0, outs.length()):
         names.append(outs[i].name)
     emit(var out, names.join("|"))
@@ -2086,7 +1986,6 @@ fn check_row(row: List[Value], cols: List[ColDef]) Result[Unit, SqlError]:
 
         if not is_null(v):
             var fits = text_of(v).is_some()
-
             if cols[k].kind == "INT":
                 fits = int_of(v).is_some()
             if not fits:
@@ -2149,11 +2048,9 @@ fn exec_insert(
             let rc = Check(
                 scope: [], allow_agg: false, aggregated: false, group_idx: []
             )
-
             try check_expr(rows[r][k].clone(), rc, false)
 
             let v = try eval(rows[r][k].clone(), Ctx(scope: [], row: [], group: []))
-
             row.set(targets[k], v)
 
         try check_row(row.clone(), cols.clone())
@@ -2163,13 +2060,11 @@ fn exec_insert(
 
     if pk >= 0:
         var existing = tables[ti].rows.clone()
-
         for r in range(0, fresh.length()):
             existing.append(fresh[r].clone())
         try check_primary(existing, pk)
 
     let count = fresh.length()
-
     for r in range(0, fresh.length()):
         tables[ti].rows.append(fresh[r].clone())
     return ok(count)
@@ -2200,14 +2095,12 @@ fn exec_update(
         let plain = Check(
             scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
-
         try check_expr(exprs[i].clone(), plain, false)
 
     if cond.is_some():
         let plain = Check(
             scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
-
         try check_expr(cond.get().clone(), plain, false)
 
     var fresh: List[List[Value]] = []
@@ -2221,7 +2114,6 @@ fn exec_update(
         if cond.is_some():
             let cctx = Ctx(scope: scope.clone(), row: row.clone(), group: [])
             let c = try eval(cond.get().clone(), cctx)
-
             hit = is_true(c)
 
         if hit:
@@ -2232,11 +2124,9 @@ fn exec_update(
             for i in range(0, exprs.length()):
                 let ectx = Ctx(scope: scope.clone(), row: row.clone(), group: [])
                 let v = try eval(exprs[i].clone(), ectx)
-
                 newvals.append(v)
 
             var newrow = row.clone()
-
             for k in range(0, targets.length()):
                 newrow.set(targets[k], newvals[k])
             try check_row(newrow.clone(), cols.clone())
@@ -2263,7 +2153,6 @@ fn exec_delete(
         let plain = Check(
             scope: scope.clone(), allow_agg: false, aggregated: false, group_idx: []
         )
-
         try check_expr(cond.get().clone(), plain, false)
 
     var fresh: List[List[Value]] = []
@@ -2277,7 +2166,6 @@ fn exec_delete(
         if cond.is_some():
             let cctx = Ctx(scope: scope.clone(), row: row.clone(), group: [])
             let c = try eval(cond.get().clone(), cctx)
-
             hit = is_true(c)
 
         if hit:
@@ -2304,19 +2192,16 @@ fn execute(
             return ok(0)
         Insert(table, names, rows):
             let n = try exec_insert(table, names.clone(), rows.clone(), var tables)
-
             emit(var out, "inserted {n}")
             return ok(0)
         Update(table, names, exprs, cond):
             let n = try exec_update(
                 table, names.clone(), exprs.clone(), cond.clone(), var tables
             )
-
             emit(var out, "updated {n}")
             return ok(0)
         Delete(table, cond):
             let n = try exec_delete(table, cond.clone(), var tables)
-
             emit(var out, "deleted {n}")
             return ok(0)
         Query(sel):
@@ -2348,7 +2233,6 @@ fn run_script(data: Bytes) Bytes:
 
     for i in range(0, spans.length()):
         let r = run_span(src.clone(), spans[i].clone(), var tables, var out)
-
         if r.is_error():
             emit(var out, "error: {r.err().message()}")
 

@@ -4,6 +4,7 @@ import range from "@std/collections.ms"
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
     var seen: List[Int] = []
+
     let even = values.count(
         fn(value: Int) Bool:
             seen.append(value)
@@ -13,12 +14,10 @@ test "List count calls the predicate once per element":
     try expect_false(even != 2 or seen != values)
 
     let empty: List[Int] = []
-
     try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
 
 test "List insert mutates in place":
     var values = [1, 3]
-
     values.insert(1, 2)
     try expect_equal(values, [1, 2, 3])
     values.append(4)
@@ -32,14 +31,12 @@ test "List insert mutates in place":
     try expect_equal(values, [8, 0, 1, 2, 3, 4, 9, 5])
 
     var empty: List[String] = []
-
     empty.insert(0, "a")
     try expect_equal(empty, ["a"])
 
 test "List pop removes and returns the last element":
     var values = [1, 2, 3]
     let last = values.pop()
-
     try expect_false((last != some(3) or values != [1, 2]))
     values.pop()
     values.pop()
@@ -53,7 +50,6 @@ test "List pop and distinct copy payloads":
     var boxes = [shared.clone()]
     let popped = boxes.pop()
     var item = popped.get().clone()
-
     item.value = 2
     try expect_false(shared.value != 1 or item.value != 2 or not boxes.is_empty())
 
@@ -61,25 +57,21 @@ test "List pop and distinct copy payloads":
     let lists = [nested.clone(), [1], [2]]
     let unique = lists.distinct()
     var inner = unique.get(0).clone()
-
     inner.append(3)
     try expect_false(unique.length() != 2 or nested != [1] or inner != [1, 3])
 
 test "List distinct keeps the first equal element in order":
     let values = [3, 1, 3, 2, 1]
     var unique = values.distinct()
-
     try expect_false(unique != [3, 1, 2] or values != [3, 1, 3, 2, 1])
     unique.append(4)
     try expect_equal(values.length(), 5)
 
     let words = ["b", "a", "b"]
-
     try expect_equal(words.distinct(), ["b", "a"])
 
     let empty: List[Int] = []
     var copy = empty.distinct()
-
     copy.append(1)
     try expect_false(not (empty.is_empty()))
 
@@ -93,7 +85,6 @@ test "List parity operations support generic and bound use":
     let insert = values.insert
     let pop: fn() Optional[Int] = values.pop
     let count = values.count
-
     insert(2, 3)
     try expect_false(pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
 
@@ -106,7 +97,6 @@ test "List distinct handles large Int and String lists":
         words.append("w{index % 20000}")
 
     let unique = numbers.distinct()
-
     try expect_false(
         (
             unique.length() != 30000
@@ -116,5 +106,4 @@ test "List distinct handles large Int and String lists":
     )
 
     let uniqueWords = words.distinct()
-
     try expect_false(uniqueWords.length() != 20000 or uniqueWords.get(1) != "w1")

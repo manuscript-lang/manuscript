@@ -2,7 +2,6 @@ import range from "@std/collections.ms"
 
 fn compute() Int:
     var result = 0
-
     for index in range(0, 3000000):
         result += index % 7
     return result

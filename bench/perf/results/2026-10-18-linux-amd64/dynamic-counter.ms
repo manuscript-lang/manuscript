@@ -13,7 +13,6 @@ fn measure(start: Int) Int:
     let elapsed = clock().now().difference(t).to_nanoseconds()
     let line = "{start} {elapsed} {hits}\n"
     let ignored = stdout().write(line.to_bytes())
-
     return hits
 
 export fn main() Int:

@@ -110,7 +110,6 @@ fn stock_cmd(var shop: Shop, sku: String, qty_text: String) String:
 
     if let added = quantity(qty_text):
         var current = Sku(stock: 0, price: 0)
-
         if let known = shop.skus.get(sku):
             current = known
         current.stock += added
@@ -125,7 +124,6 @@ fn price_cmd(var shop: Shop, sku: String, cents_text: String) String:
             return "error: unknown sku {sku}"
 
         let known = shop.skus.get_or(sku, Sku(stock: 0, price: 0))
-
         shop.skus.add(sku, Sku(stock: known.stock, price: cents))
         return "ok"
 
@@ -167,7 +165,6 @@ fn order_cmd(var shop: Shop, tokens: List[String]) String:
 
     for item in items:
         let known = shop.skus.get_or(item.sku, Sku(stock: 0, price: 0))
-
         total += line_cost(item, known.price)
         shop.skus.add(item.sku, Sku(stock: known.stock - item.qty, price: known.price))
 
@@ -180,7 +177,6 @@ fn cancel_cmd(var shop: Shop, id: String) String:
             Placed:
                 for item in order.items:
                     let known = shop.skus.get_or(item.sku, Sku(stock: 0, price: 0))
-
                     (
                         shop.skus.add(
                             item.sku,
@@ -255,7 +251,6 @@ fn report(shop: Shop) String:
 
     var lines = List[String]()
     let skus = shop.skus.keys().sorted(fn(a, b): a.compare(b))
-
     for sku in skus:
         if let known = shop.skus.get(sku):
             lines.append(
@@ -314,7 +309,6 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if not is_blank(line):
             let reply = handle(var shop, line.split(" "))
-
             out.write("{reply}\n").get()
 
     return 0
