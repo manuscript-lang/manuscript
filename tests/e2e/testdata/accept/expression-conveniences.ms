@@ -1,21 +1,25 @@
 import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
+import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
 import Closeable from "@std/core.ms"
+import filesystem from "@std/fs.ms"
 
 type Counter:
     count: Int
 
 type Resource:
-    counter: Counter
+    marker: String
 
+# Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
     var fn close() Unit:
-        self.counter.count = self.counter.count + 1
+        let _written = filesystem().write_file(self.marker, "closed", true)
+
+fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 
 fn identity[T](value: T) T: return value
 
-fn amount(text: String, counter: Counter) Result[Int, TextError]:
-    with resource = Resource(counter: counter):
+fn amount(text: String, marker: String) Result[Int, TextError]:
+    with resource = Resource(marker: marker.clone()):
         let cents = match text.parse_int():
             some(value):
                 value
@@ -98,21 +102,19 @@ test "match expressions preserve returns and cleanup":
 
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
-    let counter = Counter(count: 0)
-    let parsed = amount(text: "3", counter: counter)
+    let fs = filesystem()
 
-    (parsed != Result[Int, TextError].ok(value: 4) or counter.count != 1) | try expect_false
+    with temporary = (fs.temporary("manuscript-match-") | try expect_ok):
+        let dir = temporary.path()
+        let parsed = amount(text: "3", marker: "{dir}/parsed")
 
-    let invalid = amount(text: "invalid", counter: counter)
+        (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
+        closed("{dir}/parsed") | try expect_true
 
-    (
-        (
-            invalid != Result[Int, TextError].error(
-                cause: TextError("Invalid amount")
-            )
-            or counter.count != 2
-        )
-    ) | try expect_false
+        let invalid = amount(text: "invalid", marker: "{dir}/invalid")
+
+        (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
+        closed("{dir}/invalid") | try expect_true
 
     let nested = match present:
         some(value):
