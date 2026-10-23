@@ -895,6 +895,15 @@ impl<'a> FnLower<'a> {
             self.chars_iter_for = None;
             return Ok(recv);
         }
+        if self.map_walk_for == Some(e as *const Expr)
+            && let Some(walk) = self.walk_kind(m, recv.v)
+        {
+            // `for e in m.entries()` over a map the loop cannot change: the loop walks the
+            // map's slots, so no list is built and nothing is copied.
+            self.map_walk_for = None;
+            self.map_walk = Some(walk);
+            return Ok(recv);
+        }
         if self.keys_view_for == Some(e as *const Expr)
             && let Some(sym) = self.keys_view_symbol(m, recv_expr, recv.v)
         {
@@ -2992,6 +3001,21 @@ fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
 }
 
 impl FnLower<'_> {
+    /// What an in-place walk of the receiver yields for method `m`, when it is one a `for` can
+    /// walk without building a list.
+    fn walk_kind(&self, m: &ct::MethodRef, recv: Value) -> Option<crate::stmt::Walk> {
+        use crate::stmt::Walk;
+        let TyKind::Obj(n, _) = self.b.m.types.kind(self.ty_of(recv)) else {
+            return None;
+        };
+        match (n.as_str(), m.name()?.as_str()) {
+            ("Map", "entries") => Some(Walk::Entries),
+            ("Map", "values") => Some(Walk::Values),
+            ("Map", "keys") | ("Set", "values") => Some(Walk::Keys),
+            _ => None,
+        }
+    }
+
     /// The runtime entry that lists a map's keys (or values) as borrowed views, when `m` is that
     /// method on a map that stays unchanged for the whole call.
     fn keys_view_symbol(

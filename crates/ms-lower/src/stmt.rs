@@ -2,7 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, LoopCtx, Val};
-use ms_mir::ir::{Cc, Imm, Op};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -591,18 +591,23 @@ impl<'a> FnLower<'a> {
             let exclusive = binding
                 .and_then(|p| self.hir.pattern_binding(p))
                 .is_some_and(|b| self.cx.exclusive.contains(&b.uid));
-            let o = if exclusive {
-                let (alias, value) = self.alias_accessor(cond)?;
+            let found = if exclusive {
+                let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
-                value
+                found
             } else {
-                self.expr(cond)?
+                crate::alias::Found::Opt(self.expr(cond)?)
             };
             if self.dead {
                 return Ok(());
             }
-            scrutinee = Some(o);
-            self.success_test(o.v)?
+            match found {
+                crate::alias::Found::Opt(o) => {
+                    scrutinee = Some(o);
+                    self.success_test(o.v)?
+                }
+                crate::alias::Found::Present(c) => c,
+            }
         } else {
             let x = self.expr(cond)?;
             if self.dead {
@@ -619,6 +624,13 @@ impl<'a> FnLower<'a> {
 
         self.enter(then_b);
         self.push_scope();
+        if let Some(alias) = accessor_alias.as_ref().filter(|_| scrutinee.is_none()) {
+            // `if var` over a map entry found by address: nothing was read to drop.
+            let bnd = binding
+                .and_then(|p| self.hir.pattern_binding(p))
+                .ok_or_else(|| Error::new("if var without binding"))?;
+            self.aliases.insert(bnd.uid, alias.clone());
+        }
         if let (Some(p), Some(o)) = (binding, scrutinee) {
             let bnd = self
                 .hir
@@ -778,6 +790,125 @@ impl<'a> FnLower<'a> {
                 self.hir.resolution(root),
                 ms_check::hir::Resolution::Local(b) if self.borrowed_params.contains(&b.uid)
             )
+    }
+
+    /// Whether the place `e` stays unchanged while `body` runs: a parameter the function only
+    /// reads, or a local the body cannot change.
+    fn unchanged_by(&self, e: &Expr, body: &[Stmt]) -> bool {
+        self.stable_place(e) || self.iterates_untouched_local(e, body)
+    }
+
+    /// Whether a walk of a map of type `mt` can bind its items in place. A `MapEntry` is read
+    /// straight out of the slot, which matches the record's layout only when the key fills
+    /// whole words (`Int`, `Float`, `String`): the value then starts right after it in both.
+    fn walks(&self, walk: Walk, mt: MTy) -> bool {
+        let TyKind::Obj(_, a) = self.b.m.types.kind(mt) else {
+            return false;
+        };
+        match walk {
+            Walk::Entries => matches!(a[0], MTy::INT | MTy::FLOAT | MTy::STR),
+            Walk::Values | Walk::Keys => true,
+        }
+    }
+
+    /// `for e in m`, `for e in m.entries()`, `for v in m.values()` or `for k in m.keys()` over a
+    /// map (or set) the body cannot change: walks the slots in place. The loop variable borrows
+    /// the entry, so nothing is copied and no list is built.
+    fn map_walk_loop(
+        &mut self,
+        loop_var: &ms_check::types::BindingRef,
+        it: Val,
+        walk: Walk,
+        body: &[Stmt],
+    ) -> Result<(), Error> {
+        let mt = self.ty_of(it.v);
+        let TyKind::Obj(_, a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("not a map or set"));
+        };
+        let (kt, vt) = (a[0], a.get(1).copied());
+        let elem = self.mty(&loop_var.ty)?;
+        let mvar = self.b.declare_var(mt, ms_mir::ir::Mode::Borrow);
+        self.b.def_var(mvar, it.v);
+        let m = self.b.use_var(mvar);
+        let count = self.call_runtime("msrt_map_slot_count", &[m], MTy::INT)?;
+        let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
+        let zero = self.b.iconst(0);
+        self.b.def_var(idx, zero);
+        let (header, probe, body_b, step, exit) = (
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+            self.b.new_block(),
+        );
+        self.b.br(header, &[]);
+        self.enter(header);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(Cc::Lt, i, count);
+        self.b.br_if(more, probe, &[], exit, &[]);
+        self.b.seal_block(probe);
+        self.enter(probe);
+        let (kd, vd) = self.map_descs(mt)?;
+        // A set is a map without a value descriptor: a null pointer.
+        let vd = vd.unwrap_or_else(|| self.b.iconst(0));
+        let slot = |s: &mut Self| {
+            s.b.emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                .expect("slot")
+        };
+        let (kp, vp) = (slot(self), slot(self));
+        let m = self.b.use_var(mvar);
+        let i = self.b.use_var(idx);
+        let live = self.call_runtime("msrt_map_entry_ptrs", &[m, kd, vd, i, kp, vp], MTy::BOOL)?;
+        self.b.br_if(live, body_b, &[], step, &[]);
+        self.b.seal_block(body_b);
+        self.enter(body_b);
+        let depth = self.scopes.len();
+        self.loops.push(LoopCtx {
+            brk: exit,
+            cont: step,
+            depth,
+            cont_used: false,
+            brk_used: false,
+        });
+        self.push_scope();
+        let load = |s: &mut Self, p: Value, t: MTy| {
+            let addr =
+                s.b.emit(Op::Load, &[p], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                    .expect("load");
+            s.b.emit(Op::Load, &[addr], Imm::Ty(t), Some(t))
+                .expect("load")
+        };
+        let e = match (walk, vt) {
+            (Walk::Keys, _) => load(self, kp, kt),
+            (Walk::Values, Some(vt)) => load(self, vp, vt),
+            // The slot holds the key and then the value exactly where a `MapEntry` record keeps
+            // them when the key is word-sized and word-aligned (see `walks_entries`), so the
+            // entry is read in place as one record.
+            (Walk::Entries, Some(_)) => load(self, kp, elem),
+            _ => return Err(Error::new("values of a set walk its keys")),
+        };
+        self.bind_lent(loop_var, e);
+        self.stmts(body)?;
+        self.pop_scope();
+        self.loops.pop();
+        if !self.dead {
+            self.b.br(step, &[]);
+        }
+        self.b.seal_block(step);
+        self.enter(step);
+        let i = self.b.use_var(idx);
+        let one = self.b.iconst(1);
+        let n = self
+            .b
+            .emit(Op::IAdd, &[i, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(idx, n);
+        self.b.br(header, &[]);
+        self.b.seal_block(header);
+        self.b.seal_block(exit);
+        self.enter(exit);
+        self.pop_scope();
+        Ok(())
     }
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
@@ -966,6 +1097,17 @@ impl<'a> FnLower<'a> {
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
+                let lent = !loop_var.mutable && !self.slotted.contains(&loop_var.uid);
+                let call_root = match &iter.kind {
+                    ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
+                        ExprKind::Member { left, .. } => Some(&**left),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if lent && call_root.is_some_and(|r| self.unchanged_by(r, body)) {
+                    self.map_walk_for = Some(iter as *const Expr);
+                }
                 self.split_iter_for = Some(iter as *const Expr);
                 self.chars_iter_for = Some(iter as *const Expr);
                 self.keys_view_for = Some(iter as *const Expr);
@@ -973,10 +1115,30 @@ impl<'a> FnLower<'a> {
                 self.split_iter_for = None;
                 self.chars_iter_for = None;
                 self.keys_view_for = None;
+                self.map_walk_for = None;
+                let walk = self.map_walk.take();
                 let it = it?;
                 if self.dead {
                     self.scopes.pop();
                     return Ok(());
+                }
+                let direct = crate::mapset::is_map_or_set(self.b.m, self.ty_of(it.v))
+                    && lent
+                    && !it.own
+                    && self.unchanged_by(iter, body);
+                let walk = walk.filter(|w| self.walks(*w, self.ty_of(it.v)));
+                if let Some(walk) = walk.or_else(|| {
+                    direct
+                        .then(|| {
+                            let is_map = matches!(
+                                self.b.m.types.kind(self.ty_of(it.v)),
+                                TyKind::Obj(n, _) if n == "Map"
+                            );
+                            if is_map { Walk::Entries } else { Walk::Keys }
+                        })
+                        .filter(|w| self.walks(*w, self.ty_of(it.v)))
+                }) {
+                    return self.map_walk_loop(&loop_var, it, walk, body);
                 }
                 let mut it = it;
                 let mut ity = self.ty_of(it.v);
@@ -1100,4 +1262,15 @@ fn is_literal_bind(s: &Stmt) -> bool {
             .all(|p| matches!(p, ms_syntax::ast::TextPart::Lit(_))),
         _ => false,
     }
+}
+
+/// What an in-place walk of a map or set binds to the loop variable.
+#[derive(Clone, Copy)]
+pub(crate) enum Walk {
+    /// A `MapEntry` of the borrowed key and value.
+    Entries,
+    /// The borrowed value.
+    Values,
+    /// The borrowed key (a set's element).
+    Keys,
 }

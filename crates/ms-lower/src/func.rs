@@ -98,6 +98,11 @@ pub(crate) struct FnLower<'a> {
     pub stable_reads: HashSet<Value>,
     /// The iterable of the `for` being lowered when it may yield views of a map's keys.
     pub keys_view_for: Option<*const ms_syntax::ast::Expr>,
+    /// The iterable of the `for` being lowered when it may walk a map or set in place: the
+    /// `entries()`, `values()` or `keys()` call that would otherwise build a list.
+    pub map_walk_for: Option<*const ms_syntax::ast::Expr>,
+    /// Which part of each entry the in-place walk yields, set when `map_walk_for` was taken.
+    pub map_walk: Option<crate::stmt::Walk>,
     /// The `split` call of a `let` whose list the rest of the block only reads in place.
     pub split_view_for: Option<*const ms_syntax::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
@@ -340,6 +345,8 @@ impl<'a> FnLower<'a> {
             borrowed_params: HashSet::new(),
             stable_reads: HashSet::new(),
             keys_view_for: None,
+            map_walk_for: None,
+            map_walk: None,
             split_view_for: None,
             discard: None,
             stmt_pos: None,

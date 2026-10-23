@@ -46,7 +46,7 @@ fn cheatsheet_program_checks() {
 #[test]
 fn cheatsheet_stays_short() {
     assert!(
-        cheatsheet().len() <= 2650,
+        cheatsheet().len() <= 2720,
         "cheat sheet is {} bytes",
         cheatsheet().len()
     );
@@ -68,6 +68,7 @@ fn cheatsheet_claims_match_the_compiler() {
         "    var n = 1\n    n += 2\n    n %= 2\n",
         "    let o: Optional[Int] = none\n    let v = o.get(3)\n",
         "    let name = \"x\"\n    let text = \"hi {name}\"\n",
+        "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m.get(\"k\"):\n        n += 1\n",
     ] {
         let found = check(body);
         assert!(

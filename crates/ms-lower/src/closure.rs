@@ -121,7 +121,7 @@ impl FnLower<'_> {
                     continue;
                 }
                 crate::alias::AStep::Index(value) => (value, false),
-                crate::alias::AStep::Key(var) => (self.b.use_var(var), true),
+                crate::alias::AStep::Key(var, _) => (self.b.use_var(var), true),
             };
             let index = cap_vals.len();
             cap_tys.push(self.ty_of(value));
@@ -1372,7 +1372,7 @@ pub(crate) fn restore_alias_capture(
                 let value = values[*index];
                 let var = fl.b.declare_var(fl.ty_of(value), Mode::Borrow);
                 fl.b.def_var(var, value);
-                crate::alias::AStep::Key(var)
+                crate::alias::AStep::Key(var, None)
             }
         })
         .collect();
