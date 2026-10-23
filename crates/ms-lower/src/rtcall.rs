@@ -302,7 +302,7 @@ impl FnLower<'_> {
     }
 
     /// `Map[Int, V]` and `Map[String, V]` lookups whose values are single words go to the `_w8` /
-    /// `_sw8` entry points, which probe without descriptor dispatch. `get` copies the value bitwise, so it excludes `String`.
+    /// `_sw8` entry points, which probe without descriptor dispatch (`add` likewise for scalar values). `get` copies the value bitwise, so it excludes `String`.
     pub(crate) fn word_map_symbol(&self, sym: &str, map: MTy) -> Option<&'static str> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
@@ -319,6 +319,8 @@ impl FnLower<'_> {
         let scalar = matches!(types.kind(a[1]), TyKind::Int | TyKind::Float);
         let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
         match (sym, int_key) {
+            ("msrt_map_add", true) if scalar => Some("msrt_map_add_w8"),
+            ("msrt_map_add", false) if scalar => Some("msrt_map_add_sw8"),
             ("msrt_map_get_ptr", true) if word => Some("msrt_map_get_ptr_w8"),
             ("msrt_map_contains", true) if word => Some("msrt_map_contains_w8"),
             ("msrt_map_get", true) if scalar => Some("msrt_map_get_w8"),

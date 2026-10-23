@@ -420,37 +420,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 #[inline]
 pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
     // SAFETY: caller contract.
-    unsafe {
-        let n = (*a).len();
-        if n != (*b).len() {
-            return false;
-        }
-        if (*a).ptr == (*b).ptr {
-            return true;
-        }
-        let (x, y) = (bytes(a), bytes(b));
-        if n < 4 {
-            // One-character comparisons and tiny keys: skip the memcmp call.
-            return (0..n).all(|i| *x.get_unchecked(i) == *y.get_unchecked(i));
-        }
-        if n <= 8 {
-            // Two overlapping words cover 4..=8 bytes.
-            let (p, q) = (x.as_ptr(), y.as_ptr());
-            let head = (p as *const u32).read_unaligned() == (q as *const u32).read_unaligned();
-            let tail = (p.add(n - 4) as *const u32).read_unaligned()
-                == (q.add(n - 4) as *const u32).read_unaligned();
-            return head && tail;
-        }
-        if n <= 16 {
-            // Two overlapping words cover 9..=16 bytes.
-            let (p, q) = (x.as_ptr(), y.as_ptr());
-            let head = (p as *const u64).read_unaligned() == (q as *const u64).read_unaligned();
-            let tail = (p.add(n - 8) as *const u64).read_unaligned()
-                == (q.add(n - 8) as *const u64).read_unaligned();
-            return head && tail;
-        }
-        x == y
-    }
+    unsafe { ((*a).ptr == (*b).ptr && (*a).len() == (*b).len()) || bytes_eq(a, b) }
 }
 
 #[unsafe(no_mangle)]
@@ -468,6 +438,39 @@ pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const 
             core::cmp::Ordering::Equal => 0,
             core::cmp::Ordering::Greater => 1,
         }
+    }
+}
+
+/// Whether two strings hold the same bytes: overlapping word compares for up to 16 bytes, so short
+/// keys need no `memcmp` call.
+///
+/// # Safety
+/// Both must be live strings.
+#[inline(always)]
+pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
+    // SAFETY: the bytes of a live string are `len` readable bytes.
+    unsafe {
+        let n = (*a).len();
+        if n != (*b).len() {
+            return false;
+        }
+        let (p, q) = ((*a).ptr as *const u8, (*b).ptr as *const u8);
+        let word = |x: *const u8, at: usize| (x.add(at) as *const u64).read_unaligned();
+        let half = |x: *const u8, at: usize| (x.add(at) as *const u32).read_unaligned();
+        if (8..=16).contains(&n) {
+            return word(p, 0) == word(q, 0) && word(p, n - 8) == word(q, n - 8);
+        }
+        if (4..8).contains(&n) {
+            return half(p, 0) == half(q, 0) && half(p, n - 4) == half(q, n - 4);
+        }
+        if n < 4 {
+            // The first, middle and last bytes cover every byte of a string of up to three.
+            return n == 0
+                || (*p == *q
+                    && *p.add(n >> 1) == *q.add(n >> 1)
+                    && *p.add(n - 1) == *q.add(n - 1));
+        }
+        core::slice::from_raw_parts(p, n) == core::slice::from_raw_parts(q, n)
     }
 }
 
@@ -544,6 +547,34 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     // memmem falls back to Two-Way search when candidate filtering is ineffective.
     // Comparing every candidate slice is quadratic on repetitive near matches.
     memchr::memmem::find(hay, needle)
+}
+
+/// A non-empty needle searched for repeatedly: one byte goes straight to `memchr`, longer ones
+/// build their `memmem` searcher once instead of on every search.
+#[allow(
+    clippy::large_enum_variant,
+    reason = "lives on the stack for one call; boxing would allocate"
+)]
+enum Needle<'a> {
+    Byte(u8),
+    Bytes(memchr::memmem::Finder<'a>),
+}
+
+impl<'a> Needle<'a> {
+    fn new(needle: &'a [u8]) -> Self {
+        match needle {
+            [b] => Needle::Byte(*b),
+            _ => Needle::Bytes(memchr::memmem::Finder::new(needle)),
+        }
+    }
+
+    #[inline]
+    fn find(&self, hay: &[u8]) -> Option<usize> {
+        match self {
+            Needle::Byte(b) => memchr(*b, hay),
+            Needle::Bytes(f) => f.find(hay),
+        }
+    }
 }
 
 /// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
@@ -1060,7 +1091,7 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    let f = memchr::memmem::Finder::new(old);
+    let f = Needle::new(old);
     while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
@@ -1145,7 +1176,7 @@ unsafe fn replace_limited(
 fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> StrVal {
     let mut matches = 0usize;
     let mut i = 0;
-    let f = memchr::memmem::Finder::new(old);
+    let f = Needle::new(old);
     while (matches as i64) < n {
         match f.find(&text[i..]) {
             None => break,
@@ -1174,7 +1205,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     unsafe {
         let mut dst = out.ptr;
         let mut i = 0;
-        let f = memchr::memmem::Finder::new(old);
+        let f = Needle::new(old);
         for _ in 0..matches {
             let p = f.find(&text[i..]).unwrap_or(0);
             core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
