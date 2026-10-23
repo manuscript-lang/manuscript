@@ -2230,9 +2230,9 @@ fn effect(value: Int) Int: return value + 1
     return sum
 fn probe(value: Int) Int:
     var sum = 0
+    sum = value
     let callback = fn() Int:
         return sum + value
-    sum = value
     return callback()
 fn probe(value: Int, flag: Bool) Int:
     var sum = 0

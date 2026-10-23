@@ -19,9 +19,9 @@ test "typed operands retain evaluation order and generic boundaries":
     try expect_false(total != 7 or counter.value != 123)
     var value = identity(9)
     value += 1
-    let snapshot = fn() Int: return value * 2
     value -= 1
-    try expect_false(snapshot() != 20 or value != 9)
+    let snapshot = fn() Int: return value * 2
+    try expect_false(snapshot() != 18 or value != 9)
     try expect_equal(-9223372036854775808 % -1, 0)
     try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
     try expect_equal(9223372036854775807 * 0, 0)

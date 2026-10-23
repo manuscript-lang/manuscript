@@ -2003,11 +2003,11 @@ impl Walker<'_> {
                     self.mutate(e.pos, &info, "change");
                     facts.push((b.uid, CaptureMode::BorrowMut));
                 } else if class == Class::Copy {
-                    // A `Copy` value the closure only reads is copied into it.
+                    // A `Copy` value the closure only reads is borrowed like any other: the
+                    // variable stays unchanged while the closure lives, so lowering may copy it.
                     self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
-                    continue;
                 } else {
                     self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Borrow);

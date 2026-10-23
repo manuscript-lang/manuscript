@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "closures.ms::snapshot reassignment and shadowing",
+          "name": "closures.ms::closures borrow the variable and shadowing",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN closures.ms::snapshot reassignment and shadowing\nPASS closures.ms::snapshot reassignment and shadowing\n1 tests, 0 failed\n",
+      "stdout": "RUN closures.ms::closures borrow the variable and shadowing\nPASS closures.ms::closures borrow the variable and shadowing\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
