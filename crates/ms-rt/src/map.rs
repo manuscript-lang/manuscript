@@ -567,7 +567,9 @@ pub unsafe fn drop_map(m: *mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) {
         if !m.index.is_null() {
             alloc::free(m.index as *mut u8);
         }
+        let desc = m.desc;
         *m = empty();
+        m.desc = desc;
     }
 }
 
@@ -657,11 +659,17 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
     unsafe { *out = empty() }
 }
 
-/// Makes the map in `m` keep `kd`, as if it had been created with it.
+/// Records creator evidence only for an unstamped collection. Native operations may already
+/// return a copy or derived collection retaining its original creator.
+/// `kd` and its nested descriptors and callbacks must be static.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc) {
     // SAFETY: `m` is a live map; descriptors are static.
-    unsafe { (*m).desc = kd }
+    unsafe {
+        if (*m).desc.is_null() {
+            (*m).desc = kd;
+        }
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1576,6 +1584,71 @@ mod tests {
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
     use crate::testutil;
+
+    unsafe extern "C" fn modulo_eq(a: *const u8, b: *const u8) -> u8 {
+        // SAFETY: the test descriptor describes i64 slots.
+        unsafe { (*(a as *const i64) % 10 == *(b as *const i64) % 10) as u8 }
+    }
+
+    unsafe extern "C" fn modulo_hash(a: *const u8) -> i64 {
+        // SAFETY: the test descriptor describes an i64 slot.
+        unsafe { *(a as *const i64) % 10 }
+    }
+
+    static MODULO_KEY: TypeDesc = TypeDesc {
+        size: 8,
+        align: 8,
+        kind: KIND_CUSTOM,
+        reserved: 0,
+        inner0: core::ptr::null(),
+        inner1: core::ptr::null(),
+        drop: None,
+        copy: None,
+        eq: Some(modulo_eq),
+        hash: Some(modulo_hash),
+    };
+
+    #[test]
+    fn creator_evidence_survives_foreign_operations_copy_and_clear() {
+        let _g = testutil::lock();
+        // SAFETY: descriptors are static and all key/value slots hold live i64 values.
+        unsafe {
+            let before = crate::alloc::live_blocks();
+            let foreign = &msrt_desc_int;
+            let mut m = empty();
+            msrt_map_stamp(&mut m, &MODULO_KEY);
+            msrt_map_stamp(&mut m, foreign);
+            let mut cloned = empty();
+            copy_map(&m, foreign, Some(foreign), &mut cloned);
+            let (mut k, mut v) = (1i64, 5i64);
+            let (kp, vp) = (&mut k as *mut i64 as *mut u8, &mut v as *mut i64 as *mut u8);
+            msrt_map_add(&mut cloned, foreign, foreign, kp, vp);
+            kp.cast::<i64>().write(11);
+            assert_eq!(msrt_map_contains(&cloned, foreign, foreign, kp), 1);
+            assert_eq!(
+                *(msrt_map_get_ptr(&cloned, foreign, foreign, kp) as *const i64),
+                5
+            );
+            let slot = msrt_map_slot_lent(&mut cloned, foreign, foreign, kp, vp);
+            *(slot as *mut i64) = 9;
+            assert_eq!(cloned.len, 1);
+            let slot = msrt_map_slot(&mut cloned, foreign, foreign, kp, vp);
+            assert_eq!(*(slot as *const i64), 9);
+            kp.cast::<i64>().write(21);
+            msrt_map_add_default(&mut cloned, foreign, foreign, kp, vp);
+            assert_eq!(cloned.len, 1);
+            msrt_map_clear(&mut cloned, foreign, foreign);
+            msrt_map_add(&mut cloned, foreign, foreign, kp, vp);
+            kp.cast::<i64>().write(31);
+            msrt_map_remove(&mut cloned, foreign, foreign, kp);
+            assert_eq!(cloned.len, 0);
+            // Read through the original variable as well as the raw pointer in this test.
+            assert_eq!(k, 31);
+            drop_map(&mut cloned, foreign, Some(foreign));
+            drop_map(&mut m, foreign, Some(foreign));
+            assert_eq!(crate::alloc::live_blocks(), before);
+        }
+    }
 
     /// Inserts a mixed stream of new and repeated keys through the general and the word `add`.
     #[test]
