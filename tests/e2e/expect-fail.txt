@@ -1,8 +1,3 @@
 # Fixtures that cannot pass yet, each with the missing feature. scripts/e2e.sh runs the file's other tests
 # and requires the listed ones to still fail, so a fix shows up as an unexpected pass.
 # Format: <fixture> [<TAB><regex of the test names that fail>]. Without a regex the whole fixture must fail to build or run.
-# https://github.com/manuscript-lang/manuscript/issues/1055
-# A Map or Set keeps the Equal and Hashable of the module that created it when another module without its own
-# implementation uses it; the runtime does not store the key descriptor in the collection yet.
-tests/e2e/testdata/projects/map_remove
-tests/e2e/testdata/projects/preferred_names

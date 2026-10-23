@@ -11,7 +11,7 @@
 //! | `Int`, `Ptr`, `String`, closures, `Shared[T]` | `i64` |
 //! | `Float` | `f64` |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
-//! | `Map`, `Set` | six `i64` words (`MapVal`) |
+//! | `Map`, `Set` | seven `i64` words (`MapVal`) |
 //! | record | the fields' leaves in declaration order |
 //! | `Optional[String]` (single-pointer payloads) | nullable `i64` |
 //! | `Optional[T]` otherwise | `present: i8`, then `T`'s leaves |
@@ -243,7 +243,7 @@ impl<'m> Layouts<'m> {
             TyKind::Int | TyKind::Ptr | TyKind::Str | TyKind::Fn(..) => plain(vec![I64]),
             TyKind::Float => plain(vec![F64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 6]),
+            TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 7]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
             TyKind::Rec(r) => plain(

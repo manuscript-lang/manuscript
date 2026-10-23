@@ -742,7 +742,9 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let r = self.finish_rt_call_inner(sym, sig, has_out, vals, result);
         self.err_slot = None;
-        r
+        let mut r = r?;
+        r.v = self.stamped(r.v)?;
+        Ok(r)
     }
 
     /// Passes the slot a trailing `err` parameter writes the `Failed` text to.

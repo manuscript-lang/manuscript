@@ -306,7 +306,31 @@ impl<'a> FnLower<'a> {
 
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
-        self.call_runtime("msrt_map_new", &[], ty)
+        let v = self.call_runtime("msrt_map_new", &[], ty)?;
+        self.stamped(v)
+    }
+
+    /// A map or set that keeps the `Equal` and `Hashable` of the module that makes it, when its
+    /// key type has local extensions; any other value is returned unchanged.
+    pub(crate) fn stamped(&mut self, v: Value) -> Result<Value, Error> {
+        let t = self.ty_of(v);
+        let TyKind::Obj(n, args) = self.b.m.types.kind(t).clone() else {
+            return Ok(v);
+        };
+        if (n != "Map" && n != "Set") || !self.cx.holds_extension(self.b.m, args[0]) {
+            return Ok(v);
+        }
+        let kd = self.type_desc(args[0]);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Put, &[slot, v], Imm::None, None);
+        self.call_runtime("msrt_map_stamp", &[slot, kd], MTy::UNIT)?;
+        Ok(self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
+            .expect("take"))
     }
 
     /// `Set(values)`: the set of a list's elements.
@@ -317,6 +341,7 @@ impl<'a> FnLower<'a> {
         let d = self.type_desc(a[0]);
         let l = self.borrow(list);
         let out = self.call_runtime("msrt_list_to_set", &[l, d], ty)?;
+        let out = self.stamped(out)?;
         Ok(Val { v: out, own: true })
     }
 

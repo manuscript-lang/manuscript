@@ -61,6 +61,7 @@ msrt_io_flush()
 msrt_io_close(which: i64)
 msrt_io_closed(which: i64) -> bool
 msrt_map_new(out: *mut MapVal)
+msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
 msrt_map_add( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
