@@ -25,10 +25,38 @@ impl<'a> FnLower<'a> {
                 i += gap + 2;
                 continue;
             }
-            self.stmt(&body[i])?;
+            self.split_view_for = self.split_read_in_place(&body[i], &body[i + 1..]);
+            let r = self.stmt(&body[i]);
+            self.split_view_for = None;
+            r?;
             i += 1;
         }
         Ok(())
+    }
+
+    /// `let name = <text>.split(..)` where the rest of the block only reads `name` in place
+    /// (indexing, length, a `for`): the split call, whose pieces may then borrow `text`.
+    fn split_read_in_place(&self, s: &Stmt, rest: &[Stmt]) -> Option<*const Expr> {
+        let StmtKind::Bind {
+            mutable: false,
+            pattern,
+            value,
+            ..
+        } = &s.kind
+        else {
+            return None;
+        };
+        let ExprKind::Call { callee, .. } = &value.kind else {
+            return None;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return None;
+        };
+        if name.as_str() != "split" {
+            return None;
+        }
+        let b = self.hir.pattern_binding(pattern)?;
+        crate::mutation::only_read_in_place(&self.hir, rest, b.uid).then_some(value as *const Expr)
     }
 
     /// `let name = <call>.split(..)`, then plain `let`s of literals, then `for x in name:` with
@@ -207,10 +235,10 @@ impl<'a> FnLower<'a> {
             && !x.own
             && !self.slotted.contains(&b.uid)
             && self.needs_drop(self.ty_of(x.v))
-            && matches!(
+            && (matches!(
                 self.b.defining_op(x.v),
                 Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet | Op::OptGet)
-            )
+            ) || self.stable_reads.contains(&x.v))
         {
             // A lexical borrow (the checker rejects changing its source while it lives): the
             // temporaries it points into live as long as the binding does.
@@ -738,6 +766,20 @@ impl<'a> FnLower<'a> {
 
     /// Whether `iter` is a local, or a field of one, that the loop cannot change: the local is
     /// immutable or `body` never mentions it. The loop then borrows the list instead of copying it.
+    /// Whether `e` is a field path from a parameter the body only reads: the caller keeps it
+    /// alive and unchanged for the whole call.
+    pub(crate) fn stable_place(&self, e: &Expr) -> bool {
+        let mut root = e;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        matches!(&root.kind, ExprKind::Name(_))
+            && matches!(
+                self.hir.resolution(root),
+                ms_check::hir::Resolution::Local(b) if self.borrowed_params.contains(&b.uid)
+            )
+    }
+
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
         while let ExprKind::Member { left, .. } = &root.kind {
@@ -926,9 +968,11 @@ impl<'a> FnLower<'a> {
             None => {
                 self.split_iter_for = Some(iter as *const Expr);
                 self.chars_iter_for = Some(iter as *const Expr);
+                self.keys_view_for = Some(iter as *const Expr);
                 let it = self.expr(iter);
                 self.split_iter_for = None;
                 self.chars_iter_for = None;
+                self.keys_view_for = None;
                 let it = it?;
                 if self.dead {
                     self.scopes.pop();

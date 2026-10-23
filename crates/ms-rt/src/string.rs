@@ -1555,6 +1555,38 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
     out: *mut VecVal,
 ) {
     // SAFETY: caller passes live strings and a writable out.
+    unsafe { split_into(s, sep, has_max, max, out, from_bytes) }
+}
+
+/// `let parts = text.split(separator)` where `text` outlives `parts` unchanged and nothing keeps
+/// `parts` or its pieces without copying them: the pieces are views of `text`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_split_view(
+    s: *const StrVal,
+    sep: *const StrVal,
+    has_max: u8,
+    max: i64,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller passes live strings and a writable out; the pieces borrow `s`.
+    unsafe {
+        split_into(s, sep, has_max, max, out, |b| match b {
+            [] | [0..=0x7f] => from_bytes(b),
+            _ => StrVal::view(b.as_ptr().cast_mut(), b.len()),
+        })
+    }
+}
+
+#[inline(always)]
+unsafe fn split_into(
+    s: *const StrVal,
+    sep: *const StrVal,
+    has_max: u8,
+    max: i64,
+    out: *mut VecVal,
+    piece: impl Fn(&[u8]) -> StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable out.
     unsafe {
         let (text, sepb) = (bytes(s), bytes(sep));
         let mut limit = usize::MAX;
@@ -1576,7 +1608,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
             let mut i = 0;
             while i < text.len() && v.len < limit {
                 let w = utf8::decode(&text[i..]).1;
-                push_str(&mut v, from_bytes(&text[i..i + w]));
+                push_str(&mut v, piece(&text[i..i + w]));
                 i += w;
             }
             *out = v;
@@ -1586,11 +1618,11 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
         while v.len < limit {
             match find(&text[start..], sepb) {
                 Some(p) => {
-                    push_str(&mut v, from_bytes(&text[start..start + p]));
+                    push_str(&mut v, piece(&text[start..start + p]));
                     start += p + sepb.len();
                 }
                 None => {
-                    push_str(&mut v, from_bytes(&text[start..]));
+                    push_str(&mut v, piece(&text[start..]));
                     break;
                 }
             }

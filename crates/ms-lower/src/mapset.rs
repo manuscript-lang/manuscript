@@ -291,6 +291,7 @@ impl<'a> FnLower<'a> {
         if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
+        let stable = self.stable_place(map);
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
@@ -342,10 +343,11 @@ impl<'a> FnLower<'a> {
                     self.b.switch_to(bad);
                     self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                     self.b.switch_to(good);
-                    Ok(Some(Val {
-                        v: load(self),
-                        own: false,
-                    }))
+                    let v = load(self);
+                    if stable {
+                        self.stable_reads.insert(v);
+                    }
+                    Ok(Some(Val { v, own: false }))
                 }
                 Some(d) => {
                     let out = self.two_ways(

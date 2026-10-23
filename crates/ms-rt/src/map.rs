@@ -1161,6 +1161,75 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
     unsafe { collect(m, &*kd, opt(vd), false, out) }
 }
 
+/// `for k in m.keys()` over a map that outlives the loop unchanged: string keys come back as
+/// views of the map's own strings, so nothing is copied. Other keys are copied as by `keys`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_keys_view(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe { collect_view(m, &*kd, opt(vd), true, out) }
+}
+
+/// `for v in m.values()` over a map that outlives the loop unchanged (see [`msrt_map_keys_view`]).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_values_view(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe { collect_view(m, &*kd, opt(vd), false, out) }
+}
+
+unsafe fn collect_view(
+    m: *const MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    keys: bool,
+    out: *mut VecVal,
+) {
+    let d = if keys { kd } else { vd.unwrap_or(kd) };
+    // SAFETY: caller contract.
+    unsafe {
+        if d.kind != ms_rt_abi::KIND_STRING {
+            return collect(m, kd, vd, keys, out);
+        }
+        let m = &*m;
+        let l = layout(kd, vd);
+        let mut v = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        if m.len > 0 {
+            v.ptr = alloc::alloc(m.len * STR_SIZE);
+            v.cap = m.len;
+        }
+        for i in 0..m.used {
+            let p = slot(m, &l, i);
+            if slot_hash_of(p) & LIVE == 0 {
+                continue;
+            }
+            let s = &*(p.add(if keys { l.koff } else { l.voff }) as *const StrVal);
+            let view = if s.owns() {
+                StrVal::view(s.ptr, s.len())
+            } else {
+                s.alias()
+            };
+            view.write_to((v.ptr as *mut StrVal).add(v.len));
+            v.len += 1;
+        }
+        *out = v;
+    }
+}
+
 unsafe fn collect(
     m: *const MapVal,
     kd: &TypeDesc,

@@ -88,6 +88,16 @@ pub(crate) struct FnLower<'a> {
     pub slotted: HashSet<usize>,
     /// Values that are views into another string: no drop, and an immutable `let` may hold one.
     pub views: HashSet<Value>,
+    /// Parameters the body only reads: the caller keeps them alive and unchanged for the whole
+    /// call, so anything read out of them may be held without a copy.
+    pub borrowed_params: HashSet<usize>,
+    /// Values read in place out of a borrowed parameter (`p.m.get(k).get()`): an immutable `let`
+    /// may hold one without a copy.
+    pub stable_reads: HashSet<Value>,
+    /// The iterable of the `for` being lowered when it may yield views of a map's keys.
+    pub keys_view_for: Option<*const ms_syntax::ast::Expr>,
+    /// The `split` call of a `let` whose list the rest of the block only reads in place.
+    pub split_view_for: Option<*const ms_syntax::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -325,6 +335,10 @@ impl<'a> FnLower<'a> {
             var_slots: Vec::new(),
             slotted: HashSet::new(),
             views: HashSet::new(),
+            borrowed_params: HashSet::new(),
+            stable_reads: HashSet::new(),
+            keys_view_for: None,
+            split_view_for: None,
             discard: None,
             stmt_pos: None,
             fixture: None,
@@ -757,6 +771,9 @@ impl<'a> FnLower<'a> {
                 self.scopes.last_mut().expect("scope").push(b.uid);
             } else {
                 self.bind_borrowed(b, v);
+                if !self.slotted.contains(&b.uid) {
+                    self.borrowed_params.insert(b.uid);
+                }
             }
         }
         self.counts_depth = true;

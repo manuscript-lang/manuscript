@@ -86,6 +86,8 @@ msrt_map_slot_count(m: *const MapVal) -> i64
 msrt_map_entry_ptrs( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, i: i64, key_out: *mut *const u8, val_out: *mut *const u8, ) -> u8
 msrt_map_keys( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal, )
 msrt_map_values( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal, )
+msrt_map_keys_view( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal, )
+msrt_map_values_view( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut VecVal, )
 msrt_map_merge( m: *mut MapVal, other: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_set_add_copy( m: *mut MapVal, kd: *const TypeDesc, key: *const u8, )
 msrt_set_union( a: *const MapVal, b: *const MapVal, kd: *const TypeDesc, out: *mut MapVal, )
@@ -169,6 +171,7 @@ msrt_string_slice( s: *const StrVal, start: i64, end: i64, out: *mut StrVal, ) -
 msrt_string_chars(s: *const StrVal, out: *mut VecVal)
 msrt_string_lines(s: *const StrVal, out: *mut VecVal)
 msrt_string_split( s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, )
+msrt_string_split_view( s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, )
 msrt_string_split_iter( s: *const StrVal, sep: *const StrVal, has_max: u8, max: i64, ) -> *mut SplitIter
 msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8
 msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal)
