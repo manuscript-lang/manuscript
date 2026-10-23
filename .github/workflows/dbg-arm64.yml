@@ -7,6 +7,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+      - run: |
+          dest="$RUNNER_TEMP/llvm-bundle/install"
+          sh scripts/fetch-lld.sh darwin arm64 "$dest"
+          echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"
       - run: cargo build --locked -p ms-cli -p ms-conform 2>&1 | tail -30; ls target/debug | head -20
       - run: |
           for n in 5 7 6; do
