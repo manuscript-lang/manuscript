@@ -12,9 +12,7 @@ use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ops::Deref;
-use ms_rt_abi::{
-    STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK,
-};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK};
 use ms_std_core::Global;
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
@@ -99,11 +97,6 @@ fn now_ns() -> i64 {
 pub fn tty_size(fd: BorrowedFd<'_>) -> Option<(i64, i64)> {
     let w = tcgetwinsize(fd).ok()?;
     Some((i64::from(w.ws_col), i64::from(w.ws_row)))
-}
-
-fn failed(text: &[u8]) -> u8 {
-    ms_std_rt::record_failure(text.to_vec());
-    STATUS_FAILED
 }
 
 fn number(out: &mut Vec<u8>, n: i64) {
@@ -204,7 +197,7 @@ impl Raw {
             return Err(ms_rt_abi::STATUS_BUSY);
         }
         let Ok(saved) = tcgetattr(input) else {
-            return Err(failed(b"cannot read terminal settings"));
+            return Err(ms_std_rt::failed(b"cannot read terminal settings"));
         };
         let mut raw = saved.clone();
         raw.input_modes.remove(
@@ -230,7 +223,7 @@ impl Raw {
         raw.special_codes[SpecialCodeIndex::VMIN] = 1;
         raw.special_codes[SpecialCodeIndex::VTIME] = 0;
         if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
-            return Err(failed(b"cannot enter raw mode"));
+            return Err(ms_std_rt::failed(b"cannot enter raw mode"));
         }
         let terminal = State {
             input,
@@ -292,7 +285,7 @@ impl State {
                 Ok(n) => rest = &rest[n..],
                 Err(Errno::INTR) => {}
                 Err(Errno::AGAIN) => pause(NS_PER_MS),
-                Err(_) => return Err(failed(b"cannot write to the terminal")),
+                Err(_) => return Err(ms_std_rt::failed(b"cannot write to the terminal")),
             }
         }
         Ok(())
