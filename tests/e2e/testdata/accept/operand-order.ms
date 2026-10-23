@@ -15,4 +15,4 @@ export fn main() Int:
     return 0
 
 test "operands retain evaluation order":
-    main() | try expect_equal(expected: 0)
+    main() | try expect_equal(0)

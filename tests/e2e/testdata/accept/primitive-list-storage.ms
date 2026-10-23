@@ -15,6 +15,7 @@ test "primitive storage retains generic record Optional and independent copies":
     var values = [9223372036854775807, -9223372036854775808]
     var record = Lists(values.clone())
     let wrapped: Optional[List[Int]] = some(values.clone())
+
     for i in range(0, 4096):
         append_value(var record.values, i)
     values.append(17)
@@ -23,10 +24,14 @@ test "primitive storage retains generic record Optional and independent copies":
     try expect_equal(values[-1], 17)
     try expect_equal(values[0], 9223372036854775807)
     try expect_equal(wrapped.get() [0], 9223372036854775807)
+
     var copy = values.clone()
+
     values.set(0, 42)
     try expect_equal(copy[0], 9223372036854775807)
+
     let nested: List[Optional[Int]] = [some(7), none]
+
     try expect_false(not (nested[0].get() == 7 and nested[1].is_none()))
 
 test "Float Bool and String preserve mutation traversal and width":
@@ -48,10 +53,14 @@ test "Float Bool and String preserve mutation traversal and width":
             and floats[1] == 0.5
         )
     )
+
     var booleans = [true, false, true]
+
     booleans.remove(0)
     booleans.prepend(false)
+
     var strings = ["a", "b", "c"]
+
     strings.reverse_in_place()
     try expect_false(
         not (booleans == [false, false, true] and strings == ["c", "b", "a"])
@@ -60,11 +69,13 @@ test "Float Bool and String preserve mutation traversal and width":
 test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
     var sorted = values.sorted(fn(left, right): return left % 3 - right % 3)
+
     sorted.set(0, 99)
     try expect_equal(values[0], 7)
 
     if let slice = values.slice(-2, 6):
         var copy = slice.clone()
+
         copy.set(0, 12)
         try expect_false(not (copy == [12, 5] and values[4] == 2))
     else:

@@ -130,6 +130,7 @@ fn item_values(item: String, low: Int, high: Int) List[Int]:
         return []
 
     var values: List[Int] = []
+
     for value in range(span[0], span[1] + 1):
         if (value - span[0]) % step == 0:
             values.append(value)
@@ -138,6 +139,7 @@ fn item_values(item: String, low: Int, high: Int) List[Int]:
 # Marks the allowed values of one cron field, or returns an empty list when the field is invalid.
 fn parse_field(text: String, low: Int, high: Int) List[Bool]:
     var allowed: List[Bool] = []
+
     for value in range(0, high + 1):
         allowed.append(false)
 
@@ -241,6 +243,7 @@ fn describe(line_no: Int, text: String) List[String]:
 
     let total = found.length()
     var out = ["{head}: {total} runs"]
+
     for run in found:
         out.append(run)
     return out

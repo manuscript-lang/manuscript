@@ -6,6 +6,7 @@ import range from "@std/collections.ms"
 
 fn texts(values: List[JsonValue]) Result[List[String], Error]:
     var result: List[String] = []
+
     for item in values:
         result.append(try stringify(item))
     return ok(result)
@@ -18,6 +19,7 @@ fn decode(input: Bytes, size: Int) Result[List[String], Error]:
 
     while offset < input.length():
         var end = offset + size
+
         if end > input.length(): end = input.length()
         for text in try input.slice(offset, end) | try reader.feed | try texts:
             result.append(text)
@@ -34,6 +36,7 @@ test "JSON decoder preserves values split at every chunk size":
         "\"s\"", "[1]", "\{\"b\":2\}", "42"
     ]
     let input = source.to_bytes()
+
     for size in range(1, input.length() + 1):
         if (try decode(input, size)) != expected: return fail("chunk size {size}")
 
@@ -55,20 +58,28 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
     let closed: Result[List[JsonValue], JsonError] = error(JsonError.InvalidInput)
     let reader = try decoder()
     let bad = "\"a\"".to_bytes()
+
     try expect_equal(reader.feed(bad.with_value(1, 255)), invalid)
     try expect_equal(reader.feed("1 ".to_bytes()), invalid)
+
     let ended = try decoder()
     let _values = try ended.finish()
+
     try expect_equal(ended.feed("1 ".to_bytes()), closed)
     try expect_equal(ended.finish(), closed)
 
 test "JSON decoder applies per-value budgets":
     let limited: Result[List[JsonValue], JsonError] = error(JsonError.LimitExceeded)
     let bytes = try decoder(JsonLimits(5))
+
     try expect_not_equal(bytes.feed("[1,2]".to_bytes()), limited)
     try expect_equal(bytes.feed("[1,2,3]".to_bytes()), limited)
+
     let depth = try decoder(JsonLimits(max_depth: 2))
+
     try expect_equal(depth.feed("[[[".to_bytes()), limited)
+
     let negative = decoder(JsonLimits(max_values: -1))
+
     try expect_false(not negative.is_error())
     try expect_equal(negative.err(), JsonError.InvalidInput)

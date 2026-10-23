@@ -5,4 +5,5 @@ impl Read for Reader:
 
 export fn left() Read:
     let value = 1
+
     return Read(Reader(fn() Int: value))

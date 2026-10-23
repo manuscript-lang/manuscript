@@ -46,6 +46,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
     let clone = values.clone()
     let each = values.clone().for_each
     var seen: List[Int] = []
+
     each(
         fn(value):
             seen.append(value)
@@ -54,12 +55,14 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
     try expect_false(
         not (seen == [1, 2, 3] and clone == [1, 2, 3] and values == [8, 8, 8])
     )
+
     var mapped = [1, 2, 3]
     let output = mapped.clone().map(
         fn(value):
             mapped.fill(9, 0, 3)
             return value + 1
     )
+
     try expect_false(not (output == [2, 3, 4] and mapped == [9, 9, 9]))
 
 test "nested reverse copy shrink and self splice iterate snapshots":
@@ -79,6 +82,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
         index += 1
 
     try expect_false(not (outer == [1, 2, 3] and inner == [3, 2, 1]))
+
     var backward = [1, 2, 3]
     var truncated = [1, 2, 3]
     var seen_backward: List[Int] = []
@@ -107,8 +111,10 @@ test "nested reverse copy shrink and self splice iterate snapshots":
             and truncated == [1, 2, 1]
         )
     )
+
     var shrinking = [1, 2, 3]
     var seen_shrinking: List[Int] = []
+
     count = 0
 
     for value in shrinking.clone():
@@ -124,8 +130,10 @@ test "nested reverse copy shrink and self splice iterate snapshots":
             and seen_shrinking == [2, 3, 4]
         )
     )
+
     var self_list = [1, 2, 3]
     var seen_self: List[Int] = []
+
     count = 0
 
     for value in self_list.clone():
@@ -148,6 +156,7 @@ test "clone slice and nested values keep their own contracts":
     let clone = values.clone()
     let slice = values.slice(0, 2).get().clone()
     var seen: List[Int] = []
+
     (
         values.clone().for_each(
             fn(value):
@@ -164,8 +173,10 @@ test "clone slice and nested values keep their own contracts":
             and values.first().get().value == 9
         )
     )
+
     var children: List[Node] = [Node([])]
     var count = 0
+
     children.clone().for_each(
         fn(value):
             children.append(Node([value.clone()]))
@@ -181,6 +192,7 @@ test "function values can replace later backing elements":
     let twin = fn() Int: 7
     var functions = [original, twin]
     let clone = functions.clone()
+
     (
         functions.clone().for_each(
             fn(value):

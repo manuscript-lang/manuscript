@@ -11,11 +11,11 @@ test "omitted capacity creates an unbounded queue":
     for unused in [1, 2]:
         for value in [1, 2, 3, 4, 5]:
             (queue.enqueue(value)) | try expect_true
-        queue.length() | try expect_equal(expected: 5)
+        queue.length() | try expect_equal(5)
 
         for value in [1, 2, 3, 4, 5]:
             let expected: Optional[Int] = some(value)
-            queue.dequeue() | try expect_equal(expected: expected)
+            queue.dequeue() | try expect_equal(expected)
 
         let missing: Optional[Int] = none
         (queue.is_empty() and queue.dequeue() == missing) | try expect_true
@@ -38,7 +38,7 @@ test "a copy is an independent queue":
     (queue.dequeue() == missing and queue.is_empty()) | try expect_true
     (copy.peek() == second and copy.enqueue(6)) | try expect_true
     (queue.enqueue(4)) | try expect_true
-    queue.dequeue() | try expect_equal(expected: second)
+    queue.dequeue() | try expect_equal(second)
 
 test "queue elements include ordinary functions":
     var queue = Queue[fn() Int](1)

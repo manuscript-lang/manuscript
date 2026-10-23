@@ -22,19 +22,25 @@ fn compare(left: Key, right: Key) Int:
 test "domain equality and hashing select interfaces":
     let a = Key(1, "first")
     let b = Key(1, "second")
+
     try expect_equal(a, b)
     try expect_equal(a.hash(), b.hash())
+
     var values = Map[Key, String]()
+
     values.add(a.clone(), "a")
     values.add(b.clone(), "b")
     try expect_equal(values.length(), 1)
     try expect_equal(values.get(a), some("b"))
     try expect_false(not ([a.clone()].contains(b)))
+
     let view = Equal(Equal(a))
+
     try expect_false(not (view.equals(Equal(b))))
 
 test "stable priority queue and optional capacity":
     var queue = PriorityQueue(compare)
+
     queue.enqueue(Key(2, "later"))
     queue.enqueue(Key(1, "first"))
     queue.enqueue(Key(1, "second"))
@@ -50,11 +56,13 @@ test "stable priority queue and optional capacity":
         return fail("missing item")
 
     var bounded = PriorityQueue(compare, 1)
+
     try expect_false(not (bounded.enqueue(Key(1, "only"))))
     try expect_false(bounded.enqueue(Key(0, "full")))
 
 test "limits can be omitted or supplied":
     let repeated = try "ab".repeat(3)
+
     try expect_equal(repeated, "ababab")
     try expect_false("ab".repeat(3, 5).is_ok())
 
@@ -73,8 +81,13 @@ impl ReadStream for EchoReader:
 test "native compositions preserve Optional arguments for source implementations":
     var stream = ReadStream(EchoReader(0))
     let omitted: Result[Optional[Bytes], IoError] = stream.read()
+
     try expect_equal(omitted, ok(some(Bytes([0]))))
+
     let supplied: Result[Optional[Bytes], IoError] = stream.read(8)
+
     try expect_equal(supplied, ok(some(Bytes([8]))))
+
     let line = read_line(stream)
+
     try expect_false(line.is_ok())

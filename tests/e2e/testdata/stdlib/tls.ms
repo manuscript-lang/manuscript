@@ -15,6 +15,7 @@ fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
         )
     )
     let written = (try http_result(exchange.write("secure")))
+
     return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -23,12 +24,14 @@ test "TLS certificate parsing verification hostname and expiration":
             pem: certificate(), max_certificates: 1
         ) | try expect_ok
     )
+
     try expect_false(
         (
             certificates.length() != 1
             or certificates.get(0).dns_names != ["stdlib.test"]
         )
     )
+
     let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
     let verified = (
         verify_certificates(
@@ -37,6 +40,7 @@ test "TLS certificate parsing verification hostname and expiration":
         ) | try expect_ok
     )
     let failed: Result[Unit, TlsError] = error(TlsError.AuthenticationFailed)
+
     try expect_false(
         (
             verify_certificates(
@@ -45,7 +49,9 @@ test "TLS certificate parsing verification hostname and expiration":
             ) != failed
         )
     )
+
     let expired = (timestamp(seconds: 4133980800, nanoseconds: 0) | try expect_ok)
+
     try expect_false(
         (
             verify_certificates(
@@ -57,10 +63,13 @@ test "TLS certificate parsing verification hostname and expiration":
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
-    parse_certificates(pem: "not PEM") | try expect_equal(expected: invalid)
+
+    parse_certificates(pem: "not PEM") | try expect_equal(invalid)
+
     let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
+
     parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
-        expected: limited
+        limited
     )
 
 test "HTTPS trusts only the explicitly supplied local test root":
@@ -83,6 +92,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
             server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
             private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
         )
+
         with client = (
             net.http_client(
                 HttpClientOptions(
@@ -117,6 +127,7 @@ fn report_protocol(exchange: HttpExchange) Result[Unit, HttpError]:
         )
     )
     let written = (try http_result(exchange.write(exchange.protocol())))
+
     return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":

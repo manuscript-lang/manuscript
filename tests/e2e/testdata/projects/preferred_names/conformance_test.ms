@@ -6,6 +6,7 @@ import second_run from "./second.ms"
 test "bound and forwarded calls keep the equality of the collection creator":
     let first = first_run().values()
     let second = second_run().values()
+
     (first.length() != 1 or first.get(0).id != 2) | try expect_false
     try expect_false(
         (
@@ -14,15 +15,17 @@ test "bound and forwarded calls keep the equality of the collection creator":
             or second.get(0).label != "original"
         )
     )
+
     # A collection keeps the equality of the module that created it, so
     # bound operations from another module do not change how it matches.
     var items = Set[Key]()
     let add = first_add(items)
     let remove = first_remove(items)
+
     add(Key(1, "original"))
     add(Key(1, "duplicate"))
-    items.length() | try expect_equal(expected: 2)
+    items.length() | try expect_equal(2)
     remove(Key(1, "different"))
-    items.length() | try expect_equal(expected: 2)
+    items.length() | try expect_equal(2)
     remove(Key(1, "original"))
-    items.length() | try expect_equal(expected: 1)
+    items.length() | try expect_equal(1)

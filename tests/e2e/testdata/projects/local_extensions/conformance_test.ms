@@ -7,7 +7,7 @@ import ListBuilder from "@std/collections.ms"
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
-    item.original() | try expect_equal(expected: 2)
+    item.original() | try expect_equal(2)
     let first = first_view(item)
     let second = second_view(item)
     (first.get() != 12 or second.get() != 22) | try expect_false

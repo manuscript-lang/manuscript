@@ -11,6 +11,7 @@ type Op:
 fn lcs_table(a: List[String], b: List[String]) List[Int]:
     let w = b.length() + 1
     var t: List[Int] = []
+
     for k in range(0, (a.length() + 1) * w):
         t.append(0)
 
@@ -85,10 +86,12 @@ export fn main() Int:
     let m = head[4].parse_int().get()
     var a: List[String] = []
     var b: List[String] = []
+
     for i in range(0, n):
         a.append(lines[1 + i])
     for j in range(0, m):
         b.append(lines[1 + n + j])
+
     let ops = edit_script(a, b, lcs_table(a, b))
     let total = ops.length()
     # apre[p] and bpre[p] count the A and B lines consumed by the first p script lines.
@@ -97,8 +100,11 @@ export fn main() Int:
 
     for p in range(0, total):
         var da = 1
+
         if ops[p].kind == 2: da = 0
+
         var db = 1
+
         if ops[p].kind == 1: db = 0
         apre.append(apre[p] + da)
         bpre.append(bpre[p] + db)
@@ -128,17 +134,23 @@ export fn main() Int:
         return 0
 
     var out: List[String] = []
+
     out.append("--- {name_a}\n+++ {name_b}\n")
 
     for h in range(0, starts.length()):
         var lo = starts[h] - ctx
+
         if lo < 0: lo = 0
+
         var hi = ends[h] + ctx + 1
+
         if hi > total: hi = total
+
         let la = apre[hi] - apre[lo]
         let lb = bpre[hi] - bpre[lo]
         let sa = hunk_span(hunk_start(apre[lo], la), la)
         let sb = hunk_span(hunk_start(bpre[lo], lb), lb)
+
         out.append("@@ -{sa} +{sb} @@\n")
 
         for p in range(lo, hi):

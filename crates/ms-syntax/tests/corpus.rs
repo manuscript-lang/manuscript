@@ -195,6 +195,30 @@ fn formatter_matches_go() {
 }
 
 #[test]
+fn setup_paragraphs_are_stable_with_lf_and_crlf() {
+    let source = include_str!("data/format/040.in.src");
+    let expected = include_str!("data/format/040.out.src");
+    let file: Arc<str> = Arc::from("setup.ms");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        let once = format(&file, &input).unwrap();
+        assert_eq!(once, expected);
+        assert_eq!(format(&file, &once).unwrap(), once);
+    }
+}
+
+#[test]
+fn short_callbacks_are_compact_without_changing_block_bodies() {
+    let source = include_str!("data/format/041.in.src");
+    let expected = include_str!("data/format/041.out.src");
+    let file: Arc<str> = Arc::from("callbacks.ms");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        let once = format(&file, &input).unwrap();
+        assert_eq!(once, expected);
+        assert_eq!(format(&file, &once).unwrap(), once);
+    }
+}
+
+#[test]
 fn nesting_limits() {
     big_stack(|| {
         let deep = 200_000;

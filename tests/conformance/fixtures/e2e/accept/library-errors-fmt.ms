@@ -44,7 +44,7 @@ test "explicit error mapping preserves the cause":
     let expected: Result[Unit, ApplicationError] = error(
         Encoding(EncodingError.InvalidData)
     )
-    decode_bad_input() | try expect_equal(expected: expected)
+    decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
 import IoError from "@std/io.ms"
@@ -107,13 +107,13 @@ fn generic_type_pattern[T](cause: Error, expected: T) Bool:
 
 test "generic handling preserves the concrete error and its payload":
     let json = Error(JsonError.InvalidData)
-    describe_error(json) | try expect_equal(expected: "malformed JSON")
+    describe_error(json) | try expect_equal("malformed JSON")
     let io = Error(IoError.Failed("disk diagnostic"))
-    describe_error(io) | try expect_equal(expected: "I/O: disk diagnostic")
+    describe_error(io) | try expect_equal("I/O: disk diagnostic")
     let custom = Error(CustomError("application diagnostic"))
-    describe_error(custom) | try expect_equal(expected: "application diagnostic")
+    describe_error(custom) | try expect_equal("application diagnostic")
     let wrapped = Error(json)
-    describe_error(wrapped) | try expect_equal(expected: "malformed JSON")
+    describe_error(wrapped) | try expect_equal("malformed JSON")
 
     let cause = match propagate_generic():
         ok(_):
@@ -258,11 +258,11 @@ test "specific errors pass directly into Error boundaries":
 
     match shared:
         ReadError(read):
-            read.path | try expect_equal(expected: "settings.json")
+            read.path | try expect_equal("settings.json")
         _:
             return fail(message: "shared Error lost concrete type")
 
-    original.path | try expect_equal(expected: "settings.json")
+    original.path | try expect_equal("settings.json")
 
 fn read_success() Result[Int, ReadError]:
     return ok(7)
@@ -300,7 +300,7 @@ test "standard error diagnostics work directly":
     let cause = IoError.Failed("read failed")
     let message = cause.message
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
-    JsonError.InvalidData.message() | try expect_equal(expected: "JSON: invalid data")
+    JsonError.InvalidData.message() | try expect_equal("JSON: invalid data")
 
 import FileSystemError from "@std/fs.ms"
 import {LogError} from "@std/log.ms"
@@ -308,9 +308,9 @@ import {CommandError} from "@std/process.ms"
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
-    Error(sink).message() | try expect_equal(expected: "sink diagnostic")
+    Error(sink).message() | try expect_equal("sink diagnostic")
     let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
-    Error(file_sink).message() | try expect_equal(expected: "file sink diagnostic")
+    Error(file_sink).message() | try expect_equal("file sink diagnostic")
     (
         (
             Error(
@@ -353,9 +353,9 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
         _:
             return fail(message: "unrelated contract pattern did not run")
 
-    count.value | try expect_equal(expected: 1)
+    count.value | try expect_equal(1)
     let view = Label[String](Labelled("separate handler"))
-    match_label(view) | try expect_equal(expected: "separate handler")
+    match_label(view) | try expect_equal("separate handler")
 
 import filesystem from "@std/fs.ms"
 

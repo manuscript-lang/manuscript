@@ -1,0 +1,34 @@
+fn example() Unit:
+    queue.enqueue(
+        fn():
+            return 7
+    )
+    consume(
+        fn():
+            return nested(
+                fn():
+                    return 8
+            )
+        ,
+        9
+    )
+    consume(
+        fn():
+            # Keep the explanation.
+            return 7
+    )
+    consume(
+        fn():
+            let result = 7
+            return result
+    )
+    consume(
+        fn():
+            work()
+    )
+    consume(
+        fn():
+            return match value:
+                some(number): number
+                none: 0
+    )

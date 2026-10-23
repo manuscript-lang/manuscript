@@ -1,0 +1,24 @@
+fn checked(value: Int) Int:
+    let first = value
+    let second = first + 1
+    if second < 0: return 0
+    consume(second)
+    # Prepare the next case.
+    let third = second + 1
+    let fourth = third + 1
+    consume(fourth)
+    consume(third)
+    let (
+        left = third
+        right = fourth
+    )
+    return left + right
+
+test "setup and assertions":
+    let actual = 3
+    let expected = 3
+    actual | try expect_equal(expected)
+    let callback = fn(value: Int) Int:
+        let result = value + 1
+        return result
+    callback(3) | try expect_equal(4)

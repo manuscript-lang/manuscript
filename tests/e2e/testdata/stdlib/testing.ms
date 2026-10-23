@@ -11,31 +11,40 @@ fn identity[T](value: T) T:
 test "testing assertions":
     true | try expect_true
     false | try expect_false
-    identity(3) | try expect_equal(expected: 3)
-    "hello" | try assert_equal(expected: "hello")
-    [1, 2] | try expect_equal(expected: [1, 2])
-    1 | try expect_not_equal(expected: 2)
+    identity(3) | try expect_equal(3)
+    "hello" | try assert_equal("hello")
+    [1, 2] | try expect_equal([1, 2])
+    1 | try expect_not_equal(2)
     try expect_close(1.01, 1.0, 0.02)
-    "Manuscript" | try expect_contains(expected: "script")
+    "Manuscript" | try expect_contains("script")
+
     let present: Optional[Int] = some(7)
     let absent: Optional[Int] = none
-    ((present | try expect_some)) | try expect_equal(expected: 7)
+
+    ((present | try expect_some)) | try expect_equal(7)
     absent | try expect_none
+
     let success: Result[Int, TextError] = ok(9)
     let failure: Result[Int, TextError] = error(TextError("bad"))
-    ((success | try expect_ok)) | try expect_equal(expected: 9)
-    ((failure | try expect_error)) | try expect_equal(expected: TextError("bad"))
+
+    ((success | try expect_ok)) | try expect_equal(9)
+    ((failure | try expect_error)) | try expect_equal(TextError("bad"))
+
     let mismatch = expect_equal(1, 2)
     let mismatch_cause = (mismatch | try expect_error)
-    mismatch_cause.message() | try expect_contains(expected: "expected 2, got 1")
+
+    mismatch_cause.message() | try expect_contains("expected 2, got 1")
+
     let quiet = expect_fault(fn(): unit)
     let quiet_cause = (quiet | try expect_error)
-    quiet_cause.message() | try expect_contains(expected: "returned normally")
+
+    quiet_cause.message() | try expect_contains("returned normally")
 
 test "failure helpers return errors":
     let failed = fail("custom failure")
     let failed_cause = (failed | try expect_error)
-    failed_cause.message() | try expect_contains(expected: "custom failure")
+
+    failed_cause.message() | try expect_contains("custom failure")
 
 type Key:
     id: Int
@@ -48,7 +57,5 @@ impl Equal for Key:
             _: return false
 
 test "assertions preserve domain equality":
-    Key(id: 1, label: "first") | try expect_equal(expected: Key(id: 1, label: "second"))
-    Key(id: 1, label: "first") | try expect_not_equal(
-        expected: Key(id: 2, label: "first")
-    )
+    Key(id: 1, label: "first") | try expect_equal(Key(id: 1, label: "second"))
+    Key(id: 1, label: "first") | try expect_not_equal(Key(id: 2, label: "first"))

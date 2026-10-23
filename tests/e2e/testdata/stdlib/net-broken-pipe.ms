@@ -13,10 +13,12 @@ test "writing to a closed connection returns an error":
 
         with accepted = (listener.accept(2.seconds) | try expect_ok):
             client.close()
+
             var attempts = 0
 
             while attempts < 200:
                 sleep(10.milliseconds)
+
                 let written = accepted.write("ping", 1.seconds)
 
                 if let _sent = written:

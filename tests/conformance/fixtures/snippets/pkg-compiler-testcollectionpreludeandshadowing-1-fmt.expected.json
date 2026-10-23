@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use() Int:\n    let nested: List[List[Int]] = [[], [1]]\n    let empty: Map[String, Int] = {}\n    var chain_1 = Map[String, Int]()\n    chain_1.add(\"a\", nested[1][0])\n    return chain_1.get(\"a\").get()\n"
+    "fmt": "fn use() Int:\n    let nested: List[List[Int]] = [[], [1]]\n    let empty: Map[String, Int] = {}\n    var chain_1 = Map[String, Int]()\n\n    chain_1.add(\"a\", nested[1][0])\n    return chain_1.get(\"a\").get()\n"
   }
 }

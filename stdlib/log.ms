@@ -121,6 +121,7 @@ fn core_error(cause: LogCoreError) LogError:
 # Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
     let now = wall_clock().now()
+
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
 fn stream_write(stream: WriteStream, gate: LogGate, data: String) Result[Unit, LogError]:
@@ -298,8 +299,10 @@ export fn create(
     max_bytes: Optional[Int] = none
 ) Result[Logger, LogError]:
     var index: Optional[Int] = none
+
     if let chosen = level:
         index = some(level_index(chosen))
+
     let state = new_state(index, timestamp, max_bytes)
     if state.is_error(): return error(core_error(state.err()))
 
@@ -319,6 +322,7 @@ export fn file_transport(path: String) Result[Transport, LogError]:
     if opened.is_error(): return error(LogError.FileSystem(opened.err()))
 
     let file = opened.get()
+
     return ok(Transport(FileTransport(file, file.writer(), new_gate())))
 
 impl Error for LogError:

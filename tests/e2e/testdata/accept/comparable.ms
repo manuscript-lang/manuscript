@@ -22,6 +22,7 @@ test "max and min over built-in types":
 
 test "float order puts NaN above every value":
     let nan = 0.0 / 0.0
+
     try expect_true((max(nan, 1.0).is_nan() and max(1.0, nan).is_nan()))
     try expect_true((min(nan, 1.0) == 1.0))
 
@@ -32,12 +33,14 @@ test "a source impl drives max, min, and generic bounds":
 
 test "compare through an explicit view":
     let left = Comparable(1)
+
     try expect_true((left.compare(Comparable(2)) < 0))
     try expect_true(((Comparable(Version(3)).compare(Comparable(Version(3))) == 0)))
 
 test "max_of and min_of over a list":
     let numbers = [3, 9, 2]
     let empty: List[Int] = []
+
     try expect_true((max_of(numbers) == some(9) and min_of(numbers) == some(2)))
     try expect_true((max_of(empty).is_none() and min_of(empty).is_none()))
     try expect_true((max_of([Version(4), Version(8)]) == some(Version(8))))

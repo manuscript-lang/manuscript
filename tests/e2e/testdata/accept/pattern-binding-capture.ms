@@ -39,6 +39,7 @@ test "a payload identifier binds every alternative without changing semantics":
     )
     let missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
     let success: Result[Int, Failure[String]] = ok(7)
+
     try expect_false(
         (
             captured(denied.clone()) != 1
