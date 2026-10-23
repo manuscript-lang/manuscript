@@ -7,7 +7,6 @@
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
-#[cfg(unix)]
 use ms_rt_abi::STATUS_UNSUPPORTED;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
