@@ -5,7 +5,6 @@ snippets/tests-e2e-testfaultsourcelocations-20
 # test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
 snippets/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
-e2e/accept/host-accessors
 snippets/tests-e2e-testdurationunitpropertysourceframes-1
 snippets/tests-e2e-testmutationaliasesretainsplicefaults-1
 snippets/tests-e2e-testpreferrednamesretainfaults-1
