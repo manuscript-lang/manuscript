@@ -414,6 +414,13 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
     mix(fold(h ^ tail, K0))
 }
 
+/// Hash of an `Int` key: one widening multiply folded to 64 bits.
+#[inline(always)]
+pub fn hash_int(x: u64) -> u64 {
+    let m = u128::from(x ^ 0x9e37_79b9_7f4a_7c15) * 0xff51_afd7_ed55_8ccd;
+    (m as u64) ^ ((m >> 64) as u64)
+}
+
 #[inline]
 pub fn mix(mut h: u64) -> u64 {
     h ^= h >> 32;
