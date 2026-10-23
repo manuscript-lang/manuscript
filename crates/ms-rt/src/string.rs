@@ -1512,6 +1512,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split(
 #[repr(C)]
 pub struct SplitIter {
     hdr: Obj,
+    /// Borrowed from the loop's operands, which outlive the iterator.
     src: StrVal,
     sep: StrVal,
     /// The current piece (a shared static for short ones), or [`NO_STR`] before the first.
@@ -1529,8 +1530,6 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
     unsafe {
         let it = o as *mut SplitIter;
         release_opt(&(*it).cur);
-        release(&(*it).src);
-        release(&(*it).sep);
         alloc::free(o as *mut u8);
     }
 }
@@ -1555,8 +1554,9 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
             left = max as usize;
         }
         let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
-        (*it).src = cloned(&*s);
-        (*it).sep = cloned(&*sep);
+        // The loop keeps both strings alive until it ends, so the iterator only borrows them.
+        (*it).src = (*s).alias();
+        (*it).sep = (*sep).alias();
         (*it).cur = NO_STR;
         (*it).cap = 0;
         (*it).pos = 0;
