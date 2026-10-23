@@ -680,9 +680,9 @@ msstd_random_draw_free(d: *mut Draw)
 msrt_regex_compile(pattern: *const StrVal, out: *mut *mut RegexObj) -> u8
 msrt_regex_matches(re: *const RegexObj, text: *const StrVal) -> u8
 msrt_regex_find_all( re: *const RegexObj, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_regex_captures( re: *const RegexObj, text: *const StrVal, out: *mut VecVal, ) -> u8
+msrt_regex_captures( re: *const RegexObj, text: *const StrVal, out: *mut VecVal, )
 msrt_regex_captures_all( re: *const RegexObj, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_regex_named_captures( re: *const RegexObj, text: *const StrVal, out: *mut MapVal, ) -> u8
+msrt_regex_named_captures( re: *const RegexObj, text: *const StrVal, out: *mut MapVal, )
 msrt_regex_find_span( re: *const RegexObj, text: *const StrVal, out: *mut VecVal, ) -> u8
 msrt_regex_split( re: *const RegexObj, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_regex_replace_template( re: *const RegexObj, text: *const StrVal, template: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
