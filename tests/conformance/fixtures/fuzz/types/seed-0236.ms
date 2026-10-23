@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l2 = [22, 27]
     say("l2 = {l2} len {l2.length()}")
+
     let i3 = (-34)
     say("i3 = {i3}")
+
     let i4 = (i3 * l2.get(0))
     say("i4 = {i4}")
+
     let bad = (1 < 2) < 3
     let b5 = ("{(-i4)}:" + "alpha").is_empty()
     say("b5 = {b5}")

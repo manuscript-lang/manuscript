@@ -9,19 +9,30 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("hello world" + ("{343410165791}:" + ("{(-9223372036854775808)}:" + "héllo")))
+    let s1 = (
+        "hello world"
+        + ("{343410165791}:" + ("{(-9223372036854775808)}:" + "héllo"))
+    )
     say("s1 = [{s1}]")
+
     let l2 = [10]
     say("l2 = {l2} len {l2.length()}")
-    let b3 = (((919.843 - 447.552) < (270.817 + 9.5)) and (((-15) < (-56936)) or (false and false)))
+
+    let b3 = (
+        ((919.843 - 447.552) < (270.817 + 9.5))
+        and (((-15) < (-56936)) or (false and false))
+    )
     say("b3 = {b3}")
+
     let bad = 1 + "one"
     let f4 = (((7.5 + 5.5) * 1.276) * 614.656)
     say("f4 = {f4}")
+
     if ((true or false) and (not false)):
         say(("hello world" + "Tab\there"))
     else:
         say("hello world")
+
     let b5 = (l2.length() <= (-23))
     say("b5 = {b5}")
     return 0

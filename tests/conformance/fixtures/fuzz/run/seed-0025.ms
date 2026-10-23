@@ -12,38 +12,53 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = (331950 * (453029 * (29 * (-49))))
     say("i1 = {i1}")
+
     let b2 = ("{i1}:" + "emoji 😀".lower()).starts_with("日本語")
     say("b2 = {b2}")
+
     let f3 = (131.700 + ((330.793 * 548.636) + (781.25 * 519.651)))
     say("f3 = {f3}")
+
     let s4 = "ms".upper().lower().lower()
     say("s4 = [{s4}]")
-    say("{(49 * (37 + i1))} {(((-49) - (-227636)) + (i1 + i1))} {((49 * (37 + i1)) < (((-49) - (-227636)) + (i1 + i1)))} sum {(49 * (37 + i1)) + (((-49) - (-227636)) + (i1 + i1))}")
+    say(
+        "{(49 * (37 + i1))} {(((-49) - (-227636)) + (i1 + i1))} {((49 * (37 + i1)) < (((-49) - (-227636)) + (i1 + i1)))} sum {(49 * (37 + i1)) + (((-49) - (-227636)) + (i1 + i1))}"
+    )
+
     let i6 = (-17)
     say("i6 = {i6}")
+
     let l7 = [(-14), (-13)]
     say("l7 = {l7} len {l7.length()}")
+
     let l8 = l7.map(fn(x): x + 2).filter(fn(x): x % 2 == 0)
     say("l8 = {l8} len {l8.length()}")
     say("fib(48) = {fib(48)}")
+
     let i9 = ((-41) + (l8.get(0) * i1))
     say("i9 = {i9}")
+
     let s10 = ("brace\{s\}" + s4.trim())
     say("s10 = [{s10}]")
+
     let i11 = l7.length()
     say("i11 = {i11}")
+
     let s12 = "alpha".replace("日本語", "MiXeD CaSe")
     say("s12 = [{s12}]")
+
     let big13 = 9223372036854775807
     say("{big13 + 3}")
     return 0

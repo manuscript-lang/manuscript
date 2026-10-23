@@ -3,13 +3,7 @@
 # conform: origin=tests/e2e/testdata/projects/core_parity/first.ms
 import {Key, Cause} from "./domain.ms"
 import {
-    transform_set,
-    lookup,
-    locate_map,
-    locate_set,
-    convert,
-    remap_keys,
-    remap_values
+    transform_set, lookup, locate_map, locate_set, convert, remap_keys, remap_values
 } from "./helpers.ms"
 
 impl Equal for Key:
@@ -47,6 +41,7 @@ export fn first_queries() Bool:
     let key = Key(5, "original")
     var map = Map[Key, String]()
     map.add(key, "found")
+
     let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_some()
@@ -74,5 +69,6 @@ export fn first_bound_keys() fn(transform: fn(key: Int, value: Int) Key) Map[Key
 export fn first_value_transform() Int:
     var input = Map[Key, Int]()
     input.add(Key(5, "original"), 2)
+
     let mapped = remap_values(input, fn(key, value): value + 1)
     return mapped.get(Key(5, "different")).get(0)

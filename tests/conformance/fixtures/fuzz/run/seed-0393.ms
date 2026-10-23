@@ -9,20 +9,29 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (("42" + "line\nbreak").contains("MiXeD CaSe") and "MiXeD CaSe".contains("  padded  "))
+    let b1 = (
+        ("42" + "line\nbreak").contains("MiXeD CaSe")
+        and "MiXeD CaSe".contains("  padded  ")
+    )
     say("b1 = {b1}")
+
     let i2 = (((-43) + (-9)) - (760613727108 + 49))
     say("i2 = {i2}")
+
     let i3 = (((-4) + (i2 / i2)) + ((-27) - (-34)))
     say("i3 = {i3}")
+
     let i4 = ((((-688700497710) + (-25)) % 350441) * ((-8) % (i2 + i2)))
     say("i4 = {i4}")
+
     if "alpha".is_empty():
         say("a".lower())
     else:
         say("alpha")
+
     let l6 = [14, (-21)]
     say("l6 = {l6} len {l6.length()}")
+
     let l7 = l6.filter(fn(x): x > (-5))
     say("l7 = {l7} len {l7.length()}")
     say("{(i4 * i3)} {l7.get(0)} {((i4 * i3) < l7.get(0))} sum {(i4 * i3) + l7.get(0)}")

@@ -6,9 +6,11 @@ interface I[T]:
 
 type Box[T]:
     v: T
+
 impl I[T] for Box[T]:
     fn f(x: I[List[T]]) Int:
         return 1
+
 export fn main() Int:
     let b = Box[Int](v: 1)
     let i = I[Int](value: b)

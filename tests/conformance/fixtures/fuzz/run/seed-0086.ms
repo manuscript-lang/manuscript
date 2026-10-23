@@ -11,38 +11,53 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let s1 = "gamma".reverse().reverse().replace("MiXeD CaSe", "line\nbreak")
     say("s1 = [{s1}]")
+
     let l2 = [15]
     say("l2 = {l2} len {l2.length()}")
+
     let b3 = (not "x".is_empty())
     say("b3 = {b3}")
+
     let s4 = "naïve"
     say("s4 = [{s4}]")
     say("gcd(836, 3458) = {gcd(836, 3458)}")
+
     let i5 = ((13 - 30) + ((4 - 35) - ((-5) * 2)))
     say("i5 = {i5}")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 7:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 4
+
     say("acc6 = {acc6}")
+
     let b7 = (((s1 + s1) + s1) != (s1 + "x".upper()))
     say("b7 = {b7}")
+
     let i8 = ((i5 - (-(-38))) + ((31 + i5) + (i5 - 33)))
     say("i8 = {i8}")
+
     let b9 = (not true)
     say("b9 = {b9}")
+
     let i10 = (-i5)
     say("i10 = {i10}")
+
     let l11 = l2.take(0)
     say("l11 = {l11} len {l11.length()}")
+
     let i12 = (s4.length() - (-(i10 % (-49))))
     say("i12 = {i12}")
+
     let s13 = "  padded  "
     say("s13 = [{s13}]")
     return 0

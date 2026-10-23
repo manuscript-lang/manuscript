@@ -11,20 +11,25 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(10) = {fact(10)}")
-    let i1 = 294584
 
+    let i1 = 294584
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 7:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 6
+
     say("acc2 = {acc2}")
+
     let i3 = 7
     say("i3 = {i3}")
+
     let i4 = i1
     say("i4 = {i4}")
     return 0

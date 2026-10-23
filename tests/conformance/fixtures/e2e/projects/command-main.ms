@@ -8,11 +8,8 @@ import stdout from "@std/io.ms"
 
 fn exercise() Result[Int, Error]:
     match commands().run(
-        program: "/bin/printf",
-        arguments: ["hello"],
-        input: "".to_bytes(),
-        max_output_bytes: 64,
-        timeout: 1.seconds
+        program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
+        max_output_bytes: 64, timeout: 1.seconds
     ):
         error(_):
             return ok(1)

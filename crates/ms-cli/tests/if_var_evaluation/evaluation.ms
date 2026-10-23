@@ -2,7 +2,6 @@ import stdout from "@std/io.ms"
 
 fn next(var count: Int) Int:
     let result = count
-
     count += 1
     return result
 
@@ -18,7 +17,6 @@ fn early(var entries: Map[String, List[Int]], var count: Int) Unit:
 export fn main() Int:
     var count = 0
     var entries = Map[String, List[Int]]()
-
     entries.add("key-1", [1])
     entries.add("key-2", [2])
     if var item = entries.get(key(var count)):
@@ -41,7 +39,6 @@ export fn main() Int:
     stdout().write("loop {count} {entries}\n")
 
     var rows = [[[1]], [[2]]]
-
     count = 0
     if var item = rows[next(var count)].first():
         item.append(9)
@@ -52,7 +49,6 @@ export fn main() Int:
     stdout().write("{count} {rows}\n")
 
     var empty: List[List[List[Int]]] = [[], [[2]]]
-
     count = 0
 
     if var item = empty[next(var count)].first():

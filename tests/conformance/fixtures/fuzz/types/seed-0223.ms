@@ -11,7 +11,9 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((((-38) % (-24)) - 26) + (799462 - (-30)))
     say("i1 = {i1}")
+
     let s2 = ("  padded  ".replace("42", "héllo") + "delta")
     say("s2 = [{s2}]")
+
     let bad = say(1, 2)
     return 0

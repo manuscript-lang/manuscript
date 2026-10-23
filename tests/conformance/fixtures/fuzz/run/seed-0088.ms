@@ -11,32 +11,44 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((66566 - (677997516286 % (-43))) * (-861270183527))
     say("i1 = {i1}")
+
     let s2 = ("{(i1 - 887614976910)}:" + "ms".upper())
     say("s2 = [{s2}]")
+
     let b3 = (not ((not false) or "alpha".is_empty()))
     say("b3 = {b3}")
+
     let l4 = [(-22), (-18)]
     say("l4 = {l4} len {l4.length()}")
+
     if b3:
         say("")
     else:
         say("gamma".trim())
+
     let f5 = 3.0e7
     say("f5 = {f5}")
+
     let i6 = i1
     say("i6 = {i6}")
+
     if ((true and b3) or (100.647 == 336.205)):
         say("brace\{s\}".upper())
     else:
         say((s2 + "  padded  "))
+
     let s7 = s2
     say("s7 = [{s7}]")
+
     let i8 = l4.get(1)
     say("i8 = {i8}")
+
     let f9 = ((f5 + (153.711 * f5)) + ((f5 + 44.25) / (0.5 * 0.0)))
     say("f9 = {f9}")
+
     let l10 = l4.filter(fn(x): x > 5)
     say("l10 = {l10} len {l10.length()}")
+
     let f11 = (f9 + ((f5 * 837.305) * (f5 / f9)))
     say("f11 = {f11}")
     return 0

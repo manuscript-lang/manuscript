@@ -33,12 +33,14 @@ test "prelude cases and optional methods need no imports":
             ).get() != 11
         )
     )
+
     let value = try success()
     try expect_equal(value.get(), 7)
 
 test "prelude Error preserves concrete failures through try":
     let outcome = propagated()
     try expect_false(not outcome.is_error())
+
     let cause = outcome.err()
     try expect_equal(cause.message(), "failed")
 

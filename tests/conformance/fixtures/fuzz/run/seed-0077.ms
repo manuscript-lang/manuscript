@@ -11,20 +11,26 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let b2 = (("MiXeD CaSe" + "delta").is_empty() and true)
     say("b2 = {b2}")
+
     let s3 = "MiXeD CaSe"
     say("s3 = [{s3}]")
+
     var acc4 = 0
     var stepacc4 = 0
+
     while stepacc4 < 0:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + (-5)
+
     say("acc4 = {acc4}")
     say("fact(2) = {fact(2)}")
+
     let f5 = 186.396
     say("f5 = {f5}")
     return 0

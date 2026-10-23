@@ -11,26 +11,33 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = (((-49) + ((-273932) - 4)) + (-(37 + (-65028264159))))
     say("i1 = {i1}")
+
     let i2 = ((-8) + (75215269266 + ((-8) + 21)))
     say("i2 = {i2}")
+
     let b3 = "line\nbreak".starts_with("日本語")
     say("b3 = {b3}")
+
     let i5 = ((((-931747490942) - i2) / (-943855)) + ((-413033) + (-20)))
     say("i5 = {i5}")
+
     let f6 = ((625.125 * (1.0e-2 + 212.25)) + ((61.25 * 674.255) * (2.5 * 113.674)))
     say("f6 = {f6}")
     say("gcd(4086, 4753) = {gcd(4086, 4753)}")
     say("fact(13) = {fact(13)}")
+
     let s7 = (("42" + "42") + "")
     say("s7 = [{s7}]")
     return 0

@@ -29,6 +29,7 @@ test "list callbacks":
 
     let doubled = items.map(fn(value: Int) Int: value * 2)
     try expect_true((doubled.get(index: 4) == 8))
+
     let even = items.filter(fn(value: Int) Bool: value % 2 == 0)
     try expect_true((even.length() == 3))
     try expect_true(
@@ -43,9 +44,11 @@ test "list callbacks":
         )
     )
     try expect_true((items.count(predicate: fn(value: Int) Bool: value > 1) == 3))
+
     var retained = List[fn() Int]()
     for value in items:
         keep(list: var retained, value: value)
+
     let called = retained.map(fn(value: fn() Int) Int: value())
     try expect_true(
         (
@@ -58,9 +61,11 @@ test "list callbacks":
             ) == 10
         )
     )
+
     var grown = List[Int]()
     grown.append(value: 1)
     grown.append(value: 2)
+
     var seen = List[Int]()
     for value in grown.clone():
         seen.append(value: grow(list: var grown, value: value))

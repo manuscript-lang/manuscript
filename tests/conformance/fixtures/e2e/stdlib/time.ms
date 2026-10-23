@@ -3,21 +3,15 @@
 # conform: origin=tests/e2e/testdata/stdlib/time.ms
 import {expect_equal, expect_false, fail} from "@std/testing.ms"
 import {
-    timestamp,
-    parse_timestamp,
-    from_calendar,
-    local_zone,
-    Timestamp,
-    TimeError,
-    clock,
-    wall_clock,
-    sleep
+    timestamp, parse_timestamp, from_calendar, local_zone, Timestamp, TimeError, clock,
+    wall_clock, sleep
 } from "@std/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)
     try expect_false(epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123)
     try expect_equal((try parse_timestamp(epoch.to_string())), epoch)
+
     let later = try epoch.shift(2.seconds)
     try expect_equal((try later.difference(epoch)), 2.seconds)
     try expect_equal((try later.shift((-2).seconds)), epoch)
@@ -25,6 +19,7 @@ test "timestamps preserve nanoseconds and shift across epoch":
 test "time rejects invalid timestamps and out of range nanoseconds":
     let invalid: Result[Timestamp, TimeError] = error(TimeError.InvalidData)
     try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
+
     let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
@@ -33,6 +28,7 @@ test "host clocks are usable and zero sleep completes":
     let before = monotonic.now()
     sleep(0.milliseconds)
     try expect_false(monotonic.now() < before)
+
     let now = wall_clock().now()
     try expect_equal((try parse_timestamp(now.to_string())), now)
 
@@ -50,9 +46,11 @@ test "calendar fields follow the requested zone":
     try expect_equal(utc.weekday, 0)
     try expect_equal(utc.day_of_year, 70)
     try expect_equal(utc.nanosecond, 250000000)
+
     let ny = try moment.calendar("America/New_York")
     try expect_equal(ny.hour, 8)
     try expect_equal(ny.offset_seconds, -14400)
+
     let fixed = try moment.calendar("+05:30")
     try expect_equal(fixed.hour, 18)
     try expect_equal(fixed.minute, 0)
@@ -63,12 +61,14 @@ test "format renders tokens and from_calendar round trips":
         (try moment.format("YYYY-MM-DD HH:mm:ss.SSS ZZ", "+05:30")),
         "2024-03-10 18:00:15.250 +05:30"
     )
+
     let back = try from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")
     try expect_equal(back, moment)
 
 test "calendar rejects unknown zones and impossible dates":
     let bad_zone: Result[Timestamp, TimeError] = error(TimeError.InvalidInput)
     try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
+
     let bad_date: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
     try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
     try expect_false(local_zone() == "")

@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "MiXeD CaSe".replace("x", "hello world")
     say("s1 = [{s1}]")
+
     let s2 = "42".lower().replace("emoji 😀", "MiXeD CaSe")
     say("s2 = [{s2}]")
+
     let s3 = ("{((-12) - 44)}:" + (s1 + "x")).trim()
     say("s3 = [{s3}]")
+
     let bad: Bool = 1
     let b4 = s1.is_empty()
     say("b4 = {b4}")

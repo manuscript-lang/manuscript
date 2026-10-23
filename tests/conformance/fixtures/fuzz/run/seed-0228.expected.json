@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "gcd(3507, 875) = 7\ni1 = -423232\n-114794 -43 true sum -114837\nl2 = [] len 0\ni3 = -32\nb4 = false\ni5 = 423183\ns6 = [line\nbreak]\nf7 = -303.76883203915287\ni8 = -61\nl9 = [] len 0\nf10 = -1.9783303621840854e+51\n42\n846464 -10 false sum 846454\nb11 = true\ns12 = [日本語LINE\nBREAK]\nf13 = -1.450217050329406e+54\n-423246 -600089 false sum -1023335\ni14 = -423232\n",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0228.ms:54 in main\n"
+    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0228.ms:76 in main\n"
   }
 }

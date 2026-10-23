@@ -78,12 +78,15 @@ test "constructor arguments retain written order and capture snapshots":
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
+
     let view = wrap(
         fn() Int:
             let nested = fn() Int: value
             return nested()
     )
+
     value = 80
+
     let bound = view.read
     try expect_equal(bound(), 5)
     try expect_equal(invoke(view), 5)

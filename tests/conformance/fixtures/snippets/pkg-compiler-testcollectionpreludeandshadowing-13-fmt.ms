@@ -2,5 +2,6 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/prelude_test.go:75 TestCollectionPreludeAndShadowing
 import Map from "@std/collections.ms"
-type Map[K,V]:
+
+type Map[K, V]:
     value: V

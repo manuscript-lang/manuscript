@@ -13,10 +13,12 @@ export fn main() Int:
         say(("42" + "naïve"))
     else:
         say("".reverse())
+
     if ("quote\"d" == "Tab\there"):
         say("emoji 😀".reverse())
     else:
         say("quote\"d".lower())
+
     let f1 = (8.0e20 * 7.5)
     say("f1 = {f1}")
     return 0

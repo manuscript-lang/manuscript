@@ -231,6 +231,18 @@ fn prose_paragraphs_keep_related_steps_together() {
 }
 
 #[test]
+fn callback_defaults_keep_the_enclosing_function_suite_aligned() {
+    let source = include_str!("data/format/043.in.src");
+    let expected = include_str!("data/format/043.out.src");
+    let file: Arc<str> = Arc::from("defaults.ms");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        let once = format(&file, &input).unwrap();
+        assert_eq!(once, expected);
+        assert_eq!(format(&file, &once).unwrap(), once);
+    }
+}
+
+#[test]
 fn nesting_limits() {
     big_stack(|| {
         let deep = 200_000;

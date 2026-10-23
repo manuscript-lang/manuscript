@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = 35\nl2 = [18, 27, 29, 17] len 4\ni3 = -315\ni4 = -315\nf5 = -2.694029030129756\ni6 = 29\ni7 = -3\n-51 33 true sum -18\nb8 = true\ni9 = -3\nb10 = false\nb11 = true\ni12 = 41\ns13 = [line\nbreak]\nacc14 = 15\ni15 = 0\nl16 = [0, 26] len 2\n",
-    "stderr": "index 6 out of range for length 4; pass a default: get(index:, default: ...)\n  at seed-0022.ms:50 in main\n"
+    "stderr": "index 6 out of range for length 4; pass a default: get(index:, default: ...)\n  at seed-0022.ms:67 in main\n"
   }
 }

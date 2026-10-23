@@ -11,13 +11,17 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (12 + ((-32) * (239312 + 1)))
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
+
     let bad = say(1, 2)
     let f3 = 4.5
     say("f3 = {f3}")
+
     let f4 = 116.951
     say("f4 = {f4}")
+
     let b5 = ("alpha".upper() + ("" + "brace\{s\}")).contains("Tab\there")
     say("b5 = {b5}")
     return 0

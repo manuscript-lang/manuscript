@@ -12,9 +12,11 @@ fn write_line(text: String) Result[Unit, Error]:
 fn exercise() Result[Int, Error]:
     let args = arguments()
     var index = 0
+
     while index < args.length():
         try write_line(args[index])
         index = index + 1
+
     return ok(0)
 
 export fn main() Int:

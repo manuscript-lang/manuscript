@@ -12,70 +12,95 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
-    let b1 = ((("brace\{s\}" != "ms") and (699.599 == 5.5)) and ("gamma".starts_with("gamma") and (2.5 == 985.259)))
+    let b1 = (
+        (("brace\{s\}" != "ms") and (699.599 == 5.5))
+        and ("gamma".starts_with("gamma") and (2.5 == 985.259))
+    )
     say("b1 = {b1}")
+
     let l2 = [(-14), 26]
     say("l2 = {l2} len {l2.length()}")
+
     let l3 = l2.map(fn(x): x + 4).filter(fn(x): x % 2 == 0)
     say("l3 = {l3} len {l3.length()}")
+
     let l4 = [0, 5, (-24), 6]
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = ((-722297) + (-((-47) - 41)))
     say("i5 = {i5}")
+
     let l6 = [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
+
     var acc7 = 0
     for i in range(0, 2):
         acc7 += i * 7
     say("acc7 = {acc7}")
+
     var acc8 = 0
+
     for x in l4:
         if x % 2 == 0:
             acc8 += x
         else:
             acc8 -= 1
+
     say("acc8 = {acc8}")
     say("collatz(1618) = {collatz(1618)}")
+
     let i9 = i5
     say("i9 = {i9}")
+
     let s10 = "  padded  "
     say("s10 = [{s10}]")
+
     let i11 = ((((-958003) - 646552948959) % (i5 * (-28))) + i5)
     say("i11 = {i11}")
+
     let i12 = i9
     say("i12 = {i12}")
     say("fib(38) = {fib(38)}")
+
     if "42".replace(s10, s10).contains("naïve"):
         say(("{(i9 + 945809)}:" + s10))
     else:
         say(s10)
+
     var l13 = l4.clone()
     l13.append(13)
     say("l13 = {l13} len {l13.length()}")
+
     if (s10 + s10).is_empty():
         say(s10)
     else:
         say("日本語")
+
     let l14 = l4.map(fn(x): x + 2).filter(fn(x): x % 2 == 0)
     say("l14 = {l14} len {l14.length()}")
     return 0

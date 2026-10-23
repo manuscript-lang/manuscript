@@ -4,18 +4,21 @@
 import files from "@std/io.ms"
 import File from "@std/io.ms"
 import IoError from "@std/io.ms"
+
 type Holder:
     file: File
     label: String
+
 export fn main() Int:
     let opened = files().open("data.txt")
     if opened.is_error():
         return 4
-    let file = opened.get()
 
+    let file = opened.get()
     let read = file.read(1)
     if read.is_error():
         return 7
+
     let chunk = read.get()
 
     match chunk:
@@ -30,10 +33,13 @@ export fn main() Int:
     copy.label = "copy"
     if original.label != "original":
         return 1
+
     copy.file.close()
+
     let reread = original.file.read(1)
     if reread.is_ok():
         return 3
+
     let cause = reread.err()
 
     match cause:
@@ -41,4 +47,3 @@ export fn main() Int:
             return 0
         _:
             return 2
-

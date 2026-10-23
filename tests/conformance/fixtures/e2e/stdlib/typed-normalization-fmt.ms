@@ -18,9 +18,7 @@ test "typed Unicode forms retain normalization and bound dispatch":
     try expect_equal(NormalizationForm.Nfkd.normalize("ﬁ").get(), "fi")
 
     for form in [
-        NormalizationForm.Nfc,
-        NormalizationForm.Nfd,
-        NormalizationForm.Nfkc,
+        NormalizationForm.Nfc, NormalizationForm.Nfd, NormalizationForm.Nfkc,
         NormalizationForm.Nfkd
     ]:
         let spelling = match form:

@@ -4,4 +4,5 @@
 fn display_name(name: Optional[String]) String:
     if let value = name:
         return value
+
     return "Anonymous"

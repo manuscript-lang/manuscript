@@ -12,15 +12,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 9223372036854775806
     say("i1 = {i1}")
+
     let bad = missing_function(3)
     let f2 = (311.940 * ((493.200 * 75.194) / 143.358))
     say("f2 = {f2}")
+
     var acc3 = 0
     for i in range(0, 5):
         acc3 += i * (-1)
     say("acc3 = {acc3}")
+
     let i4 = i1
     say("i4 = {i4}")
+
     let i5 = 10
     say("i5 = {i5}")
     return 0

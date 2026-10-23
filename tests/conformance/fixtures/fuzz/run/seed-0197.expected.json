@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = 125633434\ni2 = 125633396\n-882 100721 true sum 99839\n125633434 125633396 false sum 251266830\ni3 = 125633434\nl4 = [8, -6, 10, -24, 5] len 5\nb5 = false\ngcd(4763, 2727) = 1\nf6 = 176.05081467154386\nacc7 = 175\nf8 = -318.78318532845617\n",
-    "stderr": "index 10 out of range for length 5; pass a default: get(index:, default: ...)\n  at seed-0197.ms:40 in main\n"
+    "stderr": "index 10 out of range for length 5; pass a default: get(index:, default: ...)\n  at seed-0197.ms:55 in main\n"
   }
 }

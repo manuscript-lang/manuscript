@@ -13,7 +13,7 @@
           "index": 0,
           "name": "tests-e2e-testruntimefaults-3.ms::fault",
           "status": "failed",
-          "failure": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testruntimefaults-3.ms:5 in sum\n  at tests-e2e-testruntimefaults-3.ms:7 in test fault"
+          "failure": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testruntimefaults-3.ms:5 in sum\n  at tests-e2e-testruntimefaults-3.ms:8 in test fault"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testruntimefaults-3.ms::fault\nFAIL tests-e2e-testruntimefaults-3.ms::fault: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testruntimefaults-3.ms:5 in sum\n  at tests-e2e-testruntimefaults-3.ms:7 in test fault\n1 tests, 1 failed\n",
+      "stdout": "RUN tests-e2e-testruntimefaults-3.ms::fault\nFAIL tests-e2e-testruntimefaults-3.ms::fault: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at tests-e2e-testruntimefaults-3.ms:5 in sum\n  at tests-e2e-testruntimefaults-3.ms:8 in test fault\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -11,15 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-421146026529)
     say("i1 = {i1}")
+
     let l2 = [(-17), (-21), (-19)]
     say("l2 = {l2} len {l2.length()}")
+
     let bad = "abc".no_such_method()
     var acc3 = 0
     var stepacc3 = 0
+
     while stepacc3 < 7:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + (-3)
+
     say("acc3 = {acc3}")
+
     let s4 = "MiXeD CaSe".lower().trim()
     say("s4 = [{s4}]")
     return 0

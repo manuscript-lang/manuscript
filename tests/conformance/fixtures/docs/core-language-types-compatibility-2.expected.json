@@ -12,20 +12,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-compatibility-2.ms",
-          "line": 8,
+          "line": 9,
           "column": 13,
-          "offset": 297
-        }
-      },
-      {
-        "code": "MS3070",
-        "phase": "type",
-        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
-        "position": {
-          "file": "core-language-types-compatibility-2.ms",
-          "line": 10,
-          "column": 39,
-          "offset": 402
+          "offset": 298
         }
       },
       {
@@ -36,7 +25,7 @@
           "file": "core-language-types-compatibility-2.ms",
           "line": 11,
           "column": 39,
-          "offset": 446
+          "offset": 403
         }
       },
       {
@@ -45,16 +34,27 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-compatibility-2.ms",
-          "line": 13,
+          "line": 12,
+          "column": 39,
+          "offset": 447
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "core-language-types-compatibility-2.ms",
+          "line": 14,
           "column": 18,
-          "offset": 567
+          "offset": 568
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-compatibility-2.ms:8:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:10:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:11:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:13:18: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-compatibility-2.ms:9:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:11:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:12:39: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-compatibility-2.ms:14:18: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

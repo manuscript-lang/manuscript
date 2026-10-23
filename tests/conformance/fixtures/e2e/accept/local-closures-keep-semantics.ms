@@ -7,6 +7,7 @@ import {expect_true} from "@std/testing.ms"
 fn bump(factor: Int) Int:
     var offset = 10
     offset = 99
+
     let scale = fn(value: Int) Int: value * factor + offset
     return scale(value: 2)
 
@@ -16,6 +17,7 @@ fn lookup(limit: Int) Int:
             return some(key * 2)
 
         return none
+
     var total = 0
     var i = 0
 
@@ -36,6 +38,7 @@ fn parse(text: String) Result[Int, TextError]:
             return Result[Int, TextError].error(TextError("negative"))
 
         return Result[Int, TextError].ok(number)
+
     let checked = try guard(number: text.length())
     return Result[Int, TextError].ok(checked + 1)
 

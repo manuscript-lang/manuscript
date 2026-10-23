@@ -5,5 +5,4 @@ fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value
-
     return total

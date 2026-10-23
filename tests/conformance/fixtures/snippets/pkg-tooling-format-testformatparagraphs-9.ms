@@ -9,4 +9,5 @@ fn choose(value: Choice) Int:
             let result = calculate()
             return result
         _: return 0
+
     return 3

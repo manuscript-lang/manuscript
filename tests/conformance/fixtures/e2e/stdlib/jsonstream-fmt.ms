@@ -60,6 +60,7 @@ test "JSON decoder rejects invalid UTF-8 and stays failed":
     let bad = "\"a\"".to_bytes()
     try expect_equal(reader.feed(bad.with_value(1, 255)), invalid)
     try expect_equal(reader.feed("1 ".to_bytes()), invalid)
+
     var ended = try decoder()
     let _values = try ended.finish()
     try expect_equal(ended.feed("1 ".to_bytes()), closed)
@@ -70,8 +71,10 @@ test "JSON decoder applies per-value budgets":
     var bytes = try decoder(JsonLimits(5))
     try expect_not_equal(bytes.feed("[1,2]".to_bytes()), limited)
     try expect_equal(bytes.feed("[1,2,3]".to_bytes()), limited)
+
     var depth = try decoder(JsonLimits(max_depth: 2))
     try expect_equal(depth.feed("[[[".to_bytes()), limited)
+
     let negative = decoder(JsonLimits(max_values: -1))
     try expect_false(not negative.is_error())
     try expect_equal(negative.err(), JsonError.InvalidInput)

@@ -12,9 +12,9 @@
         "message": "duplicate operation m; rename or remove one of them",
         "position": {
           "file": "tests-e2e-testinherentimplrejections-6.ms",
-          "line": 10,
+          "line": 12,
           "column": 8,
-          "offset": 238
+          "offset": 240
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "duplicate implementation operation m; define each operation once per impl",
         "position": {
           "file": "tests-e2e-testinherentimplrejections-6.ms",
-          "line": 10,
+          "line": 12,
           "column": 8,
-          "offset": 238
+          "offset": 240
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-6.ms:10:8: type: duplicate operation m; rename or remove one of them\n<DIR>/tests-e2e-testinherentimplrejections-6.ms:10:8: type: duplicate implementation operation m; define each operation once per impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:8: type: duplicate operation m; rename or remove one of them\n<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:8: type: duplicate implementation operation m; define each operation once per impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

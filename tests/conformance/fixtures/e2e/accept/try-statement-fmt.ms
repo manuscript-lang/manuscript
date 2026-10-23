@@ -50,6 +50,7 @@ fn in_lambda(n: Int) Result[Int, TextError]:
     let inner = fn() Result[Int, TextError]:
         let v = try parse(n)
         return ok(v * 10)
+
     let r = try inner()
     return ok(r + 1)
 

@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
@@ -18,9 +19,12 @@ export fn main() Int:
         say(("42" + "brace\{s\}"))
     else:
         say("delta".upper())
+
     say("fact(10) = {fact(10)}")
+
     let s1 = ("{(504893 + (-34))}:" + "line\nbreak")
     say("s1 = [{s1}]")
+
     let bad = missing_function(3)
     let f3 = (((262.25 * 7.0e-8) + 142.034) - 115.823)
     say("f3 = {f3}")

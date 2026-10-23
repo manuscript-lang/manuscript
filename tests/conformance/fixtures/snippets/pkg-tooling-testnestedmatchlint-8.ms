@@ -5,6 +5,7 @@ fn inner(value: Optional[Int]) Int:
     return match value:
         some(n): n
         none: 0
+
 fn use(value: Optional[Int]) Int:
     return match value:
         some(_): inner(value)

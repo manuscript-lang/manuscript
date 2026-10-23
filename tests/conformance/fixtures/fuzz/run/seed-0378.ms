@@ -11,15 +11,21 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-964182)
     say("i1 = {i1}")
+
     let s2 = "brace\{s\}"
     say("s2 = [{s2}]")
+
     let f3 = (((370.25 * 119.702) * 451.25) * ((247.539 * 5.5) + (533.917 * 397.098)))
     say("f3 = {f3}")
-    say("{(21 * (i1 + i1))} {(s2.length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.length() + (43 + i1))}")
+    say(
+        "{(21 * (i1 + i1))} {(s2.length() + (43 + i1))} {((21 * (i1 + i1)) < (s2.length() + (43 + i1)))} sum {(21 * (i1 + i1)) + (s2.length() + (43 + i1))}"
+    )
+
     if false:
         say(("naïve" + "back\\slash"))
     else:
         say("brace\{s\}")
+
     let l4 = [1]
     say("l4 = {l4} len {l4.length()}")
     return 0

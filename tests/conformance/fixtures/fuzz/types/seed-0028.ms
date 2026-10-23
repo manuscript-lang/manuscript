@@ -11,11 +11,13 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
@@ -23,5 +25,6 @@ export fn main() Int:
     say("s1 = [{s1}]")
     say("fact(16) = {fact(16)}")
     say("gcd(378, 4850) = {gcd(378, 4850)}")
+
     let bad = say
     return 0

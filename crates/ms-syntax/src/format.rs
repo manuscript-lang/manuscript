@@ -118,12 +118,15 @@ fn align_suite_headers(lines: &[String], tokens: &[Token]) -> Option<Vec<String>
             continue;
         }
         let mut start = i - 2;
+        // A parameter default can contain its own suite. Its layout tokens
+        // belong to the enclosing group, not the start of this header.
+        let mut groups = 0;
         while start > 0 {
-            if matches!(
-                tokens[start - 1].kind,
-                Tok::Newline | Tok::Indent | Tok::Dedent
-            ) {
-                break;
+            match tokens[start - 1].kind {
+                Tok::RParen | Tok::RBracket | Tok::RBrace => groups += 1,
+                Tok::LParen | Tok::LBracket | Tok::LBrace => groups -= 1,
+                Tok::Newline | Tok::Indent | Tok::Dedent if groups == 0 => break,
+                _ => {}
             }
             start -= 1;
         }

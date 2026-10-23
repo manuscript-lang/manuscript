@@ -11,13 +11,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-36)
     say("i1 = {i1}")
-    say("{((i1 - i1) / ((-15) + i1))} {(-16)} {(((i1 - i1) / ((-15) + i1)) < (-16))} sum {((i1 - i1) / ((-15) + i1)) + (-16)}")
+    say(
+        "{((i1 - i1) / ((-15) + i1))} {(-16)} {(((i1 - i1) / ((-15) + i1)) < (-16))} sum {((i1 - i1) / ((-15) + i1)) + (-16)}"
+    )
+
     let i2 = ((-(-0)) - i1)
     say("i2 = {i2}")
+
     let l3 = [11, (-27), (-2), 1, 24]
     say("l3 = {l3} len {l3.length()}")
+
     let b4 = (("" + "gamma").reverse() == (("héllo" + "x") + "emoji 😀".lower()))
     say("b4 = {b4}")
+
     let l5 = l3.reversed()
     say("l5 = {l5} len {l5.length()}")
     return 0

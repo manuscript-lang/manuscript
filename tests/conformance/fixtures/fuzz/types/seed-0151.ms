@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (true and true)
     say("b1 = {b1}")
+
     let bad = say
     let b2 = (((2.0e13 - 744.899) > (181.330 + 763.881)) and "".is_empty())
     say("b2 = {b2}")

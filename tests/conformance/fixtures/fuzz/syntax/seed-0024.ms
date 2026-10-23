@@ -11,17 +11,21 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = (-((3 + 611488829710) % (10 * (-29))))
     say("i1 = {i1}")
+
     let l2 = [(-17), (-24)]
     say("l2 = {l2} len {l2.length()}")
     say("collatz(2917) == {collatz(2917)}")

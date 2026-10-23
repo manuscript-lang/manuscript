@@ -11,16 +11,21 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (0.5 * ((487.728 * 8.5) / (408.790 * 299.024)))
     say("f1 = {f1}")
+
     let i2 = ((16 % (248792 * 9)) + (319934 * ((-223218) % (-44))))
     say("i2 = {i2}")
+
     if ("{448025998971}:" + "héllo").is_empty():
         say(("{i2}:" + "42"))
     else:
         say("alpha")
+
     let i3 = (49 / ((i2 - i2) - (-10)))
     say("i3 = {i3}")
+
     let i4 = i3
     say("i4 = {i4}")
+
     let f5 = f1
     say("f5 = {f5}")
     return 0

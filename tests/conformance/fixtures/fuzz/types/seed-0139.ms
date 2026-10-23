@@ -11,15 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("".reverse().trim() + "delta".reverse().replace("x", "naïve"))
     say("s1 = [{s1}]")
+
     let b2 = (((612.640 * 0.0) * (951.551 / 1.5)) != 579.216)
     say("b2 = {b2}")
+
     let i3 = 28
     say("i3 = {i3}")
+
     let bad: Int = "text"
     let l4 = [(-27), 9, (-27), 9, (-25)]
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = ((-29) * (-48))
     say("i5 = {i5}")
+
     let s6 = "42"
     say("s6 = [{s6}]")
     return 0

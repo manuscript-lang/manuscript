@@ -12,16 +12,16 @@
         "message": "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'",
         "position": {
           "file": "pkg-compiler-teststandalonetry-4.ms",
-          "line": 6,
+          "line": 7,
           "column": 5,
-          "offset": 209
+          "offset": 210
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-teststandalonetry-4.ms:6:5: type: try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-teststandalonetry-4.ms:7:5: type: try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

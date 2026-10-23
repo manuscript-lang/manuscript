@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (46 - ((-17) + (-136856)))
     say("i1 = {i1}")
+
     let b2 = ((i1 * (i1 + 213577946644)) > ((79639430961 + i1) - (-24)))
     say("b2 = {b2}")
+
     let bad = missing_function(3)
     let i3 = ((-654890) - ((i1 * i1) + (-11)))
     say("i3 = {i3}")

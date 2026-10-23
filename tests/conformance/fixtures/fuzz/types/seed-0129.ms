@@ -12,12 +12,15 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -25,18 +28,24 @@ export fn main() Int:
         say("hello world".trim())
     else:
         say(("{((-41734) / 46)}:" + ""))
+
     say("collatz(1025) = {collatz(1025)}")
+
     let b1 = (((24 + 23) % (-9)) <= (-49))
     say("b1 = {b1}")
+
     let i2 = (-(((-39) * (-718708)) + (-35)))
     say("i2 = {i2}")
+
     let i3 = (-14)
     say("i3 = {i3}")
+
     let bad = [1, "two"]
     var acc4 = 0
     for i in range(0, 2):
         acc4 += i * 5
     say("acc4 = {acc4}")
+
     let s5 = ("Tab\there" + "quote\"d".lower())
     say("s5 = [{s5}]")
     return 0

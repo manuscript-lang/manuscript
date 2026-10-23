@@ -12,9 +12,9 @@
         "message": "unknown binding account_is_active; declare it with 'let account_is_active = ...' before use, define 'fn account_is_active(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-43.ms",
-          "line": 5,
-          "column": 12,
-          "offset": 179
+          "line": 6,
+          "column": 9,
+          "offset": 189
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "unknown binding payment_is_allowed; declare it with 'let payment_is_allowed = ...' before use, define 'fn payment_is_allowed(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-43.ms",
-          "line": 5,
-          "column": 34,
-          "offset": 201
+          "line": 7,
+          "column": 13,
+          "offset": 219
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown binding remaining_balance; declare it with 'let remaining_balance = ...' before use, define 'fn remaining_balance(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-43.ms",
-          "line": 5,
-          "column": 57,
-          "offset": 224
+          "line": 8,
+          "column": 13,
+          "offset": 250
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown binding minimum_balance; declare it with 'let minimum_balance = ...' before use, define 'fn minimum_balance(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-43.ms",
-          "line": 5,
-          "column": 77,
-          "offset": 244
+          "line": 8,
+          "column": 33,
+          "offset": 270
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:5:12: resolution: unknown binding account_is_active; declare it with 'let account_is_active = ...' before use, define 'fn account_is_active(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:5:34: resolution: unknown binding payment_is_allowed; declare it with 'let payment_is_allowed = ...' before use, define 'fn payment_is_allowed(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:5:57: resolution: unknown binding remaining_balance; declare it with 'let remaining_balance = ...' before use, define 'fn remaining_balance(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:5:77: resolution: unknown binding minimum_balance; declare it with 'let minimum_balance = ...' before use, define 'fn minimum_balance(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:6:9: resolution: unknown binding account_is_active; declare it with 'let account_is_active = ...' before use, define 'fn account_is_active(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:7:13: resolution: unknown binding payment_is_allowed; declare it with 'let payment_is_allowed = ...' before use, define 'fn payment_is_allowed(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:8:13: resolution: unknown binding remaining_balance; declare it with 'let remaining_balance = ...' before use, define 'fn remaining_balance(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-43.ms:8:33: resolution: unknown binding minimum_balance; declare it with 'let minimum_balance = ...' before use, define 'fn minimum_balance(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

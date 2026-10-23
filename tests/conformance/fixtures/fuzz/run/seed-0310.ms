@@ -11,68 +11,91 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let f1 = 656.722
     say("f1 = {f1}")
+
     let i2 = (-644929)
     say("i2 = {i2}")
     say("collatz(1577) = {collatz(1577)}")
+
     let l3 = [17]
     say("l3 = {l3} len {l3.length()}")
     say("gcd(965, 2836) = {gcd(965, 2836)}")
     say("fact(17) = {fact(17)}")
+
     let l4 = l3.concat(l3)
     say("l4 = {l4} len {l4.length()}")
+
     var acc5 = 0
+
     for x in l4:
         if x % 2 == 0:
             acc5 += x
         else:
             acc5 -= 1
+
     say("acc5 = {acc5}")
     say("collatz(470) = {collatz(470)}")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 6:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 8
+
     say("acc6 = {acc6}")
+
     let s7 = ("Tab\there" + (("{(-34)}:" + "naïve") + ("{(30 - i2)}:" + "Tab\there")))
     say("s7 = [{s7}]")
+
     if ((false or true) and (631.501 != 36.463)):
         say(s7.lower())
     else:
         say(("  padded  " + "日本語"))
+
     let i8 = ((((-22) * (-32)) % 46390) - ((256779 + i2) - (-39)))
     say("i8 = {i8}")
+
     let i9 = l4.length()
     say("i9 = {i9}")
+
     let l10 = [15, (-10)]
     say("l10 = {l10} len {l10.length()}")
+
     let s11 = ("{l4.length()}:" + s7.replace(s7, s7).replace("", "Tab\there"))
     say("s11 = [{s11}]")
+
     let i12 = (i2 + i2)
     say("i12 = {i12}")
+
     let f13 = (((f1 + f1) / 123.408) * ((4.707 - f1) / 263.975))
     say("f13 = {f13}")
+
     let i14 = ((i2 + (-i9)) * (i2 / (11 + i2)))
     say("i14 = {i14}")
     return 0

@@ -113,6 +113,7 @@ test "retry accepts digits only and survives between events":
     var created = try decoder()
     let _events = try created.feed("retry: 1500\n\n".to_bytes())
     try expect_equal(created.retry().get(0), 1500)
+
     let _second_events = try created.feed(
         "retry: 12x\nretry: -5\nretry:\nretry: 99999999999999999999\n\n".to_bytes()
     )
@@ -161,13 +162,16 @@ test "line and event budgets report LimitExceeded":
             tight.feed("data: 12\n\n".to_bytes()), SseError.LimitExceeded
         )
     )
+
     var exact = try decoder(SseLimits(some(8)))
     try expect_equal((try exact.feed("data: 12\n\n".to_bytes())).length(), 1)
+
     var event = try decoder(SseLimits(max_event_bytes: some(10)))
     let _event_batch = try event.feed("data: 1\n".to_bytes())
     try expect_false(
         not is_case(event.feed("data: 2\n".to_bytes()), SseError.LimitExceeded)
     )
+
     var comments = try decoder(SseLimits(max_event_bytes: some(10)))
     let _comment_events = try comments.feed(
         ": a long comment is not counted\ndata: 1\n\n".to_bytes()
@@ -211,11 +215,13 @@ test "reader reports truncation limits and read failures":
     var cut = try reader(ReadStream(stream(["data: a\n".to_bytes()], none)))
     let truncated = next_event(var cut)
     try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
+
     var big = try reader(
         ReadStream(stream(["data: abcdef\n\n".to_bytes()], none)), SseLimits(some(4))
     )
     let limited = next_event(var big)
     try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
+
     var broken = try reader(
         ReadStream(
             value: stream(["data: a\n\n".to_bytes()], some(IoError.Closed))

@@ -12,16 +12,16 @@
         "message": "with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-44.ms",
-          "line": 13,
+          "line": 17,
           "column": 5,
-          "offset": 405
+          "offset": 409
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-44.ms:13:5: type: with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-44.ms:17:5: type: with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

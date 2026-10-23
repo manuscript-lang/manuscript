@@ -11,16 +11,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [28]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (253476 - ((-48) - (-46)))
     say("i2 = {i2}")
+
     if "".is_empty():
         say("line\nbreak".replace("42", "naïve"))
     else:
         say("brace\{s\}")
-    let s3 = ("gamma".upper().upper() + "gamma".replace("emoji 😀", "back\\slash").trim())
+
+    let s3 = (
+        "gamma".upper().upper()
+        + "gamma".replace("emoji 😀", "back\\slash").trim()
+    )
     say("s3 = [{s3}]")
+
     let fixed = 1
     fixed = 2
+
     let i4 = (-50)
     say("i4 = {i4}")
     return 0

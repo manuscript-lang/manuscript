@@ -11,24 +11,33 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let l1 = [7, (-16), 23, 1, (-18)]
     say("l1 = {l1} len {l1.length()}")
+
     let s2 = "beta".upper()
     say("s2 = [{s2}]")
-    say("{(((-36) * 954458) * 301954)} {s2.length()} {((((-36) * 954458) * 301954) < s2.length())} sum {(((-36) * 954458) * 301954) + s2.length()}")
+    say(
+        "{(((-36) * 954458) * 301954)} {s2.length()} {((((-36) * 954458) * 301954) < s2.length())} sum {(((-36) * 954458) * 301954) + s2.length()}"
+    )
+
     let bad = not 5
     say("collatz(1206) = {collatz(1206)}")
+
     let s3 = (("{(-(-305133130927))}:" + s2) + s2)
     say("s3 = [{s3}]")
+
     let l4 = l1.drop(0)
     say("l4 = {l4} len {l4.length()}")
     return 0

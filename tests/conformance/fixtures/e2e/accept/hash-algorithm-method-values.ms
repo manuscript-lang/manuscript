@@ -9,6 +9,7 @@ test "stored HashAlgorithm operations match direct calls":
     let key = "key".to_bytes()
     let digest = HashAlgorithm.Sha256.digest
     try expect_equal(digest(data), sha256(data))
+
     let hmac = HashAlgorithm.Sha512.hmac
     try expect_equal(try hmac(key, data), try HashAlgorithm.Sha512.hmac(key, data))
     try expect_equal((try hmac(key, data)).length(), sha512(data).length())

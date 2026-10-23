@@ -3,13 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
 import {expect_equal, expect_false} from "@std/testing.ms"
 import {
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range,
-    range_by,
-    filled,
-    map_from_entries,
+    ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries,
     flatten
 } from "@std/collections.ms"
 
@@ -37,9 +31,11 @@ test "list search callbacks empty identities and folding":
     try expect_equal(list.filter(positive).map(twice), [4, 6])
     try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
     try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
+
     let empty: List[Int] = []
     try expect_false(empty.some(positive) or not empty.every(positive))
     try expect_false(not empty.first().is_none() or not empty.last().is_none())
+
     let groups = ([1, 2, 3]).group_by(parity)
     try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
 
@@ -50,6 +46,7 @@ test "list mutation and clone keep separate storage":
     try expect_false(copy != [1, 8, 9, 3] or original != [1, 2, 3])
     copy.fill(0, 1, 3)
     try expect_equal(copy, [1, 0, 0, 3])
+
     var overlapping = [1, 2, 3, 4]
     overlapping.copy_within(1, 0, 3)
     try expect_equal(overlapping, [1, 1, 2, 3])
@@ -60,6 +57,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
     try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
     try expect_equal(map.get("a"), some(3))
+
     var copy = map.clone()
     copy.remove("a")
     try expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])
@@ -79,10 +77,12 @@ test "set algebra removes duplicates and preserves values":
 test "collection constructors validate bounds and exact limits":
     try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
     try expect_equal((try filled("x", 2)), ["x", "x"])
+
     let invalid: Result[List[Int], CollectionError] = error(
         CollectionError.InvalidInput
     )
     try expect_equal(range_by(0, 1, 0), invalid)
+
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
@@ -92,11 +92,11 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
     try expect_equal(
-        (try range_by(minimum, maximum, maximum, 3)),
-        [minimum, -1, (maximum - 1)]
+        (try range_by(minimum, maximum, maximum, 3)), [minimum, -1, (maximum - 1)]
     )
     try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
     try expect_equal((try range_by(0, minimum, minimum, 1)), [0])
+
     let limited: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
     )
@@ -104,6 +104,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 
 test "range counts up by one":
     try expect_equal(range(0, 4), [0, 1, 2, 3])
+
     let none_between: List[Int] = []
     try expect_false(range(2, 2) != none_between or range(5, 1) != none_between)
     try expect_equal(range(-2, 1), [-2, -1, 0])
@@ -113,11 +114,13 @@ test "for over range counts without a list":
     for index in range(0, 5):
         total += index
     try expect_equal(total, 10)
+
     var visits = 0
     for outer in range(0, 3):
         for inner in range(outer, 3):
             visits += 1
     try expect_equal(visits, 6)
+
     var bound = 3
     var seen = 0
 
@@ -126,10 +129,12 @@ test "for over range counts without a list":
         seen += 1
 
     try expect_equal(seen, 3)
+
     var huge = 0
     for index in range(9223372036854775800, 9223372036854775807):
         huge += 1
     try expect_equal(huge, 7)
+
     var skipped = 0
 
     for index in range(0, 10):
@@ -139,6 +144,7 @@ test "for over range counts without a list":
         skipped += index
 
     try expect_equal(skipped, 16)
+
     var callbacks: List[fn() Int] = []
     for index in range(0, 3):
         callbacks.append(fn(): index)
@@ -157,10 +163,12 @@ test "collection builders freeze all accumulated values":
     list.append(1)
     list.append(2)
     try expect_false(list.freeze() != [1, 2] or list.freeze() != [1, 2])
+
     let map = MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
     try expect_equal(map.freeze().get("a"), some(2))
+
     let set = SetBuilder[Int]()
     set.add(1)
     set.add(1)
@@ -171,6 +179,7 @@ test "imported map add interoperates with with_entry":
     values.add("a", 1)
     values.add("b", 2)
     values.add(value: 3, "a")
+
     let add = values.add
     add("c", 4)
     try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])

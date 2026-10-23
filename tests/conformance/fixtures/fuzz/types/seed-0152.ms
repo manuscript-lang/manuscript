@@ -11,22 +11,32 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-35)
     say("i1 = {i1}")
-    say("{(237817325094 + (i1 + (-34)))} {((i1 + 37) + (i1 + i1))} {((237817325094 + (i1 + (-34))) < ((i1 + 37) + (i1 + i1)))} sum {(237817325094 + (i1 + (-34))) + ((i1 + 37) + (i1 + i1))}")
+    say(
+        "{(237817325094 + (i1 + (-34)))} {((i1 + 37) + (i1 + i1))} {((237817325094 + (i1 + (-34))) < ((i1 + 37) + (i1 + i1)))} sum {(237817325094 + (i1 + (-34))) + ((i1 + 37) + (i1 + i1))}"
+    )
+
     let bad = missing_function(3)
+
     if true:
         say("delta".replace("hello world", "alpha"))
     else:
         say("delta")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 4:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 3
+
     say("acc2 = {acc2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = (("ms" + "日本語") + "a".upper()).lower()
     say("s4 = [{s4}]")
+
     let f5 = 0.0
     say("f5 = {f5}")
     return 0

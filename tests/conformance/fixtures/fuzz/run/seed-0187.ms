@@ -11,38 +11,58 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("日本語".lower() + "brace\{s\}".trim()).lower()
     say("s1 = [{s1}]")
+
     let l2 = [(-24), 26, (-21), 20, (-10)]
     say("l2 = {l2} len {l2.length()}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = 475213
     say("i4 = {i4}")
+
     let b5 = s1.replace("quote\"d", "quote\"d").replace(s1, s1).is_empty()
     say("b5 = {b5}")
+
     let f6 = (0.0 + ((123.626 - 359.627) + (794.25 + 919.252)))
     say("f6 = {f6}")
+
     let f7 = (((f6 * f6) - f6) / f6)
     say("f7 = {f7}")
+
     let s8 = ((s1 + ("42" + s1)) + s1.lower().replace(s1, "beta"))
     say("s8 = [{s8}]")
+
     let i9 = ((((-31) % (-13)) + l2.length()) + ((i4 % 47) + (i4 * i4)))
     say("i9 = {i9}")
+
     var acc10 = 0
     var stepacc10 = 0
+
     while stepacc10 < 2:
         stepacc10 += 1
         acc10 += stepacc10 * stepacc10 + 4
+
     say("acc10 = {acc10}")
+
     let s11 = s1
     say("s11 = [{s11}]")
+
     let l12 = l3.filter(fn(x): x > (-2))
     say("l12 = {l12} len {l12.length()}")
+
     let f13 = (((172.125 + 586.117) - (232.488 * f7)) - (f7 / (f7 * f6)))
     say("f13 = {f13}")
-    let i14 = (((i4 * 834036438807) + ((-863520279624) - i4)) + ((i4 + i4) % (i4 * 441110565777)))
+
+    let i14 = (
+        ((i4 * 834036438807) + ((-863520279624) - i4))
+        + ((i4 + i4) % (i4 * 441110565777))
+    )
     say("i14 = {i14}")
+
     let i15 = (((i9 + i9) + (-i9)) + (i4 + (i4 * 30)))
     say("i15 = {i15}")
+
     let big16 = -9223372036854775808
     say("{big16 - 2}")
     return 0

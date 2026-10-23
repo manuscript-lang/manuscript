@@ -11,20 +11,28 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (((-533158) * (14 / 5)) == (-36961))
     say("b1 = {b1}")
+
     let l2 = [(-22), 17]
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = (((129.25 * 0.0) + (523.467 * 274.444)) + 613.25)
     say("f3 = {f3}")
+
     let i4 = (((-706463510652) / (43 + 4)) + (3 * ((-33) % 569052)))
     say("i4 = {i4}")
+
     let f5 = 3.0e-2
     say("f5 = {f5}")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 4:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + 8
+
     say("acc6 = {acc6}")
+
     let s7 = "日本語".lower().trim().trim()
     say("s7 = [{s7}]")
     say("{i4} {i4} {(i4 < i4)} sum {i4 + i4}")

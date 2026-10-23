@@ -12,16 +12,16 @@
         "message": "expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'",
         "position": {
           "file": "pkg-build-testexpressionconveniencerejections-14.ms",
-          "line": 7,
+          "line": 8,
           "column": 12,
-          "offset": 238
+          "offset": 239
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-14.ms:7:12: type: expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-14.ms:8:12: type: expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

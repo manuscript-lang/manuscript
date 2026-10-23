@@ -20,6 +20,7 @@ export fn first() Result[Int, Error]:
     m.add(original, 1)
     insert(var m, Key(-1.0), 2)
     insert_bound(var m, Key(1.0), 3)
+
     let add = m.add
     add(value: 4, key: Key(2.0))
     m.get(Key(1.0)).get() | try expect_equal(3)

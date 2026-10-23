@@ -12,6 +12,7 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
@@ -19,12 +20,15 @@ export fn main() Int:
     for i in range(0, 7):
         acc1 += i * 9
     say("acc1 = {acc1}")
+
     let s2 = "MiXeD CaSe".lower()
     say("s2 = [{s2}]")
+
     var acc3 = 0
     for i in range(0, 7):
         acc3 += i * 7
     say("acc3 = {acc3}")
+
     let bad: Bool = 1
     say("gcd(2021, 3909) = {gcd(2021, 3909)}")
     return 0

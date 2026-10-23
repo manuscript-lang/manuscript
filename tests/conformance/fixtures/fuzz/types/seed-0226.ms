@@ -11,11 +11,15 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = "naïve".upper().is_empty()
     say("b1 = {b1}")
+
     let s2 = "42"
     say("s2 = [{s2}]")
+
     let b3 = (s2.upper().ends_with("日本語") and ((-19) > (-18)))
     say("b3 = {b3}")
+
     let l4 = [28, 26]
     say("l4 = {l4} len {l4.length()}")
+
     let bad = undefined_name + 1
     return 0

@@ -90,6 +90,7 @@ test "negation":
     (flip(a: 1.5) == -1.5) | try expect_true
     (1.0 / flip(a: 0.0) < 0.0) | try expect_true
     (1.0 / -0.0 < 0.0) | try expect_true
+
     var count = -3
     count = count + 1
     (count == -2) | try expect_true

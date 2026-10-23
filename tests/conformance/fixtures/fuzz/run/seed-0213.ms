@@ -11,14 +11,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("ms" + ("gamma" + "gamma"))
     say("s1 = [{s1}]")
+
     let f2 = (((8.0e18 + 0.0) * 391.207) * (0.0 + (7.0e6 + 629.311)))
     say("f2 = {f2}")
+
     let l3 = [28, (-7)]
     say("l3 = {l3} len {l3.length()}")
+
     let f4 = (((3.0e18 + f2) + (325.796 / 0.0)) - ((492.181 / f2) * (975.873 * f2)))
     say("f4 = {f4}")
+
     let f5 = f2
     say("f5 = {f5}")
+
     let s6 = (s1 + (s1 + "delta")).replace("brace\{s\}", s1)
     say("s6 = [{s6}]")
     return 0

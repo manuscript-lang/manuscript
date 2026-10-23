@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "  padded  "
     say("s1 = [{s1}]")
+
     let bad = 1 + "one"
+
     if ((0.5 - 0.0) != (847.283 * 378.061)):
         say(("Tab\there" + s1))
     else:
         say(s1.reverse())
+
     let i2 = (-853512)
     say("i2 = {i2}")
     return 0

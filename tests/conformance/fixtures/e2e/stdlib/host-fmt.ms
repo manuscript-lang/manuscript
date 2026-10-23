@@ -9,6 +9,7 @@ import {read_line} from "@std/io.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
+
     let info = system().info()
     try expect_false(
         (
@@ -17,6 +18,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
             or info.architecture.byte_length() == 0
         )
     )
+
     let process = try control().info()
     try expect_false(
         (
@@ -41,15 +43,14 @@ test "process environment reflects live changes":
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     try expect_equal(commands().run("", [], "".to_bytes()), invalid)
+
     let unavailable: Result[CommandOutput, CommandError] = error(
         CommandError.Unavailable
     )
     try expect_false(
         (
             commands().run(
-                "manuscript-nonexistent-command-stdlib",
-                [],
-                "".to_bytes()
+                "manuscript-nonexistent-command-stdlib", [], "".to_bytes()
             ) != unavailable
         )
     )
@@ -59,6 +60,7 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
 
     with child = try commands().spawn("cat", []):
         try child.stdin().write("ping\n")
+
         let line = try read_line(child.stdout())
         try expect_equal(line.get(""), "ping")
         child.stdin().close()

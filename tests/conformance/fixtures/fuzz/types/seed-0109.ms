@@ -12,10 +12,13 @@ export fn main() Int:
     let f1 = 954.25
     say("f1 = {f1}")
     return "not an int"
+
     let l2 = [23, 10, 19, 28, (-1)]
     say("l2 = {l2} len {l2.length()}")
+
     if ("  padded  ".replace("quote\"d", "line\nbreak") != "alpha".trim()):
         say("line\nbreak")
     else:
         say(("ms" + "brace\{s\}"))
+
     return 0

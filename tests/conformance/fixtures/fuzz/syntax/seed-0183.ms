@@ -12,26 +12,34 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = (-908394)
     say("i1 = {i1}")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 5:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-3)
+
     say("acc = {acc2}")
+
     let f3 = 581.25
     say("f3 = {f3}")
+
     let s4 = "x"
     say("s4 = [{s4}]")
+
     let b5 = false
     say("b5 = {b5}")
     say("fib(12) = {fib(12)}")

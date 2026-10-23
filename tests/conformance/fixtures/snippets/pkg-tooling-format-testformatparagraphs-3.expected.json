@@ -12,16 +12,16 @@
         "message": "cannot find module ./value.ms (looked for value.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-3.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 181
+          "offset": 182
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-3.ms:5:1: resolution: cannot find module ./value.ms (looked for value.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-3.ms:6:1: resolution: cannot find module ./value.ms (looked for value.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

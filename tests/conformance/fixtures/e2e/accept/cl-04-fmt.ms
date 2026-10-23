@@ -9,6 +9,7 @@ fn difference(values: List[Int]) Int:
 
 test "list binding":
     try expect_equal(difference([9, 4]), 5)
+
     let {value: label} = Label("ready")
     try expect_equal(label, "ready")
 

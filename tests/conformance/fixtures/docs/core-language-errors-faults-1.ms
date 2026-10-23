@@ -8,4 +8,5 @@ fn discount_validated(price: Decimal, percent: Decimal) Decimal:
         return panic("Price must be positive")
     if percent <= 0d or percent >= 100d:
         return panic("Percent must be positive and below 100")
+
     return price * (1d - percent / 100d)

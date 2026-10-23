@@ -11,10 +11,12 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fct(1) = {fact(1)}")
+
     let l1 = [28, (-23), (-11), 0]
     say("l1 = {l1} len {l1.length()}")
     return 0

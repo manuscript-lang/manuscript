@@ -63,6 +63,7 @@ test "standalone try preserves concrete errors at Error boundaries":
     var state = State(0, "")
     let outcome = widened(var state)
     try expect_false(outcome.is_ok())
+
     let cause = outcome.err()
 
     match cause:
@@ -77,6 +78,7 @@ test "standalone try in closure returns from that closure":
         var inner = State(0, "")
         if true: try operation(var inner, fail: true)
         return ok(unit)
+
     let outcome = callback()
     try expect_false(outcome.is_ok())
     try expect_equal(outcome.err().code, 42)

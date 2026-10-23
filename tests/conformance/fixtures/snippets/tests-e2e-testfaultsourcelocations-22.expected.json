@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "",
-    "stderr": "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)\n  at tests-e2e-testfaultsourcelocations-22.ms:5 in extract\n  at tests-e2e-testfaultsourcelocations-22.ms:7 in main\n"
+    "stderr": "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)\n  at tests-e2e-testfaultsourcelocations-22.ms:5 in extract\n  at tests-e2e-testfaultsourcelocations-22.ms:8 in main\n"
   }
 }

@@ -12,19 +12,31 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-4)]
     say("l1 = {l1} len {l1.length()}")
+
     let b2 = true
     say("b2 = {b2}")
-    let b3 = ("emoji 😀".reverse().reverse() == (("{(9 * (-30))}:" + "naïve") + ("héllo" + "quote\"d")))
+
+    let b3 = (
+        "emoji 😀".reverse().reverse() == (
+            ("{(9 * (-30))}:" + "naïve")
+            + ("héllo" + "quote\"d")
+        )
+    )
     say("b3 = {b3}")
+
     var acc4 = 0
+
     for x in l1:
         if x % 2 == 0:
             acc4 += x
         else:
             acc4 -= 1
+
     say("acc4 = {acc4}")
+
     let f5 = ((9.5 / 4.0e-5) * 294.074)
     say("f5 = {f5}")
+
     var acc6 = 0
     for i in range(0, 6):
         acc6 += i * 4

@@ -153,6 +153,7 @@ test "bounded multiplication keeps its operator and operand effects":
     let left = -12
     (left * -7) | try expect_equal(84)
     product_sum() | try expect_equal(0)
+
     var visits: List[Int] = []
     (zero_effect(var visits) * 0) | try expect_equal(0)
     visits | try expect_equal([1])

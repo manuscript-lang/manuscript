@@ -39,6 +39,7 @@ test "field assignment and mutators through a variable element index":
     try expect_equal(rows[0].cells, [1, 10])
     try expect_equal(rows[1].cells, [11])
     try expect_equal(rows[1].pt.y, 11)
+
     let k = 1
     var pts = [Pt(1, 1), Pt(2, 2)]
     pts[k].x = 9
@@ -49,6 +50,7 @@ test "field assignment and mutators through a variable element index":
 test "an eager get_or fallback is released when the key is present":
     var m = Map[String, List[Int]]()
     m.add(key: "k", value: [1, 2])
+
     var got = m.get_or(key: "k", fallback: List[Int]()).clone()
     got.append(3)
     try expect_equal(got, [1, 2, 3])
@@ -60,6 +62,7 @@ test "an eager list get default is released on every path":
     try expect_equal(xs.get(0, default: [9, 9]), [1, 2])
     try expect_equal(xs.get(5, default: [9, 9]), [9, 9])
     try expect_equal(xs.get(-1, default: [9, 9]), [3])
+
     let words = "a,b".split(",")
     try expect_equal(words.get(1, default: "z" + "z"), "b")
     try expect_equal(words.get(8, default: "z" + "z"), "zz")

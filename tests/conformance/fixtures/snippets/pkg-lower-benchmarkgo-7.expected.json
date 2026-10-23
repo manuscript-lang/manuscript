@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-lower-benchmarkgo-7.ms",
           "line": 4,
-          "column": 28,
-          "offset": 151
+          "column": 30,
+          "offset": 153
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-lower-benchmarkgo-7.ms:4:23: resolution: unknown binding step; declare it with 'let step = ...' before use, define 'fn step(...)', or import it from a module\n<DIR>/pkg-lower-benchmarkgo-7.ms:4:28: resolution: unknown binding d; declare it with 'let d = ...' before use, define 'fn d(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-lower-benchmarkgo-7.ms:4:23: resolution: unknown binding step; declare it with 'let step = ...' before use, define 'fn step(...)', or import it from a module\n<DIR>/pkg-lower-benchmarkgo-7.ms:4:30: resolution: unknown binding d; declare it with 'let d = ...' before use, define 'fn d(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

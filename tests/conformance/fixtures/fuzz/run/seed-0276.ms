@@ -11,27 +11,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-14) + ((-562674) / ((-19) + (-613798081709))))
     say("i1 = {i1}")
+
     let b2 = ((i1 + (i1 * i1)) == ((i1 / (-34)) + i1))
     say("b2 = {b2}")
+
     if "".replace("gamma", "hello world").contains("back\\slash"):
         say(("  padded  " + "日本語"))
     else:
         say("quote\"d")
+
     let f3 = (493.111 + ((533.588 - 619.589) + (2.5 * 6.5)))
     say("f3 = {f3}")
+
     let i4 = i1
     say("i4 = {i4}")
+
     let l5 = [14, (-8)]
     say("l5 = {l5} len {l5.length()}")
+
     let b6 = "brace\{s\}".trim().lower().contains("Tab\there")
     say("b6 = {b6}")
+
     let f7 = 1.5
     say("f7 = {f7}")
-    say("{((i4 + 40) + (i1 * i4))} {i4} {(((i4 + 40) + (i1 * i4)) < i4)} sum {((i4 + 40) + (i1 * i4)) + i4}")
+    say(
+        "{((i4 + 40) + (i1 * i4))} {i4} {(((i4 + 40) + (i1 * i4)) < i4)} sum {((i4 + 40) + (i1 * i4)) + i4}"
+    )
+
     let b8 = ((false and (b2 and true)) or ((f3 * 0.0) > (f3 + f7)))
     say("b8 = {b8}")
-    say("{((i4 - i1) * (-44))} {((i1 + 30) % i4)} {(((i4 - i1) * (-44)) < ((i1 + 30) % i4))} sum {((i4 - i1) * (-44)) + ((i1 + 30) % i4)}")
-    say("{(-47)} {((i1 - i4) + (i1 * 6))} {((-47) < ((i1 - i4) + (i1 * 6)))} sum {(-47) + ((i1 - i4) + (i1 * 6))}")
+    say(
+        "{((i4 - i1) * (-44))} {((i1 + 30) % i4)} {(((i4 - i1) * (-44)) < ((i1 + 30) % i4))} sum {((i4 - i1) * (-44)) + ((i1 + 30) % i4)}"
+    )
+    say(
+        "{(-47)} {((i1 - i4) + (i1 * 6))} {((-47) < ((i1 - i4) + (i1 * 6)))} sum {(-47) + ((i1 - i4) + (i1 * 6))}"
+    )
+
     let i9 = (753770 * (772911 % (i4 * i1)))
     say("i9 = {i9}")
     return 0

@@ -32,10 +32,10 @@
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7.ms",
             "line": 6,
-            "column": 7,
+            "column": 6,
             "offset": 234
           },
-          "replacement": " # collection\n    "
+          "replacement": "  # collection\n    "
         }
       }
     ],

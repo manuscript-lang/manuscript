@@ -13,30 +13,42 @@ export fn main() Int:
         say(("x" + ""))
     else:
         say(("brace\{s\}" + "delta"))
+
     if (0.0 > (9.5 * 32.051)):
         say("brace\{s\}".lower())
     else:
         say("héllo".reverse())
+
     let f1 = 7.5
     say("f1 = {f1}")
+
     let f2 = (((f1 * 391.135) * f1) * (f1 / 868.845))
     say("f2 = {f2}")
+
     var acc3 = 0
     var stepacc3 = 0
+
     while stepacc3 < 2:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 1
+
     say("acc3 = {acc3}")
+
     let i4 = (-((-(-40)) + ((-210731) % 15)))
     say("i4 = {i4}")
+
     let f5 = (f1 + 0.0)
     say("f5 = {f5}")
+
     let l6 = [23, 19]
     say("l6 = {l6} len {l6.length()}")
+
     let f7 = ((f2 - (f5 * 102.735)) * ((f1 - f5) + (9.0e-3 + f1)))
     say("f7 = {f7}")
+
     let i8 = (((i4 + i4) + ((-14) - (-789253185015))) + i4)
     say("i8 = {i8}")
+
     let i9 = i4
     say("i9 = {i9}")
     return 0

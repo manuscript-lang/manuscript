@@ -12,36 +12,51 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
-    let f1 = (((508.299 / 254.218) + (197.077 / 774.188)) * ((7.5 * 4.0e22) + (278.587 * 1.0e5)))
+    let f1 = (
+        ((508.299 / 254.218) + (197.077 / 774.188))
+        * ((7.5 * 4.0e22) + (278.587 * 1.0e5))
+    )
     say("f1 = {f1}")
+
     let l2 = [2, 4, 29]
     say("l2 = {l2} len {l2.length()}")
+
     let l3 = l2.drop(4)
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = (-25)
     say("i4 = {i4}")
+
     let b5 = "  padded  ".is_empty()
     say("b5 = {b5}")
     say("fib(45) = {fib(45)}")
+
     let l6 = l2.concat(l2)
     say("l6 = {l6} len {l6.length()}")
+
     var acc7 = 0
+
     for x in l2:
         if x % 2 == 0:
             acc7 += x
         else:
             acc7 -= 1
+
     say("acc7 = {acc7}")
+
     let f8 = (992.987 + ((f1 + f1) + (f1 * f1)))
     say("f8 = {f8}")
+
     let f9 = (((f8 + 8.0e21) * f8) + ((f1 * 4.5) + 3.0e-4))
     say("f9 = {f9}")
     say("fib(44) = {fib(44)}")

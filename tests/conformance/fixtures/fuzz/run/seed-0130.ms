@@ -11,18 +11,28 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-28)]
     say("l1 = {l1} len {l1.length()}")
+
     let s2 = "héllo"
     say("s2 = [{s2}]")
-    let b3 = ("".trim().contains(s2) and ("emoji 😀".upper() != ("  padded  " + "line\nbreak")))
+
+    let b3 = (
+        "".trim().contains(s2)
+        and ("emoji 😀".upper() != ("  padded  " + "line\nbreak"))
+    )
     say("b3 = {b3}")
+
     let i4 = ((-758641) * l1.get(0))
     say("i4 = {i4}")
+
     let i5 = (((-9) + (-30)) - (s2.length() - (-44)))
     say("i5 = {i5}")
+
     let i6 = i4
     say("i6 = {i6}")
+
     let f7 = (((732.154 + 5.5) + 412.875) - (9.5 - (433.944 * 169.043)))
     say("f7 = {f7}")
+
     let i8 = i4
     say("i8 = {i8}")
     return 0

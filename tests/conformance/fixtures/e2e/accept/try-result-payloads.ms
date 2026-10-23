@@ -29,9 +29,7 @@ test "try preserves empty errors and skips success effects":
     var visits: List[Int] = []
     relay(Result[Int, TextError].error(TextError("")), var visits).is_error() | try expect_true
     visits.length() | try expect_equal(0)
-    relay(Result[Int, TextError].ok(0), var visits).get() | try expect_equal(
-        0
-    )
+    relay(Result[Int, TextError].ok(0), var visits).get() | try expect_equal(0)
     visits.length() | try expect_equal(1)
 
 test "try can change the success type":
@@ -85,9 +83,7 @@ test "tail Results evaluate once and retain payload identity":
     let original = Failure("before")
     let exact = tail(Result[Int, Failure].error(original), var visits)
     exact.err().detail | try expect_equal("before")
-    tail(Result[Int, TextError].ok(42), var visits).get() | try expect_equal(
-        42
-    )
+    tail(Result[Int, TextError].ok(42), var visits).get() | try expect_equal(42)
     tail(Result[Int, TextError].error(TextError("")), var visits).is_error() | try expect_true
     visits | try expect_equal([1, 1, 1])
 

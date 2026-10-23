@@ -11,30 +11,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (982.791 + 333.455)
     say("f1 = {f1}")
+
     let f2 = (((237.390 * 230.660) - (f1 * f1)) * ((f1 + 361.932) * (f1 + 543.25)))
     say("f2 = {f2}")
+
     let s3 = "quote\"d".reverse().upper()
     say("s3 = [{s3}]")
+
     let s4 = (s3.replace(s3, "a") + (s3 + s3).lower())
     say("s4 = [{s4}]")
+
     let b5 = ((-(293004 + (-623846))) != (-746443))
     say("b5 = {b5}")
+
     let s6 = (("naïve".reverse() + "".reverse()) + s4.replace(s3, s4))
     say("s6 = [{s6}]")
+
     let i7 = 44
     say("i7 = {i7}")
+
     let i8 = ((-(i7 / i7)) + ((i7 * i7) - ((-23) % (-33))))
     say("i8 = {i8}")
+
     if ((f2 + 705.694) == (0.0 - 518.468)):
         say(("{(-5)}:" + "MiXeD CaSe"))
     else:
         say("line\nbreak")
+
     let f9 = (((f1 + f1) + (f1 - f1)) * f1)
     say("f9 = {f9}")
+
     let f10 = (((f9 * 5.0e3) * (f2 * 829.25)) + ((f9 / f9) + (f9 * 307.712)))
     say("f10 = {f10}")
+
     let i11 = (((49 + (-28)) % (i8 + 29)) - (((-39) + 40) + i7))
     say("i11 = {i11}")
+
     let s12 = "Tab\there"
     say("s12 = [{s12}]")
     return 0

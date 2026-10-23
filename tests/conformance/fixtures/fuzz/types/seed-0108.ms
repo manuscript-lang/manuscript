@@ -9,8 +9,12 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (((404.174 + 293.187) != (631.802 * 382.672)) and "gamma".contains("emoji 😀"))
+    let b1 = (
+        ((404.174 + 293.187) != (631.802 * 382.672))
+        and "gamma".contains("emoji 😀")
+    )
     say("b1 = {b1}")
+
     let bad = say
     let l2 = [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")

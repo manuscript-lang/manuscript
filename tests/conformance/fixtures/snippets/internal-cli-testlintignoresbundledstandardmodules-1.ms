@@ -7,4 +7,5 @@ export fn main() Int:
     let v: Optional[TomlValue] = none
     if v.is_some():
         return 1
+
     return 0

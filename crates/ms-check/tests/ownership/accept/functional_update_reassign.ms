@@ -6,7 +6,9 @@ fn step(xs: List[Int]) List[Int]:
 fn f() Int:
     var xs = [0]
     var i = 0
+
     while i < 3:
         xs = step(xs)
         i += 1
+
     return xs.length()

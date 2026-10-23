@@ -20,6 +20,7 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal((try "ab".repeat(2)), "abab")
     try expect_equal((try "ab".repeat(2)), "abab")
     try expect_equal((try "ab".repeat(0, 0)), "")
+
     let limited: Result[String, StringError] = error(StringError.LimitExceeded)
     try expect_equal("é".repeat(2, 3), limited)
     try expect_equal((try "x".pad_start(3, "ab")), "abx")
@@ -27,14 +28,15 @@ test "strings honor omitted none zero and explicit output limits":
     try expect_equal("ab".repeat(4611686018427387904), limited)
     try expect_equal("ab".pad_start(9223372036854775807, "x"), limited)
     try expect_equal(
-        "ab".pad_end(4611686018427387904, "xyz", 9223372036854775807),
-        limited
+        "ab".pad_end(4611686018427387904, "xyz", 9223372036854775807), limited
     )
     try expect_equal((try "aa".replace_all("a", "xy")), "xyxy")
     try expect_equal("a,,b".split(",", 2), ["a", ""])
     try expect_equal(" \té \n".trim(), "é")
+
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)
     try expect_equal("a".normalize("invalid"), invalid)
+
     let scalar_error: Result[String, StringError] = error(StringError.InvalidInput)
     try expect_equal(from_scalars([55296]), scalar_error)
 
@@ -46,10 +48,12 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal(data.last_index_of(Bytes([1])), some(3))
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
     try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
+
     let byte_range: Result[Bytes, CollectionError] = error(CollectionError.OutOfRange)
     try expect_equal(data.slice(1, 10), byte_range)
     try expect_equal(data.slice(-10, 2), byte_range)
     try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
+
     let copied = data.clone().with_value(0, 42)
     try expect_false(copied.get(0) != 42 or data.get(0) != 0)
     try expect_false(not Bytes([255]).decode_utf8().is_none())
@@ -59,8 +63,10 @@ test "Bytes values direct bound and free calls return independent lists":
     var input = [0, 1, 255]
     let data = Bytes(input.clone())
     input.set(0, 42)
+
     let extract: fn() List[Int] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
+
     var direct = data.values()
     var bound = extract()
     var free = values(data)
@@ -68,6 +74,7 @@ test "Bytes values direct bound and free calls return independent lists":
     bound.append(12)
     free.reverse_in_place()
     try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
+
     let empty: List[Int] = []
     try expect_false(
         Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
@@ -83,6 +90,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
     try expect_equal(text.slice(-100, 4), out_of_range)
     try expect_equal(text.slice(3, 1), out_of_range)
     try expect_false(text.index_of("🙂") != some(2) or text.last_index_of("") != some(4))
+
     let invalid: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(-2, 4), invalid)
     try expect_equal(text.slice_scalars(1, 10), invalid)
@@ -94,6 +102,7 @@ test "string and bytes builders freeze":
     text.append("é")
     text.append("🙂")
     try expect_equal(text.freeze(), "é🙂")
+
     var bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
@@ -101,6 +110,7 @@ test "string and bytes builders freeze":
 
 test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("".split(","), [""])
+
     let none_requested: List[String] = []
     try expect_equal("".split(""), none_requested)
     try expect_equal("".split(",", 0), none_requested)
@@ -114,10 +124,12 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
     let text = try block.repeat(600)
     try expect_equal(text.length(), 2400)
+
     # Forward, backward and jumping reads of the same long text.
     var forward = 0
     for step in range(0, 2400):
         forward += text.scalar_at(step)
+
     var backward = 0
     for step in range(0, 2400):
         backward += text.scalar_at(2399 - step)
@@ -131,5 +143,6 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     try expect_equal((try text.slice(7, 7)), "")
     try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
     try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
+
     let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)

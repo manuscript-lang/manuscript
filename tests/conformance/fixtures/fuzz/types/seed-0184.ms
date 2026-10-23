@@ -11,17 +11,22 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(7) = {fact(7)}")
+
     let i1 = (20 * ((24 / (-24)) + ((-16) * (-45))))
     say("i1 = {i1}")
     return "not an int"
+
     let l2 = [18]
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = (634.158 - (270.547 + (589.680 * 193.274)))
     say("f3 = {f3}")
+
     let b4 = (("alpha".ends_with("") and (false and false)) and (true and true))
     say("b4 = {b4}")
     return 0

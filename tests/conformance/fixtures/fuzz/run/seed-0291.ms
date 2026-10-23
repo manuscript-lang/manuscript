@@ -11,33 +11,49 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [11, (-18), 26]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = [(-24), (-3)]
     say("l2 = {l2} len {l2.length()}")
+
     let l3 = [(-15), (-1), (-10), (-30), (-18)]
     say("l3 = {l3} len {l3.length()}")
+
     let f4 = (((768.25 / 95.510) - 240.802) + ((756.976 * 0.0) - (110.25 + 7.5)))
     say("f4 = {f4}")
+
     let l5 = l2.sorted(fn(a, b): a.compare(b))
     say("l5 = {l5} len {l5.length()}")
-    say("{19} {(644601 - (215507 - 17))} {(19 < (644601 - (215507 - 17)))} sum {19 + (644601 - (215507 - 17))}")
+    say(
+        "{19} {(644601 - (215507 - 17))} {(19 < (644601 - (215507 - 17)))} sum {19 + (644601 - (215507 - 17))}"
+    )
+
     let b6 = (true and ((not true) and "hello world".starts_with("Tab\there")))
     say("b6 = {b6}")
+
     let l7 = [25, 25]
     say("l7 = {l7} len {l7.length()}")
+
     let i8 = (l5.get(0) - (-439017))
     say("i8 = {i8}")
+
     let f9 = ((1.0e-3 * (f4 + 885.046)) - ((f4 + 723.148) + (f4 * f4)))
     say("f9 = {f9}")
+
     let b10 = (not (b6 and "日本語".is_empty()))
     say("b10 = {b10}")
+
     let f11 = (((f9 / f9) * (f9 * f9)) + ((f9 / f4) / (f9 * 890.596)))
     say("f11 = {f11}")
+
     let f12 = (((f4 + 841.540) * (3.0e5 / 714.150)) / ((f9 + 863.512) + (f11 - f4)))
     say("f12 = {f12}")
+
     let l13 = [(-20), 14]
     say("l13 = {l13} len {l13.length()}")
+
     let f14 = f11
     say("f14 = {f14}")
+
     let f15 = (91.178 * ((309.017 - 199.189) - f11))
     say("f15 = {f15}")
     return 0

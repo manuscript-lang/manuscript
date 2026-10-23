@@ -7,12 +7,15 @@ import range from "@std/collections.ms"
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
     var seen: List[Int] = []
+
     let even = values.count(
         fn(value: Int) Bool:
             seen.append(value)
             return value % 2 == 0
     )
+
     try expect_false(even != 2 or seen != values)
+
     let empty: List[Int] = []
     try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
 
@@ -29,6 +32,7 @@ test "List insert mutates in place":
     try expect_equal(values, [0, 1, 2, 3, 4, 9, 5])
     values.insert(-7, 8)
     try expect_equal(values, [8, 0, 1, 2, 3, 4, 9, 5])
+
     var empty: List[String] = []
     empty.insert(0, "a")
     try expect_equal(empty, ["a"])
@@ -51,6 +55,7 @@ test "List pop and distinct copy payloads":
     var item = popped.get().clone()
     item.value = 2
     try expect_false(shared.value != 1 or item.value != 2 or not boxes.is_empty())
+
     let nested = [1]
     let lists = [nested.clone(), [1], [2]]
     let unique = lists.distinct()
@@ -64,8 +69,10 @@ test "List distinct keeps the first equal element in order":
     try expect_false(unique != [3, 1, 2] or values != [3, 1, 3, 2, 1])
     unique.append(4)
     try expect_equal(values.length(), 5)
+
     let words = ["b", "a", "b"]
     try expect_equal(words.distinct(), ["b", "a"])
+
     let empty: List[Int] = []
     var copy = empty.distinct()
     copy.append(1)
@@ -76,6 +83,7 @@ fn unique_count[T: Equal](values: List[T]) Int:
 
 test "List parity operations support generic and bound use":
     try expect_equal(unique_count([1, 1, 2]), 2)
+
     var values = [1, 2]
     let insert = values.insert
     let pop: fn() Optional[Int] = values.pop
@@ -99,5 +107,6 @@ test "List distinct handles large Int and String lists":
             or unique.last() != some(29999)
         )
     )
+
     let uniqueWords = words.distinct()
     try expect_false(uniqueWords.length() != 20000 or uniqueWords.get(1) != "w1")

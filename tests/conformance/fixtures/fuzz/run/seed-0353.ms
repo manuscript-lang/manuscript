@@ -12,72 +12,100 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let b1 = (("{(47 % 313835)}:" + "gamma") != "beta")
     say("b1 = {b1}")
+
     let l2 = [(-7), (-18), (-7), 7]
     say("l2 = {l2} len {l2.length()}")
     say("fib(55) = {fib(55)}")
+
     if b1:
         say(("{(-549348)}:" + "hello world"))
     else:
         say("x")
+
     let f3 = ((0.0 / (9.5 + 969.787)) / (546.070 * (4.5 / 3.0e18)))
     say("f3 = {f3}")
+
     let i4 = ((-((-879448) + 15)) + (-25))
     say("i4 = {i4}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 0:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 5
+
     say("acc5 = {acc5}")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 4:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + (-2)
+
     say("acc6 = {acc6}")
+
     let b7 = (not b1)
     say("b7 = {b7}")
+
     let l8 = l2.map(fn(x): x * 4)
     say("l8 = {l8} len {l8.length()}")
     say("collatz(1533) = {collatz(1533)}")
+
     let i9 = 47
     say("i9 = {i9}")
+
     let s10 = ("alpha".reverse() + "delta").trim()
     say("s10 = [{s10}]")
-    say("{i9} {(i4 % (i4 - (-897077)))} {(i9 < (i4 % (i4 - (-897077))))} sum {i9 + (i4 % (i4 - (-897077)))}")
+    say(
+        "{i9} {(i4 % (i4 - (-897077)))} {(i9 < (i4 % (i4 - (-897077))))} sum {i9 + (i4 % (i4 - (-897077)))}"
+    )
+
     let i11 = i9
     say("i11 = {i11}")
+
     var acc12 = 0
     var stepacc12 = 0
+
     while stepacc12 < 8:
         stepacc12 += 1
         acc12 += stepacc12 * stepacc12 + 6
+
     say("acc12 = {acc12}")
+
     let l13 = l2.concat(l8)
     say("l13 = {l13} len {l13.length()}")
+
     let i14 = (((-13) / (-219527)) % ((12 + i4) / 43))
     say("i14 = {i14}")
+
     let f15 = 5.0e8
     say("f15 = {f15}")
     return 0

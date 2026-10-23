@@ -12,16 +12,16 @@
         "message": "method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
         "position": {
           "file": "pkg-parser-testemptyfunctiondeclarations-2.ms",
-          "line": 6,
+          "line": 7,
           "column": 8,
-          "offset": 228
+          "offset": 229
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:6:8: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:7:8: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

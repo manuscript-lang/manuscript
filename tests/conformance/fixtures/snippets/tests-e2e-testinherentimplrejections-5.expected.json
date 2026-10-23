@@ -12,16 +12,16 @@
         "message": "method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
         "position": {
           "file": "tests-e2e-testinherentimplrejections-5.ms",
-          "line": 7,
+          "line": 8,
           "column": 8,
-          "offset": 197
+          "offset": 198
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-5.ms:7:8: type: method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-5.ms:8:8: type: method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

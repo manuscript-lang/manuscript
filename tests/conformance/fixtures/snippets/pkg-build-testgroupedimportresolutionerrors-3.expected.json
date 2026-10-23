@@ -12,16 +12,16 @@
         "message": "duplicate or intrinsic name MapBuilder; this name is already declared, imported, or built in, so rename one of them",
         "position": {
           "file": "pkg-build-testgroupedimportresolutionerrors-3.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 226
+          "offset": 227
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-3.ms:5:1: resolution: duplicate or intrinsic name MapBuilder; this name is already declared, imported, or built in, so rename one of them\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-3.ms:6:1: resolution: duplicate or intrinsic name MapBuilder; this name is already declared, imported, or built in, so rename one of them\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

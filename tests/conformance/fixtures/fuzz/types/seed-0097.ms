@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (604.387 + ((551.326 - 2.5) * (730.980 * 0.0)))
     say("f1 = {f1}")
+
     let bad = 1 and 2
     let f2 = f1
     say("f2 = {f2}")
+
     let i3 = 47
     say("i3 = {i3}")
+
     let l4 = [10, (-2), 16, (-17), 17]
     say("l4 = {l4} len {l4.length()}")
     return 0

@@ -12,18 +12,22 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = ((((-34) * (-838221)) * (652801 + 35)) + (-539361979686))
     say("i2 = {i2}")
     say("fib(18) = {fib(18)}")
+
     let bad = not 5
     return 0

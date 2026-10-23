@@ -11,63 +11,84 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let s1 = "日本語"
     say("s1 = [{s1}]")
+
     let i2 = (-(33 - ((-593873) * 205739)))
     say("i2 = {i2}")
+
     let s3 = s1.clone()
     say("s3 = [{s3}]")
+
     let f4 = (((205.355 + 445.506) + 253.862) + 760.449)
     say("f4 = {f4}")
+
     let l5 = [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = [(-26), 29, (-12), (-19), (-1)]
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = (((i2 + 658472) + i2) != i2)
     say("b7 = {b7}")
+
     let f8 = f4
     say("f8 = {f8}")
+
     let b9 = b7
     say("b9 = {b9}")
+
     let f10 = 261.034
     say("f10 = {f10}")
+
     var l11 = l6.clone()
     l11.append(85)
     say("l11 = {l11} len {l11.length()}")
     say("collatz(2321) = {collatz(2321)}")
+
     let i12 = i2
     say("i12 = {i12}")
     say("fib(37) = {fib(37)}")
+
     let f13 = (f10 * ((597.709 - 269.388) * (f10 + f4)))
     say("f13 = {f13}")
+
     let l14 = l11.reversed()
     say("l14 = {l14} len {l14.length()}")
+
     if b9:
         say((s3 + "back\\slash"))
     else:
         say(s1)
+
     let f15 = ((887.907 * (f4 * f13)) + (139.875 + (f13 * f13)))
     say("f15 = {f15}")
+
     let i16 = (-(-22))
     say("i16 = {i16}")
     return 0

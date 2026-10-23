@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (1 + (-21))
     say("i1 = {i1}")
+
     let i3 = ((-695340970079) * (i1 + (22 + i1)))
     say("i3 = {i3}")
     return 0

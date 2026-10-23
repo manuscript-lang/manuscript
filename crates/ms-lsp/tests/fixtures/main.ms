@@ -44,6 +44,7 @@ export fn main() Int:
     let values = [1, 2, 3]
     for v in values:
         say("{v}")
+
     let result = add(1, 2)
     return result
 

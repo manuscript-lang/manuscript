@@ -12,57 +12,79 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("fact(5) = {fact(5)}")
+
     let s1 = (("  padded  " + "emoji 😀") + "".lower()).replace("naïve", "naïve")
     say("s1 = [{s1}]")
+
     let b2 = s1.upper().is_empty()
     say("b2 = {b2}")
+
     let s3 = "emoji 😀".lower()
     say("s3 = [{s3}]")
+
     var acc4 = 0
     var stepacc4 = 0
+
     while stepacc4 < 2:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + (-2)
+
     say("acc4 = {acc4}")
+
     let i5 = ((14 + ((-26) * (-153485))) / (-4))
     say("i5 = {i5}")
-    say("{(415965145301 + i5)} {i5} {((415965145301 + i5) < i5)} sum {(415965145301 + i5) + i5}")
+    say(
+        "{(415965145301 + i5)} {i5} {((415965145301 + i5) < i5)} sum {(415965145301 + i5) + i5}"
+    )
+
     let f6 = 9.0e19
     say("f6 = {f6}")
+
     let s7 = s3
     say("s7 = [{s7}]")
+
     let b8 = true
     say("b8 = {b8}")
+
     let i9 = (((i5 + i5) - i5) - (-(i5 + (-28))))
     say("i9 = {i9}")
     say("fib(38) = {fib(38)}")
+
     let i10 = ((-(43 * 43)) * 5)
     say("i10 = {i10}")
+
     var acc11 = 0
     for i in range(0, 2):
         acc11 += i * (-4)
     say("acc11 = {acc11}")
+
     let s12 = ("gamma" + "  padded  ").upper()
     say("s12 = [{s12}]")
+
     let l13 = [(-24), 9, 21]
     say("l13 = {l13} len {l13.length()}")
+
     let i14 = i10
     say("i14 = {i14}")
+
     let s15 = s12
     say("s15 = [{s15}]")
     return 0

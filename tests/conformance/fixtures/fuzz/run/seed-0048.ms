@@ -12,28 +12,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s2 = "héllo".lower()
     say("s2 = [{s2}]")
+
     let l3 = [(-25), 13]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = ((l3.length() + ((-47) % 41)) + (((-6) % 361391) % ((-28) * 12)))
     say("i4 = {i4}")
+
     let b5 = (true and ("x".replace("日本語", s2) != s2))
     say("b5 = {b5}")
+
     let i6 = (439466 * ((i4 / 33650) % (i4 - 36)))
     say("i6 = {i6}")
-    say("{((i4 - i6) + (-(-562804)))} {l3.get(1)} {(((i4 - i6) + (-(-562804))) < l3.get(1))} sum {((i4 - i6) + (-(-562804))) + l3.get(1)}")
+    say(
+        "{((i4 - i6) + (-(-562804)))} {l3.get(1)} {(((i4 - i6) + (-(-562804))) < l3.get(1))} sum {((i4 - i6) + (-(-562804))) + l3.get(1)}"
+    )
+
     let l7 = [17, (-29), 28]
     say("l7 = {l7} len {l7.length()}")
+
     let i8 = (((i4 - i6) + (-27)) - i4)
     say("i8 = {i8}")
+
     let s9 = s2.upper().upper()
     say("s9 = [{s9}]")
+
     var acc10 = 0
     for i in range(0, 1):
         acc10 += i * (-3)
     say("acc10 = {acc10}")
+
     let i11 = (((i4 * i6) + l7.length()) % ((20 - i6) / (-13)))
     say("i11 = {i11}")
-    say("{(l3.length() + ((-740109) * i4))} {((i6 + i6) + (-11))} {((l3.length() + ((-740109) * i4)) < ((i6 + i6) + (-11)))} sum {(l3.length() + ((-740109) * i4)) + ((i6 + i6) + (-11))}")
+    say(
+        "{(l3.length() + ((-740109) * i4))} {((i6 + i6) + (-11))} {((l3.length() + ((-740109) * i4)) < ((i6 + i6) + (-11)))} sum {(l3.length() + ((-740109) * i4)) + ((i6 + i6) + (-11))}"
+    )
+
     let i12 = ((l3.get(1) + (i6 + i6)) * (((-22) + i8) + l3.length()))
     say("i12 = {i12}")
     return 0

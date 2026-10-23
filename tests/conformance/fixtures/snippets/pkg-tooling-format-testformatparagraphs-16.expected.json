@@ -12,16 +12,16 @@
         "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-16.ms",
-          "line": 10,
+          "line": 11,
           "column": 9,
-          "offset": 302
+          "offset": 303
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-16.ms:10:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-16.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,40 +12,54 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = (-(9 + (935188 * 9)))
     say("i1 = {i1}")
+
     let i2 = (-963035)
     say("i2 = {i2}")
+
     let i3 = (((40 + i1) + (i1 + (-31))) % (6 + (i2 % (-29))))
     say("i3 = {i3}")
+
     let s4 = "brace\{s\}"
     say("s4 = [{s4}]")
+
     let s5 = "quote\"d"
     say("s5 = [{s5}]")
+
     let i6 = (-4)
     say("i6 = {i6}")
+
     let f7 = (((30.261 + 9.0e19) - (0.0 + 2.0e15)) / (0.0 * 239.826))
     say("f7 = {f7}")
     say("fib(34) = {fib(34)}")
+
     let i8 = (9 * i6)
     say("i8 = {i8}")
+
     let l9 = [(-18), (-17), (-16)]
     say("l9 = {l9} len {l9.length()}")
+
     let f10 = 581.004
     say("f10 = {f10}")
+
     let l11 = l9.filter(fn(x): x > 4)
     say("l11 = {l11} len {l11.length()}")
+
     var l12 = l11.clone()
     l12.append(98)
     say("l12 = {l12} len {l12.length()}")
+
     let i13 = s4.length()
     say("i13 = {i13}")
     return 0

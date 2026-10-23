@@ -23,12 +23,15 @@ test "boolean optimization preserves source evaluation order":
     let skipped_or = true or unexpected(var counter)
     (skipped_and or not skipped_or) | try expect_false
     (counter.calls != 0) | try expect_false
+
     let left_and = touch(var counter) and false
     let left_or = touch(var counter) or true
     (left_and or not left_or or counter.calls != 2) | try expect_false
+
     let right_and = (not false) and touch(var counter)
     let right_or = (not true) or touch(var counter)
     (not right_and or not right_or or counter.calls != 4) | try expect_false
+
     let callback = fn(): not (true and false)
     (not defaulted() or not callback()) | try expect_false
 

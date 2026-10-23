@@ -14,6 +14,7 @@ test "integer division retains signed boundary and remainder rules":
     try expect_false(0 / minimum != 0 or 1 / minimum != 0)
     try expect_equal(1d / -1d, -1d)
     try expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())
+
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
@@ -41,8 +42,7 @@ test "duration arithmetic retains full signed nanosecond range":
         )
     )
     try expect_equal(
-        duration(-1).multiply(9223372036854775807),
-        duration((-9223372036854775807))
+        duration(-1).multiply(9223372036854775807), duration((-9223372036854775807))
     )
     try expect_false(
         (
@@ -80,8 +80,7 @@ test "duration safe addition subtraction negation and unit edges":
     )
     try expect_equal((9223372036854).milliseconds.to_nanoseconds(), 9223372036854000000)
     try expect_equal(
-        (-9223372036854).milliseconds.to_nanoseconds(),
-        (-9223372036854000000)
+        (-9223372036854).milliseconds.to_nanoseconds(), (-9223372036854000000)
     )
     try expect_false(
         (

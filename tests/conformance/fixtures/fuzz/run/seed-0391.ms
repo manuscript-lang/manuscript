@@ -11,18 +11,23 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = ((-280380) % (14 + ((-44) + (-992268039643))))
     say("i1 = {i1}")
+
     let s2 = (("naïve" + "brace\{s\}") + "alpha").reverse()
     say("s2 = [{s2}]")
+
     let f3 = 0.0
     say("f3 = {f3}")
+
     let i4 = s2.length()
     say("i4 = {i4}")
     say("fact(8) = {fact(8)}")
+
     let b5 = (not ("{(i4 % i1)}:" + "line\nbreak").contains("gamma"))
     say("b5 = {b5}")
     return 0

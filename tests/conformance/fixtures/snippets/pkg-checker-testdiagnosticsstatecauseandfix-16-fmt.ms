@@ -5,8 +5,10 @@ type S:
     case A
     case B
     case C
+
 fn f(s: S) Int:
     match s:
         A:
             return 1
+
     return 0

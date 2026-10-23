@@ -23,16 +23,16 @@
         "message": "expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)",
         "position": {
           "file": "pkg-parser-testinlinesuites-6.ms",
-          "line": 7,
+          "line": 8,
           "column": 34,
-          "offset": 262
+          "offset": 263
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...)', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-6.ms:7:34: type: expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...)', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-6.ms:8:34: type: expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

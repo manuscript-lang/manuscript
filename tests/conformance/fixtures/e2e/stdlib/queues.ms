@@ -30,9 +30,11 @@ test "priority queue sorts many values and copies are independent":
     var queue = PriorityQueue[Int](compare)
     for index in range(0, 200):
         queue.enqueue((index * 37) % 101)
+
     var copy = queue.clone()
     try expect_equal(copy.dequeue(), some(0))
     try expect_equal(queue.length(), 200)
+
     var previous = -1
 
     while not queue.is_empty():

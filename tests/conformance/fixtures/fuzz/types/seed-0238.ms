@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
@@ -18,8 +19,10 @@ export fn main() Int:
         say("back\\slash".lower())
     else:
         say(("brace\{s\}" + ""))
+
     say("gcd(3181, 1800) = {gcd(3181, 1800)}")
     return "not an int"
+
     let f1 = ((772.25 - 0.0) * 277.25)
     say("f1 = {f1}")
     return 0

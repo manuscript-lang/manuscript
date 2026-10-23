@@ -12,11 +12,13 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
@@ -24,40 +26,55 @@ export fn main() Int:
         say("line\nbreak")
     else:
         say(("{(9223372036854775806 + (-48))}:" + "a"))
+
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = ((11 + (31 % (-499842))) % (-5))
     say("i2 = {i2}")
+
     if ((false and false) and false):
         say(("brace\{s\}" + "hello world"))
     else:
         say("".trim())
+
     let l3 = l1.concat(l1)
     say("l3 = {l3} len {l3.length()}")
+
     if ((false and true) and (false and true)):
         say(("gamma" + "delta"))
     else:
         say("42")
+
     let f4 = (768.063 * ((524.131 / 6.0e-5) - (603.687 + 623.565)))
     say("f4 = {f4}")
+
     let b5 = (("brace\{s\}" + "hello world").contains("a") or ("Tab\there" != "a"))
     say("b5 = {b5}")
+
     let l6 = l3.reversed()
     say("l6 = {l6} len {l6.length()}")
     say("fib(47) = {fib(47)}")
+
     let l7 = l6.filter(fn(x): x > (-3))
     say("l7 = {l7} len {l7.length()}")
+
     let l8 = l3.map(fn(x): x * 2)
     say("l8 = {l8} len {l8.length()}")
     say("fib(36) = {fib(36)}")
+
     let f9 = ((357.876 + (f4 * f4)) * (794.947 * f4))
     say("f9 = {f9}")
+
     let i10 = l8.length()
     say("i10 = {i10}")
+
     let s11 = (("a" + "brace\{s\}") + "a".trim()).upper()
     say("s11 = [{s11}]")
+
     let b12 = (0.0 > (191.692 - f9))
     say("b12 = {b12}")
+
     let f13 = f4
     say("f13 = {f13}")
     return 0

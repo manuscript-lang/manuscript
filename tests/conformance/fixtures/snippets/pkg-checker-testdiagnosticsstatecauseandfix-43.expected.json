@@ -12,16 +12,16 @@
         "message": "'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, B",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-43.ms",
-          "line": 11,
+          "line": 12,
           "column": 9,
-          "offset": 266
+          "offset": 267
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-43.ms:11:9: resolution: 'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, B\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-43.ms:12:9: resolution: 'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, B\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

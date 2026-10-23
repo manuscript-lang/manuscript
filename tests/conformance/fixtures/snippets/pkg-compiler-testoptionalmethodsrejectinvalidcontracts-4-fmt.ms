@@ -4,5 +4,6 @@
 type Optional[T]:
     case some(value: T)
     case none
+
 fn wrong(value: Optional[Int]) Int:
     return value.get()

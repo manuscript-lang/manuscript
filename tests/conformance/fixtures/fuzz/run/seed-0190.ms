@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
@@ -18,22 +19,32 @@ export fn main() Int:
         say("emoji 😀".lower())
     else:
         say("delta".replace("  padded  ", "back\\slash"))
+
     let b1 = true
     say("b1 = {b1}")
+
     let b2 = ((not false) and (not b1))
     say("b2 = {b2}")
+
     let i3 = ((-28) % 1)
     say("i3 = {i3}")
+
     let b4 = (((5.0e12 / 853.890) > 2.0e23) and (0 < ((-42) + i3)))
     say("b4 = {b4}")
+
     let b5 = ((i3 + i3) != ((34 + 2) + (-21)))
     say("b5 = {b5}")
+
     let i6 = (((i3 - i3) * i3) * i3)
     say("i6 = {i6}")
     say("fact(0) = {fact(0)}")
+
     let l7 = [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
+
     let i8 = (-49)
     say("i8 = {i8}")
-    say("{(i8 / i8)} {(-((-722505) % i8))} {((i8 / i8) < (-((-722505) % i8)))} sum {(i8 / i8) + (-((-722505) % i8))}")
+    say(
+        "{(i8 / i8)} {(-((-722505) % i8))} {((i8 / i8) < (-((-722505) % i8)))} sum {(i8 / i8) + (-((-722505) % i8))}"
+    )
     return 0

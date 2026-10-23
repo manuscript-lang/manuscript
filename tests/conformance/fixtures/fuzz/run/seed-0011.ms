@@ -12,14 +12,21 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "delta"
     say("s1 = [{s1}]")
+
     var acc2 = 0
     for i in range(0, 7):
         acc2 += i * (-4)
     say("acc2 = {acc2}")
+
     let i4 = 7
     say("i4 = {i4}")
+
     let i5 = i4
     say("i5 = {i5}")
-    let f6 = (((0.0 - 805.25) + (526.012 - 546.113)) * ((879.25 * 624.307) * (0.254 - 83.116)))
+
+    let f6 = (
+        ((0.0 - 805.25) + (526.012 - 546.113))
+        * ((879.25 * 624.307) * (0.254 - 83.116))
+    )
     say("f6 = {f6}")
     return 0

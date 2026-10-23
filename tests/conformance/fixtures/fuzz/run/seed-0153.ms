@@ -12,12 +12,15 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -25,50 +28,67 @@ export fn main() Int:
     for i in range(0, 7):
         acc1 += i * 9
     say("acc1 = {acc1}")
+
     let i2 = (-586695510165)
     say("i2 = {i2}")
+
     if ((false and false) and (true and false)):
         say("beta".replace("alpha", "delta"))
     else:
         say("gamma".upper())
+
     let f3 = ((551.610 + (561.924 * 630.837)) / 381.345)
     say("f3 = {f3}")
     say("collatz(2944) = {collatz(2944)}")
+
     let l4 = [(-28)]
     say("l4 = {l4} len {l4.length()}")
+
     var acc5 = 0
     for i in range(0, 7):
         acc5 += i * (-4)
     say("acc5 = {acc5}")
+
     var acc6 = 0
+
     for x in l4:
         if x % 2 == 0:
             acc6 += x
         else:
             acc6 -= 1
+
     say("acc6 = {acc6}")
+
     let f7 = (((972.105 / 768.25) + (f3 * 8.5)) * f3)
     say("f7 = {f7}")
+
     let i8 = (-11)
     say("i8 = {i8}")
+
     if ((false or false) or false):
         say(("naïve" + "  padded  "))
     else:
         say(("naïve" + "quote\"d"))
+
     let f9 = 39.536
     say("f9 = {f9}")
+
     let s10 = "gamma"
     say("s10 = [{s10}]")
+
     let i11 = l4.length()
     say("i11 = {i11}")
+
     var acc12 = 0
     for i in range(0, 4):
         acc12 += i * (-1)
     say("acc12 = {acc12}")
+
     if true:
         say("naïve".upper())
     else:
         say("héllo")
+
     var acc13 = 0
     for i in range(0, 6):
         acc13 += i * (-4)

@@ -4,4 +4,5 @@
 fn f(n: Optional[Int]) Int:
     if n == 0:
         return 1
+
     return 0

@@ -13,15 +13,20 @@ export fn main() Int:
         say("beta".upper())
     else:
         say("delta".replace("", "naïve"))
+
     let s1 = "MiXeD CaSe".reverse().replace("", "gamma")
     say("s1 = [{s1}]")
+
     let s2 = ("42".lower() + ("42" + "quote\"d")).replace("x", "日本語")
     say("s2 = [{s2}]")
+
     let bad = undefined_name + 1
     let i3 = (10 / ((3 + (-9)) + ((-539407) * (-29))))
     say("i3 = {i3}")
+
     let f4 = (647.860 + ((476.25 / 9.0e1) + (394.353 * 0.0)))
     say("f4 = {f4}")
+
     let s5 = ("日本語" + s2)
     say("s5 = [{s5}]")
     return 0

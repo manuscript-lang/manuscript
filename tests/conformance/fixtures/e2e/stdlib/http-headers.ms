@@ -3,15 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
 import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
 import {
-    headers,
-    HttpHeaders,
-    HttpMethod,
-    HttpRequest,
-    HttpResponse,
-    HttpExchange,
-    HttpError,
-    HttpClientOptions,
-    HttpServerOptions
+    headers, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpExchange,
+    HttpError, HttpClientOptions, HttpServerOptions
 } from "@std/http.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
@@ -22,8 +15,7 @@ fn repeated_headers() Result[HttpHeaders, Error]:
     let second = (fields.append("X-Dup", "second".to_bytes()) | try expect_ok)
     let cookie = (
         fields.append(
-            "Set-Cookie",
-            "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
+            "Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
         ) | try expect_ok
     )
     let other = (fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok)
@@ -52,17 +44,13 @@ fn handle_headers(request: HttpRequest) HttpResponse:
 test "one header type preserves repeated values through buffered requests":
     with server = (
         network().serve(
-            address: "127.0.0.1:0",
-            handler: handle_headers,
-            max_requests: 2
+            address: "127.0.0.1:0", handler: handle_headers, max_requests: 2
         ) | try expect_ok
     ):
         let response = (
             network().request(
-                method: HttpMethod.Get,
-                url: "http://{server.address()}/",
-                headers: (try repeated_headers()),
-                body: ""
+                method: HttpMethod.Get, url: "http://{server.address()}/",
+                headers: (try repeated_headers()), body: ""
             ) | try expect_ok
         )
         let metadata = response.metadata()
@@ -81,6 +69,7 @@ test "one header type preserves repeated values through buffered requests":
                 ) != some(["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"])
             )
         )
+
         let appended = (
             (
                 metadata
@@ -113,17 +102,14 @@ fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
 test "streaming proxy uses the same byte-valued header type":
     with server = (
         network().serve_stream(
-            address: "127.0.0.1:0",
-            handler: echo_headers,
+            address: "127.0.0.1:0", handler: echo_headers,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
     ):
         let response = (
             network().request(
-                method: HttpMethod.Get,
-                url: "http://{server.address()}/",
-                headers: (try repeated_headers()),
-                body: ""
+                method: HttpMethod.Get, url: "http://{server.address()}/",
+                headers: (try repeated_headers()), body: ""
             ) | try expect_ok
         )
         try expect_false(
@@ -142,12 +128,15 @@ test "lookup returns membership and clone separates it":
     let appended = (fields.append("x-dup", "third".to_bytes()) | try expect_ok)
     let values = fields.values("X-DUP").get().clone()
     values.length() | try expect_equal(3)
+
     let copy = fields.clone()
     let copy_appended = (copy.append("x-dup", "copy".to_bytes()) | try expect_ok)
     fields.values("x-dup").get().length() | try expect_equal(3)
     (fields.values("missing").is_none()) | try expect_true
+
     let k = (fields.append("K", "ASCII".to_bytes()) | try expect_ok)
     (fields.values("K").is_none()) | try expect_true
+
     let removed = fields.remove("X-DUP")
     let new_field = (fields.append("X-Dup", "new".to_bytes()) | try expect_ok)
     (fields.values("x-dup").get().length() != 1) | try expect_false
@@ -173,9 +162,7 @@ test "empty options and an omitted request body use checked defaults":
     (HttpServerOptions().tls.is_none()) | try expect_true
     with server = (
         network().serve_stream(
-            address: "127.0.0.1:0",
-            handler: echo_headers,
-            options: HttpServerOptions()
+            address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
         ) | try expect_ok
     ):
         with client = (
@@ -185,8 +172,7 @@ test "empty options and an omitted request body use checked defaults":
         ):
             with response = (
                 client.request(
-                    method: HttpMethod.Get,
-                    url: "http://{server.address()}/",
+                    method: HttpMethod.Get, url: "http://{server.address()}/",
                     headers: (try repeated_headers())
                 ) | try expect_ok
             ):

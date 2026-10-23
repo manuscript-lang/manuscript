@@ -4,5 +4,6 @@
 type A[T]:
     value: T
     b: Optional[B[T]]
+
 type B[U]:
     a: A[U]
