@@ -86,6 +86,8 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Values that are views into another string: no drop, and an immutable `let` may hold one.
+    pub views: HashSet<Value>,
 }
 
 impl Cx {
@@ -318,6 +320,7 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            views: HashSet::new(),
             discard: None,
             stmt_pos: None,
             fixture: None,
@@ -468,10 +471,11 @@ impl<'a> FnLower<'a> {
             && !binding.mutable
             && !self.slotted.contains(&binding.uid)
             && self.temps.is_empty()
-            && matches!(
-                self.b.defining_op(x.v),
-                Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
-            );
+            && (self.views.contains(&x.v)
+                || matches!(
+                    self.b.defining_op(x.v),
+                    Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
+                ));
         if lent {
             self.bind_lent(binding, x.v);
             return;

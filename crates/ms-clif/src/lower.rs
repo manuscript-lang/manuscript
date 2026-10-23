@@ -321,8 +321,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             TyKind::Str => {
                 self.count_str(0, vs[2]);
-                // `cap == 0` marks a static (literal or one-byte ASCII) string: nothing to free.
-                let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
+                // `cap == 0` marks a static (literal or one-byte ASCII) string and `1 << 63` a view:
+                // nothing to free. An owned capacity is in `1..1 << 63`.
+                let below = self.b.ins().iadd_imm_s(vs[2], -1);
+                let owned = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::UnsignedLessThan, below, i64::MAX);
                 self.if_then(owned, |s| {
                     s.rt_call("msrt_str_free", &[vs[0]]);
                 });

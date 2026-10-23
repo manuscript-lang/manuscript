@@ -57,7 +57,18 @@ pub struct StrVal {
     pub len: usize,
     pub cap: usize,
 }
+/// The `cap` of a view: a string borrowed from another one. It is never freed, and copying it
+/// allocates, so a view that outlives its source is only ever reached through a bug in the
+/// borrow check.
+pub const STR_VIEW_CAP: usize = 1 << 63;
+
 impl StrVal {
+    /// Whether dropping the string frees an allocation (not a literal and not a view).
+    #[inline(always)]
+    pub fn owns(&self) -> bool {
+        self.cap.wrapping_sub(1) < STR_VIEW_CAP - 1
+    }
+
     /// A second handle to the same bytes, with the count untouched. Every call site decides what
     /// it stands for (a retain, a move, or a short-lived borrow); the compiler no longer
     /// duplicates strings silently, so `grep alias` lists every site that shares.

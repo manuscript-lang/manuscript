@@ -13,8 +13,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
-    VecVal,
+    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, STR_VIEW_CAP,
+    StrVal, VecVal,
 };
 
 /// Native allocation ceiling for built strings.
@@ -85,7 +85,7 @@ fn owned_copy(data: &[u8]) -> StrVal {
 /// `s` must be a live string that the caller owns and does not use afterwards.
 #[inline(always)]
 pub unsafe fn release(s: &StrVal) {
-    if s.cap != 0 {
+    if s.owns() {
         // SAFETY: an owned string is one allocation starting at `ptr`.
         unsafe { free_owned(s.ptr) }
     }
@@ -237,7 +237,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: the hint is cleared when its string is freed.
     unsafe {
         let b = bytes(s);
-        if b.len() < HINT_MIN {
+        if b.len() < HINT_MIN || (*s).cap == STR_VIEW_CAP {
             return utf8::count(b);
         }
         let h = HINT.ptr();
@@ -280,7 +280,7 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
     // SAFETY: `s` live; the hint is cleared when its string dies.
     unsafe {
         let b = bytes(s);
-        if b.len() < HINT_MIN {
+        if b.len() < HINT_MIN || (*s).cap == STR_VIEW_CAP {
             return utf8::offset_of(b, n);
         }
         let h = HINT.ptr();
@@ -801,6 +801,31 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
         } else {
             from_bytes(&text[a..b])
         }
+    }
+}
+
+/// Writes a view of `s` without its surrounding whitespace to `out`: no allocation, valid while
+/// `s` is neither changed nor dropped (the borrow check guarantees that).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
+    // SAFETY: caller passes a live string and a writable `out`.
+    unsafe {
+        let (a, b) = trim_range(bytes(s), true, true);
+        let view = if a == b {
+            // An empty result borrows nothing.
+            StrVal {
+                ptr: (&raw mut EMPTY).cast(),
+                len: 0,
+                cap: 0,
+            }
+        } else {
+            StrVal {
+                ptr: (*s).ptr.add(a),
+                len: b - a,
+                cap: STR_VIEW_CAP,
+            }
+        };
+        view.write_to(out)
     }
 }
 
