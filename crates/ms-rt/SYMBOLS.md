@@ -141,6 +141,7 @@ msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8
 msrt_string_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal)
+msrt_string_append( a: *const StrVal, b: *const StrVal, out: *mut StrVal, )
 msrt_string_concat3( a: *const StrVal, b: *const StrVal, c: *const StrVal, out: *mut StrVal, )
 msrt_string_concat4( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, out: *mut StrVal, )
 msrt_string_concat5( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, out: *mut StrVal, )
