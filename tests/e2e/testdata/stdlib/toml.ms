@@ -60,7 +60,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     let array = (try items(root.get("array").get()))
     array.length() | try expect_equal(3)
 
-    let person = (try entries(array.get(2)))
+    let person = (try entries(array.get(2).clone()))
     (person.get("name").get() | try expect_equal(TomlValue.StringValue("Ada")))
     try expect_false(
         (

@@ -11,10 +11,10 @@ impl Closeable for Resource:
         let _ignored = self.output.write("close {self.label}\n")
 
 export fn main() Int:
-    let output = stdout()
+    var output = stdout()
 
-    with resource = Resource("parent", output.clone()):
-        with child = Resource("child", output.clone()):
+    with resource = Resource("parent", stdout()):
+        with child = Resource("child", stdout()):
             let _ignored = output.write("ready\n")
             while true:
                 continue

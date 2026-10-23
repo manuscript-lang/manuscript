@@ -82,7 +82,7 @@ test "Bytes split returns independent List storage and immutable views":
     let data = Bytes([1, 0, 2])
     var first = data.split(Bytes([0]))
     let second = data.split(Bytes([0]))
-    let payload = first.get(0)
+    let payload = first.get(0).clone()
     let edited = payload.with_value(0, 99)
     var extracted = payload.values()
     extracted.set(0, 88)

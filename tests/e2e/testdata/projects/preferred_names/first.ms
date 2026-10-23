@@ -12,16 +12,14 @@ impl Hashable for Key:
 
 export fn first_run() Set[Key]:
     var items = Set[Key]([Key(1, "original")])
-    let add = items.add
-    let remove = items.remove
-    add(Key(1, "duplicate"))
+    items.add(Key(1, "duplicate"))
     add_generic(var items, Key(2, "second"))
-    remove(Key(1, "different"))
+    items.remove(Key(1, "different"))
     remove_generic(var items, Key(8, "absent"))
     return items
 
-export fn first_add(items: Set[Key]) fn(value: Key) Unit:
-    return items.add
+export fn first_add(var items: Set[Key], value: Key) Unit:
+    items.add(value)
 
-export fn first_remove(items: Set[Key]) fn(value: Key) Unit:
-    return items.remove
+export fn first_remove(var items: Set[Key], value: Key) Unit:
+    items.remove(value)

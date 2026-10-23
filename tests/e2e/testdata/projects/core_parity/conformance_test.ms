@@ -15,9 +15,11 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let by_label = second_mapped()
     (by_id.length() != 1 or by_label.length() != 2) | try expect_false
     by_id.values().get(0).label | try expect_equal("1")
+
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
-  .clone()  mapped.length() | try expect_equal(1)
+    mapped.length() | try expect_equal(1)
+
     let input = Set[Int]([1, 2])
     first_generic_map(input).length() | try expect_equal(1)
     first_lookup() | try expect_equal("found")
@@ -27,13 +29,14 @@ test "Result composition retains concrete Error and its local implementation":
     let one = first_failure(cause)
     let two = second_failure(cause)
     try expect_false(
-        (on.clone()e.err().message() != "first 1" or two.err().message() != "second 1")
+        (one.err().message() != "first 1" or two.err().message() != "second 1")
     )
     cause.count = 2
     (cause.count != 2 or two.err().message() != "second 2") | try expect_false
 
 test "conversions and queries retain scoped generic evidence and Error identity":
     (not (first_queries()) or not (second_queries())) | try expect_false
+
     var cause = Cause(1)
     let one = first_converted(cause)
     let two = second_converted(cause)
@@ -60,6 +63,7 @@ test "Map transformations preserve input and output equality evidence":
     let two = second_key_transform(input)
     (one.length() != 1 or two.length() != 2) | try expect_false
     (one.keys().get(0).label != "1" or one.values() != [20]) | try expect_false
+
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
     try expect_equal(bound_one(fn(key, value): Key(0, key.to_string())).length(), 1)

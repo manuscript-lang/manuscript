@@ -1,0 +1,17 @@
+# Fixtures that cannot pass yet, each with the missing feature. scripts/e2e.sh runs the file's other tests
+# and requires the listed ones to still fail, so a fix shows up as an unexpected pass.
+# Format: <fixture> [<TAB><regex of the test names that fail>]. Without a regex the whole fixture must fail to build or run.
+# https://github.com/manuscript-lang/manuscript/issues/1056
+tests/e2e/testdata/stdlib/tls.ms
+tests/e2e/testdata/stdlib/http-websocket.ms	WebSocket negotiates a protocol
+# https://github.com/manuscript-lang/manuscript/issues/1055
+# Module-local Equal, Hashable and interface implementations: two modules that implement the same contract for one
+# type must each keep their own implementation (documentation/core-language/types/contracts.md#coherence-and-visibility).
+tests/e2e/testdata/projects/core_parity
+tests/e2e/testdata/projects/error_boundaries
+tests/e2e/testdata/projects/interface_views
+tests/e2e/testdata/projects/local_extensions
+tests/e2e/testdata/projects/map_add_scope
+tests/e2e/testdata/projects/map_remove
+tests/e2e/testdata/projects/preferred_names
+tests/e2e/testdata/projects/result_argument_scope

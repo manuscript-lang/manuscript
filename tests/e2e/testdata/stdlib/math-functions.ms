@@ -1,4 +1,5 @@
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
+import panic from "@std/core.ms"
 import {
     acos, asin, atan, atan2, cosh, exp, log10, sinh, tan, tanh, abs, pi, e, remainder,
     max, min, max_of, min_of, acosh, asinh, atanh, cbrt, expm1, log1p, sign, sign_int,
@@ -38,10 +39,9 @@ test "float remainder takes the sign of the dividend":
 
 type Ranked:
     rank: Int
-    unexpected: List[Int] = []
 
 impl Comparable for Ranked:
-    var fn compare(other: Comparable) Int:
+    fn compare(other: Comparable) Int:
         match other:
             Ranked(value):
                 if self.rank < value.rank: return -9223372036854775808
@@ -49,7 +49,7 @@ impl Comparable for Ranked:
 
                 return 0
             _:
-                self.unexpected.append(1)
+                panic("compared with another type")
                 return 0
 
 test "extrema use comparator signs without negating Int minimum":
@@ -69,8 +69,6 @@ test "extrema use comparator signs without negating Int minimum":
     maximum.rank = 3
     try expect_false(values[1].rank != 1 or values[2].rank != 1)
     try expect_false(values[0].rank != 2 or values[3].rank != 2)
-    for value in values:
-        try expect_false(not value.unexpected.is_empty())
 
 test "inverse hyperbolic cube root and precision helpers":
     try expect_true(near(acosh(1.0), 0.0))

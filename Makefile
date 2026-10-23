@@ -52,7 +52,7 @@ conform:
 	sh scripts/conform.sh
 
 # Every `tests/e2e/testdata` fixture: accept fixtures pass `ms test`, reject fixtures fail `ms check`.
-# E2E_BUILD_TYPE picks the build type (default Debug).
+# E2E_BUILD_TYPE picks the build type (default Release).
 e2e:
 	sh scripts/e2e.sh
 
