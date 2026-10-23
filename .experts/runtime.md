@@ -10,6 +10,19 @@ Apply when: adding a runtime function, or deciding where a function should be a 
 Evidence: [design contract](../crates/DESIGN.md), [shutdown fixtures](../tests/e2e/testdata/shutdown/server.source), [signal project](../tests/e2e/testdata/projects/signal).
 Verify: loop and I/O cancellation cases still stop; compare `bench/perf/programs/run.sh` before and after.
 
+### Runtime guard exits skip native Rust destructors
+
+Verified: production `msrt_guard_call` exits faults and cancellation with a jump, so a Rust
+`Drop` guard alone cannot release a response body's active read. Register a runtime cleanup
+for state removed across a park; discard it on ordinary return. Interrupted decoders are
+closed and abandoned rather than resumed with potentially partial state.
+
+Apply when: native operations take state or resource ownership across a cancellable wait.
+Evidence: [response body guard and cancellation regression](../crates/ms-std-net/src/http/client.rs), [runtime guard](../crates/ms-rt/src/fault.rs).
+Verify: use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard),
+assert a stack destructor is skipped, join reports cancellation, later reads return Closed,
+and the peer observes connection release.
+
 ### HTTP field folding must not erase map entries
 
 Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
