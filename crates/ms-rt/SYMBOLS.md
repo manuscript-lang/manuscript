@@ -665,7 +665,7 @@ msrt_regex_find_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max:
 msrt_regex_captures( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, )
 msrt_regex_captures_all( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_regex_named_captures( re: *const RegexObj, text: *const StrObj, out: *mut MapVal, )
-msrt_regex_find_span( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, )
+msrt_regex_find_span( re: *const RegexObj, text: *const StrObj, out: *mut VecVal, ) -> u8
 msrt_regex_split( re: *const RegexObj, text: *const StrObj, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_regex_replace_template( re: *const RegexObj, text: *const StrObj, template: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8
 msrt_regex_replace_all( re: *const RegexObj, text: *const StrObj, replacement: *const StrObj, has_max: u8, max: i64, out: *mut *mut StrObj, ) -> u8

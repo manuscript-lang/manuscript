@@ -121,12 +121,11 @@ impl Regex {
             .collect()
     }
 
-    /// `[start, end]` byte offsets of the first match; empty when nothing matches.
-    pub fn find_span(&self, text: &str) -> Vec<i64> {
+    /// `[start, end]` byte offsets of the first match; `None` when nothing matches.
+    pub fn find_span(&self, text: &str) -> Option<[i64; 2]> {
         self.0
             .find(text)
-            .map(|m| alloc::vec![m.start() as i64, m.end() as i64])
-            .unwrap_or_default()
+            .map(|m| [m.start() as i64, m.end() as i64])
     }
 
     /// Pieces between matches; a supplied cap bounds the piece count like `find_all`.

@@ -91,8 +91,8 @@ impl Regex:
     # Returns the first match's named groups that participated; empty map when nothing matches.
     fn named_captures(text: String) Map[String, String]:
 
-    # Returns [start, end] UTF-8 byte offsets of the first match, or an empty list when nothing matches.
-    fn find_span(text: String) List[Int]:
+    # Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing matches.
+    fn find_span(text: String) Optional[List[Int]]:
 
     # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
     fn split(

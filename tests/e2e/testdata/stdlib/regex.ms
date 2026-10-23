@@ -25,7 +25,8 @@ test "regex captures groups spans and splits":
     try expect_equal(date.captures("none"), [])
     try expect_equal(date.named_captures("2026-10").get("y").get(), "2026")
     try expect_equal(date.named_captures("none").is_empty(), true)
-    try expect_equal(date.find_span("on 2026-10"), [3, 10])
+    try expect_equal(date.find_span("on 2026-10").get(), [3, 10])
+    try expect_equal(date.find_span("none").is_none(), true)
     try expect_equal(
         (try date.captures_all("2026-10 2027-11")),
         [["2026-10", "2026", "10"], ["2027-11", "2027", "11"]]
