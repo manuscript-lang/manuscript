@@ -73,7 +73,7 @@ unsafe fn slot_drop_owned(d: &TypeDesc, slot: *mut u8) {
     unsafe {
         match d.kind {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {}
-            KIND_STRING => string::release((*(slot as *const StrVal)).alias()),
+            KIND_STRING => string::release(&*(slot as *const StrVal)),
             KIND_SHARED => obj::release(*(slot as *mut *mut Obj)),
             KIND_BYTES => {
                 let v = &mut *(slot as *mut VecVal);
@@ -118,9 +118,7 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
             KIND_INT | KIND_FLOAT | KIND_BOOL | KIND_POD => {
                 core::ptr::copy_nonoverlapping(src, dst, d.size as usize)
             }
-            KIND_STRING => {
-                string::retained((*(src as *const StrVal)).alias()).write_to(dst as *mut StrVal)
-            }
+            KIND_STRING => string::retained(&*(src as *const StrVal)).write_to(dst as *mut StrVal),
             KIND_SHARED => {
                 let p = *(src as *const *mut Obj);
                 obj::retain(p);

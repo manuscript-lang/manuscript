@@ -135,7 +135,7 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
                 // SAFETY: the guard hands over an owned string, released once here.
                 let text = unsafe { str_ref(&message) }.to_string();
                 // SAFETY: as above.
-                unsafe { str_release(message) };
+                unsafe { str_release(&message) };
                 text
             };
             Some(Outcome::Fault(text))
@@ -210,7 +210,7 @@ impl Dispatch for Program {
             // SAFETY: an owned string from the thunk.
             let text = unsafe { str_ref(&message) }.to_string();
             // SAFETY: as above; the string is released once, after copying.
-            unsafe { str_release(message) };
+            unsafe { str_release(&message) };
             text
         };
         Outcome::Done(match status {

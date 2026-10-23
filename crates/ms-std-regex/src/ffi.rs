@@ -102,9 +102,9 @@ mod tests {
                 ms_std_core::STATUS_INVALID_DATA
             );
             ms_rt::obj::msrt_release(re.cast());
-            ms_std_core::str_release(pat);
-            ms_std_core::str_release(hay);
-            ms_std_core::str_release(bad);
+            ms_std_core::str_release(&pat);
+            ms_std_core::str_release(&hay);
+            ms_std_core::str_release(&bad);
         }
     }
 }

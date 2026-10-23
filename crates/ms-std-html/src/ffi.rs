@@ -153,7 +153,7 @@ mod tests {
             let tx = msrt_html_first_child(t, p);
             assert_eq!(take_string(|o| msrt_html_data(t, tx, o)), "x&y");
             ms_rt::obj::msrt_release(t.cast());
-            ms_std_core::str_release(text);
+            ms_std_core::str_release(&text);
         }
     }
 }

@@ -78,8 +78,8 @@ mod tests {
                 msrt_encoding_base64_decode(&bad, 0, 0, 0, b.as_mut_ptr()),
                 ms_std_core::STATUS_INVALID_DATA
             );
-            ms_std_core::str_release(t);
-            ms_std_core::str_release(bad);
+            ms_std_core::str_release(&t);
+            ms_std_core::str_release(&bad);
         }
     }
 }

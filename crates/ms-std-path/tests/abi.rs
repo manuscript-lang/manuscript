@@ -24,15 +24,7 @@ fn abi_roundtrip() {
         let pat = new_string("/a/*/c.*");
         assert_eq!(msrt_path_matches_glob(0, &p, &pat, &mut ok), 0);
         assert_eq!(ok, 1);
-        for o in [
-            r[0].alias(),
-            r[1].alias(),
-            r[2].alias(),
-            r[3].alias(),
-            r[4].alias(),
-            p,
-            pat,
-        ] {
+        for o in r.iter().chain([&p, &pat]) {
             str_release(o);
         }
     }

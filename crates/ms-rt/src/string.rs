@@ -43,14 +43,14 @@ pub unsafe fn hdr(s: *const StrVal) -> *mut StrHdr {
 /// # Safety
 /// `s` must be a live string.
 #[inline(always)]
-pub unsafe fn retained(s: StrVal) -> StrVal {
+pub unsafe fn retained(s: &StrVal) -> StrVal {
     // SAFETY: live block per the contract. `cap == 0` marks a static string: no count to change.
     unsafe {
         if s.cap != 0 {
-            obj::retain(hdr(&s) as *mut Obj)
+            obj::retain(hdr(s) as *mut Obj)
         }
     };
-    s
+    s.alias()
 }
 
 /// Drops a reference to the block of `s`.
@@ -58,11 +58,11 @@ pub unsafe fn retained(s: StrVal) -> StrVal {
 /// # Safety
 /// `s` must be a live string the caller owns a reference to.
 #[inline(always)]
-pub unsafe fn release(s: StrVal) {
+pub unsafe fn release(s: &StrVal) {
     // SAFETY: live block per the contract.
     unsafe {
         if s.cap != 0 {
-            obj::release(hdr(&s) as *mut Obj)
+            obj::release(hdr(s) as *mut Obj)
         }
     }
 }
@@ -145,7 +145,7 @@ pub const NO_STR: StrVal = StrVal {
 ///
 /// # Safety
 /// `s` is `NO_STR` or a live string the caller owns a reference to.
-pub unsafe fn release_opt(s: StrVal) {
+pub unsafe fn release_opt(s: &StrVal) {
     if !s.ptr.is_null() {
         // SAFETY: a non-null string is live per the contract.
         unsafe { release(s) }
@@ -296,7 +296,7 @@ unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
     unsafe {
         let text = bytes(s);
         if a == 0 && b == scalar_count(s) {
-            return retained((*s).alias());
+            return retained(&*s);
         }
         if (*hdr(s)).scalars == text.len() {
             return from_bytes(&text[a..b]);
@@ -372,7 +372,7 @@ unsafe fn string_get(
             if !has_default {
                 fault::msrt_index_fault(index, n as i64);
             }
-            return retained((*default).alias());
+            return retained(&*default);
         };
         let text = bytes(s);
         if (*hdr(s)).scalars == text.len() {
@@ -681,10 +681,10 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
     unsafe {
         let (la, lb) = ((*a).len, (*b).len);
         if lb == 0 {
-            return retained((*a).alias());
+            return retained(&*a);
         }
         if la == 0 {
-            return retained((*b).alias());
+            return retained(&*b);
         }
         let s = alloc_str(la + lb);
         core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr, la);
@@ -810,7 +810,7 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
         let text = bytes(s);
         let (a, b) = trim_range(text, start, end);
         if a == 0 && b == text.len() {
-            retained((*s).alias())
+            retained(&*s)
         } else {
             from_bytes(&text[a..b])
         }
@@ -1198,7 +1198,7 @@ unsafe fn pad(
         let needed = target - scalar_count(s) as i64;
         let padb = bytes(padding);
         if needed <= 0 || padb.is_empty() {
-            *out = retained((*s).alias());
+            *out = retained(&*s);
             return STATUS_OK;
         }
         let needed = needed as usize;
@@ -1500,9 +1500,9 @@ unsafe extern "C" fn split_iter_drop(o: *mut Obj) {
     // SAFETY: `o` is a dead iterator that owns one reference to each string it holds.
     unsafe {
         let it = o as *mut SplitIter;
-        release_opt((*it).cur.alias());
-        release((*it).src.alias());
-        release((*it).sep.alias());
+        release_opt(&(*it).cur);
+        release(&(*it).src);
+        release(&(*it).sep);
         alloc::free(o as *mut u8);
     }
 }
@@ -1527,8 +1527,8 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
             left = max as usize;
         }
         let it = obj::new_obj(core::mem::size_of::<SplitIter>(), split_iter_drop) as *mut SplitIter;
-        (*it).src = retained((*s).alias());
-        (*it).sep = retained((*sep).alias());
+        (*it).src = retained(&*s);
+        (*it).sep = retained(&*sep);
         (*it).cur = NO_STR;
         (*it).cap = 0;
         (*it).pos = 0;
@@ -1593,7 +1593,7 @@ unsafe fn split_next(it: *mut SplitIter) -> Option<StrVal> {
         };
         st.left -= 1;
         set_piece(st, piece);
-        Some(retained(st.cur.alias()))
+        Some(retained(&st.cur))
     }
 }
 
@@ -1631,25 +1631,24 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
     unsafe {
         if piece.len() <= 1 && piece.first().is_none_or(|&b| b < 0x80) {
             // Empty and one-byte ASCII pieces are shared statics.
-            release_opt(st.cur.alias());
+            release_opt(&st.cur);
             st.cap = 0;
             st.cur = from_bytes(piece);
             return;
         }
-        let cur = st.cur.alias();
-        if st.cap >= piece.len() && !cur.ptr.is_null() && (*hdr(&cur)).hdr.rc == 1 {
+        if st.cap >= piece.len() && !st.cur.ptr.is_null() && (*hdr(&st.cur)).hdr.rc == 1 {
             // Nothing else holds it: rewrite in place.
             let h = HINT.ptr();
-            if core::ptr::eq((*h).s, cur.ptr) {
+            if core::ptr::eq((*h).s, st.cur.ptr) {
                 (*h).s = core::ptr::null();
             }
             st.cur.len = piece.len();
-            (*hdr(&cur)).scalars = SCALARS_UNKNOWN;
-            copy_short(piece.as_ptr(), cur.ptr, piece.len());
-            *cur.ptr.add(piece.len()) = 0;
+            (*hdr(&st.cur)).scalars = SCALARS_UNKNOWN;
+            copy_short(piece.as_ptr(), st.cur.ptr, piece.len());
+            *st.cur.ptr.add(piece.len()) = 0;
             return;
         }
-        release_opt(cur);
+        release_opt(&st.cur);
         let cap = piece.len().max(24);
         let mut fresh = alloc_str(cap);
         fresh.len = piece.len();

@@ -98,12 +98,12 @@ fn string_map_matches_ordered_model(seed: u64) {
                 }
                 5..=7 => {
                     msrt_map_remove(&mut m, kd, vd, probe);
-                    string::release(ks);
+                    string::release(&ks);
                     model.retain(|e| e.0 != k);
                 }
                 8 => {
                     let p = msrt_map_get_ptr(&m, kd, vd, probe);
-                    string::release(ks);
+                    string::release(&ks);
                     let want = model.iter().find(|e| e.0 == k).map(|e| e.1);
                     assert_eq!(
                         if p.is_null() {
@@ -116,7 +116,7 @@ fn string_map_matches_ordered_model(seed: u64) {
                 }
                 _ => {
                     let has = msrt_map_contains(&m, kd, vd, probe) != 0;
-                    string::release(ks);
+                    string::release(&ks);
                     assert_eq!(has, model.iter().any(|e| e.0 == k));
                 }
             }
@@ -341,7 +341,7 @@ fn string_list_matches_vec_model(seed: u64) {
                 }
                 5 => {
                     if n == 0 {
-                        string::release(e);
+                        string::release(&e);
                     } else {
                         let i = r.below(n);
                         msrt_list_set(&mut v, d, i as i64, ep);
@@ -349,7 +349,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 6 => {
-                    string::release(e);
+                    string::release(&e);
                     if n > 0 {
                         let i = r.below(n);
                         msrt_list_remove(&mut v, d, i as i64 - n as i64);
@@ -357,24 +357,24 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 7 => {
-                    string::release(e);
+                    string::release(&e);
                     let mut out = NO_STR;
                     let got = msrt_list_pop(&mut v, d, &mut out as *mut _ as *mut u8) != 0;
                     assert_eq!(got, n > 0);
                     if got {
                         assert_eq!(text(&out), model.pop().unwrap());
-                        string::release(out);
+                        string::release(&out);
                     }
                 }
                 8 => {
-                    string::release(e);
+                    string::release(&e);
                     if n > 0 {
                         msrt_list_remove(&mut v, d, 0);
                         model.remove(0);
                     }
                 }
                 9 => {
-                    string::release(e);
+                    string::release(&e);
                     let start = pick(&mut r, n);
                     let count = pick(&mut r, n - start);
                     let mut rep = VecVal {
@@ -394,17 +394,17 @@ fn string_list_matches_vec_model(seed: u64) {
                     model.splice(start..start + count, rep_model);
                 }
                 10 => {
-                    string::release(e);
+                    string::release(&e);
                     msrt_list_reverse_in_place(&mut v, d);
                     model.reverse();
                 }
                 11 => {
-                    string::release(e);
+                    string::release(&e);
                     msrt_list_sort_in_place(&mut v, d, cmp_strings, core::ptr::null_mut());
                     model.sort();
                 }
                 12 => {
-                    string::release(e);
+                    string::release(&e);
                     let mut out = VecVal {
                         ptr: core::ptr::null_mut(),
                         len: 0,
@@ -421,7 +421,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     drop_list(&mut out, d);
                 }
                 13 => {
-                    string::release(e);
+                    string::release(&e);
                     let (a, b) = (pick(&mut r, n), pick(&mut r, n));
                     let (a, b) = (a.min(b), a.max(b));
                     let mut out = VecVal {
@@ -441,11 +441,11 @@ fn string_list_matches_vec_model(seed: u64) {
                     let (a, b) = (pick(&mut r, n), pick(&mut r, n));
                     let (a, b) = (a.min(b), a.max(b));
                     msrt_list_fill(&mut v, d, ep, a as i64, b as i64);
-                    string::release(e);
+                    string::release(&e);
                     model[a..b].fill(s);
                 }
                 15 => {
-                    string::release(e);
+                    string::release(&e);
                     if n > 0 {
                         let (a, b) = (r.below(n), r.below(n + 1));
                         let (a, b) = (a.min(b), a.max(b));
@@ -457,7 +457,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 _ => {
-                    string::release(e);
+                    string::release(&e);
                     let mut other = VecVal {
                         ptr: core::ptr::null_mut(),
                         len: 0,
@@ -512,14 +512,14 @@ fn string_ops_match_char_model(seed: u64) {
                     chars[a..b].iter().collect::<std::string::String>()
                 );
                 assert_eq!(string::msrt_string_length(&out), (b - a) as i64);
-                string::release(out);
+                string::release(&out);
             }
             for _ in 0..n.min(6) {
                 let i = r.below(n);
                 let mut got = NO_STR;
                 string::msrt_string_get(s, i as i64, 0, s, &mut got);
                 assert_eq!(text(&got), chars[i].to_string());
-                string::release(got);
+                string::release(&got);
                 assert_eq!(
                     string::msrt_string_scalar_at(s, i as i64 - n as i64, 0, 0),
                     chars[i] as i64
@@ -544,8 +544,8 @@ fn string_ops_match_char_model(seed: u64) {
                 let mut got = NO_STR;
                 string::msrt_string_replace_n(s, ns, rep, i64::MAX, &mut got);
                 assert_eq!(text(&got), model.replace(&needle, "<>"));
-                string::release(got);
-                string::release(rep.alias());
+                string::release(&got);
+                string::release(rep);
                 let mut parts = VecVal {
                     ptr: core::ptr::null_mut(),
                     len: 0,
@@ -565,11 +565,11 @@ fn string_ops_match_char_model(seed: u64) {
                 text(&rev),
                 model.chars().rev().collect::<std::string::String>()
             );
-            string::release(rev);
+            string::release(&rev);
             let mut trimmed = NO_STR;
             string::msrt_string_trim(s, &mut trimmed);
             assert_eq!(text(&trimmed), model.trim());
-            string::release(trimmed);
+            string::release(&trimmed);
             let mut cat = NO_STR;
             string::msrt_string_concat(s, ns, &mut cat);
             assert_eq!(text(&cat), std::format!("{model}{needle}"));
@@ -577,9 +577,9 @@ fn string_ops_match_char_model(seed: u64) {
                 string::msrt_string_length(&cat),
                 (n + needle.chars().count()) as i64
             );
-            string::release(cat);
-            string::release(nv);
-            string::release(sv);
+            string::release(&cat);
+            string::release(&nv);
+            string::release(&sv);
         }
     }
     assert_eq!(live_blocks(), before);

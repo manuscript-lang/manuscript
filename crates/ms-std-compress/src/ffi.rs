@@ -177,7 +177,7 @@ mod tests {
             ] {
                 ms_rt::vec::msrt_bytes_drop(v);
             }
-            ms_std_core::str_release(f);
+            ms_std_core::str_release(&f);
         }
     }
 

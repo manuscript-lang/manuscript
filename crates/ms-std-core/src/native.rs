@@ -563,13 +563,13 @@ type EntryCode = unsafe extern "C-unwind" fn(
 ) -> u8;
 
 /// Calls `code` with temporary strings made from `bytes`, released after the call.
-fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(StrVal, StrVal) -> R) -> R {
+fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(&StrVal, &StrVal) -> R) -> R {
     let (a, b) = (new_string_bytes(bytes[0]), new_string_bytes(bytes[1]));
-    let r = call(a.alias(), b.alias());
+    let r = call(&a, &b);
     // SAFETY: the callee only borrowed the strings; this releases the one reference made above.
     unsafe {
-        crate::str_release(a);
-        crate::str_release(b);
+        crate::str_release(&a);
+        crate::str_release(&b);
     }
     r
 }
@@ -730,11 +730,11 @@ impl OptInt {
 impl AbiSlot for Str {
     unsafe fn release(&mut self) {
         // SAFETY: caller contract; a `Str` owns one reference.
-        unsafe { crate::str_release(self.0.alias()) }
+        unsafe { crate::str_release(&self.0) }
     }
     unsafe fn duplicate(&self) -> Str {
         // SAFETY: caller contract.
-        unsafe { crate::str_retain(self.0.alias()) };
+        unsafe { crate::str_retain(&self.0) };
         Str(self.0.alias())
     }
 }
@@ -1060,7 +1060,7 @@ impl ReadSource {
                 &mut message,
             );
             if !message.ptr.is_null() {
-                crate::str_release(message);
+                crate::str_release(&message);
             }
             if status != 0 {
                 return Err(status);

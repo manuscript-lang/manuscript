@@ -256,9 +256,9 @@ mod tests {
                 STATUS_OK
             );
             assert!(str_ref(s.as_ptr()).starts_with("{\n  \"a\": [\n    1,"));
-            ms_std_core::str_release(s.assume_init());
+            ms_std_core::str_release(s.assume_init_ref());
             ms_rt::obj::msrt_release(d.cast());
-            ms_std_core::str_release(text);
+            ms_std_core::str_release(&text);
         }
     }
 }

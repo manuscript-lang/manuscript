@@ -108,7 +108,7 @@ pub unsafe fn str_ref<'a>(p: *const StrVal) -> &'a str {
 ///
 /// # Safety
 /// `s` is a live string.
-pub unsafe fn str_retain(s: StrVal) {
+pub unsafe fn str_retain(s: &StrVal) {
     // SAFETY: the reference-counted header sits immediately before the bytes.
     unsafe { msrt_retain(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
 }
@@ -117,7 +117,7 @@ pub unsafe fn str_retain(s: StrVal) {
 ///
 /// # Safety
 /// `s` is a live string the caller owns a reference to.
-pub unsafe fn str_release(s: StrVal) {
+pub unsafe fn str_release(s: &StrVal) {
     // SAFETY: the reference-counted header sits immediately before the bytes.
     unsafe { msrt_release(s.ptr.sub(ms_rt_abi::STR_RC_BEFORE).cast()) }
 }
@@ -149,7 +149,7 @@ pub unsafe fn take_string(write: impl FnOnce(*mut StrVal)) -> alloc::string::Str
     unsafe {
         let s = out.assume_init();
         let text = alloc::string::String::from(str_ref(&s));
-        str_release(s);
+        str_release(&s);
         text
     }
 }

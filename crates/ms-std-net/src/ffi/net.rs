@@ -433,7 +433,7 @@ mod tests {
         // SAFETY: test helper over a fresh string.
         unsafe {
             let text = str_ref(&v).to_string();
-            str_release(v);
+            str_release(&v);
             text
         }
     }

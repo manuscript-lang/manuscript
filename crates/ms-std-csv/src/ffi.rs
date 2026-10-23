@@ -76,7 +76,7 @@ mod tests {
                 ms_std_core::STATUS_INVALID_INPUT
             );
             for o in [text, comma, lf, bad, s.assume_init()] {
-                ms_std_core::str_release(o);
+                ms_std_core::str_release(&o);
             }
         }
     }

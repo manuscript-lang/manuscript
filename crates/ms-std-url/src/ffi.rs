@@ -131,10 +131,10 @@ mod tests {
                 r.query.as_ptr(),
                 r.fragment.as_ptr(),
             ] {
-                ms_std_core::str_release((*o).alias());
+                ms_std_core::str_release(&*o);
             }
             for o in [text, s.assume_init()] {
-                ms_std_core::str_release(o);
+                ms_std_core::str_release(&o);
             }
         }
     }
