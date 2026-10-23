@@ -38,6 +38,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
+        c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
         c |= branches(f);
@@ -151,6 +152,87 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
         changed = true;
     }
     changed
+}
+
+/// Folds reads of a `list.lit` whose elements need no drop and that is only read: `list.len`
+/// becomes the element count and a read at a constant index in range becomes that element,
+/// so a function returning `[y, m, d]` that the caller reads back by index allocates nothing
+/// once inlined. With every read folded, the literal and its drops are deleted.
+fn known_lists(m: &Module, f: &mut Func) -> bool {
+    let mut consts: HashMap<Value, i64> = HashMap::new();
+    let mut known: HashMap<Value, Vec<Value>> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        match (i.op, i.imm, i.res) {
+            (Op::IConst, Imm::Int(c), Some(r)) => {
+                consts.insert(r, c);
+            }
+            (Op::ListLit, _, Some(r)) if i.args.iter().all(|a| !m.needs_drop(f.ty(*a))) => {
+                known.insert(r, i.args.clone());
+            }
+            _ => {}
+        }
+    }
+    if known.is_empty() {
+        return false;
+    }
+    // Only literals nothing but these reads, `list.len` and drops touch.
+    let uses = f.use_counts();
+    let mut folded: HashMap<Value, u32> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        let Some(list) = i.args.first().filter(|a| known.contains_key(*a)) else {
+            continue;
+        };
+        let plain = (i.op == Op::ListLen && i.args.len() == 1)
+            || (i.op == Op::Drop && i.args.len() == 1)
+            || list_element(&known, &consts, i).is_some();
+        if plain {
+            *folded.entry(*list).or_default() += 1;
+        }
+    }
+    known.retain(|v, _| folded.get(v) == Some(&uses[v.index()]));
+    if known.is_empty() {
+        return false;
+    }
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut blocks = std::mem::take(&mut f.blocks);
+    for i in blocks.iter_mut().flat_map(|b| &mut b.insts) {
+        if let (Some(r), Some(v)) = (i.res, list_element(&known, &consts, i)) {
+            subst.insert(r, v);
+        } else if i.op == Op::ListLen
+            && let Some(items) = i.args.first().and_then(|a| known.get(a))
+        {
+            i.op = Op::IConst;
+            i.imm = Imm::Int(items.len() as i64);
+            i.args.clear();
+        }
+    }
+    for b in &mut blocks {
+        b.insts.retain(|i| {
+            let read = i.res.is_some_and(|r| subst.contains_key(&r));
+            let drop = i.op == Op::Drop && known.contains_key(&i.args[0]);
+            let def = i.res.is_some_and(|r| known.contains_key(&r));
+            !(read || drop || def)
+        });
+    }
+    f.blocks = blocks;
+    apply_subst(f, &subst);
+    true
+}
+
+/// The element of a known list literal that `i`, a read at a constant index in range, yields.
+fn list_element(
+    known: &HashMap<Value, Vec<Value>>,
+    consts: &HashMap<Value, i64>,
+    i: &Inst,
+) -> Option<Value> {
+    let [list, at] = i.args.as_slice() else {
+        return None;
+    };
+    if !matches!(i.op, Op::ListGet | Op::ListGetU) {
+        return None;
+    }
+    let at = usize::try_from(*consts.get(at)?).ok()?;
+    known.get(list)?.get(at).copied()
 }
 
 // ---- folding ---------------------------------------------------------------

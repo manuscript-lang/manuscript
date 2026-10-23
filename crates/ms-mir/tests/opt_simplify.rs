@@ -480,3 +480,54 @@ b0:
     assert!(observe(&m).0.is_err());
     assert!(func_text(&m, "main").contains("opt.unwrap"));
 }
+
+#[test]
+fn folds_reads_of_a_scalar_list_literal_and_deletes_it() {
+    let before = load(
+        "module \"known_list\"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 7
+  %b: int = iconst 11
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %l: list<int> = list.lit %a, %b
+  %x: int = list.get.u %l, %zero
+  %y: int = list.get %l, %one
+  %n: int = list.len %l
+  %s: int = iadd %x, %y
+  %r: int = iadd %s, %n
+  drop %l
+  ret %r
+}",
+    );
+    let mut m = before.clone();
+    simplify::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    // The literal and its one drop are gone; everything else is observed unchanged.
+    let (r, out, drops) = observe(&before);
+    assert_eq!(observe(&m), (r, out, drops - 1));
+    assert_eq!(observe(&m).0, Ok(20));
+    let text = func_text(&m, "main");
+    assert!(!text.contains("list."), "{text}");
+}
+
+#[test]
+fn list_literal_folding_keeps_changed_and_out_of_range_lists() {
+    let m = check(
+        "module \"changed_list\"
+entry @main
+fn @main() -> int {
+b0:
+  %a: int = iconst 7
+  %two: int = iconst 2
+  %l: list<int> = list.lit %a, %a
+  %x: int = list.get %l, %two
+  drop %l
+  ret %x
+}",
+    );
+    assert!(observe(&m).0.is_err());
+    assert!(func_text(&m, "main").contains("list.get"));
+}
