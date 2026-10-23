@@ -153,7 +153,7 @@ fn status_label(status: Status) String:
             return "Published at {url}"
 
 test "publish a help page":
-    let todo = Todo("Update the help page")
+    var todo = Todo("Update the help page")
     todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
@@ -163,7 +163,7 @@ test "publish a help page":
     try expect_equal(label, "Published at /help")
 ```
 
-- Records group named fields; omitted fields use defaults, and fields stay mutable under `let`.
+- Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
 - Alternatives list cases; `match` must handle every case.
 - Types are nominal: identical fields do not make two types equal.
 
@@ -266,7 +266,7 @@ Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, 
 import expect_equal from "@std/testing.ms"
 
 interface Increment:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Counter:
     value: Int
