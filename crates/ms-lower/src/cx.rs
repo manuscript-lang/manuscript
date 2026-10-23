@@ -90,8 +90,8 @@ pub struct LambdaJob {
     pub hir: Rc<ModuleHir>,
     /// Type variables of the enclosing instance.
     pub subst: Subst,
-    /// Captured variables in closure-object order.
-    pub captures: Vec<ct::BindingRef>,
+    /// Source captures and their slots in the closure environment.
+    pub captures: Vec<crate::closure::LambdaCapture>,
 }
 
 /// A source callable behind a function value that fills omitted defaults.
