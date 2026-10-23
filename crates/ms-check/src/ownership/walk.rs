@@ -3,7 +3,9 @@
 
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
-use super::modes::{CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes};
+use super::modes::{
+    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, receiver_mode,
+};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
@@ -981,6 +983,10 @@ impl Walker<'_> {
             self.expr_lambda_binding(value, &b, role, mutable);
             return;
         }
+        if let Some(recv) = self.changing_method_value(value) {
+            self.method_value_binding(value, recv, &b, role, mutable);
+            return;
+        }
         // A borrowing binding passes its borrow on to a `let`.
         if class != Class::Copy
             && !mutable
@@ -1086,6 +1092,82 @@ impl Walker<'_> {
                 origins,
                 pos: value.pos,
                 why: "closure capture".to_string(),
+            });
+        }
+    }
+
+    /// The receiver of a method value that changes it (`xs.append`).
+    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Member { left, .. } = &e.kind else {
+            return None;
+        };
+        if self.cx.m.ty(e).kind != Kind::Function {
+            return None;
+        }
+        let Resolution::Method(m) = self.cx.m.resolution(e) else {
+            return None;
+        };
+        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(&**left)
+    }
+
+    /// Takes the receiver of a method value that changes it as a mutable borrow. The value
+    /// shares the variable, so it cannot outlive the statement. Returns the place it holds.
+    fn changing_method_use(&mut self, e: &Expr, recv: &Expr, escaping: bool) -> Vec<(Place, bool)> {
+        if !self.is_place(recv) {
+            // A temporary receiver has no other owner: the value keeps its own copy.
+            self.expr(recv, Demand::Read);
+            return Vec::new();
+        }
+        let whole = matches!(recv.kind, ExprKind::Name(_));
+        let Some((info, _)) = self.place(recv).filter(|_| whole) else {
+            self.error(
+                e.pos,
+                "a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure",
+            );
+            return Vec::new();
+        };
+        if escaping {
+            self.error(
+                e.pos,
+                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep it local, or call the method instead", info.root.name),
+            );
+            return Vec::new();
+        }
+        self.mutate(e.pos, &info, "change");
+        info.resolved.into_iter().map(|p| (p, true)).collect()
+    }
+
+    fn method_value_binding(
+        &mut self,
+        value: &Expr,
+        recv: &Expr,
+        b: &BindingRef,
+        role: Role,
+        mutable: bool,
+    ) {
+        let escaping = self.escaped.contains(&value.id);
+        let origins = self.changing_method_use(value, recv, escaping);
+        self.declare(
+            b,
+            role,
+            if mutable {
+                Perm::Mutable
+            } else {
+                Perm::Immutable
+            },
+            None,
+            false,
+        );
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.lambda = Some(value.id);
+        }
+        if !origins.is_empty() && self.used.contains(&b.uid) {
+            self.active.push(Borrow {
+                holder: b.uid,
+                holder_name: b.name,
+                origins,
+                pos: value.pos,
+                why: "method value".to_string(),
             });
         }
     }
@@ -1614,6 +1696,14 @@ impl Walker<'_> {
     }
 
     fn projection(&mut self, e: &Expr, d: Demand) {
+        if let Some(recv) = self.changing_method_value(e) {
+            self.changing_method_use(
+                e,
+                recv,
+                d == Demand::Consume || self.escaped.contains(&e.id),
+            );
+            return;
+        }
         if !self.is_place(e) {
             // A part of a computed value. Copying a `Copy` part leaves the whole where it is.
             let take = d == Demand::Consume

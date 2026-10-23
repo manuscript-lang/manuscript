@@ -329,10 +329,10 @@ impl<'a> FnLower<'a> {
                         _ => None,
                     })
                     .is_some_and(|uid| {
-                        let owned = self
-                            .locals
-                            .get(&uid)
-                            .is_some_and(|l| self.b.var_mode(l.var) == Mode::Own);
+                        // A variable in memory (a closure shares it) has no value to move.
+                        let owned = self.locals.get(&uid).is_some_and(|l| {
+                            l.slot.is_none() && self.b.var_mode(l.var) == Mode::Own
+                        });
                         owned && crate::mutation::uses_of(&self.hir, e, uid) == 1
                     });
             let x = if moved { a.v } else { self.owned(a) };

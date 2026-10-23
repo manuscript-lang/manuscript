@@ -257,6 +257,70 @@ fn target_position(callables: &HashMap<FnKey, Rc<Callable>>, edge: &Edge) -> Opt
     }
 }
 
+/// Whether a method changes its receiver, for a method used as a value.
+pub(crate) fn method_changes_receiver(
+    m: &ms_check::types::MethodRef,
+    mutated: &HashSet<ParamKey>,
+) -> bool {
+    match (&m.decl, m.native.as_str()) {
+        (Some(d), "contract") => d.method().is_some_and(|x| x.mutating),
+        (_, "contract") => false,
+        (_, native) if !native.is_empty() => ms_check::effects::collection_mutation(m),
+        (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
+        _ => false,
+    }
+}
+
+/// The variables whose changing methods `body` takes as values (`xs.append` without a call):
+/// the value shares the variable, so it must live in memory.
+pub(crate) fn changing_method_roots(
+    hir: &ModuleHir,
+    body: Body<'_>,
+    mutated: &HashSet<ParamKey>,
+) -> HashSet<usize> {
+    struct Values<'h> {
+        hir: &'h ModuleHir,
+        mutated: &'h HashSet<ParamKey>,
+        called: HashSet<ms_syntax::NodeId>,
+        roots: HashSet<usize>,
+    }
+    impl Visitor for Values<'_> {
+        fn expr(&mut self, e: &Expr) {
+            if let ExprKind::Call { callee, .. } = &e.kind {
+                self.called.insert(callee.id);
+                if let ExprKind::Apply { left, .. } = &callee.kind {
+                    self.called.insert(left.id);
+                }
+            }
+            let ExprKind::Member { left, .. } = &e.kind else {
+                return;
+            };
+            if self.called.contains(&e.id) || self.hir.ty(e).kind != Kind::Function {
+                return;
+            }
+            let Resolution::Method(m) = self.hir.resolution(e) else {
+                return;
+            };
+            if method_changes_receiver(&m, self.mutated)
+                && let Resolution::Local(b) = self.hir.resolution(left)
+            {
+                self.roots.insert(b.uid);
+            }
+        }
+    }
+    let mut v = Values {
+        hir,
+        mutated,
+        called: HashSet::new(),
+        roots: HashSet::new(),
+    };
+    match body {
+        Body::Block(b) => ms_syntax::visit::walk_block(&mut v, b),
+        Body::Expr(e) => ms_syntax::visit::walk_expr(&mut v, e),
+    }
+    v.roots
+}
+
 /// The locals of `body` that it changes, directly or through calls.
 pub(crate) fn mutated_locals(
     hir: &ModuleHir,
@@ -264,6 +328,10 @@ pub(crate) fn mutated_locals(
     callables: &HashMap<FnKey, Rc<Callable>>,
     mutated: &HashSet<ParamKey>,
 ) -> HashSet<usize> {
+    let values = match &body {
+        Body::Block(b) => changing_method_roots(hir, Body::Block(b), mutated),
+        Body::Expr(e) => changing_method_roots(hir, Body::Expr(e), mutated),
+    };
     let m = scan(hir, body);
     let mut roots = m.roots;
     for e in &m.edges {
@@ -273,6 +341,7 @@ pub(crate) fn mutated_locals(
             roots.insert(e.root);
         }
     }
+    roots.extend(values);
     roots
 }
 
