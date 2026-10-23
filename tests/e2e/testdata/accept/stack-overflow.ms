@@ -1504,7 +1504,6 @@ fn fat(n: Int) Int:
     let a1498 = n + 1498
     let a1499 = n + 1499
     let deeper = fat(n % 1000 + 1)
-
     return (
         deeper
         + (
@@ -3016,5 +3015,4 @@ test "stack exhaustion is reported as a stack overflow":
         fn():
             let ignored = fat(0)
     )
-
     message | try expect_contains("stack overflow")

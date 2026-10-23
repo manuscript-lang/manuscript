@@ -255,7 +255,6 @@ fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
         else if escaped == "\"" or escaped == "\\": result.append(escaped)
         else if escaped == "u" or escaped == "U":
             var count = 4
-
             if escaped == "U": count = 8
 
             var hex = ""
@@ -319,7 +318,6 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
         try allocate(var reader)
 
         let created = new_table(var reader, explicit: false, dotted)
-
         put(var reader, parent, key, Node.TableNode(created))
         return ok(created)
 
@@ -355,7 +353,6 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
     match node:
         TableArray(ids):
             var grown = ids.clone()
-
             grown.append(next)
             put_array(var reader, parent, key, grown)
             return ok(unit)
@@ -418,7 +415,6 @@ fn decimal_part(text: String) Bool:
     if not decimal_digits(text): return false
 
     let clean = text.replace("_", "", text.byte_length())
-
     return clean == "0" or not clean.starts_with("0")
 
 fn date_number(text: String, minimum: Int, maximum: Int) Bool:
@@ -442,14 +438,12 @@ fn date_valid(text: String) Bool:
 
     let m = month.parse_int().get()
     var maximum = 31
-
     if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
     if m == 2:
         maximum = 28
 
         let y = year.parse_int().get()
-
         if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
     return date_number(day, 1, maximum)
@@ -466,7 +460,6 @@ fn time_valid(text: String) Bool:
     if text.scalar_length() == 8: return true
 
     let fraction = text.slice(9, text.scalar_length()).get("")
-
     return (
         text.get(8, default: "") == "."
         and decimal_digits(fraction)
@@ -487,7 +480,6 @@ fn datetime_valid(text: String) Bool:
         rest = rest.slice(0, rest.scalar_length() - 1).get("")
     else if rest.contains("+") or rest.contains("-"):
         var index = rest.index_of("+").get(-1)
-
         if index < 0: index = rest.index_of("-").get(-1)
 
         let zone = rest.slice(index + 1, rest.scalar_length()).get("")
@@ -565,7 +557,6 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
 
             if parts.length() == 2:
                 var exponent = parts.get(1)
-
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(1, exponent.scalar_length())
@@ -585,7 +576,6 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
 
         if clean == "inf":
             var infinity = -log(0.0)
-
             if text.starts_with("-"): infinity = -infinity
             return ok(Node.Leaf(TomlValue.FloatValue(infinity)))
 
@@ -621,7 +611,6 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         advance(var reader)
 
         var values: List[Node] = []
-
         space(var reader, multiline: true)
 
         while peek(reader) != "]":
@@ -641,7 +630,6 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         advance(var reader)
 
         let result = new_table(var reader, explicit: true, dotted: false)
-
         space(var reader, multiline: false)
 
         if peek(reader) != "\}":
@@ -652,7 +640,6 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
                 )
 
                 let value = try read_value(var reader, depth + keys.length())
-
                 try assign(reader: var reader, parent: result, keys: keys, value: value)
                 space(var reader, multiline: false)
                 if peek(reader) == "\}": break
@@ -663,14 +650,12 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         advance(var reader)
 
         let node = Node.TableNode(result)
-
         seal(var reader, node)
         return ok(node)
 
     var text = ""
     let start_line = reader.line
     let start_column = reader.column
-
     while (
         peek(reader) != ""
         and peek(reader) != "\n"
@@ -701,12 +686,10 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
     # Report token errors where the token starts, not where it ended.
     let end_line = reader.line
     let end_column = reader.column
-
     reader.line = start_line
     reader.column = start_column
 
     let result = scalar(reader, text)
-
     reader.line = end_line
     reader.column = end_column
     return result
@@ -722,7 +705,6 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
         Leaf(value): return ok(value)
         TableNode(id):
             var entries = Map[String, TomlValue]()
-
             for entry in reader.entries.get(id):
                 entries.add(
                     entry.key,
@@ -733,14 +715,12 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
             return ok(TomlValue.TableValue(entries))
         ArrayNode(values):
             var result: List[TomlValue] = []
-
             for value in values: result.append(
                 try materialize(var reader, value, (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
         TableArray(ids):
             var result: List[TomlValue] = []
-
             for id in ids: result.append(
                 try materialize(
                     var reader, Node.TableNode(id), (depth + 1)
@@ -754,7 +734,6 @@ export fn parse(
     limits: Optional[TomlLimits] = none
 ) Result[TomlValue, TomlError]:
     var options = default_limits()
-
     if let value = limits:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
@@ -792,7 +771,6 @@ export fn parse(
         chars: normalized.split(""), pos: 0, line: 1, column: 1, limits: options,
         values: 0, tables: [], entries: []
     )
-
     try allocate(var reader)
 
     let root = new_table(var reader, explicit: true, dotted: false)
@@ -836,7 +814,6 @@ export fn parse(
                 try allocate(var reader)
 
                 let next = new_table(var reader, explicit: true, dotted: false)
-
                 try append_table(
                     reader: var reader, parent: parent, key: key, next: next
                 )
@@ -864,7 +841,6 @@ export fn parse(
             )
 
             let value = try read_value(var reader, (current_depth + keys.length()))
-
             try assign(reader: var reader, parent: current, keys: keys, value: value)
 
         space(var reader, multiline: false)
@@ -883,13 +859,11 @@ type Writer:
 
 fn hex4(code: Int) String:
     var digits = code.to_string_radix(16)
-
     while digits.length() < 4: digits = "0".concat(digits)
     return digits
 
 fn quote_text(text: String) String:
     var result = StringBuilder()
-
     result.append("\"")
 
     for c in text.chars():
@@ -912,7 +886,6 @@ fn quote_text(text: String) String:
 
 fn format_key(key: String) String:
     var bare = key != ""
-
     for c in key.chars():
         if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
             c
@@ -943,12 +916,10 @@ fn inline_value(value: TomlValue) String:
         DateTimeValue(text): return text
         ArrayValue(values):
             var parts: List[String] = []
-
             for item in values: parts.append(inline_value(item))
             return "[".concat(parts.join(", ")).concat("]")
         TableValue(values):
             var parts: List[String] = []
-
             for entry in values.entries(): parts.append(
                 format_key(entry.key).concat(" = ").concat(
                     inline_value(entry.value)
@@ -970,7 +941,6 @@ fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
 
 fn dotted(path: List[String]) String:
     var parts: List[String] = []
-
     for key in path: parts.append(format_key(key))
     return parts.join(".")
 
@@ -1018,7 +988,6 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 
     for entry in values.entries():
         var child = path.clone()
-
         child.append(entry.key)
 
         match entry.value:
@@ -1060,7 +1029,6 @@ export fn stringify(
     if not datetimes_valid(value): return error(TomlError.InvalidInput)
 
     var writer = Writer(StringBuilder(), started: false)
-
     emit_table(var writer, [], root)
 
     let text = writer.out.freeze()

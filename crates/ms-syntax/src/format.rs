@@ -259,6 +259,15 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
             }
             self.breaks.insert(line);
         }
+
+        fn leading_comment(&self, line: usize) -> bool {
+            let indent = indent_of(&self.lines[line - 1]);
+            self.lines[..line - 1]
+                .iter()
+                .rev()
+                .find(|l| !l.trim().is_empty())
+                .is_some_and(|l| l.trim_start().starts_with('#') && indent_of(l) == indent)
+        }
     }
     impl Visitor for P<'_> {
         fn block(&mut self, body: &[Stmt]) {
@@ -271,9 +280,9 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                 if paragraph_block(previous)
                     || paragraph_block(current)
                     || (guard_statement(previous) && !guard_statement(current))
-                    || (matches!(previous.kind, StmtKind::Bind { .. })
-                        != matches!(current.kind, StmtKind::Bind { .. })
-                        && !guard_statement(current))
+                    || (!matches!(previous.kind, StmtKind::Bind { .. })
+                        && matches!(current.kind, StmtKind::Bind { .. }))
+                    || self.leading_comment(line)
                 {
                     self.before(line);
                 }
@@ -367,8 +376,16 @@ fn paragraph_block(s: &Stmt) -> bool {
     // Single-step blocks belong to the surrounding cluster. Count syntax,
     // rather than source lines, so wrapping a header cannot add paragraphs on
     // the next formatting pass.
-    if statement_value(s).is_some_and(|v| matches!(v.kind, ExprKind::Match { .. })) {
-        return true;
+    if let Some(mut value) = statement_value(s) {
+        while let ExprKind::Unary { operand, .. } = &value.kind {
+            value = operand;
+        }
+        if matches!(value.kind, ExprKind::Match { .. })
+            || block_lambda(value)
+            || matches!(&value.kind, ExprKind::Call { args, .. } if args.iter().any(|a| block_lambda(&a.value)))
+        {
+            return true;
+        }
     }
     match &s.kind {
         StmtKind::If {

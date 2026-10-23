@@ -6,7 +6,6 @@ import {
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
-
     try expect_false(url.host != "example.com" or url.port != some(443))
     try expect_equal((try format(url)), "https://example.com:443/a/b?q=1#fragment")
     try expect_equal(
@@ -17,16 +16,13 @@ test "URL canonicalization and relative references":
 
 test "URL query retains duplicate keys empty values and spaces":
     let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
-
     try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
 
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
-
     try expect_equal(parse_query("a=1&b=2", 1), limited)
 
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
-
     try expect_equal(decode_component("%zz"), invalid)
 
 test "URL query skips empty segments":
@@ -34,7 +30,6 @@ test "URL query skips empty segments":
     try expect_false(not (try parse_query("&&")).is_empty())
 
     let bounded = try parse_query("a=1&&b=2", 2)
-
     try expect_equal(bounded.length(), 2)
 
 test "URL format rejects queries that would not round trip":
@@ -52,17 +47,14 @@ test "URL format rejects queries that would not round trip":
         base.scheme.clone(), base.host.clone(), base.port, base.path.clone(), "a=%41&b",
         ""
     )
-
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
 
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
     let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
-
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return fail("accepted {text}")
 
     let empty = try parse("http://")
-
     try expect_equal((try format(empty)), "http://")
     try expect_equal((empty | try format | try parse), empty)
 
@@ -79,7 +71,6 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
         try expect_equal(resolve(bad, "/next"), invalid_url)
 
     let relative = Url("custom", "", none, "relative", "", "")
-
     try expect_equal(format(relative), invalid_text)
     try expect_equal(resolve(relative, "/next"), invalid_url)
 
@@ -90,6 +81,5 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
         )
 
     let uppercase = Url("HTTP", "host", none, "/path", "", "")
-
     try expect_equal((uppercase | try format | try parse).scheme, "http")
     try expect_equal((try resolve(uppercase, "/next")).scheme, "http")

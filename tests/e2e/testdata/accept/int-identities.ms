@@ -18,7 +18,6 @@ test "identities keep boundaries":
 
 test "identities keep operand effects":
     var log: List[Int] = []
-
     ((touch(var log, 1) * 0 == 0)) | try expect_true
     ((0 * touch(var log, 2) == 0)) | try expect_true
     ((touch(var log, 3) * 1 == 3)) | try expect_true

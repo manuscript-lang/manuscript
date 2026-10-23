@@ -48,7 +48,6 @@ fn default_before_required(first: Int = 9, second: Int) Int: first - second
 test "positional labeled mixed and identifier calls":
     let amount = 10
     let deduction = 3
-
     try expect_false(
         (
             subtract(10, 3) != 7
@@ -75,7 +74,6 @@ test "generic calls constructors and callback inference":
 
     let record = Record(3)
     let explicit = Record[Int](second: 4, 3)
-
     try expect_false(
         (record.second != 3 or explicit.first != 3 or explicit.second != 4)
     )
@@ -83,7 +81,6 @@ test "generic calls constructors and callback inference":
     let first = 4
     let second = 3
     let shorthand = Record(second, first)
-
     try expect_false(shorthand.first != 3 or shorthand.second != 4)
 
     match Choice.Pair(second: "right", "left"):
@@ -97,7 +94,6 @@ test "generic calls constructors and callback inference":
     let sum = [1, 2, 3].fold(0, fn(total, item): total + item)
     let reordered_sum = [1, 2, 3].fold(step: fn(total, item): total + item, 0)
     let explicit_sum = [1, 2, 3].fold[Int](0, fn(total, item): total + item)
-
     try expect_false((sum != 6 or reordered_sum != 6 or explicit_sum != 6))
     try expect_false(optional(4) != 4 or optional(none, 2) != 2)
 
@@ -105,7 +101,6 @@ test "methods native APIs function values and contextual labels":
     let offset = Offset(3)
     let bound = offset.subtract
     let view = Subtract(offset)
-
     try expect_false(
         (
             offset.subtract(10) != 7
@@ -117,7 +112,6 @@ test "methods native APIs function values and contextual labels":
     let copied = subtract
     let typed: fn(amount: Int, deduction: Int) Int = copied.clone()
     var mutable = typed.clone()
-
     try expect_false(
         (
             copied(10, 3) != 7
@@ -127,7 +121,6 @@ test "methods native APIs function values and contextual labels":
     )
 
     let contextual: fn(left: Int, right: Int) Int = fn(x, y): x - y
-
     try expect_false(
         (
             contextual(10, 3) != 7
@@ -137,11 +130,9 @@ test "methods native APIs function values and contextual labels":
     )
 
     var memo = Map[Int, Int]()
-
     memo.add(1, 7)
 
     let add = memo.add
-
     add(value: 8, 2)
     try expect_false(memo.get(1).get() != 7 or memo.get(2).get() != 8)
     try expect_equal("abcd".slice(1, 3).get(), "bc")
@@ -149,17 +140,14 @@ test "methods native APIs function values and contextual labels":
 test "written order before omitted defaults and body":
     var counter = Counter()
     let total = ordered(var counter, third: mark(var counter, 1), mark(var counter, 2))
-
     try expect_false(total != 7 or counter.value != 1245)
     counter.value = 0
 
     let reordered = first(right: mark(var counter, 2), mark(var counter, 1))
-
     try expect_false(reordered != 1 or counter.value != 21)
     counter.value = 0
 
     let record = Record(second: mark(var counter, 2), mark(var counter, 1))
-
     try expect_false((record.first != 1 or record.second != 2 or counter.value != 21))
 
     var early = 7
@@ -171,7 +159,6 @@ test "written order before omitted defaults and body":
                 0
             none: 0
     )
-
     try expect_equal(selected, 7)
 
     var receiver = Offset(3)
@@ -182,16 +169,16 @@ test "written order before omitted defaults and body":
                 10
             none: 10
     )
-
     try expect_equal(result, 7)
 
 test "callable expression precedes positional arguments":
     var counter = Counter()
+
     let factory = fn() fn(amount: Int, deduction: Int) Int:
         mark(var counter, 1)
         return subtract
-    let result = factory()(mark(var counter, 2), mark(var counter, 3))
 
+    let result = factory()(mark(var counter, 2), mark(var counter, 3))
     try expect_false(result != -1 or counter.value != 123)
 
 test "mutable callable value is captured before arguments":
@@ -205,5 +192,4 @@ test "mutable callable value is captured before arguments":
         ,
         3
     )
-
     try expect_equal(result, 7)

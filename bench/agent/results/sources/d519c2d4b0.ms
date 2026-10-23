@@ -19,7 +19,6 @@ impl Parser:
 
         while self.peek_is("+") or self.peek_is("-"):
             let op = self.toks[self.pos]
-
             self.pos += 1
 
             let r = self.term()
@@ -36,7 +35,6 @@ impl Parser:
 
         while self.peek_is("*") or self.peek_is("/"):
             let op = self.toks[self.pos]
-
             self.pos += 1
 
             let r = self.unary()
@@ -64,7 +62,6 @@ impl Parser:
             return 0
 
         let t = self.toks[self.pos]
-
         self.pos += 1
 
         if t == "(":
@@ -93,7 +90,6 @@ fn tokenize(line: String) Parser:
         else if "0123456789".chars().contains(c):
             if in_num:
                 let last = p.toks.length() - 1
-
                 p.toks[last] = p.toks[last] + c
             else:
                 p.toks.append(c)
@@ -128,7 +124,6 @@ export fn main() Int:
 
     for line in read_lines(stdin()).get():
         let s = answer(line)
-
         if not s.is_empty():
             out.write("{s}\n").get()
 

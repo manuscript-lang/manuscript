@@ -23,13 +23,13 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
     var left: List[Element] = []
     var right: List[Element] = []
     let calls = Visits(0)
+
     let visit = fn():
         calls.count = calls.count + 1
         if calls.count != 1:
             return
 
         var target = left.clone()
-
         if side == "right":
             target = right.clone()
 
@@ -69,7 +69,6 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
         and mutation != "overwrite"
     )
     var expected_calls = 3
-
     if mutation == "append_write" or mutation == "overwrite":
         expected_calls = 2
 

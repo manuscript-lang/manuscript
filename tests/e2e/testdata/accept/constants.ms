@@ -19,13 +19,11 @@ test "constants stand for their initializers":
 
 test "each use starts from a fresh collection":
     var names = NAMES
-
     names.append("c")
     try expect_false(not (names.length() == 3 and NAMES.length() == 2))
 
 test "a local binding shadows a constant":
     let LIMIT = 3
-
     try expect_equal(LIMIT, 3)
 
 type Phase:
