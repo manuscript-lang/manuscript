@@ -478,6 +478,12 @@ impl<'a> FnLower<'a> {
 
     // -------------------------------------------------------------- locals
 
+    /// Whether the ownership checker vetted this function, so a lexical borrow cannot outlive a
+    /// change to its source. Embedded standard-library source is not vetted.
+    pub fn ownership_checked(&self) -> bool {
+        ms_check::ownership::is_user_module(self.hir.data.file)
+    }
+
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
     pub fn bind_lent(&mut self, binding: &BindingRef, v: Value) {
         let ty = self.ty_of(v);
@@ -498,7 +504,9 @@ impl<'a> FnLower<'a> {
         let ty = self.ty_of(x.v);
         // An immutable `let` of a string read from a list element or record field is a lexical
         // borrow (the checker rejects changing the container while it lives): no copy, no drop.
+        // Standard-library source is not ownership checked, so it always copies.
         let lent = ty == MTy::STR
+            && self.ownership_checked()
             && !x.own
             && !binding.mutable
             && !self.slotted.contains(&binding.uid)
