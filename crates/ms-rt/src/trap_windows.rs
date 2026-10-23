@@ -11,7 +11,7 @@
 use crate::fault;
 use crate::global::Global;
 use crate::string;
-use ms_rt_abi::StrObj;
+use ms_rt_abi::StrVal;
 
 /// Registers saved by `msrt_trap_begin`: callee-saved integer and vector registers, the stack
 /// pointer and the return address (30 words on x64, 21 on arm64).
@@ -176,7 +176,7 @@ pub extern "C" fn msrt_trap_end() -> ! {
 /// # Safety
 /// `out` must be writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_trap_wait(out: *mut *mut StrObj) -> u8 {
+pub unsafe extern "C" fn msrt_trap_wait(out: *mut StrVal) -> u8 {
     // SAFETY: single threaded runtime state; `out` is writable.
     unsafe {
         if !*FAULTED.ptr() {

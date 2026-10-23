@@ -4,9 +4,11 @@
 //! tens of cycles before the first byte moves, and its `memcmp`/`bcmp` compare one byte at a time.
 //! Programs copy and compare short strings, list tails and records constantly, so these definitions
 //! take precedence over libc's: unaligned word moves for small sizes, `rep movsb` (fast on current
-//! CPUs) for large ones, and eight bytes per step for comparisons.
+//! CPUs) for large forward copies, descending vector blocks for backward copies, and eight
+//! bytes per step for comparisons.
 //!
-//! The bodies avoid loops that LLVM could turn back into calls to the function being defined.
+//! Copy bodies use explicit SIMD loads/stores or assembly rather than scalar copy loops that
+//! LLVM could turn back into calls to the function being defined.
 
 use core::ffi::c_int;
 #[cfg(not(test))]
@@ -82,6 +84,24 @@ unsafe fn copy_forward(dst: *mut u8, src: *const u8, n: usize) {
     }
 }
 
+/// Copies backward in blocks whose loads all precede their stores.
+///
+/// # Safety
+/// Both ranges must be valid for `n` bytes. They may overlap only when `dst >= src`.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn copy_backward(dst: *mut u8, src: *const u8, mut n: usize) {
+    // SAFETY: each block lies within the original ranges. Its stores cannot overwrite
+    // the lower source prefix still to be read; copy_small handles overlap within a block.
+    unsafe {
+        while n > 64 {
+            n -= 64;
+            copy_small(dst.add(n), src.add(n), 64);
+        }
+        copy_small(dst, src, n);
+    }
+}
+
 /// The C `memcpy`.
 ///
 /// # Safety
@@ -126,15 +146,7 @@ pub unsafe extern "C" fn memmove(dst: *mut c_void, src: *const c_void, n: usize)
             // `dst` is below `src` or past its end: copying forward never overwrites unread bytes.
             copy_forward(d, s, n);
         } else {
-            core::arch::asm!(
-                "std",
-                "rep movsb",
-                "cld",
-                inout("rcx") n => _,
-                inout("rdi") d.add(n - 1) => _,
-                inout("rsi") s.add(n - 1) => _,
-                options(nostack)
-            );
+            copy_backward(d, s, n);
         }
     }
     dst
@@ -302,6 +314,66 @@ mod tests {
                     expected[..],
                     "n={n} shift={shift}"
                 );
+            }
+        }
+    }
+
+    fn check_backward(n: usize, shift: usize, offset: usize, tail: usize) {
+        let mut buf: Vec<u8> = (0..offset + shift + n + tail)
+            .map(|i| (i.wrapping_mul(31) ^ (i / 251)) as u8)
+            .collect();
+        let mut expected = buf.clone();
+        expected[offset + shift..offset + shift + n].copy_from_slice(&buf[offset..offset + n]);
+        // SAFETY: both ranges fit in buf, and the destination is at or above the source.
+        unsafe {
+            let p = buf.as_mut_ptr();
+            copy_backward(p.add(offset + shift), p.add(offset), n);
+        }
+        assert_eq!(
+            buf, expected,
+            "n={n} shift={shift} offset={offset} tail={tail}"
+        );
+    }
+
+    #[test]
+    fn backward_copies_match_snapshot_at_every_small_size_and_shift() {
+        for n in 0..=130 {
+            for shift in 0..=130 {
+                for offset in 0..8 {
+                    check_backward(n, shift, offset, 17);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn backward_copies_match_snapshot_across_large_boundaries() {
+        for n in [255, 256, 257, 1023, 1024, 1025, 24576, 73728] {
+            for shift in [
+                0,
+                1,
+                7,
+                8,
+                15,
+                16,
+                24,
+                31,
+                32,
+                63,
+                64,
+                65,
+                127,
+                128,
+                n - 1,
+                n,
+                n + 1,
+            ] {
+                for offset in [0, 1, 7] {
+                    // Include exact-sized buffers as well as an untouched tail sentinel.
+                    for tail in [0, 17] {
+                        check_backward(n, shift, offset, tail);
+                    }
+                }
             }
         }
     }

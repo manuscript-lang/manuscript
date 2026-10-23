@@ -157,15 +157,15 @@ mod tests {
         // SAFETY: all pointers are live; results are released below.
         unsafe {
             assert_eq!(
-                msrt_compress_compress(&input, f, 6, 0, 0, packed.as_mut_ptr()),
+                msrt_compress_compress(&input, &f, 6, 0, 0, packed.as_mut_ptr()),
                 0
             );
             assert_eq!(
-                msrt_compress_decompress(packed.as_ptr(), f, 1, 16, plain.as_mut_ptr()),
+                msrt_compress_decompress(packed.as_ptr(), &f, 1, 16, plain.as_mut_ptr()),
                 ms_std_core::STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
-                msrt_compress_decompress(packed.as_ptr(), f, 0, 0, plain.as_mut_ptr()),
+                msrt_compress_decompress(packed.as_ptr(), &f, 0, 0, plain.as_mut_ptr()),
                 0
             );
             assert_eq!(bytes_ref(plain.as_ptr()), b"hello hello hello");
@@ -177,7 +177,7 @@ mod tests {
             ] {
                 ms_rt::vec::msrt_bytes_drop(v);
             }
-            ms_rt::obj::msrt_release(f.cast());
+            ms_std_core::str_release(&f);
         }
     }
 
@@ -190,16 +190,16 @@ mod tests {
         // SAFETY: all pointers are live; handles are released at the end.
         unsafe {
             assert_eq!(
-                msrt_compress_encoder_new(f, 10, enc.as_mut_ptr()),
+                msrt_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
                 ms_std_core::STATUS_INVALID_INPUT
             );
-            assert_eq!(msrt_compress_encoder_new(f, 6, enc.as_mut_ptr()), 0);
+            assert_eq!(msrt_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
             let enc = enc.assume_init();
             msrt_compress_encoder_feed(enc, &data);
             msrt_compress_encoder_finish(enc);
             assert_eq!(msrt_compress_encoder_is_finished(enc), 1);
             msrt_compress_encoder_take(enc, 1 << 20, chunk.as_mut_ptr());
-            assert_eq!(msrt_compress_decoder_new(f, 0, 0, dec.as_mut_ptr()), 0);
+            assert_eq!(msrt_compress_decoder_new(&f, 0, 0, dec.as_mut_ptr()), 0);
             let dec = dec.assume_init();
             assert_eq!(
                 msrt_compress_decoder_poll(dec, 100, plain.as_mut_ptr()),

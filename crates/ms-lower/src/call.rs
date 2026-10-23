@@ -51,7 +51,7 @@ impl<'a> FnLower<'a> {
                     v
                 } else {
                     let names = self.param_names(&c);
-                    let args = self.eval_args(&view, &names, &c, &subst, None)?;
+                    let args = self.eval_args(&view, &names, &c, &subst, None, e.pos)?;
                     self.call_callable(&c, &subst, args, e)?
                 }
             }
@@ -133,6 +133,7 @@ impl<'a> FnLower<'a> {
         callee: &Callable,
         subst: &Subst,
         recv: Option<Val>,
+        call_pos: ms_syntax::Pos,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
@@ -183,7 +184,28 @@ impl<'a> FnLower<'a> {
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                let d = self.default_argument(callee, i, subst, &mut slots, recv)?;
+                // Defaults execute in the callee's lexical frame even though their
+                // instructions live in the caller. Reuse inline-frame metadata so
+                // faults retain both frames without runtime call bookkeeping.
+                let parent = self.source_scope;
+                let file = self.b.m.add_file(callee.module.file.as_str());
+                let name = if let DeclKind::Impl(implementation) = &callee.func.decl.decl().kind {
+                    format!("{}.{}", implementation.receiver.name(), callee.name)
+                } else {
+                    callee.name.to_string()
+                };
+                let call_line = self.stmt_pos.unwrap_or(call_pos).line;
+                let scopes = &mut self.b.func_mut().scopes;
+                scopes.push(ms_mir::ir::Scope {
+                    name,
+                    file,
+                    parent,
+                    call_line,
+                });
+                self.source_scope = scopes.len() as u32;
+                let result = self.default_argument(callee, i, subst, &mut slots, recv);
+                self.source_scope = parent;
+                let d = result?;
                 slots[i] = Some(d);
             }
         }
@@ -437,7 +459,43 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let trim_view = match native {
+            "string/trim" => Some("msrt_string_trim_view"),
+            "string/trim_start" => Some("msrt_string_trim_start_view"),
+            "string/trim_end" => Some("msrt_string_trim_end_view"),
+            _ => None,
+        };
+        if let Some(sym) = trim_view
+            && !recv.own
+            && self.is_place(recv_expr)
+        {
+            return Ok(self.trim_view(sym, recv));
+        }
         self.native_method(e, view, m, recv_expr, recv)
+    }
+
+    /// `text.trim()` (or `trim_start`, `trim_end`) on a string that stays where it is: a view into it, nothing allocated. The
+    /// checker keeps `text` unchanged while the result lives and asks for `.clone()` wherever
+    /// the result would be kept.
+    fn trim_view(&mut self, sym: &str, text: Val) -> Val {
+        let s = self.borrow(text);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        self.call_runtime(sym, &[s, slot], MTy::UNIT)
+            .expect("trim view");
+        let v = self
+            .b
+            .emit(
+                Op::Load,
+                &[slot],
+                ms_mir::ir::Imm::Ty(MTy::STR),
+                Some(MTy::STR),
+            )
+            .expect("load");
+        self.views.insert(v);
+        Val { v, own: false }
     }
 
     fn source_method_call(
@@ -485,7 +543,7 @@ impl<'a> FnLower<'a> {
         };
         let names = self.param_names(&c);
         let at = self.b.current();
-        let args = self.eval_args(view, &names, &c, &subst, Some(recv))?;
+        let args = self.eval_args(view, &names, &c, &subst, Some(recv), e.pos)?;
         if self.dead {
             return Ok(recv);
         }

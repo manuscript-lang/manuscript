@@ -14,7 +14,7 @@ pub use ms_std_fs::stream;
 mod accumulate;
 
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_NONE, StrObj};
+use ms_rt_abi::{STATUS_NONE, StrVal};
 use ms_std_core::{ObjMut, ObjRef, Object, StatusCode, Text, native};
 use ms_std_rt::{fault, record_failure};
 use stream::{IoFail, IoRes, Stream};
@@ -38,7 +38,7 @@ fn optional(has: bool, v: i64) -> Option<i64> {
 
 native! {
     /// The text of the last `FAILED` stream result.
-    safe fn msstd_io_failure_message() -> *mut StrObj {
+    fn msstd_io_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 

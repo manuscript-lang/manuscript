@@ -16,7 +16,7 @@ use crate::sys;
 use core::cmp::Reverse;
 use core::ptr::null_mut;
 use core::sync::atomic::Ordering;
-use ms_rt_abi::StrObj;
+use ms_rt_abi::StrVal;
 use std::collections::{BinaryHeap, VecDeque};
 
 /// Results of a park, ORed together.
@@ -68,7 +68,7 @@ struct Task {
     detached: bool,
     joiner: u64,
     status: u8,
-    msg: *mut StrObj,
+    msg: StrVal,
     wait_fd: i32,
     wait_events: u32,
     wait_result: u32,
@@ -401,7 +401,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             detached: false,
             joiner: 0,
             status: 0,
-            msg: null_mut(),
+            msg: crate::string::NO_STR,
             wait_fd: -1,
             wait_events: 0,
             wait_result: 0,
@@ -685,7 +685,7 @@ extern "C" fn task_main() -> ! {
         if (*t).detached {
             entry((*t).arg);
         } else {
-            let mut msg: *mut StrObj = null_mut();
+            let mut msg = crate::string::NO_STR;
             (*t).status = fault::msrt_guard_call(entry, (*t).arg, &mut msg);
             (*t).msg = msg;
         }
@@ -900,12 +900,12 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
 /// `*msg_out`, owned by the caller), 2 cancelled. If the caller is cancelled while waiting it
 /// returns 2 without consuming the task. Each task is joined once.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut StrObj) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8 {
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
         if !msg_out.is_null() {
-            *msg_out = null_mut();
+            *msg_out = crate::string::NO_STR;
         }
         let t = lookup(handle);
         if t.is_null() {
@@ -938,12 +938,9 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut *mut S
             }
         }
         let status = (*t).status;
-        let msg = (*t).msg;
-        (*t).msg = null_mut();
+        let msg = core::mem::replace(&mut (*t).msg, crate::string::NO_STR);
         if msg_out.is_null() {
-            if !msg.is_null() {
-                crate::obj::release(msg as *mut ms_rt_abi::Obj);
-            }
+            crate::string::release_opt(&msg);
         } else {
             *msg_out = msg;
         }

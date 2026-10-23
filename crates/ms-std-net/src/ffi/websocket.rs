@@ -64,8 +64,8 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
 
 native! {
     /// `WebSocketError.message()` for a status and the `Failed` text (nullable).
-    fn msrt_websocket_error_message(status: u8, failed: Option<&str>) -> String {
-        ws_from_code(status, failed.unwrap_or_default().to_string()).message()
+    fn msrt_websocket_error_message(status: u8, has_failed: bool, failed: &str) -> String {
+        ws_from_code(status, (if has_failed { failed } else { "" }).to_string()).message()
     }
 
     /// `Network.web_socket(address, headers, subprotocols, options)`.

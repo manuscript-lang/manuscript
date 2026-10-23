@@ -80,6 +80,12 @@ impl<'m> FuncBuilder<'m> {
         self.f.ty(v)
     }
 
+    /// The op that defined `v` in the current block, if it was defined there.
+    pub fn defining_op(&self, v: Value) -> Option<Op> {
+        let insts = &self.f.blocks[self.cur.index()].insts;
+        insts.iter().rev().find(|i| i.res == Some(v)).map(|i| i.op)
+    }
+
     /// Sets the source location attached to subsequently emitted instructions.
     pub fn set_loc(&mut self, loc: Loc) {
         self.loc = loc;

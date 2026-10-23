@@ -21,7 +21,7 @@ mod raw;
 mod raw;
 
 use core::cell::RefCell;
-use ms_rt_abi::StrObj;
+use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
 use ms_std_core::{Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
 use ms_std_rt::poll_cancel;
@@ -132,7 +132,7 @@ fn raw_mode_capable() -> bool {
 
 native! {
     /// The text of the last `FAILED` result.
-    safe fn msstd_terminal_failure_message() -> *mut StrObj {
+    fn msstd_terminal_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 
@@ -245,7 +245,7 @@ native! {
     }
 
     /// The text of a text event, or the key name of a key event.
-    safe fn msstd_terminal_event_text() -> *mut StrObj {
+    fn msstd_terminal_event_text() -> out StrVal {
         let text = current(|e| match e {
             decoder::Event::Text(t) => t.clone(),
             decoder::Event::Key { name, .. } => name.clone(),

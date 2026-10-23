@@ -14,7 +14,7 @@ release, cancellation) and never the other way around.
 
 - **Status.** A fallible native returns `u8`: `0` is success; otherwise `1 + the
   declaration index` of the error case in the `.ms` error type. Tables below.
-  `Failed(message)` stores its text through the trailing `err: *mut *mut StrObj`
+  `Failed(message)` stores its text through the trailing `err: *mut StrVal`
   (owned string; the pointer may be null when the caller does not need it).
 - **Results.** An ok value is written through `out` (before `err`). An `Optional[T]` in a
   `Result` answers `STATUS_NONE` (16) for none; a bare `Optional[T]` answers whether it is
@@ -62,9 +62,9 @@ carry no input values except `Failed` text, which is verbatim.
 msrt_net_parse_ip(text, out: *mut *mut Obj, err) -> u8
 msrt_net_parse_cidr(text, out, err) -> u8
 msrt_net_contains_ip(cidr, ip, out: *mut u8) -> u8
-msrt_net_ip_address_text(ip) -> *mut StrObj          msrt_net_ip_address_family(ip) -> u8
-msrt_net_cidr_text(cidr) -> *mut StrObj              msrt_net_ip_family_text(u8) / msrt_net_dns_kind_text(u8) -> *mut StrObj
-msrt_net_error_message(status, failed: *const StrObj|null) -> *mut StrObj
+msrt_net_ip_address_text(ip, out: *mut StrVal)          msrt_net_ip_address_family(ip) -> u8
+msrt_net_cidr_text(cidr, out: *mut StrVal)              msrt_net_ip_family_text(u8) / msrt_net_dns_kind_text(u8, out: *mut StrVal)
+msrt_net_error_message(status, has_failed, failed: *const StrVal, out: *mut StrVal)
 msrt_net_network() -> *mut Obj                       the host's root network (+1)
 msrt_net_network_close(net)
 msrt_net_network_connect(net, address, has_timeout, timeout, out, err) -> u8
@@ -83,12 +83,12 @@ msrt_net_connection_write(c, data: String, has_timeout, timeout, err) -> u8
 msrt_net_connection_write_bytes(c, data: *const VecVal, has_timeout, timeout, err) -> u8
 msrt_net_listener_{accept(l, has_timeout, timeout, out, err) -> u8, address, close}
 msrt_net_datagram_{address, close}  # receiver `sock`
-msrt_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: *mut StrObj }, err) -> u8
+msrt_net_datagram_receive(sock, has_max, max, has_timeout, timeout, out: *mut DatagramWire { data: VecVal, sender: StrVal }, err) -> u8
 msrt_net_datagram_send(sock, data: String, address, has_timeout, timeout, err) -> u8
 msrt_net_datagram_send_bytes(sock, data: *const VecVal, address, has_timeout, timeout, err) -> u8
 ```
 
-`DnsRecordWire { kind: u8, value: *mut StrObj, priority: i64, weight: i64, port: i64 }`
+`DnsRecordWire { kind: u8, value: StrVal, priority: i64, weight: i64, port: i64 }`
 (40 bytes): `msrt_net_network_resolve` allocates `count` of them with `msrt_alloc`; the
 compiler moves each string into a `DnsRecord` and frees the array with `msrt_free`.
 
@@ -119,7 +119,7 @@ msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now_seconds: i64
 msrt_tls_error_message(status) -> String
 ```
 
-`TlsOptionsWire { server_name, roots_pem, certificate_pem, private_key_pem: *const StrObj,
+`TlsOptionsWire { server_name, roots_pem, certificate_pem, private_key_pem: *const StrVal,
 alpn: *const VecVal (List[String]), require_client_certificate: u8 }`. `TlsInfoWire` and
 `CertificateInfoWire` are filled by the native; the caller takes the strings, lists and
 `Bytes` and frees the arrays with `msrt_free` (see `ffi/tls.rs` for the field order).

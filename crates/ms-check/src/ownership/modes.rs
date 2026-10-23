@@ -321,10 +321,13 @@ fn native_method_modes(
     let result = method.ty.result_ty();
     let element = |t: &Ty| receiver.args.iter().any(|a| same(a, t));
     // `join` builds a new String even though its result type is the element type.
-    let accessor = !mutator
-        && method.name().is_none_or(|n| n.as_str() != "join")
-        && receiver.kind != Kind::Primitive
-        && (element(&result) || (result.is_std("Optional") && result.args.iter().any(element)));
+    let lending = crate::receivers::LENDING_NATIVES.contains(&method.native.as_str());
+    let accessor = lending
+        || (!mutator
+            && method.name().is_none_or(|n| n.as_str() != "join")
+            && receiver.kind != Kind::Primitive
+            && (element(&result)
+                || (result.is_std("Optional") && result.args.iter().any(element))));
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
