@@ -33,7 +33,7 @@ jobs:
           # Newest first within each name (the key without its trailing hash); keep the first.
           jq -r '
             def name: sub("-[0-9a-f]{16,}$"; "");
-            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-)"));
+            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)"));
             . as $all
             | [$all[] | select(dead)] as $dead
             | [$all[] | select(dead | not)] | sort_by(.createdAt) | reverse
