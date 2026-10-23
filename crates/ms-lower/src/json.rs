@@ -438,31 +438,15 @@ impl FnLower<'_> {
         let zero = self.b.iconst(0);
         let empty = self.b.list_new(et, zero);
         self.b.def_var(acc, empty);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(i, zero);
-        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(head, &[]);
-        self.b.switch_to(head);
-        let iv = self.b.use_var(i);
-        let more = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(more, body, &[], exit, &[]);
-        self.b.seal_block(body);
-        self.b.switch_to(body);
-        let iv = self.b.use_var(i);
-        let item = self.jitem(doc, id, iv)?;
-        let r = self.jdecode_call(elem, doc, item, strict)?;
-        let x = self.junwrap(r, &[], &[acc]);
-        let l = self.b.use_var(acc);
-        let l2 = self.b.list_push(l, x);
-        self.b.def_var(acc, l2);
-        let iv = self.b.use_var(i);
-        let one = self.b.iconst(1);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(head, &[]);
-        self.b.seal_block(head);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.counted_loop(zero, n, &mut |s, iv| {
+            let item = s.jitem(doc, id, iv)?;
+            let r = s.jdecode_call(elem, doc, item, strict)?;
+            let x = s.junwrap(r, &[], &[acc]);
+            let l = s.b.use_var(acc);
+            let l2 = s.b.list_push(l, x);
+            s.b.def_var(acc, l2);
+            Ok(())
+        })?;
         Ok(self.b.use_var(acc))
     }
 
@@ -481,41 +465,24 @@ impl FnLower<'_> {
         let acc = self.jvar(mt);
         let empty = self.map_new(mt)?;
         self.b.def_var(acc, empty);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
         let zero = self.b.iconst(0);
-        self.b.def_var(i, zero);
-        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(head, &[]);
-        self.b.switch_to(head);
-        let iv = self.b.use_var(i);
-        let more = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(more, body, &[], exit, &[]);
-        self.b.seal_block(body);
-        self.b.switch_to(body);
-        let iv = self.b.use_var(i);
-        let name = self.call_runtime("msrt_json_key", &[doc, id, iv], MTy::STR)?;
-        let k = self.jdecode_key(key, key_mt, name, acc)?;
-        let iv = self.b.use_var(i);
-        let item = self.jitem(doc, id, iv)?;
-        let r = self.jdecode_call(value, doc, item, strict)?;
-        let x = self.junwrap(r, &[k], &[acc]);
-        // Two names that read as one key collide.
-        let m = self.b.use_var(acc);
-        let dup = self.jmap_contains(m, k)?;
-        let zero = self.b.iconst(0);
-        let fresh = self.b.icmp(Cc::Eq, dup, zero);
-        self.jrequire(fresh, &[k, x], &[acc]);
-        let m = self.b.use_var(acc);
-        let m2 = self.map_insert(m, k, x)?;
-        self.b.def_var(acc, m2);
-        let iv = self.b.use_var(i);
-        let one = self.b.iconst(1);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(head, &[]);
-        self.b.seal_block(head);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.counted_loop(zero, n, &mut |s, iv| {
+            let name = s.call_runtime("msrt_json_key", &[doc, id, iv], MTy::STR)?;
+            let k = s.jdecode_key(key, key_mt, name, acc)?;
+            let item = s.jitem(doc, id, iv)?;
+            let r = s.jdecode_call(value, doc, item, strict)?;
+            let x = s.junwrap(r, &[k], &[acc]);
+            // Two names that read as one key collide.
+            let m = s.b.use_var(acc);
+            let dup = s.jmap_contains(m, k)?;
+            let zero = s.b.iconst(0);
+            let fresh = s.b.icmp(Cc::Eq, dup, zero);
+            s.jrequire(fresh, &[k, x], &[acc]);
+            let m = s.b.use_var(acc);
+            let m2 = s.map_insert(m, k, x)?;
+            s.b.def_var(acc, m2);
+            Ok(())
+        })?;
         Ok(self.b.use_var(acc))
     }
 
@@ -1128,34 +1095,18 @@ impl FnLower<'_> {
     fn jencode_list(&mut self, elem: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
         let arr = self.jadd("msrt_json_add_empty_array", &[doc])?;
         let n = self.b.list_len(value);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
         let zero = self.b.iconst(0);
-        self.b.def_var(i, zero);
-        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(head, &[]);
-        self.b.switch_to(head);
-        let iv = self.b.use_var(i);
-        let more = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(more, body, &[], exit, &[]);
-        self.b.seal_block(body);
-        self.b.switch_to(body);
-        let iv = self.b.use_var(i);
-        let item = self.b.list_get(value, iv);
-        let id = self.jencode_nested(elem, doc, item)?;
-        // An element without a JSON form is `null`.
-        let z = self.b.iconst(0);
-        let has_form = self.b.icmp(Cc::Ge, id, z);
-        let null = self.jadd("msrt_json_add_null", &[doc])?;
-        let id = self.b.select(has_form, id, null);
-        self.call_runtime("msrt_json_array_push", &[doc, arr, id], MTy::UNIT)?;
-        let iv = self.b.use_var(i);
-        let one = self.b.iconst(1);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(head, &[]);
-        self.b.seal_block(head);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.counted_loop(zero, n, &mut |s, iv| {
+            let item = s.b.list_get(value, iv);
+            let id = s.jencode_nested(elem, doc, item)?;
+            // An element without a JSON form is `null`.
+            let z = s.b.iconst(0);
+            let has_form = s.b.icmp(Cc::Ge, id, z);
+            let null = s.jadd("msrt_json_add_null", &[doc])?;
+            let id = s.b.select(has_form, id, null);
+            s.call_runtime("msrt_json_array_push", &[doc, arr, id], MTy::UNIT)?;
+            Ok(())
+        })?;
         Ok(arr)
     }
 
