@@ -62,8 +62,8 @@ fn parse_line(line: String) Optional[Record]:
         if parts.length() != 2:
             return none
 
-        category = parts.get(0)
-        amount = parts.get(1)
+        category = parts.get(0).clone()
+        amount = parts.get(1).clone()
 
     if category.is_empty() or category.contains("\"") or amount.contains(","):
         return none
@@ -100,7 +100,7 @@ fn run() Result[Unit, Error]:
         else:
             let r = rec.get()
             totals.add(
-                key: r.category,
+                key: r.category.clone(),
                 value: (
                     totals.get_or(key: r.category, fallback: 0)
                     + r.cents

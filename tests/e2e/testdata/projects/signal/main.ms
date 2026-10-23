@@ -16,6 +16,7 @@ export fn main() Int:
     with resource = Resource("parent", output.clone()):
         with child = Resource("child", output.clone()):
             let _ignored = output.write("ready\n")
+
             while true:
                 continue
 

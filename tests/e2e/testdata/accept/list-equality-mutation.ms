@@ -29,8 +29,10 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
             return
 
         var target = left.clone()
+
         if side == "right":
             target = right.clone()
+
         let next_action = target[1].on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
@@ -60,14 +62,17 @@ fn check_equality(side: String, mutation: String) Result[Unit, Error]:
 
     if mutation == "shrink_mismatch":
         right.set(2, Element(99, visit))
+
     let expected = (
         mutation != "shrink_mismatch"
         and mutation != "append_write"
         and mutation != "overwrite"
     )
     var expected_calls = 3
+
     if mutation == "append_write" or mutation == "overwrite":
         expected_calls = 2
+
     let same = left == right
     if same != expected or calls.count != expected_calls: return fail(
         "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"

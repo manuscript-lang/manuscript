@@ -14,6 +14,7 @@ export fn first_run() Set[Key]:
     var items = Set[Key]([Key(1, "original")])
     let add = items.add
     let remove = items.remove
+
     add(Key(1, "duplicate"))
     add_generic(var items, Key(2, "second"))
     remove(Key(1, "different"))

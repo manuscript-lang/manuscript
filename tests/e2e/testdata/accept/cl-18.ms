@@ -17,11 +17,8 @@ test "function suite boundaries":
         ),
         value: 3
     )
-    let final_argument = apply(
-        value: 3,
-        transform: fn(value):
-            return value - 1
-    )
-    calls.length() | try expect_equal(expected: 0)
-    grouped | try expect_equal(expected: 2)
-    final_argument | try expect_equal(expected: 2)
+    let final_argument = apply(value: 3, transform: fn(value): return value - 1)
+
+    calls.length() | try expect_equal(0)
+    grouped | try expect_equal(2)
+    final_argument | try expect_equal(2)

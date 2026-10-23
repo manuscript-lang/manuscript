@@ -101,7 +101,7 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
         if q.is_none():
             return ["error: bad item {token}"]
 
-        items.append(Item(sku: p.get(0), qty: q.get()))
+        items.append(Item(sku: p.get(0).clone(), qty: q.get()))
 
     var seen = Set[String]()
 
@@ -117,12 +117,12 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
                 "error: insufficient stock for {it.sku} (have {have.get()}, need {it.qty})"
             ]
 
-        seen.add(it.sku)
+        seen.add(it.sku.clone())
 
     var total = 0
 
     for it in items:
-        w.stock.add(key: it.sku, value: w.stock.get(it.sku).get() - it.qty)
+        w.stock.add(key: it.sku.clone(), value: w.stock.get(it.sku).get() - it.qty)
         let unit_price = w.price.get(it.sku).get()
 
         if it.qty >= 10:
@@ -130,7 +130,7 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
         else:
             total = total + it.qty * unit_price
 
-    w.orders.add(key: id, value: Order(items: items, status: "placed", total: total))
+    w.orders.add(key: id.clone(), value: Order(items: items, status: "placed", total: total))
     return ["ok {id} total={money(total)}"]
 
 fn report(w: Warehouse) List[String]:
@@ -147,7 +147,7 @@ fn report(w: Warehouse) List[String]:
             placed = placed + 1
             for it in o.items:
                 reserved.add(
-                    key: it.sku,
+                    key: it.sku.clone(),
                     value: (
                         reserved.get_or(
                             key: it.sku,
@@ -199,8 +199,8 @@ fn run_command(var w: Warehouse, line: String) List[String]:
             return ["error: bad quantity"]
 
         let now = w.stock.get_or(key: sku, fallback: 0) + q.get()
-        w.stock.add(key: sku, value: now)
-        w.price.add_default(key: sku, value: 0)
+        w.stock.add(key: sku.clone(), value: now)
+        w.price.add_default(key: sku.clone(), value: 0)
         return ["ok {sku} stock={now}"]
 
     if name == "price":
@@ -212,7 +212,7 @@ fn run_command(var w: Warehouse, line: String) List[String]:
         if not w.stock.contains(sku):
             return ["error: unknown sku {sku}"]
 
-        w.price.add(key: sku, value: p.get())
+        w.price.add(key: sku.clone(), value: p.get())
         return ["ok"]
 
     if name == "order":
@@ -232,10 +232,10 @@ fn run_command(var w: Warehouse, line: String) List[String]:
             return ["error: order {id} already {o.status}"]
 
         for it in o.items:
-            w.stock.add(key: it.sku, value: w.stock.get(it.sku).get() + it.qty)
+            w.stock.add(key: it.sku.clone(), value: w.stock.get(it.sku).get() + it.qty)
         var upd = o.clone()
         upd.status = "cancelled"
-        w.orders.add(key: id, value: upd)
+        w.orders.add(key: id.clone(), value: upd)
         return ["ok"]
 
     if o.status == "shipped":
@@ -245,7 +245,7 @@ fn run_command(var w: Warehouse, line: String) List[String]:
 
     var upd = o.clone()
     upd.status = "shipped"
-    w.orders.add(key: id, value: upd)
+    w.orders.add(key: id.clone(), value: upd)
     return ["ok"]
 
 fn run() Result[Unit, Error]:

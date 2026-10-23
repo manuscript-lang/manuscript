@@ -125,9 +125,11 @@ export fn main() Int:
     if latencies.length() > 0:
         let sorted_latencies = latencies.sorted(fn(a: Int, b: Int) Int: a - b)
         let rank = (95 * sorted_latencies.length() + 99) / 100
+
         p95 = sorted_latencies[rank - 1]
 
     var out = ""
+
     out += "valid: {records.length()}\n"
     out += "malformed: {malformed}\n"
     out += "DEBUG: {debug_count}\n"
@@ -139,20 +141,25 @@ export fn main() Int:
     if let worst = slowest:
         out += "slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
     out += "top:\n"
+
     var stats: List[PathStat] = []
+
     for path in counts.keys():
         stats.append(
             PathStat(
                 path: path, count: counts.get_or(path, 0), total: totals.get_or(path, 0)
             )
         )
+
     let ranked = stats.sorted(rank_order)
     var shown = ranked.length()
+
     if shown > 3:
         shown = 3
 
     for i in range(0, shown):
         let stat = ranked[i]
+
         out += "{stat.path} {stat.count} avg={stat.total / stat.count}\n"
 
     stdout().write(out).get()

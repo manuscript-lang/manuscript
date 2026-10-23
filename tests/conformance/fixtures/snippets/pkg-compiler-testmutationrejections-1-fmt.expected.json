@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import stdout from \"@std/io.ms\"\nimport File from \"@std/io.ms\"\nimport Queue from \"@std/collections.ms\"\n\ninterface Read:\n    fn get() Int\n\ntype Val:\n    val: Int\n\nimpl Read for Val:\n    fn get() Int:\n        return self.val\n"
+    "fmt": "import stdout from \"@std/io.ms\"\nimport File from \"@std/io.ms\"\nimport Queue from \"@std/queue.ms\"\n\ninterface Read:\n    fn get() Int\n\ntype Val:\n    val: Int\n\nimpl Read for Val:\n    fn get() Int:\n        return self.val\n"
   }
 }

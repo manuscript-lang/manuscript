@@ -53,12 +53,12 @@ fn exercise() Result[Int, Error]:
         second: report(output: stdout(), label: "second", value: 2),
         first: report(output: stdout(), label: "first", value: 1)
     )
-    total | try expect_equal(expected: 3)
+    total | try expect_equal(3)
     let pair = Pair(
         second: report(output: stdout(), label: "pair second", value: 2),
         first: report(output: stdout(), label: "pair first", value: 1)
     )
-    (pair.first + pair.second) | try expect_equal(expected: 3)
+    (pair.first + pair.second) | try expect_equal(3)
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
     stdout().write(data: "after normal\n")
@@ -79,7 +79,7 @@ fn exercise() Result[Int, Error]:
         error(_):
             let completed = unit
 
-    early(output: stdout()) | try expect_equal(expected: 5)
+    early(output: stdout()) | try expect_equal(5)
     stdout().write(data: "finished\n")
     return ok(0)
 

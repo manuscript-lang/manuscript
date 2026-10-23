@@ -5,19 +5,23 @@ import {BigInt, BigIntError, from_int} from "@std/math.ms"
 
 test "integer division retains signed boundary and remainder rules":
     let minimum = -9223372036854775808
+
     try expect_false(minimum / 1 != minimum or minimum % -1 != 0)
     try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
     try expect_false(7 / -2 != -3 or 7 % -3 != 1)
     try expect_false(0 / minimum != 0 or 1 / minimum != 0)
     try expect_equal(1d / -1d, -1d)
     try expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())
+
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
 
 test "duration arithmetic retains full signed nanosecond range":
     let minimum = duration(-9223372036854775808)
     let maximum = duration(9223372036854775807)
+
     try expect_false(
         (
             minimum.divide(1) != minimum
@@ -50,6 +54,7 @@ test "duration arithmetic retains full signed nanosecond range":
 test "duration safe addition subtraction negation and unit edges":
     let minimum = duration(-9223372036854775808)
     let maximum = duration(9223372036854775807)
+
     try expect_false(
         (
             minimum.add(duration(0)) != minimum

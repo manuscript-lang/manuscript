@@ -106,33 +106,33 @@ fn extreme_endpoints() Int:
     return sum
 
 test "bounded scalar sums preserve values":
-    bounded_sum() | try expect_equal(expected: 499500)
-    descending_sum() | try expect_equal(expected: -499500)
-    extreme_endpoints() | try expect_equal(expected: 9223372036854775805)
-    optional_overflow(flag: false) | try expect_equal(expected: 9223372036854775807)
+    bounded_sum() | try expect_equal(499500)
+    descending_sum() | try expect_equal(-499500)
+    extreme_endpoints() | try expect_equal(9223372036854775805)
+    optional_overflow(flag: false) | try expect_equal(9223372036854775807)
 
 test "intermediate carry updates still fault":
     (try expect_fault(fn(): let ignored = prefix_overflow())) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
     (try expect_fault(fn(): let ignored = peer_overflow())) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
 
 test "counter phases and optional updates still fault":
     (try expect_fault(fn(): let ignored = after_step_overflow())) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
     (try expect_fault(fn(): let ignored = optional_overflow(flag: true))) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
     (try expect_fault(fn(): let ignored = descending_overflow())) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
 
 test "statement expression writes discard scalar bounds":
     (try expect_fault(fn(): let ignored = expression_overflow())) | try expect_contains(
-        expected: "Int overflow;"
+        "Int overflow;"
     )
 
 fn product_sum() Int:
@@ -151,8 +151,8 @@ fn zero_effect(var visits: List[Int]) Int:
 
 test "bounded multiplication keeps its operator and operand effects":
     let left = -12
-    (left * -7) | try expect_equal(expected: 84)
-    product_sum() | try expect_equal(expected: 0)
+    (left * -7) | try expect_equal(84)
+    product_sum() | try expect_equal(0)
     var visits: List[Int] = []
-    (zero_effect(var visits) * 0) | try expect_equal(expected: 0)
-    visits | try expect_equal(expected: [1])
+    (zero_effect(var visits) * 0) | try expect_equal(0)
+    visits | try expect_equal([1])

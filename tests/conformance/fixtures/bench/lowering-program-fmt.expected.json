@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import range from \"@std/collections.ms\"\n\nfn scalar(limit: Int) Int:\n    var total = 0\n    for index in range(0, limit):\n        total += index\n    return total\n\nfn add(left: Int, right: Int) Int: left + right\n\nfn calls(limit: Int) Int:\n    var total = 0\n    for index in range(0, limit):\n        total = add(total, index)\n    return total\n\nfn items(values: List[Int], limit: Int) Int:\n    var total = 0\n    for index in range(0, limit):\n        total += values.get(index)\n    return total\n"
+    "fmt": "import range from \"@std/collections.ms\"\n\nfn scalar(limit: Int) Int:\n    var total = 0\n\n    for index in range(0, limit):\n        total += index\n    return total\n\nfn add(left: Int, right: Int) Int: left + right\n\nfn calls(limit: Int) Int:\n    var total = 0\n\n    for index in range(0, limit):\n        total = add(total, index)\n    return total\n\nfn items(values: List[Int], limit: Int) Int:\n    var total = 0\n\n    for index in range(0, limit):\n        total += values.get(index)\n    return total\n"
   }
 }

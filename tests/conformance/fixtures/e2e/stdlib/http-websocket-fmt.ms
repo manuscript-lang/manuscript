@@ -85,7 +85,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         (
             response.metadata().headers.text(
                 "X-Test"
-            ) | try expect_ok | try expect_equal(expected: some(["manuscript"]))
+            ) | try expect_ok | try expect_equal(some(["manuscript"]))
         )
         let client_options = HttpClientOptions(
             decompress: true,
@@ -106,9 +106,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     timeout: 2.seconds
                 ) | try expect_ok
             ):
-                body.metadata().status | try expect_equal(expected: 201)
+                body.metadata().status | try expect_equal(201)
                 (body.read(5) | try expect_ok).get() | try expect_equal(
-                    expected: "hello".to_bytes()
+                    "hello".to_bytes()
                 )
                 ((body.read(5) | try expect_ok).is_none()) | try expect_true
 
@@ -152,7 +152,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
                 options: client_options
             ) | try expect_ok
         ):
-            socket.subprotocol() | try expect_equal(expected: "echo")
+            socket.subprotocol() | try expect_equal("echo")
             let sent = (socket.send(data: "é🙂") | try expect_ok)
             let message = (socket.receive() | try expect_ok).get()
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
@@ -188,7 +188,7 @@ test "HTTP streaming handlers see the Host request header":
                 timeout: 2.seconds
             ) | try expect_ok
         )
-        response.body | try expect_equal(expected: server.address().to_bytes())
+        response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
     let net = network()

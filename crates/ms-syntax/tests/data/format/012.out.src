@@ -12,6 +12,7 @@ export fn main() Int:
 
     for i in range(0, 16384):
         var value = 0
+
         if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
         cells.set(i, value)
 
@@ -31,6 +32,7 @@ export fn main() Int:
                                 ) % 128 * 128
                                 + (x + dx + 128) % 128
                             )
+
                             neighbors += cells.get(index)
 
                 let index = y * 128 + x
@@ -39,14 +41,17 @@ export fn main() Int:
                     or (neighbors == 2 and cells.get(index) == 1)
                 )
                 var value = 0
+
                 if alive: value = 1
                 next.set(index, value)
 
         let old = cells
+
         cells = next
         next = old
 
     var sum = 0
+
     for i in range(0, 16384):
         sum += cells.get(i)
     if sum != 3914: return panic("life checksum")

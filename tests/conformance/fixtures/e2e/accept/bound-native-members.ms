@@ -55,26 +55,26 @@ test "sealed builder":
     let append = sb.append
     sb.freeze()
     let message = try expect_fault(fn(): append(""))
-    message | try expect_contains(expected: "builder is sealed")
+    message | try expect_contains("builder is sealed")
 
 test "sealed map and set builders fault through every spelling":
     let map_builder = MapBuilder[String, Int]()
     let map_add = map_builder.add
     let map_sealed = map_builder.freeze()
     (try expect_fault(fn(): map_add("a", 1))) | try expect_contains(
-        expected: "builder is sealed"
+        "builder is sealed"
     )
     (try expect_fault(fn(): map_builder.add("a", 1))) | try expect_contains(
-        expected: "builder is sealed"
+        "builder is sealed"
     )
     let set_builder = SetBuilder[Int]()
     let alias = set_builder
     let set_sealed = set_builder.freeze()
     (try expect_fault(fn(): alias.add(1))) | try expect_contains(
-        expected: "builder is sealed"
+        "builder is sealed"
     )
     (try expect_fault(fn(): set_builder.add(1))) | try expect_contains(
-        expected: "builder is sealed"
+        "builder is sealed"
     )
 
 test "unsealed set builder continues":
@@ -89,11 +89,11 @@ test "abs_int of the minimum overflows":
         fn():
             let ignored = abs_int(value: smallest)
     )
-    message | try expect_contains(expected: "Int overflow")
+    message | try expect_contains("Int overflow")
 
 test "negative split cap faults":
     let message = try expect_fault(
         fn():
             let ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
     )
-    message | try expect_contains(expected: "max_parts must be nonnegative")
+    message | try expect_contains("max_parts must be nonnegative")

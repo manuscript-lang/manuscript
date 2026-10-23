@@ -226,12 +226,14 @@ Blank lines come only from these structural rules; authored ones are discarded. 
 
 - Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, record fields, and alternative cases stay compact.
 - Separate substantial conditionals, loops, resource scopes, and matches from neighbors. A single-step branch or loop without `else` stays with adjacent work.
+- Keep consecutive local bindings together, with a blank line between them and surrounding work. Guard checks stay attached to preceding setup.
 - A guard (`if` without `else` and one `return`, `break`, or `continue`) stays with preceding setup and other guards, then a blank line follows.
 - Keep each `if`/`else if`/`else` family and all match arms together. Inserted breaks go before leading comments.
 
 Expression layout uses a soft limit of 88 columns:
 
 - Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement suite always expands its call.
+- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(fn(): return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
 - When a group expands, each item goes on its own line, indented four spaces, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.

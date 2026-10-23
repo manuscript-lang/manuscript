@@ -70,6 +70,7 @@ export fn main() Int:
         if let entry = parse_entry(line):
             valid += 1
             levels.add(entry.level, levels.get_or(entry.level, 0) + 1)
+
             let digit = entry.status.scalar_at(0) - 48
 
             if digit == 2: status_counts[0] += 1
@@ -96,9 +97,11 @@ export fn main() Int:
     report(
         "status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
     )
+
     let sorted_latencies = latencies.sorted(fn(a, b): a - b)
     let n = sorted_latencies.length()
     var p95 = 0
+
     if n > 0: p95 = sorted_latencies[(95 * n + 99) / 100 - 1]
     report("p95: {p95}")
     if let best = slowest:
@@ -106,16 +109,19 @@ export fn main() Int:
             "slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
         )
     report("top:")
+
     var stats: List[PathStat] = []
 
     for path in counts.keys():
         let count = counts.get_or(path, 0)
+
         stats.append(PathStat(path: path, count: count, total: totals.get_or(path, 0)))
 
     let paths = stats.sorted(fn(a, b): compare_paths(a, b))
 
     for i in range(0, min(3, paths.length())):
         let stat = paths[i]
+
         report("{stat.path} {stat.count} avg={stat.total / stat.count}")
 
     return 0

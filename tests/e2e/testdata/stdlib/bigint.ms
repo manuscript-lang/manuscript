@@ -3,6 +3,7 @@ import {parse, from_int, BigInt, BigIntError} from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
+
     try expect_false(not big.to_int().is_none())
     try expect_equal(big.subtract(from_int(1)).to_int(), some(9223372036854775807))
     try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
@@ -12,10 +13,15 @@ test "big integers exceed machine range without losing precision":
 
 test "big integers validate digits budgets and zero divisors":
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
+
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+
     try expect_equal(parse("123", 10, 2), limited)
+
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+
     try expect_equal(parse("1_0", 10), malformed)
 
 test "big integer budgets exclude at most one leading sign before validation":
@@ -36,6 +42,7 @@ test "big integer budgets exclude at most one leading sign before validation":
 
 test "big integers support sign pow shifts and conversion":
     let five = from_int(5)
+
     try expect_equal(five.negate().to_int(), some(-5))
     try expect_equal(five.negate().abs().to_int(), some(5))
     try expect_equal(five.negate().sign(), -1)
@@ -50,9 +57,13 @@ test "big integers support sign pow shifts and conversion":
     try expect_equal(
         (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
     )
+
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+
     try expect_equal(five.pow(-1), invalid)
     try expect_equal(five.shift_left(-1), invalid)
+
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+
     try expect_equal(from_int(2).pow(100000000), limited)
     try expect_equal(five.shift_left(100000000), limited)

@@ -20,63 +20,72 @@ test "add high overflows":
         fn():
             let bad = add(a: 9223372036854775807, b: 1)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "add low overflows":
     let message = try expect_fault(
         fn():
             let bad = add(a: -9223372036854775808, b: -1)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "subtract high overflows":
     let message = try expect_fault(
         fn():
             let bad = subtract(a: 9223372036854775807, b: -1)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "subtract low overflows":
     let message = try expect_fault(
         fn():
             let bad = subtract(a: -9223372036854775808, b: 1)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "multiply high overflows":
     let message = try expect_fault(
         fn():
             let bad = multiply(a: 9223372036854775807, b: 2)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "multiply minimum overflows":
     let message = try expect_fault(
         fn():
             let bad = multiply(a: -9223372036854775808, b: -1)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
 
 test "divide minimum overflows":
     let message = try expect_fault(
         fn():
             let bad = divide(a: -9223372036854775808, b: -1)
     )
-    message | try expect_contains(expected: "Int./: overflow;")
+
+    message | try expect_contains("Int./: overflow;")
 
 test "divide by zero faults":
     let message = try expect_fault(
         fn():
             let bad = divide(a: 1, b: 0)
     )
-    message | try expect_contains(expected: "division by zero;")
+
+    message | try expect_contains("division by zero;")
 
 test "remainder by zero faults":
     let message = try expect_fault(
         fn():
             let bad = remainder(a: 1, b: 0)
     )
-    message | try expect_contains(expected: "remainder by zero;")
+
+    message | try expect_contains("remainder by zero;")
 
 test "negation":
     (negate(a: 5) == -5) | try expect_true
@@ -87,7 +96,9 @@ test "negation":
     (flip(a: 1.5) == -1.5) | try expect_true
     (1.0 / flip(a: 0.0) < 0.0) | try expect_true
     (1.0 / -0.0 < 0.0) | try expect_true
+
     var count = -3
+
     count = count + 1
     (count == -2) | try expect_true
 
@@ -96,4 +107,5 @@ test "negating the minimum overflows":
         fn():
             let bad = negate(a: -9223372036854775808)
     )
-    message | try expect_contains(expected: "Int overflow;")
+
+    message | try expect_contains("Int overflow;")
