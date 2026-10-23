@@ -1147,10 +1147,11 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
     }
 }
 
-/// Drops all scheduler state (unit tests run several scenarios in one process).
-#[cfg(test)]
+/// Drops all scheduler state (unit tests run several scenarios in one process; the leak sweep
+/// calls it at exit so only real leaks remain in the live-block count).
+#[cfg(any(test, feature = "stats"))]
 pub fn reset_for_tests() {
-    // SAFETY: tests hold the global lock and no task is mid-switch.
+    // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
         for i in 0..s.slots.len() {
