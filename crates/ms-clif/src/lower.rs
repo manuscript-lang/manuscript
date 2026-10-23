@@ -295,6 +295,17 @@ impl<'a, 'm> Lower<'a, 'm> {
         });
     }
 
+    /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
+    /// (1) with its capacity word to the counting runtime (`ms-rt` feature `stats`), which prints
+    /// the dynamic totals at exit. `bench/perf/copy-report.sh` counts the static sites.
+    fn count_str(&mut self, kind: i64, cap: Value) {
+        if !self.g.count_str {
+            return;
+        }
+        let kind = self.b.ins().iconst(types::I64, kind);
+        self.rt_call("msrt_str_count", &[kind, cap]);
+    }
+
     fn retain(&mut self, p: Value) {
         let rc = self.b.ins().load(types::I64, flags(), p, 0);
         let n = self.b.ins().iadd_imm_s(rc, 1);
@@ -309,6 +320,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
+                self.count_str(0, vs[2]);
                 // `cap == 0` marks a static (literal or one-byte ASCII) string: no count to change.
                 let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
                 self.if_then(owned, |s| {
@@ -339,6 +351,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             TyKind::Str => {
+                self.count_str(1, vs[2]);
                 let owned = self.b.ins().icmp_imm_s(IntCC::NotEqual, vs[2], 0);
                 self.if_then(owned, |s| {
                     let block = s.b.ins().iadd_imm_s(vs[0], -(STR_RC_BEFORE as i64));

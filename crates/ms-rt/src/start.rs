@@ -279,7 +279,16 @@ pub unsafe extern "C-unwind" fn msrt_start(
         crate::io::flush_stdout();
         crate::profile::finish();
         #[cfg(feature = "stats")]
-        eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+        {
+            eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+            let c = *crate::string::STR_COUNTS.ptr();
+            if c.iter().any(|n| *n != 0) {
+                eprintln!(
+                    "ms-rt string drops: {} static, {} owned; copies: {} static, {} owned",
+                    c[0], c[1], c[2], c[3]
+                );
+            }
+        }
         *MAIN_RESULT.ptr() as i32
     }
 }

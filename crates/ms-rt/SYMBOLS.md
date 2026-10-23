@@ -101,6 +101,7 @@ msrt_free(p: *mut u8)
 msrt_retain(o: *mut Obj)
 msrt_release(o: *mut Obj)
 msrt_drop_slow(o: *mut Obj)
+msrt_str_count(kind: i64, cap: i64)
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_process_exit(code: i64) -> !
 msrt_start_nanos() -> i64
