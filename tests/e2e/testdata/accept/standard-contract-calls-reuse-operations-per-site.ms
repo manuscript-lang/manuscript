@@ -20,7 +20,7 @@ test "repeated calls through one site":
         try expect_true((b.difference(other: a).to_milliseconds() >= 0))
         i = i + 1
 
-    let out = stdout()
+    var out = stdout()
     var n = 0
 
     while n < 2:

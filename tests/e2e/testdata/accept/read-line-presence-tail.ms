@@ -63,7 +63,7 @@ fn reordered(var visits: List[Int]) Bool:
 
 test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
-    let input = ReadStream(source)
+    var input = ReadStream(source)
     present(input) | try expect_true
     (try read_line(input)) | try expect_equal(some("λ"))
     present(input) | try expect_true
@@ -71,7 +71,7 @@ test "presence keeps custom EOF empty CRLF and following text":
 
 test "presence retains custom errors and limits":
     let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
-    let input = ReadStream(source)
+    var input = ReadStream(source)
     present(input, 2) | try expect_false
     input.close()
     present(input) | try expect_false

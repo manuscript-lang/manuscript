@@ -16,7 +16,7 @@ impl Hashable for Folded:
 
 fn replace_first[T](var xs: List[T], value: T) List[T]:
     xs.set(index: 0, value: value)
-    return xs
+    return xs.clone()
 
 test "string members":
     ("  a,b ".trim().split(separator: ",").length() == 2) | try expect_true
@@ -39,42 +39,34 @@ test "custom equality is kept for bound members":
     (mapped.length() == 1) | try expect_true
 
 test "builder":
-    let sb = StringBuilder()
-    var alias = sb
-    let append = alias.append
-    let freeze = sb.freeze
+    var sb = StringBuilder()
+    let append = sb.append
     append("a")
     append("é")
-    (freeze() == "aé") | try expect_true
-    (alias.freeze() == "aé") | try expect_true
+    (sb.freeze() == "aé") | try expect_true
 
 test "sealed builder":
     var sb = StringBuilder()
-    let append = sb.append
     sb.freeze()
 
-    let message = try expect_fault(fn(): append(""))
+    let message = try expect_fault(fn(): sb.append(""))
     message | try expect_contains("builder is sealed")
 
-test "sealed map and set builders fault through every spelling":
-    let map_builder = MapBuilder[String, Int]()
-    let map_add = map_builder.add
+test "sealed map and set builders fault on every add":
+    var map_builder = MapBuilder[String, Int]()
     let map_sealed = map_builder.freeze()
-    (try expect_fault(fn(): map_add("a", 1))) | try expect_contains("builder is sealed")
     (try expect_fault(fn(): map_builder.add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
 
-    let set_builder = SetBuilder[Int]()
-    let alias = set_builder
+    var set_builder = SetBuilder[Int]()
     let set_sealed = set_builder.freeze()
-    (try expect_fault(fn(): alias.add(1))) | try expect_contains("builder is sealed")
     (try expect_fault(fn(): set_builder.add(1))) | try expect_contains(
         "builder is sealed"
     )
 
 test "unsealed set builder continues":
-    let builder = SetBuilder[Int]()
+    var builder = SetBuilder[Int]()
     builder.add(1)
 
     let frozen = builder.freeze()

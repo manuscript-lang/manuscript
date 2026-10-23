@@ -294,6 +294,9 @@ jobs:
       - name: Rust ms replays the corpus
         if: matrix.corpus
         run: sh scripts/conform.sh
+      - name: Rust ms runs the e2e fixtures
+        if: matrix.corpus
+        run: sh scripts/e2e.sh
       - name: Package and run the distribution on a hello project
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"

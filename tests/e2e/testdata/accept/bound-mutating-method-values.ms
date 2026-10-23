@@ -1,4 +1,5 @@
 import {expect_equal} from "@std/testing.ms"
+import StringBuilder from "@std/string.ms"
 
 type Counter:
     n: Int
@@ -61,3 +62,10 @@ test "an interface method value shares the underlying value":
     step()
     step()
     try expect_equal(view.step(), 30)
+
+test "a builder method value appends to the builder":
+    var sb = StringBuilder()
+    let append = sb.append
+    append("a")
+    append("b")
+    sb.freeze() | try expect_equal("ab")

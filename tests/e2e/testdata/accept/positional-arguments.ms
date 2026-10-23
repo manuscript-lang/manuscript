@@ -16,6 +16,10 @@ fn mark(var counter: Counter, value: Int) Int:
     counter.value = counter.value * 10 + value
     return value
 
+fn chosen(var counter: Counter) fn(amount: Int, deduction: Int) Int:
+    mark(var counter, 1)
+    return subtract
+
 fn ordered(
     var counter: Counter, first: Int = mark(counter, 3), second: Int = mark(counter, 4),
     third: Int = 0
@@ -110,8 +114,8 @@ test "methods native APIs function values and contextual labels":
     )
 
     let copied = subtract
-    let typed: fn(amount: Int, deduction: Int) Int = copied.clone()
-    var mutable = typed.clone()
+    let typed: fn(amount: Int, deduction: Int) Int = subtract
+    var mutable = subtract
     try expect_false(
         (
             copied(10, 3) != 7
@@ -173,12 +177,7 @@ test "written order before omitted defaults and body":
 
 test "callable expression precedes positional arguments":
     var counter = Counter()
-
-    let factory = fn() fn(amount: Int, deduction: Int) Int:
-        mark(var counter, 1)
-        return subtract
-
-    let result = factory()(mark(var counter, 2), mark(var counter, 3))
+    let result = chosen(var counter)(mark(var counter, 2), mark(var counter, 3))
     try expect_false(result != -1 or counter.value != 123)
 
 test "mutable callable value is captured before arguments":
