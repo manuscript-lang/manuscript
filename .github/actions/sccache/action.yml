@@ -1,0 +1,39 @@
+name: sccache
+description: Install sccache and restore its cache. Pair with sccache-save at the end of the job.
+
+inputs:
+  prefix:
+    description: Cache key prefix, one per job kind and platform.
+    required: true
+
+outputs:
+  cache-hit:
+    description: Whether the restore matched the primary key exactly.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  primary-key:
+    description: The key sccache-save stores under.
+    value: ${{ steps.restore.outputs.cache-primary-key }}
+
+runs:
+  using: composite
+  steps:
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: sccache
+    - name: Keep the sccache directory in runner storage
+      shell: bash
+      run: echo "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+    # The key hashes only Cargo.lock and the toolchain: one entry per prefix and lockfile, saved
+    # on main. A fallback restore from an older lockfile is fine because sccache entries are
+    # content-addressed.
+    - name: Restore cargo cache
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+          ${{ runner.temp }}/sccache
+        key: ${{ inputs.prefix }}${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+        restore-keys: ${{ inputs.prefix }}

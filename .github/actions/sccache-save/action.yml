@@ -1,0 +1,24 @@
+name: sccache save
+description: Save the sccache cache from main when the restore missed.
+
+inputs:
+  cache-hit:
+    description: The cache-hit output of the sccache action.
+    required: true
+  primary-key:
+    description: The primary-key output of the sccache action.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Save cargo cache
+      if: github.ref == 'refs/heads/main' && inputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/git/db
+          ${{ runner.temp }}/sccache
+        key: ${{ inputs.primary-key }}
