@@ -33,7 +33,6 @@ ms-std-process = { path = "../ms-std-process" }
 ms-std-random = { path = "../ms-std-random" }
 ms-std-regex = { path = "../ms-std-regex" }
 ms-std-rt = { path = "../ms-std-rt" }
-ms-std-semver = { path = "../ms-std-semver" }
 ms-std-system = { path = "../ms-std-system" }
 ms-std-terminal = { path = "../ms-std-terminal" }
 ms-std-time = { path = "../ms-std-time" }

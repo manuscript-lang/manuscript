@@ -1094,7 +1094,6 @@ dependencies = [
  "ms-std-random",
  "ms-std-regex",
  "ms-std-rt",
- "ms-std-semver",
  "ms-std-system",
  "ms-std-terminal",
  "ms-std-time",
@@ -1367,15 +1366,6 @@ dependencies = [
  "libc",
  "ms-rt",
  "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-std-semver"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-core",
 ]
 
 [[package]]
