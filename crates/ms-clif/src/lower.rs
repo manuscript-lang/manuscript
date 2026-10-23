@@ -12,8 +12,8 @@ use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET,
-    VEC_LEN_OFFSET, VEC_PTR_OFFSET,
+    ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
+    STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::HashMap;
 
@@ -328,11 +328,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(0, vs[1]);
-                // A static or view string has the top tag bit set: nothing to free.
-                let owned = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, vs[1], 0);
+                // Only an owned string (tag `00`) frees anything.
+                let owned =
+                    self.b
+                        .ins()
+                        .icmp_imm_s(IntCC::UnsignedLessThan, vs[1], STR_INLINE as i64);
                 self.if_then(owned, |s| {
                     s.rt_call("msrt_str_free", &[vs[0]]);
                 });
@@ -361,9 +361,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(1, vs[1]);
-                // A static string (tag `10`) is shared; an owned one or a view is duplicated.
+                // A static (`10`) or inline (`01`) string copies bitwise; an owned one or a
+                // view is duplicated, inline when it is short.
                 let tag = self.b.ins().ushr_imm_u(vs[1], 62);
-                let shared = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 2);
+                let tag = self.b.ins().iadd_imm_s(tag, -1);
+                let shared = self.b.ins().icmp_imm_s(IntCC::UnsignedLessThan, tag, 2);
                 let (dup, join) = (self.b.create_block(), self.b.create_block());
                 for _ in 0..2 {
                     self.b.append_block_param(join, types::I64);
@@ -371,11 +373,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let same = [vs[0], vs[1]].map(BlockArg::Value);
                 self.b.ins().brif(shared, join, &same, dup, &[]);
                 self.b.switch_to_block(dup);
-                let len = self.b.ins().band_imm_s(vs[1], STR_LEN_MASK as i64);
-                let p = self.rt_call("msrt_str_dup", &[vs[0], len])[0];
-                self.b
-                    .ins()
-                    .jump(join, &[BlockArg::Value(p), BlockArg::Value(len)]);
+                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
+                    StackSlotKind::ExplicitSlot,
+                    16,
+                    3,
+                ));
+                let out = self.b.ins().stack_addr(types::I64, slot, 0);
+                self.rt_call("msrt_str_copy", &[vs[0], vs[1], out]);
+                let c = self.load_leaves(out, 0, &[Leaf::I64; 2]);
+                self.b.ins().jump(join, &bargs(&c));
                 self.b.switch_to_block(join);
                 self.b.block_params(join).to_vec()
             }
@@ -1870,7 +1876,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
                 if self.opt_niche(ty) {
-                    vec![self.b.ins().icmp_imm_s(IntCC::NotEqual, v[0], 0)]
+                    vec![self.opt_present(ty, &v)]
                 } else {
                     vec![v[0]]
                 }
@@ -1880,8 +1886,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let v = self.a(inst, 0);
                 let nullable = self.opt_niche(ty);
                 if inst.op == Op::OptUnwrap && checks {
-                    // Both layouts keep the presence word (null pointer or tag) first.
-                    let none = self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0);
+                    // Every layout keeps the presence word (null pointer or tag) first; an
+                    // optional string also needs its tag.
+                    let none = if self.g.lay.is_str_like(ty) {
+                        let some = self.opt_present(ty, &v);
+                        self.b.ins().icmp_imm_s(IntCC::Equal, some, 0)
+                    } else {
+                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
+                    };
                     self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
                 }
                 let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
@@ -1921,11 +1933,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
             }
             Op::StrByte => {
-                let (p, i) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                let at = self.b.ins().iadd(p, i);
+                // An inline string's bytes are its two words, little-endian.
+                let (s, i) = (self.a(inst, 0), self.a(inst, 1)[0]);
+                let inline = self.str_is_inline(s[1]);
+                let (word, mem, join) = (
+                    self.b.create_block(),
+                    self.b.create_block(),
+                    self.b.create_block(),
+                );
+                self.b.append_block_param(join, types::I64);
+                self.b.ins().brif(inline, word, &[], mem, &[]);
+                self.b.switch_to_block(word);
+                let high = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, i, 8);
+                let w = self.b.ins().select(high, s[1], s[0]);
+                let shift = self.b.ins().band_imm_s(i, 7);
+                let shift = self.b.ins().ishl_imm_u(shift, 3);
+                let w = self.b.ins().ushr(w, shift);
+                let w = self.b.ins().band_imm_s(w, 0xff);
+                self.b.ins().jump(join, &[BlockArg::Value(w)]);
+                self.b.switch_to_block(mem);
+                let at = self.b.ins().iadd(s[0], i);
                 let byte = self.b.ins().load(types::I8, flags(), at, 0);
                 let byte = self.b.ins().uextend(types::I64, byte);
-                vec![byte]
+                self.b.ins().jump(join, &[BlockArg::Value(byte)]);
+                self.b.switch_to_block(join);
+                vec![self.b.block_params(join)[0]]
             }
             Op::StrAscii => {
                 let b = self.a(inst, 0)[0];
@@ -2208,6 +2243,23 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Opt(inner) => self.g.lay.opt_is_boxed(*inner),
             _ => false,
         }
+    }
+
+    /// Whether a niche optional holds a value. None of an optional string is a null pointer with
+    /// the static tag; an inline string may have a zero first word, but never that tag.
+    fn opt_present(&mut self, ty: Ty, v: &[Value]) -> Value {
+        if !self.g.lay.is_str_like(ty) {
+            return self.b.ins().icmp_imm_s(IntCC::NotEqual, v[0], 0);
+        }
+        let t = self.b.ins().bxor_imm_s(v[1], STR_STATIC as i64);
+        let any = self.b.ins().bor(v[0], t);
+        self.b.ins().icmp_imm_s(IntCC::NotEqual, any, 0)
+    }
+
+    /// Whether the second word of a string has the inline tag.
+    fn str_is_inline(&mut self, tagged: Value) -> Value {
+        let tag = self.b.ins().ushr_imm_u(tagged, 62);
+        self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1)
     }
 
     /// Whether the optional is its payload's leaves, with a null first leaf for none.
@@ -2513,6 +2565,17 @@ impl<'a, 'm> Lower<'a, 'm> {
             return None;
         }
         let unaligned = MemFlagsData::new().with_notrap();
+        // The literal as an inline string: equal words. Another kind of string compares its
+        // masked length (never the literal's for an inline string) and then its bytes.
+        let mut word = [0u8; 8];
+        word[..bytes.len()].copy_from_slice(&bytes);
+        let inline_tag = (STR_INLINE | (bytes.len() << STR_INLINE_LEN_SHIFT)) as i64;
+        let same_tag = self.b.ins().icmp_imm_s(IntCC::Equal, other[1], inline_tag);
+        let same_word = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::Equal, other[0], i64::from_le_bytes(word));
+        let inline_eq = self.b.ins().band(same_tag, same_word);
         let len = self.b.ins().band_imm_s(other[1], STR_LEN_MASK as i64);
         let same_len = self
             .b
@@ -2524,7 +2587,8 @@ impl<'a, 'm> Lower<'a, 'm> {
         let no = self.b.ins().iconst(types::I8, 0);
         self.b
             .ins()
-            .brif(same_len, check, &[], join, &[BlockArg::Value(no)]);
+            .brif(same_len, check, &[], join, &[BlockArg::Value(inline_eq)]);
+        let _ = no;
         self.b.switch_to_block(check);
         let mut all = None;
         let mut at = 0;
@@ -2566,14 +2630,20 @@ impl<'a, 'm> Lower<'a, 'm> {
         let diff = self.b.ins().bxor(a[1], b[1]);
         let diff = self.b.ins().ishl_imm_u(diff, 2);
         let same_len = self.b.ins().icmp_imm_s(IntCC::Equal, diff, 0);
+        // An inline string's length is not in the low bits, so different words prove nothing
+        // when one side is inline: the runtime compares those.
+        let (ia, ib) = (self.str_is_inline(a[1]), self.str_is_inline(b[1]));
+        let some_inline = self.b.ins().bor(ia, ib);
+        let maybe = self.b.ins().bor(same_len, some_inline);
         let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
+        let same_ptr = self.b.ins().band(same_ptr, same_len);
         let join = self.b.create_block();
         self.b.append_block_param(join, types::I8);
         let (check, slow) = (self.b.create_block(), self.b.create_block());
         let no = self.b.ins().iconst(types::I8, 0);
         self.b
             .ins()
-            .brif(same_len, check, &[], join, &[BlockArg::Value(no)]);
+            .brif(maybe, check, &[], join, &[BlockArg::Value(no)]);
         self.b.switch_to_block(check);
         let yes = self.b.ins().iconst(types::I8, 1);
         self.b

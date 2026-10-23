@@ -101,7 +101,15 @@ fn concat_onto_a_dying_string_appends_in_place() {
     opt::optimize(&mut m, opt::Level::Speed, true);
     verify_module(&m).expect("verify after");
     let text = print_module(&m);
-    assert_eq!(text.matches("call.rt @msrt_string_append").count(), 1, "{text}");
-    assert_eq!(text.matches("call.rt @msrt_string_concat").count(), 0, "{text}");
+    assert_eq!(
+        text.matches("call.rt @msrt_string_append").count(),
+        1,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("call.rt @msrt_string_concat").count(),
+        0,
+        "{text}"
+    );
     assert_eq!(text.matches("drop").count(), 2, "{text}");
 }

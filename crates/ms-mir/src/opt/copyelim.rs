@@ -173,12 +173,8 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
                     break;
                 }
             }
-            let entered_elsewhere = (0..nb).any(|x| {
-                seen[x]
-                    && preds[x]
-                        .iter()
-                        .any(|p| p.index() != bc && !seen[p.index()])
-            });
+            let entered_elsewhere = (0..nb)
+                .any(|x| seen[x] && preds[x].iter().any(|p| p.index() != bc && !seen[p.index()]));
             if !ok || drops.is_empty() || entered_elsewhere {
                 continue;
             }

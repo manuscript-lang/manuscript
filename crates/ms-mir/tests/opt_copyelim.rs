@@ -402,6 +402,9 @@ fn a_copy_at_the_last_use_across_blocks_becomes_a_move() {
     // Only the drop of the previous accumulator remains.
     assert_eq!(count(&m, "collect", Op::Drop), 1, "{}", print_module(&m));
     // The drop in b2 also runs on the path that skips the copy, so it stays.
-    assert_eq!(count(&m, "skipped", Op::Drop), 1 + count(&m, "skipped", Op::Copy));
+    assert_eq!(
+        count(&m, "skipped", Op::Drop),
+        1 + count(&m, "skipped", Op::Copy)
+    );
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }

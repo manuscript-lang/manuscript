@@ -1302,7 +1302,7 @@ unsafe fn collect_view(
             }
             let s = &*(p.add(if keys { l.koff } else { l.voff }) as *const StrVal);
             let view = if s.owns() {
-                StrVal::view(s.ptr, s.len())
+                crate::string::view_of(s.data(), s.len())
             } else {
                 s.alias()
             };

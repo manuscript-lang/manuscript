@@ -163,16 +163,24 @@ lists (up to 64 MiB) for reuse instead of returning to the system. No locking.
 StrVal { ptr @0, tagged: usize @8 }       String, 16 bytes
 ```
 
-`ptr` points at the UTF-8 bytes; a NUL follows them (not counted). `tagged & STR_LEN_MASK` is the
-byte length and the top two bits say who owns the bytes:
+The top two bits of `tagged` say where the bytes are:
 
 | top bits | kind | drop | copy |
 | --- | --- | --- | --- |
-| `00` | owned allocation starting at `ptr` | `msrt_str_free(ptr)` | `msrt_str_dup(ptr, len)` |
-| `10` | static (literal, empty, one ASCII byte) | nothing | shares |
-| `11` | view of another string's bytes | nothing | `msrt_str_dup(ptr, len)` |
+| `00` | owned allocation starting at `ptr` | `msrt_str_free(ptr)` | `msrt_str_copy(ptr, tagged, out)` |
+| `01` | inline: up to 15 bytes in the value itself | nothing | bitwise |
+| `10` | static (literal, empty, one ASCII byte) | nothing | bitwise |
+| `11` | view of another string's bytes | nothing | `msrt_str_copy(ptr, tagged, out)` |
 
-So `tagged as i64 >= 0` means owned. A view is only handed out where the source outlives it
+For every kind but inline, `ptr` points at the UTF-8 bytes, a NUL follows them (not counted), and
+`tagged & STR_LEN_MASK` is the byte length. An inline string keeps its length in bits 56–59 of
+`tagged` (`STR_INLINE_LEN_SHIFT`) and its bytes in the value, little-endian from its address: the
+whole `ptr` word, then the low 7 bytes of `tagged`; bytes past the length are zero. Its data
+pointer is therefore the value's own address (`StrVal::data`). `msrt_str_copy` returns an inline
+string when the copy fits, so copying a short string never allocates. A string is owned exactly when
+`tagged < 1 << 62` (unsigned). `Optional[String]` uses the same two words, with None as `{0, STR_STATIC}`;
+presence is `(ptr | (tagged ^ STR_STATIC)) != 0`, because an inline string can have a zero `ptr`
+word. A view is only handed out where the source outlives it
 unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
 (`msrt_string_split_view`), `for` loops over the keys or values of such a map
 (`msrt_map_keys_view`, `msrt_map_values_view`). Language-level indices and lengths count Unicode

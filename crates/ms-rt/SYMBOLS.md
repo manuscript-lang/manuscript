@@ -149,7 +149,7 @@ msrt_string_concat6( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *c
 msrt_string_clone(s: *const StrVal, out: *mut StrVal)
 msrt_string_free(s: *const StrVal)
 msrt_str_free(ptr: *mut u8)
-msrt_str_dup(ptr: *const u8, len: i64) -> *mut u8
+msrt_str_copy(ptr: *const u8, tagged: i64, out: *mut StrVal)
 msrt_strbuf_new() -> *mut StrBuf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal)
 msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal)

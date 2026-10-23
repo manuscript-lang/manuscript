@@ -13,8 +13,8 @@ use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
 use ms_rt_abi::{
-    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
-    VecVal,
+    Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
+    STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
 
 /// Native allocation ceiling for built strings.
@@ -27,19 +27,20 @@ pub const MAX_BYTES: usize = 1 << 30;
 #[inline(always)]
 pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
     // SAFETY: `ptr..ptr+len` holds the text.
-    unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len()) }
+    unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
 }
 
-/// A copy of `s` that the caller owns: a static string is shared, an owned one is duplicated.
+/// A copy of `s` that the caller owns: a static or inline string is the same two words, an owned
+/// one or a view is duplicated.
 ///
 /// # Safety
 /// `s` must be a live string.
 #[inline(always)]
 pub unsafe fn cloned(s: &StrVal) -> StrVal {
-    if s.is_static() {
+    if s.copies_bitwise() {
         return s.alias();
     }
-    // SAFETY: `s` is live and owned, so `ptr..ptr+len` is readable.
+    // SAFETY: `s` is live, so its bytes are readable.
     unsafe { owned_copy(bytes(s)) }
 }
 
@@ -57,11 +58,12 @@ pub unsafe extern "C-unwind" fn msrt_str_free(ptr: *mut u8) {
     unsafe { free_owned(ptr) }
 }
 
-/// Copies `len` bytes at `ptr` into a new allocation with a NUL (the copy of an owned string).
+/// Writes a copy of the owned string or view `{ptr, tagged}` to `out`: inline when it fits, so
+/// copying a short string allocates nothing (what compiled code calls to copy a string).
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_str_dup(ptr: *const u8, len: usize) -> *mut u8 {
-    // SAFETY: `ptr..ptr+len` is readable.
-    unsafe { owned_copy(core::slice::from_raw_parts(ptr, len)).ptr }
+pub unsafe extern "C-unwind" fn msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) {
+    // SAFETY: an owned string or a view has `len` readable bytes at `ptr`.
+    unsafe { owned_copy(core::slice::from_raw_parts(ptr, tagged & STR_LEN_MASK)).write_to(out) }
 }
 
 /// Frees an owned string.
@@ -71,11 +73,20 @@ pub unsafe extern "C-unwind" fn msrt_string_free(s: *const StrVal) {
     unsafe { release(&*s) }
 }
 
+/// An owned copy of `data`: inline when it fits.
 #[inline(never)]
 fn owned_copy(data: &[u8]) -> StrVal {
+    if data.len() <= STR_INLINE_MAX {
+        return StrVal::inline(data);
+    }
+    heap_copy(data)
+}
+
+/// A heap copy of `data`, whatever its length.
+fn heap_copy(data: &[u8]) -> StrVal {
     let s = alloc_str(data.len());
     // SAFETY: `s` has room for `len` bytes.
-    unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr, data.len()) };
+    unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr_word, data.len()) };
     s
 }
 
@@ -87,7 +98,7 @@ fn owned_copy(data: &[u8]) -> StrVal {
 pub unsafe fn release(s: &StrVal) {
     if s.owns() {
         // SAFETY: an owned string is one allocation starting at `ptr`.
-        unsafe { free_owned(s.ptr) }
+        unsafe { free_owned(s.ptr_word) }
     }
 }
 
@@ -139,8 +150,11 @@ pub const NO_STR: StrVal = StrVal::literal(null_mut(), 0);
 /// # Safety
 /// `s` is `NO_STR` or a live string the caller owns a reference to.
 pub unsafe fn release_opt(s: &StrVal) {
-    if !s.ptr.is_null() {
-        // SAFETY: a non-null string is live per the contract.
+    if s.ptr_word.is_null() && s.is_static() {
+        return;
+    }
+    {
+        // SAFETY: a string other than `NO_STR` is live per the contract.
         unsafe { release(s) }
     }
 }
@@ -169,10 +183,33 @@ pub fn from_bytes(data: &[u8]) -> StrVal {
         1 if data[0] < 0x80 => return ascii_char(data[0]),
         _ => {}
     }
-    let s = alloc_str(data.len());
-    // SAFETY: `s` has room for `len` bytes.
-    unsafe { core::ptr::copy_nonoverlapping(data.as_ptr(), s.ptr, data.len()) };
-    s
+    owned_copy(data)
+}
+
+/// The bytes of a string of at most 16 bytes as little-endian bits.
+///
+/// # Safety
+/// `s` is live and at most 16 bytes long.
+#[inline(always)]
+unsafe fn bits(s: &StrVal) -> u128 {
+    if s.is_inline() {
+        return s.inline_bits();
+    }
+    // SAFETY: caller contract.
+    ms_rt_abi::pack(unsafe { bytes(s) })
+}
+
+/// A string for `len` bytes at `p` inside another live string: an inline copy when it fits,
+/// otherwise a view. A short piece never points into its source, which may itself be inline.
+///
+/// # Safety
+/// `p..p+len` is readable and stays unchanged while the result lives.
+pub unsafe fn view_of(p: *const u8, len: usize) -> StrVal {
+    if len <= STR_INLINE_MAX {
+        // SAFETY: caller contract.
+        return StrVal::inline(unsafe { core::slice::from_raw_parts(p, len) });
+    }
+    StrVal::view(p.cast_mut(), len)
 }
 
 /// Converts a finished buffer into a string.
@@ -217,17 +254,24 @@ pub unsafe extern "C-unwind" fn msrt_string_from_bytes(
 pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     // SAFETY: the hint is cleared when its string is freed.
     unsafe {
+        if (*s).is_inline() {
+            // ASCII when no byte has its top bit (the bytes past the length are zero).
+            if (*s).inline_bits() & 0x8080_8080_8080_8080_8080_8080_8080_8080 == 0 {
+                return (*s).len();
+            }
+            return utf8::count(bytes(s));
+        }
         let b = bytes(s);
         if b.len() < HINT_MIN || !(*s).owns() {
             return utf8::count(b);
         }
         let h = HINT.ptr();
-        if core::ptr::eq((*h).s, (*s).ptr) && (*h).len == b.len() && (*h).count != usize::MAX {
+        if core::ptr::eq((*h).s, (*s).ptr_word) && (*h).len == b.len() && (*h).count != usize::MAX {
             return (*h).count;
         }
         let n = utf8::count(b);
         *h = Hint {
-            s: (*s).ptr,
+            s: (*s).ptr_word,
             len: b.len(),
             count: n,
             scalar: 0,
@@ -266,7 +310,7 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
         }
         let h = HINT.ptr();
         let (mut sc, mut off) = (0usize, 0usize);
-        if std::ptr::eq((*h).s, (*s).ptr) && (*h).scalar.abs_diff(n) < n {
+        if std::ptr::eq((*h).s, (*s).ptr_word) && (*h).scalar.abs_diff(n) < n {
             sc = (*h).scalar;
             off = (*h).offset;
         }
@@ -278,10 +322,10 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
             off -= utf8::decode_last(&b[..off]).1;
             sc -= 1;
         }
-        if !core::ptr::eq((*h).s, (*s).ptr) || (*h).len != b.len() {
+        if !core::ptr::eq((*h).s, (*s).ptr_word) || (*h).len != b.len() {
             (*h).count = usize::MAX;
         }
-        (*h).s = (*s).ptr;
+        (*h).s = (*s).ptr_word;
         (*h).len = b.len();
         (*h).scalar = sc;
         (*h).offset = off;
@@ -402,7 +446,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
             return default;
         };
         let text = bytes(s);
-        if scalar_count(s) == text.len() {
+        if n == text.len() {
             return text[i] as i64;
         }
         utf8::decode(&text[scalar_offset(s, i)..]).0 as i64
@@ -420,7 +464,7 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 #[inline]
 pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
     // SAFETY: caller contract.
-    unsafe { ((*a).ptr == (*b).ptr && (*a).len() == (*b).len()) || bytes_eq(a, b) }
+    unsafe { ((*a).ptr_word == (*b).ptr_word && (*a).tagged == (*b).tagged) || bytes_eq(a, b) }
 }
 
 #[unsafe(no_mangle)]
@@ -454,7 +498,7 @@ pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
         if n != (*b).len() {
             return false;
         }
-        let (p, q) = ((*a).ptr as *const u8, (*b).ptr as *const u8);
+        let (p, q) = ((*a).data(), (*b).data());
         let word = |x: *const u8, at: usize| (x.add(at) as *const u64).read_unaligned();
         let half = |x: *const u8, at: usize| (x.add(at) as *const u32).read_unaligned();
         if (8..=16).contains(&n) {
@@ -679,8 +723,9 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
     // SAFETY: caller passes live strings, gives up `a`, and passes a writable `out`.
     unsafe {
         let (sa, la, lb) = (core::ptr::read(a), (*a).len(), (*b).len());
-        let within = |p: *const u8| p >= sa.ptr.cast_const() && p <= sa.ptr.add(la).cast_const();
-        if !sa.owns() || la == 0 || within((*b).ptr) {
+        let within =
+            |p: *const u8| p >= sa.ptr_word.cast_const() && p <= sa.ptr_word.add(la).cast_const();
+        if !sa.owns() || la == 0 || within((*b).data()) {
             let s = msrt_string_concat_val(a, b);
             release(&sa);
             return s.write_to(out);
@@ -692,16 +737,16 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
             fault::fault(b"string: limit exceeded");
         }
         let h = HINT.ptr();
-        if core::ptr::eq((*h).s, sa.ptr) {
+        if core::ptr::eq((*h).s, sa.ptr_word) {
             (*h).s = core::ptr::null();
         }
         // Room left in the block is used as is; otherwise the string moves to a block with
         // slack, so a run of appends reallocates a logarithmic number of times.
         let need = la + lb + 1;
-        let p = if alloc::usable_size(sa.ptr) >= need {
-            sa.ptr
+        let p = if alloc::usable_size(sa.ptr_word) >= need {
+            sa.ptr_word
         } else {
-            alloc::realloc(sa.ptr, need + need / 2)
+            alloc::realloc(sa.ptr_word, need + need / 2)
         };
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
         *p.add(la + lb) = 0;
@@ -720,9 +765,12 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
         if la == 0 {
             return cloned(&*b);
         }
+        if la + lb <= STR_INLINE_MAX {
+            return StrVal::from_bits(bits(&*a) | (bits(&*b) << (8 * la)), la + lb);
+        }
         let s = alloc_str(la + lb);
-        core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr, la);
-        core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr.add(la), lb);
+        core::ptr::copy_nonoverlapping(bytes(a).as_ptr(), s.ptr_word, la);
+        core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr_word.add(la), lb);
         s
     }
 }
@@ -733,8 +781,16 @@ unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
     // SAFETY: caller passes live strings.
     unsafe {
         let total: usize = parts.iter().map(|&p| (*p).len()).sum();
+        if total <= STR_INLINE_MAX {
+            let (mut acc, mut at) = (0u128, 0);
+            for &p in parts {
+                acc |= bits(&*p) << (8 * at);
+                at += (*p).len();
+            }
+            return StrVal::from_bits(acc, total);
+        }
         let s = alloc_str(total);
-        let mut dst = s.ptr;
+        let mut dst = s.ptr_word;
         for &p in parts {
             let b = bytes(p);
             core::ptr::copy_nonoverlapping(b.as_ptr(), dst, b.len());
@@ -929,7 +985,7 @@ unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) 
             // An empty result borrows nothing.
             StrVal::literal((&raw mut EMPTY).cast(), 0)
         } else {
-            StrVal::view((*s).ptr.add(a), b - a)
+            view_of(bytes(s)[a..b].as_ptr(), b - a)
         };
         view.write_to(out)
     }
@@ -1123,7 +1179,7 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
             return STATUS_LIMIT_EXCEEDED;
         }
         let r = alloc_str(text.len() * count as usize);
-        let d = r.ptr;
+        let d = r.ptr_word;
         for i in 0..count as usize {
             core::ptr::copy_nonoverlapping(text.as_ptr(), d.add(i * text.len()), text.len());
         }
@@ -1247,7 +1303,7 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     let out = alloc_str(len);
     // SAFETY: `out` has room for `len` bytes, exactly what the loop below writes.
     unsafe {
-        let mut dst = out.ptr;
+        let mut dst = out.ptr_word;
         let mut i = 0;
         let f = Needle::new(old);
         for _ in 0..matches {
@@ -1647,7 +1703,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_view(
     unsafe {
         split_into(s, sep, has_max, max, out, |b| match b {
             [] | [0..=0x7f] => from_bytes(b),
-            _ => StrVal::view(b.as_ptr().cast_mut(), b.len()),
+            _ => view_of(b.as_ptr(), b.len()),
         })
     }
 }
@@ -1869,23 +1925,23 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
             st.cur = from_bytes(piece);
             return;
         }
-        if st.cap >= piece.len() && !st.cur.ptr.is_null() && st.cur.owns() {
+        if st.cap >= piece.len() && !st.cur.ptr_word.is_null() && st.cur.owns() {
             // The loop only borrows the piece: rewrite it in place.
             let h = HINT.ptr();
-            if core::ptr::eq((*h).s, st.cur.ptr) {
+            if core::ptr::eq((*h).s, st.cur.ptr_word) {
                 (*h).s = core::ptr::null();
             }
             st.cur.tagged = piece.len();
-            copy_short(piece.as_ptr(), st.cur.ptr, piece.len());
-            *st.cur.ptr.add(piece.len()) = 0;
+            copy_short(piece.as_ptr(), st.cur.ptr_word, piece.len());
+            *st.cur.ptr_word.add(piece.len()) = 0;
             return;
         }
         release_opt(&st.cur);
         let cap = piece.len().max(24);
         let mut fresh = alloc_str(cap);
         fresh.tagged = piece.len();
-        copy_short(piece.as_ptr(), fresh.ptr, piece.len());
-        *fresh.ptr.add(piece.len()) = 0;
+        copy_short(piece.as_ptr(), fresh.ptr_word, piece.len());
+        *fresh.ptr_word.add(piece.len()) = 0;
         st.cur = fresh;
         st.cap = cap;
     }
@@ -2195,7 +2251,7 @@ mod tests {
     fn split_view_pieces_borrow_the_source() {
         let _g = crate::testutil::lock();
         unsafe {
-            let s = from_bytes(b"alpha,b,,gamma\xc3\xa9");
+            let s = from_bytes(b"alpha-is-a-long-piece,b,,gamma\xc3\xa9");
             let sep = from_bytes(b",");
             let mut views = EMPTY_VEC;
             msrt_string_split_view(&s, &sep, 0, 0, &mut views);
@@ -2209,9 +2265,12 @@ mod tests {
                 );
                 assert_eq!(bytes(v), bytes(c));
                 assert!(!v.owns(), "piece {i} is not owned");
-                // Long pieces point into the source; short ASCII ones are the shared statics.
-                if v.len() > 1 {
-                    assert!(v.is_view() && v.ptr >= s.ptr && v.ptr < s.ptr.add(s.len()));
+                // Long pieces point into the source; short ones are inline or shared statics.
+                let p = v.data();
+                if v.len() > STR_INLINE_MAX {
+                    assert!(v.is_view() && p >= s.data() && p < s.data().add(s.len()));
+                } else if v.len() > 1 {
+                    assert!(v.is_inline(), "piece {i} is inline");
                 }
             }
             crate::vec::drop_list(&mut views, &crate::desc::msrt_desc_string);

@@ -572,7 +572,7 @@ impl PairFilter {
         // SAFETY: the compiler built the closure with this signature (`FromAbi`).
         with_strings(
             [a, b],
-            |a, b| unsafe { (self.1)(self.0, a.ptr, a.tagged, b.ptr, b.tagged) } != 0,
+            |a, b| unsafe { (self.1)(self.0, a.ptr_word, a.tagged, b.ptr_word, b.tagged) } != 0,
         )
     }
 }
@@ -588,9 +588,9 @@ impl EntryFilter {
             |p, n| unsafe {
                 (self.1)(
                     self.0,
-                    p.ptr,
+                    p.ptr_word,
                     p.tagged,
-                    n.ptr,
+                    n.ptr_word,
                     n.tagged,
                     u8::from(directory),
                     u8::from(symlink),
@@ -1042,7 +1042,7 @@ impl ReadSource {
                 &mut present,
                 &mut message,
             );
-            if !message.ptr.is_null() {
+            if message.owns() && !message.ptr_word.is_null() {
                 crate::str_release(&message);
             }
             if status != 0 {
