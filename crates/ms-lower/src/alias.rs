@@ -252,7 +252,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The type of a map's values.
-    fn map_value_type(&self, map: Value) -> Result<MTy, Error> {
+    pub(crate) fn map_value_type(&self, map: Value) -> Result<MTy, Error> {
         match self.b.m.types.kind(self.ty_of(map)).clone() {
             TyKind::Obj(_, a) if a.len() == 2 => Ok(a[1]),
             _ => Err(Error::new("a keyed borrow needs a map")),

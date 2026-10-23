@@ -185,6 +185,115 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// `m.get(key).get()`, `.get(default)`, `.is_some()` and `.is_none()` read the entry in place:
+    /// `get` borrows its result, so the value is copied only when something keeps it (and `get`
+    /// with a default copies on a hit). `None` leaves any other shape to the ordinary path.
+    pub(crate) fn map_get_chain(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(name, "get" | "is_some" | "is_none") || !self.ety(recv_expr).is_std("Optional")
+        {
+            return Ok(None);
+        }
+        let ExprKind::Call { callee, args } = &recv_expr.kind else {
+            return Ok(None);
+        };
+        let ExprKind::Member { left: map, name: n } = &callee.kind else {
+            return Ok(None);
+        };
+        let [key] = args.as_slice() else {
+            return Ok(None);
+        };
+        if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is_std("Map") {
+            return Ok(None);
+        }
+        let mv = self.expr(map)?;
+        if self.dead {
+            return Ok(Some(mv));
+        }
+        let mv = self.borrow(mv);
+        let kv = self.expr(&key.value)?;
+        if self.dead {
+            return Ok(Some(kv));
+        }
+        let kv = self.borrow(kv);
+        let default = if view.arguments.is_empty() {
+            None
+        } else {
+            self.native_args(view)?.first().copied()
+        };
+        if self.dead {
+            return Ok(Some(Val { v: mv, own: false }));
+        }
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let load = |s: &mut Self| {
+            s.b.emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+                .expect("load")
+        };
+        match name {
+            "is_some" | "is_none" => {
+                let v = if name == "is_none" {
+                    missing
+                } else {
+                    self.b.unop(Op::Not, missing)
+                };
+                Ok(Some(Val { v, own: false }))
+            }
+            _ => match default {
+                None => {
+                    let (bad, good) = (self.b.new_block(), self.b.new_block());
+                    self.b.br_if(missing, bad, &[], good, &[]);
+                    self.b.seal_block(bad);
+                    self.b.seal_block(good);
+                    self.b.switch_to(bad);
+                    self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+                    self.b.switch_to(good);
+                    Ok(Some(Val {
+                        v: load(self),
+                        own: false,
+                    }))
+                }
+                Some(d) => {
+                    let out = self.two_ways(
+                        missing,
+                        value_ty,
+                        &mut |s| {
+                            let v = if d.wrapped {
+                                s.owned(d.val)
+                            } else {
+                                let x = s.b.opt_unwrap(d.val.v);
+                                s.finish(d.val);
+                                x
+                            };
+                            Ok(Some(v))
+                        },
+                        &mut |s| {
+                            let hit = load(s);
+                            let hit = s.owned(Val { v: hit, own: false });
+                            s.finish(d.val);
+                            Ok(Some(hit))
+                        },
+                    )?;
+                    Ok(Some(out))
+                }
+            },
+        }
+    }
+
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         self.call_runtime("msrt_map_new", &[], ty)
