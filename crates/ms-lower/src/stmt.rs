@@ -538,8 +538,18 @@ impl<'a> FnLower<'a> {
         let mark = self.temps.len();
         let (then_b, else_b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         let mut scrutinee: Option<Val> = None;
+        let mut accessor_alias = None;
         let c = if binding.is_some() {
-            let o = self.expr(cond)?;
+            let exclusive = binding
+                .and_then(|p| self.hir.pattern_binding(p))
+                .is_some_and(|b| self.cx.exclusive.contains(&b.uid));
+            let o = if exclusive {
+                let (alias, value) = self.alias_accessor(cond)?;
+                accessor_alias = Some(alias);
+                value
+            } else {
+                self.expr(cond)?
+            };
             if self.dead {
                 return Ok(());
             }
@@ -571,7 +581,7 @@ impl<'a> FnLower<'a> {
                 if o.own {
                     self.drop_value(o.v);
                 }
-                let alias = self.alias_accessor(cond)?;
+                let alias = accessor_alias.expect("exclusive accessor evaluated before branch");
                 self.aliases.insert(bnd.uid, alias);
             } else {
                 let payload = self.success_payload(o.v)?;
