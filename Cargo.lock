@@ -1003,6 +1003,7 @@ dependencies = [
  "cranelift-object",
  "flate2",
  "gimli",
+ "ms-linker",
  "ms-mir",
  "ms-rt-abi",
  "object",
@@ -1041,6 +1042,13 @@ dependencies = [
 [[package]]
 name = "ms-json"
 version = "0.1.0"
+
+[[package]]
+name = "ms-linker"
+version = "0.0.0"
+dependencies = [
+ "flate2",
+]
 
 [[package]]
 name = "ms-lower"
