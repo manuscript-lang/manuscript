@@ -273,7 +273,7 @@ static HINT: Global<Hint> = Global::new(Hint {
     scalar: 0,
     offset: 0,
 });
-const HINT_MIN: usize = 256;
+const HINT_MIN: usize = 24;
 
 /// Byte offset of scalar `n` (0..=count) with a remembered position for sequential access.
 unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
