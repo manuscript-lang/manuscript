@@ -22,11 +22,9 @@ impl ReadStream for BytesSource:
         if wanted <= 0: return error(IoError.InvalidInput)
 
         var size = remaining
-
         if wanted < remaining: size = wanted
 
         let piece = (self.data.slice(self.offset, self.offset + size)).get()
-
         self.offset += size
         return ok(some(piece))
 
@@ -75,7 +73,6 @@ impl ReadStream for LimitedStream:
         let wanted = max_bytes.get(self.remaining)
         let available = self.remaining
         var size = available
-
         if wanted < self.remaining: size = wanted
 
         let chunk = try self.input.read(some(size))
@@ -90,7 +87,6 @@ impl ReadStream for LimitedStream:
 # A negative limit makes reads fail with InvalidInput. Closing the result closes `input`.
 export fn take(input: ReadStream, max_bytes: Int) ReadStream:
     var limit = max_bytes
-
     if limit < 0: limit = 0
     return ReadStream(value: LimitedStream(input, limit))
 

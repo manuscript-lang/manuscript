@@ -24,7 +24,6 @@ fn flow(text: String) Result[Int, TextError]:
         | double
         | add(3)
         | try check
-
     return ok(n)
 
 fn bare(text: String) Result[Int, TextError]:
@@ -35,7 +34,6 @@ fn describe(text: String) Result[String, TextError]:
         | try check
         | add(1)
         .to_string_radix(10)
-
     return ok(label)
 
 fn order(var log: List[String]) Int:
@@ -62,7 +60,6 @@ test "bare try unwraps the value so far":
 
 test "pipe passes a Result through a step without try":
     let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
-
     try expect_equal(r.get(), 8)
 
 test "leading dot after a step applies to its result":
@@ -70,11 +67,9 @@ test "leading dot after a step applies to its result":
 
 test "head is evaluated before step arguments":
     var log: List[String] = []
-
     try expect_equal(order(var log), 4)
     try expect_false(log.get(0) != "a" or log.get(1) != "b")
 
 test "dot steps call methods on the value":
     let size = "abc" | .length() | double
-
     try expect_equal(size, 6)

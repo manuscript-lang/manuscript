@@ -1,0 +1,57 @@
+import {expect_equal} from "@std/testing.ms"
+import Queue from "@std/queue.ms"
+
+test "each paragraph develops one case":
+    var queue = Queue[Int]()
+    queue.enqueue(7)
+    try expect_equal(queue.dequeue(), some(7))
+
+    var copy = queue.clone()
+    copy.enqueue(9)
+    try expect_equal(copy.dequeue(), some(9))
+
+    # An absent value stays absent.
+    let missing: Optional[Int] = none
+    try expect_equal(queue.dequeue(), missing)
+
+fn prepare(value: Int) Int:
+    let adjusted = value + 1
+    return adjusted
+
+fn guarded(value: Int) Int:
+    let adjusted = value + 1
+    if adjusted < 0: return 0
+    if adjusted > 10: return 10
+
+    record(adjusted)
+
+    let result = adjusted * 2
+    return result
+
+fn sections() Unit:
+    let first = 1
+
+    # Explain the next stage.
+    let second = first + 1
+    record(second)
+
+    # Report its result.
+    record(first + second)
+
+fn callbacks() Unit:
+    record(0)
+
+    let transform = fn(value: Int) Int:
+        let adjusted = value + 1
+        return adjusted
+
+    record(transform(2))
+
+    consume(
+        fn():
+            let value = 3
+            return value
+    )
+
+    record(4)
+    consume(fn(): return 7)

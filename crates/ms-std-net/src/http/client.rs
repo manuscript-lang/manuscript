@@ -1482,14 +1482,13 @@ pub struct ResponseBody {
     closed: Cell<bool>,
 }
 
-/// The state of a body while a read owns it. Dropping it, also by a fault out of a park,
-/// hands the state back, or abandons it when the body was closed meanwhile.
-struct Held<'a> {
+/// State owned by one read. Both ordinary drop and runtime cleanup return it here.
+struct ReadState<'a> {
     body: &'a ResponseBody,
     state: Option<BodyState>,
 }
 
-impl Drop for Held<'_> {
+impl Drop for ReadState<'_> {
     fn drop(&mut self) {
         self.body.reading.set(false);
         let Some(mut state) = self.state.take() else {
@@ -1500,6 +1499,50 @@ impl Drop for Held<'_> {
         } else {
             *self.body.state.borrow_mut() = Some(state);
         }
+    }
+}
+
+/// The guard owns the allocation until ordinary drop, or transfers it to runtime cleanup
+/// when cancellation/fault skips Rust destructors. The interrupted decoder cannot be resumed.
+struct Held<'a> {
+    state: *mut ReadState<'a>,
+    cleanup: usize,
+}
+
+unsafe extern "C-unwind" fn cancel_read(arg: *mut u8) {
+    // SAFETY: the runtime only runs this action when abandoning the read's frames. Held's
+    // destructor will not run, and the body outlives the read. This takes its allocation once.
+    let state = unsafe { Box::from_raw(arg.cast::<ReadState<'_>>()) };
+    state.body.closed.set(true);
+    drop(state);
+}
+
+impl<'a> Held<'a> {
+    fn new(body: &'a ResponseBody, state: BodyState) -> Self {
+        // The cleanup stack is process-global, including in otherwise polling-only tests.
+        #[cfg(test)]
+        crate::http::server::serialize_tests();
+        let state = Box::into_raw(Box::new(ReadState {
+            body,
+            state: Some(state),
+        }));
+        // SAFETY: the allocation stays live until this action runs or Held discards it.
+        let cleanup = unsafe { rt::cleanup_push(cancel_read, state.cast()) };
+        Self { state, cleanup }
+    }
+
+    fn state(&mut self) -> &mut Option<BodyState> {
+        // SAFETY: Held exclusively owns the state while the read runs. Runtime cleanup
+        // takes ownership only on a non-returning cancellation/fault path.
+        unsafe { &mut (*self.state).state }
+    }
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        rt::cleanup_discard(self.cleanup);
+        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
+        drop(unsafe { Box::from_raw(self.state) });
     }
 }
 
@@ -1545,11 +1588,8 @@ impl ResponseBody {
             return Ok(None);
         };
         self.reading.set(true);
-        let mut held = Held {
-            body: self,
-            state: Some(taken),
-        };
-        let state = held.state.as_mut().expect("state");
+        let mut held = Held::new(self, taken);
+        let state = held.state().as_mut().expect("state");
         let max = max.clamp(1, READ_BUF);
         if state.ready_pos >= state.ready.len() {
             state.ready.clear();
@@ -1574,7 +1614,7 @@ impl ResponseBody {
             return Ok(Some(chunk));
         }
         // End of body: release the connection.
-        let done = held.state.take().expect("state");
+        let done = held.state().take().expect("state");
         drop(held);
         match self.client.upgrade() {
             Some(client) if !self.closed.get() => done.finish(&client),
@@ -1794,6 +1834,70 @@ mod tests {
             rt::sleep(1_000_000);
         }
         assert_eq!(out.borrow_mut().take().unwrap().unwrap().unwrap(), b"k");
+    }
+
+    /// The dependency uses the production guard jump, which skips Rust destructors.
+    #[test]
+    fn cancelled_body_read_closes_the_body_and_connection() {
+        crate::wait::use_tasks();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        let peer = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            read_request(&mut socket).unwrap();
+            reply(&mut socket, "HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\n");
+            let mut byte = [0];
+            socket.read(&mut byte)
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut req = request("GET", &address, "/");
+        req.deadline = Deadline::after(Duration::from_secs(5));
+        let body = c.send(req).unwrap();
+        struct Job<'a> {
+            body: &'a ResponseBody,
+            unwound: Cell<bool>,
+        }
+        struct Unwound<'a>(&'a Cell<bool>);
+        impl Drop for Unwound<'_> {
+            fn drop(&mut self) {
+                self.0.set(true);
+            }
+        }
+        unsafe extern "C-unwind" fn read(arg: *mut u8) {
+            // SAFETY: the caller retains the job until this task has joined.
+            let job = unsafe { &*arg.cast::<Job<'_>>() };
+            let _sentinel = Unwound(&job.unwound);
+            let _ = job.body.read(1);
+        }
+        let mut job = Job {
+            body: &body,
+            unwound: Cell::new(false),
+        };
+        // SAFETY: serialized runtime access; the job outlives the joined task.
+        let task = unsafe { ms_rt::task::msrt_task_spawn(read, (&raw mut job).cast(), 0, 0) };
+        rt::sleep(0);
+        assert!(
+            body.reading.get(),
+            "the reader must park before cancellation"
+        );
+        // SAFETY: serialized runtime access to the live joinable task.
+        unsafe {
+            ms_rt::task::msrt_task_cancel(task);
+            assert_eq!(ms_rt::task::msrt_task_join(task, std::ptr::null_mut()), 2);
+        }
+        assert!(
+            !job.unwound.get(),
+            "cancellation must skip Rust destructors"
+        );
+        assert!(body.is_closed());
+        assert!(!body.reading.get());
+        assert!(body.state.borrow().is_none());
+        assert!(matches!(body.read(1), Err(IoErr::Closed)));
+        body.close();
+        assert_eq!(peer.join().unwrap().unwrap(), 0, "peer must observe EOF");
     }
 
     /// The request line and headers the client sends:

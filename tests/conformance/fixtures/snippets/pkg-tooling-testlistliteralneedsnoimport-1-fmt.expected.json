@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn answer() Int:\n    let items = [1, 2, 3]\n\n    return items.length()\n"
+    "fmt": "fn answer() Int:\n    let items = [1, 2, 3]\n    return items.length()\n"
   }
 }

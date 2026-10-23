@@ -8,7 +8,6 @@ import {uuid_v4, entropy} from "@std/random.ms"
 
 fn entries(count: Int) List[ArchiveEntry]:
     var out: List[ArchiveEntry] = []
-
     for i in range(0, count):
         out.append(
             ArchiveEntry(
@@ -19,7 +18,6 @@ fn entries(count: Int) List[ArchiveEntry]:
 
 fn sse_stream(count: Int) Bytes:
     var parts: List[String] = []
-
     for i in range(0, count):
         parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
     return parts.join("").to_bytes()
@@ -36,6 +34,7 @@ fn bench_archive() Unit:
 
             return 0
     )
+
     bench(
         "archive.tar_pack",
         2000,
@@ -45,6 +44,7 @@ fn bench_archive() Unit:
 
             return 0
     )
+
     if let packed = pack(list, "zip"):
         bench_unpack(packed)
 
@@ -68,7 +68,6 @@ fn bench_sse() Unit:
         fn() Int:
             if let made = decoder():
                 var d = made
-
                 return feed_all(var d, stream)
 
             return 0
@@ -83,24 +82,24 @@ fn feed_all(var d: SseDecoder, stream: Bytes) Int:
 export fn bench_host() Unit:
     bench_archive()
     bench_sse()
+
     bench(
         "time.timestamp_to_string",
         20000,
         fn() Int:
             var n = 0
-
             if let t = parse_timestamp("2026-03-01T12:30:45.123Z"):
                 for i in range(0, 20000):
                     n += t.to_string().length()
             return n
     )
+
     bench(
         "random.uuid_v4",
         20000,
         fn() Int:
             var n = 0
             let source = entropy()
-
             for i in range(0, 20000):
                 if let u = uuid_v4(source):
                     n += u.length()

@@ -8,11 +8,9 @@ import UrlError from "@std/net.ms"
 
 fn verify_url() Result[Unit, Error]:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")
-
     (try format(value: url)) | try expect_equal("https://example.com/a%2Fb?q=x#frag")
 
     let next = try resolve(base: url, reference: "../next")
-
     (try format(value: next)) | try expect_equal("https://example.com/next")
     encode_component(text: "a+b/@") | try expect_equal("a%2Bb%2F%40")
     (try decode_component(text: "%C3%A9")) | try expect_equal("é")

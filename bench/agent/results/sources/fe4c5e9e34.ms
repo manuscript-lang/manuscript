@@ -64,12 +64,10 @@ fn add_digits(a: String, b: String) String:
     var carry = 0
     var i = 1
     var n = a.scalar_length()
-
     if b.scalar_length() > n: n = b.scalar_length()
 
     while i <= n or carry > 0:
         let d = digit_at(a, i) + digit_at(b, i) + carry
-
         result = "{d % 10}" + result
         carry = d / 10
         i += 1
@@ -78,7 +76,6 @@ fn add_digits(a: String, b: String) String:
 
 fn strip_zeros(text: String) String:
     var out = text
-
     while out.scalar_length() > 1 and out.starts_with("0"):
         out = out.slice_scalars(1, out.scalar_length()).get()
     return out
@@ -88,7 +85,6 @@ fn money(cents: String) String:
     let padded = "000" + cents
     let n = padded.scalar_length()
     let whole = strip_zeros(padded.slice_scalars(0, n - 2).get())
-
     return whole + "." + padded.slice_scalars(n - 2, n).get()
 
 export fn main() Int:
@@ -106,7 +102,6 @@ export fn main() Int:
             skipped += 1
 
     var out = stdout()
-
     for category in totals.keys().sorted(fn(a, b): a.compare(b)):
         out.write(category + ": " + money(totals.get_or(category, "0")) + "\n").get()
     if skipped > 0:

@@ -72,6 +72,9 @@ jobs:
           rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
       - name: Build and package
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
+      - name: Trim cargo cache
+        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
+        run: sh scripts/trim-cargo-cache.sh
       - name: Save cargo cache
         if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6

@@ -6,7 +6,6 @@ export fn transform_set[T: Hashable, U: Hashable](
 
 export fn lookup[K: Hashable, V](values: Map[K, V], key: K, fallback: V) V:
     let get = values.get_or
-
     return get(key, fallback)
 
 export fn locate_map[K: Hashable, V](
@@ -14,12 +13,10 @@ export fn locate_map[K: Hashable, V](
     needle: K
 ) Optional[MapEntry[K, V]]:
     let find = values.find
-
     return find(fn(key, value): key == needle)
 
 export fn locate_set[T: Hashable](values: Set[T], needle: T) Optional[T]:
     let find = values.find
-
     return find(fn(value): value == needle)
 
 export fn convert[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:

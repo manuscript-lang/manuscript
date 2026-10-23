@@ -245,7 +245,6 @@ fn solve(line: String, n: Int) List[String]:
     if runs.length() == 0: return ["{head} never"]
 
     var out = ["{head} {runs.length()} runs"]
-
     for run in runs:
         out.append(pad_stamp(run))
     return out

@@ -46,7 +46,6 @@ fn amount_cents(text: String) Optional[String]:
 
 fn strip_zeros(digits: String) String:
     var start = 0
-
     while start < digits.length() - 1 and digits.scalar_at(start) == 48:
         start += 1
     return digits.slice_scalars(start, digits.length()).get()
@@ -104,12 +103,10 @@ fn add_digits(a: String, b: String) String:
 # Formats cents digits as a plain decimal with exactly two fraction digits.
 fn format_total(cents: String) String:
     var padded = cents
-
     while padded.length() < 3:
         padded = "0" + padded
 
     let n = padded.length()
-
     return (
         padded.slice_scalars(0, n - 2).get()
         + "."
@@ -136,7 +133,6 @@ export fn main() Int:
             skipped += 1
 
     var out = ""
-
     for category in totals.keys():
         out += "{category}: {format_total(totals.get(category).get("0"))}\n"
     if skipped > 0:

@@ -8,6 +8,9 @@ static OUT: Global<Vec<u8>> = Global::new(Vec::new());
 /// 0 unknown, 1 pipe/file, 2 terminal.
 static TTY: Global<u8> = Global::new(0);
 
+/// Bit 0: standard output was closed; bit 1: standard error was closed.
+static CLOSED: Global<u8> = Global::new(0);
+
 pub fn flush_stdout() {
     // SAFETY: single threaded access to the output buffer (the fault path may
     // run on the same thread inside a write; the buffer is only appended to).
@@ -116,4 +119,19 @@ pub unsafe extern "C-unwind" fn msrt_io_write_bytes_stderr(v: *const VecVal) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_io_flush() {
     flush_stdout();
+}
+
+/// Closes standard output (`which` 0) or standard error (1): later writes through the stream fail.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_io_close(which: i64) {
+    flush_stdout();
+    // SAFETY: single threaded access.
+    unsafe { *CLOSED.ptr() |= 1 << (which & 1) };
+}
+
+/// Whether standard output (`which` 0) or standard error (1) was closed.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_io_closed(which: i64) -> bool {
+    // SAFETY: single threaded access.
+    unsafe { *CLOSED.ptr() & (1 << (which & 1)) != 0 }
 }

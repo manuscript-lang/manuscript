@@ -16,7 +16,6 @@ let pieces = [
 
 export fn text(var rng: Rng) String:
     var out = ""
-
     for piece in range(0, next(var rng, 4)):
         out += pieces[next(var rng, pieces.length())]
     return out
@@ -26,7 +25,6 @@ export fn mutate(var rng: Rng, source: String) String:
     var chars = source.chars()
     let at = next(var rng, chars.length() + 1)
     let kind = next(var rng, 3)
-
     if kind != 1 and at < chars.length(): chars.remove(at)
     if kind != 0: chars.insert(at, pieces[next(var rng, pieces.length())])
     return chars.join("")

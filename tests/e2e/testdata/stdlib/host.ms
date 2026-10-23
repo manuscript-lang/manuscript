@@ -8,7 +8,6 @@ test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
 
     let info = system().info()
-
     try expect_false(
         (
             info.cpu_count <= 0
@@ -18,7 +17,6 @@ test "CLI test roots have empty arguments and host metadata agrees":
     )
 
     let process = try control().info()
-
     try expect_false(
         (
             process.pid <= 0
@@ -35,20 +33,17 @@ test "CLI test roots have empty arguments and host metadata agrees":
 test "process environment reflects live changes":
     let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
     let before = (try control().environment()).get(name)
-
     try control().set_environment(name, "stdlib")
     try expect_equal((try control().environment()).get(name), some("stdlib"))
     try control().set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
-
     try expect_equal(commands().run("", [], "".to_bytes()), invalid)
 
     let unavailable: Result[CommandOutput, CommandError] = error(
         CommandError.Unavailable
     )
-
     try expect_false(
         (
             commands().run(
@@ -64,7 +59,6 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
         try child.stdin().write("ping\n")
 
         let line = try read_line(child.stdout())
-
         try expect_equal(line.get(""), "ping")
         child.stdin().close()
         try expect_equal((try child.wait()), 0)

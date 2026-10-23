@@ -14,16 +14,17 @@ fn run(re: Regex) Unit:
 
             return 0
     )
+
     bench(
         "regex.matches",
         10000,
         fn() Int:
             var n = 0
-
             for i in range(0, 10000):
                 if re.matches("xx word123 yy"): n += 1
             return n
     )
+
     bench(
         "regex.replace_all",
         2000,
