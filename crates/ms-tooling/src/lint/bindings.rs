@@ -213,8 +213,11 @@ impl Visitor for Scan<'_> {
     fn stmt(&mut self, s: &Stmt) {
         match &s.kind {
             StmtKind::Bind { pattern, .. } => self.pattern(pattern),
+            // `if var n = m.get(k): n += 1` writes through the borrow into `m`,
+            // so a borrow that is only written is not unread.
             StmtKind::If {
                 binding: Some(pattern),
+                mutable: false,
                 ..
             } => self.pattern(pattern),
             _ => {}
