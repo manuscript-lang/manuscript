@@ -354,7 +354,8 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     }
     // Per change: the block, the parameter index, the edges' (pred, copy index, source), the drop.
     type Edge = (usize, usize, Value);
-    let mut plans: Vec<(usize, usize, Vec<Edge>, (usize, usize))> = Vec::new();
+    type Plan = (usize, usize, Vec<Edge>, (usize, usize));
+    let mut plans: Vec<Plan> = Vec::new();
     let mut taken = vec![false; nv];
     for (bb, b) in f.blocks.iter().enumerate() {
         'param: for (pi, param) in b.params.iter().enumerate() {

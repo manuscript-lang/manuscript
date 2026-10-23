@@ -272,3 +272,63 @@ fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
         assert_eq!(before, Ok(10));
     }
 }
+
+const PHI: &str = r#"module "t"
+entry @main
+extern @msrt_string_eq(str, str) -> bool
+
+fn @is_q(%0: list<str>, %1: int) -> bool inline(never) {
+b0:
+  %2: int = list.len %0
+  %3: bool = icmp.lt %1, %2
+  br_if %3, b1(), b2()
+b1():
+  %4: str = list.get.u %0, %1
+  %5: str = copy %4
+  br b3(%5)
+b2():
+  %6: str = str ""
+  %7: str = copy %6
+  br b3(%7)
+b3(%8: own str):
+  %9: str = str "q"
+  %10: bool = call.rt @msrt_string_eq (%8, %9)
+  drop %8
+  ret %10
+}
+
+fn @main() -> int export {
+b0:
+  %20: str = str "q"
+  %21: str = str "r"
+  %0: str = copy %20
+  %1: str = copy %21
+  %2: list<str> = list.lit %0, %1
+  %3: int = iconst 0
+  %4: bool = call @is_q (%2, %3)
+  %5: int = iconst 5
+  %6: bool = call @is_q (%2, %5)
+  drop %2
+  %7: int = iconst 1
+  %8: int = iconst 0
+  %9: int = select %4, %7, %8
+  %10: int = select %6, %8, %7
+  %11: int = iadd %9, %10
+  ret %11
+}
+"#;
+
+#[test]
+fn copies_meeting_at_a_borrowed_block_parameter_are_removed() {
+    let mut m = parse_module(PHI).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "is_q", Op::Copy), 0);
+    assert_eq!(count(&m, "is_q", Op::Drop), 0);
+    let after = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert_eq!(before, after);
+}

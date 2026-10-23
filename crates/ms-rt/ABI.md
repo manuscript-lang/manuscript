@@ -52,7 +52,7 @@ recorded here before it is committed.)_
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `Shared[T]`-style objects and closures keep an `Obj` header and a count.
-  `String` is a three-word owned `StrVal` (`{ptr, len, cap}`) over immutable bytes; the buffer's count is transitional (section 2).
+  `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words) living in the owner's slot;
   runtime operations take a **pointer to the value** (borrowed, or `&mut` for `var`
@@ -66,9 +66,8 @@ recorded here before it is committed.)_
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
   `SYMBOLS.md` lists every exported symbol with its Rust signature (regenerate with `python3 crates/ms-rt/gen-symbols.py`).
-  - Strings: owned, immutable, **substrings are copies** until views land (no sharing of buffers); empty and one-ASCII-byte results are
-    static strings (`cap == 0`, `rc = STATIC_RC`). Transitional: a dynamic buffer still carries a count, and `cap >= 1` marks it. `scalars == len` means ASCII and enables O(1) indexing; non-ASCII long strings keep a one-entry
-    position hint. Retain/release are valid on statics.
+  - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
+    The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
   - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { present: u8, value: StrVal }` through `out`, or a `present: u8` result with `out: *mut StrVal`
     (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
     (borrowed `Optional[String]` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
@@ -132,15 +131,14 @@ recorded here before it is committed.)_
 - `msrt_retain`/`msrt_release` accept null. Everything else requires non-null.
 - Sizes and indices are `i64` (Int) at the boundary.
 
-## 2. Reference-counted objects (Shared, closures, handles), transitional String buffers, and drop
+## 2. Reference-counted objects (Shared, closures, handles) and drop
 
 ```text
 Obj { rc: usize @0, drop: fn(*mut Obj) @8 }       16 bytes; pointers point here
 ```
 
-`Shared[T]`/`Weak[T]` boxes, closures and runtime handle objects have a header. A `String` is an owned value
-(moved at last use, copied only by `.clone()`); its buffer carries the same header only until unique
-ownership replaces it (`proposals/owned-values.md` stage 4), and static strings (`cap == 0`) never touch the count. `rc` starts at 1; retain is
+`Shared[T]`/`Weak[T]` boxes, closures and runtime handle objects have a header. A `String` has no header
+and no count (section 3). `rc` starts at 1; retain is
 `rc += 1`; release is `rc -= 1; if rc == 0 { drop(obj) }`. Static and literal objects
 live in writable data with `rc = STATIC_RC` (2^62). `drop(obj)` drops what the
 object owns and then calls `msrt_free(obj)`. Deep ownership chains (linked lists,
@@ -162,16 +160,24 @@ lists (up to 64 MiB) for reuse instead of returning to the system. No locking.
 ## 3. String
 
 ```text
-StrVal { ptr @0, len: usize @8, cap: usize @16 }       String (same shape as VecVal)
-StrHdr { hdr @-24, scalars: usize @-8 }                 24 bytes immediately before ptr
+StrVal { ptr @0, tagged: usize @8 }       String, 16 bytes
 ```
 
-`ptr` points at the UTF-8 bytes; copying a `StrVal` retains the block at `ptr - 24` and
-dropping it releases the block. `len` is the UTF-8 byte length and `cap` the byte capacity
-(0 for a literal). `scalars` is the scalar count or `usize::MAX` (unknown), filled lazily by
-`msrt_string_length` (a literal may carry it). A NUL follows the data (not in `len`). Language-level indices and lengths count Unicode
-scalars; `byte_length` is `len`. Invalid UTF-8 (only from a compiler bug) decodes as
-U+FFFD of width 1. `msrt_string_empty(out)` writes a static.
+`ptr` points at the UTF-8 bytes; a NUL follows them (not counted). `tagged & STR_LEN_MASK` is the
+byte length and the top two bits say who owns the bytes:
+
+| top bits | kind | drop | copy |
+| --- | --- | --- | --- |
+| `00` | owned allocation starting at `ptr` | `msrt_str_free(ptr)` | `msrt_str_dup(ptr, len)` |
+| `10` | static (literal, empty, one ASCII byte) | nothing | shares |
+| `11` | view of another string's bytes | nothing | `msrt_str_dup(ptr, len)` |
+
+So `tagged as i64 >= 0` means owned. A view is only handed out where the source outlives it
+unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
+(`msrt_string_split_view`), `for` loops over the keys or values of such a map
+(`msrt_map_keys_view`, `msrt_map_values_view`). Language-level indices and lengths count Unicode
+scalars; `byte_length` is the length. Invalid UTF-8 (only from a compiler bug) decodes as U+FFFD of
+width 1. `msrt_string_empty(out)` writes a static.
 
 ## 4. Owned aggregates
 
@@ -216,7 +222,7 @@ TypeDesc { size u32 @0, align u32 @4, kind u32 @8, _ @12, inner0 @16, inner1 @24
 | --- | --- | --- | --- | --- |
 | `INT` / `BOOL` | i64 / u8 | none / bitwise | `==` | mixed |
 | `FLOAT` | f64 | none / bitwise | IEEE (`NaN != NaN`, `0.0 == -0.0`) | none |
-| `STRING` | `StrVal` (24 bytes) | free (today: release) / clone (today: retain) | content | content |
+| `STRING` | `StrVal` (16 bytes) | free / duplicate | content | content |
 | `BYTES` | `VecVal` of u8 | free buffer / duplicate buffer | content | content |
 | `SHARED` | nullable `Obj*` | release / retain | `eq` else identity | `hash` else address |
 | `POD` | plain bits | none / `memcpy` | `eq` else `memcmp` | `hash` else bytes |

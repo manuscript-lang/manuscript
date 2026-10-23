@@ -68,3 +68,13 @@ The layout alone is roughly at parity; the win comes from views and from not cou
 2. Records and collections holding strings grow by 8 bytes per string.
 3. Non-ASCII `length()` keeps its cache only on owned blocks; a view recounts.
 4. Every `ms-std-*` crate changes signatures (about 30 files, 300 sites); the port is mechanical but wide, and conformance plus the leak sweep are the safety net.
+
+## Status (2026-10-23)
+
+The first PR lands the value and unique ownership together (owner direction: "Unique ownership now"), ahead of the register-return ABI.
+
+- **Value.** `{ptr, tagged}`: the length with a two-bit tag (`00` owned, `10` static, `11` view) instead of a header. There is no count and no header: copy allocates, drop frees, statics are shared.
+- **ABI.** Unchanged from #994: string parameters are `*const StrVal`, results come back through `out: *mut StrVal`, and `Optional[String]` is still `{present, value}`. Register returns, the Windows `sysv64` adapter and the null niche are the next PR.
+- **Copies.** Without a count, copies dominated: inventory, csv and ledger were 10 to 16% slower than main, and the parser bench up to 2x. The copies were reads (`m.get(k).get()` on an `Order`, `keys()` in a loop) and `split` pieces. Lowering now hands out views where the source provably outlives the result unchanged: reads out of a parameter the body only reads, `for` over `keys()`/`values()` of such a map, `let parts = text.split(..)` read only in place, and string copies that meet at a block parameter and are only borrowed (`copyelim`).
+- **Wall time vs main** (release, min of 11 or more runs, noisy machine): inventory 314 → 226 ms, csv 99 → 95 ms, ledger 98 → 102 ms, `html.parse` +7%, `json.parse` +3%, `toml.parse` and `yaml.parse` about +20%. The toml and yaml readers walk `text.split("")`, a list of one-character strings that is now 16 bytes per element instead of 8; reading code points (8 bytes) or byte offsets instead would remove that.
+- **Next.** Register returns; `Optional[String]` niche; toml/yaml readers over code points; moves at last use (lowering does not use the checker's last-use facts yet, so `keys.append(key)` copies and drops); `slice` views.

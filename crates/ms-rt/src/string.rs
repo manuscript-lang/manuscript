@@ -2128,6 +2128,7 @@ mod tests {
 
     #[test]
     fn concat_parts_joins_and_skips_empties() {
+        let _g = crate::testutil::lock();
         // SAFETY: the strings are live for the whole test.
         unsafe {
             let a = from_bytes(b"ab");
@@ -2143,6 +2144,35 @@ mod tests {
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
             assert_eq!(none.len(), 0);
+        }
+    }
+
+    #[test]
+    fn split_view_pieces_borrow_the_source() {
+        let _g = crate::testutil::lock();
+        unsafe {
+            let s = from_bytes(b"alpha,b,,gamma\xc3\xa9");
+            let sep = from_bytes(b",");
+            let mut views = EMPTY_VEC;
+            msrt_string_split_view(&s, &sep, 0, 0, &mut views);
+            let mut copies = EMPTY_VEC;
+            msrt_string_split(&s, &sep, 0, 0, &mut copies);
+            assert_eq!(views.len, 4);
+            for i in 0..views.len {
+                let (v, c) = (
+                    &*(views.ptr as *const StrVal).add(i),
+                    &*(copies.ptr as *const StrVal).add(i),
+                );
+                assert_eq!(bytes(v), bytes(c));
+                assert!(!v.owns(), "piece {i} is not owned");
+                // Long pieces point into the source; short ASCII ones are the shared statics.
+                if v.len() > 1 {
+                    assert!(v.is_view() && v.ptr >= s.ptr && v.ptr < s.ptr.add(s.len()));
+                }
+            }
+            crate::vec::drop_list(&mut views, &crate::desc::msrt_desc_string);
+            crate::vec::drop_list(&mut copies, &crate::desc::msrt_desc_string);
+            release(&s);
         }
     }
 
