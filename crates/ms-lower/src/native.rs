@@ -371,6 +371,10 @@ impl<'a> FnLower<'a> {
                 | "math/bit_not"
                 | "math/shift_left"
                 | "math/shift_right"
+                | "math/shift_right_unsigned"
+                | "math/wrapping_add"
+                | "math/wrapping_subtract"
+                | "math/wrapping_multiply"
         ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
     }
 
@@ -391,7 +395,16 @@ impl<'a> FnLower<'a> {
         if let Some(name) = native.strip_prefix("math/").filter(|n| {
             matches!(
                 *n,
-                "bit_and" | "bit_or" | "bit_xor" | "bit_not" | "shift_left" | "shift_right"
+                "bit_and"
+                    | "bit_or"
+                    | "bit_xor"
+                    | "bit_not"
+                    | "shift_left"
+                    | "shift_right"
+                    | "shift_right_unsigned"
+                    | "wrapping_add"
+                    | "wrapping_subtract"
+                    | "wrapping_multiply"
             )
         }) {
             return self.bit_operation(name, args);
@@ -514,12 +527,16 @@ impl<'a> FnLower<'a> {
                 let ones = self.b.iconst(-1);
                 self.b.binop(Op::Xor, left, ones)
             }
-            "bit_and" | "bit_or" | "bit_xor" => {
+            "bit_and" | "bit_or" | "bit_xor" | "wrapping_add" | "wrapping_subtract"
+            | "wrapping_multiply" => {
                 let right = self.borrow(args[1].val);
                 let op = match name {
                     "bit_and" => Op::And,
                     "bit_or" => Op::Or,
-                    _ => Op::Xor,
+                    "bit_xor" => Op::Xor,
+                    "wrapping_add" => Op::IAdd,
+                    "wrapping_subtract" => Op::ISub,
+                    _ => Op::IMul,
                 };
                 self.b.binop(op, left, right)
             }
@@ -550,12 +567,21 @@ impl<'a> FnLower<'a> {
                 self.b.call_rt(ext, &[left, count]);
                 self.b.unreachable();
                 self.b.switch_to(good);
-                let op = if name == "shift_left" {
-                    Op::Shl
-                } else {
-                    Op::Sshr
-                };
-                self.b.binop(op, left, count)
+                match name {
+                    "shift_left" => self.b.binop(Op::Shl, left, count),
+                    "shift_right" => self.b.binop(Op::Sshr, left, count),
+                    _ => {
+                        // Logical shift: clear the sign bit after one arithmetic step, then
+                        // shift the rest; a zero count leaves the value alone.
+                        let (one, max) = (self.b.iconst(1), self.b.iconst(i64::MAX));
+                        let half = self.b.binop(Op::Sshr, left, one);
+                        let half = self.b.binop(Op::And, half, max);
+                        let rest = self.b.binop(Op::ISub, count, one);
+                        let shifted = self.b.binop(Op::Sshr, half, rest);
+                        let is_zero = self.b.icmp(Cc::Eq, count, zero);
+                        self.b.select(is_zero, left, shifted)
+                    }
+                }
             }
         };
         Ok(Val { v, own: false })
