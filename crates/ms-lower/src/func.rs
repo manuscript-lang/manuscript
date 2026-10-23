@@ -191,7 +191,9 @@ impl Cx {
         } else {
             c.name.to_string()
         };
-        let f = ms_mir::ir::Func::new(&name, params, ret);
+        let mut f = ms_mir::ir::Func::new(&name, params, ret);
+        // The checker keeps a `var` argument from overlapping any other argument.
+        f.noalias = vars.iter().map(|&i| i as u32).collect();
         let id = m.add_func(f);
         self.insts.insert(key, id);
         self.queue.push(Job {
@@ -311,6 +313,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let result = fl.lower_callable(&c);
     let mut func = fl.b.into_func();
     result?;
+    func.noalias = proto.noalias;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
     Ok(())
