@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`; `ms` compiles Manuscript to native code through Cranelift, or LLVM for Linux release builds. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is a Rust workspace under `crates/`; `ms` compiles Manuscript to native code through Cranelift, or LLVM for Linux and macOS release builds. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
 
 ## Follow one compilation
 

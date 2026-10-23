@@ -24,7 +24,7 @@ Decision: the user removed the concurrency features (TaskGroup, Task, Scheduler,
 
 Apply when: a task proposes concurrent work, locks, task handles, or revives the removed APIs.
 Evidence: the user's removal request in the "Manuscript agent feedback and experience" project thread; [runtime conventions](../documentation/contributing/runtime-conventions.md).
-Verify: no `@std/tasks.ms` or `@std/sync.ms`; `BlockingQueue` is absent from `queues.ms`.
+Verify: no `@std/tasks.ms` or `@std/sync.ms`; `BlockingQueue` is absent from `queue.ms`.
 
 ### Newer stdlib direction needs checkout reconciliation
 
