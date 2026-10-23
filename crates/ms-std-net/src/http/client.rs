@@ -115,7 +115,7 @@ struct Wire {
 }
 
 thread_local! {
-    static SCRATCH: RefCell<Vec<u8>> = RefCell::new(vec![0; READ_BUF]);
+    static SCRATCH: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
 }
 
 impl Wire {
@@ -155,18 +155,22 @@ impl Wire {
         }
     }
 
-    /// Reads more input; `0` is end of stream.
+    /// Reads more input; `0` is end of stream. The read can park, so the shared scratch
+    /// buffer is taken out for its duration: a request in another task that reads meanwhile
+    /// gets a fresh buffer instead of finding this one borrowed.
     fn fill(&mut self, deadline: Deadline) -> Result<usize, IoErr> {
-        SCRATCH.with(|scratch| {
-            let mut scratch = scratch.borrow_mut();
-            let n = self.conn.read_into(&mut scratch, deadline)?;
+        let mut scratch = SCRATCH.take();
+        scratch.resize(READ_BUF, 0);
+        let got = self.conn.read_into(&mut scratch, deadline);
+        if let Ok(n) = got {
             if self.rpos > 0 && self.rpos == self.rbuf.len() {
                 self.rbuf.clear();
                 self.rpos = 0;
             }
             self.rbuf.extend_from_slice(&scratch[..n]);
-            Ok(n)
-        })
+        }
+        SCRATCH.set(scratch);
+        got
     }
 }
 
@@ -717,6 +721,7 @@ impl Client {
             headers: Rc::new(RefCell::new(received)),
             protocol,
             state: RefCell::new(state),
+            reading: Cell::new(false),
             deadline,
             closed: Cell::new(false),
         });
@@ -1471,8 +1476,31 @@ pub struct ResponseBody {
     pub headers: Shared,
     pub protocol: String,
     state: RefCell<Option<BodyState>>,
+    /// A read is parked on the state, which that read has taken out of the cell.
+    reading: Cell<bool>,
     deadline: Deadline,
     closed: Cell<bool>,
+}
+
+/// The state of a body while a read owns it. Dropping it, also by a fault out of a park,
+/// hands the state back, or abandons it when the body was closed meanwhile.
+struct Held<'a> {
+    body: &'a ResponseBody,
+    state: Option<BodyState>,
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        self.body.reading.set(false);
+        let Some(mut state) = self.state.take() else {
+            return;
+        };
+        if self.body.closed.get() {
+            state.abandon();
+        } else {
+            *self.body.state.borrow_mut() = Some(state);
+        }
+    }
 }
 
 impl Resource for ResponseBody {
@@ -1505,11 +1533,23 @@ impl ResponseBody {
         if self.closed.get() {
             return Err(IoErr::Closed);
         }
-        let mut guard = self.state.borrow_mut();
-        let Some(state) = guard.as_mut() else {
+        if self.reading.get() {
+            return Err(IoErr::Failed(
+                "response body is being read by another task".into(),
+            ));
+        }
+        rt::check_cancel();
+        // The read can park, so the state is out of the cell meanwhile; the cell is never
+        // borrowed across the park.
+        let Some(taken) = self.state.borrow_mut().take() else {
             return Ok(None);
         };
-        rt::check_cancel();
+        self.reading.set(true);
+        let mut held = Held {
+            body: self,
+            state: Some(taken),
+        };
+        let state = held.state.as_mut().expect("state");
         let max = max.clamp(1, READ_BUF);
         if state.ready_pos >= state.ready.len() {
             state.ready.clear();
@@ -1534,12 +1574,14 @@ impl ResponseBody {
             return Ok(Some(chunk));
         }
         // End of body: release the connection.
-        let mut done = guard.take().expect("state");
-        drop(guard);
-        if let Some(client) = self.client.upgrade() {
-            done.finish(&client);
-        } else {
-            done.abandon();
+        let done = held.state.take().expect("state");
+        drop(held);
+        match self.client.upgrade() {
+            Some(client) if !self.closed.get() => done.finish(&client),
+            _ => {
+                let mut done = done;
+                done.abandon();
+            }
         }
         Ok(None)
     }
@@ -1666,6 +1708,92 @@ mod tests {
 
     fn text(body: &ResponseBody) -> String {
         String::from_utf8(body.read_all().unwrap()).unwrap()
+    }
+
+    /// Requests in separate tasks overlap: each read parks with its own buffer, so five
+    /// responses that each take 100 ms arrive together instead of one after another.
+    #[test]
+    fn requests_in_separate_tasks_overlap() {
+        let (address, _) = serve(|s, _| {
+            read_request(s).unwrap();
+            std::thread::sleep(Duration::from_millis(100));
+            reply(s, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+        });
+        crate::wait::use_tasks();
+        let (_net, c) = client(ClientOptions::default());
+        struct Job {
+            client: Rc<Client>,
+            request: Request,
+            done: Rc<Cell<usize>>,
+        }
+        unsafe extern "C-unwind" fn run(arg: *mut u8) {
+            // SAFETY: `arg` came from `Box::into_raw` below and this task owns it.
+            let job = unsafe { Box::from_raw(arg.cast::<Job>()) };
+            let body = job.client.send(job.request).unwrap();
+            assert_eq!(text(&body), "ok");
+            job.done.set(job.done.get() + 1);
+        }
+        let done = Rc::new(Cell::new(0));
+        let started = Instant::now();
+        for _ in 0..5 {
+            let job = Box::new(Job {
+                client: c.clone(),
+                request: request("GET", &address, "/"),
+                done: done.clone(),
+            });
+            // SAFETY: `run` takes ownership of the boxed job.
+            unsafe { rt::spawn_detached(run, Box::into_raw(job).cast()) };
+        }
+        while done.get() < 5 {
+            rt::sleep(1_000_000);
+        }
+        let took = started.elapsed();
+        assert!(took < Duration::from_millis(300), "took {took:?}");
+    }
+
+    /// A second task reading a body that another task is parked on gets a failure, not a
+    /// borrow panic, and the first read still completes.
+    #[test]
+    fn concurrent_reads_of_one_body_fail_cleanly() {
+        let (address, _) = serve(|s, _| {
+            read_request(s).unwrap();
+            reply(s, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\no");
+            std::thread::sleep(Duration::from_millis(100));
+            reply(s, "k");
+        });
+        crate::wait::use_tasks();
+        let (_net, c) = client(ClientOptions::default());
+        let body = c.send(request("GET", &address, "/")).unwrap();
+        type Chunk = Result<Option<Vec<u8>>, IoErr>;
+        struct Job {
+            body: Rc<ResponseBody>,
+            out: Rc<RefCell<Option<Chunk>>>,
+        }
+        unsafe extern "C-unwind" fn run(arg: *mut u8) {
+            // SAFETY: `arg` came from `Box::into_raw` below and this task owns it.
+            let job = unsafe { Box::from_raw(arg.cast::<Job>()) };
+            // Drain the first chunk so the next read parks on the socket.
+            let first = job.body.read(1);
+            assert_eq!(first.unwrap().unwrap(), b"o");
+            let r = job.body.read(1);
+            *job.out.borrow_mut() = Some(r);
+        }
+        let out = Rc::new(RefCell::new(None));
+        let job = Box::new(Job {
+            body: body.clone(),
+            out: out.clone(),
+        });
+        // SAFETY: `run` takes ownership of the boxed job.
+        unsafe { rt::spawn_detached(run, Box::into_raw(job).cast()) };
+        rt::sleep(30_000_000);
+        match body.read(1) {
+            Err(IoErr::Failed(m)) => assert!(m.contains("another task"), "{m}"),
+            other => panic!("expected a failure, got {other:?}"),
+        }
+        while out.borrow().is_none() {
+            rt::sleep(1_000_000);
+        }
+        assert_eq!(out.borrow_mut().take().unwrap().unwrap().unwrap(), b"k");
     }
 
     /// The request line and headers the client sends:

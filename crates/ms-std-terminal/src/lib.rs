@@ -217,7 +217,13 @@ native! {
     ) -> u8 {
         poll_cancel();
         let timeout = has_timeout.then_some(timeout_ns.max(0));
-        h.next_event(timeout, &mut CURRENT.get().borrow_mut())
+        // The wait parks, so `CURRENT` is not borrowed until it returns.
+        let mut event = None;
+        let status = h.next_event(timeout, &mut event);
+        if event.is_some() {
+            *CURRENT.get().borrow_mut() = event;
+        }
+        status
     }
 
     /// The kind of the delivered event, as its `TerminalEvent` case index: text, key, resize.

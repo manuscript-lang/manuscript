@@ -1119,7 +1119,8 @@ impl Walker<'_> {
             return;
         };
         match m.perm {
-            Perm::Mutable => {}
+            // An escaping closure's captures are reported once by `lambda`.
+            Perm::Mutable | Perm::Captured => {}
             // A scalar borrow is a name for its place: assigning writes through.
             Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
@@ -1130,7 +1131,7 @@ impl Walker<'_> {
                 pos,
                 format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or copy with `{name}.{COPY}()`"),
             ),
-            Perm::Immutable | Perm::Borrowed | Perm::Captured => self.error(
+            Perm::Immutable | Perm::Borrowed => self.error(
                 pos,
                 format!("cannot assign to `{name}`: it is not a var; declare it `var {name} = ...`"),
             ),

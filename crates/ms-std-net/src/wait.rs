@@ -76,7 +76,10 @@ thread_local! {
 /// of a test thread, which then holds the scheduler for the rest of the test.
 pub fn use_tasks() {
     #[cfg(test)]
-    TASKS.with(|t| t.set(true));
+    {
+        crate::http::server::serialize_tests();
+        TASKS.with(|t| t.set(true));
+    }
 }
 
 /// Whether waits park the task: always, except on a test thread without a server.

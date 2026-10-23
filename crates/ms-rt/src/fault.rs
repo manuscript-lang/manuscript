@@ -357,6 +357,46 @@ fn push_repeats(out: &mut Vec<u8>, repeated: &mut usize) {
     }
 }
 
+/// Returns `t` with its function and line tables ordered by address. The compiler emits them in
+/// declaration order, but a linker may place functions differently (macOS arm64 moves functions
+/// that only reach a noreturn call away from the rest), and the lookups binary-search by address.
+///
+/// # Safety
+/// `t` must be null or point to valid tables that live for the whole process.
+pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
+    // SAFETY: the caller promises valid tables.
+    let Some(tr) = (unsafe { t.as_ref() }) else {
+        return t;
+    };
+    if tr.funcs.is_null() || tr.func_count == 0 {
+        return t;
+    }
+    // SAFETY: `func_count` read-only entries.
+    let funcs = unsafe { core::slice::from_raw_parts(tr.funcs, tr.func_count) };
+    if funcs.is_sorted_by_key(|e| e.addr) {
+        return t;
+    }
+    let mut sorted_funcs = funcs.to_vec();
+    sorted_funcs.sort_by_key(|e| e.addr);
+    let mut out = Tables { ..*tr };
+    out.funcs = Vec::leak(sorted_funcs).as_ptr();
+    if !tr.lines.is_null() && tr.line_count > 0 {
+        // SAFETY: `line_count` read-only entries, with `line_scopes` parallel when present.
+        let lines = unsafe { core::slice::from_raw_parts(tr.lines, tr.line_count) };
+        let scoped = tr.abi_version >= TABLES_WITH_SCOPES && !tr.line_scopes.is_null();
+        let mut order: Vec<usize> = (0..lines.len()).collect();
+        order.sort_by_key(|&i| lines[i].pc);
+        out.lines = Vec::leak(order.iter().map(|&i| lines[i]).collect::<Vec<_>>()).as_ptr();
+        if scoped {
+            // SAFETY: `line_scopes` parallels `lines`.
+            let scopes = unsafe { core::slice::from_raw_parts(tr.line_scopes, tr.line_count) };
+            out.line_scopes =
+                Vec::leak(order.iter().map(|&i| scopes[i]).collect::<Vec<_>>()).as_ptr();
+        }
+    }
+    Box::into_raw(Box::new(out))
+}
+
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: tables pointer is set once at start.
@@ -1194,6 +1234,59 @@ mod tests {
             *STACK_LO.ptr() = 0;
             *STACK_HI.ptr() = 0;
         }
+    }
+
+    #[test]
+    fn unordered_tables_are_sorted_by_address() {
+        let funcs = [
+            FuncEntry {
+                addr: 0x3000,
+                size: 0x10,
+                name_off: 0,
+                file_off: 0,
+                line: 1,
+            },
+            FuncEntry {
+                addr: 0x1000,
+                size: 0x10,
+                name_off: 0,
+                file_off: 0,
+                line: 2,
+            },
+        ];
+        let lines = [
+            LineEntry {
+                pc: 0x3004,
+                line: 10,
+                file_off: u32::MAX,
+            },
+            LineEntry {
+                pc: 0x1004,
+                line: 20,
+                file_off: u32::MAX,
+            },
+        ];
+        let scopes = [7u32, 8];
+        let t = Tables {
+            abi_version: TABLES_WITH_SCOPES,
+            reserved: 0,
+            funcs: funcs.as_ptr(),
+            func_count: 2,
+            lines: lines.as_ptr(),
+            line_count: 2,
+            strings: core::ptr::null(),
+            strings_len: 0,
+            line_scopes: scopes.as_ptr(),
+            scopes: core::ptr::null(),
+            scope_count: 0,
+        };
+        // SAFETY: valid tables that outlive the call.
+        let sorted = unsafe { &*address_ordered_tables(&t) };
+        let f = find_func(sorted, 0x1008).expect("function at 0x1000");
+        assert_eq!(f.line, 2);
+        assert_eq!(find_line(sorted, f, 0x1008), (20, f.file_off, 8));
+        let f = find_func(sorted, 0x3008).expect("function at 0x3000");
+        assert_eq!(find_line(sorted, f, 0x3008), (10, f.file_off, 7));
     }
 
     // Windows walks the faulting thread's native CONTEXT, not a frame-pointer chain; the native

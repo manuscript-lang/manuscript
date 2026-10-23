@@ -268,7 +268,7 @@ pub unsafe extern "C-unwind" fn msrt_start(
 ) -> i32 {
     // SAFETY: one-time process setup before any other runtime use.
     unsafe {
-        *TABLES.ptr() = tables;
+        *TABLES.ptr() = fault::address_ordered_tables(tables);
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
         *MAIN_FN.ptr() = Some(main_fn);

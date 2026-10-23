@@ -80,7 +80,7 @@ impl Regex:
     ) Result[String, RegexError]:
 
     # Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
-    fn captures(text: String) Result[List[String], RegexError]:
+    fn captures(text: String) List[String]:
 
     # Like captures for every nonoverlapping match, under find_all's match-count budget.
     fn captures_all(
@@ -89,10 +89,10 @@ impl Regex:
     ) Result[List[List[String]], RegexError]:
 
     # Returns the first match's named groups that participated; empty map when nothing matches.
-    fn named_captures(text: String) Result[Map[String, String], RegexError]:
+    fn named_captures(text: String) Map[String, String]:
 
-    # Returns [start, end] UTF-8 byte offsets of the first match, or an empty list when nothing matches.
-    fn find_span(text: String) Result[List[Int], RegexError]:
+    # Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing matches.
+    fn find_span(text: String) Optional[List[Int]]:
 
     # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
     fn split(
