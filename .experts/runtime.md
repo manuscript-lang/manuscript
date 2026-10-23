@@ -153,3 +153,15 @@ Decision: `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (in
 Apply when: adding collection constructors or writing fixtures that need a populated Set.
 Evidence: [Set declaration](../stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.
+
+### Forked fault assertions need their own cleanup boundary
+
+Verified: Unix `expect_fault` children inherit the caller's cleanup stack and guard targets.
+Running them can delete a still-live parent's external resources or jump to an inherited
+callback guard. Clear cleanup records, guards, active fault reports and equality recursion
+state in the child before the assertion runs; preserve cancellation, shielding and stack limits.
+
+Apply when: changing fault assertions, fork boundaries or cleanup contexts.
+Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
+Verify: child faults leave parent cleanup pending, child cleanup runs LIFO, nested assertions
+and assertions during fault cleanup retain their own report and cleanup boundaries.
