@@ -1,5 +1,5 @@
-//! Release builds go through LLVM when `clang` is available (Linux). A fault keeps the same exit
-//! code and source frames as the Cranelift build, including frames of inlined functions.
+//! Bundled LLVM release builds keep the same exit code and source frames as
+//! Cranelift, including frames of inlined functions. No clang installation is needed.
 
 use std::process::Command;
 
@@ -28,11 +28,7 @@ fn build_and_run(backend: &str, out: &std::path::Path) -> (Option<i32>, String) 
 
 #[test]
 fn llvm_release_matches_cranelift_fault_frames() {
-    let have_clang = Command::new("clang")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success());
-    if !cfg!(target_os = "linux") || !have_clang {
+    if !cfg!(any(target_os = "linux", target_os = "macos")) || !ms_clif::llvm_available() {
         return;
     }
     let dir = std::env::temp_dir().join(format!("ms-llvm-test-{}", std::process::id()));

@@ -1,0 +1,47 @@
+module "list_saved_length"
+entry @main
+fn @walk(%start: own list<int>) -> int {
+b0:
+  %n: int = list.len %start
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %two: int = iconst 2
+  br outer(%zero, %start)
+outer(%pass: int, %list: own list<int>):
+  %more: bool = icmp.lt %pass, %two
+  br_if %more, begin(), done()
+begin:
+  br inner(%zero, %list)
+inner(%i: int, %current: own list<int>):
+  %inside: bool = icmp.lt %i, %n
+  br_if %inside, body(), next()
+body:
+  %x: int = list.get %current, %i
+  %y: int = iadd %x, %one
+  %len: int = list.len %current
+  %safe: bool = icmp.lt %i, %len
+  br_if %safe, update(), bad()
+update:
+  %changed: list<int> = list.set %current, %i, %y
+  %j: int = iadd.chk %i, %one
+  br inner(%j, %changed)
+bad:
+  drop %current
+  %bad: int = iconst -1
+  ret %bad
+next:
+  %p: int = iadd %pass, %one
+  br outer(%p, %current)
+done:
+  %last: int = list.get %list, %zero
+  drop %list
+  ret %last
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 10
+  %b: int = iconst 20
+  %l: list<int> = list.lit %a, %b
+  %r: int = call @walk(%l)
+  ret %r
+}

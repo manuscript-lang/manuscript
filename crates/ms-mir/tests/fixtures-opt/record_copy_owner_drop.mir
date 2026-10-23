@@ -1,0 +1,18 @@
+module "record_copy_owner_drop"
+record Item { values: list<int> }
+entry @main
+fn @main() -> int {
+b0:
+  %ten: int = iconst 10
+  %zero: int = iconst 0
+  %values: list<int> = list.lit %ten
+  %item: Item = rec.new Item %values
+  %items: list<Item> = list.lit %item
+  %borrowed: Item = list.get %items, %zero
+  %copy: Item = copy %borrowed
+  drop %items
+  %field: list<int> = rec.get Item.values %copy
+  %r: int = list.get %field, %zero
+  drop %copy
+  ret %r
+}
