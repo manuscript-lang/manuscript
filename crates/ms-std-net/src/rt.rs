@@ -29,6 +29,24 @@ unsafe extern "C" {
     fn msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32;
     fn msrt_token_post(id: u64, value: u64);
     fn msrt_token_free(id: u64);
+    fn msrt_cleanup_push(f: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> usize;
+    fn msrt_cleanup_discard(handle: usize);
+}
+
+/// Registers `f(arg)` on the running task's cleanup stack: it runs if a fault or cancellation
+/// leaves the task's guard, which skips destructors. Call [`cleanup_discard`] on normal exit.
+///
+/// # Safety
+/// `arg` must stay valid for `f` until the action is discarded or the task's guard is left.
+pub unsafe fn cleanup_push(f: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> usize {
+    // SAFETY: plain call on the runtime thread; validity of `arg` is the caller's contract.
+    unsafe { msrt_cleanup_push(f, arg) }
+}
+
+/// Drops the action behind `handle` (and newer pending ones) without running it.
+pub fn cleanup_discard(handle: usize) {
+    // SAFETY: plain call on the runtime thread.
+    unsafe { msrt_cleanup_discard(handle) }
 }
 
 /// Whether SIGINT/SIGTERM asked the program to stop.

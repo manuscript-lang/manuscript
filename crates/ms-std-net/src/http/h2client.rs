@@ -126,23 +126,12 @@ pub(crate) struct Session {
     used: Cell<Instant>,
     /// A task owns the socket, parked in a read or a blocking write.
     driving: Cell<bool>,
+    /// Which turn owns the socket, so a late release of an earlier one is ignored.
+    turn_id: Cell<u64>,
     /// Tokens of the tasks waiting for the driver.
     waiters: RefCell<Vec<u64>>,
     /// Output the core produced that the socket has not taken yet.
     pending: RefCell<Vec<u8>>,
-}
-
-/// Ownership of the socket for one drive; dropping it wakes the waiting tasks.
-struct Turn<'a>(&'a Session);
-
-impl Drop for Turn<'_> {
-    fn drop(&mut self) {
-        self.0.driving.set(false);
-        let waiters = std::mem::take(&mut *self.0.waiters.borrow_mut());
-        for id in waiters {
-            rt::post(id);
-        }
-    }
 }
 
 fn map_io(e: IoErr) -> PumpErr {
@@ -151,6 +140,52 @@ fn map_io(e: IoErr) -> PumpErr {
         IoErr::Failed(m) if m == "operation timed out" => PumpErr::Timeout,
         IoErr::Failed(m) => PumpErr::Failed(m),
         _ => PumpErr::Failed("i/o error".into()),
+    }
+}
+
+/// Ownership of the socket for one drive; ending it wakes the waiting tasks. A fault or
+/// cancellation that leaves the task's guard skips destructors, so the same release is
+/// also registered on the task's cleanup stack.
+struct Turn<'a> {
+    session: &'a Session,
+    id: u64,
+    cleanup: usize,
+    /// What the cleanup action reads; freed with the turn, leaked with abandoned frames.
+    _release: Box<Release>,
+}
+
+impl Session {
+    /// Ends turn `id` unless it already ended.
+    fn release(&self, id: u64) {
+        if !self.driving.get() || self.turn_id.get() != id {
+            return;
+        }
+        self.driving.set(false);
+        let waiters = std::mem::take(&mut *self.waiters.borrow_mut());
+        for token in waiters {
+            rt::post(token);
+        }
+    }
+}
+
+/// What the cleanup action needs to end a turn.
+struct Release {
+    session: *const Session,
+    id: u64,
+}
+
+unsafe extern "C-unwind" fn release_turn(arg: *mut u8) {
+    // SAFETY: `arg` is the `Release` a live `Turn` owns, or one its abandoned frame leaked; the
+    // session outlives it, since abandoned frames keep their `Rc` (nothing frees them).
+    let r = unsafe { &*arg.cast::<Release>() };
+    // SAFETY: as above, the session is alive.
+    unsafe { (*r.session).release(r.id) };
+}
+
+impl Drop for Turn<'_> {
+    fn drop(&mut self) {
+        rt::cleanup_discard(self.cleanup);
+        self.session.release(self.id);
     }
 }
 
@@ -167,6 +202,7 @@ impl Session {
             scratch: Cell::new(Vec::new()),
             used: Cell::new(Instant::now()),
             driving: Cell::new(false),
+            turn_id: Cell::new(0),
             waiters: RefCell::new(Vec::new()),
             pending: RefCell::new(Vec::new()),
         })
@@ -211,7 +247,18 @@ impl Session {
 
     fn turn(&self) -> Turn<'_> {
         self.driving.set(true);
-        Turn(self)
+        let id = self.turn_id.get() + 1;
+        self.turn_id.set(id);
+        let mut release = Box::new(Release { session: self, id });
+        let arg: *mut Release = &mut *release;
+        // SAFETY: the box lives as long as the turn; `Turn::drop` discards the action first.
+        let cleanup = unsafe { rt::cleanup_push(release_turn, arg.cast()) };
+        Turn {
+            session: self,
+            id,
+            cleanup,
+            _release: release,
+        }
     }
 
     /// The core's output after what is still pending.
