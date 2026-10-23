@@ -448,30 +448,10 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::find(hay, needle)
 }
 
-/// First index of `c` in `hay`, 16 bytes at a time where SSE2 is available.
+/// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
+#[inline]
 fn memchr(c: u8, hay: &[u8]) -> Option<usize> {
-    #[cfg(target_arch = "x86_64")]
-    {
-        use core::arch::x86_64::*;
-        let mut i = 0;
-        // SAFETY: SSE2 is part of the x86_64 baseline; every load stays inside `hay`.
-        unsafe {
-            let needle = _mm_set1_epi8(c as i8);
-            while i + 16 <= hay.len() {
-                let chunk = _mm_loadu_si128(hay.as_ptr().add(i) as *const __m128i);
-                let mask = _mm_movemask_epi8(_mm_cmpeq_epi8(chunk, needle)) as u32;
-                if mask != 0 {
-                    return Some(i + mask.trailing_zeros() as usize);
-                }
-                i += 16;
-            }
-        }
-        hay[i..].iter().position(|&b| b == c).map(|j| i + j)
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        hay.iter().position(|&b| b == c)
-    }
+    memchr::memchr(c, hay)
 }
 
 /// Last occurrence of `needle` in `hay` (empty matches at `hay.len()`).
