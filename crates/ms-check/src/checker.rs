@@ -9,6 +9,11 @@ use ms_syntax::{Diagnostic, Phase, Pos};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Source of `Binding::uid`. Process-wide, because the standard library is checked by its own
+/// checker and its bindings share the lowering's tables with the program's.
+static BINDING_SERIAL: AtomicUsize = AtomicUsize::new(0);
 
 /// Lexical scope of local bindings and type variables.
 pub struct Scope {
@@ -195,7 +200,6 @@ pub struct Checker {
     pub(crate) constants_visiting: HashSet<usize>,
     pub(crate) cycle_reported: HashSet<usize>,
     pub(crate) imports: ImportMap,
-    pub(crate) binding_serial: usize,
 }
 
 /// Maximum identity serial reservation per standard module check.
@@ -232,7 +236,6 @@ impl Checker {
             constants_visiting: HashSet::new(),
             cycle_reported: HashSet::new(),
             imports: ImportMap::default(),
-            binding_serial: 0,
         }
     }
 
@@ -809,11 +812,10 @@ impl Checker {
         }
         let t = if mutable { required_type(t) } else { t.clone() };
         let id = self.unique("local");
-        self.binding_serial += 1;
         let b = Rc::new(Binding {
             name,
             id: n(&format!("{id}_{name}")),
-            uid: self.binding_serial,
+            uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
             ty: t,
             mutable,
             function: self.function,

@@ -107,3 +107,10 @@ fn explicit_optional_defaults_preserve_owned_payloads() {
         );
     }
 }
+
+#[test]
+fn borrow_identities_are_unique_across_the_standard_library() {
+    let (status, text) = run_ms(&["run", &fixture("stdlib_binding_ids.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+    assert_eq!(text, "Optional.some(3) 25 Optional.some(hello!)\n");
+}
