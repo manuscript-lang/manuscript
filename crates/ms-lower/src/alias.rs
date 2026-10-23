@@ -21,8 +21,10 @@ pub(crate) enum AStep {
     Field(Name),
     /// A list element, at an index saved when the borrow was made.
     Index(Value),
-    /// A map entry, at a key saved (and kept alive) when the borrow was made.
-    Key(Var),
+    /// A map entry, at a key saved (and kept alive) when the borrow was made, with the entry's
+    /// address when the borrow found it in this function: the exclusive borrow keeps the map
+    /// from gaining or losing entries, so the address holds until the borrow ends.
+    Key(Var, Option<Value>),
 }
 
 /// The place a borrow binding names.
@@ -30,6 +32,14 @@ pub(crate) enum AStep {
 pub(crate) struct Alias {
     pub root: BindingRef,
     pub steps: Vec<AStep>,
+}
+
+/// How `if var` tests that the place it borrows exists.
+pub(crate) enum Found {
+    /// The accessor's `Optional` result.
+    Opt(Val),
+    /// A `Bool` computed without reading the value.
+    Present(Value),
 }
 
 type Update<'u, 'a> = &'u mut dyn FnMut(&mut FnLower<'a>, Value) -> Result<Value, Error>;
@@ -86,8 +96,9 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The place `if var name = recv.get(key)` (or `first`, `last`) names.
-    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Val), Error> {
+    /// The place `if var name = recv.get(key)` (or `first`, `last`) names, and the test for
+    /// whether it exists.
+    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Found), Error> {
         let ExprKind::Call { callee, args } = &cond.kind else {
             return Err(Error::new(
                 "`if var` borrows the payload of a call such as `m.get(key)`, `xs.first()` or `xs.last()`",
@@ -118,11 +129,18 @@ impl<'a> FnLower<'a> {
                 values.push(Val { v: at, own: false });
             }
             (TyKind::Obj(..), "get") if args.len() == 1 => {
+                // One lookup finds the entry: the test is its address, and the borrow reads
+                // and writes through it.
                 let k = self.expr(&args[0].value)?;
                 let key = self.bind_hidden(k);
-                a.steps.push(AStep::Key(key));
-                let v = self.b.use_var(key);
-                values.push(Val { v, own: false });
+                let ptr = self.map_entry_ptr(whole.v, key)?;
+                let missing = self
+                    .b
+                    .emit(Op::PtrIsNull, &[ptr], Imm::None, Some(MTy::BOOL))
+                    .expect("is_null");
+                let found = self.b.unop(Op::Not, missing);
+                a.steps.push(AStep::Key(key, Some(ptr)));
+                return Ok((a, Found::Present(found)));
             }
             _ => {
                 return Err(Error::new(
@@ -148,7 +166,7 @@ impl<'a> FnLower<'a> {
         // Test the same receiver and key the borrow will name. Re-lowering `cond`
         // would run calls in its receiver path or key a second time.
         let value = self.bound_native_call(&method, whole, &args, result)?;
-        Ok((a, value))
+        Ok((a, Found::Opt(value)))
     }
 
     /// The current value of a borrowed place, as a borrow.
@@ -161,8 +179,11 @@ impl<'a> FnLower<'a> {
                     self.b.rec_get(rid, idx, cur)
                 }
                 AStep::Index(at) => self.b.list_get(cur, *at),
-                AStep::Key(var) => {
-                    let ptr = self.map_entry_ptr(cur, *var)?;
+                AStep::Key(var, at) => {
+                    let ptr = match at {
+                        Some(p) => *p,
+                        None => self.map_entry_ptr(cur, *var)?,
+                    };
                     let vty = self.map_value_type(cur)?;
                     self.b
                         .emit(Op::Load, &[ptr], Imm::Ty(vty), Some(vty))
@@ -220,21 +241,27 @@ impl<'a> FnLower<'a> {
                     self.b.list_set(obj, *at, inner)
                 })
             }
-            AStep::Key(var) => {
-                let ptr = self.map_entry_ptr(obj, *var)?;
+            AStep::Key(var, at) => {
+                // The entry is changed where it lies: its value is taken out of the slot,
+                // updated and put back, so the map is not searched or rebuilt again.
+                let ptr = match at {
+                    Some(p) => *p,
+                    None => self.map_entry_ptr(obj, *var)?,
+                };
                 let vty = self.map_value_type(obj)?;
-                let held = self
+                let drops = self.needs_drop(vty);
+                let (take, put) = if drops {
+                    (Op::Take, Op::Put)
+                } else {
+                    (Op::Load, Op::Store)
+                };
+                let cur = self
                     .b
-                    .emit(Op::Load, &[ptr], Imm::Ty(vty), Some(vty))
-                    .expect("load");
-                let cur = self.owned(Val {
-                    v: held,
-                    own: false,
-                });
+                    .emit(take, &[ptr], Imm::Ty(vty), Some(vty))
+                    .expect("take");
                 let inner = self.update_steps(cur, rest, f)?;
-                let key = self.b.use_var(*var);
-                let key = self.owned(Val { v: key, own: false });
-                self.map_insert(obj, key, inner)
+                self.b.emit(put, &[ptr, inner], Imm::None, None);
+                Ok(obj)
             }
         }
     }

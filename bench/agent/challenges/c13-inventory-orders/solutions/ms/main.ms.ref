@@ -93,6 +93,7 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
     while i < t.length():
         let token = t.get(i)
         i = i + 1
+
         let p = token.split(":")
         if p.length() != 2 or not valid_sku(p.get(0)):
             return ["error: bad item {token}"]
@@ -122,7 +123,9 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
     var total = 0
 
     for it in items:
-        w.stock.add(key: it.sku.clone(), value: w.stock.get(it.sku).get() - it.qty)
+        if var n = w.stock.get(it.sku):
+            n -= it.qty
+
         let unit_price = w.price.get(it.sku).get()
 
         if it.qty >= 10:
@@ -130,7 +133,11 @@ fn place_order(var w: Warehouse, t: List[String]) List[String]:
         else:
             total = total + it.qty * unit_price
 
-    w.orders.add(key: id.clone(), value: Order(items: items, status: "placed", total: total))
+    (
+        w.orders.add(
+            key: id.clone(), value: Order(items: items, status: "placed", total: total)
+        )
+    )
     return ["ok {id} total={money(total)}"]
 
 fn report(w: Warehouse) List[String]:
@@ -140,22 +147,17 @@ fn report(w: Warehouse) List[String]:
     var cancelled = 0
     var revenue = 0
 
-    for id in w.orders.keys():
-        let o = w.orders.get(id).get()
+    for e in w.orders.entries():
+        let o = e.value
 
         if o.status == "placed":
             placed = placed + 1
+
             for it in o.items:
-                reserved.add(
-                    key: it.sku.clone(),
-                    value: (
-                        reserved.get_or(
-                            key: it.sku,
-                            fallback: 0
-                        )
-                        + it.qty
-                    )
-                )
+                if var n = reserved.get(it.sku):
+                    n += it.qty
+                else:
+                    reserved.add(key: it.sku.clone(), value: it.qty)
         else if o.status == "shipped":
             shipped = shipped + 1
             revenue = revenue + o.total
@@ -168,8 +170,9 @@ fn report(w: Warehouse) List[String]:
         .stock
         .keys()
         .sorted(
-            compare: fn(left: String, right: String) Int:
-                return left.compare(right)
+            compare: fn(left: String, right: String) Int: return left.compare(
+                right
+            )
         )
     )
     for sku in skus:
@@ -232,10 +235,10 @@ fn run_command(var w: Warehouse, line: String) List[String]:
             return ["error: order {id} already {o.status}"]
 
         for it in o.items:
-            w.stock.add(key: it.sku.clone(), value: w.stock.get(it.sku).get() + it.qty)
-        var upd = o.clone()
-        upd.status = "cancelled"
-        w.orders.add(key: id.clone(), value: upd)
+            if var n = w.stock.get(it.sku):
+                n += it.qty
+        if var u = w.orders.get(id):
+            u.status = "cancelled"
         return ["ok"]
 
     if o.status == "shipped":
@@ -243,15 +246,13 @@ fn run_command(var w: Warehouse, line: String) List[String]:
     if o.status == "cancelled":
         return ["error: order {id} is cancelled"]
 
-    var upd = o.clone()
-    upd.status = "shipped"
-    w.orders.add(key: id.clone(), value: upd)
+    if var u = w.orders.get(id):
+        u.status = "shipped"
     return ["ok"]
 
 fn run() Result[Unit, Error]:
     var w = Warehouse(
-        stock: Map[String, Int](),
-        price: Map[String, Int](),
+        stock: Map[String, Int](), price: Map[String, Int](),
         orders: Map[String, Order]()
     )
 
