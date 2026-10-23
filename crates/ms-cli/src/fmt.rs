@@ -201,7 +201,22 @@ fn format_file(
     drop_labels: bool,
 ) -> (&'static str, Option<FmtError>) {
     let source = match std::fs::read(&file.path) {
-        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Ok(bytes) => match String::from_utf8(bytes) {
+            Ok(text) => text,
+            Err(invalid) => {
+                let name: std::sync::Arc<str> = file.display.as_str().into();
+                let issue = ms_syntax::lexer::lex_bytes(&name, invalid.as_bytes())
+                    .err()
+                    .expect("invalid UTF-8 is a lex error");
+                return (
+                    "error",
+                    Some(FmtError::Syntax {
+                        display: file.display.clone(),
+                        diagnostic: crate::engine::command_diagnostic(&issue),
+                    }),
+                );
+            }
+        },
         Err(error) => {
             let op = if error.raw_os_error() == Some(21) {
                 "read"
