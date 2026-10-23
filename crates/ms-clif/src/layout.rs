@@ -15,6 +15,7 @@
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
 //! | record | the fields' leaves in declaration order |
 //! | `Optional[T]` of a closure or handle object (single-pointer payloads) | nullable `i64` |
+//! | `Optional[String]` | the string's leaves; none is a null `ptr` (tagged static, length 0) |
 //! | `Optional[T]` otherwise | `present: i8`, then `T`'s leaves |
 //! | `Optional[T]` that reaches itself by value | nullable `i64` pointer to a block of `T`'s leaves |
 //! | alternative | `tag: i64`, then payload slots shared by all cases |
@@ -235,6 +236,16 @@ impl<'m> Layouts<'m> {
             || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
     }
 
+    /// Whether values of `ty` have the string layout and drop and copy like a string: `String`,
+    /// and `Optional[String]`, whose none is a static empty string with a null pointer.
+    pub fn is_str_like(&self, ty: Ty) -> bool {
+        match self.m.types.kind(ty) {
+            TyKind::Str => true,
+            TyKind::Opt(inner) => matches!(self.m.types.kind(*inner), TyKind::Str),
+            _ => false,
+        }
+    }
+
     fn compute(&self, ty: Ty) -> Shape {
         use Leaf::*;
         let plain = |leaves: Vec<Leaf>| Shape { leaves, alt: None };
@@ -258,6 +269,8 @@ impl<'m> Layouts<'m> {
             TyKind::Opt(inner) => {
                 if self.opt_is_nullable(*inner) {
                     plain(vec![I64])
+                } else if self.is_str_like(ty) {
+                    plain(vec![I64, I64])
                 } else {
                     let mut l = vec![I8];
                     l.extend(self.leaves(*inner));
@@ -317,5 +330,21 @@ impl<'m> Layouts<'m> {
                 alt: Some(AltRepr::Inline { slots }),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn optional_string_is_as_wide_as_a_string() {
+        let mut m = Module::new("t");
+        let os = m.types.opt(Ty::STR);
+        let oi = m.types.opt(Ty::INT);
+        let lay = Layouts::new(&m);
+        assert_eq!(lay.mem(os).size, ms_rt_abi::OPT_STR_SIZE as u32);
+        assert_eq!(lay.leaves(os), lay.leaves(Ty::STR));
+        assert!(lay.is_str_like(os) && lay.is_str_like(Ty::STR) && !lay.is_str_like(oi));
     }
 }

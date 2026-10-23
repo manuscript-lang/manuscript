@@ -1216,13 +1216,9 @@ impl IntoAbi for Option<String> {
     fn into_raw(self) -> OptStr {
         match self {
             Some(s) => OptStr {
-                present: 1,
                 value: new_string(&s),
             },
-            None => OptStr {
-                present: 0,
-                value: StrVal::owned(core::ptr::null_mut(), 0),
-            },
+            None => OptStr::NONE,
         }
     }
 }

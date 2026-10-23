@@ -160,14 +160,29 @@ pub const STR_SIZE: usize = 16;
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
 pub const ASCII_CHAR_STRIDE: usize = 2;
 
-/// `Optional[String]`: a presence byte, then the string at offset 8 (24 bytes).
+/// `Optional[String]`: the string itself (16 bytes); none is a static empty string with a null
+/// `ptr`, which no present string has, so dropping or copying none does nothing.
 #[repr(C)]
 pub struct OptStr {
-    pub present: u8,
     pub value: StrVal,
 }
-pub const OPT_STR_VALUE_OFFSET: usize = 8;
-pub const OPT_STR_SIZE: usize = 24;
+pub const OPT_STR_VALUE_OFFSET: usize = 0;
+pub const OPT_STR_SIZE: usize = 16;
+
+impl OptStr {
+    /// An absent string.
+    pub const NONE: OptStr = OptStr {
+        value: StrVal {
+            ptr: core::ptr::null_mut(),
+            tagged: STR_STATIC,
+        },
+    };
+
+    /// Whether a string is present.
+    pub fn is_some(&self) -> bool {
+        !self.value.ptr.is_null()
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Owned aggregate values: List, Bytes, Map, Set (no header, no count)

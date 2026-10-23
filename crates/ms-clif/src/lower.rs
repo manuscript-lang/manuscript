@@ -183,6 +183,10 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn zeros(&mut self, ty: Ty) -> Vs {
+        if self.g.lay.is_str_like(ty) && !matches!(self.g.m.types.kind(ty), TyKind::Str) {
+            // An absent `Optional[String]`: static, so dropping and copying it do nothing.
+            return vec![self.iconst(0), self.iconst(STR_STATIC as i64)];
+        }
         self.g
             .lay
             .leaves(ty)
@@ -322,7 +326,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             return;
         }
         match m.types.kind(ty) {
-            TyKind::Str => {
+            _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(0, vs[1]);
                 // A static or view string has the top tag bit set: nothing to free.
                 let owned = self
@@ -355,7 +359,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             return vs.to_vec();
         }
         match m.types.kind(ty) {
-            TyKind::Str => {
+            _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(1, vs[1]);
                 // A static string (tag `10`) is shared; an owned one or a view is duplicated.
                 let tag = self.b.ins().ushr_imm_u(vs[1], 62);
@@ -585,6 +589,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     s.free(p);
                 });
             }
+            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.drop_value(ty, vs),
             TyKind::Opt(inner) => {
                 // Non-nullable optional: [present, payload...].
                 let present = vs[0];
@@ -936,6 +941,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.b.switch_to_block(join);
                 vec![self.b.block_params(join)[0]]
             }
+            TyKind::Opt(_) if self.g.lay.is_str_like(ty) => self.copy_value(ty, vs),
             TyKind::Opt(inner) => {
                 if self.g.lay.opt_is_nullable(inner) {
                     // Retain through copy_value on a non-null pointer.
@@ -1847,7 +1853,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let p = self.alloc(mem_layout(&leaves).size as i64);
                     self.store_leaves(p, 0, &leaves, &v);
                     vec![p]
-                } else if self.opt_nullable(ty) {
+                } else if self.opt_niche(ty) {
                     v
                 } else {
                     let one = self.b.ins().iconst(types::I8, 1);
@@ -1863,7 +1869,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::OptIsSome => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
-                if self.opt_nullable(ty) {
+                if self.opt_niche(ty) {
                     vec![self.b.ins().icmp_imm_s(IntCC::NotEqual, v[0], 0)]
                 } else {
                     vec![v[0]]
@@ -1872,7 +1878,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::OptGet | Op::OptUnwrap => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
-                let nullable = self.opt_nullable(ty);
+                let nullable = self.opt_niche(ty);
                 if inst.op == Op::OptUnwrap && checks {
                     // Both layouts keep the presence word (null pointer or tag) first.
                     let none = self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0);
@@ -1908,7 +1914,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     let payload = self.load_leaves(v[0], 0, &leaves);
                     self.free(v[0]);
                     payload
-                } else if self.opt_nullable(ty) {
+                } else if self.opt_niche(ty) {
                     v
                 } else {
                     v[1..].to_vec()
@@ -2202,6 +2208,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Opt(inner) => self.g.lay.opt_is_boxed(*inner),
             _ => false,
         }
+    }
+
+    /// Whether the optional is its payload's leaves, with a null first leaf for none.
+    fn opt_niche(&self, opt: Ty) -> bool {
+        self.opt_nullable(opt) || self.g.lay.is_str_like(opt)
     }
 
     fn opt_nullable(&self, opt: Ty) -> bool {
