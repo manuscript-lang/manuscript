@@ -273,6 +273,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         }
         JobKind::Lambda(l) => return crate::closure::build_lambda(cx, m, job.func, l),
         JobKind::BoundNative(n) => return crate::closure::build_bound_native(cx, m, job.func, n),
+        JobKind::BoundAlias(n) => return crate::bound_alias::build_bound_alias(cx, m, job.func, n),
         JobKind::DefaultThunk(n) => return crate::closure::build_default_thunk(cx, m, job.func, n),
         JobKind::NativeThunk(n) => return crate::closure::build_native_thunk(cx, m, job.func, n),
         JobKind::Json(j) => return crate::json::build_json(cx, m, job.func, j),
