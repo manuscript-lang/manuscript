@@ -51,9 +51,10 @@ pub const SCALARS_UNKNOWN: usize = usize::MAX;
 /// the UTF-8 bytes. `len` is the byte length and `cap` the byte capacity of the allocation (0
 /// for a literal). The bytes are followed by one NUL (not counted in `len`).
 ///
-/// The bytes live in a reference-counted block: a [`StrHdr`] sits immediately before `ptr`, so
-/// copying the value retains the block and dropping it releases the block. Strings are
-/// immutable and shared (non-atomic counts: the language has no concurrency).
+/// A string is an owned value over immutable bytes. Transitional: the bytes live in a
+/// reference-counted block, a [`StrHdr`] immediately before `ptr`, so copying the value retains the
+/// block and dropping it releases it, until unique ownership replaces the count. `cap == 0` marks
+/// a static string with no count to change; a dynamic string always has `cap >= 1`.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct StrVal {

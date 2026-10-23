@@ -52,7 +52,7 @@ recorded here before it is committed.)_
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `Shared[T]`-style objects and closures keep an `Obj` header and a count.
-  `String` is a three-word `StrVal` whose bytes live in a refcounted block (section 3).
+  `String` is a three-word owned `StrVal` (`{ptr, len, cap}`) over immutable bytes; the buffer's count is transitional (section 2).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words) living in the owner's slot;
   runtime operations take a **pointer to the value** (borrowed, or `&mut` for `var`
@@ -66,8 +66,8 @@ recorded here before it is committed.)_
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
   `SYMBOLS.md` lists every exported symbol with its Rust signature (regenerate with `python3 crates/ms-rt/gen-symbols.py`).
-  - Strings: refcounted, immutable, **substrings are copies** (no sharing of buffers); empty and one-ASCII-byte results are
-    shared statics (`rc = STATIC_RC`). `scalars == len` means ASCII and enables O(1) indexing; non-ASCII long strings keep a one-entry
+  - Strings: owned, immutable, **substrings are copies** until views land (no sharing of buffers); empty and one-ASCII-byte results are
+    static strings (`cap == 0`, `rc = STATIC_RC`). Transitional: a dynamic buffer still carries a count, and `cap >= 1` marks it. `scalars == len` means ASCII and enables O(1) indexing; non-ASCII long strings keep a one-entry
     position hint. Retain/release are valid on statics.
   - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { present: u8, value: StrVal }` through `out`, or a `present: u8` result with `out: *mut StrVal`
     (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
@@ -132,14 +132,15 @@ recorded here before it is committed.)_
 - `msrt_retain`/`msrt_release` accept null. Everything else requires non-null.
 - Sizes and indices are `i64` (Int) at the boundary.
 
-## 2. Reference-counted objects (String, Shared) and drop
+## 2. Reference-counted objects (Shared, closures, handles), transitional String buffers, and drop
 
 ```text
 Obj { rc: usize @0, drop: fn(*mut Obj) @8 }       16 bytes; pointers point here
 ```
 
-Only strings (immutable, shared, non-atomic count), `Shared[T]`/`Weak[T]` boxes,
-closures and runtime handle objects have a header. `rc` starts at 1; retain is
+`Shared[T]`/`Weak[T]` boxes, closures and runtime handle objects have a header. A `String` is an owned value
+(moved at last use, copied only by `.clone()`); its buffer carries the same header only until unique
+ownership replaces it (`proposals/owned-values.md` stage 4), and static strings (`cap == 0`) never touch the count. `rc` starts at 1; retain is
 `rc += 1`; release is `rc -= 1; if rc == 0 { drop(obj) }`. Static and literal objects
 live in writable data with `rc = STATIC_RC` (2^62). `drop(obj)` drops what the
 object owns and then calls `msrt_free(obj)`. Deep ownership chains (linked lists,
@@ -215,7 +216,7 @@ TypeDesc { size u32 @0, align u32 @4, kind u32 @8, _ @12, inner0 @16, inner1 @24
 | --- | --- | --- | --- | --- |
 | `INT` / `BOOL` | i64 / u8 | none / bitwise | `==` | mixed |
 | `FLOAT` | f64 | none / bitwise | IEEE (`NaN != NaN`, `0.0 == -0.0`) | none |
-| `STRING` | `StrVal` (24 bytes) | release / retain | content | content |
+| `STRING` | `StrVal` (24 bytes) | free (today: release) / clone (today: retain) | content | content |
 | `BYTES` | `VecVal` of u8 | free buffer / duplicate buffer | content | content |
 | `SHARED` | nullable `Obj*` | release / retain | `eq` else identity | `hash` else address |
 | `POD` | plain bits | none / `memcpy` | `eq` else `memcmp` | `hash` else bytes |
