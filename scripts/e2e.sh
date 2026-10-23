@@ -86,6 +86,14 @@ for fixture in $fixtures; do
                     failed=$((failed + 1))
                 fi
             elif [ -n "$pattern" ]; then
+                # A missing selection also exits nonzero; it is not evidence of a
+                # failing test. Match full module::name identities before running.
+                if ! "$ms" test "$fixture" --build-type "$build_type" --list --match "$pattern" >"$err" 2>&1; then
+                    echo "FAIL $fixture: expected-failure pattern does not select runnable tests: $pattern" >&2
+                    head -8 "$err" >&2
+                    failed=$((failed + 1))
+                    continue
+                fi
                 if ! "$ms" test "$fixture" --build-type "$build_type" --exclude "$pattern" >"$err" 2>&1; then
                     echo "FAIL $fixture" >&2
                     grep -v '^RUN\|^PASS' "$err" | head -8 >&2
