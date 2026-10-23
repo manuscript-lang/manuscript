@@ -301,6 +301,25 @@ impl FnLower<'_> {
         self.rt_call(sym, None, None, decl, args, result)
     }
 
+    /// `Map[Int, V]` lookups whose values are single words go to the `_w8` entry point, which
+    /// probes without descriptor dispatch. `get` copies the value bitwise, so it excludes `String`.
+    pub(crate) fn word_map_symbol(&self, sym: &str, map: MTy) -> Option<&'static str> {
+        let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
+            return None;
+        };
+        if n != "Map" || a.len() != 2 || !matches!(self.b.m.types.kind(a[0]), TyKind::Int) {
+            return None;
+        }
+        let scalar = matches!(self.b.m.types.kind(a[1]), TyKind::Int | TyKind::Float);
+        let word = scalar || matches!(self.b.m.types.kind(a[1]), TyKind::Str);
+        match sym {
+            "msrt_map_get_ptr" if word => Some("msrt_map_get_ptr_w8"),
+            "msrt_map_contains" if word => Some("msrt_map_contains_w8"),
+            "msrt_map_get" if scalar => Some("msrt_map_get_w8"),
+            _ => None,
+        }
+    }
+
     fn rt_call(
         &mut self,
         sym: &str,
@@ -310,6 +329,9 @@ impl FnLower<'_> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
+        let sym = recv
+            .and_then(|r| self.word_map_symbol(sym, self.ty_of(r.v)))
+            .unwrap_or(sym);
         let sig = rt_sig(sym).ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
         let mut inputs = Vec::new();
         if let Some(r) = recv {

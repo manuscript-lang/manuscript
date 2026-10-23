@@ -267,6 +267,9 @@ impl<'a> FnLower<'a> {
         let k = self.b.use_var(key);
         // The lookup only reads the key, so it lends the key itself.
         let kslot = self.lend_slot(k);
-        self.call_runtime("msrt_map_get_ptr", &[map, kd, vd, kslot], MTy::PTR)
+        let sym = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        self.call_runtime(sym, &[map, kd, vd, kslot], MTy::PTR)
     }
 }
