@@ -1696,6 +1696,20 @@ impl<'a> FnLower<'a> {
                 self.finish(recv);
                 Ok(Val { v, own: false })
             }
+            "get" if args.is_empty() && self.needs_drop(inner) => {
+                // The payload is a borrow of the optional, which stays alive as a temporary; a
+                // consumer that keeps it copies it, and a `let` extends the temporary's life.
+                let (good, bad) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(some, good, &[], bad, &[]);
+                self.b.seal_block(good);
+                self.b.seal_block(bad);
+                self.b.switch_to(bad);
+                self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+                self.b.switch_to(good);
+                let p = self.b.opt_get(r);
+                self.borrow(recv);
+                Ok(Val { v: p, own: false })
+            }
             "get" => {
                 let default = args.first().copied();
                 self.two_ways(

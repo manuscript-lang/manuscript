@@ -409,6 +409,11 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
+        if method == "get"
+            && let Some(v) = self.lent_map_get(e, view, recv_expr)?
+        {
+            return Ok(v);
+        }
         let recv = self.expr(recv_expr)?;
         if self.dead {
             return Ok(recv);

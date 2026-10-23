@@ -185,6 +185,74 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// `m.get(key).get()` on a map whose values own memory: the value is read in place and lent,
+    /// so a lookup copies nothing; whoever keeps it copies it (a `let` borrows it). `None`
+    /// leaves any other shape to the ordinary path.
+    pub(crate) fn lent_map_get(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        recv_expr: &Expr,
+    ) -> Result<Option<Val>, Error> {
+        if !view.arguments.is_empty() {
+            return Ok(None);
+        }
+        let ExprKind::Call { callee, args } = &recv_expr.kind else {
+            return Ok(None);
+        };
+        let ExprKind::Member {
+            left: map_expr,
+            name,
+        } = &callee.kind
+        else {
+            return Ok(None);
+        };
+        let [k] = args.as_slice() else {
+            return Ok(None);
+        };
+        if name.as_str() != "get"
+            || k.name.is_some_and(|n| n.as_str() != "key")
+            || !self.ety(map_expr).is_std("Map")
+            || !self.ety(recv_expr).is_std("Optional")
+        {
+            return Ok(None);
+        }
+        let value_ty = self.emty(e)?;
+        if !self.needs_drop(value_ty) {
+            return Ok(None);
+        }
+        let map = self.expr(map_expr)?;
+        if self.dead {
+            return Ok(Some(map));
+        }
+        let key = self.expr(&k.value)?;
+        if self.dead {
+            return Ok(Some(key));
+        }
+        let (m, kv) = (self.borrow(map), self.borrow(key));
+        let mt = self.ty_of(m);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("get without a value type"))?;
+        let kslot = self.lend_slot(kv);
+        let found = self.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[found], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let (bad, good) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, bad, &[], good, &[]);
+        self.b.seal_block(bad);
+        self.b.seal_block(good);
+        self.b.switch_to(bad);
+        self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+        self.b.switch_to(good);
+        let v = self
+            .b
+            .emit(Op::Load, &[found], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        Ok(Some(Val { v, own: false }))
+    }
+
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         self.call_runtime("msrt_map_new", &[], ty)

@@ -196,8 +196,28 @@ impl<'a> FnLower<'a> {
             self.aliases.insert(b.uid, alias);
             return Ok(());
         }
+        let mark = self.temps.len();
         let x = self.expr(value)?;
         if self.dead {
+            return Ok(());
+        }
+        if let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && !b.mutable
+            && !x.own
+            && !self.slotted.contains(&b.uid)
+            && self.needs_drop(self.ty_of(x.v))
+            && matches!(
+                self.b.defining_op(x.v),
+                Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet | Op::OptGet)
+            )
+        {
+            // A lexical borrow (the checker rejects changing its source while it lives): the
+            // temporaries it points into live as long as the binding does.
+            for t in self.temps.split_off(mark) {
+                self.bind_hidden(Val { v: t, own: true });
+            }
+            self.bind_lent(&b, x.v);
             return Ok(());
         }
         self.bind_pattern(pattern, x)
@@ -706,13 +726,18 @@ impl<'a> FnLower<'a> {
         Ok(Some((a.v, b.v)))
     }
 
-    /// Whether `iter` is a plain local that `body` never mentions.
+    /// Whether `iter` is a local, or a field of one, that the loop cannot change: the local is
+    /// immutable or `body` never mentions it. The loop then borrows the list instead of copying it.
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
-        matches!(&iter.kind, ExprKind::Name(_))
+        let mut root = iter;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        matches!(&root.kind, ExprKind::Name(_))
             && matches!(
-                self.hir.resolution(iter),
+                self.hir.resolution(root),
                 ms_check::hir::Resolution::Local(b)
-                    if !crate::mutation::block_mentions(&self.hir, body, b.uid)
+                    if !b.mutable || !crate::mutation::block_mentions(&self.hir, body, b.uid)
             )
     }
 

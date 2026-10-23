@@ -461,6 +461,21 @@ impl<'a> FnLower<'a> {
     /// Declares the local of `binding` holding `value`.
     pub fn bind_local(&mut self, binding: &BindingRef, x: Val) {
         let ty = self.ty_of(x.v);
+        // An immutable `let` of a string read from a list element or record field is a lexical
+        // borrow (the checker rejects changing the container while it lives): no copy, no drop.
+        let lent = ty == MTy::STR
+            && !x.own
+            && !binding.mutable
+            && !self.slotted.contains(&binding.uid)
+            && self.temps.is_empty()
+            && matches!(
+                self.b.defining_op(x.v),
+                Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
+            );
+        if lent {
+            self.bind_lent(binding, x.v);
+            return;
+        }
         let owned = self.needs_drop(ty);
         let var = self
             .b
