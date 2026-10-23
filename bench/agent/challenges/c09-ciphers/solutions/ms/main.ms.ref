@@ -113,7 +113,7 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        try stdout().write("{solve_line(line)}\n")
+        try stdout().write("{solve_line(line.clone())}\n")
 
     return stdout().flush()
 

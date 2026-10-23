@@ -207,7 +207,7 @@ fn run() Result[Unit, Error]:
             )
 
             if s.is_none():
-                bad = names.get(i)
+                bad = names.get(i).clone()
                 break
 
             sets.append(s.get().clone())
