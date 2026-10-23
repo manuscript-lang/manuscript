@@ -36,7 +36,7 @@ impl Checker {
                 );
             }
             let typ = if param.ty.is_some() {
-                self.resolve(param.ty.as_ref(), false)
+                self.resolve(param.ty.as_ref())
             } else if let Some(c) = context
                 .as_ref()
                 .filter(|c| inference_type_known(&c.params[index].ty, &self.inference_variables))
@@ -62,7 +62,7 @@ impl Checker {
         }
         let mut result: Option<Ty> = None;
         if let Some(r) = &l.result {
-            result = Some(self.resolve(Some(r), false));
+            result = Some(self.resolve(Some(r)));
         } else if let Some(c) = &context
             && inference_known_opt(&c.result, &self.inference_variables)
         {

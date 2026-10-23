@@ -28,7 +28,7 @@ impl Checker {
         let result = if !ok {
             Some(invalid())
         } else if constant.ty.is_some() {
-            Some(self.resolve(constant.ty.as_ref(), false))
+            Some(self.resolve(constant.ty.as_ref()))
         } else {
             None
         };

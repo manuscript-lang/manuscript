@@ -619,7 +619,7 @@ impl Checker {
             };
             defaulted = true;
             self.scope = self.variable_scope(&vars[..index]);
-            let resolved = self.resolve(Some(default), false);
+            let resolved = self.resolve(Some(default));
             if invalid_ty(&resolved) {
                 continue;
             }
@@ -730,7 +730,7 @@ impl Checker {
                         let old = self.scope.clone();
                         let vars = self.sym(i.name).map(|s| s.variables()).unwrap_or_default();
                         self.scope = self.variable_scope(&vars);
-                        let typ = self.resolve(param.ty.as_ref(), false);
+                        let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
                         let is_none =
                             matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
@@ -846,7 +846,7 @@ impl Checker {
         }
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
-                let t = self.resolve(Some(b), true);
+                let t = self.resolve(Some(b));
                 if t.kind != Kind::Contract {
                     if t.kind == Kind::Variable {
                         self.type_error(
@@ -871,7 +871,7 @@ impl Checker {
     }
 
     /// Resolves a written type.
-    pub(crate) fn resolve(&mut self, t: Option<&TypeRef>, _bound: bool) -> Ty {
+    pub(crate) fn resolve(&mut self, t: Option<&TypeRef>) -> Ty {
         let Some(t) = t else {
             return invalid();
         };
@@ -903,7 +903,7 @@ impl Checker {
                     return invalid();
                 };
                 let mut r = (*base).clone();
-                r.args = args.iter().map(|a| self.resolve(Some(a), false)).collect();
+                r.args = args.iter().map(|a| self.resolve(Some(a))).collect();
                 let (arity, required) = match &base.def {
                     Some(def) => {
                         let vars = def.variables();
@@ -963,7 +963,7 @@ impl Checker {
                     ),
                 );
             }
-            let ty = self.resolve(p.ty.as_ref(), false);
+            let ty = self.resolve(p.ty.as_ref());
             result.push(Param { name: p.name, ty });
         }
         result
@@ -975,7 +975,7 @@ impl Checker {
         result: Option<&TypeRef>,
     ) -> Ty {
         let ps = self.params(params);
-        let r = self.resolve(result, false);
+        let r = self.resolve(result);
         let mut defaults: HashSet<Name> = HashSet::new();
         for p in params {
             if p.default.is_some() {
