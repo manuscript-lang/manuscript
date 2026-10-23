@@ -53,3 +53,38 @@ fn llvm_release_matches_cranelift_fault_frames() {
         llvm.1
     );
 }
+
+/// Drop glue of nested collections stays out of line, so optimizing a deeply nested literal takes
+/// time linear in its depth instead of nesting one loop per level.
+#[test]
+fn deeply_nested_literal_builds_quickly() {
+    let depth = 400;
+    let source = format!(
+        "export fn main() Int:\n    let x = {}1{}\n    return x.length()\n",
+        "[".repeat(depth),
+        "]".repeat(depth)
+    );
+    let dir = std::env::temp_dir().join(format!("ms-deep-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("deep.ms");
+    std::fs::write(&file, source).unwrap();
+    let start = std::time::Instant::now();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("build")
+        .arg(&file)
+        .arg("-o")
+        .arg(dir.join("deep"))
+        .output()
+        .unwrap();
+    let elapsed = start.elapsed();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(30),
+        "release build took {elapsed:?}"
+    );
+}
