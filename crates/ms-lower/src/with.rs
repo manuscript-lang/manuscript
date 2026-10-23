@@ -147,7 +147,7 @@ impl FnLower<'_> {
         ) {
             return Err(Error::new("cannot bind close receiver type"));
         }
-        let fid = self.cx.function_for(self.b.m, &c, &subst)?;
+        let fid = self.instance(&c, &subst)?;
         let writes_back = self.cx.var_positions(&c).contains(&0);
         Ok(CloseKind::Func { fid, writes_back })
     }

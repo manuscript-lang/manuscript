@@ -15,20 +15,28 @@ impl Cx {
         m: &mut Module,
         concrete: &ct::Ty,
         iface: IfaceId,
+        scope: ct::Name,
     ) -> Result<VtableId, Error> {
         let data_ty = self.lower_ty(m, concrete)?;
-        self.vtable_for(m, concrete, data_ty, iface)
+        self.vtable_for(m, concrete, data_ty, iface, scope)
     }
 
-    /// The table of `concrete`'s methods for the interface, one wrapper per operation.
-    fn vtable_for(
+    /// The table of `concrete`'s methods for the interface, one wrapper per operation. Local
+    /// extensions of other modules than `scope` are not candidates.
+    pub(crate) fn vtable_for(
         &mut self,
         m: &mut Module,
         concrete: &ct::Ty,
         data_ty: MTy,
         iface: IfaceId,
+        scope: ct::Name,
     ) -> Result<VtableId, Error> {
-        let key = format!("impl:{}:{}", ct::type_key(concrete), iface.0);
+        let key = format!(
+            "impl:{}:{}{}",
+            ct::type_key(concrete),
+            iface.0,
+            self.scope_key(concrete, scope)
+        );
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
@@ -53,7 +61,7 @@ impl Cx {
             let mut found = None;
             for mm in &self.methods {
                 let Some(decl) = &mm.decl else { continue };
-                if mm.id.as_str().is_empty() {
+                if mm.id.as_str().is_empty() || !mm.visible_in(scope) {
                     continue;
                 }
                 if mm.name().map(|n| n.to_string()).as_deref() != Some(s.name.as_str()) {
@@ -125,7 +133,7 @@ impl Cx {
                     ));
                 }
                 writes_back = !vars.is_empty();
-                self.function_for(m, &c, &subst)?
+                self.function_in(m, &c, &subst, scope)?
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
             b.func_mut().kind = FuncKind::Method;
@@ -235,11 +243,13 @@ impl Cx {
         m: &mut Module,
         concrete: &ct::Ty,
         name: &str,
+        scope: ct::Name,
     ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
         let mut found = None;
         for mm in &self.methods {
             let Some(decl) = &mm.decl else { continue };
-            if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() {
+            if mm.id.as_str().is_empty() || !mm.native.as_str().is_empty() || !mm.visible_in(scope)
+            {
                 continue;
             }
             if mm.name().map(|n| n.to_string()).as_deref() != Some(name) {
@@ -260,7 +270,7 @@ impl Cx {
             .get(&(module, id))
             .cloned()
             .ok_or_else(|| Error::new(format!("{name} callee not found")))?;
-        Ok(Some(self.function_for(m, &c, &subst)?))
+        Ok(Some(self.function_in(m, &c, &subst, scope)?))
     }
 
     /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
@@ -268,8 +278,9 @@ impl Cx {
         &mut self,
         m: &mut Module,
         concrete: &ct::Ty,
+        scope: ct::Name,
     ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
-        let Some(f) = self.user_method(m, concrete, "equals")? else {
+        let Some(f) = self.user_method(m, concrete, "equals", scope)? else {
             return Ok(None);
         };
         let params = &m.funcs[f.index()].params;
@@ -287,8 +298,9 @@ impl Cx {
         &mut self,
         m: &mut Module,
         concrete: &ct::Ty,
+        scope: ct::Name,
     ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
-        let Some(f) = self.user_method(m, concrete, "hash")? else {
+        let Some(f) = self.user_method(m, concrete, "hash", scope)? else {
             return Ok(None);
         };
         let ok = {
@@ -314,7 +326,8 @@ impl FnLower<'_> {
         let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
             return Ok(x);
         };
-        let vt = self.cx.vtable_for(self.b.m, concrete, have, iface)?;
+        let scope = self.evidence();
+        let vt = self.cx.vtable_for(self.b.m, concrete, have, iface, scope)?;
         let o = self.owned(x);
         let v = self
             .b

@@ -8,9 +8,10 @@ use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 impl Cx {
-    /// The function comparing two values of `t` (reserved on first use).
-    pub(crate) fn eq_fn(&mut self, m: &mut Module, t: MTy) -> FuncId {
-        let key = format!("eq:{}", t.0);
+    /// The function comparing two values of `t` (reserved on first use). `scope` is the
+    /// number of the module whose local implementations it calls, `0` for none.
+    pub(crate) fn eq_fn(&mut self, m: &mut Module, t: MTy, scope: u32) -> FuncId {
+        let key = format!("eq:{}:{scope}", t.0);
         if let Some(f) = self.helpers.get(&key) {
             return *f;
         }
@@ -23,7 +24,7 @@ impl Cx {
         self.helpers.insert(key, id);
         self.queue.push(Job {
             func: id,
-            kind: JobKind::Equal(t),
+            kind: JobKind::Equal(t, scope),
         });
         id
     }
@@ -56,6 +57,7 @@ fn comparable(m: &Module, t: MTy, visiting: &mut Vec<MTy>) -> bool {
 pub(crate) fn element_eq(
     cx: &mut Cx,
     b: &mut FuncBuilder<'_>,
+    scope: u32,
     t: MTy,
     x: Value,
     y: Value,
@@ -82,7 +84,8 @@ pub(crate) fn element_eq(
             Ok(b.call_rt(ext, &[d, x, y]))
         }
         TyKind::Rec(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) => {
-            let f = cx.eq_fn(b.m, t);
+            let scope = if cx.holds_extension(b.m, t) { scope } else { 0 };
+            let f = cx.eq_fn(b.m, t, scope);
             Ok(b.call(f, &[x, y]))
         }
         _ => Err(Error::new(format!(
@@ -93,16 +96,23 @@ pub(crate) fn element_eq(
 }
 
 /// Builds the body of an equality helper.
-pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Result<(), Error> {
+pub(crate) fn build_eq(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    t: MTy,
+    scope: u32,
+) -> Result<(), Error> {
+    let module = cx.scope_name(scope);
     let p = Param {
         ty: t,
         mode: Mode::Borrow,
     };
     if let Some(concrete) = cx.source_tys.get(&t).cloned()
-        && let Some((callee, iface)) = cx.user_equals(m, &concrete)?
+        && let Some((callee, iface)) = cx.user_equals(m, &concrete, module)?
     {
         {
-            let vt = cx.vtable_id(m, &concrete, iface)?;
+            let vt = cx.vtable_id(m, &concrete, iface, module)?;
             let other_mode = m.funcs[callee.index()].params[1].mode;
             let iface_ty = m.funcs[callee.index()].params[1].ty;
             let mut b = FuncBuilder::new(m, "equal", vec![p, p], MTy::BOOL);
@@ -133,7 +143,7 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
             let fields = b.m.records[r.index()].fields.clone();
             for (i, (_, ft)) in fields.iter().enumerate() {
                 let (l, rr) = (b.rec_get(r, i as u32, x), b.rec_get(r, i as u32, y));
-                let e = element_eq(cx, &mut b, *ft, l, rr)?;
+                let e = element_eq(cx, &mut b, scope, *ft, l, rr)?;
                 let next = b.new_block();
                 b.br_if(e, next, &[], no, &[]);
                 b.seal_block(next);
@@ -162,7 +172,7 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
                 for (j, (_, ft)) in c.fields.iter().enumerate() {
                     let l = b.alt_get(a, i as u32, j as u32, x);
                     let r = b.alt_get(a, i as u32, j as u32, y);
-                    let e = element_eq(cx, &mut b, *ft, l, r)?;
+                    let e = element_eq(cx, &mut b, scope, *ft, l, r)?;
                     let next = b.new_block();
                     b.br_if(e, next, &[], no, &[]);
                     b.seal_block(next);
@@ -182,7 +192,7 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
             b.seal_block(both);
             b.switch_to(both);
             let (l, r) = (b.opt_get(x), b.opt_get(y));
-            let e = element_eq(cx, &mut b, inner, l, r)?;
+            let e = element_eq(cx, &mut b, scope, inner, l, r)?;
             b.br_if(e, yes, &[], no, &[]);
         }
         TyKind::List(elem) => {
@@ -201,7 +211,7 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
             b.switch_to(body);
             let i = b.use_var(idx);
             let (l, r) = (b.list_get(x, i), b.list_get(y, i));
-            let e = element_eq(cx, &mut b, elem, l, r)?;
+            let e = element_eq(cx, &mut b, scope, elem, l, r)?;
             b.br_if(e, latch, &[], no, &[]);
             b.seal_block(latch);
             b.switch_to(latch);
@@ -236,8 +246,8 @@ pub(crate) fn build_eq(cx: &mut Cx, m: &mut Module, func: FuncId, t: MTy) -> Res
 impl Cx {
     /// Registers the equality and hash functions the runtime reaches through the descriptor of
     /// `t`, and of the aggregates inside it.
-    pub(crate) fn ensure_glue(&mut self, m: &mut Module, t: MTy) {
-        if !self.glue_seen.insert(t) {
+    pub(crate) fn ensure_glue(&mut self, m: &mut Module, t: MTy, scope: u32) {
+        if !self.glue_seen.insert((t, scope)) {
             return;
         }
         let inner: Vec<MTy> = match m.types.kind(t).clone() {
@@ -252,7 +262,7 @@ impl Cx {
             _ => return,
         };
         for i in inner {
-            self.ensure_glue(m, i);
+            self.ensure_glue(m, i, scope);
         }
         // An optional scalar is a flag and a value with padding between: it compares through glue.
         let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i) if matches!(*i, MTy::INT | MTy::FLOAT | MTy::BOOL));
@@ -263,13 +273,14 @@ impl Cx {
         if !comparable(m, t, &mut Vec::new()) {
             return;
         }
-        let eq = self.eq_fn(m, t);
+        let eq = self.eq_fn(m, t, scope);
+        let module = self.scope_name(scope);
         let user_hash = match self.source_tys.get(&t).cloned() {
-            Some(concrete) => self.user_hash(m, &concrete).ok().flatten(),
+            Some(concrete) => self.user_hash(m, &concrete, module).ok().flatten(),
             None => None,
         };
         let (eq, hash) = (self.eq_adapter(m, t, eq), hash_adapter(m, t, user_hash));
-        m.desc_glue.push((t, eq, hash));
+        m.desc_glue.push((t.scoped(scope), eq, hash));
     }
 
     /// `fn(ptr, ptr) -> bool` over the equality helper.

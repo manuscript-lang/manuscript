@@ -93,6 +93,25 @@ impl Ty {
     pub const BYTES: Ty = Ty(5);
     /// Raw pointer-sized word.
     pub const PTR: Ty = Ty(6);
+
+    const SCOPE_SHIFT: u32 = 20;
+
+    /// The descriptor key of `self` under implementation scope `scope` (`0` is none). A scope
+    /// picks which module's local `Equal` and `Hashable` implementations the descriptor's
+    /// glue calls; it only names a descriptor and is never the type of a value.
+    pub fn scoped(self, scope: u32) -> Ty {
+        Ty(self.unscoped().0 | scope << Self::SCOPE_SHIFT)
+    }
+
+    /// The type behind a descriptor key.
+    pub fn unscoped(self) -> Ty {
+        Ty(self.0 & ((1 << Self::SCOPE_SHIFT) - 1))
+    }
+
+    /// The implementation scope of a descriptor key.
+    pub fn scope(self) -> u32 {
+        self.0 >> Self::SCOPE_SHIFT
+    }
 }
 
 impl Default for TyTable {

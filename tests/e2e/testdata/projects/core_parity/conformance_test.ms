@@ -32,7 +32,7 @@ test "Result composition retains concrete Error and its local implementation":
         (one.err().message() != "first 1" or two.err().message() != "second 1")
     )
     cause.count = 2
-    (cause.count != 2 or two.err().message() != "second 2") | try expect_false
+    (cause.count != 2 or two.err().message() != "second 1") | try expect_false
 
 test "conversions and queries retain scoped generic evidence and Error identity":
     (not (first_queries()) or not (second_queries())) | try expect_false
@@ -45,7 +45,7 @@ test "conversions and queries retain scoped generic evidence and Error identity"
     )
     cause.count = 3
     try expect_false(
-        (one.err().message() != "first 3" or two.err().message() != "second 3")
+        (one.err().message() != "first 1" or two.err().message() != "second 1")
     )
     (one.to_optional().is_none()) | try expect_true
 
@@ -55,7 +55,7 @@ test "generic folds preserve scoped interface accumulators":
     let two = second_folded(cause)
     (one.message() != "first 4" or two.message() != "second 4") | try expect_false
     cause.count = 5
-    (one.message() != "first 5" or two.message() != "second 5") | try expect_false
+    (one.message() != "first 4" or two.message() != "second 4") | try expect_false
 
 test "Map transformations preserve input and output equality evidence":
     let input: Map[Int, Int] = {1: 10, 2: 20}

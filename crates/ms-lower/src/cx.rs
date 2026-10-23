@@ -24,7 +24,7 @@ pub enum JobKind {
     /// A lambda body under the instance substitution.
     Lambda(Rc<LambdaJob>),
     /// Structural equality of two values of the MIR type.
-    Equal(MTy),
+    Equal(MTy, u32),
     /// A native function used as a value.
     NativeThunk(Rc<NativeThunkJob>),
     /// A native method bound to its receiver.
@@ -68,6 +68,8 @@ pub struct BoundNativeJob {
     pub hir: Rc<ModuleHir>,
     /// The receiver's type when the closure holds the address of the variable it changes.
     pub shared: Option<MTy>,
+    /// The module whose local implementations the method's key and element types use.
+    pub scope: Name,
 }
 
 /// A native function value waiting to be lowered.
@@ -140,8 +142,12 @@ pub struct Cx {
     pub methods: Vec<ct::MethodRef>,
     /// The checker type behind each lowered record or alternative.
     pub source_tys: HashMap<MTy, ct::Ty>,
-    /// Types whose descriptor glue is registered.
-    pub glue_seen: std::collections::HashSet<MTy>,
+    /// Types whose descriptor glue is registered, per implementation scope.
+    pub glue_seen: std::collections::HashSet<(MTy, u32)>,
+    /// Nominal types with an extension implemented outside their defining module.
+    pub extended: std::collections::HashSet<Name>,
+    /// The modules that scoped tables were built for; a scope number is the position plus one.
+    pub scope_names: Vec<Name>,
     /// Parameters (receiver first) that functions hand back changed.
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
@@ -164,7 +170,15 @@ impl Cx {
             mods.insert(m.data.file, Rc::new(m));
         }
         let mutated = crate::mutation::infer_mutated(&mods, &callables);
+        let extended = program
+            .methods
+            .iter()
+            .filter(|m| m.local)
+            .map(|m| m.receiver.id)
+            .collect();
         Cx {
+            extended,
+            scope_names: Vec::new(),
             mods,
             callables,
             mutated,
