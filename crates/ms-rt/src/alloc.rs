@@ -325,7 +325,8 @@ pub unsafe fn usable_size(p: *mut u8) -> usize {
         // SAFETY: arena pointers have a recorded class.
         unsafe { CLASS_SIZES[*s.page_class.add(page) as usize] as usize }
     } else {
-        usize::MAX
+        // SAFETY: not an arena block, so it came from malloc/realloc.
+        unsafe { sys::malloc_usable_size(p.cast()) }
     }
 }
 

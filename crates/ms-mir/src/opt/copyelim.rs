@@ -16,6 +16,7 @@ pub fn run(m: &mut Module) -> bool {
     for fi in 0..m.funcs.len() {
         changed |= run_func(m, fi);
         changed |= move_dead_sources(&mut m.funcs[fi]);
+        changed |= move_dead_sources_across_blocks(m, fi);
         changed |= borrow_local_copies(m, fi);
         changed |= borrow_str_copies_across_blocks(m, fi);
         changed |= borrow_str_phis(m, fi);
@@ -70,6 +71,135 @@ fn move_dead_sources(f: &mut Func) -> bool {
         });
     }
     for b in &mut f.blocks {
+        for i in &mut b.insts {
+            for a in &mut i.args {
+                if let Some(s) = rename[a.index()] {
+                    *a = s;
+                }
+            }
+        }
+        b.term.for_each_use_mut(|a| {
+            if let Some(s) = rename[a.index()] {
+                *a = s;
+            }
+        });
+    }
+    true
+}
+
+/// Turns `c = copy v` into a move when every path from the copy reaches `v` again only to drop
+/// it: the copy is `v`'s last use, like `keys.append(key)` before a loop body ends or returns.
+/// The copy and the drops cancel, and `c` is `v`. Nothing borrowed out of `v` may be read after
+/// the copy, and each block on those paths is entered only from them, so a path that skipped
+/// the copy keeps its drop.
+fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let n = f.values.len();
+    let nb = f.blocks.len();
+    let mut owned = vec![false; n];
+    let mut home = vec![usize::MAX; n];
+    let mut borrows_of: Vec<Vec<Value>> = vec![Vec::new(); n];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for p in &b.params {
+            home[p.value.index()] = bi;
+            owned[p.value.index()] = p.mode == Mode::Own;
+        }
+        for inst in &b.insts {
+            let Some(r) = inst.res else { continue };
+            home[r.index()] = bi;
+            match m.result_mode(f, inst) {
+                Some(Mode::Own) => owned[r.index()] = true,
+                Some(_) => inst.args.iter().for_each(|a| borrows_of[a.index()].push(r)),
+                None => {}
+            }
+        }
+    }
+    let preds = f.predecessors();
+    let mut touched = vec![false; n];
+    let mut rename: Vec<Option<Value>> = vec![None; n];
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    for (bc, b) in f.blocks.iter().enumerate() {
+        for (i, inst) in b.insts.iter().enumerate() {
+            let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
+                continue;
+            };
+            let v = inst.args[0];
+            if !owned[v.index()] || touched[v.index()] || touched[c.index()] {
+                continue;
+            }
+            // `v` and every value borrowed out of it.
+            let mut held = vec![false; n];
+            let mut stack = vec![v];
+            while let Some(x) = stack.pop() {
+                if !std::mem::replace(&mut held[x.index()], true) {
+                    stack.extend(borrows_of[x.index()].iter().copied());
+                }
+            }
+            // The drop of `v` that ends a path, or none when the block passes it on untouched.
+            let scan = |insts: &[Inst], from: usize| -> Result<Option<usize>, ()> {
+                for (k, n) in insts.iter().enumerate().skip(from) {
+                    if n.op == Op::Drop && n.args[0] == v {
+                        return Ok(Some(k));
+                    }
+                    if n.args.iter().any(|a| held[a.index()]) {
+                        return Err(());
+                    }
+                }
+                Ok(None)
+            };
+            let mut drops = Vec::new();
+            let mut seen = vec![false; nb];
+            let mut work = vec![(bc, i + 1)];
+            let mut ok = true;
+            while let Some((x, from)) = work.pop() {
+                let blk = &f.blocks[x];
+                match scan(&blk.insts, from) {
+                    Err(()) => ok = false,
+                    Ok(Some(k)) => drops.push((x, k)),
+                    Ok(None) => {
+                        let mut uses = false;
+                        blk.term.for_each_use(|a| uses |= held[a.index()]);
+                        ok &= !uses && !matches!(blk.term, crate::ir::Term::Ret(_));
+                        for s in blk.term.successors() {
+                            let s = s.index();
+                            ok &= s != bc && s != home[v.index()];
+                            if !std::mem::replace(&mut seen[s], true) {
+                                work.push((s, 0));
+                            }
+                        }
+                    }
+                }
+                if !ok {
+                    break;
+                }
+            }
+            let entered_elsewhere = (0..nb).any(|x| {
+                seen[x]
+                    && preds[x]
+                        .iter()
+                        .any(|p| p.index() != bc && !seen[p.index()])
+            });
+            if !ok || drops.is_empty() || entered_elsewhere {
+                continue;
+            }
+            touched[v.index()] = true;
+            touched[c.index()] = true;
+            rename[c.index()] = Some(v);
+            dead.push((bc, i));
+            dead.extend(drops);
+        }
+    }
+    if dead.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            let drop_it = dead.contains(&(bi, k));
+            k += 1;
+            !drop_it
+        });
         for i in &mut b.insts {
             for a in &mut i.args {
                 if let Some(s) = rename[a.index()] {

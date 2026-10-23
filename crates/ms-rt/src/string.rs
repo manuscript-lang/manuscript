@@ -665,6 +665,50 @@ pub unsafe extern "C-unwind" fn msrt_string_concat(
     unsafe { (msrt_string_concat_val(a, b)).write_to(out) }
 }
 
+/// `a + b` that consumes `a`: an owned `a` grows in place, so `s = s + piece` in a loop reuses
+/// one allocation instead of copying the prefix every time.
+///
+/// # Safety
+/// `a` is owned by the caller and dead after the call; `b` is live; `out` is writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_append(
+    a: *const StrVal,
+    b: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings, gives up `a`, and passes a writable `out`.
+    unsafe {
+        let (sa, la, lb) = (core::ptr::read(a), (*a).len(), (*b).len());
+        let within = |p: *const u8| p >= sa.ptr.cast_const() && p <= sa.ptr.add(la).cast_const();
+        if !sa.owns() || la == 0 || within((*b).ptr) {
+            let s = msrt_string_concat_val(a, b);
+            release(&sa);
+            return s.write_to(out);
+        }
+        if lb == 0 {
+            return sa.write_to(out);
+        }
+        if la + lb > MAX_BYTES {
+            fault::fault(b"string: limit exceeded");
+        }
+        let h = HINT.ptr();
+        if core::ptr::eq((*h).s, sa.ptr) {
+            (*h).s = core::ptr::null();
+        }
+        // Room left in the block is used as is; otherwise the string moves to a block with
+        // slack, so a run of appends reallocates a logarithmic number of times.
+        let need = la + lb + 1;
+        let p = if alloc::usable_size(sa.ptr) >= need {
+            sa.ptr
+        } else {
+            alloc::realloc(sa.ptr, need + need / 2)
+        };
+        core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), p.add(la), lb);
+        *p.add(la + lb) = 0;
+        StrVal::owned(p, la + lb).write_to(out)
+    }
+}
+
 #[inline(always)]
 unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
     // SAFETY: caller passes live strings.

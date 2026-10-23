@@ -332,3 +332,76 @@ fn copies_meeting_at_a_borrowed_block_parameter_are_removed() {
     let after = Interp::new(&m).run_entry().map_err(|f| f.message);
     assert_eq!(before, after);
 }
+
+const LAST_USE: &str = r#"module "t"
+alt List { Nil, More(next: List) }
+entry @main
+
+fn @collect(%n: int) -> List inline(never) {
+b0:
+  %z: int = iconst 0
+  %nil: List = alt.new List.Nil
+  br b1(%nil, %z)
+b1(%acc: own List, %i: int):
+  %nil2: List = alt.new List.Nil
+  %k: List = alt.new List.More %nil2
+  %c: List = copy %k
+  %acc2: List = alt.new List.More %c
+  %one: int = iconst 1
+  %i2: int = iadd.chk %i, %one
+  %lt: bool = icmp.lt %i2, %n
+  drop %acc
+  br_if %lt, b2(), b3()
+b2():
+  drop %k
+  br b1(%acc2, %i2)
+b3():
+  drop %k
+  ret %acc2
+}
+
+fn @skipped(%n: int) -> int inline(never) {
+b0:
+  %nil: List = alt.new List.Nil
+  %k: List = alt.new List.More %nil
+  %z: int = iconst 0
+  %lt: bool = icmp.lt %z, %n
+  br_if %lt, b1(), b2()
+b1():
+  %c: List = copy %k
+  %t: int = alt.tag %c
+  drop %c
+  br b2()
+b2():
+  drop %k
+  ret %z
+}
+
+fn @main() -> int export {
+b0:
+  %n: int = iconst 5
+  %l: List = call @collect (%n)
+  %t: int = alt.tag %l
+  drop %l
+  %s: int = call @skipped (%n)
+  %r: int = iadd.chk %t, %s
+  ret %r
+}
+"#;
+
+#[test]
+fn a_copy_at_the_last_use_across_blocks_becomes_a_move() {
+    let mut m = parse_module(LAST_USE).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "collect", Op::Copy), 0, "{}", print_module(&m));
+    // Only the drop of the previous accumulator remains.
+    assert_eq!(count(&m, "collect", Op::Drop), 1, "{}", print_module(&m));
+    // The drop in b2 also runs on the path that skips the copy, so it stays.
+    assert_eq!(count(&m, "skipped", Op::Drop), 1 + count(&m, "skipped", Op::Copy));
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}
