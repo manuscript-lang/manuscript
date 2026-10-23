@@ -41,16 +41,6 @@ pub(crate) fn table(name: &str) -> Option<&'static [(&'static str, Message)]> {
                 Text("cryptography: authentication failed"),
             ),
         ],
-        "CsvError" => &[
-            ("InvalidInput", Text("CSV: invalid input")),
-            ("InvalidData", Text("CSV: invalid data")),
-            ("LimitExceeded", Text("CSV: limit exceeded")),
-        ],
-        "EncodingError" => &[
-            ("InvalidInput", Text("encoding: invalid input")),
-            ("InvalidData", Text("encoding: invalid data")),
-            ("LimitExceeded", Text("encoding: limit exceeded")),
-        ],
         "FileSystemError" => &[
             ("InvalidInput", Text("filesystem: invalid input")),
             ("InvalidData", Text("filesystem: invalid data")),
@@ -141,10 +131,6 @@ pub(crate) fn table(name: &str) -> Option<&'static [(&'static str, Message)]> {
             ("InvalidInput", Text("regular expression: invalid input")),
             ("InvalidData", Text("regular expression: invalid data")),
             ("LimitExceeded", Text("regular expression: limit exceeded")),
-        ],
-        "SemverError" => &[
-            ("InvalidData", Text("semver: invalid data")),
-            ("OutOfRange", Text("semver: value out of range")),
         ],
         "StringError" => &[
             ("InvalidInput", Text("string: invalid input")),

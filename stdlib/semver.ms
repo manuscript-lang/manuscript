@@ -23,8 +23,10 @@ export type Version:
 export fn compare(left: Version, right: Version) Int:
     let core = compare_ints(left.major, right.major)
     if core != 0: return core
+
     let minor = compare_ints(left.minor, right.minor)
     if minor != 0: return minor
+
     let patch = compare_ints(left.patch, right.patch)
     if patch != 0: return patch
     if left.prerelease.is_empty() and right.prerelease.is_empty(): return 0
@@ -41,6 +43,7 @@ export fn compare(left: Version, right: Version) Int:
     while index < count:
         let order = compare_identifier(left.prerelease[index], right.prerelease[index])
         if order != 0: return order
+
         index += 1
 
     return shared
@@ -96,16 +99,18 @@ export fn parse(text: String) Result[Version, SemverError]:
             build.append(identifier)
 
     if out_of_range: return error(SemverError.OutOfRange)
+
     return ok(
         Version(
-            major: values[0], minor: values[1], patch: values[2], prerelease: prerelease,
-            build: build
+            major: values[0], minor: values[1], patch: values[2],
+            prerelease: prerelease, build: build
         )
     )
 
 fn compare_ints(left: Int, right: Int) Int:
     if left < right: return -1
     if left > right: return 1
+
     return 0
 
 # Digits only, at least one; the caller has already rejected non-ASCII through scalar values.
@@ -114,7 +119,6 @@ fn all_digits(scalars: List[Int]) Bool:
 
     for scalar in scalars:
         if scalar < 48 or scalar > 57: return false
-
     return true
 
 fn has_leading_zero(scalars: List[Int]) Bool:
@@ -136,13 +140,16 @@ fn valid_identifier(scalars: List[Int]) Bool:
 fn compare_identifier(left: String, right: String) Int:
     let left_numeric = all_digits(left.scalar_values())
     let right_numeric = all_digits(right.scalar_values())
+
     if left_numeric and right_numeric:
         let by_length = compare_ints(left.length(), right.length())
         if by_length != 0: return by_length
+
         return left.compare(right)
 
     if left_numeric: return -1
     if right_numeric: return 1
+
     return left.compare(right)
 
 impl Error for SemverError:

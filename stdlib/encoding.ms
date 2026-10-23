@@ -33,7 +33,6 @@ export fn base64_decode(
         if byte == 9 or byte == 10 or byte == 13 or byte == 32: return error(
             EncodingError.InvalidData
         )
-
     if padding > 2 or length % 4 != 0: return error(EncodingError.InvalidData)
     if length / 4 * 3 - padding > limit: return error(EncodingError.LimitExceeded)
 
@@ -71,13 +70,16 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
     if byte >= 65 and byte <= 90: return byte - 65
     if byte >= 97 and byte <= 122: return byte - 71
     if byte >= 48 and byte <= 57: return byte + 4
+
     if url_safe:
         if byte == 45: return 62
         if byte == 95: return 63
+
         return -1
 
     if byte == 43: return 62
     if byte == 47: return 63
+
     return -1
 
 # One Base64 digit as text.
@@ -85,16 +87,20 @@ fn base64_char(value: Int, url_safe: Bool) String:
     if value < 26: return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".get(value)
     if value < 52: return "abcdefghijklmnopqrstuvwxyz".get(value - 26)
     if value < 62: return "0123456789".get(value - 52)
+
     if value == 62:
         if url_safe: return "-"
+
         return "+"
 
     if url_safe: return "_"
+
     return "/"
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Optional[Int]) Int:
     if let limit = max_bytes: return limit
+
     return 9223372036854775807
 
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
@@ -113,10 +119,13 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
         let value = bytes[index] * 65536 + second * 256 + third
         out.append(base64_char(value / 262144 % 64, url_safe))
         out.append(base64_char(value / 4096 % 64, url_safe))
+
         if remaining > 1: out.append(base64_char(value / 64 % 64, url_safe))
         else: out.append("=")
+
         if remaining > 2: out.append(base64_char(value % 64, url_safe))
         else: out.append("=")
+
         index += 3
 
     return out.freeze()
@@ -140,6 +149,7 @@ export fn hex_decode(
         let high = hex_digit(digits[pair * 2])
         let low = hex_digit(digits[pair * 2 + 1])
         if high < 0 or low < 0: return error(EncodingError.InvalidData)
+
         out.append(high * 16 + low)
 
     return ok(out.freeze())
@@ -149,6 +159,7 @@ fn hex_digit(byte: Int) Int:
     if byte >= 48 and byte <= 57: return byte - 48
     if byte >= 97 and byte <= 102: return byte - 87
     if byte >= 65 and byte <= 70: return byte - 55
+
     return -1
 
 # Encodes each byte as two lowercase hexadecimal digits.
@@ -197,10 +208,12 @@ fn utf8_length(scalar: Int) Int:
     if scalar < 128: return 1
     if scalar < 2048: return 2
     if scalar < 65536: return 3
+
     return 4
 
 fn text_of(scalars: List[Int]) String:
     if let text = from_scalars(scalars): return text
+
     return ""
 
 # Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
@@ -230,18 +243,20 @@ export fn utf16_decode(
         let code = units[index]
         var scalar = code
         index += 1
-
         if code >= 56320 and code < 57344: return error(EncodingError.InvalidData)
 
         if code >= 55296 and code < 56320:
             if index >= units.length(): return error(EncodingError.InvalidData)
+
             let next = units[index]
             if next < 56320 or next >= 57344: return error(EncodingError.InvalidData)
+
             scalar = 65536 + (code - 55296) * 1024 + (next - 56320)
             index += 1
 
         size += utf8_length(scalar)
         if size > limit: return error(EncodingError.LimitExceeded)
+
         scalars.append(scalar)
 
     return ok(text_of(scalars))
@@ -255,6 +270,7 @@ fn narrow(text: String, maximum: Int) Result[Bytes, EncodingError]:
 
     for scalar in text.scalar_values():
         if scalar > maximum: return error(EncodingError.InvalidData)
+
         out.append(scalar)
 
     return ok(out.freeze())
@@ -270,8 +286,6 @@ export fn ascii_encode(text: String) Result[Bytes, EncodingError]:
 # Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
 export fn ascii_decode(data: Bytes) Result[String, EncodingError]:
     let bytes = data.values()
-
     for byte in bytes:
         if byte > 127: return error(EncodingError.InvalidData)
-
     return ok(text_of(bytes))
