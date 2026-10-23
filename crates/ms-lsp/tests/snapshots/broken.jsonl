@@ -291,5 +291,5 @@
 {"id":255,"jsonrpc":"2.0","result":[]}
 {"id":256,"jsonrpc":"2.0","result":{"data":[]}}
 {"id":257,"jsonrpc":"2.0","result":[]}
-{"id":258,"jsonrpc":"2.0","result":[{"newText":"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}]}
+{"id":258,"jsonrpc":"2.0","result":[{"newText":"","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}]}
 {"id":259,"jsonrpc":"2.0","result":null}

@@ -82,6 +82,9 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     while output.last().is_some_and(String::is_empty) {
         output.pop();
     }
+    if output.is_empty() {
+        return Ok(String::new());
+    }
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
     parse(file, &result)?;
