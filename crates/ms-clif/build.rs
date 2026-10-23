@@ -71,7 +71,7 @@ fn main() {
     );
     if target_os == "linux" || target_os == "macos" || target_os == "windows" {
         // opt and llc sit beside lld when the LLVM tools were fetched; without them release builds
-        // keep using Cranelift. They are embedded gzipped (together about 50 MB).
+        // keep using Cranelift. They are embedded gzipped (together about 54 MB).
         let tools = lld().parent().map(Path::to_path_buf).unwrap_or_default();
         for tool in ["opt", "llc"] {
             let gz = format!("{tool}.gz");

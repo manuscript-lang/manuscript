@@ -1201,6 +1201,10 @@ mod tests {
             ("aarch64-pc-windows-gnu", b"\x64\xaa"),
         ];
         for (triple, magic) in targets {
+            // The bundled tools only carry the backend of the machine they run on.
+            if !triple.starts_with(std::env::consts::ARCH) {
+                continue;
+            }
             for cold_first in [true, false] {
                 let stem = format!("{triple}-{cold_first}");
                 let ll = dir.join(format!("{stem}.ll"));
