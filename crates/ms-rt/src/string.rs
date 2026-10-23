@@ -804,13 +804,13 @@ unsafe fn trimmed(s: *const StrVal, start: bool, end: bool) -> StrVal {
     }
 }
 
-/// Writes a view of `s` without its surrounding whitespace to `out`: no allocation, valid while
-/// `s` is neither changed nor dropped (the borrow check guarantees that).
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
+/// Writes a view of `s` without the whitespace the flags name to `out`: no allocation, valid
+/// while `s` is neither changed nor dropped (the borrow check guarantees that).
+#[inline(always)]
+unsafe fn trim_view(s: *const StrVal, start: bool, end: bool, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable `out`.
     unsafe {
-        let (a, b) = trim_range(bytes(s), true, true);
+        let (a, b) = trim_range(bytes(s), start, end);
         let view = if a == b {
             // An empty result borrows nothing.
             StrVal {
@@ -827,6 +827,24 @@ pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mu
         };
         view.write_to(out)
     }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) {
+    // SAFETY: forwarded contract.
+    unsafe { trim_view(s, true, true, out) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) {
+    // SAFETY: forwarded contract.
+    unsafe { trim_view(s, true, false, out) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_trim_end_view(s: *const StrVal, out: *mut StrVal) {
+    // SAFETY: forwarded contract.
+    unsafe { trim_view(s, false, true, out) }
 }
 
 #[unsafe(no_mangle)]
