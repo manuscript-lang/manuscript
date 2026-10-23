@@ -681,6 +681,88 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
     }
 }
 
+/// [`upsert_k`] for a word key (`Int` or `String`) and a plain 8-byte scalar value: the layout is
+/// fixed (stride 24) and a replaced value needs no drop, so the call site skips descriptor dispatch.
+#[inline(always)]
+unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8) {
+    // SAFETY: caller contract; the key slot is a live word and `val` an 8-byte scalar.
+    unsafe {
+        let l = Layout {
+            koff: 8,
+            voff: 16,
+            stride: 24,
+            ksize: 8,
+            vsize: 8,
+        };
+        let kd = &crate::desc::msrt_desc_string; // ignored by the word key kinds
+        let h = hash_key::<K>(kd, key);
+        if let Some(i) = find::<K>(m, kd, &l, key, h) {
+            let p = slot(m, &l, i);
+            if !K::CHEAP_EQ {
+                crate::obj::release(*(key as *const *mut Obj));
+            }
+            copy_slot(val, p.add(16), 8);
+            return;
+        }
+        if m.used == m.cap {
+            grow(m, &l);
+        }
+        let p = slot(m, &l, m.used);
+        *(p as *mut u64) = h;
+        copy_slot(key, p.add(8), 8);
+        copy_slot(val, p.add(16), 8);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index_of(m).add(pos);
+            if e == 0 || e == REMOVED {
+                break;
+            }
+            pos = (pos + 1) & m.mask;
+        }
+        *index_of(m).add(pos) = entry(h, m.used);
+        m.used += 1;
+        m.len += 1;
+    }
+}
+
+/// [`msrt_map_add`] for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_w8(
+    m: *mut MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *mut u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        // A map stamped with its module's key behaviour keeps the general path.
+        if !(*m).desc.is_null() {
+            return msrt_map_add(m, _kd, _vd, key, val);
+        }
+        insert_word::<IntKey>(&mut *m, key, val)
+    }
+}
+
+/// [`msrt_map_add`] for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
+    m: *mut MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *mut u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        // A map stamped with its module's key behaviour keeps the general path.
+        if !(*m).desc.is_null() {
+            return msrt_map_add(m, _kd, _vd, key, val);
+        }
+        insert_word::<StrKey>(&mut *m, key, val)
+    }
+}
+
 /// The value slot of `key`, appending the entry with the 8-byte scalar at `default` when it is
 /// absent; `key` is consumed. One hash and probe serve a read-modify-write such as `m[k] += 1`:
 /// the caller loads, changes and stores through the returned pointer before the map is used again.
@@ -1338,6 +1420,67 @@ mod tests {
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
     use crate::testutil;
+
+    /// Inserts a mixed stream of new and repeated keys through the general and the word `add`.
+    #[test]
+    fn word_add_matches_the_general_add() {
+        let _g = testutil::lock();
+        unsafe {
+            let (sd, id) = (
+                &msrt_desc_string as *const TypeDesc,
+                &msrt_desc_int as *const TypeDesc,
+            );
+            let (mut gs, mut ws) = (empty(), empty());
+            let (mut gi, mut wi) = (empty(), empty());
+            for i in 0..2000i64 {
+                let n = (i * 7919) % 300;
+                for (m, word) in [(&mut gs, false), (&mut ws, true)] {
+                    let mut k = from_bytes(format!("key-{n}").as_bytes());
+                    let mut v = i;
+                    let (kp, vp) = (&mut k as *mut _ as *mut u8, &mut v as *mut i64 as *mut u8);
+                    if word {
+                        msrt_map_add_sw8(m, sd, id, kp, vp);
+                    } else {
+                        msrt_map_add(m, sd, id, kp, vp);
+                    }
+                }
+                for (m, word) in [(&mut gi, false), (&mut wi, true)] {
+                    let (mut k, mut v) = (n * 31, i);
+                    let (kp, vp) = (&mut k as *mut i64 as *mut u8, &mut v as *mut i64 as *mut u8);
+                    if word {
+                        msrt_map_add_w8(m, id, id, kp, vp);
+                    } else {
+                        msrt_map_add(m, id, id, kp, vp);
+                    }
+                }
+            }
+            assert_eq!((gs.len, gs.used), (ws.len, ws.used));
+            assert_eq!((gi.len, gi.used), (wi.len, wi.used));
+            for n in 0..320i64 {
+                let k = from_bytes(format!("key-{n}").as_bytes());
+                let (a, b) = (
+                    msrt_map_get_ptr(&gs, sd, id, &k as *const _ as *const u8),
+                    msrt_map_get_ptr(&ws, sd, id, &k as *const _ as *const u8),
+                );
+                assert_eq!(a.is_null(), b.is_null(), "string key {n}");
+                if !a.is_null() {
+                    assert_eq!(*(a as *const i64), *(b as *const i64), "string key {n}");
+                }
+                let ki = n * 31;
+                let (a, b) = (
+                    msrt_map_get_ptr(&gi, id, id, &ki as *const i64 as *const u8),
+                    msrt_map_get_ptr(&wi, id, id, &ki as *const i64 as *const u8),
+                );
+                assert_eq!(a.is_null(), b.is_null(), "int key {n}");
+                if !a.is_null() {
+                    assert_eq!(*(a as *const i64), *(b as *const i64), "int key {n}");
+                }
+            }
+            for (m, d) in [(&mut gs, sd), (&mut ws, sd), (&mut gi, id), (&mut wi, id)] {
+                drop_map(m, &*d, Some(&*id));
+            }
+        }
+    }
 
     #[test]
     fn string_word_entry_points_match_the_general_ones() {
