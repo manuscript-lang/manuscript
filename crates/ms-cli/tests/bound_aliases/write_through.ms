@@ -26,7 +26,6 @@ type Counters:
 
 fn next(var calls: Int) Int:
     let old = calls
-
     calls += 1
     return old
 
@@ -39,7 +38,6 @@ export fn main() Int:
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
     let append = first.append
-
     append(9)
     append(10)
     stdout().write("{calls} {rows}\n")
@@ -49,7 +47,6 @@ export fn main() Int:
     var right = lists.right
     let add_left = left.append
     let add_right = right.append
-
     add_right(4)
     add_left(3)
     stdout().write("{lists}\n")
@@ -57,7 +54,6 @@ export fn main() Int:
     var counts = [Counter(count: 5)]
     var count = counts[0]
     let bump = count.bump
-
     bump()
     bump(3)
     stdout().write("{counts}\n")
@@ -66,18 +62,15 @@ export fn main() Int:
     var first_count = pair.left
     var second_count = pair.right
     let around = first_count.around
-
     around(fn(): second_count.count += 10)
     stdout().write("{pair}\n")
 
     var entries = Map[String, List[Int]]()
-
     entries.add("key-1", [7])
     calls = 0
 
     if var value = entries.get(key(var calls)):
         let add = value.append
-
         add(8)
         add(9)
 
@@ -87,12 +80,10 @@ export fn main() Int:
     var text = texts[0]
     let pop = text.pop
     let popped = pop()
-
     stdout().write("{popped} {texts}\n")
 
     var final_count = counts[0]
     let label = final_count.label
     let labeled = label()
-
     stdout().write("{labeled} {counts}\n")
     return 0
