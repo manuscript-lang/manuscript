@@ -196,12 +196,21 @@ spawns a reactor task (epoll over listeners and connections, timeouts). Ready re
 run inline on it; a handler that is about to park (`wait_fd`, `sleep`, a client call, a
 slow `read`) first hands the reactor role to a fresh task, so blocked handlers overlap
 and a handler that never blocks costs no task switch. Switches happen only when a task
-parks. Every
-blocking wait in the crate parks the running task once a server exists
-(`wait::use_tasks`); on a thread without one it polls. Each handler thunk runs under
+parks. Every blocking wait in the crate parks the running task (`wait::use_tasks` only
+makes unit tests on a thread without a server poll instead). Each handler thunk runs under
 `msrt_guard_call` (`code` is `extern "C-unwind"`): a fault inside becomes a 500
 (`Outcome::Fault`), a stop request a 504 (`Outcome::Cancelled`), and the server keeps
 running. Values owned by the abandoned frames leak, per the guard contract.
+
+Every park can interleave other tasks calling into the same objects, so a native never
+holds a `RefCell` borrow (or any guard on shared state) across a wait. Shared scratch
+buffers are taken out of a `Cell` for the read and put back after; an object whose read
+parks on its own state (`ResponseBody.read`) takes the state out of its cell and hands it
+back on every exit, and a second reader gets `IoErr::Failed("... another task")`. Tasks
+sharing one descriptor hit the runtime's single-waiter fault (ms-rt ABI §7), so a shared
+HTTP/2 session has one driver at a time: the task parked in the socket read or write.
+The others park on a token until it has filed events, and a task with only new output
+writes it without waiting and leaves any rest to the driver.
 
 `Network.close()` or `HttpServer.close()` from a handler of the same network/server faults
 (it would wait for itself); from any other task it waits for in-flight requests within the

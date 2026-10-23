@@ -268,7 +268,7 @@ pub unsafe extern "C-unwind" fn msrt_start(
 ) -> i32 {
     // SAFETY: one-time process setup before any other runtime use.
     unsafe {
-        *TABLES.ptr() = tables;
+        *TABLES.ptr() = fault::address_ordered_tables(tables);
         *ARGC.ptr() = argc;
         *ARGV.ptr() = argv;
         *MAIN_FN.ptr() = Some(main_fn);
@@ -278,6 +278,8 @@ pub unsafe extern "C-unwind" fn msrt_start(
         run_on_big_stack();
         crate::io::flush_stdout();
         crate::profile::finish();
+        #[cfg(feature = "stats")]
+        crate::task::reset_for_tests();
         #[cfg(feature = "stats")]
         {
             eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());

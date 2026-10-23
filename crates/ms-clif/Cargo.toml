@@ -21,8 +21,8 @@ gimli = { version = "=0.33.0", default-features = false, features = ["write", "r
 [target.'cfg(target_os = "macos")'.dependencies]
 object = { version = "0.40", default-features = false, features = ["read_core", "archive", "macho"] }
 
-# The LLVM tools (opt, llc) are embedded gzipped and unpacked on first use; Linux and macOS.
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+# The LLVM tools (opt, llc) are embedded gzipped and unpacked on first use.
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
 [build-dependencies]

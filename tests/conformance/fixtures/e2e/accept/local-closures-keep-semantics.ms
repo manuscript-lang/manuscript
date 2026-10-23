@@ -6,8 +6,8 @@ import {expect_true} from "@std/testing.ms"
 
 fn bump(factor: Int) Int:
     var offset = 10
-    let scale = fn(value: Int) Int: value * factor + offset
     offset = 99
+    let scale = fn(value: Int) Int: value * factor + offset
     return scale(value: 2)
 
 fn lookup(limit: Int) Int:
@@ -57,7 +57,7 @@ fn nested(n: Int) Int:
     return outer(y: n)
 
 test "local closures":
-    try expect_true((bump(factor: 3) == 16))
+    try expect_true((bump(factor: 3) == 105))
     try expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))
     try expect_true((parse(text: "abc") == Result[Int, TextError].ok(4)))
     try expect_true((labels(prefix: ">") == ">a-b"))

@@ -42,9 +42,7 @@ impl Profile {
 /// `MS_LLVM_TOOLS`) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to
 /// Cranelift.
 fn llvm_level(level: &'static str) -> Option<&'static str> {
-    // The tools are bundled for Linux and macOS; Windows releases still use Cranelift.
-    let bundled = cfg!(any(target_os = "linux", target_os = "macos"));
-    if !bundled || std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
+    if std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
         return None;
     }
     ms_clif::llvm_available().then_some(level)

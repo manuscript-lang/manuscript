@@ -806,3 +806,49 @@ fn negotiates_http2_through_alpn() {
     assert_eq!(body.protocol, "HTTP/2.0");
     assert_eq!(text(&body), "tls post 150000");
 }
+
+/// Tasks sharing one session: the one parked in a read owns the socket, the others wait on it
+/// or hand it their request without waiting, and every response reaches its own task.
+#[test]
+fn tasks_share_one_session() {
+    let (address, accepted, _) = serve(|req, _| {
+        std::thread::sleep(Duration::from_millis(20));
+        ok(req.path().to_string())
+    });
+    crate::wait::use_tasks();
+    let (_net, c) = client(ClientOptions::default());
+    // Establish the session first so the tasks below share it.
+    assert_eq!(
+        text(&c.send(request("GET", &address, "/warm")).unwrap()),
+        "/warm"
+    );
+    struct Job {
+        client: Rc<Client>,
+        request: Request,
+        want: String,
+        done: Rc<Cell<usize>>,
+    }
+    unsafe extern "C-unwind" fn run(arg: *mut u8) {
+        // SAFETY: `arg` came from `Box::into_raw` below and this task owns it.
+        let job = unsafe { Box::from_raw(arg.cast::<Job>()) };
+        let body = job.client.send(job.request).unwrap();
+        assert_eq!(text(&body), job.want);
+        job.done.set(job.done.get() + 1);
+    }
+    let done = Rc::new(Cell::new(0));
+    for i in 0..5 {
+        let path = format!("/{i}");
+        let job = Box::new(Job {
+            client: c.clone(),
+            request: request("GET", &address, &path),
+            want: path,
+            done: done.clone(),
+        });
+        // SAFETY: `run` takes ownership of the boxed job.
+        unsafe { rt::spawn_detached(run, Box::into_raw(job).cast()) };
+    }
+    while done.get() < 5 {
+        rt::sleep(1_000_000);
+    }
+    assert_eq!(accepted.load(Ordering::SeqCst), 1);
+}

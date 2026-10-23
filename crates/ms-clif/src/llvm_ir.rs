@@ -916,6 +916,56 @@ impl LlvmModule {
         });
     }
 
+    /// Glue functions at the top of a chain of glue calls three or more levels deep. They stay
+    /// out of line: inlining a chain nests one loop per element-type level, which makes the
+    /// optimizer quadratic in the nesting depth of a literal. Shallow glue still inlines.
+    fn deep_glue(&self) -> HashSet<String> {
+        const GLUE: &str = "@\"ms.glue.";
+        let callees: HashMap<&str, Vec<&str>> = self
+            .defs
+            .iter()
+            .filter(|d| d.name.starts_with("ms.glue."))
+            .map(|d| {
+                let calls = d
+                    .body
+                    .match_indices(GLUE)
+                    .filter_map(|(at, _)| {
+                        let rest = &d.body[at + 2..];
+                        rest.split('"').next()
+                    })
+                    .filter(|c| *c != d.name)
+                    .collect();
+                (d.name.as_str(), calls)
+            })
+            .collect();
+        fn depth<'a>(
+            name: &'a str,
+            callees: &HashMap<&'a str, Vec<&'a str>>,
+            memo: &mut HashMap<&'a str, usize>,
+        ) -> usize {
+            if let Some(d) = memo.get(name) {
+                return *d;
+            }
+            // A cycle (recursive types) counts as shallow while it is being resolved.
+            memo.insert(name, 0);
+            let d = callees.get(name).map_or(0, |cs| {
+                cs.iter()
+                    .filter(|c| callees.contains_key(**c))
+                    .map(|c| 1 + depth(c, callees, memo))
+                    .max()
+                    .unwrap_or(0)
+            });
+            memo.insert(name, d);
+            d
+        }
+        let mut memo = HashMap::new();
+        callees
+            .keys()
+            .filter(|n| depth(n, &callees, &mut memo) >= 3)
+            .map(|n| n.to_string())
+            .collect()
+    }
+
     /// The finished module text. When `anchored`, functions are `internal` unless they are public
     /// or named in `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and
     /// specialize them; otherwise every function keeps a symbol.
@@ -928,7 +978,13 @@ impl LlvmModule {
                 "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
             );
         }
+        let deep = self.deep_glue();
         for d in &self.defs {
+            let header = if deep.contains(&d.name) {
+                d.header.replacen(" #0 ", " #1 ", 1)
+            } else {
+                d.header.clone()
+            };
             let vis = if d.public {
                 ""
             } else if !anchored || pinned.contains(&d.name) {
@@ -936,7 +992,7 @@ impl LlvmModule {
             } else {
                 "internal "
             };
-            let _ = write!(s, "define {vis}{}{}", d.header, d.body);
+            let _ = write!(s, "define {vis}{header}{}", d.body);
         }
         for (name, decl) in &self.decls {
             if !self.defined.contains(name) {
@@ -968,6 +1024,7 @@ impl LlvmModule {
             }
         }
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
+        s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);

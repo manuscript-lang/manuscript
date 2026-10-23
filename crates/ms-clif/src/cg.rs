@@ -692,7 +692,7 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         }
         define(&mut g, &mut ctx, id, "glue")?;
     }
-    let triple = g.module.isa().triple().to_string();
+    let triple = llvm_triple(g.module.isa().triple());
     let mut llvm_object = None;
     if let Some(llvm) = g.llvm.take() {
         let syms = ModuleSymbols(&g.module, &g.locs, &g.scopes);
@@ -729,6 +729,15 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
         object: product.emit().map_err(|e| Error(e.to_string()))?,
         llvm: None,
     })
+}
+
+/// The target triple of the LLVM IR. Windows executables link over the mingw-w64 CRT, so the code
+/// must follow its conventions rather than MSVC's.
+fn llvm_triple(triple: &target_lexicon::Triple) -> String {
+    if triple.operating_system != target_lexicon::OperatingSystem::Windows {
+        return triple.to_string();
+    }
+    format!("{}-w64-windows-gnu", triple.architecture)
 }
 
 /// Whether LLVM-built functions may be internal, with the tables addressing them from an anchor.

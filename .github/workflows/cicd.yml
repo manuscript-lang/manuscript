@@ -177,28 +177,28 @@ jobs:
         if: runner.os == 'Windows' && matrix.arch == 'amd64'
         uses: actions/cache/restore@v6
         with:
-          path: ${{ runner.temp }}/llvm-debug-19.1.7
-          key: llvm-debug-windows-x64-19.1.7-b4557b4f
+          path: ${{ runner.temp }}/llvm-debug-23.1.1
+          key: llvm-debug-windows-x64-23.1.1-c54ac814
       - name: Install Windows x64 LLVM consumers
         if: runner.os == 'Windows' && matrix.arch == 'amd64'
         run: |
           temp_root=$(cygpath -u "$RUNNER_TEMP")
-          tools="$temp_root/llvm-debug-19.1.7"
+          tools="$temp_root/llvm-debug-23.1.1"
           if [ ! -x "$tools/llvm-dwarfdump.exe" ] || [ ! -x "$tools/llvm-symbolizer.exe" ]; then
-            archive="$temp_root/llvm-debug-19.1.7.tar.xz"
-            curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/clang%2Bllvm-19.1.7-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
-            echo "b4557b4f012161f56a2f5d9e877ab9635cafd7a08f7affe14829bd60c9d357f0  $archive" | sha256sum --check
+            archive="$temp_root/llvm-debug-23.1.1.tar.xz"
+            curl --fail --location --retry 3 'https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/clang%2Bllvm-23.1.1-x86_64-pc-windows-msvc.tar.xz' -o "$archive"
+            echo "c54ac8146b420fe72e11e6fdd56498d6818011ad23267196b6ab37b5ac9264c3  $archive" | sha256sum --check
             mkdir -p "$tools"
             tar -xJf - -C "$tools" --strip-components=2 \
-              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
-              clang+llvm-19.1.7-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
+              clang+llvm-23.1.1-x86_64-pc-windows-msvc/bin/llvm-dwarfdump.exe \
+              clang+llvm-23.1.1-x86_64-pc-windows-msvc/bin/llvm-symbolizer.exe < "$archive"
           fi
           cygpath -w "$tools" >> "$GITHUB_PATH"
       - name: Save Windows x64 LLVM consumers
         if: github.ref == 'refs/heads/main' && runner.os == 'Windows' && matrix.arch == 'amd64' && steps.llvm-debug.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: ${{ runner.temp }}/llvm-debug-19.1.7
+          path: ${{ runner.temp }}/llvm-debug-23.1.1
           key: ${{ steps.llvm-debug.outputs.cache-primary-key }}
       - name: Format and clippy
         if: matrix.full
@@ -239,7 +239,6 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
-        if: runner.os != 'Windows'
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
@@ -286,14 +285,6 @@ jobs:
       - name: Rust ms replays the corpus
         if: matrix.corpus
         run: sh scripts/conform.sh
-      - name: Show why a failing test-phase fixture does not run
-        if: failure() && matrix.corpus && matrix.os != 'linux'
-        run: |
-          for f in time fs terminal net http-upload sse-http; do
-            echo "::group::ms test e2e/stdlib/$f"
-            target/debug/ms test "tests/conformance/fixtures/e2e/stdlib/$f.ms" 2>&1 | head -40 || true
-            echo "::endgroup::"
-          done
       - name: Package and run the distribution on a hello project
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"

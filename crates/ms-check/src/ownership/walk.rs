@@ -3,7 +3,9 @@
 
 use super::classify::{Class, Classifier};
 use super::live::Liveness;
-use super::modes::{CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes};
+use super::modes::{
+    CallModes, ParamMode, ResultOrigin, Slot, Summaries, Summary, call_modes, receiver_mode,
+};
 use super::places::{Place, Step};
 use super::*;
 use ms_syntax::ast::*;
@@ -922,7 +924,8 @@ impl Walker<'_> {
     fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
             let scrutinee = self.scrutinee(s.id, value);
-            self.pattern_bindings(pattern, &scrutinee, Role::Pattern);
+            let role = if mutable { Role::Var } else { Role::Pattern };
+            self.pattern_bindings(pattern, &scrutinee, role);
             return;
         };
         let Some(b) = self.cx.m.pattern_binding(pattern) else {
@@ -978,6 +981,10 @@ impl Walker<'_> {
         }
         if let ExprKind::Lambda(_) = &value.kind {
             self.expr_lambda_binding(value, &b, role, mutable);
+            return;
+        }
+        if let Some(recv) = self.changing_method_value(value) {
+            self.method_value_binding(value, recv, &b, role, mutable);
             return;
         }
         // A borrowing binding passes its borrow on to a `let`.
@@ -1089,6 +1096,82 @@ impl Walker<'_> {
         }
     }
 
+    /// The receiver of a method value that changes it (`xs.append`).
+    fn changing_method_value<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Member { left, .. } = &e.kind else {
+            return None;
+        };
+        if self.cx.m.ty(e).kind != Kind::Function {
+            return None;
+        }
+        let Resolution::Method(m) = self.cx.m.resolution(e) else {
+            return None;
+        };
+        (receiver_mode(self.cx.summaries, &m) == Some(ParamMode::Mutate)).then_some(&**left)
+    }
+
+    /// Takes the receiver of a method value that changes it as a mutable borrow. The value
+    /// shares the variable, so it cannot outlive the statement. Returns the place it holds.
+    fn changing_method_use(&mut self, e: &Expr, recv: &Expr, escaping: bool) -> Vec<(Place, bool)> {
+        if !self.is_place(recv) {
+            // A temporary receiver has no other owner: the value keeps its own copy.
+            self.expr(recv, Demand::Read);
+            return Vec::new();
+        }
+        let whole = matches!(recv.kind, ExprKind::Name(_));
+        let Some((info, _)) = self.place(recv).filter(|_| whole) else {
+            self.error(
+                e.pos,
+                "a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure",
+            );
+            return Vec::new();
+        };
+        if escaping {
+            self.error(
+                e.pos,
+                format!("this method value changes `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep it local, or call the method instead", info.root.name),
+            );
+            return Vec::new();
+        }
+        self.mutate(e.pos, &info, "change");
+        info.resolved.into_iter().map(|p| (p, true)).collect()
+    }
+
+    fn method_value_binding(
+        &mut self,
+        value: &Expr,
+        recv: &Expr,
+        b: &BindingRef,
+        role: Role,
+        mutable: bool,
+    ) {
+        let escaping = self.escaped.contains(&value.id);
+        let origins = self.changing_method_use(value, recv, escaping);
+        self.declare(
+            b,
+            role,
+            if mutable {
+                Perm::Mutable
+            } else {
+                Perm::Immutable
+            },
+            None,
+            false,
+        );
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.lambda = Some(value.id);
+        }
+        if !origins.is_empty() && self.used.contains(&b.uid) {
+            self.active.push(Borrow {
+                holder: b.uid,
+                holder_name: b.name,
+                origins,
+                pos: value.pos,
+                why: "method value".to_string(),
+            });
+        }
+    }
+
     fn assign(&mut self, s: &Stmt, target: &AssignTarget, value: &Expr) {
         self.expr(value, Demand::Consume);
         match target {
@@ -1119,7 +1202,8 @@ impl Walker<'_> {
             return;
         };
         match m.perm {
-            Perm::Mutable => {}
+            // An escaping closure's captures are reported once by `lambda`.
+            Perm::Mutable | Perm::Captured => {}
             // A scalar borrow is a name for its place: assigning writes through.
             Perm::MutBorrowed if m.class == Class::Copy => {}
             Perm::Immutable if m.parameter.is_some() => self.error(
@@ -1130,7 +1214,7 @@ impl Walker<'_> {
                 pos,
                 format!("cannot reassign `{name}`: it is a mutable borrow of another value; assign to its fields, or copy with `{name}.{COPY}()`"),
             ),
-            Perm::Immutable | Perm::Borrowed | Perm::Captured => self.error(
+            Perm::Immutable | Perm::Borrowed => self.error(
                 pos,
                 format!("cannot assign to `{name}`: it is not a var; declare it `var {name} = ...`"),
             ),
@@ -1375,7 +1459,12 @@ impl Walker<'_> {
     fn payload(&mut self, b: &BindingRef, source: &Scrutinee, role: Role, pos: Pos) {
         let class = self.cx.classes.class(&b.ty);
         if class == Class::Copy || source.owned {
-            self.declare(b, role, Perm::Immutable, None, false);
+            let perm = if role == Role::Var {
+                Perm::Mutable
+            } else {
+                Perm::Immutable
+            };
+            self.declare(b, role, perm, None, false);
         } else {
             self.declare_borrow(b, role, source.origins.clone(), pos, "pattern binding");
         }
@@ -1607,6 +1696,14 @@ impl Walker<'_> {
     }
 
     fn projection(&mut self, e: &Expr, d: Demand) {
+        if let Some(recv) = self.changing_method_value(e) {
+            self.changing_method_use(
+                e,
+                recv,
+                d == Demand::Consume || self.escaped.contains(&e.id),
+            );
+            return;
+        }
         if !self.is_place(e) {
             // A part of a computed value. Copying a `Copy` part leaves the whole where it is.
             let take = d == Demand::Consume
@@ -1996,11 +2093,11 @@ impl Walker<'_> {
                     self.mutate(e.pos, &info, "change");
                     facts.push((b.uid, CaptureMode::BorrowMut));
                 } else if class == Class::Copy {
-                    // A `Copy` value the closure only reads is copied into it.
+                    // A `Copy` value the closure only reads is borrowed like any other: the
+                    // variable stays unchanged while the closure lives, so lowering may copy it.
                     self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
-                    continue;
                 } else {
                     self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
                     self.record(e.id, b, Access::Borrow);

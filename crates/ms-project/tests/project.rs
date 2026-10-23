@@ -276,3 +276,17 @@ fn absolute_import_diagnostic_is_not_a_relative_suggestion() {
         "{error}"
     );
 }
+
+#[test]
+fn reserved_std_alias_is_not_suggested() {
+    let dir = TempDir::new();
+    write(dir.path(), "src/main.ms", "");
+    let manifest = write(
+        dir.path(),
+        "ms.toml",
+        "[project]\nname = \"sample\"\nsource = \"src\"\nentry = \"src/main.ms\"\n[aliases]\nstd = \"src\"\n",
+    );
+    let error = read_project(&manifest).expect_err("std alias").to_string();
+    assert!(error.contains("invalid or reserved alias std"), "{error}");
+    assert!(!error.contains("did you mean"), "{error}");
+}

@@ -342,6 +342,7 @@ should unwind with `msrt_cancelled()` (or return an error). Rules for natives:
 - One task may wait on a given descriptor at a time (a second waiter faults).
 - Regular files cannot be polled and report ready at once.
 - `sleep` is `wait_fd` with no descriptor.
+- A native must be safe to re-enter whenever it waits: every park (`wait_fd`, `sleep`, `join`, a token wait) lets other tasks call the same native, on the same object or on shared thread state. Hold no `RefCell` borrow, no `&mut` into shared state and no thread-local guard across a park. Take shared scratch out of a `Cell` for the call (or allocate), keep invariants consistent before parking, and re-check state after waking. Two tasks on one object must get a typed error or the runtime's single-waiter fault, never a borrow panic.
 
 Cancellation: `SIGINT`/`SIGTERM` wake every parked task with `16`, the main task first, so its
 `msrt_cancelled()` runs its cleanups and exits 130/143. `msrt_task_cancel(h)` wakes one task

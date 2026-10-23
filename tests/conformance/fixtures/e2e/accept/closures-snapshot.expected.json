@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "closures-snapshot.ms::snapshot captures",
+          "name": "closures-snapshot.ms::closures read the variable they borrow",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN closures-snapshot.ms::snapshot captures\nPASS closures-snapshot.ms::snapshot captures\n1 tests, 0 failed\n",
+      "stdout": "RUN closures-snapshot.ms::closures read the variable they borrow\nPASS closures-snapshot.ms::closures read the variable they borrow\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

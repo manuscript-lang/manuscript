@@ -64,3 +64,11 @@ fn impl_cannot_mutate_what_the_interface_does_not() {
         "{got}"
     );
 }
+
+#[test]
+fn comparing_with_none_points_to_is_none() {
+    let got = first_message(
+        "export fn main() Int:\n    let r: Optional[Int] = some(1)\n    if r == none:\n        return 1\n    return 0\n",
+    );
+    assert!(got.starts_with("none has no type of its own here"), "{got}");
+}
