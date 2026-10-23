@@ -211,6 +211,16 @@ impl<'a> FnLower<'a> {
         if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is_std("Map") {
             return Ok(None);
         }
+        // A key the checker converts on the way in (an `Optional` key given a plain value) takes
+        // the ordinary call, which applies the conversion.
+        let map_ty = self.emty(map)?;
+        let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
+            return Ok(None);
+        };
+        let key_ty = self.emty(&key.value)?;
+        if parts.first() != Some(&key_ty) {
+            return Ok(None);
+        }
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
