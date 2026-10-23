@@ -201,6 +201,50 @@ const METHODS: &[MethodRow] = &[
         "msrt_net_network_http_client",
         &[],
     ),
+    (
+        "net",
+        "Network",
+        "web_socket",
+        "msrt_net_network_web_socket",
+        &[],
+    ),
+    (
+        "websocket",
+        "WebSocket",
+        "close",
+        "msrt_websocket_close",
+        &[],
+    ),
+    ("websocket", "WebSocket", "ping", "msrt_websocket_ping", &[]),
+    (
+        "websocket",
+        "WebSocket",
+        "ping_bytes",
+        "msrt_websocket_ping_bytes",
+        &[],
+    ),
+    (
+        "websocket",
+        "WebSocket",
+        "receive",
+        "msrt_websocket_receive",
+        &[],
+    ),
+    ("websocket", "WebSocket", "send", "msrt_websocket_send", &[]),
+    (
+        "websocket",
+        "WebSocket",
+        "send_bytes",
+        "msrt_websocket_send_bytes",
+        &[],
+    ),
+    (
+        "websocket",
+        "WebSocket",
+        "subprotocol",
+        "msrt_websocket_subprotocol",
+        &[],
+    ),
     ("net", "Network", "request", "msrt_net_network_request", &[]),
     (
         "net",
@@ -325,6 +369,13 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "write_bytes",
         "msrt_http_exchange_write_bytes",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "upgrade",
+        "msrt_http_exchange_upgrade",
         &[],
     ),
     ("io", "Files", "open", "msstd_io_open", &[]),
@@ -928,6 +979,10 @@ impl Cx {
         // Streams are `@std/io` handles whichever module hands them out.
         if matches!(ity.name.to_string().as_str(), "ReadStream" | "WriteStream") {
             module = "io";
+        }
+        // A WebSocket is the same handle from a client dial and a server upgrade.
+        if ity.name == "WebSocket" {
+            module = "websocket";
         }
         self.handle_vtable(m, hir, module, &ity, iface)
     }

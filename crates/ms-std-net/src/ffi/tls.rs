@@ -4,7 +4,7 @@ use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
 use ms_std_core::{
-    Bytes, BytesArray, ErrOut, ObjRef, Object, Out, RecArray, StatusCode, Str, StringList,
+    Bytes, BytesArray, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
     abi_record, native,
 };
 
@@ -46,15 +46,22 @@ abi_record! {
 }
 
 abi_record! {
-    /// One parsed certificate; times are `(seconds, nanoseconds)`.
-    pub struct CertificateInfoWire {
+    /// A `Timestamp` at the layout the compiler gives the native time type.
+    #[derive(Clone, Copy)]
+    pub struct Timestamp {
+        pub seconds: i64,
+        pub nanos: i64,
+    }
+}
+
+abi_record! {
+    /// `CertificateInfo` at its natural layout.
+    pub struct CertificateRec {
         pub subject: Str,
         pub issuer: Str,
         pub dns_names: StringList,
-        pub not_before_seconds: i64,
-        pub not_before_nanos: i32,
-        pub not_after_seconds: i64,
-        pub not_after_nanos: i32,
+        pub not_before: Timestamp,
+        pub not_after: Timestamp,
         pub der: Bytes,
     }
 }
@@ -117,31 +124,27 @@ native! {
         })
     }
 
-    /// `parse_certificates(pem, max)`: the certificates as an array plus its length.
+    /// `parse_certificates(pem, max)`: the certificates as a `List[CertificateInfo]`.
     fn msrt_tls_parse_certificates(
         pem: &str,
         has_max: bool,
         max: i64,
-        certs: Out<RecArray<CertificateInfoWire>>,
-        count: Out<usize>,
-    ) -> Result<(), StatusCode> {
+    ) -> Result<RecList<CertificateRec>, StatusCode> {
         let list = tls::parse_certificates(pem, opt(has_max, max)).map_err(|e| StatusCode(e.code()))?;
-        count.write(list.len());
-        certs.write(RecArray(
-            list.iter()
-                .map(|c| CertificateInfoWire {
-                    subject: Str::new(&c.subject),
-                    issuer: Str::new(&c.issuer),
-                    dns_names: StringList::new(c.dns_names.iter()),
-                    not_before_seconds: c.not_before.0,
-                    not_before_nanos: c.not_before.1,
-                    not_after_seconds: c.not_after.0,
-                    not_after_nanos: c.not_after.1,
-                    der: Bytes::new(&c.der),
-                })
-                .collect(),
-        ));
-        Ok(())
+        Ok(RecList::new(list.iter().map(|c| CertificateRec {
+            subject: Str::new(&c.subject),
+            issuer: Str::new(&c.issuer),
+            dns_names: StringList::new(c.dns_names.iter()),
+            not_before: Timestamp {
+                seconds: c.not_before.0,
+                nanos: i64::from(c.not_before.1),
+            },
+            not_after: Timestamp {
+                seconds: c.not_after.0,
+                nanos: i64::from(c.not_after.1),
+            },
+            der: Bytes::new(&c.der),
+        })))
     }
 
     /// `verify_certificates(chain, roots, server_name, now)`.
@@ -149,10 +152,9 @@ native! {
         chain: &str,
         roots: &str,
         server_name: &str,
-        now_seconds: i64,
-        _now_nanos: i32,
+        now: &Timestamp,
     ) -> Result<(), StatusCode> {
-        tls::verify_certificates(chain, roots, server_name, now_seconds)
+        tls::verify_certificates(chain, roots, server_name, now.seconds)
             .map_err(|e| StatusCode(e.code()))
     }
 
@@ -173,7 +175,6 @@ mod tests {
     use super::*;
     use ms_rt_abi::StrVal;
     use ms_std_core::new_string;
-    use std::ptr::null_mut;
 
     fn s(text: &str) -> *const StrVal {
         Box::leak(Box::new(new_string(text)))
@@ -184,23 +185,30 @@ mod tests {
         let pem = include_str!("../../testdata/stdlib.test.crt.pem");
         // SAFETY: every pointer is a live runtime object created in this test.
         unsafe {
-            let (mut certs, mut count) = (null_mut(), 0usize);
+            let mut certs = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 0, 0, &mut certs, &mut count),
+                msrt_tls_parse_certificates(s(pem), 0, 0, certs.as_mut_ptr()),
                 0
             );
-            assert_eq!(count, 1);
-            assert_eq!((*certs).not_after_seconds, 4_102_444_800);
+            let certs = certs.assume_init();
+            assert_eq!(certs.len, 1);
+            let first = &*certs.ptr.cast::<CertificateRec>();
+            assert_eq!(first.not_after.seconds, 4_102_444_800);
+            let mut limited = std::mem::MaybeUninit::<ms_rt_abi::VecVal>::zeroed();
             assert_eq!(
-                msrt_tls_parse_certificates(s(pem), 1, 0, &mut certs, &mut count),
+                msrt_tls_parse_certificates(s(pem), 1, 0, limited.as_mut_ptr()),
                 3
             );
+            let now = Timestamp {
+                seconds: 1_700_000_000,
+                nanos: 0,
+            };
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), 1_700_000_000, 0),
+                msrt_tls_verify_certificates(s(pem), s(pem), s("stdlib.test"), &now),
                 0
             );
             assert_eq!(
-                msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), 1_700_000_000, 0),
+                msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
                 4
             );
             let m = ms_std_core::take_string(|o| msrt_tls_error_message(4, o));

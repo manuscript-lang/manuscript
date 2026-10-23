@@ -1,4 +1,4 @@
 [project]
 name = "project_check"
 source = "src"
-entry = "src/main.ms"
+entry = "src/report.ms"

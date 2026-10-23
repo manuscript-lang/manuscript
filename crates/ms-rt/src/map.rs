@@ -23,8 +23,19 @@ fn index_of(m: &MapVal) -> *mut u64 {
     m.index as *mut u64
 }
 
+/// The descriptor a map was created with, else the caller's: a collection keeps the
+/// `Equal` and `Hashable` of the module that made it.
+///
+/// `m` is a live map, as every exported operation requires.
+fn key_desc(m: *const MapVal, kd: *const TypeDesc) -> *const TypeDesc {
+    // SAFETY: exported operations are only called with live maps.
+    let own = unsafe { (*m).desc };
+    if own.is_null() { kd } else { own }
+}
+
 pub fn empty() -> MapVal {
     MapVal {
+        desc: core::ptr::null(),
         slots: core::ptr::null_mut(),
         index: core::ptr::null_mut(),
         len: 0,
@@ -61,11 +72,32 @@ fn align_up(n: usize, a: usize) -> usize {
     (n + a - 1) & !(a - 1)
 }
 
+/// True for an 8-byte, 8-aligned slot (one load and compare of the descriptor's size and align).
+#[inline(always)]
+fn is_word(d: &TypeDesc) -> bool {
+    (u64::from(d.size) | u64::from(d.align) << 32) == 8 | 8 << 32
+}
+
+/// [`layout`] for a key kind that is known to be a word, which skips testing the key.
+#[inline(always)]
+fn layout_k<K: KeyOps>(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
+    if K::WORD_KEY && vd.is_some_and(is_word) {
+        return Layout {
+            koff: 8,
+            voff: 16,
+            stride: 24,
+            ksize: 8,
+            vsize: 8,
+        };
+    }
+    layout(kd, vd)
+}
+
 #[inline(always)]
 fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
     // 8-byte, 8-aligned keys and values (Int, Float, pointers) are the common case; a constant
     // layout spares the alignment arithmetic on every lookup.
-    if kd.size == 8 && kd.align == 8 && vd.is_some_and(|v| v.size == 8 && v.align == 8) {
+    if is_word(kd) && vd.is_some_and(is_word) {
         return Layout {
             koff: 8,
             voff: 16,
@@ -135,6 +167,10 @@ unsafe fn slot_hash_of(p: *mut u8) -> u64 {
 /// each key kind gets its own inlined probe loop. `Dyn` is the descriptor-driven fallback for
 /// every other key type.
 trait KeyOps {
+    /// True when key equality is cheap enough to skip the stored full-hash comparison.
+    const CHEAP_EQ: bool = false;
+    /// True when the key slot is always an 8-byte, 8-aligned word.
+    const WORD_KEY: bool = false;
     /// Hash of the key slot (without the `LIVE` bit).
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64;
     /// Equality of two live key slots.
@@ -146,10 +182,12 @@ struct StrKey;
 struct DynKey;
 
 impl KeyOps for IntKey {
+    const CHEAP_EQ: bool = true;
+    const WORD_KEY: bool = true;
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds an `Int`.
-        unsafe { crate::string::mix(*(key as *const u64) ^ 0x9e37_79b9) }
+        unsafe { crate::string::hash_int(*(key as *const u64)) }
     }
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
@@ -234,7 +272,7 @@ unsafe fn find<K: KeyOps>(
             if (e ^ h) >> 32 == 0 {
                 let i = (e as u32 - 1) as usize;
                 let p = slot(m, l, i);
-                if slot_hash_of(p) == h && K::eq(kd, p.add(l.koff), key) {
+                if (K::CHEAP_EQ || slot_hash_of(p) == h) && K::eq(kd, p.add(l.koff), key) {
                     return Some(i);
                 }
             }
@@ -388,7 +426,7 @@ unsafe fn upsert_k<K: KeyOps>(
 ) -> (*mut u8, bool) {
     // SAFETY: caller contract.
     unsafe {
-        let l = layout(kd, vd);
+        let l = layout_k::<K>(kd, vd);
         let h = hash_key::<K>(kd, key);
         if let Some(i) = find::<K>(m, kd, &l, key, h) {
             let p = slot(m, &l, i);
@@ -543,6 +581,7 @@ pub unsafe fn copy_map(src: *const MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>,
         let s = &*src;
         let l = layout(kd, vd);
         let mut m = empty();
+        m.desc = s.desc;
         if s.len > 0 {
             m.slots = alloc::alloc(s.len.next_power_of_two().max(8) * l.stride);
             m.cap = s.len.next_power_of_two().max(8);
@@ -618,12 +657,20 @@ pub unsafe extern "C-unwind" fn msrt_map_new(out: *mut MapVal) {
     unsafe { *out = empty() }
 }
 
+/// Makes the map in `m` keep `kd`, as if it had been created with it.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc) {
+    // SAFETY: `m` is a live map; descriptors are static.
+    unsafe { (*m).desc = kd }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_drop(
     m: *mut MapVal,
     kd: *const TypeDesc,
     vd: *const TypeDesc,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
@@ -635,6 +682,7 @@ pub unsafe extern "C-unwind" fn msrt_map_copy(
     vd: *const TypeDesc,
     out: *mut MapVal,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { copy_map(m, &*kd, opt(vd), out) }
 }
@@ -648,6 +696,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
     key: *mut u8,
     val: *mut u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         insert(&mut *m, &*kd, opt(vd), key, val);
@@ -665,6 +714,7 @@ pub unsafe extern "C-unwind" fn msrt_map_slot(
     key: *mut u8,
     default: *mut u8,
 ) -> *mut u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract; the value type is an 8-byte scalar.
     unsafe {
         let (m, kd, vd) = (&mut *m, &*kd, &*vd);
@@ -683,6 +733,7 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
     key: *const u8,
     default: *mut u8,
 ) -> *mut u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract; the value type is an 8-byte scalar.
     unsafe {
         let (m, kd, vd) = (&mut *m, &*kd, &*vd);
@@ -773,6 +824,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default(
     key: *mut u8,
     val: *mut u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         insert_unique(&mut *m, &*kd, opt(vd), key, val);
@@ -786,6 +838,7 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
     vd: *const TypeDesc,
     key: *const u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         remove(&mut *m, &*kd, opt(vd), key);
@@ -799,6 +852,7 @@ pub unsafe extern "C-unwind" fn msrt_map_contains(
     vd: *const TypeDesc,
     key: *const u8,
 ) -> u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { contains_key(&*m, &*kd, opt(vd), key) as u8 }
 }
@@ -811,21 +865,194 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr(
     vd: *const TypeDesc,
     key: *const u8,
 ) -> *const u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { value_ptr(&*m, &*kd, opt(vd), key) }
 }
 
-/// Borrowed pointer to the value of `key`, or null; one probe loop per key kind.
+/// Borrowed pointer to the value of `key`, or null. Each key kind gets its own out-of-line probe
+/// loop, so the hot Int and String paths keep a small frame.
 #[inline(always)]
 unsafe fn value_ptr(m: &MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>, key: *const u8) -> *const u8 {
     // SAFETY: caller contract.
+    unsafe { keyed!(kd, |K| value_ptr_k::<K>(m, kd, vd, key)) }
+}
+
+#[inline(never)]
+unsafe fn value_ptr_k<K: KeyOps>(
+    m: &MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    key: *const u8,
+) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
     unsafe {
-        let p = keyed!(kd, |K| find_slot::<K>(m, kd, vd, key));
-        if p.is_null() {
-            p
-        } else {
-            p.add(layout(kd, vd).voff)
+        let l = layout_k::<K>(kd, vd);
+        match find::<K>(m, kd, &l, key, hash_key::<K>(kd, key)) {
+            Some(i) => slot(m, &l, i).add(l.voff),
+            None => core::ptr::null(),
         }
+    }
+}
+
+/// Slot of the `Int` key at `key` in a map whose values are 8 bytes, 8-aligned (stride 24), or
+/// null. The shape of most counters and indexes; it needs no descriptor dispatch.
+#[inline(always)]
+unsafe fn find_w8(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map.
+    unsafe {
+        let k = *(key as *const u64);
+        let h = crate::string::hash_int(k) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 24);
+                if *(p.add(8) as *const u64) == k {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// Stride of a `String`-keyed slot with an 8-byte value: hash, key, value.
+const SW8_STRIDE: usize = 8 + STR_SIZE + 8;
+/// Offset of the value in such a slot.
+const SW8_VALUE: usize = 8 + STR_SIZE;
+
+/// [`find_w8`] for a `String` key: slot of the entry, or null.
+#[inline(always)]
+unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map, and the key
+    // slot holds a live string.
+    unsafe {
+        let k = key as *const StrVal;
+        let h = crate::string::hash_bytes(crate::string::bytes(k)) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * SW8_STRIDE);
+                if slot_hash_of(p) == h && crate::string::equal(p.add(8) as *const StrVal, k) {
+                    return p;
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// [`msrt_map_get_ptr`] for a `String` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() { p } else { p.add(SW8_VALUE) }
+    }
+}
+
+/// [`msrt_map_contains`] for a `String` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_sw8(&*m, key).is_null() as u8 }
+}
+
+/// [`msrt_map_get`] for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() {
+            return 0;
+        }
+        core::ptr::copy_nonoverlapping(p.add(SW8_VALUE), out, 8);
+        1
+    }
+}
+
+/// [`msrt_map_get_ptr`] for an `Int` key and an 8-byte, 8-aligned value. The call site checked
+/// the shape; the descriptors are accepted for signature parity and ignored.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr_w8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_w8(&*m, key);
+        if p.is_null() { p } else { p.add(16) }
+    }
+}
+
+/// [`msrt_map_contains`] for an `Int` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_contains_w8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_w8(&*m, key).is_null() as u8 }
+}
+
+/// [`msrt_map_get`] for an `Int` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_w8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_w8(&*m, key);
+        if p.is_null() {
+            return 0;
+        }
+        core::ptr::copy_nonoverlapping(p.add(16), out, 8);
+        1
     }
 }
 
@@ -838,6 +1065,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get(
     key: *const u8,
     out: *mut u8,
 ) -> u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         let (kd, vd) = (&*kd, &*vd);
@@ -862,6 +1090,7 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(
     kd: *const TypeDesc,
     vd: *const TypeDesc,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
@@ -890,6 +1119,7 @@ pub unsafe extern "C-unwind" fn msrt_map_entry_ptrs(
     key_out: *mut *const u8,
     val_out: *mut *const u8,
 ) -> u8 {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         let m = &*m;
@@ -914,6 +1144,7 @@ pub unsafe extern "C-unwind" fn msrt_map_keys(
     vd: *const TypeDesc,
     out: *mut VecVal,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { collect(m, &*kd, opt(vd), true, out) }
 }
@@ -925,6 +1156,7 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
     vd: *const TypeDesc,
     out: *mut VecVal,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { collect(m, &*kd, opt(vd), false, out) }
 }
@@ -975,6 +1207,7 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
     kd: *const TypeDesc,
     vd: *const TypeDesc,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         let (kd, vdo) = (&*kd, opt(vd));
@@ -1053,6 +1286,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(
     kd: *const TypeDesc,
     key: *const u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { add_copy(&mut *m, &*kd, key) }
 }
@@ -1064,6 +1298,7 @@ pub unsafe extern "C-unwind" fn msrt_set_union(
     kd: *const TypeDesc,
     out: *mut MapVal,
 ) {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1081,6 +1316,7 @@ unsafe fn filter_into(
     // SAFETY: caller contract.
     unsafe {
         *out = empty();
+        (*out).desc = a.desc;
         each_key(a, kd, |k| {
             if keep(k) {
                 add_copy(&mut *out, kd, k);
@@ -1096,6 +1332,7 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
     kd: *const TypeDesc,
     out: *mut MapVal,
 ) {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1110,6 +1347,7 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
     kd: *const TypeDesc,
     out: *mut MapVal,
 ) {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1124,6 +1362,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     kd: *const TypeDesc,
     out: *mut MapVal,
 ) {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1142,6 +1381,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     b: *const MapVal,
     kd: *const TypeDesc,
 ) -> u8 {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1157,6 +1397,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     b: *const MapVal,
     kd: *const TypeDesc,
 ) -> u8 {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe { msrt_set_is_subset_of(b, a, kd) }
 }
@@ -1167,6 +1408,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     b: *const MapVal,
     kd: *const TypeDesc,
 ) -> u8 {
+    let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
@@ -1182,6 +1424,94 @@ mod tests {
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
     use crate::testutil;
+
+    #[test]
+    fn string_word_entry_points_match_the_general_ones() {
+        let _g = testutil::lock();
+        unsafe {
+            let (kd, vd) = (
+                &msrt_desc_string as *const TypeDesc,
+                &msrt_desc_int as *const TypeDesc,
+            );
+            let mut m = empty();
+            for i in 0..200i64 {
+                let mut k = from_bytes(format!("key-{}", i * 3).as_bytes());
+                let mut v = i;
+                msrt_map_add(
+                    &mut m,
+                    kd,
+                    vd,
+                    &mut k as *mut _ as *mut u8,
+                    &mut v as *mut i64 as *mut u8,
+                );
+            }
+            for i in 0..50i64 {
+                let k = from_bytes(format!("key-{}", i * 6).as_bytes());
+                remove(&mut m, &*kd, Some(&*vd), &k as *const _ as *const u8);
+            }
+            for i in -3..700i64 {
+                let k = from_bytes(format!("key-{i}").as_bytes());
+                let kp = &k as *const _ as *const u8;
+                assert_eq!(
+                    msrt_map_get_ptr(&m, kd, vd, kp),
+                    msrt_map_get_ptr_sw8(&m, kd, vd, kp),
+                    "key {i}"
+                );
+                assert_eq!(
+                    msrt_map_contains(&m, kd, vd, kp),
+                    msrt_map_contains_sw8(&m, kd, vd, kp)
+                );
+                let (mut a, mut b) = (0i64, 0i64);
+                let ga = msrt_map_get(&m, kd, vd, kp, &mut a as *mut i64 as *mut u8);
+                let gb = msrt_map_get_sw8(&m, kd, vd, kp, &mut b as *mut i64 as *mut u8);
+                assert_eq!((ga, a), (gb, b));
+            }
+            drop_map(&mut m, &*kd, Some(&*vd));
+        }
+    }
+
+    #[test]
+    fn word_entry_points_match_the_general_ones() {
+        let _g = testutil::lock();
+        unsafe {
+            let d = &msrt_desc_int as *const TypeDesc;
+            let mut m = empty();
+            for i in 0..300i64 {
+                let (mut k, mut v) = (i * 31, i);
+                msrt_map_add(
+                    &mut m,
+                    d,
+                    d,
+                    &mut k as *mut i64 as *mut u8,
+                    &mut v as *mut i64 as *mut u8,
+                );
+            }
+            for i in 0..100i64 {
+                remove(&mut m, &*d, Some(&*d), &(i * 62) as *const i64 as *const u8);
+            }
+            for i in -5..1000i64 {
+                let k = &i as *const i64 as *const u8;
+                let general = msrt_map_get_ptr(&m, d, d, k);
+                let word = msrt_map_get_ptr_w8(&m, d, d, k);
+                assert_eq!(general, word, "key {i}");
+                assert_eq!(
+                    msrt_map_contains(&m, d, d, k),
+                    msrt_map_contains_w8(&m, d, d, k)
+                );
+                let (mut a, mut b) = (0i64, 0i64);
+                let (ga, gb) = (
+                    msrt_map_get(&m, d, d, k, &mut a as *mut i64 as *mut u8),
+                    msrt_map_get_w8(&m, d, d, k, &mut b as *mut i64 as *mut u8),
+                );
+                assert_eq!((ga, a), (gb, b));
+            }
+            let mut empty_map = empty();
+            let k = 1i64;
+            assert!(msrt_map_get_ptr_w8(&empty_map, d, d, &k as *const i64 as *const u8).is_null());
+            drop_map(&mut empty_map, &*d, Some(&*d));
+            drop_map(&mut m, &*d, Some(&*d));
+        }
+    }
 
     #[test]
     fn int_pair_fast_paths() {

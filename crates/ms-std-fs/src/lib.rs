@@ -419,7 +419,7 @@ native! {
 
     /// The path a file handle was opened with.
     fn msstd_fs_file_path(h: ObjRef<Stream>) -> Text {
-        Text(h.name.clone())
+        Text(h.name.to_vec())
     }
 
     fn msstd_fs_directory_open(path: &str) -> Result<Object<dir::Directory>, StatusCode> {

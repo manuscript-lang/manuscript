@@ -35,6 +35,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 - Records flatten their fields in declaration order. Alternatives carry a tag and shared payload slots; recursive alternatives are boxed to make their layout finite.
 - `Optional[T]` uses a nullable pointer for a single-pointer payload, otherwise a presence flag and the payload leaves. Recursive optional layouts use indirection. `Result[T, E]` uses the alternative layout.
 - Interfaces use `{ data, vtable }` views; function values refer to closure objects. Non-escaping closures borrow captures; escaping closures own them, as described in the ownership rules.
+- A local extension (an `impl` for another module's type) is visible only in its own module. Lowering keys vtables, equality helpers and type descriptors by the module whose implementations they call, but only for types that have an extension (`crates/ms-lower/src/scope.rs`); a generic instance over such a type is separate per caller module. MIR names a scoped descriptor with `Ty::scoped`.
 - Generics are monomorphized.
 
 ## Runtime ABI rules

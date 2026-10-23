@@ -11,7 +11,10 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::ASCII_CHAR_STRIDE;
+use ms_rt_abi::{
+    ASCII_CHAR_STRIDE, STR_LEN_OFFSET, STR_PTR_OFFSET, VEC_CAP_OFFSET, VEC_LEN_OFFSET,
+    VEC_PTR_OFFSET,
+};
 use std::collections::HashMap;
 
 type Vs = Vec<Value>;
@@ -2640,6 +2643,18 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         let ret_ty = def.ret;
         let _ = f;
+        if def.name == "msrt_strbuilder_append"
+            && args.len() == 2
+            && self.g.lay.leaves(ret_ty).is_empty()
+        {
+            return self.strbuilder_append(id, args[0], args[1]);
+        }
+        if def.name == "msrt_bytes_append"
+            && args.len() == 2
+            && self.g.lay.leaves(ret_ty).is_empty()
+        {
+            return self.bytes_append(id, args[0], args[1]);
+        }
         if Self::passes_directly(&self.g.lay, ret_ty) {
             self.call_id(id, &args)
         } else {
@@ -2664,6 +2679,96 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             self.load_leaves(out, 0, &leaves)
         }
+    }
+
+    /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length
+    /// bump; everything else (longer text, a full buffer) calls the runtime. This is the same
+    /// test the runtime makes first, so the common character-at-a-time append needs no call.
+    fn strbuilder_append(&mut self, id: FuncId, builder: Value, text: Value) -> Vs {
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_LEN_OFFSET as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
+        let size = self
+            .b
+            .ins()
+            .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
+        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
+        let fast = self.b.ins().band(single, room);
+        let store = self.b.create_block();
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        self.b.ins().brif(fast, store, &[], slow, &[]);
+        self.b.switch_to_block(store);
+        let bytes = self
+            .b
+            .ins()
+            .load(types::I64, flags(), text, STR_PTR_OFFSET as i32);
+        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
+        let data = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
+        let at = self.b.ins().iadd(data, len);
+        self.b.ins().store(flags(), byte, at, 0);
+        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b
+            .ins()
+            .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(slow);
+        self.call_id(id, &[builder, text]);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(join);
+        Vec::new()
+    }
+
+    /// `BytesBuilder.append` of a byte value with room to spare is a store and a length bump;
+    /// an out-of-range value (which faults) or a full buffer calls the runtime.
+    fn bytes_append(&mut self, id: FuncId, builder: Value, value: Value) -> Vs {
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_LEN_OFFSET as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
+        let byte = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::UnsignedLessThanOrEqual, value, 255);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
+        let fast = self.b.ins().band(byte, room);
+        let store = self.b.create_block();
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        self.b.ins().brif(fast, store, &[], slow, &[]);
+        self.b.switch_to_block(store);
+        let data = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
+        let at = self.b.ins().iadd(data, len);
+        let narrow = self.b.ins().ireduce(types::I8, value);
+        self.b.ins().store(flags(), narrow, at, 0);
+        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b
+            .ins()
+            .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(slow);
+        self.call_id(id, &[builder, value]);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(join);
+        Vec::new()
     }
 
     fn passes_directly(lay: &crate::layout::Layouts, t: Ty) -> bool {

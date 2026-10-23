@@ -83,10 +83,12 @@ test "List parity operations support generic and bound use":
 
     var values = [1, 2]
     let insert = values.insert
-    let pop: fn() Optional[Int] = values.pop
-    let count = values.count
     insert(2, 3)
-    try expect_false(pop() != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
+
+    let pop: fn() Optional[Int] = values.pop
+    let popped = pop()
+    let count = values.count
+    try expect_false(popped != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []

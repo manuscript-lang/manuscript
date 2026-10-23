@@ -1,0 +1,33 @@
+name: Native toolchain
+description: Fetch the pinned lld, and on Windows llvm-mingw, that ms links programs with.
+
+inputs:
+  os:
+    description: Target os (linux, darwin or windows).
+    required: true
+  arch:
+    description: Target arch (amd64 or arm64).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # `ms` embeds a pinned static lld to link programs (crates/ms-linker/build.rs reads MS_LLD). It is
+    # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
+    - name: Fetch bundled lld
+      shell: bash
+      run: |
+        dest="$RUNNER_TEMP/llvm-bundle/install"
+        if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
+        sh scripts/fetch-lld.sh "${{ inputs.os }}" "${{ inputs.arch }}" "$dest"
+        if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
+        else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
+    # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
+    # with its clang (scripts/fetch-mingw.sh).
+    - name: Fetch llvm-mingw
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
+        echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
+        rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"

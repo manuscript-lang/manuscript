@@ -88,6 +88,9 @@ pub(crate) struct FnLower<'a> {
     pub slotted: HashSet<usize>,
     /// Values that are views into another string: no drop, and an immutable `let` may hold one.
     pub views: HashSet<Value>,
+    /// The module whose local implementations the expression being lowered uses, when it
+    /// is the evidence of an enclosing generic instance's caller rather than this module.
+    pub scope_override: Option<ct::Name>,
 }
 
 impl Cx {
@@ -266,7 +269,7 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
         JobKind::Format(t, repr) => {
             return crate::text::build_format(cx, m, job.func, *t, *repr);
         }
-        JobKind::Equal(t) => return crate::eq::build_eq(cx, m, job.func, *t),
+        JobKind::Equal(t, scope) => return crate::eq::build_eq(cx, m, job.func, *t, *scope),
         JobKind::HandleMethod(j) => {
             return crate::natiface::build_method(cx, m, job.func, j);
         }
@@ -329,6 +332,7 @@ impl<'a> FnLower<'a> {
             split_iter_for: None,
             chars_iter_for: None,
             aliases: HashMap::new(),
+            scope_override: None,
         }
     }
 

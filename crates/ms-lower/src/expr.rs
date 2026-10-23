@@ -42,7 +42,11 @@ impl<'a> FnLower<'a> {
         match self.hir.info(e).error_source {
             Some(src) if !self.dead => {
                 let want = self.emty(e)?;
-                self.fit_ty(x, &ct::sub(&src, &self.subst), want)
+                let saved = self.scope_override;
+                self.scope_override = self.evidence_of(std::slice::from_ref(&src));
+                let out = self.fit_ty(x, &ct::sub(&src, &self.subst), want);
+                self.scope_override = saved;
+                out
             }
             _ => Ok(x),
         }
@@ -424,7 +428,11 @@ impl<'a> FnLower<'a> {
                 self.arithmetic(op, t, l, r)?
             }
             BinaryOp::Eq | BinaryOp::Ne => {
-                let eq = self.equal(t, l, r)?;
+                let saved = self.scope_override;
+                self.scope_override = self.evidence_of(&[self.hir.ty(left)]);
+                let eq = self.equal(t, l, r);
+                self.scope_override = saved;
+                let eq = eq?;
                 if op == BinaryOp::Ne {
                     self.b.unop(Op::Not, eq)
                 } else {
@@ -551,7 +559,8 @@ impl<'a> FnLower<'a> {
     /// Structural equality of two operands of the same type.
     pub fn equal(&mut self, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
         let (a, b) = (self.borrow(l), self.borrow(r));
-        crate::eq::element_eq(self.cx, &mut self.b, t, a, b)
+        let scope = self.glue_scope(t);
+        crate::eq::element_eq(self.cx, &mut self.b, scope, t, a, b)
     }
 
     fn short_circuit(&mut self, op: BinaryOp, left: &Expr, right: &Expr) -> Result<Val, Error> {

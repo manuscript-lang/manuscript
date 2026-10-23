@@ -64,7 +64,7 @@ export fn first_resource(resource: Resource) Closeable:
     return Closeable(resource)
 
 test "first local cleanup":
-    let events = ListBuilder[Int]()
+    var events = ListBuilder[Int]()
     leave(Resource(events))
     events.freeze().get(index: 0) | try expect_equal(10)
 

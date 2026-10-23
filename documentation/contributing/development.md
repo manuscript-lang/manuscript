@@ -29,7 +29,7 @@ Complete validation:
 make verify-full
 ```
 
-It adds `make conform` (the conformance corpus), `make book-check`, and `make dist-check` (package the binary and run the archive on the hello example). Set `HUGO=/path/to/hugo` if it is not on PATH.
+It adds `make conform` (the conformance corpus), `make e2e` (every `tests/e2e/testdata` fixture), `make book-check`, and `make dist-check` (package the binary and run the archive on the hello example). Set `HUGO=/path/to/hugo` if it is not on PATH.
 
 ## Conformance
 

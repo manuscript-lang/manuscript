@@ -1,5 +1,5 @@
 import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import TextError from "@std/core.ms"
+import {TextError, panic} from "@std/core.ms"
 import {category, ErrorCategory} from "@std/core.ms"
 import {FileSystemError} from "@std/fs.ms"
 import {SystemError} from "@std/process.ms"
@@ -17,7 +17,6 @@ import {SseError} from "@std/sse.ms"
 import {range_by} from "@std/collections.ms"
 
 type CustomError:
-    calls: Int
     message: String
 
 type PathError:
@@ -28,8 +27,8 @@ impl Error for PathError:
         return "path: invalid input"
 
 impl Error for CustomError:
-    var fn message() String:
-        self.calls = self.calls + 1
+    fn message() String:
+        panic("classification must not call user code")
         return self.message
 
 fn is_missing(cause: Error) Bool:
@@ -106,10 +105,8 @@ test "timeout classification keeps timeout spelling out of generic handling":
         query(cause) | try expect_equal(some(ErrorCategory.Timeout))
 
 test "classification does not parse messages invoke user code or guess domain-specific cases":
-    let custom = CustomError(
-        calls: 0, message: "filesystem: file or directory not found"
-    )
-    (category(custom).is_some() or custom.calls != 0) | try expect_false
+    let custom = CustomError(message: "filesystem: file or directory not found")
+    category(custom).is_some() | try expect_false
     category(PathError.InvalidInput).is_some() | try expect_false
 
     let causes: List[Error] = [

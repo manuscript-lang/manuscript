@@ -35,7 +35,7 @@ selection (run, record, diff, list, stats):
   --phase P[,P]       parse, check, run or test
   --id TEXT           only fixtures whose id contains TEXT
   --shard I/N         every Nth fixture starting at I (0-based) for parallel CI jobs
-  --jobs N            parallel fixtures (default: half the cores)
+  --jobs N            parallel fixtures (default: every core)
   --timeout-scale F   multiply every timeout
 
 run options:

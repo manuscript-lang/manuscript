@@ -97,30 +97,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: taiki-e/install-action@v2
+      - id: sccache
+        uses: ./.github/actions/sccache
         with:
-          tool: sccache
+          prefix: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-
       - name: Keep native test artifacts in runner storage
         run: |
-          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
+          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
         with:
           arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
-      # The key hashes only Cargo.lock and the toolchain. One entry per platform and lockfile, saved
-      # on main; a fallback restore from an older lockfile is fine because sccache entries are
-      # content-addressed.
-      - name: Restore cargo cache
-        id: cargo-cache
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            ${{ runner.temp }}/sccache
-          key: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-
       - uses: taiki-e/install-action@v2
         if: matrix.full || matrix.tests
         with:
@@ -150,23 +137,10 @@ jobs:
           else
             cc --version
           fi
-      # `ms` embeds a pinned static lld to link programs (crates/ms-linker/build.rs reads MS_LLD). It is
-      # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
-      - name: Fetch bundled lld
-        run: |
-          dest="$RUNNER_TEMP/llvm-bundle/install"
-          if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
-          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$dest"
-          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
-          else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
-      # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
-      # with its clang (scripts/fetch-mingw.sh).
-      - name: Fetch llvm-mingw
-        if: runner.os == 'Windows'
-        run: |
-          mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
-          echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
-          rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
       # Runner images often ship the LLVM tools already; install only when they are missing.
       - name: Install LLVM native debug consumers
         run: |
@@ -294,6 +268,9 @@ jobs:
       - name: Rust ms replays the corpus
         if: matrix.corpus
         run: sh scripts/conform.sh
+      - name: Rust ms runs the e2e fixtures
+        if: matrix.corpus
+        run: sh scripts/e2e.sh
       - name: Package and run the distribution on a hello project
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
@@ -317,16 +294,10 @@ jobs:
       - name: sccache statistics
         if: always()
         run: sccache --show-stats
-      - name: Save cargo cache
-        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+      - uses: ./.github/actions/sccache-save
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            ${{ runner.temp }}/sccache
-          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
       - name: Preserve test artifacts
         if: always()
         uses: actions/upload-artifact@v7
@@ -364,23 +335,17 @@ jobs:
     name: Build design book
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 1G
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
-      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
-      - name: Restore cargo cache
-        id: cargo-cache
-        uses: actions/cache/restore@v6
+      - id: sccache
+        uses: ./.github/actions/sccache
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: cargo-rust-docs-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: cargo-rust-docs-
+          prefix: cargo-sccache-docs-
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
@@ -394,16 +359,10 @@ jobs:
           make book-check
           make book
           node --test tests/docs/publication.test.cjs
-      - name: Save cargo cache
-        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+      - uses: ./.github/actions/sccache-save
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: .artifacts/book

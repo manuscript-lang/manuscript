@@ -522,19 +522,18 @@ mod tests {
     /// applied and symbols placed the way the linker would.
     #[test]
     fn tables_agree_across_object_formats() {
-        let Some(elf) = lines_for("x86_64-unknown-linux-gnu") else {
+        // The bundled tools only carry the backend of the machine they run on.
+        let arch = std::env::consts::ARCH;
+        let Some(elf) = lines_for(&format!("{arch}-unknown-linux-gnu")) else {
             return;
         };
         assert!(elf.0.contains(&4) && elf.0.contains(&21), "{:?}", elf.0);
         assert!(elf.1 > 0, "inlined scopes");
         for triple in [
-            "x86_64-apple-darwin",
-            "aarch64-apple-darwin",
-            "x86_64-w64-windows-gnu",
-            "aarch64-w64-windows-gnu",
-            "aarch64-unknown-linux-gnu",
+            format!("{arch}-apple-darwin"),
+            format!("{arch}-w64-windows-gnu"),
         ] {
-            let got = lines_for(triple).unwrap();
+            let got = lines_for(&triple).unwrap();
             assert_eq!(got.0, elf.0, "{triple}: lines");
             assert_eq!(got.1, elf.1, "{triple}: scopes");
         }

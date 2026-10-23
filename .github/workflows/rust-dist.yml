@@ -31,60 +31,35 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 2G
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - id: sccache
+        uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-dist-${{ matrix.os }}-${{ matrix.arch }}-
       - name: Check release tag version
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
-      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
-      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
-      - name: Restore cargo cache
-        id: cargo-cache
-        uses: actions/cache/restore@v6
+      - uses: ./.github/actions/native-toolchain
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: cargo-rust-dist-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: cargo-rust-dist-${{ matrix.os }}-${{ matrix.arch }}-
-      # `ms` embeds a pinned static lld to link programs (crates/ms-linker/build.rs reads MS_LLD). It is
-      # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
-      - name: Fetch bundled lld
-        run: |
-          dest="$RUNNER_TEMP/llvm-bundle/install"
-          if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
-          sh scripts/fetch-lld.sh "${{ matrix.os }}" "${{ matrix.arch }}" "$dest"
-          if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
-          else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
-      # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
-      # with its clang (scripts/fetch-mingw.sh).
-      - name: Fetch llvm-mingw
-        if: runner.os == 'Windows'
-        run: |
-          mingw="$(MINGW_WORK="$RUNNER_TEMP/llvm-mingw" sh scripts/fetch-mingw.sh | tail -n 1)"
-          echo "MS_MINGW=$(cygpath -w "$mingw")" >> "$GITHUB_ENV"
-          rustup target add "$(rustc -vV | sed -n 's/^host: //p' | sed 's/msvc/gnullvm/')"
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
       - name: Build and package
         run: sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"
-      - name: Trim cargo cache
-        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
-        run: sh scripts/trim-cargo-cache.sh
-      - name: Save cargo cache
-        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+      - name: sccache statistics
+        if: always()
+        run: sccache --show-stats
+      - uses: ./.github/actions/sccache-save
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+          cache-hit: ${{ steps.sccache.outputs.cache-hit }}
+          primary-key: ${{ steps.sccache.outputs.primary-key }}
       - name: Run the packaged binary on a hello project
         run: |
           set -eu

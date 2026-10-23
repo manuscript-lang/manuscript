@@ -174,7 +174,8 @@ impl FnLower<'_> {
             }
             "expect_equal" | "expect_not_equal" => {
                 let t = self.ty_of(vals[0]);
-                let eq = crate::eq::element_eq(self.cx, &mut self.b, t, vals[0], vals[1])?;
+                let scope = self.glue_scope(t);
+                let eq = crate::eq::element_eq(self.cx, &mut self.b, scope, t, vals[0], vals[1])?;
                 let eq = if name == "expect_equal" {
                     eq
                 } else {

@@ -19,7 +19,7 @@ test "int map":
 
     var total = 0
 
-    for entry in m:
+    for entry in m.clone():
         m.add(key: 10 + total, value: "x")
         total = total + 1
 

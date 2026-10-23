@@ -108,12 +108,12 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             try handle.write_at(4, "ZZ")
             try expect_equal((try handle.seek(0, 1)), 2)
 
-            let writer = handle.writer()
+            var writer = handle.writer()
             try writer.write("AB")
             try writer.flush()
             try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
 
-            let reader = handle.reader()
+            var reader = handle.reader()
             writer.close()
 
             let closed_read: Result[Bytes, FileSystemError] = error(

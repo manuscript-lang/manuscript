@@ -492,7 +492,7 @@ impl<'a> FnLower<'a> {
 
     /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
     fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
+        use ms_mir::ir::Cc;
         // The list lives in a variable so the loop and the branches may read it.
         let list = self.borrow(args[0].val);
         let lt = self.ty_of(list);
@@ -505,35 +505,21 @@ impl<'a> FnLower<'a> {
         let n = self.b.list_len(list);
         let (zero, one) = (self.b.iconst(0), self.b.iconst(1));
         let best = self.b.declare_var(MTy::INT, Mode::Borrow);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
         self.b.def_var(best, zero);
-        self.b.def_var(i, one);
-        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(head, &[]);
-        self.b.switch_to(head);
-        let iv = self.b.use_var(i);
-        let more = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(more, body, &[], exit, &[]);
-        self.b.seal_block(body);
-        self.b.switch_to(body);
-        let iv = self.b.use_var(i);
-        let bv = self.b.use_var(best);
-        let l = self.b.use_var(lvar);
-        let cur = self.b.list_get(l, iv);
-        let held = self.b.list_get(l, bv);
-        let above = if max {
-            self.strictly_above(cur, held)?
-        } else {
-            self.strictly_above(held, cur)?
-        };
-        let pick = self.b.select(above, iv, bv);
-        self.b.def_var(best, pick);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(head, &[]);
-        self.b.seal_block(head);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.counted_loop(one, n, &mut |s, iv| {
+            let bv = s.b.use_var(best);
+            let l = s.b.use_var(lvar);
+            let cur = s.b.list_get(l, iv);
+            let held = s.b.list_get(l, bv);
+            let above = if max {
+                s.strictly_above(cur, held)?
+            } else {
+                s.strictly_above(held, cur)?
+            };
+            let pick = s.b.select(above, iv, bv);
+            s.b.def_var(best, pick);
+            Ok(())
+        })?;
         let empty = self.b.icmp(Cc::Eq, n, zero);
         let TyKind::Opt(elem) = self.b.m.types.kind(result).clone() else {
             return Err(Error::new("max_of and min_of return an Optional"));
@@ -2178,6 +2164,36 @@ impl<'a> FnLower<'a> {
             .declare_var(t, if owned { Mode::Own } else { Mode::Borrow })
     }
 
+    /// Runs `body(i)` for `i` in `from..n`; `from` and `n` are `Int` values.
+    pub(crate) fn counted_loop(
+        &mut self,
+        from: Value,
+        n: Value,
+        body: &mut dyn FnMut(&mut Self, Value) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
+        self.b.def_var(idx, from);
+        let (head, step, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(head, &[]);
+        self.b.switch_to(head);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(ms_mir::ir::Cc::Lt, i, n);
+        self.b.br_if(more, step, &[], exit, &[]);
+        self.b.seal_block(step);
+        self.b.switch_to(step);
+        let i = self.b.use_var(idx);
+        body(self, i)?;
+        let one = self.b.iconst(1);
+        let i = self.b.use_var(idx);
+        let next = self.b.binop(ms_mir::ir::Op::IAdd, i, one);
+        self.b.def_var(idx, next);
+        self.b.br(head, &[]);
+        self.b.seal_block(head);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        Ok(())
+    }
+
     /// Visits each element with `body(index, element)`; a returned condition leaves the loop when true.
     pub(crate) fn each_element(
         &mut self,
@@ -2317,8 +2333,10 @@ impl<'a> FnLower<'a> {
                     // The lookup only reads the key, so it lends the key itself.
                     let kslot = s.lend_slot(k);
                     let m = s.b.use_var(acc);
-                    let found =
-                        s.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+                    let sym = s
+                        .word_map_symbol("msrt_map_get_ptr", out)
+                        .unwrap_or("msrt_map_get_ptr");
+                    let found = s.call_runtime(sym, &[m, kd, vd, kslot], MTy::PTR)?;
                     let missing =
                         s.b.emit(
                             ms_mir::ir::Op::PtrIsNull,
@@ -2606,12 +2624,13 @@ impl<'a> FnLower<'a> {
 
     /// The runtime descriptor of a type.
     pub fn type_desc(&mut self, t: MTy) -> Value {
-        self.cx.ensure_glue(self.b.m, t);
+        let scope = self.glue_scope(t);
+        self.cx.ensure_glue(self.b.m, t, scope);
         self.b
             .emit(
                 ms_mir::ir::Op::TypeDesc,
                 &[],
-                ms_mir::ir::Imm::Ty(t),
+                ms_mir::ir::Imm::Ty(t.scoped(scope)),
                 Some(MTy::PTR),
             )
             .expect("typedesc")

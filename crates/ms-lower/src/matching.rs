@@ -254,7 +254,9 @@ impl FnLower<'_> {
                 return Ok(());
             };
             let concrete = ms_check::types::sub(&concrete, &self.subst);
-            let vt = self.cx.vtable_id(self.b.m, &concrete, iface)?;
+            let vt = self
+                .cx
+                .vtable_id(self.b.m, &concrete, iface, self.evidence())?;
             let hit = self
                 .b
                 .emit(

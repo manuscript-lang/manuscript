@@ -770,7 +770,7 @@ impl Loader<'_> {
                 self.c.scope = self.c.variable_scope(&vars);
                 for (i, p) in d.type_params().iter().enumerate() {
                     for bound in &p.bounds {
-                        let t = self.c.resolve(Some(bound), true);
+                        let t = self.c.resolve(Some(bound));
                         vars[i].bounds.borrow_mut().push(t);
                     }
                 }
@@ -823,7 +823,7 @@ impl Loader<'_> {
                     }
                     for (i, param) in method.func.type_params.iter().enumerate() {
                         for bound in &param.bounds {
-                            let t = self.c.resolve(Some(bound), true);
+                            let t = self.c.resolve(Some(bound));
                             variables[i].bounds.borrow_mut().push(t);
                         }
                     }

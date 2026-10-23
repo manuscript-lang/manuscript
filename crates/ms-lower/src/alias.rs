@@ -252,7 +252,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The type of a map's values.
-    fn map_value_type(&self, map: Value) -> Result<MTy, Error> {
+    pub(crate) fn map_value_type(&self, map: Value) -> Result<MTy, Error> {
         match self.b.m.types.kind(self.ty_of(map)).clone() {
             TyKind::Obj(_, a) if a.len() == 2 => Ok(a[1]),
             _ => Err(Error::new("a keyed borrow needs a map")),
@@ -267,6 +267,9 @@ impl<'a> FnLower<'a> {
         let k = self.b.use_var(key);
         // The lookup only reads the key, so it lends the key itself.
         let kslot = self.lend_slot(k);
-        self.call_runtime("msrt_map_get_ptr", &[map, kd, vd, kslot], MTy::PTR)
+        let sym = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        self.call_runtime(sym, &[map, kd, vd, kslot], MTy::PTR)
     }
 }

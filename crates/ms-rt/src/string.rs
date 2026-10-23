@@ -528,7 +528,14 @@ pub fn hash_bytes(b: &[u8]) -> u64 {
     } else {
         0
     };
-    mix(fold(h ^ tail, K0))
+    fold(h ^ tail, K0)
+}
+
+/// Hash of an `Int` key: one widening multiply folded to 64 bits.
+#[inline(always)]
+pub fn hash_int(x: u64) -> u64 {
+    let m = u128::from(x ^ 0x9e37_79b9_7f4a_7c15) * 0xff51_afd7_ed55_8ccd;
+    (m as u64) ^ ((m >> 64) as u64)
 }
 
 #[inline]
@@ -558,30 +565,10 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     memchr::memmem::find(hay, needle)
 }
 
-/// First index of `c` in `hay`, 16 bytes at a time where SSE2 is available.
+/// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
+#[inline]
 fn memchr(c: u8, hay: &[u8]) -> Option<usize> {
-    #[cfg(target_arch = "x86_64")]
-    {
-        use core::arch::x86_64::*;
-        let mut i = 0;
-        // SAFETY: SSE2 is part of the x86_64 baseline; every load stays inside `hay`.
-        unsafe {
-            let needle = _mm_set1_epi8(c as i8);
-            while i + 16 <= hay.len() {
-                let chunk = _mm_loadu_si128(hay.as_ptr().add(i) as *const __m128i);
-                let mask = _mm_movemask_epi8(_mm_cmpeq_epi8(chunk, needle)) as u32;
-                if mask != 0 {
-                    return Some(i + mask.trailing_zeros() as usize);
-                }
-                i += 16;
-            }
-        }
-        hay[i..].iter().position(|&b| b == c).map(|j| i + j)
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        hay.iter().position(|&b| b == c)
-    }
+    memchr::memchr(c, hay)
 }
 
 /// Last occurrence of `needle` in `hay` (empty matches at `hay.len()`).
@@ -682,6 +669,77 @@ unsafe fn msrt_string_concat_val(a: *const StrVal, b: *const StrVal) -> StrVal {
         core::ptr::copy_nonoverlapping(bytes(b).as_ptr(), s.ptr.add(la), lb);
         s
     }
+}
+
+/// Joins `parts` into one string with a single allocation (what a chain of `concat` calls
+/// would build with one allocation per link).
+unsafe fn concat_parts(parts: &[*const StrVal]) -> StrVal {
+    // SAFETY: caller passes live strings.
+    unsafe {
+        let total: usize = parts.iter().map(|&p| (*p).len).sum();
+        let s = alloc_str(total);
+        let mut dst = s.ptr;
+        for &p in parts {
+            let b = bytes(p);
+            core::ptr::copy_nonoverlapping(b.as_ptr(), dst, b.len());
+            dst = dst.add(b.len());
+        }
+        s
+    }
+}
+
+/// `a + b + c` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat3(
+    a: *const StrVal,
+    b: *const StrVal,
+    c: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { concat_parts(&[a, b, c]).write_to(out) }
+}
+
+/// `a + b + c + d` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat4(
+    a: *const StrVal,
+    b: *const StrVal,
+    c: *const StrVal,
+    d: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { concat_parts(&[a, b, c, d]).write_to(out) }
+}
+
+/// `a + b + c + d + e` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat5(
+    a: *const StrVal,
+    b: *const StrVal,
+    c: *const StrVal,
+    d: *const StrVal,
+    e: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { concat_parts(&[a, b, c, d, e]).write_to(out) }
+}
+
+/// `a + b + c + d + e + f` with one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_concat6(
+    a: *const StrVal,
+    b: *const StrVal,
+    c: *const StrVal,
+    d: *const StrVal,
+    e: *const StrVal,
+    f: *const StrVal,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { concat_parts(&[a, b, c, d, e, f]).write_to(out) }
 }
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
@@ -1029,7 +1087,8 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
 fn count_matches(text: &[u8], old: &[u8]) -> usize {
     let mut n = 0;
     let mut i = 0;
-    while let Some(p) = find(&text[i..], old) {
+    let f = memchr::memmem::Finder::new(old);
+    while let Some(p) = f.find(&text[i..]) {
         n += 1;
         i += p + old.len();
     }
@@ -1100,6 +1159,10 @@ unsafe fn replace_limited(
         if o.is_empty() {
             return from_buf(replace_n_bytes(text, o, bytes(new), n));
         }
+        if n == 0 || find(text, o).is_none() {
+            // Nothing to replace: share the unchanged input.
+            return cloned(&*s);
+        }
         replace_into_str(text, o, bytes(new), n)
     }
 }
@@ -1109,8 +1172,9 @@ unsafe fn replace_limited(
 fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> StrVal {
     let mut matches = 0usize;
     let mut i = 0;
+    let f = memchr::memmem::Finder::new(old);
     while (matches as i64) < n {
-        match find(&text[i..], old) {
+        match f.find(&text[i..]) {
             None => break,
             Some(p) => {
                 i += p + old.len();
@@ -1137,8 +1201,9 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
     unsafe {
         let mut dst = out.ptr;
         let mut i = 0;
+        let f = memchr::memmem::Finder::new(old);
         for _ in 0..matches {
-            let p = find(&text[i..], old).unwrap_or(0);
+            let p = f.find(&text[i..]).unwrap_or(0);
             core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
             dst = dst.add(p);
             core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
@@ -1249,7 +1314,10 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        *out = if o.is_empty() {
+        *out = if count == 0 {
+            // Nothing to replace: share the unchanged input.
+            cloned(&*s)
+        } else if o.is_empty() {
             from_buf(replace_n_bytes(text, o, n, -1))
         } else {
             fill_replaced(text, o, n, count)
@@ -2018,6 +2086,46 @@ pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn concat_parts_joins_and_skips_empties() {
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            let a = from_bytes(b"ab");
+            let e = empty();
+            let c = from_bytes("cé".as_bytes());
+            let d = from_bytes(b"xyz");
+            let mut j = empty();
+            msrt_string_concat4(&a, &e, &c, &d, &mut j);
+            assert_eq!(bytes(&j), "abcéxyz".as_bytes());
+            let mut one = empty();
+            msrt_string_concat3(&e, &d, &e, &mut one);
+            assert_eq!(bytes(&one), b"xyz");
+            let mut none = d.alias();
+            msrt_string_concat3(&e, &e, &e, &mut none);
+            assert_eq!(none.len, 0);
+        }
+    }
+
+    #[test]
+    fn bytes_eq_matches_slice_equality() {
+        let _g = crate::testutil::lock();
+        unsafe {
+            for len in 0..40usize {
+                let base: Vec<u8> = (0..len).map(|i| b'a' + (i % 7) as u8).collect();
+                let a = from_bytes(&base);
+                assert!(equal(&a, &from_bytes(&base)), "equal at len {len}");
+                for at in 0..len {
+                    let mut other = base.clone();
+                    other[at] ^= 1;
+                    assert!(!equal(&a, &from_bytes(&other)), "byte {at} of {len}");
+                }
+                let mut longer = base.clone();
+                longer.push(b'z');
+                assert!(!equal(&a, &from_bytes(&longer)));
+            }
+        }
+    }
 
     #[test]
     fn hash_bytes_separates_lengths_and_contents() {

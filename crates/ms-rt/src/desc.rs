@@ -272,7 +272,7 @@ pub unsafe fn slot_hash(d: &TypeDesc, slot: *const u8) -> u64 {
     // SAFETY: per the contract of each kind.
     unsafe {
         match d.kind {
-            KIND_INT => string::mix(*(slot as *const u64) ^ 0x9e37_79b9),
+            KIND_INT => string::hash_int(*(slot as *const u64)),
             KIND_BOOL => string::mix(*slot as u64 + 1),
             KIND_STRING => string::hash_bytes(string::bytes(slot as *const StrVal)),
             KIND_BYTES => {

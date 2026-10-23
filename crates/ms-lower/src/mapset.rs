@@ -255,77 +255,152 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// `m.get(key).get()` on a map whose values own memory: the value is read in place and lent,
-    /// so a lookup copies nothing; whoever keeps it copies it (a `let` borrows it). `None`
-    /// leaves any other shape to the ordinary path.
-    pub(crate) fn lent_map_get(
+    /// `m.get(key).get()`, `.get(default)`, `.is_some()` and `.is_none()` read the entry in place:
+    /// `get` borrows its result, so the value is copied only when something keeps it (and `get`
+    /// with a default copies on a hit). `None` leaves any other shape to the ordinary path.
+    pub(crate) fn map_get_chain(
         &mut self,
         e: &Expr,
         view: &CallView<'_>,
         recv_expr: &Expr,
+        name: &str,
     ) -> Result<Option<Val>, Error> {
-        if !view.arguments.is_empty() {
+        if !matches!(name, "get" | "is_some" | "is_none") || !self.ety(recv_expr).is_std("Optional")
+        {
             return Ok(None);
         }
         let ExprKind::Call { callee, args } = &recv_expr.kind else {
             return Ok(None);
         };
-        let ExprKind::Member {
-            left: map_expr,
-            name,
-        } = &callee.kind
-        else {
+        let ExprKind::Member { left: map, name: n } = &callee.kind else {
             return Ok(None);
         };
-        let [k] = args.as_slice() else {
+        let [key] = args.as_slice() else {
             return Ok(None);
         };
-        if name.as_str() != "get"
-            || k.name.is_some_and(|n| n.as_str() != "key")
-            || !self.ety(map_expr).is_std("Map")
-            || !self.ety(recv_expr).is_std("Optional")
-        {
+        if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is_std("Map") {
             return Ok(None);
         }
-        let value_ty = self.emty(e)?;
-        if !self.needs_drop(value_ty) {
+        // A key the checker converts on the way in (an `Optional` key given a plain value) takes
+        // the ordinary call, which applies the conversion.
+        let map_ty = self.emty(map)?;
+        let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
+            return Ok(None);
+        };
+        let key_ty = self.emty(&key.value)?;
+        if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
-        let map = self.expr(map_expr)?;
+        let mv = self.expr(map)?;
         if self.dead {
-            return Ok(Some(map));
+            return Ok(Some(mv));
         }
-        let key = self.expr(&k.value)?;
+        let mv = self.borrow(mv);
+        let kv = self.expr(&key.value)?;
         if self.dead {
-            return Ok(Some(key));
+            return Ok(Some(kv));
         }
-        let (m, kv) = (self.borrow(map), self.borrow(key));
-        let mt = self.ty_of(m);
+        let kv = self.borrow(kv);
+        let default = if view.arguments.is_empty() {
+            None
+        } else {
+            self.native_args(view)?.first().copied()
+        };
+        if self.dead {
+            return Ok(Some(Val { v: mv, own: false }));
+        }
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
         let (kd, vd) = self.map_descs(mt)?;
-        let vd = vd.ok_or_else(|| Error::new("get without a value type"))?;
-        let kslot = self.lend_slot(kv);
-        let found = self.call_runtime("msrt_map_get_ptr", &[m, kd, vd, kslot], MTy::PTR)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
         let missing = self
             .b
-            .emit(Op::PtrIsNull, &[found], Imm::None, Some(MTy::BOOL))
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
             .expect("is_null");
-        let (bad, good) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(missing, bad, &[], good, &[]);
-        self.b.seal_block(bad);
-        self.b.seal_block(good);
-        self.b.switch_to(bad);
-        self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
-        self.b.switch_to(good);
-        let v = self
-            .b
-            .emit(Op::Load, &[found], Imm::Ty(value_ty), Some(value_ty))
-            .expect("load");
-        Ok(Some(Val { v, own: false }))
+        let load = |s: &mut Self| {
+            s.b.emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+                .expect("load")
+        };
+        match name {
+            "is_some" | "is_none" => {
+                let v = if name == "is_none" {
+                    missing
+                } else {
+                    self.b.unop(Op::Not, missing)
+                };
+                Ok(Some(Val { v, own: false }))
+            }
+            _ => match default {
+                None => {
+                    let (bad, good) = (self.b.new_block(), self.b.new_block());
+                    self.b.br_if(missing, bad, &[], good, &[]);
+                    self.b.seal_block(bad);
+                    self.b.seal_block(good);
+                    self.b.switch_to(bad);
+                    self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+                    self.b.switch_to(good);
+                    Ok(Some(Val {
+                        v: load(self),
+                        own: false,
+                    }))
+                }
+                Some(d) => {
+                    let out = self.two_ways(
+                        missing,
+                        value_ty,
+                        &mut |s| {
+                            let v = if d.wrapped {
+                                s.owned(d.val)
+                            } else {
+                                let x = s.b.opt_unwrap(d.val.v);
+                                s.finish(d.val);
+                                x
+                            };
+                            Ok(Some(v))
+                        },
+                        &mut |s| {
+                            let hit = load(s);
+                            let hit = s.owned(Val { v: hit, own: false });
+                            s.finish(d.val);
+                            Ok(Some(hit))
+                        },
+                    )?;
+                    Ok(Some(out))
+                }
+            },
+        }
     }
 
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
-        self.call_runtime("msrt_map_new", &[], ty)
+        let v = self.call_runtime("msrt_map_new", &[], ty)?;
+        self.stamped(v)
+    }
+
+    /// A map or set that keeps the `Equal` and `Hashable` of the module that makes it, when its
+    /// key type has local extensions; any other value is returned unchanged.
+    pub(crate) fn stamped(&mut self, v: Value) -> Result<Value, Error> {
+        let t = self.ty_of(v);
+        let TyKind::Obj(n, args) = self.b.m.types.kind(t).clone() else {
+            return Ok(v);
+        };
+        if (n != "Map" && n != "Set") || !self.cx.holds_extension(self.b.m, args[0]) {
+            return Ok(v);
+        }
+        let kd = self.type_desc(args[0]);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Put, &[slot, v], Imm::None, None);
+        self.call_runtime("msrt_map_stamp", &[slot, kd], MTy::UNIT)?;
+        Ok(self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
+            .expect("take"))
     }
 
     /// `Set(values)`: the set of a list's elements.
@@ -336,6 +411,7 @@ impl<'a> FnLower<'a> {
         let d = self.type_desc(a[0]);
         let l = self.borrow(list);
         let out = self.call_runtime("msrt_list_to_set", &[l, d], ty)?;
+        let out = self.stamped(out)?;
         Ok(Val { v: out, own: true })
     }
 

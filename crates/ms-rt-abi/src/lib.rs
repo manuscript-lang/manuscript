@@ -152,9 +152,11 @@ pub struct MapVal {
     pub cap: usize,
     /// Index size minus one (0 when there is no index).
     pub mask: usize,
+    /// The key descriptor the map was created with, or null to use the caller's.
+    pub desc: *const TypeDesc,
 }
 pub const MAP_LEN_OFFSET: usize = 16;
-pub const MAP_SIZE: usize = 48;
+pub const MAP_SIZE: usize = 56;
 
 // ---------------------------------------------------------------------------
 // Type descriptors

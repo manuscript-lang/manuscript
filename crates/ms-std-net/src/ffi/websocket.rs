@@ -5,7 +5,8 @@ use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
-use ms_std_core::{ErrOut, ObjRef, Object, OptInt, Out, StatusCode, abi_record, native};
+use ms_rt_abi::STATUS_NONE;
+use ms_std_core::{Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, abi_record, native};
 
 abi_record! {
     /// `WebSocketOptions` as the compiler lays it out for natives.
@@ -14,6 +15,14 @@ abi_record! {
         pub timeout: OptInt,
         pub tls: TlsOptionsWire,
         pub compression: u8,
+    }
+}
+
+abi_record! {
+    /// `WebSocketMessage` at its natural layout.
+    pub struct WebSocketMessageRec {
+        pub data: Bytes,
+        pub text: u8,
     }
 }
 
@@ -142,21 +151,18 @@ native! {
         report(s.send(data, text, None), &err)
     }
 
-    /// `WebSocket.receive()`: `present` is false once the peer has closed.
+    /// `WebSocket.receive()`; the peer's normal close is `STATUS_NONE`.
     fn msrt_websocket_receive(
         s: ObjRef<SocketH>,
-        data: Out<Vec<u8>>,
-        text: Out<bool>,
-        present: Out<bool>,
+        out: Out<WebSocketMessageRec>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         match report(s.receive(None), &err)? {
-            Some(m) => {
-                present.write(true);
-                text.write(m.text);
-                data.write(m.data);
-            }
-            None => present.write(false),
+            Some(m) => out.write(WebSocketMessageRec {
+                data: Bytes::new(&m.data),
+                text: u8::from(m.text),
+            }),
+            None => return Err(StatusCode(STATUS_NONE)),
         }
         Ok(())
     }

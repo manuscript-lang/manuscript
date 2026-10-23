@@ -35,12 +35,11 @@ fn consume[T: ReadValue[Int]](source: T) Int:
 test "contract views and callbacks":
     let box = Box[Int](7)
     let first = make_view(box)
-    let forwarded = forward_view(box)
-    let identity = ReadValue[Int](forwarded.clone())
-    let copied = ReadValue[Int](identity.clone())
+    let identity = ReadValue[Int](forward_view(box))
+    let copied = ReadValue[Int](forward_view(box))
     let holder = ReaderHolder(identity)
-    let _readers: List[ReadValue[Int]] = [holder.reader.clone()]
-    let _optional: Optional[ReadValue[Int]] = some(forwarded)
+    let _readers: List[ReadValue[Int]] = [forward_view(box)]
+    let _optional: Optional[ReadValue[Int]] = some(forward_view(box))
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)
     try expect_equal(first.get(), 7)

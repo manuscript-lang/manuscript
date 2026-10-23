@@ -18,6 +18,27 @@ pub(crate) struct Args {
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        let saved = self.scope_override;
+        self.scope_override = self.call_evidence(e);
+        let out = self.call_expr_in_scope(e);
+        self.scope_override = saved;
+        out
+    }
+
+    /// The module providing the evidence of a call written with the instance's type
+    /// variables: its type arguments, receiver, arguments and result decide.
+    fn call_evidence(&self, e: &Expr) -> Option<ct::Name> {
+        let view = self.hir.call(e)?;
+        let mut pre: Vec<ct::Ty> = view.type_args.iter().flatten().cloned().collect();
+        pre.push(self.hir.ty(e));
+        if let Some(r) = self.receiver_expr(e) {
+            pre.push(self.hir.ty(r));
+        }
+        pre.extend(view.arguments.iter().map(|a| self.hir.ty(a.expr)));
+        self.evidence_of(&pre)
+    }
+
+    fn call_expr_in_scope(&mut self, e: &Expr) -> Result<Val, Error> {
         let Some(view) = self.hir.call(e) else {
             return Err(Error::new("call without resolution"));
         };
@@ -303,7 +324,7 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        let fid = self.cx.function_for(self.b.m, c, subst)?;
+        let fid = self.instance(c, subst)?;
         let vars = self.cx.var_positions(c);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
@@ -409,9 +430,7 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
-        if method == "get"
-            && let Some(v) = self.lent_map_get(e, view, recv_expr)?
-        {
+        if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
         }
         let recv = self.expr(recv_expr)?;
@@ -523,12 +542,14 @@ impl<'a> FnLower<'a> {
     pub(crate) fn contract_impl(&self, m: &ct::MethodRef, recv: &ct::Ty) -> Option<ct::MethodRef> {
         let name = m.name()?;
         let contract = m.contract.as_ref()?;
+        let scope = self.evidence();
         self.cx
             .methods
             .iter()
             .find(|mm| {
                 mm.name() == Some(name)
                     && !mm.id.as_str().is_empty()
+                    && mm.visible_in(scope)
                     && mm.contract.as_ref().is_some_and(|c| c.id == contract.id)
                     && ct::unify(
                         &mm.receiver,

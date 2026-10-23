@@ -51,21 +51,21 @@ test "UDP loopback preserves datagram data and sender":
 
 test "network restriction denies admission and close rejects acquisitions":
     let restricted = try network().restrict([], [], allow_listen: false)
-    with scoped = restricted.clone():
+    var closing = try network().restrict([], [], allow_listen: false)
+    with scoped = restricted:
         try expect_false(
             (
                 (
-                    try expect_error(
-                        restricted.listen("127.0.0.1:0")
-                    )
+                    try expect_error(scoped.listen("127.0.0.1:0"))
                 ) != NetworkError.PermissionDenied
             )
         )
+    closing.close()
     try expect_false(
         (
             (
                 try expect_error(
-                    restricted.connect("127.0.0.1:1", 1.seconds)
+                    closing.connect("127.0.0.1:1", 1.seconds)
                 )
             ) != NetworkError.Closed
         )

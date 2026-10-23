@@ -226,34 +226,18 @@ impl FnLower<'_> {
         let zero = self.b.iconst(0);
         let empty = self.b.list_new(et, zero);
         self.b.def_var(acc, empty);
-        let i = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(i, zero);
-        let (head, body, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(head, &[]);
-        self.b.switch_to(head);
-        let iv = self.b.use_var(i);
-        let more = self.b.icmp(Cc::Lt, iv, n);
-        self.b.br_if(more, body, &[], exit, &[]);
-        self.b.seal_block(body);
-        self.b.switch_to(body);
-        let iv = self.b.use_var(i);
-        let mut fields = Vec::new();
-        for which in 0..3 {
-            let w = self.b.iconst(which);
-            fields.push(self.call_runtime("msrt_html_attr", &[tree, id, iv, w], MTy::STR)?);
-        }
-        let attr = self.b.rec_new(rec, &fields);
-        let l = self.b.use_var(acc);
-        let l2 = self.b.list_push(l, attr);
-        self.b.def_var(acc, l2);
-        let iv = self.b.use_var(i);
-        let one = self.b.iconst(1);
-        let next = self.b.binop(Op::IAdd, iv, one);
-        self.b.def_var(i, next);
-        self.b.br(head, &[]);
-        self.b.seal_block(head);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.counted_loop(zero, n, &mut |s, iv| {
+            let mut fields = Vec::new();
+            for which in 0..3 {
+                let w = s.b.iconst(which);
+                fields.push(s.call_runtime("msrt_html_attr", &[tree, id, iv, w], MTy::STR)?);
+            }
+            let attr = s.b.rec_new(rec, &fields);
+            let l = s.b.use_var(acc);
+            let l2 = s.b.list_push(l, attr);
+            s.b.def_var(acc, l2);
+            Ok(())
+        })?;
         Ok(self.b.use_var(acc))
     }
 

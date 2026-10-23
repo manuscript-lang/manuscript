@@ -156,7 +156,7 @@ impl FnLower<'_> {
                 ));
             }
         }
-        let fid = self.cx.function_for(self.b.m, &callee, &subst)?;
+        let fid = self.instance(&callee, &subst)?;
         if let Some(thunk) = self.default_thunk(e, fid, &callee, &subst, None, None)? {
             let fty = self.emty(e)?;
             let v = self
@@ -302,7 +302,7 @@ impl FnLower<'_> {
         if !needs || !self.cx.var_positions(c).is_empty() || c.self_binding.is_some() {
             return Ok(None);
         }
-        let fid = self.cx.function_for(self.b.m, c, subst)?;
+        let fid = self.instance(c, subst)?;
         let ret = self.b.m.funcs[fid.index()].ret;
         let mut ptys = Vec::new();
         for (i, p) in c.parameters.iter().enumerate() {
@@ -560,7 +560,7 @@ impl FnLower<'_> {
             if vars.iter().any(|v| *v != 0) {
                 return Err(Error::new("method value with changed parameters"));
             }
-            let fid = self.cx.function_for(self.b.m, &c, &subst)?;
+            let fid = self.instance(&c, &subst)?;
             let shared = if vars.is_empty() {
                 None
             } else {
@@ -741,12 +741,20 @@ impl FnLower<'_> {
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
         };
+        let scope = self
+            .evidence_of(&[self.hir.ty(left)])
+            .unwrap_or(self.hir.data.file);
         let key = format!(
-            "bound-native:{}:{}:{}:{}",
+            "bound-native:{}:{}:{}:{}{}",
             m.native,
             rty.0,
             fty.0,
-            shared.is_some()
+            shared.is_some(),
+            if self.cx.holds_extension(self.b.m, rty) || self.cx.holds_extension(self.b.m, fty) {
+                format!("@{scope}")
+            } else {
+                String::new()
+            }
         );
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
@@ -770,6 +778,7 @@ impl FnLower<'_> {
                         method: m.clone(),
                         hir: self.hir.clone(),
                         shared: shared.map(|(_, t)| t),
+                        scope,
                     })),
                 });
                 self.cx.helpers.insert(key, id);
@@ -1038,7 +1047,7 @@ fn lower_default_thunk(
             })?
         });
     }
-    let fid = fl.cx.function_for(fl.b.m, &callee, &job.subst)?;
+    let fid = fl.instance(&callee, &job.subst)?;
     let mut vals: Vec<Value> = Vec::new();
     for s in slots.into_iter().flatten() {
         vals.push(fl.borrow(s));
@@ -1268,6 +1277,7 @@ pub(crate) fn build_bound_native(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    fl.scope_override = Some(job.scope);
     let result = lower_bound_native(&mut fl, job, job.shared.unwrap_or(captures[0]));
     let mut f = fl.b.into_func();
     result?;
@@ -1451,12 +1461,13 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
 
 /// The locals a lambda's body changes.
 fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<usize> {
-    let changed = crate::mutation::mutated_locals(
-        &fl.hir,
-        ms_check::hir::Body::Block(&lam.body),
-        &fl.cx.callables,
-        &fl.cx.mutated,
-    );
+    let scan =
+        |body| crate::mutation::mutated_locals(&fl.hir, body, &fl.cx.callables, &fl.cx.mutated);
+    let mut changed = scan(ms_check::hir::Body::Block(&lam.body));
+    // A default runs in the lambda's frame, so what it changes counts too.
+    for d in lam.params.iter().filter_map(|p| p.default.as_ref()) {
+        changed.extend(scan(ms_check::hir::Body::Expr(d)));
+    }
     with_alias_origins(fl, &lam.body, changed)
 }
 

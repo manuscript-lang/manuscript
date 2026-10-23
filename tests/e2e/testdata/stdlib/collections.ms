@@ -156,17 +156,17 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
     try expect_equal(range_by(0, 9223372036854775807, 1), limited)
 
 test "collection builders freeze all accumulated values":
-    let list = ListBuilder[Int]()
+    var list = ListBuilder[Int]()
     list.append(1)
     list.append(2)
     try expect_false(list.freeze() != [1, 2] or list.freeze() != [1, 2])
 
-    let map = MapBuilder[String, Int]()
+    var map = MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
     try expect_equal(map.freeze().get("a"), some(2))
 
-    let set = SetBuilder[Int]()
+    var set = SetBuilder[Int]()
     set.add(1)
     set.add(1)
     try expect_equal(set.freeze().values(), [1])

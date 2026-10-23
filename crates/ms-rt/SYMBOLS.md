@@ -62,6 +62,7 @@ msrt_io_close(which: i64)
 msrt_io_closed(which: i64) -> bool
 msrt_map_new(out: *mut MapVal)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
+msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc)
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
 msrt_map_add( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_slot( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, default: *mut u8, ) -> *mut u8
@@ -73,6 +74,12 @@ msrt_map_remove( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: 
 msrt_map_contains( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
 msrt_map_get_ptr( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> *const u8
 msrt_map_get( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8, ) -> u8
+msrt_map_get_ptr_sw8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> *const u8
+msrt_map_contains_sw8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
+msrt_map_get_sw8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8, ) -> u8
+msrt_map_get_ptr_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> *const u8
+msrt_map_contains_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, ) -> u8
+msrt_map_get_w8( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *const u8, out: *mut u8, ) -> u8
 msrt_map_clear( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_length(m: *const MapVal) -> i64
 msrt_map_slot_count(m: *const MapVal) -> i64
@@ -130,6 +137,10 @@ msrt_string_ends_with(a: *const StrVal, v: *const StrVal) -> u8
 msrt_string_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrVal, v: *const StrVal, out: *mut i64, ) -> u8
 msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal)
+msrt_string_concat3( a: *const StrVal, b: *const StrVal, c: *const StrVal, out: *mut StrVal, )
+msrt_string_concat4( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, out: *mut StrVal, )
+msrt_string_concat5( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, out: *mut StrVal, )
+msrt_string_concat6( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, f: *const StrVal, out: *mut StrVal, )
 msrt_string_clone(s: *const StrVal, out: *mut StrVal)
 msrt_string_free(s: *const StrVal)
 msrt_str_free(ptr: *mut u8)
@@ -577,8 +588,8 @@ msrt_net_network_connect_tls( net: *const Obj, address: *const StrVal, server_na
 msrt_net_network_connect_tls_config( net: *const Obj, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_network_listen_tls( net: *const Obj, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_connection_tls_info(c: *const Obj, out: *mut TlsInfoWire) -> u8
-msrt_tls_parse_certificates( pem: *const StrVal, has_max: u8, max: i64, certs: *mut *mut CertificateInfoWire, count: *mut usize, ) -> u8
-msrt_tls_verify_certificates( chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now_seconds: i64, _now_nanos: i32, ) -> u8
+msrt_tls_parse_certificates( pem: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
+msrt_tls_verify_certificates( chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp, ) -> u8
 msrt_tls_error_message(status: u8, out: *mut StrVal)
 msrt_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msrt_net_network_web_socket( net: *const Obj, address: *const StrVal, headers: *const Obj, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
@@ -589,7 +600,7 @@ msrt_websocket_ping( s: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> 
 msrt_websocket_ping_bytes( s: *const Obj, data: *const VecVal, err: *mut StrVal, ) -> u8
 msrt_websocket_send( s: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> u8
 msrt_websocket_send_bytes( s: *const Obj, data: *const VecVal, text: u8, err: *mut StrVal, ) -> u8
-msrt_websocket_receive( s: *const Obj, data: *mut VecVal, text: *mut u8, present: *mut u8, err: *mut StrVal, ) -> u8
+msrt_websocket_receive( s: *const Obj, out: *mut WebSocketMessageRec, err: *mut StrVal, ) -> u8
 msrt_path_basename(windows: u8, path: *const StrVal, out: *mut StrVal)
 msrt_path_basename_without(windows: u8, path: *const StrVal, suffix: *const StrVal, out: *mut StrVal)
 msrt_path_dirname(windows: u8, path: *const StrVal, out: *mut StrVal)

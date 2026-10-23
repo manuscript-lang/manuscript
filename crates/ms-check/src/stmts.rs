@@ -7,7 +7,7 @@ use crate::types::*;
 use crate::types::{Case, Param};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// The case or type name an arm path stands for.
@@ -137,7 +137,7 @@ impl Checker {
     ) -> (bool, bool) {
         let mut expected: Option<Ty> = None;
         if let Some(t) = ty {
-            let resolved = self.resolve(Some(t), false);
+            let resolved = self.resolve(Some(t));
             self.well_formed(&resolved, t.pos, &mut HashSet::new());
             expected = Some(resolved);
         }
@@ -933,7 +933,7 @@ impl Checker {
     pub(crate) fn resolve_arguments(&mut self, args: &[TypeRef]) -> Vec<Ty> {
         let mut result = Vec::new();
         for a in args {
-            let t = self.resolve(Some(a), false);
+            let t = self.resolve(Some(a));
             self.well_formed(&t, a.pos, &mut HashSet::new());
             result.push(t);
         }
@@ -1353,6 +1353,3 @@ fn same_qualifier(qualifier: &Ty, matched: &Ty) -> bool {
     }
     qualifier.id == matched.id
 }
-
-#[allow(dead_code)]
-fn _unused(_: HashMap<u8, u8>) {}

@@ -31,7 +31,7 @@ test "compression omission equals explicit level six for every format":
         try expect_equal((try compress(data, name, max_bytes: none)), expected)
 
         let method = format.compress
-        let copied = method.clone()
+        let copied = format.compress
         try expect_equal((try copied(data)), expected)
         try expect_equal((try method(data, 6)), expected)
         try expect_equal(

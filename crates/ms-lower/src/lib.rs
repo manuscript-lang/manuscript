@@ -38,6 +38,7 @@ mod native;
 mod random;
 mod rtcall;
 mod runner;
+mod scope;
 mod sharedbuilder;
 mod stmt;
 mod streamloop;
