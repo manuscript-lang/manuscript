@@ -61,10 +61,17 @@ impl Cx {
                 }
                 let mut subst = ct::Subst::new();
                 let vars = ct::variable_set(&mm.variables);
-                if ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
-                    found = Some((mm.module, decl.id(), subst, mm.native));
-                    break;
+                if !ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
+                    continue;
                 }
+                // One receiver may implement several applications of a generic contract.
+                if let (Some(c), Some(want)) = (&mm.contract, self.contracts.get(&iface))
+                    && !ct::unify(c, want, &vars, &mut subst)
+                {
+                    continue;
+                }
+                found = Some((mm.module, decl.id(), subst, mm.native));
+                break;
             }
             if found.is_none()
                 && s.name == "compare"
