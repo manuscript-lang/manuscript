@@ -17,6 +17,7 @@ fn yaml_length(value: YamlValue) Int:
 
 export fn bench_yaml() Unit:
     let yaml = yaml_doc(2000)
+
     bench(
         "yaml.parse",
         2000,
@@ -26,6 +27,7 @@ export fn bench_yaml() Unit:
 
             return 0
     )
+
     bench(
         "yaml.roundtrip",
         2000,

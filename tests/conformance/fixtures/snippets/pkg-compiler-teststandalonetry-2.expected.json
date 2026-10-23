@@ -12,16 +12,16 @@
         "message": "standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return it",
         "position": {
           "file": "pkg-compiler-teststandalonetry-2.ms",
-          "line": 6,
+          "line": 7,
           "column": 5,
-          "offset": 219
+          "offset": 220
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-teststandalonetry-2.ms:6:5: type: standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-teststandalonetry-2.ms:7:5: type: standalone try requires a Unit success value, found Int; use 'let name = try ...' to keep the value or 'return try ...' to return it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

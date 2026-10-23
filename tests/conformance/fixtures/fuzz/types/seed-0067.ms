@@ -11,34 +11,45 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     say("collatz(1662) = {collatz(1662)}")
+
     let bad: Bool = 1
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     var acc2 = 0
+
     for x in l1:
         if x % 2 == 0:
             acc2 += x
         else:
             acc2 -= 1
+
     say("acc2 = {acc2}")
     say("collatz(1083) = {collatz(1083)}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     var acc4 = 0
+
     for x in l1:
         if x % 2 == 0:
             acc4 += x
         else:
             acc4 -= 1
+
     say("acc4 = {acc4}")
     return 0

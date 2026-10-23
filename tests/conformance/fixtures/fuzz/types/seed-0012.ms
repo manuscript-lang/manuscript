@@ -11,11 +11,14 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = "日本語".trim().upper().contains("42")
     say("b1 = {b1}")
+
     let f2 = 3.5
     say("f2 = {f2}")
+
     let bad = true + 1
     let l3 = [(-5), 3, 9]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = (-6)
     say("i4 = {i4}")
     return 0

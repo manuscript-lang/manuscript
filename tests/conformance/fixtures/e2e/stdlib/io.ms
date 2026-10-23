@@ -13,6 +13,7 @@ test "stream compositions invoke source implementations and preserve EOF":
     try expect_equal((try read_line(input)), some("two"))
     try expect_equal((try read_line(input)), some("last"))
     try expect_false(not (try read_line(input)).is_none())
+
     let output = MemoryStream("".to_bytes(), 0, closed: false)
     let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
     try expect_equal((try copy(ReadStream(source), WriteStream(output), 6)), 6)
@@ -23,5 +24,6 @@ test "streams enforce byte limits and preserve original errors":
     let limited: Result[Bytes, IoError] = error(IoError.LimitExceeded)
     try expect_equal(read_all(ReadStream(reader), 2), limited)
     reader.closed = true
+
     let closed: Result[Bytes, IoError] = error(IoError.Closed)
     try expect_equal(read_all(ReadStream(reader)), closed)

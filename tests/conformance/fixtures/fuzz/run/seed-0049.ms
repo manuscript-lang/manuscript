@@ -11,51 +11,72 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let l1 = [(-1), 3, 5]
     say("l1 = {l1} len {l1.length()}")
+
     let s2 = (("  padded  " + "line\nbreak").reverse() + "line\nbreak")
     say("s2 = [{s2}]")
+
     let l3 = [(-3), (-21), (-2)]
     say("l3 = {l3} len {l3.length()}")
+
     if ((732.779 / 738.466) != 340.569):
         say(s2.replace("beta", s2))
     else:
         say((s2 + s2))
+
     let i4 = 11
     say("i4 = {i4}")
+
     let l5 = [2, 25, 4]
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = l1.filter(fn(x): x > 3)
     say("l6 = {l6} len {l6.length()}")
+
     let i7 = ((-46) * ((i4 % (-30)) + ((-13) + i4)))
     say("i7 = {i7}")
+
     let i8 = (-(9472 + (-i7)))
     say("i8 = {i8}")
-    say("{((i8 - (-3)) - (16 * 16))} {(l6.length() * (i8 * i8))} {(((i8 - (-3)) - (16 * 16)) < (l6.length() * (i8 * i8)))} sum {((i8 - (-3)) - (16 * 16)) + (l6.length() * (i8 * i8))}")
+    say(
+        "{((i8 - (-3)) - (16 * 16))} {(l6.length() * (i8 * i8))} {(((i8 - (-3)) - (16 * 16)) < (l6.length() * (i8 * i8)))} sum {((i8 - (-3)) - (16 * 16)) + (l6.length() * (i8 * i8))}"
+    )
+
     let f9 = ((750.153 * (0.0 + 8.5)) + ((9.0e5 + 5.5) + 0.5))
     say("f9 = {f9}")
+
     var acc10 = 0
     var stepacc10 = 0
+
     while stepacc10 < 5:
         stepacc10 += 1
         acc10 += stepacc10 * stepacc10 + 2
+
     say("acc10 = {acc10}")
     say("collatz(237) = {collatz(237)}")
+
     let l11 = l1.take(3)
     say("l11 = {l11} len {l11.length()}")
+
     let b12 = (not ((137.923 < 2.0e20) and "日本語".starts_with(s2)))
     say("b12 = {b12}")
+
     let b13 = b12
     say("b13 = {b13}")
+
     let big14 = -9223372036854775808
     say("{big14 - 1}")
     return 0

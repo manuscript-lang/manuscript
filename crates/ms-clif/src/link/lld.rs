@@ -8,57 +8,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-macro_rules! bundled {
-    ($($name:literal),*) => {
-        const FILES: &[(&str, &[u8])] = &[
-            $(($name, include_bytes!(concat!(env!("OUT_DIR"), "/linker/", $name)))),*
-        ];
-    };
-}
-#[cfg(target_os = "linux")]
-bundled!("lld", "crt1.o", "crti.o", "crtn.o", "libc.a", "libunwind.a");
-#[cfg(target_os = "windows")]
-bundled!(
-    "lld.exe",
-    "crt2.o",
-    "libmingw32.a",
-    "libmingwex.a",
-    "libmoldname.a",
-    "libunwind.a",
-    "libucrt.a",
-    "libmsvcrt.a",
-    "libkernel32.a",
-    "libadvapi32.a",
-    "libbcrypt.a",
-    "libcrypt32.a",
-    "libdbghelp.a",
-    "libntdll.a",
-    "libsecur32.a",
-    "libuserenv.a",
-    "libws2_32.a",
-    "libuser32.a",
-    "libshell32.a"
-);
-#[cfg(target_os = "macos")]
-bundled!("lld");
+use ms_linker::{FILES, LINKER_ID};
 
 #[cfg(windows)]
 const LLD: &str = "lld.exe";
 #[cfg(not(windows))]
 const LLD: &str = "lld";
-
-/// The embedded `opt` and `llc`, gzipped; empty when `ms` was built without the LLVM tools.
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-const TOOLS: [(&str, &[u8]); 2] = [
-    (
-        concat!("opt", env!("MS_EXE_SUFFIX")),
-        include_bytes!(concat!(env!("OUT_DIR"), "/linker/opt.gz")),
-    ),
-    (
-        concat!("llc", env!("MS_EXE_SUFFIX")),
-        include_bytes!(concat!(env!("OUT_DIR"), "/linker/llc.gz")),
-    ),
-];
 
 /// The directory holding `opt` and `llc`: `MS_LLVM_TOOLS`, else the embedded ones unpacked on
 /// first use. `None` when neither exists.
@@ -68,13 +23,10 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     if let Some(dir) = std::env::var_os("MS_LLVM_TOOLS").filter(|v| !v.is_empty()) {
         return Ok(Some(PathBuf::from(dir)));
     }
-    if TOOLS.iter().any(|(_, gz)| gz.is_empty()) {
+    if ms_linker::TOOLS.iter().any(|(_, gz)| gz.is_empty()) {
         return Ok(None);
     }
-    let dir = cache_root()
-        .join("ms")
-        .join("llvm")
-        .join(env!("MS_LINKER_ID"));
+    let dir = cache_root().join("ms").join("llvm").join(LINKER_ID);
     let failed = |e: std::io::Error| {
         Error(format!(
             "cannot unpack the bundled LLVM tools into {}: {e}",
@@ -83,7 +35,7 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     };
     static STAGED: AtomicUsize = AtomicUsize::new(0);
     std::fs::create_dir_all(&dir).map_err(failed)?;
-    for (name, gz) in TOOLS {
+    for (name, gz) in ms_linker::TOOLS {
         // The marker file records that the unpacked tool is complete.
         let done = dir.join(format!("{name}.ok"));
         if done.is_file() && dir.join(name).is_file() {
@@ -276,10 +228,7 @@ fn macos_arguments(
 
 /// Writes the bundled linker and its support files to a per-build cache entry, once.
 fn extract() -> Result<PathBuf, Error> {
-    let dir = cache_root()
-        .join("ms")
-        .join("linker")
-        .join(env!("MS_LINKER_ID"));
+    let dir = cache_root().join("ms").join("linker").join(LINKER_ID);
     let present = |name: &str, bytes: &[u8]| {
         std::fs::metadata(dir.join(name)).is_ok_and(|m| m.len() == bytes.len() as u64)
     };

@@ -11,17 +11,23 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 14
     say("i1 = {i1}")
+
     let b2 = (false and ((false and false) and (not false)))
     say("b2 = {b2}")
+
     let bad = 1.5 + 2
     let i3 = (i1 % (32 + (-i1)))
     say("i3 = {i3}")
+
     let i4 = (i3 * i3)
     say("i4 = {i4}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 2:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 4
+
     say("acc5 = {acc5}")
     return 0

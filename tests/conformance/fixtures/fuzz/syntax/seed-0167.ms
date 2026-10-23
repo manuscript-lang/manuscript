@@ -9,8 +9,8 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-
     say("f1 = {f1}")
+
     let b2 = true
     say("b2 = {b2}")
     return 0

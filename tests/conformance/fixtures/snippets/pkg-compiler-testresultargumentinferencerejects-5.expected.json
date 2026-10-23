@@ -12,9 +12,9 @@
         "message": "cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-5.ms",
-          "line": 5,
+          "line": 6,
           "column": 18,
-          "offset": 277
+          "offset": 278
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-5.ms",
-          "line": 5,
+          "line": 6,
           "column": 24,
-          "offset": 283
+          "offset": 284
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:5:18: type: cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:5:24: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:18: type: cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:24: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

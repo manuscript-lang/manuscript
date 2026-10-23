@@ -13,11 +13,14 @@ export fn main() Int:
         say("42")
     else:
         say("quote\"d".upper())
+
     let bad = say
     let b1 = (true and ((39 * (-12)) != ((-19) - (-35))))
     say("b1 = {b1}")
+
     let i2 = (-700357)
     say("i2 = {i2}")
+
     let i3 = i2
     say("i3 = {i3}")
     return 0

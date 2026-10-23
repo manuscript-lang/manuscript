@@ -12,49 +12,69 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let s1 = ("日本語" + "naïve")
     say("s1 = [{s1}]")
+
     let b2 = (true and s1.starts_with(s1))
     say("b2 = {b2}")
+
     let b3 = ("brace\{s\}" + "héllo").upper().is_empty()
     say("b3 = {b3}")
+
     let f4 = (253.945 + ((805.469 / 504.135) - (463.070 * 7.0e13)))
     say("f4 = {f4}")
+
     if b3:
         say((s1 + s1))
     else:
         say("beta")
+
     say("gcd(3956, 2329) = {gcd(3956, 2329)}")
+
     let l5 = [(-6), 12, 18, 23]
     say("l5 = {l5} len {l5.length()}")
-    let i6 = ((((-18) + (-46)) + (33474 + (-21))) % ((34400892375 * 35) - (47 + (-819040))))
+
+    let i6 = (
+        (((-18) + (-46)) + (33474 + (-21)))
+        % ((34400892375 * 35) - (47 + (-819040)))
+    )
     say("i6 = {i6}")
+
     var acc7 = 0
     for i in range(0, 6):
         acc7 += i * 7
     say("acc7 = {acc7}")
+
     let s8 = ("{(i6 * i6)}:" + "naïve")
     say("s8 = [{s8}]")
     say("fib(2) = {fib(2)}")
+
     let s9 = "alpha"
     say("s9 = [{s9}]")
-    say("{((25 % i6) - (-(-684348)))} {i6} {(((25 % i6) - (-(-684348))) < i6)} sum {((25 % i6) - (-(-684348))) + i6}")
+    say(
+        "{((25 % i6) - (-(-684348)))} {i6} {(((25 % i6) - (-(-684348))) < i6)} sum {((25 % i6) - (-(-684348))) + i6}"
+    )
+
     let s10 = ("emoji 😀" + "line\nbreak".upper().lower())
     say("s10 = [{s10}]")
+
     let l11 = l5.reversed()
     say("l11 = {l11} len {l11.length()}")
     return 0

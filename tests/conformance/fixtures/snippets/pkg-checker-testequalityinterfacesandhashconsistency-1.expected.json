@@ -12,9 +12,9 @@
         "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
         "position": {
           "file": "pkg-checker-testequalityinterfacesandhashconsistency-1.ms",
-          "line": 8,
+          "line": 10,
           "column": 33,
-          "offset": 314
+          "offset": 316
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
         "position": {
           "file": "pkg-checker-testequalityinterfacesandhashconsistency-1.ms",
-          "line": 8,
+          "line": 10,
           "column": 1,
-          "offset": 282
+          "offset": 284
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:8:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:8:1: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:10:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:10:1: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

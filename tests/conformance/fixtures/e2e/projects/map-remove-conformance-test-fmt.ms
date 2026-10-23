@@ -12,11 +12,13 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     id_bound(var first, Key(2, "different"))
     id_generic(var first, Key(3, "different"))
     (first.is_empty()) | try expect_true
+
     var second = label_map()
     label_direct(var second, Key(99, "one"))
     label_bound(var second, Key(99, "two"))
     label_generic(var second, Key(99, "three"))
     (second.is_empty()) | try expect_true
+
     var returned_values = id_map()
     let remove = returned_values.remove
     remove(Key(1, "different"))

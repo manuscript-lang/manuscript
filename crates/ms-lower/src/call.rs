@@ -169,16 +169,16 @@ impl<'a> FnLower<'a> {
         Ok(Args { slots, places })
     }
 
-    /// Whether the variable at the root of the place holds its value by ownership: a borrowed
-    /// one (a parameter of a default frame) takes no update.
+    /// Whether a place permits writeback: an owned local or shared mutable storage.
+    /// A read-only borrow (a parameter of a default frame) takes no update.
     fn place_is_owned(&mut self, place: &Expr) -> bool {
         let Some(uid) = crate::mutation::place_root(&self.hir, place) else {
             return false;
         };
         let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
-        self.locals
-            .get(&uid)
-            .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)
+        self.locals.get(&uid).is_some_and(|l| {
+            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own
+        })
     }
 
     /// Reads a borrowed place again after evaluating a sibling: a branch passes the variable's

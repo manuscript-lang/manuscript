@@ -11,60 +11,82 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("collatz(1937) = {collatz(1937)}")
+
     let l1 = [25, (-26), (-19), 17, (-25)]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = [(-7), (-7), 12, 13, 5]
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = (((936.390 / 2.5) / (192.25 * 7.612)) / ((267.214 + 610.242) - 4.5))
     say("f3 = {f3}")
     say("fib(14) = {fib(14)}")
+
     let l4 = l2.map(fn(x): x + 2).filter(fn(x): x % 2 == 0)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = (43728392264 % ((-9) * 25))
     say("i5 = {i5}")
+
     var acc6 = 0
+
     for x in l1:
         if x % 2 == 0:
             acc6 += x
         else:
             acc6 -= 1
+
     say("acc6 = {acc6}")
+
     let i7 = 4
     say("i7 = {i7}")
+
     let l8 = [(-25)]
     say("l8 = {l8} len {l8.length()}")
-    say("{(((-717747) + i7) * l1.length())} {(((-995988) + (-389416)) % (i5 + i7))} {((((-717747) + i7) * l1.length()) < (((-995988) + (-389416)) % (i5 + i7)))} sum {(((-717747) + i7) * l1.length()) + (((-995988) + (-389416)) % (i5 + i7))}")
+    say(
+        "{(((-717747) + i7) * l1.length())} {(((-995988) + (-389416)) % (i5 + i7))} {((((-717747) + i7) * l1.length()) < (((-995988) + (-389416)) % (i5 + i7)))} sum {(((-717747) + i7) * l1.length()) + (((-995988) + (-389416)) % (i5 + i7))}"
+    )
+
     let i9 = (i5 * ((i5 / 46) - (32 / i5)))
     say("i9 = {i9}")
+
     let f10 = f3
     say("f10 = {f10}")
     say("fib(54) = {fib(54)}")
+
     var l11 = l1.clone()
     l11.append(55)
     say("l11 = {l11} len {l11.length()}")
+
     let l12 = l11.drop(4)
     say("l12 = {l12} len {l12.length()}")
+
     let f13 = (((f3 * 0.5) + (f3 + f3)) / ((f10 / 358.336) * 3.0e18))
     say("f13 = {f13}")
     return 0

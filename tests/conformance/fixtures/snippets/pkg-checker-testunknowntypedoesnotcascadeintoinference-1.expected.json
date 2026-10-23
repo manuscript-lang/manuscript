@@ -12,20 +12,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 4,
-          "column": 69,
-          "offset": 271
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 4,
-          "column": 100,
-          "offset": 302
+          "line": 6,
+          "column": 40,
+          "offset": 280
         }
       },
       {
@@ -35,8 +24,19 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 7,
-          "column": 80,
-          "offset": 443
+          "column": 19,
+          "offset": 312
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
+          "line": 12,
+          "column": 63,
+          "offset": 463
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "expected Int, found String (in the initializer of 'unrelated')",
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 8,
+          "line": 14,
           "column": 26,
-          "offset": 496
+          "offset": 521
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:69: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:4:100: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:80: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:8:26: type: expected Int, found String (in the initializer of 'unrelated')\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:6:40: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:19: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:12:63: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:14:26: type: expected Int, found String (in the initializer of 'unrelated')\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

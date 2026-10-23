@@ -11,14 +11,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (27 * (((-47) * 30) % ((-48) * (-870869))))
     say("i1 = {i1}")
+
     let i2 = ((-(i1 * 39)) + i1)
     say("i2 = {i2}")
+
     let l3 = [(-19), (-18), (-26), (-7)]
     say("l3 = {l3} len {l3.length()}")
+
     let s4 = (("{l3.length()}:" + "back\\slash".reverse()) + ("a" + "日本語").lower())
     say("s4 = [{s4}]")
+
     let i5 = (-537355)
     say("i5 = {i5}")
+
     let f6 = 51.25
     say("f6 = {f6}")
     return 0

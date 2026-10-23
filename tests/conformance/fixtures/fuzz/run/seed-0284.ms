@@ -11,22 +11,30 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     say("gcd(1595, 4472) = {gcd(1595, 4472)}")
+
     let f1 = (0.0 + (853.128 + (722.595 * 325.494)))
     say("f1 = {f1}")
+
     let s2 = ("héllo".reverse() + "42").reverse()
     say("s2 = [{s2}]")
+
     let i3 = ((-18) + (s2.length() % (41 - (-3))))
     say("i3 = {i3}")
+
     let s4 = s2.upper()
     say("s4 = [{s4}]")
+
     let s5 = (("line\nbreak" + "  padded  ").trim() + s4)
     say("s5 = [{s5}]")
+
     let s6 = (s5 + "hello world").lower().reverse()
     say("s6 = [{s6}]")
+
     let l7 = [(-17), (-19), (-3), (-25), (-26)]
     say("l7 = {l7} len {l7.length()}")
     return 0

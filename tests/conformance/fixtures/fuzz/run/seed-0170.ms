@@ -11,30 +11,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("héllo" + "a".replace("back\\slash", "alpha"))
     say("s1 = [{s1}]")
+
     let f2 = (421.051 * ((415.697 * 369.081) + (0.0 + 164.254)))
     say("f2 = {f2}")
+
     let f3 = (0.0 + ((412.029 / 853.145) - f2))
     say("f3 = {f3}")
+
     let b4 = (((4 * 16) <= (-2)) or (not (true and false)))
     say("b4 = {b4}")
+
     let i5 = 45
     say("i5 = {i5}")
+
     let s7 = s1.clone()
     say("s7 = [{s7}]")
+
     let i8 = 790626811094
     say("i8 = {i8}")
+
     if ((39 % i5) == (i5 / i8)):
         say(s1.lower())
     else:
         say(s1.trim())
+
     let f9 = 190.642
     say("f9 = {f9}")
+
     let i10 = 18
     say("i10 = {i10}")
+
     let i11 = i5
     say("i11 = {i11}")
+
     if true:
         say(("{((-14) * (-3))}:" + "back\\slash"))
     else:
         say(s1)
+
     return 0

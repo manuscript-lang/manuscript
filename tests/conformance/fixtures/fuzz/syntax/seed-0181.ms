@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     if false:
         say("naïve".lower())
     else:
         say("Tab\there")
+
     return 0

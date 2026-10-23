@@ -11,19 +11,26 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "ms".upper().lower().trim()
     say("s1 = [{s1}]")
+
     let b2 = s1.upper().is_empty()
     say("b2 = {b2}")
+
     if b2:
         say("back\\slash".trim())
     else:
         say(("{((-839798) - 31)}:" + s1))
+
     let l3 = [25]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = (-(-((-37) / 26)))
     say("i4 = {i4}")
+
     let s5 = s1
     say("s5 = [{s5}]")
+
     let b6 = (s1.trim() + ("{(i4 - i4)}:" + "brace\{s\}")).is_empty()
     say("b6 = {b6}")
+
     let bad = Map[Int, Int]().get(1, 2, 3)
     return 0

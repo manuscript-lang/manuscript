@@ -12,17 +12,22 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-(21 / ((-48) + (-15))))
     say("i1 = {i1}")
+
     let bad = [1, 2].get("x")
     var acc2 = 0
     for i in range(0, 5):
         acc2 += i * 0
     say("acc2 = {acc2}")
+
     let l3 = [(-23), 10, (-1), 8]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = l3.length()
     say("i4 = {i4}")
+
     let i5 = (i1 - l3.length())
     say("i5 = {i5}")
+
     let i6 = i1
     say("i6 = {i6}")
     return 0

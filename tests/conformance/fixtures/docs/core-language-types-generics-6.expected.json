@@ -12,16 +12,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "core-language-types-generics-6.ms",
-          "line": 8,
+          "line": 10,
           "column": 38,
-          "offset": 394
+          "offset": 396
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-6.ms:8:38: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-6.ms:10:38: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

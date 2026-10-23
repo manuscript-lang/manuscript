@@ -28,6 +28,7 @@ export fn main() Int:
     show("héllo wörld ✓ 😀!")
     show("")
     show("abc")
+
     let _i = stdout().write("{first_o("héllo wörld")} {first_o("xyz")}\n")
     var kept: List[String] = []
 

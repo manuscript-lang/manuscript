@@ -11,9 +11,11 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 814.244
     say("f1 = {f1}")
+
     let bad = 1.5 + 2
     let f2 = ((209.472 + f1) + ((f1 + f1) / 923.198))
     say("f2 = {f2}")
+
     let i3 = (((19 % 22) - ((-37) * (-473719))) - ((-(-655103)) - 45))
     say("i3 = {i3}")
     return 0

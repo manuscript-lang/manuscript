@@ -11,6 +11,7 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (2.5 - 155.758)
     say("f1 = {f1}")
+
     let bad = true + 1
     let b2 = ("emoji 😀".trim() == ("{((-118341) + (-987488))}:" + "x").upper())
     say("b2 = {b2}")

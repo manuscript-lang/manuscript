@@ -14,10 +14,12 @@ export fn main() Int:
         say(("gamma" + "Tab\there"))
     else:
         say("brace\{s\}")
+
     var acc1 = 0
     for i in range(0, 7):
         acc1 += i * 3
     say("acc1 = {acc1}")
+
     let i2 = ((-9) + ((35 * (-796632)) + ((-31) - (-46))))
     say("i2 = {i2}")
     return 0

@@ -311,8 +311,6 @@ msrt_crypto_open(key: *const VecVal, nonce: *const VecVal, data: *const VecVal, 
 msrt_crypto_aes_ctr(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msrt_crypto_aes_cbc_encrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
-msrt_csv_parse( text: *const StrVal, delimiter: *const StrVal, line_ending: *const StrVal, has_max_rows: u8, max_rows: i64, has_max_cells: u8, max_cells: i64, out: *mut VecVal, ) -> u8
-msrt_csv_stringify( rows: *const VecVal, delimiter: *const StrVal, line_ending: *const StrVal, has_max_bytes: u8, max_bytes: i64, out: *mut StrVal, ) -> u8
 msstd_decimal_literal(text: *const StrVal, out: *mut Dec)
 msstd_decimal_from_int(n: i64, out: *mut Dec)
 msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
@@ -327,16 +325,8 @@ msrt_binary_read_integer( data: *const VecVal, offset: i64, width: i64, signed: 
 msrt_binary_read_float( data: *const VecVal, offset: i64, little: u8, out: *mut f64, ) -> u8
 msrt_binary_write_integer( value: i64, width: i64, signed: u8, little: u8, out: *mut VecVal, ) -> u8
 msrt_binary_write_float(value: f64, little: u8, out: *mut VecVal)
-msrt_encoding_hex_encode(data: *const VecVal, out: *mut StrVal)
-msrt_encoding_hex_decode( text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal)
 msrt_encoding_base64_decode( text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
-msrt_encoding_utf16_encode( text: *const StrVal, little_endian: u8, out: *mut VecVal, )
-msrt_encoding_utf16_decode( data: *const VecVal, little_endian: u8, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_encoding_latin1_encode(text: *const StrVal, out: *mut VecVal) -> u8
-msrt_encoding_latin1_decode(data: *const VecVal, out: *mut StrVal)
-msrt_encoding_ascii_encode(text: *const StrVal, out: *mut VecVal) -> u8
-msrt_encoding_ascii_decode( data: *const VecVal, out: *mut StrVal, ) -> u8
 msstd_fs_failure_message(out: *mut StrVal)
 msstd_fs_read_file( path: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_write_file( path: *const StrVal, data: *const VecVal, replace: u8, ) -> u8
@@ -679,9 +669,6 @@ msrt_regex_find_span( re: *const RegexObj, text: *const StrVal, out: *mut VecVal
 msrt_regex_split( re: *const RegexObj, text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_regex_replace_template( re: *const RegexObj, text: *const StrVal, template: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_regex_replace_all( re: *const RegexObj, text: *const StrVal, replacement: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_semver_parse(text: *const StrVal, out: *mut VersionRec) -> u8
-msrt_semver_format(v: *const VersionRec, out: *mut StrVal)
-msrt_semver_compare(l: *const VersionRec, r: *const VersionRec) -> i64
 msstd_system_failure_message(out: *mut StrVal)
 msstd_system_endianness(out: *mut StrVal)
 msstd_system_end_of_line(out: *mut StrVal)

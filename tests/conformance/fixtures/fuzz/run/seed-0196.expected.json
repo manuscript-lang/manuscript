@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = -22\nf2 = 70.161\nb3 = false\ni4 = -8\ni5 = -22\ni6 = 23\ns7 = [gamma]\nf9 = 0\ni10 = 0\nl11 = [-16, 14] len 2\ni12 = 0\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0196.ms:35 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0196.ms:46 in main\n"
   }
 }

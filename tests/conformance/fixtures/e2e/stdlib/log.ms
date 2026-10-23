@@ -3,15 +3,8 @@
 # conform: origin=tests/e2e/testdata/stdlib/log.ms
 import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
 import {
-    Transport,
-    LogLevel,
-    LogError,
-    create,
-    record,
-    bind,
-    stream_transport,
-    stdout_transport,
-    file_transport
+    Transport, LogLevel, LogError, create, record, bind, stream_transport,
+    stdout_transport, file_transport
 } from "@std/log.ms"
 import {WriteStream, IoError} from "@std/io.ms"
 import JsonValue from "@std/json.ms"
@@ -36,14 +29,10 @@ test "logger writes typed escaped records and protects metadata":
     with transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, timestamp: false)
         let fields = Payload(
-            9007199254740993,
-            ok: true,
-            Items([none, some(1)]),
-            0,
-            "fake",
-            0
+            9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
         )
         try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
+
         let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
         try logger.flush()
@@ -57,6 +46,7 @@ test "non-object values are written under data":
         let logger = try create(transport, timestamp: false)
         try record(logger, LogLevel.Info, "n", 7)
         try record(logger, LogLevel.Warn, "l", ["a", "b"])
+
         let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
 
@@ -76,6 +66,7 @@ test "levels filter methods and function values":
         try logger.info("filtered")
         try expect_equal(output.data.length(), 0)
         try logger.warn("warn")
+
         let error_log = logger.error
         try error_log("error")
         try logger.fatal("fatal")
@@ -84,6 +75,7 @@ test "levels filter methods and function values":
         try logger.log(LogLevel.Trace, "trace")
         try logger.debug("debug")
         try logger.info("info")
+
         let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
         logger.set_level(LogLevel.Silent)
@@ -93,9 +85,11 @@ test "levels filter methods and function values":
                 or logger.enabled(LogLevel.Silent)
             )
         )
+
         let before = output.data.clone()
         try logger.fatal("filtered")
         try expect_equal(output.data, before)
+
         let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
         try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
@@ -116,6 +110,7 @@ test "child bindings snapshot values and merge without mutating inputs":
         try expect_equal(child.level(), LogLevel.Info)
         try record(child, LogLevel.Info, "child", Service("worker"))
         try logger.fatal("parent")
+
         let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
 
@@ -125,15 +120,15 @@ test "limits and unencodable values reject before writing":
     with transport = stream_transport(WriteStream(output)):
         let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
         let logger = try create(
-            transport,
-            timestamp: false,
-            max_bytes: (line.to_bytes().length())
+            transport, timestamp: false, max_bytes: (line.to_bytes().length())
         )
         try logger.info("x")
         try expect_equal(output.data.decode_utf8(), some(line))
+
         let before = output.data.clone()
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
         try expect_equal(logger.info("xx"), limited)
+
         let zero = try create(transport, timestamp: false, max_bytes: 0)
         try expect_equal(zero.info(""), limited)
         try expect_false(
@@ -145,6 +140,7 @@ test "limits and unencodable values reject before writing":
                 ) != LogError.InvalidInput
             )
         )
+
         let unlimited = try create(transport, timestamp: false)
         let bad = JsonValue.NumberValue("NaN")
         let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
@@ -156,11 +152,13 @@ test "transport closure and stream errors preserve identity":
     let transport = stream_transport(WriteStream(output))
     let logger = try create(transport)
     output.closed = true
+
     let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
     try expect_equal(logger.info("closed"), io_closed)
     try expect_equal(logger.flush(), io_closed)
     transport.close()
     transport.close()
+
     let closed: Result[Unit, LogError] = error(LogError.Closed)
     try expect_equal(logger.info("closed"), closed)
     try expect_equal(logger.flush(), closed)
@@ -258,5 +256,6 @@ test "log_json and child_json accept only JSON objects":
         try expect_equal(output.data.length(), 0)
         try logger.log_json(LogLevel.Info, "m", "\{\"a\":1\}")
         try record(logger, LogLevel.Info, "m", [1])
+
         let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))

@@ -31,6 +31,7 @@ test "text interpolation":
     try expect_true(("".length() == 0))
     try expect_true(("héllo {n}".length() == 8))
     try expect_true(("{halve(n: 8)}" == "{halve(n: 8)}"))
+
     var items = List[Int]()
     items.append(value: 1)
     try expect_true(("{items}" == "[1]"))

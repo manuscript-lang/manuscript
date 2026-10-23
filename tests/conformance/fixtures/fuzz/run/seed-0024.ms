@@ -11,16 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((((-2) % (-41)) - (-21)) / ((23 % (-46)) * (15 * (-47))))
     say("i1 = {i1}")
-    say("{i1} {((31 + i1) - (13 * (-2)))} {(i1 < ((31 + i1) - (13 * (-2))))} sum {i1 + ((31 + i1) - (13 * (-2)))}")
+    say(
+        "{i1} {((31 + i1) - (13 * (-2)))} {(i1 < ((31 + i1) - (13 * (-2))))} sum {i1 + ((31 + i1) - (13 * (-2)))}"
+    )
+
     let i2 = (45 - (-1))
     say("i2 = {i2}")
+
     let s3 = "alpha"
     say("s3 = [{s3}]")
+
     let i4 = (i2 * (s3.length() - (3 + i1)))
     say("i4 = {i4}")
-    say("{((i1 % (-802159)) * s3.length())} {s3.length()} {(((i1 % (-802159)) * s3.length()) < s3.length())} sum {((i1 % (-802159)) * s3.length()) + s3.length()}")
+    say(
+        "{((i1 % (-802159)) * s3.length())} {s3.length()} {(((i1 % (-802159)) * s3.length()) < s3.length())} sum {((i1 % (-802159)) * s3.length()) + s3.length()}"
+    )
+
     let f5 = 288.561
     say("f5 = {f5}")
+
     let big6 = ((i2 + i4) * (i2 - (-918594))) - ((i2 + i4) * (i2 - (-918594)))
     say("{((i2 + i4) * (i2 - (-918594))) % big6}")
     return 0

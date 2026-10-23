@@ -12,51 +12,73 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let s1 = ("MiXeD CaSe" + "naïve").upper().replace("back\\slash", "delta")
     say("s1 = [{s1}]")
     say("collatz(1681) = {collatz(1681)}")
+
     let i3 = ((-49) - (-30))
     say("i3 = {i3}")
+
     let f4 = 504.404
     say("f4 = {f4}")
+
     let i5 = i3
     say("i5 = {i5}")
+
     let i6 = ((((-33) / i5) * (-i3)) + (i5 - i5))
     say("i6 = {i6}")
+
     let b7 = (not (not "héllo".ends_with(s1)))
     say("b7 = {b7}")
-    let b9 = (("brace\{s\}" + ("delta" + "日本語")) == (("  padded  " + "42") + "a".reverse()))
+
+    let b9 = (
+        ("brace\{s\}" + ("delta" + "日本語")) == (
+            ("  padded  " + "42")
+            + "a".reverse()
+        )
+    )
     say("b9 = {b9}")
+
     let f10 = 0.0
     say("f10 = {f10}")
     say("{i3} {(-i3)} {(i3 < (-i3))} sum {i3 + (-i3)}")
+
     let i11 = ((((-794473890676) * i5) / (i3 + 301744)) - (-32))
     say("i11 = {i11}")
+
     let s12 = "MiXeD CaSe"
     say("s12 = [{s12}]")
+
     let i13 = i3
     say("i13 = {i13}")
+
     let f14 = f4
     say("f14 = {f14}")
     say("fact(2) = {fact(2)}")
+
     var acc15 = 0
     for i in range(0, 0):
         acc15 += i * (-2)
     say("acc15 = {acc15}")
+
     let s16 = ("héllo".reverse() + s12.trim()).trim()
     say("s16 = [{s16}]")
     return 0

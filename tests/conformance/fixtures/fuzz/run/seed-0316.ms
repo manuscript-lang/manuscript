@@ -12,20 +12,27 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 898.425
     say("f1 = {f1}")
+
     let f2 = 0.0
     say("f2 = {f2}")
+
     var acc3 = 0
     for i in range(0, 0):
         acc3 += i * (-5)
     say("acc3 = {acc3}")
+
     let f4 = 0.0
     say("f4 = {f4}")
+
     let i5 = (22 * 836288)
     say("i5 = {i5}")
+
     let s7 = ("日本語" + "")
     say("s7 = [{s7}]")
+
     let i8 = i5
     say("i8 = {i8}")
+
     let b9 = s7.contains(s7)
     say("b9 = {b9}")
     return 0

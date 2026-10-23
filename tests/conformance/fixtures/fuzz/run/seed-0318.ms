@@ -11,43 +11,67 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [1, 20, 29, (-26)]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (-((5 - (-19)) * l1.get(3)))
     say("i2 = {i2}")
+
     let l3 = [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
+
     var l4 = l1.clone()
     l4.append(92)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = 172432
     say("i5 = {i5}")
-    say("{(-32)} {(l4.length() + (i2 + i5))} {((-32) < (l4.length() + (i2 + i5)))} sum {(-32) + (l4.length() + (i2 + i5))}")
+    say(
+        "{(-32)} {(l4.length() + (i2 + i5))} {((-32) < (l4.length() + (i2 + i5)))} sum {(-32) + (l4.length() + (i2 + i5))}"
+    )
+
     let b6 = "quote\"d".contains("héllo")
     say("b6 = {b6}")
+
     let i7 = (17 - (-((-29) - i5)))
     say("i7 = {i7}")
+
     let b8 = (((9.0e-9 + 6.0e8) / (982.25 / 78.25)) < (650.338 * 796.090))
     say("b8 = {b8}")
-    say("{i5} {((0 * 36) + (i5 * i7))} {(i5 < ((0 * 36) + (i5 * i7)))} sum {i5 + ((0 * 36) + (i5 * i7))}")
+    say(
+        "{i5} {((0 * 36) + (i5 * i7))} {(i5 < ((0 * 36) + (i5 * i7)))} sum {i5 + ((0 * 36) + (i5 * i7))}"
+    )
+
     let f9 = ((0.0 + 329.846) / ((699.111 * 143.855) / (637.501 / 985.535)))
     say("f9 = {f9}")
+
     let f10 = f9
     say("f10 = {f10}")
+
     let f11 = (986.25 - (f10 + (717.060 - 560.817)))
     say("f11 = {f11}")
+
     if ((not b8) and (not b8)):
         say(("{42}:" + "MiXeD CaSe"))
     else:
         say("a".reverse())
+
     if ((370.162 * f10) == f11):
         say("hello world".trim())
     else:
         say(("line\nbreak" + "beta"))
-    let b12 = ("{(i5 * i2)}:" + "brace\{s\}").replace("42", "line\nbreak").ends_with("日本語")
+
+    let b12 = (
+        ("{(i5 * i2)}:" + "brace\{s\}")
+        .replace("42", "line\nbreak")
+        .ends_with("日本語")
+    )
     say("b12 = {b12}")
+
     var acc13 = 0
     var stepacc13 = 0
+
     while stepacc13 < 1:
         stepacc13 += 1
         acc13 += stepacc13 * stepacc13 + 8
+
     say("acc13 = {acc13}")
     return 0

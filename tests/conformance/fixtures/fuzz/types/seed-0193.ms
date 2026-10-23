@@ -12,30 +12,38 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 4:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 3
+
     say("acc1 = {acc1}")
     say("fib(34) = {fib(34)}")
+
     let f2 = (((1.0e-1 * 0.0) / 690.887) / 634.617)
     say("f2 = {f2}")
+
     let s3 = "brace\{s\}"
     say("s3 = [{s3}]")
     say("gcd(2465, 787) = {gcd(2465, 787)}")
+
     let bad: Bool = 1
     return 0

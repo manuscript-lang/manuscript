@@ -12,27 +12,34 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let f1 = 8.5
     say("f1 = {f1}")
+
     let s2 = ("".replace("MiXeD CaSe", "MiXeD CaSe").trim() + ("a" + "line\nbreak"))
     say("s2 = [{s2}]")
+
     let f3 = (593.25 + ((f1 * f1) * (538.691 + f1)))
     say("f3 = {f3}")
+
     let f4 = (((f1 * 3.5) + (f1 / f3)) * ((f1 / f1) * (389.584 * f3)))
     say("f4 = {f4}")
     say("fib(51) = {fib(51)}")
+
     if ((false and true) or ("日本語" == s2)):
         say("x".replace(s2, s2))
     else:
         say(s2)
+
     let b5 = ((s2.is_empty() and (939943 < 36)) and ((not true) and (199486 <= 37)))
     say("b5 = {b5}")
     return 0

@@ -11,9 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (false and true)
     say("b1 = {b1}")
+
     let i2 = 543163
     say("i2 = {i2}")
+
     let i3 = ((i2 + (1 - 187487)) - i2)
     say("i3 = {i3}")
+
     let bad = say
     return 0

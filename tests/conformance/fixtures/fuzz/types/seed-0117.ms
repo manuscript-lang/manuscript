@@ -11,12 +11,15 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(5) = {fact(5)}")
+
     let f1 = (((219.160 - 0.0) / 9.5) * ((3.0e17 - 9.0e23) + (0.0 - 620.655)))
     say("f1 = {f1}")
+
     let bad = 1 and 2
     let s3 = "delta"
     say("s3 = [{s3}]")

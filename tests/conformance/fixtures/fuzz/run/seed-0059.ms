@@ -12,35 +12,49 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let s1 = "日本語"
     say("s1 = [{s1}]")
+
     let i2 = (((-21) * (45 + (-22))) + ((818656 - 41) + (-562737689021)))
     say("i2 = {i2}")
+
     let s3 = "emoji 😀"
     say("s3 = [{s3}]")
+
     let b4 = (s3 == ("quote\"d".replace(s3, s1) + s1))
     say("b4 = {b4}")
+
     let b5 = s1.replace(s3, s3).reverse().is_empty()
     say("b5 = {b5}")
+
     let l6 = [(-1), 6, (-4), 10, 5]
     say("l6 = {l6} len {l6.length()}")
-    say("{(((-27) - i2) / (-i2))} {s3.length()} {((((-27) - i2) / (-i2)) < s3.length())} sum {(((-27) - i2) / (-i2)) + s3.length()}")
+    say(
+        "{(((-27) - i2) / (-i2))} {s3.length()} {((((-27) - i2) / (-i2)) < s3.length())} sum {(((-27) - i2) / (-i2)) + s3.length()}"
+    )
+
     let i7 = (i2 + ((i2 + 3) + (-i2)))
     say("i7 = {i7}")
+
     let i8 = (s1.length() + ((-(-717610)) % ((-41) % 19)))
     say("i8 = {i8}")
+
     let i9 = (((37 + 864678) + (i7 / 48)) * ((830270 - i8) + l6.get(3)))
     say("i9 = {i9}")
+
     let i10 = (i2 % (i9 + (i7 - i7)))
     say("i10 = {i10}")
+
     let s11 = (s1.upper() + "hello world")
     say("s11 = [{s11}]")
     say("fib(48) = {fib(48)}")

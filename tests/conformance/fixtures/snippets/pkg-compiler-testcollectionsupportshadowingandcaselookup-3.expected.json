@@ -12,16 +12,16 @@
         "message": "ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRange",
         "position": {
           "file": "pkg-compiler-testcollectionsupportshadowingandcaselookup-3.ms",
-          "line": 6,
+          "line": 7,
           "column": 17,
-          "offset": 244
+          "offset": 245
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionsupportshadowingandcaselookup-3.ms:6:17: resolution: ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRange\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionsupportshadowingandcaselookup-3.ms:7:17: resolution: ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRange\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -27,6 +27,7 @@ test "closed codec strings reject spelling changes with their domain errors":
         try expect_equal("text".normalize(form), normalization_error)
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         try expect_equal((try "text".normalize(form)), "text")
+
     let compression_error: Result[Bytes, CompressionError] = error(
         CompressionError.Unsupported
     )
@@ -40,18 +41,18 @@ test "closed codec strings reject spelling changes with their domain errors":
             try expect_equal(
                 (
                     try compress(
-                        data,
-                        format,
-                        level
+                        data, format, level
                     ) | try decompress(format)
                 ),
                 data
             )
+
     let level_error: Result[Bytes, CompressionError] = error(
         CompressionError.InvalidInput
     )
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
+
     let pack_error: Result[Bytes, ArchiveError] = error(ArchiveError.Unsupported)
     let unpack_error: Result[List[ArchiveEntry], ArchiveError] = error(
         ArchiveError.Unsupported
@@ -78,9 +79,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                     (
                         try expect_error(
                             fs.open(
-                                "{temporary.path()}/invalid",
-                                mode,
-                                384
+                                "{temporary.path()}/invalid", mode, 384
                             )
                         )
                     ) != FileSystemError.InvalidInput
@@ -104,18 +103,22 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             try expect_equal((try handle.seek(0, 0)), 0)
             try expect_equal((try handle.read()).get().length(), 65536)
             try expect_equal((try handle.read_file()).length(), 14464)
+
             let _count = try handle.seek(0, 0)
             try handle.append_file("XY")
             try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
             try expect_equal((try handle.stat()).size, 80000)
             try handle.write_at(4, "ZZ")
             try expect_equal((try handle.seek(0, 1)), 2)
+
             var writer = handle.writer()
             try writer.write("AB")
             try writer.flush()
             try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
+
             var reader = handle.reader()
             writer.close()
+
             let closed_read: Result[Bytes, FileSystemError] = error(
                 FileSystemError.Closed
             )
@@ -124,7 +127,6 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
         let missing = "{temporary.path()}/missing"
         try expect_equal(
-            (try expect_error(fs.open(missing, "r", 384))),
-            FileSystemError.NotFound
+            (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
         )
         try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)

@@ -4,9 +4,10 @@
 fn use(value: Optional[Int]) Int:
     return match value:
         some(_):
-            let callback = fn(n: Int = match value:
-                some(x): x
-                none: 0
+            let callback = fn(
+                n: Int = match value:
+                    some(x): x
+                    none: 0
             ) Int:
                 return n
             callback()

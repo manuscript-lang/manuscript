@@ -1,0 +1,28 @@
+module "list_saved_length_shrink"
+entry @main
+fn @walk(%start: own list<int>) -> int {
+b0:
+  %n: int = list.len %start
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  br loop(%zero, %start)
+loop(%i: int, %list: own list<int>):
+  %inside: bool = icmp.lt %i, %n
+  br_if %inside, body(), done()
+body:
+  %x: int = list.get %list, %i
+  %shorter: list<int> = list.droplast %list
+  %j: int = iadd.chk %i, %one
+  br loop(%j, %shorter)
+done:
+  drop %list
+  ret %zero
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 10
+  %b: int = iconst 20
+  %l: list<int> = list.lit %a, %b
+  %r: int = call @walk(%l)
+  ret %r
+}

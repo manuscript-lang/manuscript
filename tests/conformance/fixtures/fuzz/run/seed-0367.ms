@@ -12,42 +12,56 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
-    say("{942572} {((-29) - ((-26) - 16))} {(942572 < ((-29) - ((-26) - 16)))} sum {942572 + ((-29) - ((-26) - 16))}")
+    say(
+        "{942572} {((-29) - ((-26) - 16))} {(942572 < ((-29) - ((-26) - 16)))} sum {942572 + ((-29) - ((-26) - 16))}"
+    )
+
     let i1 = (((29 % (-208730)) + 11) - ((24 % 33) + 440667))
     say("i1 = {i1}")
+
     let i3 = 750717620551
     say("i3 = {i3}")
+
     if ("{(77725 + i1)}:" + "").starts_with("hello world"):
         say(("42" + "42"))
     else:
         say(("quote\"d" + "x"))
+
     say("fib(14) = {fib(14)}")
     say("gcd(3780, 1849) = {gcd(3780, 1849)}")
+
     if ("a" + "42").is_empty():
         say("quote\"d")
     else:
         say("ms".lower())
+
     if ((false and false) and ((-14) < i1)):
         say(("a" + "naïve"))
     else:
         say("emoji 😀")
+
     let s4 = "naïve"
     say("s4 = [{s4}]")
+
     let s5 = "日本語".trim()
     say("s5 = [{s5}]")
+
     let l6 = [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
     return 0

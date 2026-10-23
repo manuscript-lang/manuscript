@@ -15,23 +15,6 @@ pub fn usage_error(io: &mut Io, message: impl AsRef<str>) -> i32 {
     2
 }
 
-/// Levenshtein distance over bytes.
-pub fn distance(a: &str, b: &str) -> usize {
-    let (a, b) = (a.as_bytes(), b.as_bytes());
-    let mut previous: Vec<usize> = (0..=b.len()).collect();
-    for i in 1..=a.len() {
-        let mut current = vec![i; b.len() + 1];
-        for j in 1..=b.len() {
-            let cost = usize::from(a[i - 1] != b[j - 1]);
-            current[j] = (previous[j] + 1)
-                .min(current[j - 1] + 1)
-                .min(previous[j - 1] + cost);
-        }
-        previous = current;
-    }
-    previous[b.len()]
-}
-
 /// Turn a failed file operation into a cause and a fix.
 pub fn file_error(error: &ProjectError) -> String {
     match error {

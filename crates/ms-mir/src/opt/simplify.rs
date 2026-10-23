@@ -227,8 +227,9 @@ fn int_op(op: Op, x: i64, y: i64) -> Option<i64> {
         Op::IAddChk => x.checked_add(y)?,
         Op::ISubChk => x.checked_sub(y)?,
         Op::IMulChk => x.checked_mul(y)?,
-        Op::SDiv | Op::SDivChk if y != 0 && y != -1 => x / y,
-        Op::SRem | Op::SRemChk if y != 0 && y != -1 => x % y,
+        Op::SDiv | Op::SDivChk => x.checked_div(y)?,
+        Op::SRemChk if y != 0 => x.wrapping_rem(y),
+        Op::SRem => x.checked_rem(y)?,
         Op::Shl => x.wrapping_shl(y as u32),
         Op::Sshr => x.wrapping_shr(y as u32),
         _ => return None,
@@ -310,6 +311,9 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                 return int_op(inst.op, p, q).map_or(Act::Keep, |r| Act::Const(K::I(r)));
             }
             match env.ci(y) {
+                // Checked remainder defines MIN % -1 as zero, like the backend's
+                // safe-divisor sequence; unlike division it cannot overflow.
+                Some(-1) if inst.op == Op::SRemChk => Act::Const(K::I(0)),
                 Some(1) => {
                     if div {
                         Act::Alias(x)
@@ -344,6 +348,7 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                 (Op::And, Some(0)) => Act::Const(zero_of(is_bool)),
                 (Op::And, Some(q)) if q == ones => Act::Alias(x),
                 (Op::Or | Op::Xor, Some(0)) => Act::Alias(x),
+                (Op::Xor, Some(1)) if is_bool => Act::Rewrite(Op::Not, vec![x], Imm::None),
                 (Op::Or, Some(q)) if q == ones => {
                     Act::Const(if is_bool { K::B(true) } else { K::I(-1) })
                 }
@@ -438,6 +443,26 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             .ci(a(0))
             .map_or(Act::Keep, |p| Act::Const(K::F((p as f64).to_bits()))),
         Op::B2I => env.ci(a(0)).map_or(Act::Keep, |p| Act::Const(K::I(p))),
+        Op::OptIsSome => match env.defs.get(&a(0)) {
+            Some((Op::OptSome, _, _)) => Act::Const(K::B(true)),
+            Some((Op::OptNone, _, _)) => Act::Const(K::B(false)),
+            _ => Act::Keep,
+        },
+        Op::OptGet | Op::OptUnwrap => {
+            let Some((Op::OptSome, args, _)) = env.defs.get(&a(0)) else {
+                return Act::Keep;
+            };
+            // A scalar has no ownership to transfer or copy. For an owned payload,
+            // the constructor consumed it, so aliasing it here would revive a move.
+            if matches!(
+                f.ty(args[0]),
+                Ty::INT | Ty::BOOL | Ty::FLOAT | Ty::UNIT | Ty::PTR
+            ) {
+                Act::Alias(args[0])
+            } else {
+                Act::Keep
+            }
+        }
         Op::Select => {
             let (c, t, e) = (a(0), a(1), a(2));
             if let Some(p) = env.ci(c) {
@@ -448,6 +473,9 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             }
             if is_bool && env.ci(t) == Some(1) && env.ci(e) == Some(0) {
                 return Act::Alias(c);
+            }
+            if is_bool && env.ci(t) == Some(0) && env.ci(e) == Some(1) {
+                return Act::Rewrite(Op::Not, vec![c], Imm::None);
             }
             Act::Keep
         }
@@ -788,7 +816,16 @@ fn cse(m: &Module, f: &mut Func) -> bool {
         for (ii, inst) in f.blocks[b].insts.iter().enumerate() {
             let Some(r) = inst.res else { continue };
             let ty = f.ty(r);
-            if !(inst.op.is_numberable() || inst.op == Op::AltTag) || m.needs_drop(ty) {
+            // Reaching an identical dominated integer check proves the first one
+            // succeeded. Its scalar operands cannot change across calls or I/O.
+            // Keep the first check, including when its result is otherwise dead.
+            let checked_int = matches!(
+                inst.op,
+                Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk | Op::SRemChk
+            );
+            if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int)
+                || m.needs_drop(ty)
+            {
                 continue;
             }
             let mut args: Vec<Value> = inst.args.iter().map(|a| resolve(&subst, *a)).collect();
@@ -912,26 +949,50 @@ fn find_roundtrip(
 // ---- dead code -------------------------------------------------------------
 
 fn dce(m: &Module, f: &mut Func) -> bool {
+    let mut uses = f.use_counts();
+    let mut removable = vec![None; f.values.len()];
+    let mut dead: Vec<Vec<bool>> = f
+        .blocks
+        .iter()
+        .map(|b| vec![false; b.insts.len()])
+        .collect();
+    let mut work = Vec::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            let Some(r) = inst.res else { continue };
+            if inst.op.info().effects.removable() && m.result_mode(f, inst) != Some(Mode::Own) {
+                removable[r.index()] = Some((bi, ii));
+                if uses[r.index()] == 0 {
+                    work.push(r);
+                }
+            }
+        }
+    }
+    // Deleting a user may make its operands dead. Each instruction and operand
+    // is visited once, including a long chain whose only live value is its input.
     let mut changed = false;
-    loop {
-        let uses = f.use_counts();
-        let mut removed = false;
-        let mut blocks = std::mem::take(&mut f.blocks);
-        for b in &mut blocks {
-            b.insts.retain(|i| {
-                let Some(r) = i.res else { return true };
-                let dead = uses[r.index()] == 0
-                    && i.op.info().effects.removable()
-                    && m.result_mode(f, i) != Some(Mode::Own);
-                removed |= dead;
-                !dead
+    while let Some(r) = work.pop() {
+        let Some((bi, ii)) = removable[r.index()] else {
+            continue;
+        };
+        dead[bi][ii] = true;
+        changed = true;
+        for a in &f.blocks[bi].insts[ii].args {
+            uses[a.index()] -= 1;
+            if uses[a.index()] == 0 {
+                work.push(*a);
+            }
+        }
+    }
+    if changed {
+        for (bi, b) in f.blocks.iter_mut().enumerate() {
+            let mut ii = 0;
+            b.insts.retain(|_| {
+                let keep = !dead[bi][ii];
+                ii += 1;
+                keep
             });
         }
-        f.blocks = blocks;
-        if !removed {
-            break;
-        }
-        changed = true;
     }
     changed
 }

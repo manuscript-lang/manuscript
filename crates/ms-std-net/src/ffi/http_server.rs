@@ -3,7 +3,7 @@
 use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::TlsOptionsWire;
-use super::{ExchH, HeadersH, NetH, ServerH, report};
+use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
 use crate::error::{HttpErr, IoErr, NetErr};
 use crate::http::server::{CloseError, Limits, Options, Server};
 use crate::tls;
@@ -25,11 +25,6 @@ abi_record! {
         pub tls_present: u8,
         pub tls: TlsOptionsWire,
     }
-}
-
-/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
-fn opt(has: bool, v: i64) -> Option<i64> {
-    has.then_some(v)
 }
 
 /// Request header block cap for `Network.serve`, which has no option for it.

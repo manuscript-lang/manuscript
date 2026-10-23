@@ -11,9 +11,11 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (-29)
     say("i1 = {i1}")
+
     if ((i1 / (-522019)) >= i1):
         say("  padded  ")
     else:
         say("alpha".trim())
+
     let bad = (1 < 2) < 3
     return 0

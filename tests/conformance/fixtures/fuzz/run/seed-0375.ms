@@ -12,50 +12,68 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let i1 = (448293377376 * (((-687045) + 43) + 96095))
     say("i1 = {i1}")
+
     let b2 = ((not (true and true)) and false)
     say("b2 = {b2}")
+
     let b3 = "Tab\there".lower().is_empty()
     say("b3 = {b3}")
+
     let f4 = 6.0e23
     say("f4 = {f4}")
+
     let b5 = b3
     say("b5 = {b5}")
+
     let i6 = 18
     say("i6 = {i6}")
+
     if ((not b2) or (b5 or true)):
         say("MiXeD CaSe")
     else:
         say("line\nbreak")
+
     let l7 = [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
+
     let b8 = b3
     say("b8 = {b8}")
+
     let s9 = ("naïve".trim() + ("emoji 😀".upper() + "42".reverse()))
     say("s9 = [{s9}]")
+
     let i10 = (631593751202 % (i6 * (i6 + i6)))
     say("i10 = {i10}")
+
     let b11 = (((1.0e4 * f4) + (f4 + 482.515)) < ((520.207 / f4) * (f4 + 417.719)))
     say("b11 = {b11}")
+
     if (not (0 > 24)):
         say("brace\{s\}")
     else:
         say((s9 + s9))
+
     var acc12 = 0
     for i in range(0, 6):
         acc12 += i * (-3)
     say("acc12 = {acc12}")
     say("fact(0) = {fact(0)}")
+
     let b13 = true
     say("b13 = {b13}")
+
     let f14 = f4
     say("f14 = {f14}")
+
     let b15 = ("MiXeD CaSe" == "beta".upper())
     say("b15 = {b15}")
+
     let s16 = ("42".lower() + s9.lower()).reverse()
     say("s16 = [{s16}]")
     return 0

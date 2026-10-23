@@ -12,16 +12,16 @@
         "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-4.ms",
-          "line": 5,
+          "line": 6,
           "column": 37,
-          "offset": 255
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:5:37: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:6:37: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

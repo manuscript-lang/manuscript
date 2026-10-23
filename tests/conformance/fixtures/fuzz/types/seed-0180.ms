@@ -11,19 +11,27 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [7, (-1), (-19), (-5), (-20)]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (-23)
     say("i2 = {i2}")
+
     let l3 = [18, (-11), (-24), 14, 6]
     say("l3 = {l3} len {l3.length()}")
+
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
+
     let l5 = l3.reversed()
     say("l5 = {l5} len {l5.length()}")
+
     var acc6 = 0
     var stepacc6 = 0
+
     while stepacc6 < 8:
         stepacc6 += 1
         acc6 += stepacc6 * stepacc6 + (-5)
+
     say("acc6 = {acc6}")
+
     let bad = 1.5 + 2
     return 0

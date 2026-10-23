@@ -12,9 +12,9 @@
         "message": "unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-6.ms",
-          "line": 5,
+          "line": 6,
           "column": 22,
-          "offset": 228
+          "offset": 229
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-6.ms",
-          "line": 5,
+          "line": 6,
           "column": 1,
-          "offset": 207
+          "offset": 208
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-6.ms",
-          "line": 6,
+          "line": 7,
           "column": 12,
-          "offset": 246
+          "offset": 247
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-6.ms:5:22: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:5:1: type: make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:6:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-6.ms:6:22: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:6:1: type: make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture\n<DIR>/pkg-checker-testfilefixturecontracts-6.ms:7:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

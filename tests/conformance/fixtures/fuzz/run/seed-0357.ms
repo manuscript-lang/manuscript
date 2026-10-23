@@ -11,19 +11,31 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-9), (-17), (-20), (-13), 26]
     say("l1 = {l1} len {l1.length()}")
-    let s2 = (("delta".lower() + "emoji 😀".lower()) + ("{(330982 + 40)}:" + ("delta" + "x")))
+
+    let s2 = (
+        ("delta".lower() + "emoji 😀".lower())
+        + ("{(330982 + 40)}:" + ("delta" + "x"))
+    )
     say("s2 = [{s2}]")
-    say("{(((-22) / (-45)) - 8)} {755473} {((((-22) / (-45)) - 8) < 755473)} sum {(((-22) / (-45)) - 8) + 755473}")
+    say(
+        "{(((-22) / (-45)) - 8)} {755473} {((((-22) / (-45)) - 8) < 755473)} sum {(((-22) / (-45)) - 8) + 755473}"
+    )
+
     var acc3 = 0
     var stepacc3 = 0
+
     while stepacc3 < 8:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + 6
+
     say("acc3 = {acc3}")
+
     let f4 = (0.0 + ((6.5 + 534.693) * (0.0 + 129.670)))
     say("f4 = {f4}")
+
     let f5 = (134.121 * (185.25 + (825.398 * 244.004)))
     say("f5 = {f5}")
+
     let l6 = [(-27), (-2)]
     say("l6 = {l6} len {l6.length()}")
     return 0

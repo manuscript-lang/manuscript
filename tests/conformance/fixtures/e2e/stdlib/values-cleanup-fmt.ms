@@ -47,15 +47,18 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     let missing: Optional[Int] = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
+
     let nested: Optional[Optional[Int]] = some(missing)
     try expect_false(not nested.is_some() or not nested.get().is_none())
 
 test "Result propagation and Error views preserve concrete causes":
     let failed: Result[Int, JsonError] = error(JsonError.InvalidData)
     try expect_equal(propagate(failed), failed)
+
     let success: Result[Int, JsonError] = ok(3)
     let expected: Result[Int, JsonError] = ok(4)
     try expect_equal(propagate(success), expected)
+
     let view = Error(JsonError.InvalidData)
     try expect_not_equal(view.message().byte_length(), 0)
 
@@ -68,6 +71,7 @@ test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
     let second = Key(1, "second")
     try expect_false(first != second or first.hash() != second.hash())
+
     var map = Map[Key, String]()
     map.add(first, "a")
     map.add(second, "b")

@@ -4,5 +4,6 @@
 type Pair[T, U]:
     first: T
     second: U
+
 type Config:
     value: Pair[Optional[Int], Optional[Optional[String]]]

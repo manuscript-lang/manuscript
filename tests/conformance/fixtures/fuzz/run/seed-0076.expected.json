@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "s1 = [hello world]\n-9 11 true sum 2\ni2 = -17\ni3 = 12420087\nb4 = false\ns5 = [d\"etouq:51-]\n-51 12420104 true sum 12420053\ns6 = [d\"etouq:51-  deddap  -15:quote\"d]\ni7 = -17\nl8 = [23, 0, 18] len 3\nf9 = 164.012\ns10 = [41:delta]\ni11 = 609910002488\nacc12 = 180\nl13 = [29, -4, -3, 5, 23] len 5\ni14 = -17\n",
-    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0076.ms:47 in main\n"
+    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0076.ms:67 in main\n"
   }
 }

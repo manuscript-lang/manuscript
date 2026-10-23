@@ -45,7 +45,9 @@ test "parameters and bounds belong to interfaces and types":
     let value = Box(7)
     try expect_false(not (Same[Int](value).same(7)))
     try expect_false(not (Matching(8).same(8)))
+
     let pair = Pair(1, value)
     try expect_equal(pair.get(), 7)
+
     let callback = Box(identity)
     try expect_equal(read(callback)(9), 9)

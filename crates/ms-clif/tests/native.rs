@@ -1,7 +1,7 @@
 //! Differential tests: MIR text is run by the reference interpreter and, compiled
 //! natively with the test runtime, must produce the same output and exit status.
 
-use ms_clif::{Options, compile, link::link};
+use ms_clif::{Options, compile, link::link_all};
 use ms_mir::interp::Interp;
 use ms_mir::parse::parse_module;
 use ms_mir::verify::verify_module;
@@ -872,7 +872,7 @@ b0:
     let objp = d.join("inline-flags.o");
     std::fs::write(&objp, compile(&m, &Options::default()).unwrap()).unwrap();
     let exe = d.join("inline-flags");
-    link(&objp, real_runtime(), &exe).unwrap();
+    link_all(&objp, &[real_runtime()], &exe).unwrap();
     let out = Command::new(exe).output().unwrap();
     assert_eq!(out.status.code(), Some(70));
     let err = String::from_utf8_lossy(&out.stderr);
@@ -941,5 +941,39 @@ b0:
         if cfg!(windows) {
             assert!(!err.contains("callback.ms:22 in main"), "{err}");
         }
+    }
+}
+
+#[test]
+fn saved_list_lengths_keep_bounds_faults_after_optimization() {
+    let replaced = same(
+        include_str!("../../ms-mir/tests/fixtures-opt/list_saved_length.mir"),
+        "saved-list-length",
+    );
+    assert_eq!(replaced.code, 12);
+    let shrunk = same(
+        include_str!("../../ms-mir/tests/fixtures-opt/list_saved_length_shrink.mir"),
+        "saved-list-length-shrink",
+    );
+    assert_eq!(shrunk.code, 70);
+}
+
+#[test]
+fn readonly_record_copies_keep_payloads_alive_after_the_owner_is_dropped() {
+    for (source, name) in [
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_readonly_copy.mir"),
+            "record-readonly-copy",
+        ),
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_owner_drop.mir"),
+            "record-copy-owner-drop",
+        ),
+        (
+            include_str!("../../ms-mir/tests/fixtures-opt/record_copy_parent_update.mir"),
+            "record-copy-parent-update",
+        ),
+    ] {
+        assert_eq!(same(source, name).code, 10);
     }
 }

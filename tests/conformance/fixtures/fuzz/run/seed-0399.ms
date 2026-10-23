@@ -11,36 +11,54 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
-    say("{(4 * 25)} {((393870 + 29) / (39 * (-19)))} {((4 * 25) < ((393870 + 29) / (39 * (-19))))} sum {(4 * 25) + ((393870 + 29) / (39 * (-19)))}")
+    say(
+        "{(4 * 25)} {((393870 + 29) / (39 * (-19)))} {((4 * 25) < ((393870 + 29) / (39 * (-19))))} sum {(4 * 25) + ((393870 + 29) / (39 * (-19)))}"
+    )
+
     let s1 = (("delta" + "line\nbreak") + "brace\{s\}").lower()
     say("s1 = [{s1}]")
+
     let i2 = ((s1.length() + (10 * (-4))) + 16)
     say("i2 = {i2}")
+
     let f4 = (445.25 + 0.0)
     say("f4 = {f4}")
+
     let s5 = "42".reverse()
     say("s5 = [{s5}]")
     say("fact(12) = {fact(12)}")
+
     let s6 = ("back\\slash" + s5)
     say("s6 = [{s6}]")
+
     let s7 = s5.clone()
     say("s7 = [{s7}]")
+
     let s8 = ("Tab\there" + s5)
     say("s8 = [{s8}]")
-    say("{(i2 % 32)} {(-(i2 + i2))} {((i2 % 32) < (-(i2 + i2)))} sum {(i2 % 32) + (-(i2 + i2))}")
+    say(
+        "{(i2 % 32)} {(-(i2 + i2))} {((i2 % 32) < (-(i2 + i2)))} sum {(i2 % 32) + (-(i2 + i2))}"
+    )
+
     let i9 = (-(31 - (985520 + i2)))
     say("i9 = {i9}")
+
     let b10 = (((i2 + 2) - ((-941685) - i9)) <= i2)
     say("b10 = {b10}")
+
     let b11 = false
     say("b11 = {b11}")
+
     let i12 = i2
     say("i12 = {i12}")
+
     let b13 = ((s8 + "42").contains("back\\slash") or ((b11 and b10) and b11))
     say("b13 = {b13}")
+
     let i14 = ((15 * i2) - ((38 + (-17)) - ((-67434243032) * (-18))))
     say("i14 = {i14}")
     return 0

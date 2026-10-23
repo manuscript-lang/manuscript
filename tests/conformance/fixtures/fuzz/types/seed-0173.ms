@@ -11,19 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "  padded  ".upper()
     say("s1 = [{s1}]")
+
     if ("beta" != "  padded  ".reverse()):
         say(("42" + s1))
     else:
         say(s1.trim())
+
     if "ms".replace("naïve", s1).is_empty():
         say(("{((-109631) % 4)}:" + s1))
     else:
         say("MiXeD CaSe".upper())
+
     let f2 = (((259.445 - 509.254) - (4.0e-4 / 78.502)) + 931.079)
     say("f2 = {f2}")
+
     let l3 = [(-21), 23, 17, 25]
     say("l3 = {l3} len {l3.length()}")
+
     let f4 = 92.313
     say("f4 = {f4}")
+
     let bad = 1 and 2
     return 0

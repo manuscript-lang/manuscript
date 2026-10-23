@@ -11,28 +11,41 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     say("fact(16) = {fact(16)}")
+
     let s1 = "  padded  ".lower()
     say("s1 = [{s1}]")
+
     let s2 = s1.trim()
     say("s2 = [{s2}]")
-    let b3 = (("{((-35) / (-626112))}:" + ("42" + "quote\"d")) == (s2.trim() + "ms".lower()))
+
+    let b3 = (
+        ("{((-35) / (-626112))}:" + ("42" + "quote\"d")) == (
+            s2.trim()
+            + "ms".lower()
+        )
+    )
     say("b3 = {b3}")
+
     let i4 = ((-30) * (-279449))
     say("i4 = {i4}")
     say("gcd(184, 3086) = {gcd(184, 3086)}")
+
     if ((232.294 / 557.25) < 9.0e-9):
         say((s2 + "delta"))
     else:
         say(("42" + "  padded  "))
+
     let s5 = ("{(-16)}:" + "alpha")
     say("s5 = [{s5}]")
     return 0

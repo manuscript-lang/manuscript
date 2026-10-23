@@ -17,6 +17,7 @@ test "bound and forwarded calls keep the equality of the collection creator":
             or second.get(0).label != "original"
         )
     )
+
     # A collection keeps the equality of the module that created it, so
     # bound operations from another module do not change how it matches.
     var items = Set[Key]()

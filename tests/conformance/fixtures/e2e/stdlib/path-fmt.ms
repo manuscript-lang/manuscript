@@ -10,6 +10,7 @@ test "POSIX paths normalize resolve parse and match without host access":
     try expect_equal(paths.join(["/a", "b", "c.txt"]), "/a/b/c.txt")
     try expect_equal((try paths.relative("/a/b", "/a/c")), "../c")
     try expect_equal((try paths.resolve("/a", ["b", "../c"])), "/a/c")
+
     let parsed = paths.parse("/a/file.tar.gz")
     try expect_false(parsed.name != "file.tar" or parsed.extension != ".gz")
     try expect_equal(paths.format(parsed), "/a/file.tar.gz")

@@ -12,9 +12,9 @@
         "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 7,
-          "column": 67,
-          "offset": 335
+          "line": 9,
+          "column": 27,
+          "offset": 352
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "unknown type Datagram; add: import Datagram from \"@std/net.ms\"",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 7,
-          "column": 92,
-          "offset": 360
+          "line": 10,
+          "column": 14,
+          "offset": 382
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 7,
-          "column": 102,
-          "offset": 370
+          "line": 10,
+          "column": 24,
+          "offset": 392
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
-          "line": 9,
-          "column": 25,
-          "offset": 514
+          "line": 17,
+          "column": 15,
+          "offset": 575
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:7:67: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:7:92: resolution: unknown type Datagram; add: import Datagram from \"@std/net.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:7:102: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:9:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:9:27: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:14: resolution: unknown type Datagram; add: import Datagram from \"@std/net.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:10:24: resolution: unknown type NetworkError; add: import NetworkError from \"@std/net.ms\"\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms:17:15: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

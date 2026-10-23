@@ -13,19 +13,25 @@ export fn main() Int:
         say(("{(-4)}:" + "line\nbreak"))
     else:
         say("Tab\there".upper())
+
     let bad = 1 + "one"
     let b1 = (((9223372036854775806 + (-48)) + (750609 % 33)) != 621648)
     say("b1 = {b1}")
+
     if ((379.541 > 985.25) and (not false)):
         say("x".upper())
     else:
         say("gamma".trim())
+
     let l2 = [25]
     say("l2 = {l2} len {l2.length()}")
+
     var acc3 = 0
     var stepacc3 = 0
+
     while stepacc3 < 1:
         stepacc3 += 1
         acc3 += stepacc3 * stepacc3 + (-2)
+
     say("acc3 = {acc3}")
     return 0

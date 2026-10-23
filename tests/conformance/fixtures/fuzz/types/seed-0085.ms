@@ -11,19 +11,25 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     say("collatz(746) = {collatz(746)}")
+
     let s1 = "emoji 😀".upper().trim()
     say("s1 = [{s1}]")
+
     let b2 = ("x".contains(s1) or ((11 * 1) == ((-13) + 45)))
     say("b2 = {b2}")
+
     let bad: Bool = 1
     return 0

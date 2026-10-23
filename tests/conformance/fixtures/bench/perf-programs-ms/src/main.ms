@@ -182,6 +182,7 @@ fn bench_length() Int:
 
     let t = clock().now()
     i = 0
+
     var ln = 0
 
     while i < 1000000:
@@ -209,6 +210,7 @@ fn bench_for_list() Int:
 export fn main() Int:
     let built = bench_string()
     bench_read_line()
+
     let sum = bench_map()
     let hits = bench_int_eq()
     let g = bench_generic()

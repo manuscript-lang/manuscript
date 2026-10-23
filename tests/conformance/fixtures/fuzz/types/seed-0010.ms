@@ -11,17 +11,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
-    say("{((470528 - (-19)) - (-786852))} {l1.length()} {(((470528 - (-19)) - (-786852)) < l1.length())} sum {((470528 - (-19)) - (-786852)) + l1.length()}")
+    say(
+        "{((470528 - (-19)) - (-786852))} {l1.length()} {(((470528 - (-19)) - (-786852)) < l1.length())} sum {((470528 - (-19)) - (-786852)) + l1.length()}"
+    )
+
     let f2 = (((885.625 / 561.961) * 0.0) + ((0.0 + 270.012) - (8.0e-7 + 133.25)))
     say("f2 = {f2}")
+
     var l3 = l1.clone()
     l3.append(24)
     say("l3 = {l3} len {l3.length()}")
+
     let bad = missing_function(3)
     let s4 = "日本語"
     say("s4 = [{s4}]")
+
     let l5 = l1.map(fn(x): x * 9)
     say("l5 = {l5} len {l5.length()}")
+
     let s6 = (("{(17 + (-665647))}:" + s4.lower()) + "quote\"d".lower())
     say("s6 = [{s6}]")
     return 0

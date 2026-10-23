@@ -11,15 +11,19 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     say("gcd(1261, 2434) = {gcd(1261, 2434)}")
+
     let s1 = "back\\slash"
     say("s1 = [{s1}]")
+
     if ((49 == (-7)) or false):
         say("delta")
     else:
         say("MiXeD CaSe")
+
     let bad = say
     return 0

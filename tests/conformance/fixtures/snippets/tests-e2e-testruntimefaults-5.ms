@@ -4,5 +4,6 @@
 fn difference(values: List[Int]) Int:
     let [first, second] = values
     return first - second
+
 test "fault":
     let impossible = difference(values: [1])

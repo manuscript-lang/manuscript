@@ -38,39 +38,53 @@ test "contextual callbacks and inline returns":
         .map(fn(number): (number + offset).to_string())
     )
     try expect_equal(strings.join(","), "5,6")
+
     let result = apply(transform: fn(item): item + offset, value: 2)
     try expect_equal(result, 5)
     try expect_equal(chain(second: fn(item): item + 2, first: fn(): 3), 5)
+
     let callback = Callback(fn(item: Int): item + 1)
     try expect_equal(callback.transform(3), 4)
+
     let view = Read(Box(7))
     try expect_equal(view.get(), 7)
     try expect_false(invoke() != 0 or invoke(fn(item): item + 1) != 5)
+
     let functions: List[fn(value: Int) Int] = [fn(item): item + 4]
     try expect_equal(functions.get(0)(2), 6)
+
     let nested = fn(value: Int):
         let inner = fn(): "text"
         return value + inner().scalar_length()
+
     try expect_equal(nested(2), 6)
+
     let success = with_result(fn(): ok(4))
     try expect_equal(success, Result[Int, TextError].ok(4))
+
     let propagated = with_result(
         fn():
             let value = try checked()
             return ok(value + 2)
     )
+
     try expect_equal(propagated, Result[Int, TextError].ok(5))
+
     let failed = with_result(
         fn():
             if true: return error(TextError("expected"))
 
             return ok(4)
     )
+
     try expect_equal(failed, Result[Int, TextError].error(TextError("expected")))
+
     let subtract: fn(left: Int, right: Int) Int = fn(a, b): a - b
     try expect_equal(subtract(right: 2, left: 7), 5)
+
     let defaulted: fn(value: Int) Int = fn(item: Int = 4): item + 1
     try expect_equal(defaulted(value: 8), 9)
+
     let outer: fn(value: Int) fn(input: Int) Int = fn(base):
         return fn(extra): base + extra
     try expect_equal(outer(value: 3)(input: 4), 7)

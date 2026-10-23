@@ -71,6 +71,7 @@ fn mutated_alias() Int:
     let values = [0]
     var alias = values
     alias.set(0, 9223372036854775807)
+
     var sum = 0
     for value in values:
         sum += value
@@ -80,6 +81,7 @@ test "closed list scalar summaries preserve sums and lengths":
     filled_sum() | try expect_equal(4950)
     conditional_length(flag: true) | try expect_equal(100)
     conditional_length(flag: false) | try expect_equal(0)
+
     let empty: List[Int] = []
     var sum = 0
     for value in empty:

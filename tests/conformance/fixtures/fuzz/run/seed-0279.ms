@@ -11,46 +11,61 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = l1.map(fn(x): x * 7)
     say("l2 = {l2} len {l2.length()}")
     say("gcd(2865, 4945) = {gcd(2865, 4945)}")
+
     let i3 = 47
     say("i3 = {i3}")
+
     if ("Tab\there" != "alpha"):
         say("line\nbreak")
     else:
         say("a".reverse())
+
     let i4 = i3
     say("i4 = {i4}")
     say("collatz(1579) = {collatz(1579)}")
+
     let i5 = i3
     say("i5 = {i5}")
+
     let i6 = l1.length()
     say("i6 = {i6}")
+
     let i7 = 807145
     say("i7 = {i7}")
+
     let i8 = l1.length()
     say("i8 = {i8}")
+
     let b9 = (false and false)
     say("b9 = {b9}")
+
     if ("héllo".lower() == ("beta" + "hello world")):
         say("".lower())
     else:
         say(("hello world" + "alpha"))
+
     return 0

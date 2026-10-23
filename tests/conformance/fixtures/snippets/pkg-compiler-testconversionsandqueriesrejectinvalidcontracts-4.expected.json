@@ -23,16 +23,16 @@
         "message": "String does not satisfy Error; use a type that implements it",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms",
-          "line": 7,
+          "line": 8,
           "column": 1,
-          "offset": 295
+          "offset": 296
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:1: resolution: declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:7:1: type: String does not satisfy Error; use a type that implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:1: resolution: declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:8:1: type: String does not satisfy Error; use a type that implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

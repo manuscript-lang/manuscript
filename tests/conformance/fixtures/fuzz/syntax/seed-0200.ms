@@ -10,10 +10,15 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((42 / (-699323)) - ((-36) + 30)) - ((35 + 22) * (60016288632 + (-990024))))
+    let i1 = (
+        ((42 / (-699323)) - ((-36) + 30))
+        - ((35 + 22) * (60016288632 + (-990024)))
+    )
     say("i1 = {i1}")
+
     let i2 = (((17 * i1) - (i1 / i1)) / (-i1))
     say("i2 = {i2}")
+
     var acc3 = 0
     for i in range(0, 3):
         acc3 += i * 0

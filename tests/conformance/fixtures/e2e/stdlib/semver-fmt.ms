@@ -16,9 +16,7 @@ test "semver parses and formats every component":
     version.prerelease | try expect_equal(["alpha", "1"])
     version.build | try expect_equal(["build", "5"])
     format(version: version) | try expect_equal("1.2.3-alpha.1+build.5")
-    format(version: (parse(text: "0.0.0") | try expect_ok)) | try expect_equal(
-        "0.0.0"
-    )
+    format(version: (parse(text: "0.0.0") | try expect_ok)) | try expect_equal("0.0.0")
 
 test "semver rejects malformed text":
     let bad = [
@@ -50,6 +48,7 @@ test "semver orders by precedence":
             var expected = 0
             if i < j: expected = -1
             if i > j: expected = 1
+
             let left = ordered[i]
             let right = ordered[j]
             if (
@@ -67,11 +66,8 @@ test "semver ignores build metadata and compares huge numeric identifiers":
     let a = (parse(text: "1.0.0+a") | try expect_ok)
     let b = (parse(text: "1.0.0+b") | try expect_ok)
     compare(left: a, right: b) | try expect_equal(0)
+
     let small = (parse(text: "1.0.0-99999999999999999999") | try expect_ok)
     let large = (parse(text: "1.0.0-100000000000000000000") | try expect_ok)
     compare(left: small, right: large) | try expect_equal(-1)
-    (
-        SemverError.OutOfRange.message() | try expect_equal(
-            "semver: value out of range"
-        )
-    )
+    (SemverError.OutOfRange.message() | try expect_equal("semver: value out of range"))

@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = ("quote\"d" + ("  padded  " + "x".upper()))
     say("s1 = [{s1}]")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 7:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 2
+
     say("acc2 = {acc2}")
     return 0

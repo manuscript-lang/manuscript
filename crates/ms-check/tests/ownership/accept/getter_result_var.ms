@@ -9,6 +9,7 @@ impl Box:
     fn pick(first: Bool) List[Int]:
         if first:
             return self.items
+
         return [1]
 
 fn borrow_it(var b: Box) Int:

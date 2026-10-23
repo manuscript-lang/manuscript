@@ -12,16 +12,16 @@
         "message": "ambiguous alternative case some; qualify it with its type, e.g. Type.some",
         "position": {
           "file": "pkg-compiler-testpreluderetainscaseinferenceandlookuprules-5.ms",
-          "line": 7,
+          "line": 8,
           "column": 12,
-          "offset": 258
+          "offset": 259
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-5.ms:7:12: resolution: ambiguous alternative case some; qualify it with its type, e.g. Type.some\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-5.ms:8:12: resolution: ambiguous alternative case some; qualify it with its type, e.g. Type.some\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

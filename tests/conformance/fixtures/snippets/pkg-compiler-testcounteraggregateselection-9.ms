@@ -4,4 +4,3 @@
 fn probe() Int:
     var sum = 0
     var i = 0
-    

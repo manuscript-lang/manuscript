@@ -23,4 +23,5 @@ test "derived value equality":
     try expect_equal([1, 2], [1, 2])
     try expect_not_equal([1, 2], [2, 1])
     try expect_equal(preserve_key("key"), "key")
+
     let _callback = Callback(increment)

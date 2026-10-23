@@ -4,6 +4,7 @@
 type Shape:
     case Dot
     case Line
+
 fn use(value: Shape) Int:
     return match value:
         Dot: 0

@@ -182,3 +182,301 @@ fn folds_operations_on_a_known_plain_case() {
         assert_eq!(count(&main, op), 0, "{op} left in:\n{main}");
     }
 }
+
+#[test]
+fn folds_safe_constant_division_by_minus_one() {
+    for op in ["sdiv", "sdiv.chk", "srem", "srem.chk"] {
+        for x in [i64::MIN + 1, -7, 0, 7, i64::MAX] {
+            let m = check(&format!(
+                "module \"minus_one\"\nentry @main\nfn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst -1\n  %r: int = {op} %x, %y\n  ret %r\n}}"
+            ));
+            let text = func_text(&m, "main");
+            assert!(!text.contains(op), "{text}");
+        }
+    }
+    // The checked overflow and zero divisor must still fault.
+    for (op, x, y) in [
+        ("sdiv.chk", i64::MIN, -1),
+        ("sdiv.chk", 7, 0),
+        ("srem.chk", 7, 0),
+    ] {
+        let m = check(&format!(
+            "module \"fault\"\nentry @main\nfn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %y: int = iconst {y}\n  %r: int = {op} %x, %y\n  ret %r\n}}"
+        ));
+        assert!(observe(&m).0.is_err());
+        assert!(func_text(&m, "main").contains(op));
+    }
+}
+
+#[test]
+fn canonicalizes_boolean_negation() {
+    for expr in ["select %b, %f, %t", "xor %b, %t", "xor %t, %b"] {
+        for b in [false, true] {
+            let m = check(&format!(
+                "module \"bool_negation\"\nentry @main\nfn @negate(%b: bool) -> bool {{\nb0:\n  %f: bool = bconst false\n  %t: bool = bconst true\n  %r: bool = {expr}\n  ret %r\n}}\nfn @main() -> int {{\nb0:\n  %b: bool = bconst {b}\n  %r: bool = call @negate (%b)\n  %i: int = b2i %r\n  ret %i\n}}"
+            ));
+            let text = func_text(&m, "negate");
+            assert!(!text.contains("select") && !text.contains("xor"), "{text}");
+            assert_eq!(count(&text, "= not "), 1, "{text}");
+        }
+    }
+}
+
+#[test]
+fn remainder_by_minus_one_is_zero_even_at_min() {
+    for x in [i64::MIN, -1, 0, i64::MAX] {
+        let m = check(&format!(
+            "module \"remainder\"\nentry @main\nfn @rem(%x: int) -> int {{\nb0:\n  %y: int = iconst -1\n  %r: int = srem.chk %x, %y\n  ret %r\n}}\nfn @main() -> int {{\nb0:\n  %x: int = iconst {x}\n  %r: int = call @rem (%x)\n  ret %r\n}}"
+        ));
+        assert_eq!(observe(&m).0, Ok(0));
+        assert!(!func_text(&m, "rem").contains("srem"));
+    }
+}
+
+#[test]
+fn folding_remainder_keeps_numerator_faults() {
+    let m = check(
+        "module \"numerator_fault\"
+entry @main
+fn @main() -> int {
+b0:
+  %one: int = iconst 1
+  %zero: int = iconst 0
+  %minus_one: int = iconst -1
+  %x: int = sdiv.chk %one, %zero
+  %r: int = srem.chk %x, %minus_one
+  ret %r
+}",
+    );
+    assert!(observe(&m).0.is_err());
+    let text = func_text(&m, "main");
+    assert!(text.contains("sdiv.chk"), "{text}");
+    assert!(!text.contains("srem"), "{text}");
+}
+
+#[test]
+fn reuses_dominating_checked_arithmetic_across_io() {
+    for (op, x, y) in [
+        ("iadd.chk", 7, 3),
+        ("iadd.chk", i64::MAX, 1),
+        ("isub.chk", 7, 3),
+        ("isub.chk", i64::MIN, 1),
+        ("imul.chk", 7, 3),
+        ("imul.chk", i64::MAX, 2),
+        ("ineg.chk", 7, 0),
+        ("ineg.chk", i64::MIN, 0),
+        ("sdiv.chk", 7, 3),
+        ("sdiv.chk", 7, 0),
+        ("sdiv.chk", i64::MIN, -1),
+        ("srem.chk", 7, 3),
+        ("srem.chk", 7, 0),
+    ] {
+        let args = if op == "ineg.chk" { "%x" } else { "%x, %y" };
+        let repeated = if matches!(op, "iadd.chk" | "imul.chk") {
+            "%y, %x"
+        } else {
+            args
+        };
+        let m = check(&format!(
+            "module \"checked_cse\"
+extern @msrt_print_int(int) -> unit
+entry @main
+fn @calc(%x: int, %y: int) -> int {{
+b0:
+  %a: int = {op} {args} !0:10:1
+  %out: unit = call.rt @msrt_print_int(%a)
+  %b: int = {op} {repeated} !0:12:1
+  %sum: int = iadd %a, %b
+  ret %sum
+}}
+fn @main() -> int {{
+b0:
+  %x: int = iconst {x}
+  %y: int = iconst {y}
+  %r: int = call @calc(%x, %y)
+  ret %r
+}}"
+        ));
+        let text = func_text(&m, "calc");
+        assert_eq!(count(&text, op), 1, "{text}");
+        assert!(text.contains("!0:10:1"), "first check moved: {text}");
+    }
+}
+
+#[test]
+fn checked_arithmetic_in_sibling_blocks_is_not_reused_at_the_join() {
+    for c in [false, true] {
+        let m = check(&format!(
+            "module \"checked_siblings\"
+entry @main
+fn @calc(%x: int, %y: int, %c: bool) -> int {{
+b0:
+  br_if %c, yes(), no()
+yes:
+  %a: int = iadd.chk %x, %y
+  br join(%a)
+no:
+  %b: int = iadd.chk %x, %y
+  br join(%b)
+join(%p: int):
+  %d: int = iadd.chk %x, %y
+  %r: int = iadd %p, %d
+  ret %r
+}}
+fn @main() -> int {{
+b0:
+  %x: int = iconst 7
+  %y: int = iconst 3
+  %c: bool = bconst {c}
+  %r: int = call @calc(%x, %y, %c)
+  ret %r
+}}"
+        ));
+        let text = func_text(&m, "calc");
+        assert_eq!(count(&text, "iadd.chk"), 3, "{text}");
+    }
+}
+
+#[test]
+fn a_dominating_check_is_kept_when_only_its_repeat_is_used() {
+    for c in [false, true] {
+        let m = check(&format!(
+            "module \"checked_dominator\"
+entry @main
+fn @calc(%x: int, %y: int, %c: bool) -> int {{
+b0:
+  %first: int = iadd.chk %x, %y !0:6:1
+  br_if %c, yes(), no()
+yes:
+  %second: int = iadd.chk %y, %x !0:9:1
+  ret %second
+no:
+  %other: int = isub.chk %x, %y
+  ret %other
+}}
+fn @main() -> int {{
+b0:
+  %x: int = iconst 7
+  %y: int = iconst 3
+  %c: bool = bconst {c}
+  %r: int = call @calc(%x, %y, %c)
+  ret %r
+}}"
+        ));
+        let text = func_text(&m, "calc");
+        assert_eq!(count(&text, "iadd.chk"), 1, "{text}");
+        assert!(text.contains("!0:6:1"), "first check removed: {text}");
+        assert_eq!(
+            count(&text, "isub.chk"),
+            1,
+            "different operation lost: {text}"
+        );
+    }
+}
+
+#[test]
+fn removes_dead_expression_graphs_but_keeps_unused_faulting_roots() {
+    use std::fmt::Write;
+    for (x, y) in [(7, 3), (i64::MAX, 1)] {
+        let mut src = String::from(
+            "module \"dead_graph\"
+entry @main
+fn @graph(%x: int, %y: int) -> int {
+b0:
+  %checked: int = iadd.chk %x, %y
+  %v0: int = imul %x, %y
+",
+        );
+        for i in 1..512 {
+            let prev = i - 1;
+            writeln!(src, "  %v{i}: int = iadd %v{prev}, %v{prev}").unwrap();
+        }
+        write!(
+            src,
+            "  ret %x
+}}
+fn @main() -> int {{
+b0:
+  %x: int = iconst {x}
+  %y: int = iconst {y}
+  %r: int = call @graph(%x, %y)
+  ret %r
+}}"
+        )
+        .unwrap();
+        let m = check(&src);
+        let text = func_text(&m, "graph");
+        assert_eq!(count(&text, "iadd.chk"), 1, "{text}");
+        assert!(
+            !text.contains("= imul ") && !text.contains("= iadd "),
+            "{text}"
+        );
+    }
+}
+
+#[test]
+fn folds_scalar_optional_constructors_and_readers() {
+    let m = check(
+        "module \"known_optional\"
+entry @main
+fn @read(%x: int) -> int {
+b0:
+  %some: opt<int> = opt.some %x
+  %none: opt<int> = opt.none
+  %yes: bool = opt.is_some %some
+  %no: bool = opt.is_some %none
+  %get: int = opt.get %some
+  %unwrap: int = opt.unwrap %some
+  %sum: int = iadd %get, %unwrap
+  %flag: bool = xor %yes, %no
+  %one: int = b2i %flag
+  %result: int = iadd %sum, %one
+  ret %result
+}
+fn @main() -> int {
+b0:
+  %x: int = iconst 5
+  %r: int = call @read(%x)
+  ret %r
+}",
+    );
+    assert_eq!(observe(&m).0, Ok(11));
+    let text = func_text(&m, "read");
+    assert!(!text.contains("opt."), "{text}");
+}
+
+#[test]
+fn optional_folding_keeps_owned_payloads_and_none_unwrap_faults() {
+    let m = check(
+        "module \"owned_optional\"
+entry @main
+fn @main() -> int {
+b0:
+  %literal: str = str \"kept\"
+  %s: str = copy %literal
+  %o: opt<str> = opt.some %s
+  %p: str = opt.get %o
+  %n: int = str.len %p
+  drop %o
+  ret %n
+}",
+    );
+    let text = func_text(&m, "main");
+    assert!(
+        text.contains("opt.some") && text.contains("opt.get"),
+        "{text}"
+    );
+    assert_eq!(observe(&m).0, Ok(4));
+    let m = check(
+        "module \"none_unwrap\"
+entry @main
+fn @main() -> int {
+b0:
+  %o: opt<int> = opt.none
+  %r: int = opt.unwrap %o
+  ret %r
+}",
+    );
+    assert!(observe(&m).0.is_err());
+    assert!(func_text(&m, "main").contains("opt.unwrap"));
+}

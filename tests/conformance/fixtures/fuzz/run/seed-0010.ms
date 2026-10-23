@@ -11,22 +11,33 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
-    let b1 = (("{((-10) * 46)}:" + ("{(5 / (-16))}:" + "héllo")) == "  padded  ".lower().trim())
+    let b1 = (
+        (
+            "{((-10) * 46)}:"
+            + ("{(5 / (-16))}:" + "héllo")
+        ) == "  padded  ".lower().trim()
+    )
     say("b1 = {b1}")
     say("fact(19) = {fact(19)}")
+
     let s2 = "alpha".upper()
     say("s2 = [{s2}]")
+
     let i3 = (-241601)
     say("i3 = {i3}")
+
     if "".contains("delta"):
         say("")
     else:
         say(s2.lower())
+
     if (not (true and true)):
         say("ms".reverse())
     else:
         say("line\nbreak".trim())
+
     return 0

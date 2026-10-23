@@ -2,7 +2,7 @@
 //! `@std/net.ms`: headers, clients, response bodies and one-shot requests.
 
 use super::tls::TlsOptionsWire;
-use super::{BodyH, ClientH, HeadersH, NetH, code, report};
+use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};
 use crate::error::{HttpErr, IoErr};
 use crate::http::client::{
     self, Body, Client, ClientOptions, Request, Source, outgoing_headers, valid_method,
@@ -49,11 +49,6 @@ abi_record! {
         pub headers: ObjSlot<HeadersH>,
         pub protocol: Str,
     }
-}
-
-/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
-fn opt(has: bool, v: i64) -> Option<i64> {
-    has.then_some(v)
 }
 
 /// A read result as a status: `STATUS_NONE` at the end of the stream, else the chunk through `out`.

@@ -11,10 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [25, (-6), 8, (-20), (-7)]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = ((((-16) + 46) + 135102) - (45 + ((-42) / 297701)))
     say("i2 = {i2}")
     if 1:
         say("truthy")
+
     let b3 = ("gamma".replace("beta", "") + "Tab\there".lower()).is_empty()
     say("b3 = {b3}")
     return 0

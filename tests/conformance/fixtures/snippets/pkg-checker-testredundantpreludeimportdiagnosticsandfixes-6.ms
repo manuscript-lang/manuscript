@@ -2,6 +2,6 @@
 # conform: phase=check
 # conform: origin=pkg/checker/collection_prelude_test.go:115 TestRedundantPreludeImportDiagnosticsAndFixes
 import {
-    range, # factory
-    List # collection
+    range,  # factory
+    List  # collection
 } from "@std/collections.ms"

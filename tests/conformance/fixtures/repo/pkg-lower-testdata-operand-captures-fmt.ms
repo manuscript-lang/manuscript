@@ -38,16 +38,8 @@ test "multiple captures survive later statement growth":
 test "pending captures grow beyond the small buffer":
     var counter = Counter(0)
     let values = [
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        counter.value,
-        advance(var counter)
+        counter.value, counter.value, counter.value, counter.value, counter.value,
+        counter.value, counter.value, counter.value, counter.value, advance(var counter)
     ]
     if values != [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]:
         return panic("earlier field reads changed")

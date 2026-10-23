@@ -76,7 +76,7 @@ pub fn unknown_command(io: &mut Io, name: &str) {
     let mut best: Option<&str> = None;
     let mut best_distance = 3;
     for candidate in help::COMMAND_NAMES {
-        let d = util::distance(name, candidate);
+        let d = ms_check::hints::edit_distance(name, candidate);
         if d < best_distance {
             best = Some(candidate);
             best_distance = d;

@@ -11,46 +11,63 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let f1 = 222.25
     say("f1 = {f1}")
     say("gcd(3105, 807) = {gcd(3105, 807)}")
+
     let f2 = f1
     say("f2 = {f2}")
+
     let l3 = [(-30), (-6), (-9), 22]
     say("l3 = {l3} len {l3.length()}")
-    say("{(((-49) + (-40)) - l3.length())} {((-553449) + (-38))} {((((-49) + (-40)) - l3.length()) < ((-553449) + (-38)))} sum {(((-49) + (-40)) - l3.length()) + ((-553449) + (-38))}")
+    say(
+        "{(((-49) + (-40)) - l3.length())} {((-553449) + (-38))} {((((-49) + (-40)) - l3.length()) < ((-553449) + (-38)))} sum {(((-49) + (-40)) - l3.length()) + ((-553449) + (-38))}"
+    )
+
     let i4 = 12
     say("i4 = {i4}")
+
     let f5 = (((f2 / 663.727) - (353.648 / f1)) / f2)
     say("f5 = {f5}")
+
     let i6 = 9
     say("i6 = {i6}")
+
     let i7 = (((-1) + (14791 + i4)) + (((-22) * i4) + (i4 + i6)))
     say("i7 = {i7}")
+
     let b8 = (("42" == "naïve".trim()) and ((i4 / 32) > l3.length()))
     say("b8 = {b8}")
+
     let b9 = ("  padded  " + "  padded  ").ends_with("  padded  ")
     say("b9 = {b9}")
+
     let l10 = [1, 2, 3].take(0)
     say("l10 = {l10} len {l10.length()}")
+
     let i11 = ((i7 * (-30)) - ((i6 + i7) * i4))
     say("i11 = {i11}")
+
     let s12 = "naïve"
     say("s12 = [{s12}]")
+
     let l13 = l10.map(fn(x): x + 3).filter(fn(x): x % 2 == 0)
     say("l13 = {l13} len {l13.length()}")
     say("fib(33) = {fib(33)}")

@@ -9,8 +9,9 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-1),(-9), (-22), (-2)]
+    let l1 = [(-1), (-9), (-22), (-2)]
     say("l1 = {l1} len {l1.length()}")
+
     let f2 = (761.129 / (608.782 * (5.5 - 683.081)))
     say("f2 = {f2}")
     return 0

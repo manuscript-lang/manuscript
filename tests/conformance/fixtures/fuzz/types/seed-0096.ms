@@ -9,8 +9,12 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("line\nbreak".upper().replace("ms", "") + (("ms" + "beta") + "delta".lower()))
+    let s1 = (
+        "line\nbreak".upper().replace("ms", "")
+        + (("ms" + "beta") + "delta".lower())
+    )
     say("s1 = [{s1}]")
+
     let i2 = (-((-3) * (768748 + (-19))))
     say("i2 = {i2}")
     return "not an int"

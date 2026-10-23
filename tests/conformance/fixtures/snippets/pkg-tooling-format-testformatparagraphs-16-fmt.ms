@@ -4,10 +4,12 @@
 # File introduction.
 fn example() Int:
     let first = 1
+
     # A deliberate new step.
     let second = first + 1
     if second > 2:
         run(second)
         # A comment inside the branch.
+
     # A comment on the next step.
     return second

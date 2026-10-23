@@ -1,6 +1,6 @@
 //! Natives for `@std/net.ms`.
 
-use super::{ConnH, DgramH, IpH, ListenerH, NetH, report};
+use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
 use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
@@ -30,11 +30,6 @@ abi_record! {
         pub data: Bytes,
         pub sender: Str,
     }
-}
-
-/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
-fn opt(has: bool, v: i64) -> Option<i64> {
-    has.then_some(v)
 }
 
 thread_local! {

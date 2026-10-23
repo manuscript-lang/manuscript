@@ -613,78 +613,24 @@ impl<'a> FnLower<'a> {
         let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
             return Err(Error::new("entries without a record type"));
         };
-        let mt = self.ty_of(recv.v);
-        let TyKind::Obj(_, a) = self.b.m.types.kind(mt).clone() else {
-            return Err(Error::new("not a map"));
-        };
-        let (kt, vt) = (a[0], a[1]);
         let (mv, hidden) = self.list_source(Some(recv_expr), recv)?;
         let acc: Var = self.fresh_var(result);
         let empty = self.b.list_lit(entry, &[]);
         self.b.def_var(acc, empty);
-        let m0 = self.b.use_var(mv);
-        let count = self.call_runtime("msrt_map_slot_count", &[m0], MTy::INT)?;
-        let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
-        let zero = self.b.iconst(0);
-        self.b.def_var(idx, zero);
-        let (header, step, exit) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br(header, &[]);
-        self.b.switch_to(header);
-        let i = self.b.use_var(idx);
-        let more = self.b.icmp(Cc::Lt, i, count);
-        self.b.br_if(more, step, &[], exit, &[]);
-        self.b.seal_block(step);
-        self.b.switch_to(step);
-        let i = self.b.use_var(idx);
         let m = self.b.use_var(mv);
-        let (kd, vd) = self.map_descs(mt)?;
-        let kp = self
-            .b
-            .emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
-            .expect("slot");
-        let vp = self
-            .b
-            .emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))
-            .expect("slot");
-        let vd = vd.ok_or_else(|| Error::new("entries of a set"))?;
-        let live = self.call_runtime("msrt_map_entry_ptrs", &[m, kd, vd, i, kp, vp], MTy::BOOL)?;
-        let (take, skip) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(live, take, &[], skip, &[]);
-        self.b.seal_block(take);
-        self.b.seal_block(skip);
-        self.b.switch_to(take);
-        let kaddr = self
-            .b
-            .emit(Op::Load, &[kp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
-            .expect("load");
-        let vaddr = self
-            .b
-            .emit(Op::Load, &[vp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
-            .expect("load");
-        let key = self
-            .b
-            .emit(Op::Load, &[kaddr], Imm::Ty(kt), Some(kt))
-            .expect("load");
-        let val = self
-            .b
-            .emit(Op::Load, &[vaddr], Imm::Ty(vt), Some(vt))
-            .expect("load");
-        let ko = self.owned(Val { v: key, own: false });
-        let vo = self.owned(Val { v: val, own: false });
-        let rec = self.b.rec_new(rid, &[ko, vo]);
-        let cur = self.b.use_var(acc);
-        let next = self.b.list_push(cur, rec);
-        self.b.def_var(acc, next);
-        self.b.br(skip, &[]);
-        self.b.switch_to(skip);
-        let one = self.b.iconst(1);
-        let i = self.b.use_var(idx);
-        let n = self.b.binop(Op::IAdd, i, one);
-        self.b.def_var(idx, n);
-        self.b.br(header, &[]);
-        self.b.seal_block(header);
-        self.b.seal_block(exit);
-        self.b.switch_to(exit);
+        self.each_entry(m, &mut |s, key, value| {
+            let value = value.ok_or_else(|| Error::new("entries of a set"))?;
+            let ko = s.owned(Val { v: key, own: false });
+            let vo = s.owned(Val {
+                v: value,
+                own: false,
+            });
+            let rec = s.b.rec_new(rid, &[ko, vo]);
+            let cur = s.b.use_var(acc);
+            let next = s.b.list_push(cur, rec);
+            s.b.def_var(acc, next);
+            Ok(())
+        })?;
         self.release_source(mv, hidden);
         let out = self.b.use_var(acc);
         Ok(Val { v: out, own: true })

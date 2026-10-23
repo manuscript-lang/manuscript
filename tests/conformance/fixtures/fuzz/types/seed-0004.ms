@@ -11,13 +11,20 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-582009) - (3 + ((-614345) + (-24))))
     say("i1 = {i1}")
+
     let l2 = [6, (-13), 24]
     say("l2 = {l2} len {l2.length()}")
+
     let f3 = (((0.0 / 5.5) * (55.25 * 573.295)) * ((150.119 * 385.204) * 90.903))
     say("f3 = {f3}")
     return "not an int"
+
     let i4 = (3 - ((-(-678725)) + (i1 / 49)))
     say("i4 = {i4}")
-    let s5 = (("x".replace("naïve", "42") + ("a" + "42")) + "delta".replace("ms", "alpha"))
+
+    let s5 = (
+        ("x".replace("naïve", "42") + ("a" + "42"))
+        + "delta".replace("ms", "alpha")
+    )
     say("s5 = [{s5}]")
     return 0

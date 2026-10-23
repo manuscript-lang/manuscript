@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "fib(52) = 32951280099\ns1 = [naïveBETA]\n\nl2 = [19, 7, 29, 26, -5] len 5\ns3 = [ESAC DEXIM]\ni4 = 10\ni5 = 513\ni6 = -263596\ni7 = -263596\nacc8 = 5\ns9 = [naïveBETA]\nb10 = false\nacc11 = 228\nacc12 = 14\nacc13 = 9\nl14 = [-19] len 1\nf15 = 219.25\ns16 = [-263596:語本日-36:  padded  ]\n",
-    "stderr": "index 3 out of range for length 1; pass a default: get(index:, default: ...)\n  at seed-0143.ms:73 in main\n"
+    "stderr": "index 3 out of range for length 1; pass a default: get(index:, default: ...)\n  at seed-0143.ms:96 in main\n"
   }
 }

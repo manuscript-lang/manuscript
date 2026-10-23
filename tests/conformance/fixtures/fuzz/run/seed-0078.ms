@@ -11,43 +11,63 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-15), (-28), 9]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = l1.drop(1)
     say("l2 = {l2} len {l2.length()}")
+
     var l3 = l2.clone()
     l3.append(78)
     say("l3 = {l3} len {l3.length()}")
+
     var acc4 = 0
     var stepacc4 = 0
+
     while stepacc4 < 8:
         stepacc4 += 1
         acc4 += stepacc4 * stepacc4 + (-5)
+
     say("acc4 = {acc4}")
+
     let f5 = (5.5 * 0.0)
     say("f5 = {f5}")
+
     let i6 = (((18 * 5) / (-(-1))) - 771666)
     say("i6 = {i6}")
+
     var acc7 = 0
+
     for x in l2:
         if x % 2 == 0:
             acc7 += x
         else:
             acc7 -= 1
+
     say("acc7 = {acc7}")
-    say("{(i6 / i6)} {((10 % i6) + (962645 - 26))} {((i6 / i6) < ((10 % i6) + (962645 - 26)))} sum {(i6 / i6) + ((10 % i6) + (962645 - 26))}")
+    say(
+        "{(i6 / i6)} {((10 % i6) + (962645 - 26))} {((i6 / i6) < ((10 % i6) + (962645 - 26)))} sum {(i6 / i6) + ((10 % i6) + (962645 - 26))}"
+    )
+
     let s8 = "  padded  "
     say("s8 = [{s8}]")
+
     let s9 = "x"
     say("s9 = [{s9}]")
+
     let i10 = s8.length()
     say("i10 = {i10}")
+
     let s11 = "MiXeD CaSe"
     say("s11 = [{s11}]")
+
     let b12 = (((i6 + i10) >= (i6 + i10)) and s11.ends_with(s8))
     say("b12 = {b12}")
+
     let l13 = l1.concat(l1)
     say("l13 = {l13} len {l13.length()}")
+
     let i14 = 13
     say("i14 = {i14}")
+
     let i15 = ((l3.length() * i6) - (l13.length() - i6))
     say("i15 = {i15}")
     return 0

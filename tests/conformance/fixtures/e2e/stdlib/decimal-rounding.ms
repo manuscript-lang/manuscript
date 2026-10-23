@@ -27,11 +27,12 @@ test "decimal rounding modes include signed ties and coarse scales":
     try expect_equal((try 1250d.round(-2)), 1200d)
     try expect_equal((try (-0.005d).to_fixed(2)), "0.00")
     try expect_equal((try (-0.005d).to_fixed(2, RoundingMode.Floor)), "-0.01")
+
     let fixed = 25.5d.to_fixed
     try expect_equal((try fixed(2)), "25.50")
+
     let rounded: fn(places: Int, mode: Optional[RoundingMode]) Result[
-        Decimal,
-        NumberError
+        Decimal, NumberError
     ] = 2.5d.round
     try expect_equal((try rounded(0, RoundingMode.HalfEven)), 2d)
 
@@ -40,11 +41,14 @@ test "decimal scale extremes and invalid requests return typed errors":
     try expect_equal((try 5e-6176d.round(6175)), 0d)
     try expect_equal((try 1e6144d.round(-6144)), 1e6144d)
     try expect_equal((try 0d.to_fixed(6176)).scalar_length(), 6178)
+
     let invalid_round: Result[Decimal, NumberError] = error(NumberError.InvalidInput)
     try expect_equal(0d.round(-6145), invalid_round)
     try expect_equal(0d.round(6177), invalid_round)
+
     let invalid_fixed: Result[String, NumberError] = error(NumberError.InvalidInput)
     try expect_equal(0d.to_fixed(-1), invalid_fixed)
     try expect_equal(0d.to_fixed(6177), invalid_fixed)
+
     let overflow: Result[Decimal, NumberError] = error(NumberError.OutOfRange)
     try expect_equal(9.999999999999999999999999999999999e6144d.round(-6144), overflow)

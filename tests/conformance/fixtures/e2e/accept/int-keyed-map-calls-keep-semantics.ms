@@ -19,6 +19,7 @@ test "int map":
     try expect_true((lookup(m: m, key: 1) == "c"))
     try expect_true((lookup(m: m, key: 2) == "b"))
     try expect_true((lookup(m: m, key: 3) == "missing"))
+
     var total = 0
 
     for entry in m.clone():

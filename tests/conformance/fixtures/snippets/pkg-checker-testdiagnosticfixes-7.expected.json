@@ -12,16 +12,16 @@
         "message": "K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements it",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-7.ms",
-          "line": 10,
+          "line": 12,
           "column": 13,
-          "offset": 301
+          "offset": 303
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-7.ms:10:13: type: K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-7.ms:12:13: type: K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

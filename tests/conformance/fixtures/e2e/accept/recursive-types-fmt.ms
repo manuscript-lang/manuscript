@@ -51,13 +51,12 @@ impl Hashable for Link:
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
     (evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
+
     let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     tree | try expect_equal(
-        Tree[Int].Branch(
-            left: Tree[Int].Leaf(1),
-            right: Tree[Int].Leaf(2)
-        )
+        Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     )
+
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
@@ -71,6 +70,7 @@ test "recursive records clone into independent storage":
     var alias = root.clone()
     var copy = root.clone()
     alias.value = 3
+
     var inner = copy.next.get().clone()
     inner.value = 4
     copy.next = some(inner)
@@ -89,11 +89,13 @@ test "recursive structural equality checks nested and unequal fields":
     left.next = some(left.clone())
     right.next = some(right.clone())
     left.clone() | try expect_equal(right.clone())
+
     var copy = left.clone()
     var inner = copy.next.get().clone()
     inner.value = 2
     copy.next = some(inner)
     (left.value != 1 or copy.value != 1 or left == copy or left != right) | try expect_false
+
     var a = Node(value: 1, next: none)
     let b = Node(value: 1, next: some(a.clone()))
     a.next = some(b)
@@ -105,8 +107,10 @@ test "recursive domain hashing uses explicit implementations":
     left.next = some(left.clone())
     right.next = some(right.clone())
     (left != right or left.hash() != right.hash()) | try expect_false
+
     var values = Map[Link, Int]()
     values.add(key: left.clone(), value: 9)
+
     var members = Set[Link]([left.clone()])
     (values.get(right.clone()).get() != 9 or not members.contains(right.clone())) | try expect_false
     values.add(key: right.clone(), value: 10)
@@ -146,6 +150,7 @@ type Pair[T, U]:
 test "finite nested generic composition constructs and extracts values":
     let person = Person(Entry(name: "Ada", nickname: some("A")))
     person.primary.get().nickname.get() | try expect_equal("A")
+
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
@@ -165,8 +170,8 @@ test "finite nested generic composition constructs and extracts values":
 
     let box = Box(Box(6))
     box.value.value | try expect_equal(6)
+
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
-        first: some(7),
-        second: some(some("nested"))
+        first: some(7), second: some(some("nested"))
     )
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

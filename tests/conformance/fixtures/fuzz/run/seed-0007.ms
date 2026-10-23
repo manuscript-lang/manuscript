@@ -11,42 +11,54 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = 38
     say("i1 = {i1}")
     say("fact(5) = {fact(5)}")
+
     let i2 = (((-12) * ((-267334) / i1)) + (i1 / (i1 - (-47))))
     say("i2 = {i2}")
+
     let i3 = (-25)
     say("i3 = {i3}")
+
     let f4 = 0.0
     say("f4 = {f4}")
+
     let l5 = [(-14), (-26), 17, (-19)]
     say("l5 = {l5} len {l5.length()}")
+
     let i6 = ((-(47 + i2)) - i1)
     say("i6 = {i6}")
     say("gcd(4993, 3262) = {gcd(4993, 3262)}")
+
     let b7 = ("{((-19) % (-811483988226))}:" + "alpha").starts_with("emoji 😀")
     say("b7 = {b7}")
     say("collatz(2309) = {collatz(2309)}")
+
     let f8 = (523.206 * (630.635 / (f4 * 934.25)))
     say("f8 = {f8}")
     return 0

@@ -28,6 +28,7 @@ export fn second_queries() Bool:
     let key = Key(5, "original")
     var map = Map[Key, String]()
     map.add(key, "found")
+
     let set = Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_none()
@@ -55,5 +56,6 @@ export fn second_bound_keys() fn(transform: fn(key: Int, value: Int) Key) Map[Ke
 export fn second_value_transform() Int:
     var input = Map[Key, Int]()
     input.add(Key(5, "original"), 2)
+
     let mapped = remap_values(input, fn(key, value): value + 1)
     return mapped.get(Key(5, "different")).get(0)

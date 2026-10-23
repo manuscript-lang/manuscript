@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "f1 = 0.7510899619933705\ngcd(1969, 3746) = 1\ni2 = -43\nacc3 = -15\ns4 = [emoji 😀]\nf5 = -80000000000000\ni6 = -11\ni7 = -39\ni9 = -1\nf10 = 374.332\nemoji 😀naïve\nf11 = -4.679150000054351e-12\ni12 = 0\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0335.ms:48 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0335.ms:61 in main\n"
   }
 }

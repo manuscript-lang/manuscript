@@ -13,9 +13,12 @@ export fn main() Int:
         say(("back\\slash" + "alpha"))
     else:
         say("Tab\there")
+
     let f1 = ((116.719 * (4.5 / 869.492)) / 238.25)
     say("f1 = {f1}")
+
     let i2 = 36
     say("i2 = {i2}")
+
     let bad = [1, "two"]
     return 0

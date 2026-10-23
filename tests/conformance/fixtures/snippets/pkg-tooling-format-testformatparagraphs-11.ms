@@ -5,12 +5,15 @@
 export interface Run:
     fn first() Int
     fn second() Int
+
 # The implementation.
 impl Run for Runner:
     fn first() Int: return 1
+
     # Explain the second operation.
     fn second() Int:
         let value = 2
+
         # Handle both outcomes.
         # Keep these comments together.
         match value:
@@ -18,5 +21,6 @@ impl Run for Runner:
             # Fallback explanation.
             _:
                 return 2
+
 # Application entry.
 fn main() Int: return 0

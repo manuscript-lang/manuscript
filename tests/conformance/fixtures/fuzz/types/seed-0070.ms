@@ -11,9 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-2) + (-4))
     say("i1 = {i1}")
+
     let bad: Int = "text"
+
     if false:
         say("Tab\there")
     else:
         say("line\nbreak".upper())
+
     return 0

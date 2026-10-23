@@ -11,41 +11,56 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = ((((-36) - 48) + (10 / 47)) + (-((-38) * 30)))
     say("i1 = {i1}")
+
     let i2 = ((i1 / i1) / (-340251251405))
     say("i2 = {i2}")
+
     let l3 = [(-26), (-7), 13, (-24), (-6)]
     say("l3 = {l3} len {l3.length()}")
     say("collatz(383) = {collatz(383)}")
+
     let b4 = (((88.154 * 604.089) * (207.25 * 298.945)) > 915.501)
     say("b4 = {b4}")
+
     let i5 = (l3.length() - ((11 + 5) * (i1 + 10621301763)))
     say("i5 = {i5}")
+
     var acc6 = 0
+
     for x in l3:
         if x % 2 == 0:
             acc6 += x
         else:
             acc6 -= 1
+
     say("acc6 = {acc6}")
+
     var acc7 = 0
     var stepacc7 = 0
+
     while stepacc7 < 3:
         stepacc7 += 1
         acc7 += stepacc7 * stepacc7 + 5
+
     say("acc7 = {acc7}")
+
     let f8 = (0.5 + (491.25 + 12.504))
     say("f8 = {f8}")
+
     let i9 = (-972352)
     say("i9 = {i9}")
     return 0

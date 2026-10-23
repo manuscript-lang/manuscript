@@ -12,48 +12,71 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let i1 = 280848
     say("i1 = {i1}")
+
     let i2 = 699858
     say("i2 = {i2}")
+
     if true:
         say("héllo")
     else:
         say("line\nbreak")
+
     let i3 = (((25 + i2) * (-104914)) - 30)
     say("i3 = {i3}")
+
     let b4 = (474238886288 == (-44))
     say("b4 = {b4}")
-    let b5 = ((("{(49 % 29)}:" + "  padded  ") == ("emoji 😀" + "日本語")) or "quote\"d".contains("gamma"))
+
+    let b5 = (
+        (("{(49 % 29)}:" + "  padded  ") == ("emoji 😀" + "日本語"))
+        or "quote\"d".contains("gamma")
+    )
     say("b5 = {b5}")
+
     if ((false and b4) and (806.352 == 0.0)):
         say("  padded  ")
     else:
         say(("{i1}:" + "ms"))
+
     let i6 = ((-14) - ((8149 % i1) + i3))
     say("i6 = {i6}")
-    let f7 = (((744.390 + 541.814) * (7.0e5 * 852.781)) * ((95.320 * 768.602) / (775.899 + 170.872)))
+
+    let f7 = (
+        ((744.390 + 541.814) * (7.0e5 * 852.781))
+        * ((95.320 * 768.602) / (775.899 + 170.872))
+    )
     say("f7 = {f7}")
+
     var acc8 = 0
     for i in range(0, 1):
         acc8 += i * 0
     say("acc8 = {acc8}")
+
     let l9 = [5, 4]
     say("l9 = {l9} len {l9.length()}")
     say("gcd(4377, 4875) = {gcd(4377, 4875)}")
+
     let f10 = (((f7 / f7) / f7) + 395.689)
     say("f10 = {f10}")
+
     let s11 = ("{(i1 - 31)}:" + ("héllo".upper() + "MiXeD CaSe".trim()))
     say("s11 = [{s11}]")
+
     let l12 = l9.reversed()
     say("l12 = {l12} len {l12.length()}")
+
     let i13 = i3
     say("i13 = {i13}")
+
     let f14 = (((f7 * 241.781) + f7) - ((402.743 * f10) - (f7 - 805.840)))
     say("f14 = {f14}")
+
     let b15 = b5
     say("b15 = {b15}")
     return 0

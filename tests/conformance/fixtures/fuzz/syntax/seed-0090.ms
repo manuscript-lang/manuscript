@@ -13,10 +13,13 @@ export fn main() Int:
         say("日本語".replace("42", "alpha"))
     else:
         say("héllo")
+
     let i1 = (((-356910220443) * (-43)) % (((-34) % 357053546719) - (-43)))
     say("i1 = {i1}")
+
     let l3 = [6]
     say("l3 = {l3} len {l3.length()}")
+
     let l4 = [(-30), (-22), 26, (-15)]
     say("l4 = {l4} len {l4.length()}")
     return 0

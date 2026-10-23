@@ -9,6 +9,7 @@ import {PriorityQueue, Queue} from "@std/queue.ms"
 
 export fn bench_numbers() Unit:
     let rate: Decimal = 1.12345d
+
     bench(
         "bigint.factorial_1000",
         1000,
@@ -18,6 +19,7 @@ export fn bench_numbers() Unit:
                 acc = acc.multiply(from_int(i))
             return acc.to_string_radix(10).length()
     )
+
     bench(
         "decimal.add_round",
         20000,
@@ -28,12 +30,14 @@ export fn bench_numbers() Unit:
                     n += d.truncate_to_int().get(0)
             return n
     )
+
     let blob = (
         "the quick brown fox jumps over the lazy dog "
         .repeat(20000)
         .get("")
         .to_bytes()
     )
+
     bench(
         "compress.gzip",
         blob.length(),
@@ -43,6 +47,7 @@ export fn bench_numbers() Unit:
 
             return 0
     )
+
     bench(
         "compress.roundtrip",
         blob.length(),
@@ -52,6 +57,7 @@ export fn bench_numbers() Unit:
 
             return 0
     )
+
     bench(
         "time.parse_timestamp",
         20000,
@@ -62,6 +68,7 @@ export fn bench_numbers() Unit:
                     n += t.unix_seconds() % 7
             return n
     )
+
     bench(
         "queue.enqueue_dequeue",
         200000,
@@ -69,11 +76,13 @@ export fn bench_numbers() Unit:
             var q = Queue[Int]()
             for i in range(0, 100000):
                 q.enqueue(i)
+
             var n = 0
             while not q.is_empty():
                 n += q.dequeue().get(0)
             return n
     )
+
     bench(
         "priority_queue.enqueue_dequeue",
         100000,
@@ -83,6 +92,7 @@ export fn bench_numbers() Unit:
             )
             for i in range(0, 50000):
                 q.enqueue((i * 7919) % 10007)
+
             var n = 0
             while not q.is_empty():
                 n += q.dequeue().get(0)

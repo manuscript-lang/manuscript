@@ -2,10 +2,10 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_suite_header_test.go:20 TestFormatMovesSuiteWithMisindentedHeaderClose
 fn f() Int:
-    while foo(
-            a
-        ):
-            if b:
-                return 1
-            return 2
+    while foo(a):
+        if b:
+            return 1
+
+        return 2
+
     return 3

@@ -12,15 +12,19 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((((-147642) * (-19)) * (18 % (-561058320534))) - 17)
     say("i1 = {i1}")
+
     let bad = [1, "two"]
     let s2 = "héllo"
     say("s2 = [{s2}]")
+
     var acc3 = 0
     for i in range(0, 3):
         acc3 += i * 0
     say("acc3 = {acc3}")
+
     let b4 = (true or ((i1 % 29) > ((-36) * i1)))
     say("b4 = {b4}")
+
     let i5 = ((((-463688) * i1) + (i1 * i1)) + ((-18) + (i1 * i1)))
     say("i5 = {i5}")
     return 0
