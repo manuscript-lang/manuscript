@@ -14,9 +14,16 @@ test "Error boundaries retain selected local and generic implementations":
         cause.message() | try expect_equal("first 7")
     original.code = 8
 
-    for result in [first_result(original), first_propagated(original), relay(first)]:
+    for result in [first_result(original), first_propagated(original)]:
         match result:
             ok(_):
                 return fail(message: "expected domain failure")
             error(cause):
                 try expect_equal(cause.message(), "first 8")
+
+    # The view was made before the change, so it keeps its own copy and the first module's implementation.
+    match relay(first):
+        ok(_):
+            return fail(message: "expected domain failure")
+        error(cause):
+            try expect_equal(cause.message(), "first 7")

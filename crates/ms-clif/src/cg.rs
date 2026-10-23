@@ -391,6 +391,9 @@ impl<'m> Gen<'m> {
             return *id;
         }
         let m = self.m;
+        // A scoped key names the same layout with the glue of one module's local implementations.
+        let (key, scope) = (ty, ty.scope());
+        let ty = ty.unscoped();
         let builtin = match m.types.kind(ty) {
             TyKind::Int => Some("msrt_desc_int"),
             TyKind::Float => Some("msrt_desc_float"),
@@ -401,7 +404,7 @@ impl<'m> Gen<'m> {
         };
         if let Some(name) = builtin {
             let id = self.rt_data(name);
-            self.desc_ids.insert(ty, id);
+            self.desc_ids.insert(key, id);
             return id;
         }
         let name = format!("ms.desc.{}", self.desc_ids.len());
@@ -409,7 +412,7 @@ impl<'m> Gen<'m> {
             .module
             .declare_data(&name, self.private(), false, false)
             .expect("declare descriptor");
-        self.desc_ids.insert(ty, id);
+        self.desc_ids.insert(key, id);
         let mem = self.lay.mem(ty);
         let mut inner: [Option<Ty>; 2] = [None, None];
         let mut with_glue = false;
@@ -443,7 +446,7 @@ impl<'m> Gen<'m> {
         d.set_align(8);
         for (k, t) in inner.into_iter().enumerate() {
             if let Some(t) = t {
-                let did = self.typedesc(t);
+                let did = self.typedesc(t.scoped(scope));
                 let gv = self.module.declare_data_in_data(did, &mut d);
                 d.write_data_addr(16 + 8 * k as u32, gv, 0);
             }
@@ -459,7 +462,13 @@ impl<'m> Gen<'m> {
                 d.write_function_addr(off, fr);
             }
         }
-        if let Some(&(_, eq, hash)) = m.desc_glue.iter().find(|(t, _, _)| *t == ty) {
+        // The scope's own glue, else the unscoped one.
+        let glue = m
+            .desc_glue
+            .iter()
+            .find(|(t, _, _)| *t == key)
+            .or_else(|| m.desc_glue.iter().find(|(t, _, _)| *t == ty));
+        if let Some(&(_, eq, hash)) = glue {
             for (off, f) in [
                 (ms_rt_abi::DESC_EQ_OFFSET as u32, eq),
                 (ms_rt_abi::DESC_HASH_OFFSET as u32, hash),
