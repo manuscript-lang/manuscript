@@ -5,6 +5,9 @@
 //! pieces are appended directly (`strbuilder.append_int` for integers), so the loop allocates
 //! nothing. Only runtime string constructors with no effects and no faults are removed, and the
 //! sealed-builder check (which stays where it was) still runs before any byte is written.
+//!
+//! A chain of concatenations (`"{a}:{b}-{c}"` lowers to nested `string_concat`s) becomes one
+//! `string_concatN` call, so the result is allocated once instead of once per link.
 
 use crate::ir::{Block, ExternDef, Func, Imm, Inst, Mode, Module, Op, Param, Value};
 use crate::types::Ty;
@@ -20,6 +23,9 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         while fuse_one(m, fi) {
+            changed = true;
+        }
+        while fuse_concat(m, fi) {
             changed = true;
         }
     }
@@ -228,6 +234,110 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
             let drop_it = (b != bi || k < ii || k > ii + grown) && plan.remove.contains(&(b, orig));
             k += 1;
             !drop_it
+        });
+    }
+}
+
+/// Most pieces one `string_concatN` joins.
+const MAX_JOIN: usize = 6;
+
+fn concat_name(n: usize) -> String {
+    format!("msrt_string_concat{n}")
+}
+
+/// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
+/// links into `remove`.
+fn chain(
+    m: &Module,
+    f: &Func,
+    info: &Info,
+    v: Value,
+    at: (usize, usize),
+    leaves: &mut Vec<Value>,
+    remove: &mut HashSet<(usize, usize)>,
+) {
+    let inner = info.defs[v.index()].and_then(|(db, di)| {
+        let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
+        let (dbi, ddi) = info.drops[v.index()].first().copied()?;
+        let ok = ext_name(m, &f.blocks[db].insts[di]) == Some(CONCAT)
+            && single
+            && straight_line(f, info, db, at.0)
+            && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
+        ok.then_some((db, di))
+    });
+    let Some((db, di)) = inner else {
+        leaves.push(v);
+        return;
+    };
+    remove.insert((db, di));
+    remove.insert(info.drops[v.index()][0]);
+    let args = f.blocks[db].insts[di].args.clone();
+    chain(m, f, info, args[0], at, leaves, remove);
+    chain(m, f, info, args[1], at, leaves, remove);
+}
+
+fn fuse_concat(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let info = info(f);
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate().rev() {
+            if ext_name(m, inst) != Some(CONCAT) {
+                continue;
+            }
+            let mut leaves = Vec::new();
+            let mut remove = HashSet::new();
+            for &a in &inst.args {
+                chain(m, f, &info, a, (bi, ii), &mut leaves, &mut remove);
+            }
+            if remove.is_empty() || leaves.len() < 3 || leaves.len() > MAX_JOIN {
+                continue;
+            }
+            // A leaf dropped before the join would be used after its drop.
+            let early = leaves.iter().any(|l| {
+                info.drops[l.index()]
+                    .iter()
+                    .any(|&(db, di)| db != bi || di < ii)
+            });
+            if early {
+                continue;
+            }
+            apply_concat(m, fi, (bi, ii), leaves, &remove);
+            return true;
+        }
+    }
+    false
+}
+
+fn apply_concat(
+    m: &mut Module,
+    fi: usize,
+    (bi, ii): (usize, usize),
+    leaves: Vec<Value>,
+    remove: &HashSet<(usize, usize)>,
+) {
+    let ext = m.add_extern(ExternDef {
+        name: concat_name(leaves.len()),
+        params: leaves
+            .iter()
+            .map(|_| Param {
+                ty: Ty::STR,
+                mode: Mode::Borrow,
+            })
+            .collect(),
+        ret: Ty::STR,
+        noreturn: false,
+        pure_: false,
+    });
+    let f = &mut m.funcs[fi];
+    let root = &mut f.blocks[bi].insts[ii];
+    root.args = leaves;
+    root.imm = Imm::Ext(ext);
+    for (b, blk) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0usize;
+        blk.insts.retain(|_| {
+            let keep = !remove.contains(&(b, k));
+            k += 1;
+            keep
         });
     }
 }

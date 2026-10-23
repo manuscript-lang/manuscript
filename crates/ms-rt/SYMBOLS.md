@@ -127,6 +127,10 @@ msrt_string_ends_with(a: *const StrObj, v: *const StrObj) -> u8
 msrt_string_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_last_index_of( a: *const StrObj, v: *const StrObj, out: *mut i64, ) -> u8
 msrt_string_concat( a: *const StrObj, b: *const StrObj, ) -> *mut StrObj
+msrt_string_concat3( a: *const StrObj, b: *const StrObj, c: *const StrObj, ) -> *mut StrObj
+msrt_string_concat4( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, ) -> *mut StrObj
+msrt_string_concat5( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, e: *const StrObj, ) -> *mut StrObj
+msrt_string_concat6( a: *const StrObj, b: *const StrObj, c: *const StrObj, d: *const StrObj, e: *const StrObj, f: *const StrObj, ) -> *mut StrObj
 msrt_strbuf_new() -> *mut StrBuf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrObj)
 msrt_strbuf_finish(buf: *mut StrBuf) -> *mut StrObj
