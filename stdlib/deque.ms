@@ -22,17 +22,19 @@ impl Deque[T]:
 
     # Doubles the ring buffer, unwrapping values so the front lands at index 0.
     var fn grow() Unit:
-        var next = self.slots.length() * 2
+        let capacity = self.slots.length()
+        var next = capacity * 2
         if next == 0:
             next = 4
 
-        var fresh: List[Optional[T]] = []
-        for index in range(0, self.size):
-            fresh.append(self.slots.get(self.slot_of(index)))
-        for index in range(self.size, next):
-            fresh.append(none)
-        self.slots = fresh
-        self.start = 0
+        if self.start != 0:
+            let tail = self.slots.drop(self.start)
+            let head = self.slots.take(self.start)
+            self.slots = tail.concat(head)
+            self.start = 0
+
+        for slot in range(capacity, next):
+            self.slots.append(none)
 
     # Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
     fn slot_of(offset: Int) Int:
