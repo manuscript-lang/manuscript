@@ -3,7 +3,7 @@
 # accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
 # conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that exists.
 # project_check is a project whose check must fail.
-# Known failures are listed in tests/e2e/expect-fail.txt (Windows-only ones in expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release,
+# Known failures are listed in tests/e2e/expect-fail.txt. E2E_BUILD_TYPE picks the build type (default Release,
 # which the deep-nesting fixtures need to finish quickly). Extra arguments are fixture paths to run instead.
 set -eu
 repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -16,11 +16,6 @@ esac
 ms="$repository/target/debug/ms$exe"
 build_type=${E2E_BUILD_TYPE:-Release}
 expected=tests/e2e/expect-fail.txt
-# Windows hosts also expect the failures in expect-fail.windows.txt.
-if [ -n "$exe" ]; then
-    expected=$(mktemp)
-    cat tests/e2e/expect-fail.txt tests/e2e/expect-fail.windows.txt >"$expected"
-fi
 
 cargo build --locked -q -p ms-cli
 
@@ -104,6 +99,5 @@ for fixture in $fixtures; do
     esac
 done
 rm -f "$err" "$err.out"
-[ -z "$exe" ] || rm -f "$expected"
 echo "e2e: $count fixtures, $failed failed ($build_type)"
 [ "$failed" -eq 0 ]
