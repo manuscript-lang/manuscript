@@ -44,8 +44,10 @@ pub const OBJ_HEADER_SIZE: usize = 16;
 // String
 // ---------------------------------------------------------------------------
 
-/// `String`: two words in the owner's slot, `ptr` at the UTF-8 bytes and `len` the byte length
-/// with the ownership tag in its top two bits. The bytes are followed by one NUL (not counted).
+/// `String`: two words in the owner's slot. The second word holds the byte length with the
+/// ownership tag in its top two bits; the first points at the UTF-8 bytes, which are followed by
+/// one NUL (not counted). A string of at most [`STR_INLINE_MAX`] bytes may instead hold its
+/// bytes in the two words themselves.
 ///
 /// A string is an owned value over immutable bytes: copying it allocates and copies the bytes,
 /// dropping it frees them. The tag says what the bytes are:
@@ -53,13 +55,18 @@ pub const OBJ_HEADER_SIZE: usize = 16;
 /// | top bits | kind | drop | copy |
 /// | --- | --- | --- | --- |
 /// | `00` | owned allocation starting at `ptr` | frees | duplicates |
+/// | `01` | inline: the bytes start at the value's own address, length in bits 56–59 | nothing | bitwise |
 /// | `10` | static (a literal or a shared one-byte ASCII string) | nothing | shares |
 /// | `11` | view borrowed from another string | nothing | duplicates |
 ///
-/// So `tagged as i64 >= 0` is "owned", and the length is `tagged & STR_LEN_MASK`.
+/// So `tagged < 1 << 62` (unsigned) is "owned". Read the length with [`StrVal::len`] and the
+/// bytes with [`StrVal::data`], which answer for every kind; the raw first word is `ptr_word`.
+/// An inline string keeps the bytes past its length zero, so equal inline strings have equal
+/// words.
 #[repr(C)]
 pub struct StrVal {
-    pub ptr: *mut u8,
+    /// The bytes' address, or the first eight bytes of an inline string.
+    pub ptr_word: *mut u8,
     /// Byte length and tag; read it through [`StrVal::len`].
     pub tagged: usize,
 }
@@ -69,21 +76,30 @@ pub const STR_BORROWED: usize = 1 << 63;
 pub const STR_STATIC: usize = STR_BORROWED;
 /// Tag of a view.
 pub const STR_VIEW: usize = 3 << 62;
-/// Mask of the byte length in the second word.
+/// Tag of an inline string.
+pub const STR_INLINE: usize = 1 << 62;
+/// Bit position of an inline string's length.
+pub const STR_INLINE_LEN_SHIFT: u32 = 56;
+/// Longest inline string.
+pub const STR_INLINE_MAX: usize = 15;
+/// Mask of the byte length in the second word (owned, static and view strings).
 pub const STR_LEN_MASK: usize = (1 << 62) - 1;
 
 impl StrVal {
     /// An owned string over the allocation at `ptr`.
     #[inline(always)]
     pub const fn owned(ptr: *mut u8, len: usize) -> StrVal {
-        StrVal { ptr, tagged: len }
+        StrVal {
+            ptr_word: ptr,
+            tagged: len,
+        }
     }
 
     /// A static string (never freed, shared on copy).
     #[inline(always)]
     pub const fn literal(ptr: *mut u8, len: usize) -> StrVal {
         StrVal {
-            ptr,
+            ptr_word: ptr,
             tagged: len | STR_STATIC,
         }
     }
@@ -92,15 +108,59 @@ impl StrVal {
     #[inline(always)]
     pub const fn view(ptr: *mut u8, len: usize) -> StrVal {
         StrVal {
-            ptr,
+            ptr_word: ptr,
             tagged: len | STR_VIEW,
         }
+    }
+
+    /// An inline string holding `bytes` (at most [`STR_INLINE_MAX`] of them).
+    #[inline(always)]
+    pub fn inline(bytes: &[u8]) -> StrVal {
+        debug_assert!(bytes.len() <= STR_INLINE_MAX);
+        StrVal::from_bits(pack(bytes), bytes.len())
+    }
+
+    /// An inline string of `len` bytes whose little-endian bits are `bits` (zero past `len`).
+    #[inline(always)]
+    pub fn from_bits(bits: u128, len: usize) -> StrVal {
+        StrVal {
+            ptr_word: bits as u64 as usize as *mut u8,
+            tagged: (bits >> 64) as u64 as usize | STR_INLINE | (len << STR_INLINE_LEN_SHIFT),
+        }
+    }
+
+    /// The bytes of an inline string as little-endian bits (zero past the length).
+    #[inline(always)]
+    pub fn inline_bits(&self) -> u128 {
+        let hi = self.tagged & ((1 << STR_INLINE_LEN_SHIFT) - 1);
+        (self.ptr_word as usize as u128) | ((hi as u128) << 64)
+    }
+
+    /// Whether the string holds its bytes inline.
+    #[inline(always)]
+    pub const fn is_inline(&self) -> bool {
+        self.tagged >> 62 == 1
     }
 
     /// Byte length.
     #[inline(always)]
     pub const fn len(&self) -> usize {
-        self.tagged & STR_LEN_MASK
+        if self.is_inline() {
+            (self.tagged >> STR_INLINE_LEN_SHIFT) & 15
+        } else {
+            self.tagged & STR_LEN_MASK
+        }
+    }
+
+    /// The first byte. For an inline string it is the value's own address, so the pointer is
+    /// good only while the value stays where it is.
+    #[inline(always)]
+    pub fn data(&self) -> *const u8 {
+        if self.is_inline() {
+            self as *const StrVal as *const u8
+        } else {
+            self.ptr_word
+        }
     }
 
     /// Whether the string has no bytes.
@@ -109,16 +169,22 @@ impl StrVal {
         self.len() == 0
     }
 
-    /// Whether dropping the string frees an allocation (not a literal and not a view).
+    /// Whether dropping the string frees an allocation (owned: not inline, static or a view).
     #[inline(always)]
     pub const fn owns(&self) -> bool {
-        (self.tagged as isize) >= 0
+        self.tagged < STR_INLINE
     }
 
     /// Whether the string is static: copies share it.
     #[inline(always)]
     pub const fn is_static(&self) -> bool {
         self.tagged >> 62 == 2
+    }
+
+    /// Whether a copy is the same two words (static or inline).
+    #[inline(always)]
+    pub const fn copies_bitwise(&self) -> bool {
+        (self.tagged >> 62).wrapping_sub(1) < 2
     }
 
     /// Whether the string is a view of another string's bytes.
@@ -133,7 +199,7 @@ impl StrVal {
     #[inline(always)]
     pub fn alias(&self) -> StrVal {
         StrVal {
-            ptr: self.ptr,
+            ptr_word: self.ptr_word,
             tagged: self.tagged,
         }
     }
@@ -148,11 +214,39 @@ impl StrVal {
     pub unsafe fn write_to(self, out: *mut StrVal) {
         // SAFETY: caller contract.
         unsafe {
-            core::ptr::write_volatile(&raw mut (*out).ptr, self.ptr);
+            core::ptr::write_volatile(&raw mut (*out).ptr_word, self.ptr_word);
             core::ptr::write_volatile(&raw mut (*out).tagged, self.tagged);
         }
     }
 }
+/// Up to 16 bytes as little-endian bits, zero past the end, without a call to `memcpy`.
+#[inline(always)]
+pub fn pack(b: &[u8]) -> u128 {
+    let n = b.len();
+    debug_assert!(n <= 16);
+    let p = b.as_ptr();
+    // SAFETY: every read lies inside `b`.
+    unsafe {
+        let r64 = |at: usize| (p.add(at) as *const u64).read_unaligned() as u128;
+        let r32 = |at: usize| (p.add(at) as *const u32).read_unaligned() as u128;
+        if n >= 8 {
+            let tail = if n > 8 {
+                r64(n - 8) >> (8 * (16 - n))
+            } else {
+                0
+            };
+            r64(0) | (tail << 64)
+        } else if n >= 4 {
+            r32(0) | (r32(n - 4) << (8 * (n - 4)))
+        } else if n > 0 {
+            let at = |i: usize| (*p.add(i) as u128) << (8 * i);
+            at(0) | at(n / 2) | at(n - 1)
+        } else {
+            0
+        }
+    }
+}
+
 pub const STR_PTR_OFFSET: usize = 0;
 pub const STR_LEN_OFFSET: usize = 8;
 pub const STR_SIZE: usize = 16;
@@ -160,14 +254,30 @@ pub const STR_SIZE: usize = 16;
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
 pub const ASCII_CHAR_STRIDE: usize = 2;
 
-/// `Optional[String]`: a presence byte, then the string at offset 8 (24 bytes).
+/// `Optional[String]`: the string itself (16 bytes); none is a static empty string with a null
+/// `ptr`, which no present string has (an inline string may have a zero first word, but not the
+/// static tag), so dropping or copying none does nothing.
 #[repr(C)]
 pub struct OptStr {
-    pub present: u8,
     pub value: StrVal,
 }
-pub const OPT_STR_VALUE_OFFSET: usize = 8;
-pub const OPT_STR_SIZE: usize = 24;
+pub const OPT_STR_VALUE_OFFSET: usize = 0;
+pub const OPT_STR_SIZE: usize = 16;
+
+impl OptStr {
+    /// An absent string.
+    pub const NONE: OptStr = OptStr {
+        value: StrVal {
+            ptr_word: core::ptr::null_mut(),
+            tagged: STR_STATIC,
+        },
+    };
+
+    /// Whether a string is present.
+    pub fn is_some(&self) -> bool {
+        (self.value.ptr_word as usize | (self.value.tagged ^ STR_STATIC)) != 0
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Owned aggregate values: List, Bytes, Map, Set (no header, no count)
@@ -484,11 +594,34 @@ mod tests {
     use core::mem::{offset_of, size_of};
 
     #[test]
+    fn inline_strings_hold_their_bytes_in_the_value() {
+        let src: [u8; 16] = core::array::from_fn(|i| 0xA0 + i as u8);
+        for n in 0..=16 {
+            let mut want = [0u8; 16];
+            want[..n].copy_from_slice(&src[..n]);
+            assert_eq!(
+                pack(&src[..n]),
+                u128::from_le_bytes(want),
+                "pack of {n} bytes"
+            );
+        }
+        for n in 0..=STR_INLINE_MAX {
+            let s = StrVal::inline(&src[..n]);
+            assert!(s.is_inline() && s.copies_bitwise() && !s.owns());
+            assert_eq!(s.len(), n);
+            // SAFETY: an inline string's bytes are the first `len` bytes of the value.
+            let got = unsafe { core::slice::from_raw_parts(s.data(), s.len()) };
+            assert_eq!(got, &src[..n]);
+            assert_eq!(s.inline_bits(), pack(&src[..n]));
+        }
+    }
+
+    #[test]
     fn layouts_match_constants() {
         assert_eq!(size_of::<Obj>(), OBJ_HEADER_SIZE);
         assert_eq!(offset_of!(Obj, rc), OBJ_RC_OFFSET);
         assert_eq!(offset_of!(Obj, drop), OBJ_DROP_OFFSET);
-        assert_eq!(offset_of!(StrVal, ptr), STR_PTR_OFFSET);
+        assert_eq!(offset_of!(StrVal, ptr_word), STR_PTR_OFFSET);
         assert_eq!(offset_of!(StrVal, tagged), STR_LEN_OFFSET);
         assert_eq!(size_of::<StrVal>(), STR_SIZE);
         assert_eq!(offset_of!(OptStr, value), OPT_STR_VALUE_OFFSET);

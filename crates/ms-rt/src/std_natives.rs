@@ -245,7 +245,11 @@ mod fs_io {
     ) -> u8 {
         // SAFETY: `env` is the `Counting` the test passed; the source is a live string.
         unsafe { (*env.cast::<Counting>()).count += 1 };
-        (!text(&StrVal { ptr, tagged }).ends_with("deep")) as u8
+        (!text(&StrVal {
+            ptr_word: ptr,
+            tagged,
+        })
+        .ends_with("deep")) as u8
     }
 
     #[test]

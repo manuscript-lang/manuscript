@@ -8,6 +8,9 @@
 //!
 //! A chain of concatenations (`"{a}:{b}-{c}"` lowers to nested `string_concat`s) becomes one
 //! `string_concatN` call, so the result is allocated once instead of once per link.
+//!
+//! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
+//! with no use of `s` in between, `string_append` consumes `s` and grows it in place.
 
 use crate::ir::{Block, ExternDef, Func, Imm, Inst, Mode, Module, Op, Param, Value};
 use crate::types::Ty;
@@ -16,6 +19,7 @@ use std::collections::HashSet;
 const APPEND: &str = "msrt_strbuilder_append";
 const APPEND_INT: &str = "msrt_strbuilder_append_int";
 const CONCAT: &str = "msrt_string_concat";
+const APPEND_STR: &str = "msrt_string_append";
 const INT_TO_STRING: &str = "msrt_int_to_string";
 
 /// Runs the pass; returns whether anything changed.
@@ -28,6 +32,7 @@ pub fn run(m: &mut Module) -> bool {
         while fuse_concat(m, fi) {
             changed = true;
         }
+        changed |= append_in_place(m, fi);
     }
     changed
 }
@@ -340,4 +345,76 @@ fn apply_concat(
             keep
         });
     }
+}
+
+/// Rewrites `r = string_concat(a, b); ...; drop a` to `r = string_append(a, b)` when `a` is an
+/// owned value that nothing reads between the concat and its drop.
+fn append_in_place(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let mut owned = vec![false; f.values.len()];
+    for b in &f.blocks[1..] {
+        for p in &b.params {
+            owned[p.value.index()] = p.mode == Mode::Own;
+        }
+    }
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let Some(r) = i.res {
+                owned[r.index()] = m.result_mode(f, i) == Some(Mode::Own);
+            }
+        }
+    }
+    let mut sites = Vec::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            let a = inst.args.first().copied();
+            let Some(a) = a.filter(|a| ext_name(m, inst) == Some(CONCAT) && owned[a.index()])
+            else {
+                continue;
+            };
+            if inst.args[1] == a {
+                continue;
+            }
+            let next = b.insts[ii + 1..]
+                .iter()
+                .position(|n| n.args.contains(&a))
+                .map(|k| ii + 1 + k);
+            if let Some(j) = next.filter(|&j| b.insts[j].op == Op::Drop) {
+                sites.push(((bi, ii), (bi, j)));
+            }
+        }
+    }
+    if sites.is_empty() {
+        return false;
+    }
+    let ext = m.add_extern(ExternDef {
+        name: APPEND_STR.to_string(),
+        params: vec![
+            Param {
+                ty: Ty::STR,
+                mode: Mode::Own,
+            },
+            Param {
+                ty: Ty::STR,
+                mode: Mode::Borrow,
+            },
+        ],
+        ret: Ty::STR,
+        noreturn: false,
+        pure_: false,
+    });
+    let f = &mut m.funcs[fi];
+    let remove: HashSet<(usize, usize)> = sites.iter().map(|s| s.1).collect();
+    for &((bi, ii), _) in &sites {
+        f.blocks[bi].insts[ii].imm = Imm::Ext(ext);
+    }
+    for (b, blk) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0usize;
+        blk.insts.retain(|_| {
+            let keep = !remove.contains(&(b, k));
+            k += 1;
+            keep
+        });
+    }
+    true
 }

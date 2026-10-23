@@ -125,7 +125,7 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
         0 => None,
         2 => Some(Outcome::Cancelled),
         _ => {
-            let text = if message.ptr.is_null() {
+            let text = if message.ptr_word.is_null() && message.is_static() {
                 "fault".to_string()
             } else {
                 // SAFETY: the guard hands over an owned string, released once here.
@@ -200,7 +200,7 @@ impl Dispatch for Program {
         }
         // SAFETY: the handle created above is released once, after the thunk returned.
         unsafe { msrt_release(handle) };
-        let text = if message.ptr.is_null() {
+        let text = if message.ptr_word.is_null() && message.is_static() {
             String::new()
         } else {
             // SAFETY: an owned string from the thunk.

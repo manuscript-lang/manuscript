@@ -72,7 +72,7 @@ recorded here before it is committed.)_
   `SYMBOLS.md` lists every exported symbol with its Rust signature (regenerate with `python3 crates/ms-rt/gen-symbols.py`).
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
-  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { present: u8, value: StrVal }` through `out`, or a `present: u8` result with `out: *mut StrVal`
+  - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
     (`bytes_decode_utf8`, `split_next`); `Result` = `status: u8` with `out` last; optional **parameters** flatten to `has_x: u8, x`
     (borrowed `Optional[String]` parameters flatten the same way, `has: u8, value: *const StrVal`, e.g. `msrt_string_get(s, index, has_default, default, out)`).
   - Lists: `msrt_list_*` take `(receiver*, desc*, ...)`. Language `drop(count)` is `msrt_list_drop_n` (`msrt_list_drop` releases the value);
@@ -167,16 +167,24 @@ lists (up to 64 MiB) for reuse instead of returning to the system. No locking.
 StrVal { ptr @0, tagged: usize @8 }       String, 16 bytes
 ```
 
-`ptr` points at the UTF-8 bytes; a NUL follows them (not counted). `tagged & STR_LEN_MASK` is the
-byte length and the top two bits say who owns the bytes:
+The top two bits of `tagged` say where the bytes are:
 
 | top bits | kind | drop | copy |
 | --- | --- | --- | --- |
-| `00` | owned allocation starting at `ptr` | `msrt_str_free(ptr)` | `msrt_str_dup(ptr, len)` |
-| `10` | static (literal, empty, one ASCII byte) | nothing | shares |
-| `11` | view of another string's bytes | nothing | `msrt_str_dup(ptr, len)` |
+| `00` | owned allocation starting at `ptr` | `msrt_str_free(ptr)` | `msrt_str_copy(ptr, tagged, out)` |
+| `01` | inline: up to 15 bytes in the value itself | nothing | bitwise |
+| `10` | static (literal, empty, one ASCII byte) | nothing | bitwise |
+| `11` | view of another string's bytes | nothing | `msrt_str_copy(ptr, tagged, out)` |
 
-So `tagged as i64 >= 0` means owned. A view is only handed out where the source outlives it
+For every kind but inline, `ptr` points at the UTF-8 bytes, a NUL follows them (not counted), and
+`tagged & STR_LEN_MASK` is the byte length. An inline string keeps its length in bits 56–59 of
+`tagged` (`STR_INLINE_LEN_SHIFT`) and its bytes in the value, little-endian from its address: the
+whole `ptr` word, then the low 7 bytes of `tagged`; bytes past the length are zero. Its data
+pointer is therefore the value's own address (`StrVal::data`). `msrt_str_copy` returns an inline
+string when the copy fits, so copying a short string never allocates. A string is owned exactly when
+`tagged < 1 << 62` (unsigned). `Optional[String]` uses the same two words, with None as `{0, STR_STATIC}`;
+presence is `(ptr | (tagged ^ STR_STATIC)) != 0`, because an inline string can have a zero `ptr`
+word. A view is only handed out where the source outlives it
 unchanged: `trim`, `split` lists that the block reads only in place over a read-only parameter
 (`msrt_string_split_view`), `for` loops over the keys or values of such a map
 (`msrt_map_keys_view`, `msrt_map_values_view`). Language-level indices and lengths count Unicode

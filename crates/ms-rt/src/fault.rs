@@ -1318,13 +1318,13 @@ mod tests {
             let mut msg = crate::string::NO_STR;
             let mut data = 1u8;
             assert_eq!(msrt_guard_call(request, &mut data, &mut msg), 1);
-            assert!(!msg.ptr.is_null());
+            assert!(!msg.ptr_word.is_null());
             assert!(crate::string::bytes(&msg).starts_with(b"handler failed"));
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[2]);
             assert_eq!((*CLEANUPS.ptr()).len(), 1);
             let mut ok = 0u8;
             assert_eq!(msrt_guard_call(request, &mut ok, &mut msg), 0);
-            assert!(msg.ptr.is_null());
+            assert!(msg.ptr_word.is_null());
             assert_eq!(ok, 10);
             assert_eq!((*CLEANUPS.ptr()).len(), 2);
             reset_for_tests();

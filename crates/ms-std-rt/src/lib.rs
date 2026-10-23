@@ -33,7 +33,7 @@ unsafe extern "C-unwind" {
 /// `s` must point to a live `StrVal` whose bytes outlive `'a`.
 pub unsafe fn str_bytes<'a>(s: *const StrVal) -> &'a [u8] {
     // SAFETY: `ptr..ptr+len` holds the text.
-    unsafe { core::slice::from_raw_parts((*s).ptr, (*s).len()) }
+    unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
 }
 
 /// A new owned string (refcount 1) holding `bytes`.

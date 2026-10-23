@@ -62,7 +62,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_drop_slow", "i", ""),
     ("msrt_str_count", "ii", ""),
     ("msrt_str_free", "i", ""),
-    ("msrt_str_dup", "ii", "i"),
+    ("msrt_str_copy", "iii", ""),
     ("msrt_fault", "ii", ""),
     ("msrt_fault_int_overflow", "", ""),
     ("msrt_fault_div_zero", "", ""),
