@@ -64,7 +64,6 @@ fn days_in_month(year: Int, month: Int) Int:
 # 1970-01-01 was a Thursday, so day 0 maps to 4; Sunday is 0.
 fn weekday_of(year: Int, month: Int, day: Int) Int:
     var elapsed = 0
-
     for y in range(1970, year):
         elapsed += days_in_year(y)
     for m in range(1, month):
@@ -177,7 +176,6 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         return none
 
     var allowed = List[Bool]()
-
     for value in range(0, hi + 1):
         allowed.append(false)
 
@@ -187,7 +185,6 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
             return none
 
         let found = span.get()
-
         for value in range(found.lo, found.hi + 1):
             if (value - found.lo) % found.step == 0:
                 allowed.set(value, true)

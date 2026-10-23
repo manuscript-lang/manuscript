@@ -9,31 +9,31 @@ export fn bench_list() Unit:
         200000,
         fn() Int:
             var xs: List[Int] = []
-
             for i in range(0, 200000):
                 xs.append(i)
             return xs.length()
     )
+
     bench(
         "list.at",
         200000,
         fn() Int:
             var n = 0
-
             for i in range(0, 200000):
                 n += data.get(i % 100000, default: 0)
             return n
     )
+
     bench(
         "list.for_in",
         100000,
         fn() Int:
             var n = 0
-
             for x in data:
                 n += x
             return n
     )
+
     bench(
         "list.map",
         100000,
@@ -58,26 +58,27 @@ export fn bench_list() Unit:
         fn() Int:
             return (data.sorted(fn(left: Int, right: Int) Int: left - right).length())
     )
+
     bench(
         "list.contains",
         100,
         fn() Int:
             var n = 0
-
             for i in range(0, 100):
                 if data.contains(-1): n += 1
             return n
     )
+
     bench("list.distinct", 100000, fn() Int: return data.distinct().length())
     bench(
         "list.concat_reverse", 100000,
         fn() Int: return data.concat(data).reversed().length()
     )
+
     bench(
         "list.records_map",
         100000,
         fn() Int:
             let points = data.map(fn(x: Int) Point: Point(x, x + 1))
-
             return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
     )

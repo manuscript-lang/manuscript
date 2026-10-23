@@ -5,7 +5,6 @@ import {Rng, next, text, mutate} from "./support/generator.ms"
 
 fn generated(var rng: Rng, depth: Int) TomlValue:
     var choices = 7
-
     if depth > 2: choices = 4
 
     let kind = next(var rng, choices)
@@ -18,7 +17,6 @@ fn generated(var rng: Rng, depth: Int) TomlValue:
 
     if kind == 4:
         var items: List[TomlValue] = []
-
         for item in range(0, next(var rng, 4)):
             items.append(generated(var rng, depth + 1))
         return TomlValue.ArrayValue(items)
@@ -27,7 +25,6 @@ fn generated(var rng: Rng, depth: Int) TomlValue:
 
 fn table(var rng: Rng, depth: Int) TomlValue:
     var entries: Map[String, TomlValue] = {}
-
     for item in range(0, next(var rng, 4)):
         entries.add(text(var rng), generated(var rng, depth))
     return TomlValue.TableValue(entries)

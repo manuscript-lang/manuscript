@@ -18,7 +18,6 @@ export fn emit(logger: Logger) Result[Unit, LogError]:
         count: 9007199254740993, ok: true, nested: [none, some(false)],
         service: "worker", level: 0, msg: "spoofed", time: 0
     )
-
     try child.debug("filtered")
     try record(
         logger: child, level: LogLevel.Info, message: "received \"payload\"\nnext",

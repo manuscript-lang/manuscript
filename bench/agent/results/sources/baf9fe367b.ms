@@ -60,14 +60,12 @@ fn report(cause: Fail) Unit:
 
 fn fnv(text: String) Int:
     var h = FNV_OFFSET
-
     for b in text.to_bytes().values():
         h = wrapping_multiply(bit_xor(h, b), FNV_PRIME)
     return h
 
 fn hex16(h: Int) String:
     var out = ""
-
     for i in range(0, 16):
         out = out + HEX.get(bit_and(shift_right_unsigned(h, (15 - i) * 4), 15))
     return out
@@ -83,7 +81,6 @@ fn sorted_keys(tree: Map[String, String]) List[String]:
 
 fn text_of(lines: List[String]) String:
     var text = ""
-
     for line in lines:
         text = text + line + "\n"
     return text
@@ -114,21 +111,18 @@ fn same_tree(left: Map[String, String], right: Map[String, String]) Bool:
 
 fn tree_hash(tree: Map[String, String]) String:
     var text = ""
-
     for name in sorted_keys(tree):
         text = text + "{name} {hex16(fnv(tree.get_or(name, "")))}\n"
     return hex16(fnv(text))
 
 fn commit_id(tree: Map[String, String], parents: List[String], message: String) String:
     var text = "tree {tree_hash(tree)}\n"
-
     for parent in parents:
         text = text + "parent {parent}\n"
     return hex16(fnv(text + "\n" + message + "\n"))
 
 fn new_repo() Repo:
     var branches = Map[String, String]()
-
     branches.add("main", "")
     return Repo(
         files: Map[String, String](), index: Map[String, String](),
@@ -175,7 +169,6 @@ fn make_commit(
             id: id, number: number, tree: tree.clone(), parents: parents.clone(),
             message: message
         )
-
         repo.commits.add(id, commit)
 
     return id
@@ -187,7 +180,6 @@ fn ancestors(repo: Repo, id: String) Set[String]:
 
     while k < todo.length():
         let current = todo.get(k)
-
         k += 1
 
         if not seen.contains(current):
@@ -330,7 +322,6 @@ fn apply_state(
     old_head: Map[String, String]
 ) Unit:
     var stale: List[String] = []
-
     for name in repo.index.keys():
         stale.append(name)
     for name in old_head.keys():
@@ -345,7 +336,6 @@ fn apply_state(
 fn reset_hard(var repo: Repo, id: String) Unit:
     let old_head = head_tree(repo)
     let target = tree_of(repo, id)
-
     apply_state(var repo, target, target.clone(), old_head)
     repo.conflicts.clear()
     repo.merging = false
@@ -361,7 +351,6 @@ fn matching(left: List[String], right: List[String]) Pairs:
     let m = right.length()
     let width = m + 1
     var table: List[Int] = []
-
     for k in range(0, (n + 1) * width):
         table.append(0)
 
@@ -526,7 +515,6 @@ fn plan_merge(
     branch: String
 ) Plan:
     var names = Set[String]()
-
     for name in base.keys():
         names.add(name)
     for name in ours.keys():
@@ -573,7 +561,6 @@ fn plan_merge(
                     branch
                 )
                 let merged_text = text_of(merged.lines.clone())
-
                 put(var work, name, true, merged_text)
 
                 if merged.clean:
@@ -616,7 +603,6 @@ fn cmd_write(var repo: Repo, args: List[String], block: List[String], append: Bo
 
     let name = args.get(0)
     var content = text_of(block)
-
     if append:
         content = repo.files.get_or(name, "") + content
     repo.files.add(name, content)
@@ -644,7 +630,6 @@ fn cmd_mv(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         return fail("no such file: {old_name}")
 
     let content = repo.files.get_or(old_name, "")
-
     repo.files.remove(old_name)
     repo.files.add(new_name, content)
     return ok(nop())
@@ -679,7 +664,6 @@ fn cmd_add(var repo: Repo, args: List[String]) Result[Unit, Fail]:
                 repo.conflicts.remove(name)
 
             var gone: List[String] = []
-
             for name in repo.index.keys():
                 if not repo.files.contains(name):
                     gone.append(name)
@@ -722,7 +706,6 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
 
     let head = head_tree(repo)
     var names = Set[String]()
-
     for name in head.keys():
         names.add(name)
     for name in repo.index.keys():
@@ -755,12 +738,10 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
                     unstaged.append("modified: {name}")
 
     var conflicted: List[String] = []
-
     for name in repo.conflicts.values().sorted(compare_text):
         conflicted.append("unmerged: {name}")
 
     var untracked: List[String] = []
-
     for name in sorted_keys(repo.files):
         if not repo.index.contains(name) and not repo.conflicts.contains(name):
             untracked.append(name)
@@ -780,7 +761,6 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
 fn text_after_word(raw: String) String:
     let chars = raw.trim_start().chars()
     var k = 0
-
     while k < chars.length() and not is_space(chars.get(k)):
         k += 1
     return chars.slice(k, chars.length()).get().join("").trim()
@@ -829,7 +809,6 @@ fn cmd_commit(var repo: Repo, message: String) Result[Unit, Fail]:
 
     let root_note = if_root(parents.length())
     let id = make_commit(var repo, repo.index.clone(), parents, message)
-
     move_head(var repo, id)
 
     if repo.merging:
@@ -867,7 +846,6 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
         return fail("no commits yet")
 
     var listed: List[Commit] = []
-
     for id in ancestors(repo, head).values():
         listed.append(repo.commits.get(id).get())
 
@@ -878,7 +856,6 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
             break
 
         var line = "{short(c.id)} {c.message}"
-
         if c.parents.length() == 2:
             line = line + " (merge {short(c.parents.get(0))} {short(c.parents.get(1))})"
         say(line)
@@ -895,16 +872,13 @@ fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
 
     if args.length() >= 1:
         let left_id = try resolve(repo, args.get(0))
-
         left = tree_of(repo, left_id)
 
     if args.length() == 2:
         let right_id = try resolve(repo, args.get(1))
-
         right = tree_of(repo, right_id)
 
     var names = Set[String]()
-
     for name in left.keys():
         names.add(name)
     for name in right.keys():
@@ -999,14 +973,12 @@ fn cmd_tag(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         return fail("tag '{name}' already exists")
 
     var target_ref = "HEAD"
-
     if args.length() == 2:
         target_ref = args.get(1)
     if target_ref == "HEAD" and head_commit(repo) == "":
         return fail("no commits yet")
 
     let id = try resolve(repo, target_ref)
-
     repo.tags.add(name, id)
     return ok(nop())
 
@@ -1016,7 +988,6 @@ fn cmd_show(repo: Repo, args: List[String]) Result[Unit, Fail]:
 
     let id = try resolve(repo, args.get(0))
     let c = repo.commits.get(id).get()
-
     say("commit {id}")
     say("tree {tree_hash(c.tree)}")
     for parent in c.parents:
@@ -1030,7 +1001,6 @@ fn cmd_show(repo: Repo, args: List[String]) Result[Unit, Fail]:
 fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     if args.length() == 2 and args.get(0) == "-b":
         let name = args.get(1)
-
         try create_branch(var repo, name)
         try check_switch(repo, head_tree(repo))
         repo.head_branch = name
@@ -1051,11 +1021,9 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
             return ok(nop())
 
         let target_tree = tree_of(repo, repo.branches.get_or(target, ""))
-
         try check_switch(repo, target_tree)
 
         let old_head = head_tree(repo)
-
         apply_state(var repo, target_tree, target_tree.clone(), old_head)
         repo.head_branch = target
         repo.detached = ""
@@ -1064,11 +1032,9 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
     let id = try resolve(repo, target)
     let target_tree = tree_of(repo, id)
-
     try check_switch(repo, target_tree)
 
     let old_head = head_tree(repo)
-
     apply_state(var repo, target_tree, target_tree.clone(), old_head)
     repo.head_branch = ""
     repo.detached = id
@@ -1080,7 +1046,6 @@ fn cmd_reset(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         return fail("usage: reset --hard [REF]")
 
     var id = head_commit(repo)
-
     if args.length() == 2:
         id = try resolve(repo, args.get(1))
     if id == "":
@@ -1133,7 +1098,6 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     let base_tree = tree_of(repo, merge_base(repo, head, other))
     let plan = plan_merge(base_tree, old_head, other_tree, name)
     var names: List[String] = plan.work.keys()
-
     for key in plan.index.keys():
         names.append(key)
     try untracked_check(repo, names)
@@ -1143,7 +1107,6 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         let id = make_commit(
             var repo, plan.index.clone(), [head, other], "Merge branch '{name}'"
         )
-
         move_head(var repo, id)
         say("Merge made by the 'three-way' strategy.")
         say("[{label(repo)} {short(id)}] Merge branch '{name}'")
@@ -1228,14 +1191,12 @@ export fn main() Int:
 
     while pos < lines.length():
         let raw = lines.get(pos)
-
         pos += 1
 
         let text = raw.trim()
 
         if text != "" and not text.starts_with("#"):
             let words = split_words(raw)
-
             say("> {raw.trim_end()}")
 
             var block: List[String] = []

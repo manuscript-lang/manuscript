@@ -38,13 +38,10 @@ test "cleanup uses the selected contract":
             with resource = Resource(0):
                 let completed = unit
     )
-
     try expect_equal(direct, "closeable")
 
     let bound = try expect_fault(fn(): bound_cleanup(resource: Resource(0)))
-
     try expect_equal(bound, "disposable")
 
     let canonical = try expect_fault(fn(): canonical_cleanup(resource: Resource(0)))
-
     try expect_equal(canonical, "closeable")

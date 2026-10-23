@@ -219,6 +219,18 @@ fn short_callbacks_are_compact_without_changing_block_bodies() {
 }
 
 #[test]
+fn prose_paragraphs_keep_related_steps_together() {
+    let source = include_str!("data/format/042.in.src");
+    let expected = include_str!("data/format/042.out.src");
+    let file: Arc<str> = Arc::from("paragraphs.ms");
+    for input in [source.to_string(), source.replace('\n', "\r\n")] {
+        let once = format(&file, &input).unwrap();
+        assert_eq!(once, expected);
+        assert_eq!(format(&file, &once).unwrap(), once);
+    }
+}
+
+#[test]
 fn nesting_limits() {
     big_stack(|| {
         let deep = 200_000;

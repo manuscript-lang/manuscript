@@ -17,7 +17,6 @@ export fn main() Int:
                 return 1
 
             let _ignored = server.wait()
-
             return 0
 
     return 1

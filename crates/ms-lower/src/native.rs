@@ -1716,9 +1716,8 @@ impl<'a> FnLower<'a> {
                                 s.owned(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
-                                let o = s.owned(Val { v: p, own: false });
                                 s.finish(d.val);
-                                o
+                                p
                             };
                             s.finish(recv);
                             Ok(Some(v))
@@ -1819,9 +1818,8 @@ impl<'a> FnLower<'a> {
                         s.owned(c.val)
                     } else {
                         let p = s.b.opt_unwrap(c.val.v);
-                        let o = s.owned(Val { v: p, own: false });
                         s.finish(c.val);
-                        o
+                        p
                     }
                 } else {
                     // `MissingValue` names the source line of the call.
@@ -1879,7 +1877,8 @@ impl<'a> FnLower<'a> {
                                 s.owned(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
-                                s.owned(Val { v: p, own: false })
+                                s.finish(d.val);
+                                p
                             };
                             s.finish(recv);
                             Ok(Some(v))
@@ -2651,7 +2650,7 @@ impl<'a> FnLower<'a> {
             self.b.seal_block(give);
             self.b.seal_block(fault);
             self.b.switch_to(give);
-            let inner = self.b.opt_unwrap(default.val.v);
+            let inner = self.b.opt_get(default.val.v);
             let d = self.owned(Val {
                 v: inner,
                 own: false,
@@ -2729,6 +2728,44 @@ fn build_stream_method(
     b.func_mut().kind = FuncKind::Method;
     b.func_mut().linkage = Linkage::Internal;
     let args = b.params();
+    let which = b.iconst(i64::from(stderr));
+    if name == "close" {
+        let ext = runtime_fn(b.m, "msrt_io_close", &[MTy::INT], MTy::UNIT);
+        b.call_rt(ext, &[which]);
+    }
+    let alt = match b.m.types.kind(ret).clone() {
+        TyKind::Alt(a) => Some(a),
+        _ => None,
+    };
+    let case = |m: &ms_mir::ir::Module, a: ms_mir::types::AltId, n: &str| {
+        m.alts[a.index()]
+            .cases
+            .iter()
+            .position(|c| c.name == n)
+            .map(|i| i as u32)
+    };
+    if matches!(name, "write" | "write_bytes")
+        && let Some(a) = alt
+        && let Some(error) = case(b.m, a, "error")
+        && let TyKind::Alt(io) =
+            b.m.types
+                .kind(b.m.alts[a.index()].cases[error as usize].fields[0].1)
+                .clone()
+        && let Some(closed) = case(b.m, io, "Closed")
+    {
+        // A closed stream reports `Closed` instead of writing.
+        let is_closed = runtime_fn(b.m, "msrt_io_closed", &[MTy::INT], MTy::BOOL);
+        let shut = b.call_rt(is_closed, &[which]);
+        let (fail, go) = (b.new_block(), b.new_block());
+        b.br_if(shut, fail, &[], go, &[]);
+        b.seal_block(fail);
+        b.seal_block(go);
+        b.switch_to(fail);
+        let cause = b.alt_new(io, closed, &[]);
+        let r = b.alt_new(a, error, &[cause]);
+        b.ret(Some(r));
+        b.switch_to(go);
+    }
     if name == "write" || name == "write_bytes" {
         let (sym, arg) = match (name == "write", stderr) {
             (true, true) => ("msrt_io_write_stderr", MTy::STR),
@@ -2742,18 +2779,14 @@ fn build_stream_method(
         let ext = runtime_fn(b.m, "msrt_io_flush", &[], MTy::UNIT);
         b.call_rt(ext, &[]);
     }
-    match b.m.types.kind(ret).clone() {
-        TyKind::Alt(a) => {
-            let ok = b.m.alts[a.index()]
-                .cases
-                .iter()
-                .position(|c| c.name == "ok")
-                .unwrap_or(0) as u32;
+    match alt {
+        Some(a) => {
+            let ok = case(b.m, a, "ok").unwrap_or(0);
             let u = b.unit();
             let r = b.alt_new(a, ok, &[u]);
             b.ret(Some(r));
         }
-        _ => {
+        None => {
             let u = b.unit();
             b.ret(Some(u));
         }

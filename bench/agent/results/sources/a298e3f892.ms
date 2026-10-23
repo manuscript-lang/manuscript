@@ -70,7 +70,6 @@ fn format_cents(cents: BigInt) String:
     let digits = "00" + cents.to_string_radix(10)
     let split_at = digits.length() - 2
     var whole = digits.slice(0, split_at).get()
-
     while whole.length() > 1 and whole.starts_with("0"):
         whole = whole.slice(1, whole.length()).get()
     return whole + "." + digits.slice(split_at, digits.length()).get()
@@ -100,7 +99,6 @@ export fn main() Int:
             done = true
 
     var out = StringBuilder()
-
     for category in totals.keys().sorted(compare_text):
         out.append(category + ": " + format_cents(totals.get(category).get()) + "\n")
     if skipped > 0:

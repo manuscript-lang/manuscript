@@ -77,7 +77,6 @@ fn stock_cmd(var store: Store, sku: String, qty_text: String) Unit:
             store.prices.add(key: sku, value: 0)
 
         let now = store.stock.get_or(sku, 0) + qty
-
         store.stock.add(key: sku, value: now)
         emit("ok {sku} stock={now}")
     else:
@@ -202,7 +201,6 @@ fn ship_cmd(var store: Store, id: String) Unit:
 
 fn reserved(store: Store, sku: String) Int:
     var units = 0
-
     for entry in store.statuses.entries():
         if entry.value == "placed":
             for line in store.lines.get_or(entry.key, List[Line]()):
@@ -214,7 +212,6 @@ fn report_cmd(store: Store) Unit:
     for sku in store.stock.keys().sorted(compare_text):
         let stock = store.stock.get_or(sku, 0)
         let price = store.prices.get_or(sku, 0)
-
         emit("{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}")
 
     var placed = 0

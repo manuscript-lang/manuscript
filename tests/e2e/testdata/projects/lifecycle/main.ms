@@ -39,7 +39,6 @@ fn failure() Result[Int, TextError]:
 fn propagate(output: WriteStream) Result[Int, TextError]:
     with resource = Resource(label: "propagation", output: output):
         let number = try failure()
-
         return ok(number)
 
 fn iterable(var output: WriteStream) List[Int]:
@@ -51,14 +50,12 @@ fn exercise() Result[Int, Error]:
         second: report(output: stdout(), label: "second", value: 2),
         first: report(output: stdout(), label: "first", value: 1)
     )
-
     total | try expect_equal(3)
 
     let pair = Pair(
         second: report(output: stdout(), label: "pair second", value: 2),
         first: report(output: stdout(), label: "pair first", value: 1)
     )
-
     (pair.first + pair.second) | try expect_equal(3)
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
@@ -90,5 +87,4 @@ export fn main() Int:
         ok(status): return status
         error(cause):
             let written = stderr().write("{cause.message()}\n")
-
             return 1

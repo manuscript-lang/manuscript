@@ -21,6 +21,5 @@ test "one receiver implements two applications of a generic contract":
     let d = Doubler(k: 3)
     let a: Int = run(Visitor[Int](value: d), 5)
     let b: String = run(Visitor[String](value: d), 5)
-
     try expect_equal(a, 15)
     try expect_equal(b, "<5>")

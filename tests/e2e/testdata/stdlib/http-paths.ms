@@ -13,7 +13,6 @@ import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:
     var cookies = Map[String, String]()
-
     cookies.add("Set-Cookie", "a=1")
     cookies.add("set-cookie", "b=2")
 
@@ -29,7 +28,6 @@ fn route(request: HttpRequest) HttpResponse:
 
 fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     var chain_1 = Map[String, List[String]]()
-
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
     let sent = try exchange.send_headers(
@@ -38,7 +36,6 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
     let written = (
         try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
     )
-
     return ok(unit)
 
 fn check_route(url: String, expected: String) Result[Unit, Error]:
@@ -115,7 +112,6 @@ fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
     let body = ""
-
     (
         network().request(
             method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
@@ -127,7 +123,6 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
     )
-
     with client = (
         network().http_client(
             HttpClientOptions(decompress: false, cookies: false, tls: tls)
