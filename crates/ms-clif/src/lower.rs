@@ -23,7 +23,7 @@ fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
 
-/// Where a wide value (`Map`, `Set`: six words) also lives in memory, so calls take its
+/// Where a wide value (`Map`, `Set`: seven words) also lives in memory, so calls take its
 /// address instead of spilling a copy. A home on a block parameter holds for the rest of the
 /// function; any other holds only within the block that created it (`blk`).
 #[derive(Clone, Copy)]

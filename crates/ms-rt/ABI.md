@@ -1,4 +1,4 @@
-# ms-rt ABI (version 2)
+# ms-rt ABI (version 3)
 
 Contract between generated code (`ms-clif`) and the native runtime (`ms-rt`).
 Machine-checked constants live in `crates/ms-rt-abi/src/lib.rs`; read offsets
@@ -11,6 +11,10 @@ the earlier Go runtime has been removed.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
+- **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
+  `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
+  clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null
+  pointer and use the supplied builtin descriptor.
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (`no_std` rlibs linked into `libms_rt.a`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
   `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
@@ -53,7 +57,7 @@ recorded here before it is committed.)_
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `String` and `Shared[T]`-style objects keep an `Obj` header and a count.
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
-  (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words) living in the owner's slot;
+  (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words at v2, seven since v3) living in the owner's slot;
   runtime operations take a **pointer to the value** (borrowed, or `&mut` for `var`
   receivers, mutators return nothing) and write constructed values through an `out`
   pointer. Descriptors are no longer stored in the value: every generic operation takes
@@ -173,11 +177,11 @@ U+FFFD of width 1. `msrt_string_empty()` returns a static.
 
 ```text
 VecVal { ptr @0, len @8, cap @16 }                          List[T], Bytes, StringBuilder
-MapVal { slots, index, len @16, used, cap, mask }           Map[K,V], Set[T]; 48 bytes
+MapVal { slots, index, len @16, used, cap, mask, desc }     Map[K,V], Set[T]; 56 bytes
 ```
 
 - Empty lists have `ptr == null`, `cap == 0`. Elements are inline at `ptr + i * desc.size`.
-- A value has one owner. Moving it is a bitwise copy of the 3/6 words (the source is dead).
+- A value has one owner. Moving it is a bitwise copy of the 3/7 words (the source is dead).
   Dropping it: `msrt_list_drop(v, desc)` / `msrt_map_drop(v, kdesc, vdesc)`.
   `.copy()` is `msrt_list_copy` / `msrt_map_copy` (deep, through `desc.copy`).
 - `Bytes` is a `VecVal` of `u8`; `BytesBuilder` is the same value, `freeze` is a move.

@@ -243,7 +243,9 @@ impl<'m> Layouts<'m> {
             TyKind::Int | TyKind::Ptr | TyKind::Str | TyKind::Fn(..) => plain(vec![I64]),
             TyKind::Float => plain(vec![F64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 7]),
+            TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
+                plain(vec![I64; ms_rt_abi::MAP_SIZE / 8])
+            }
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
             TyKind::Rec(r) => plain(

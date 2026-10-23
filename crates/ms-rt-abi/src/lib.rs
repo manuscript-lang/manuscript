@@ -11,7 +11,7 @@
 #![allow(unsafe_code)]
 
 /// Bump when any layout or symbol here changes incompatibly.
-pub const ABI_VERSION: u32 = 2;
+pub const ABI_VERSION: u32 = 3;
 
 // ---------------------------------------------------------------------------
 // Object header and reference counting
@@ -86,7 +86,7 @@ pub const VEC_LEN_OFFSET: usize = 8;
 pub const VEC_CAP_OFFSET: usize = 16;
 pub const VEC_SIZE: usize = 24;
 
-/// `Map[K, V]` and `Set[T]`: six words. Insertion ordered: `slots` is an
+/// `Map[K, V]` and `Set[T]`: seven words. Insertion ordered: `slots` is an
 /// append-only array of entries (`hash: u64` with the top bit set for live
 /// entries and 0 for removed ones, then key, then value, `stride` bytes apart)
 /// and `index` an open-addressing hash index of `u64` entries (hash tag, slot number). Only `len` is a
@@ -104,7 +104,7 @@ pub struct MapVal {
     pub cap: usize,
     /// Index size minus one (0 when there is no index).
     pub mask: usize,
-    /// The key descriptor the map was created with, or null to use the caller's.
+    /// Static creator key descriptor, or null for descriptor-neutral native maps.
     pub desc: *const TypeDesc,
 }
 pub const MAP_LEN_OFFSET: usize = 16;

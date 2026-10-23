@@ -23,3 +23,6 @@ export fn first_add(var items: Set[Key], value: Key) Unit:
 
 export fn first_remove(var items: Set[Key], value: Key) Unit:
     items.remove(value)
+
+export fn first_empty() Set[Key]:
+    return Set[Key]([])

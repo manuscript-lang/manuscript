@@ -31,7 +31,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 - Generated values are flattened into scalar leaves in registers and naturally aligned slots in memory; see `ms-clif/src/layout.rs`.
 - `String` is a pointer to an immutable reference-counted object with a 16-byte header, byte length, scalar-count metadata, and UTF-8 data. Shared objects and closures also have reference-counted headers; ordinary owned collections do not.
 - `List[T]`, `Bytes`, and `StringBuilder` use an owned three-word `{ ptr, len, cap }` value. Elements occupy the monomorphized layout of `T`; generic runtime operations receive an explicit `TypeDesc` with size, alignment, drop, equality, hashing, and copy operations.
-- `Map[K, V]` and `Set[T]` use an owned six-word `MapVal` with ordered slots and a lookup index. Their owner drops elements and frees the buffers.
+- `Map[K, V]` and `Set[T]` use an owned seven-word `MapVal` with ordered slots and a lookup index. Their owner drops elements and frees the buffers.
 - Records flatten their fields in declaration order. Alternatives carry a tag and shared payload slots; recursive alternatives are boxed to make their layout finite.
 - `Optional[T]` uses a nullable pointer for a single-pointer payload, otherwise a presence flag and the payload leaves. Recursive optional layouts use indirection. `Result[T, E]` uses the alternative layout.
 - Interfaces use `{ data, vtable }` views; function values refer to closure objects. Non-escaping closures borrow captures; escaping closures own them, as described in the ownership rules.

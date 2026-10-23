@@ -26,3 +26,6 @@ export fn id_bound(var values: Map[Key, Int], key: Key) Unit:
 
 export fn id_generic(var values: Map[Key, Int], key: Key) Unit:
     remove_generic(var values, key)
+
+export fn id_empty() Map[Key, Int]:
+    return Map[Key, Int]()
