@@ -815,6 +815,85 @@ unsafe fn find_w8(m: &MapVal, key: *const u8) -> *const u8 {
     }
 }
 
+/// [`find_w8`] for a `String` key: slot of the entry, or null.
+#[inline(always)]
+unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
+    if m.len == 0 {
+        return core::ptr::null();
+    }
+    // SAFETY: caller contract; index and slots are consistent for a non-empty map, and the key
+    // slot holds a live string.
+    unsafe {
+        let k = *(key as *const *const StrObj);
+        let h = crate::string::hash_bytes(crate::string::bytes(k)) | LIVE;
+        let index = index_of(m);
+        let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+        loop {
+            let e = *index.add(pos);
+            if e == 0 {
+                return core::ptr::null();
+            }
+            if (e ^ h) >> 32 == 0 {
+                let p = m.slots.add((e as u32 - 1) as usize * 24);
+                if slot_hash_of(p) == h {
+                    let stored = *(p.add(8) as *const *const StrObj);
+                    if stored == k || crate::string::bytes_eq(stored, k) {
+                        return p;
+                    }
+                }
+            }
+            pos = (pos + 1) & m.mask;
+        }
+    }
+}
+
+/// [`msrt_map_get_ptr`] for a `String` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> *const u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() { p } else { p.add(16) }
+    }
+}
+
+/// [`msrt_map_contains`] for a `String` key and an 8-byte, 8-aligned value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_contains_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe { !find_sw8(&*m, key).is_null() as u8 }
+}
+
+/// [`msrt_map_get`] for a `String` key and a plain 8-byte scalar value (`Int` or `Float`).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
+    m: *const MapVal,
+    _kd: *const TypeDesc,
+    _vd: *const TypeDesc,
+    key: *const u8,
+    out: *mut u8,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let p = find_sw8(&*m, key);
+        if p.is_null() {
+            return 0;
+        }
+        core::ptr::copy_nonoverlapping(p.add(16), out, 8);
+        1
+    }
+}
+
 /// [`msrt_map_get_ptr`] for an `Int` key and an 8-byte, 8-aligned value. The call site checked
 /// the shape; the descriptors are accepted for signature parity and ignored.
 #[unsafe(no_mangle)]
@@ -1216,6 +1295,51 @@ mod tests {
     use crate::desc::{msrt_desc_int, msrt_desc_string};
     use crate::string::{self, from_bytes};
     use crate::testutil;
+
+    #[test]
+    fn string_word_entry_points_match_the_general_ones() {
+        let _g = testutil::lock();
+        unsafe {
+            let (kd, vd) = (
+                &msrt_desc_string as *const TypeDesc,
+                &msrt_desc_int as *const TypeDesc,
+            );
+            let mut m = empty();
+            for i in 0..200i64 {
+                let mut k = from_bytes(format!("key-{}", i * 3).as_bytes());
+                let mut v = i;
+                msrt_map_add(
+                    &mut m,
+                    kd,
+                    vd,
+                    &mut k as *mut _ as *mut u8,
+                    &mut v as *mut i64 as *mut u8,
+                );
+            }
+            for i in 0..50i64 {
+                let k = from_bytes(format!("key-{}", i * 6).as_bytes());
+                remove(&mut m, &*kd, Some(&*vd), &k as *const _ as *const u8);
+            }
+            for i in -3..700i64 {
+                let k = from_bytes(format!("key-{i}").as_bytes());
+                let kp = &k as *const _ as *const u8;
+                assert_eq!(
+                    msrt_map_get_ptr(&m, kd, vd, kp),
+                    msrt_map_get_ptr_sw8(&m, kd, vd, kp),
+                    "key {i}"
+                );
+                assert_eq!(
+                    msrt_map_contains(&m, kd, vd, kp),
+                    msrt_map_contains_sw8(&m, kd, vd, kp)
+                );
+                let (mut a, mut b) = (0i64, 0i64);
+                let ga = msrt_map_get(&m, kd, vd, kp, &mut a as *mut i64 as *mut u8);
+                let gb = msrt_map_get_sw8(&m, kd, vd, kp, &mut b as *mut i64 as *mut u8);
+                assert_eq!((ga, a), (gb, b));
+            }
+            drop_map(&mut m, &*kd, Some(&*vd));
+        }
+    }
 
     #[test]
     fn word_entry_points_match_the_general_ones() {
