@@ -203,10 +203,8 @@ fn windows_arguments(
         .args(["--subsystem", "console"])
         .arg("-o")
         .arg(out);
-    if cfg!(target_arch = "aarch64") {
-        // Windows on Arm refuses to load some LLVM-built images (os error 193) when they ask for a
-        // high-entropy ASLR base; the Cranelift-only images load either way.
-        command.arg("--no-high-entropy-va");
+    if let Some(extra) = std::env::var_os("MS_LLD_EXTRA") {
+        command.args(extra.to_string_lossy().split_whitespace());
     }
     if strip {
         command.arg("--strip-all");

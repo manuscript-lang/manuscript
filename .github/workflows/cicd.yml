@@ -239,12 +239,26 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
+        if: runner.os != 'Windows' || matrix.arch == 'amd64'
         run: |
           set -euo pipefail
           # MS_KEEP_LL copies the LLVM IR next to the build, so it exists only when LLVM compiled the program.
           dir="$RUNNER_TEMP/llvm-release"
           mkdir -p "$dir"
           (cd "$dir" && MS_KEEP_LL=1 "$GITHUB_WORKSPACE/target/debug/ms" build "$GITHUB_WORKSPACE/examples/hello/ms.toml" -o hello --build-type Release && test -s ms-keep.ll && ./hello)
+      - name: Diagnose LLVM Release image on Windows arm64
+        if: runner.os == 'Windows' && matrix.arch == 'arm64'
+        continue-on-error: true
+        run: |
+          ms="$GITHUB_WORKSPACE/target/debug/ms.exe"
+          export MS_FORCE_LLVM=1
+          for extra in "" "--disable-high-entropy-va" "--disable-dynamicbase" "--no-gc-sections" "--disable-high-entropy-va --disable-dynamicbase --no-gc-sections" "--icf=none" "--no-seh" "--large-address-aware"; do
+            for n in crypto-rsa url; do
+              log=$(MS_LLD_EXTRA="$extra" "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/$n.ms" --build-type Release 2>&1 || true)
+              echo "VARIANT [$extra] $n err193=$(echo "$log" | grep -c 'os error 193') linkerr=$(echo "$log" | grep -c 'lld: error') pass=$(echo "$log" | grep -c '^PASS')"
+              echo "$log" | grep 'lld: error' | head -2
+            done
+          done
       - name: Native standard-library source conformance
         run: |
           set -euo pipefail

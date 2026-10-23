@@ -42,7 +42,11 @@ impl Profile {
 /// `MS_LLVM_TOOLS`) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to
 /// Cranelift.
 fn llvm_level(level: &'static str) -> Option<&'static str> {
-    if std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
+    // Windows on Arm: programs as large as crypto-rsa link into an image Windows refuses to load
+    // (os error 193), so Release stays on Cranelift there until that is understood.
+    let unsupported =
+        cfg!(all(windows, target_arch = "aarch64")) && std::env::var_os("MS_FORCE_LLVM").is_none();
+    if unsupported || std::env::var("MS_BACKEND").is_ok_and(|b| b == "cranelift") {
         return None;
     }
     ms_clif::llvm_available().then_some(level)
