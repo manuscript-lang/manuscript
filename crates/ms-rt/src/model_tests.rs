@@ -545,7 +545,7 @@ fn string_ops_match_char_model(seed: u64) {
                 string::msrt_string_replace_n(s, ns, rep, i64::MAX, &mut got);
                 assert_eq!(text(&got), model.replace(&needle, "<>"));
                 string::release(got);
-                string::release(*rep);
+                string::release(rep.alias());
                 let mut parts = VecVal {
                     ptr: core::ptr::null_mut(),
                     len: 0,

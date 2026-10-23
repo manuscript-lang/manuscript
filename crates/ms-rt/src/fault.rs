@@ -1044,9 +1044,9 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
-                *msg_out = GUARD_MESSAGE;
+                *msg_out = core::ptr::read(&raw const GUARD_MESSAGE);
             } else {
-                crate::string::release_opt(GUARD_MESSAGE);
+                crate::string::release_opt(core::ptr::read(&raw const GUARD_MESSAGE));
             }
             GUARD_MESSAGE = crate::string::NO_STR;
             r as u8

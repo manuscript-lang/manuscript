@@ -938,7 +938,7 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
             }
         }
         let status = (*t).status;
-        let msg = (*t).msg;
+        let msg = (*t).msg.alias();
         (*t).msg = crate::string::NO_STR;
         if msg_out.is_null() {
             crate::string::release_opt(msg);

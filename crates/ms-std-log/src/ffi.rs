@@ -126,11 +126,11 @@ mod tests {
             let mut out = MaybeUninit::<StrVal>::uninit();
             assert_eq!(msrt_logcore_line(l, 2, &msg, 5, out.as_mut_ptr()), 0);
             assert_eq!(
-                ms_std_core::str_ref(&out.assume_init()),
+                ms_std_core::str_ref(out.assume_init_ref()),
                 "{\"level\":30,\"msg\":\"hi\"}\n"
             );
             assert_eq!(msrt_logcore_line(l, 0, &msg, 5, out.as_mut_ptr()), 0);
-            assert_eq!(ms_std_core::str_ref(&out.assume_init()), "");
+            assert_eq!(ms_std_core::str_ref(out.assume_init_ref()), "");
             assert_eq!(msrt_logcore_line(l, 6, &msg, 5, out.as_mut_ptr()), 1);
         }
     }

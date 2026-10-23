@@ -56,13 +56,24 @@ pub const SCALARS_UNKNOWN: usize = usize::MAX;
 /// block and dropping it releases it, until unique ownership replaces the count. `cap == 0` marks
 /// a static string with no count to change; a dynamic string always has `cap >= 1`.
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct StrVal {
     pub ptr: *mut u8,
     pub len: usize,
     pub cap: usize,
 }
 impl StrVal {
+    /// A second handle to the same bytes, with the count untouched. Every call site decides what
+    /// it stands for (a retain, a move, or a short-lived borrow); the compiler no longer
+    /// duplicates strings silently, so `grep alias` lists every site that shares.
+    #[inline(always)]
+    pub fn alias(&self) -> StrVal {
+        StrVal {
+            ptr: self.ptr,
+            len: self.len,
+            cap: self.cap,
+        }
+    }
+
     /// Writes the three words to `out` as separate stores. A plain struct write lets the compiler
     /// copy through a 16-byte vector move, which stalls reading words a callee just stored
     /// separately.
@@ -102,7 +113,6 @@ pub const ASCII_CHAR_STRIDE: usize = 32;
 
 /// `Optional[String]`: a presence byte, then the string at offset 8 (32 bytes).
 #[repr(C)]
-#[derive(Clone, Copy)]
 pub struct OptStr {
     pub present: u8,
     pub value: StrVal,

@@ -175,7 +175,7 @@ impl<const N: usize> AbiType for [&str; N] {
 unsafe impl<'a, const N: usize> FromAbi<'a> for [&'a str; N] {
     unsafe fn from_raw(raw: *const [StrVal; N]) -> [&'a str; N] {
         // SAFETY: caller contract; each field is a live string.
-        unsafe { (*raw).map(|p| str_ref(&p)) }
+        unsafe { core::array::from_fn(|i| str_ref(&(*raw)[i])) }
     }
 }
 impl<const N: usize> IntoAbi for [String; N] {
@@ -565,7 +565,7 @@ type EntryCode = unsafe extern "C-unwind" fn(
 /// Calls `code` with temporary strings made from `bytes`, released after the call.
 fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(StrVal, StrVal) -> R) -> R {
     let (a, b) = (new_string_bytes(bytes[0]), new_string_bytes(bytes[1]));
-    let r = call(a, b);
+    let r = call(a.alias(), b.alias());
     // SAFETY: the callee only borrowed the strings; this releases the one reference made above.
     unsafe {
         crate::str_release(a);
@@ -730,12 +730,12 @@ impl OptInt {
 impl AbiSlot for Str {
     unsafe fn release(&mut self) {
         // SAFETY: caller contract; a `Str` owns one reference.
-        unsafe { crate::str_release(self.0) }
+        unsafe { crate::str_release(self.0.alias()) }
     }
     unsafe fn duplicate(&self) -> Str {
         // SAFETY: caller contract.
-        unsafe { crate::str_retain(self.0) };
-        Str(self.0)
+        unsafe { crate::str_retain(self.0.alias()) };
+        Str(self.0.alias())
     }
 }
 
