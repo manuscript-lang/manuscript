@@ -63,10 +63,11 @@ fn walk(p: &[u8], rel: &[u8], dir: bool, visit: &mut Visit) -> Res<()> {
     entries.sort_by(|a, b| a.0.cmp(&b.0));
     for (name, kind) in entries {
         let child = path::join(p, &name);
+        // Relative paths use `/` on every host, as glob patterns do.
         let child_rel = if rel == b"." {
             name.clone()
         } else {
-            path::join(rel, &name)
+            [rel, b"/", &name].concat()
         };
         let (directory, _) = ops::entry_kind(p, &name, kind);
         walk(&child, &child_rel, directory, visit)?;

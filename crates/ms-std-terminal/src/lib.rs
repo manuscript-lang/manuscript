@@ -11,7 +11,6 @@
 use ms_rt as _;
 
 extern crate alloc;
-#[cfg(unix)]
 extern crate std;
 
 mod decoder;
@@ -84,8 +83,14 @@ mod imp {
 
 #[cfg(not(unix))]
 mod imp {
-    pub fn is_terminal(_: i32) -> bool {
-        false
+    use std::io::IsTerminal;
+
+    pub fn is_terminal(fd: i32) -> bool {
+        match fd {
+            0 => std::io::stdin().is_terminal(),
+            1 => std::io::stdout().is_terminal(),
+            _ => std::io::stderr().is_terminal(),
+        }
     }
 
     pub fn colors() -> i64 {
@@ -97,6 +102,9 @@ mod imp {
     }
 
     pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, u8> {
+        if !is_terminal(0) || !is_terminal(1) {
+            return Err(ms_rt_abi::STATUS_NOT_TERMINAL);
+        }
         crate::raw::Raw::open(0, 1, alternate)
     }
 }
