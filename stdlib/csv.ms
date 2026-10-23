@@ -36,10 +36,12 @@ export fn parse(
         lines: text.split("\n"), delimiter: options.delimiter.scalar_values() [0],
         next_line: 0, total_lines: 0
     )
+
     # A final empty piece after the last newline is not a line.
     var count = reader.lines.length()
     if count > 0 and reader.lines[count - 1] == "": count -= 1
     reader.total_lines = count
+
     var rows = List[List[String]]()
     var cells = 0
 
@@ -164,6 +166,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
                 for index in range(at, line.length):
                     cell.append(line.cells[index])
                 cell.append(10)
+
                 let following = take_line(var reader)
                 if not following.is_some(): return error(CsvError.InvalidData)
 
@@ -223,6 +226,7 @@ export fn stringify(
             line = pieces.join(options.delimiter)
 
         line = "{line}{options.line_ending}"
+
         let size = line.byte_length()
         if size > limit - used: return error(CsvError.LimitExceeded)
 
@@ -237,6 +241,7 @@ fn needs_quotes(field: String, delimiter: Int) Bool:
 
     for scalar in scalars:
         if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
+
     let first = scalars[0]
     if first <= 32 or first >= 127: return field.get(0).trim() == ""
 
