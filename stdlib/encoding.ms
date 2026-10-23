@@ -42,6 +42,7 @@ export fn base64_decode(
     for quad in range(0, quads):
         var pad = 0
         if quad + 1 == quads: pad = padding
+
         var value = 0
 
         for offset in range(0, 4):
@@ -108,6 +109,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
         var third = 0
         if remaining > 1: second = bytes[index + 1]
         if remaining > 2: third = bytes[index + 2]
+
         let value = bytes[index] * 65536 + second * 256 + third
         out.append(table[value / 262144 % 64])
         out.append(table[value / 4096 % 64])
