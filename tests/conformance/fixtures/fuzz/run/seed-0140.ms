@@ -11,31 +11,50 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-2), 6]
     say("l1 = {l1} len {l1.length()}")
+
     let b2 = ("naïve".contains("delta") and true)
     say("b2 = {b2}")
-    let b3 = (((0.0 + 990.121) * (716.818 + 1.5)) < ((997.796 + 573.25) / (37.660 * 4.5)))
+
+    let b3 = (
+        ((0.0 + 990.121) * (716.818 + 1.5)) < (
+            (997.796 + 573.25)
+            / (37.660 * 4.5)
+        )
+    )
     say("b3 = {b3}")
+
     let i4 = ((l1.get(0) * l1.get(0)) + ((-172713) + (-4)))
     say("i4 = {i4}")
+
     let s5 = (("naïve" + "delta".trim()) + "x")
     say("s5 = [{s5}]")
+
     let i6 = l1.length()
     say("i6 = {i6}")
-    say("{i6} {(((-1) - 30) / (i4 + i4))} {(i6 < (((-1) - 30) / (i4 + i4)))} sum {i6 + (((-1) - 30) / (i4 + i4))}")
+    say(
+        "{i6} {(((-1) - 30) / (i4 + i4))} {(i6 < (((-1) - 30) / (i4 + i4)))} sum {i6 + (((-1) - 30) / (i4 + i4))}"
+    )
+
     let l7 = [(-6), (-20), 3, (-3)]
     say("l7 = {l7} len {l7.length()}")
+
     let f8 = 598.25
     say("f8 = {f8}")
+
     let s9 = s5.clone()
     say("s9 = [{s9}]")
+
     let s10 = (("gamma" + "x".replace("brace\{s\}", s5)) + s5)
     say("s10 = [{s10}]")
+
     if ((true and true) or (b2 or true)):
         say("delta".upper())
     else:
         say(s9)
+
     let i11 = (-28)
     say("i11 = {i11}")
+
     let i12 = (-992384)
     say("i12 = {i12}")
     return 0

@@ -12,16 +12,16 @@
         "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinference-6.ms",
-          "line": 6,
+          "line": 7,
           "column": 40,
-          "offset": 290
+          "offset": 291
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-6.ms:6:40: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-6.ms:7:40: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

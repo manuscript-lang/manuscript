@@ -11,17 +11,23 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = 9
     say("i1 = {i1}")
+
     let f2 = (((771.688 - 495.632) - (8.5 - 972.549)) - 877.762)
     say("f2 = {f2}")
+
     let b3 = (not ((720.862 / 699.221) < f2))
     say("b3 = {b3}")
+
     let l4 = [7, (-3)]
     say("l4 = {l4} len {l4.length()}")
+
     let bad = 1.5 + 2
     let l5 = l4.reversed()
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = l4.concat(l4)
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = (((f2 + 10.970) + (9.5 - 567.562)) == ((366.25 / 517.392) + (246.25 + f2)))
     say("b7 = {b7}")
     return 0

@@ -13,15 +13,19 @@ export fn main() Int:
         say(("Tab\there" + "beta"))
     else:
         say(("  padded  " + ""))
+
     let l1 = [3, 10, 21]
     say("l1 = {l1} len {l1.length()}")
+
     if (false and (false or true)):
         say("beta")
     else:
         say("alpha".upper())
+
     let s2 = ("{((-23) + (-46))}:" + "  padded  ")
     say("s2 = [{s2}]")
     say("{8} {66907} {(8 < 66907)} sum {8 + 66907}")
+
     let i3 = (((16 * (-39)) % l1.get(0)) + ((-49) + ((-22) % 838420)))
     say("i3 = {i3}")
     return 0

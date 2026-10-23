@@ -88,19 +88,28 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      # sccache stores each compiler output, so the saved cache stays small and bounded
+      # (`target/` grew to several GB) and a changed crate rebuilds only itself.
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 2G
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
       - name: Keep native test artifacts in runner storage
         run: |
-          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" "SCCACHE_DIR=$RUNNER_TEMP/sccache" >> "$GITHUB_ENV"
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
         with:
           arch: ${{ matrix.arch == 'arm64' && 'amd64_arm64' || 'amd64' }}
-      # The key hashes only Cargo.lock and the toolchain (rust-cache also hashes every manifest, so it
-      # writes a new entry whenever one changes). One entry per name and lockfile, saved on main.
+      # The key hashes only Cargo.lock and the toolchain. One entry per platform and lockfile, saved
+      # on main; a fallback restore from an older lockfile is fine because sccache entries are
+      # content-addressed.
       - name: Restore cargo cache
         id: cargo-cache
         uses: actions/cache/restore@v6
@@ -109,9 +118,9 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            target
-          key: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: cargo-rust-${{ matrix.os }}-${{ matrix.arch }}-
+            ${{ runner.temp }}/sccache
+          key: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-sccache-${{ matrix.os }}-${{ matrix.arch }}-
       - uses: taiki-e/install-action@v2
         if: matrix.full || matrix.tests
         with:
@@ -141,7 +150,7 @@ jobs:
           else
             cc --version
           fi
-      # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
+      # `ms` embeds a pinned static lld to link programs (crates/ms-linker/build.rs reads MS_LLD). It is
       # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
       - name: Fetch bundled lld
         run: |
@@ -308,9 +317,9 @@ jobs:
           else
             "../../$(basename "$ms")" run ms.toml
           fi
-      - name: Trim cargo cache
-        if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
-        run: sh scripts/trim-cargo-cache.sh
+      - name: sccache statistics
+        if: always()
+        run: sccache --show-stats
       - name: Save cargo cache
         if: github.ref == 'refs/heads/main' && steps.cargo-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -319,7 +328,7 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            target
+            ${{ runner.temp }}/sccache
           key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - name: Preserve test artifacts
         if: always()

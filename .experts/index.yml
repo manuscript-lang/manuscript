@@ -16,6 +16,7 @@ experts:
       - "crates/ms-mir/**"
       - "crates/ms-lower/**"
       - "crates/ms-clif/**"
+      - "crates/ms-linker/**"
       - "crates/ms-driver/**"
       - "crates/ms-native/**"
       - "crates/ms-project/**"

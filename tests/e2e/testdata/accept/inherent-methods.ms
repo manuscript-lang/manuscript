@@ -50,7 +50,6 @@ fn check(ok: Bool, name: String) Unit:
 
 test "inherent methods":
     let counter = Counter(value: 4)
-
     check(ok: counter.double() == 8, name: "double")
     check(ok: counter.bump().value == 5, name: "default argument")
     check(ok: counter.bump(by: 3).value == 7, name: "explicit argument")

@@ -13,6 +13,7 @@ export fn main() Int:
         say("a")
     else:
         say(("brace\{s\}" + "MiXeD CaSe"))
+
     let f1 = (((419.778 * 0.0) + 1.5) - ((324.172 + 179.710) * 0.0))
     say("f1 = {f1}")
     return 0

@@ -9,7 +9,6 @@ fn filled_sum() Int:
         i += 1
 
     var sum = 0
-
     for value in values:
         sum += value
     return sum
@@ -50,7 +49,6 @@ fn peer_overflow() Int:
 fn prefix_overflow() Int:
     let values = [9223372036854775807, 1, -1]
     var sum = 0
-
     for value in values:
         sum += value
     return sum
@@ -58,7 +56,6 @@ fn prefix_overflow() Int:
 fn optional_overflow(default: Optional[Int]) Int:
     let values = [9223372036854775807]
     var sum = 0
-
     for value in values:
         sum += values.get(0, default)
     return sum + 1
@@ -70,11 +67,9 @@ fn effect(var visits: List[Int], value: Int) Int:
 fn mutated_alias() Int:
     let values = [0]
     var alias = values.clone()
-
     alias.set(0, 9223372036854775807)
 
     var sum = 0
-
     for value in values:
         sum += value
     return sum + 1
@@ -86,7 +81,6 @@ test "closed list scalar summaries preserve sums and lengths":
 
     let empty: List[Int] = []
     var sum = 0
-
     for value in empty:
         sum += value
     sum | try expect_equal(0)
@@ -95,7 +89,6 @@ test "closed list scalar summaries preserve sums and lengths":
 test "closed list reads preserve defaults and evaluation order":
     let values = [10, 20]
     var visits: List[Int] = []
-
     values.get(default: effect(var visits, 7), index: effect(var visits, 0)) | try expect_equal(
         10
     )
@@ -139,7 +132,6 @@ test "append during traversal retains initial-length semantics":
 fn reordered_default_overflow() Int:
     let values = [0]
     var sum = 0
-
     for value in values:
         sum += values.get(default: 9223372036854775807, index: 2)
     return sum + 1
@@ -155,7 +147,6 @@ fn scalar_append_overflow() Int:
         i += 1
 
     var sum = 0
-
     for value in values:
         sum += value
     return sum + 1
@@ -179,7 +170,6 @@ fn default_length() Int:
     var values: List[Int] = []
     let callback = fn(value: List[Int] = singleton(var values)) Int: value.length()
     let ignored = callback()
-
     return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":

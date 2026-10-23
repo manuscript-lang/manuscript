@@ -11,13 +11,16 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let f1 = (2.5 - (692.784 * 204.948))
     say("f1 = {f1}")
+
     let b2 = (false and (("beta" + "x") != "emoji 😀".replace("gamma", "gamma")))
     say("b2 = {b2}")
     say("fact(17) = {fact(17)}")
+
     let bad = (1 < 2) < 3
     return 0

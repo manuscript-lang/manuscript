@@ -12,51 +12,66 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     say("gcd(2994, 4542) = {gcd(2994, 4542)}")
     say("fact(6) = {fact(6)}")
+
     let f1 = (((3.5 / 933.377) * (9.5 * 490.538)) + (857.25 + (3.0e22 / 7.5)))
     say("f1 = {f1}")
     say("fib(18) = {fib(18)}")
+
     let b2 = ("42".replace("beta", "quote\"d") + "42".replace("gamma", "日本語")).is_empty()
     say("b2 = {b2}")
     say("gcd(4840, 3324) = {gcd(4840, 3324)}")
+
     let i3 = 43
     say("i3 = {i3}")
+
     let i4 = (-27)
     say("i4 = {i4}")
+
     let l5 = [(-19)]
     say("l5 = {l5} len {l5.length()}")
+
     let f6 = (f1 * (f1 + 241.478))
     say("f6 = {f6}")
+
     let s7 = "ms"
     say("s7 = [{s7}]")
+
     let s8 = ((s7.trim() + "back\\slash".trim()) + "gamma".reverse())
     say("s8 = [{s8}]")
+
     var acc9 = 0
     for i in range(0, 0):
         acc9 += i * (-1)
     say("acc9 = {acc9}")
+
     let f10 = (f6 / ((f1 / f6) * 793.810))
     say("f10 = {f10}")
+
     let big11 = -9223372036854775808
     say("{big11 - 3}")
     return 0

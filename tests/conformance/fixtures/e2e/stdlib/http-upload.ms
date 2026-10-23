@@ -41,6 +41,7 @@ test "request_stream uploads each chunk of a ReadStream":
                 ReadStream(value: upload)
             ):
                 try expect_equal(response.metadata().status, 200)
+
                 let body = try read_all(borrow_body(response))
                 try expect_equal(body, "alpha beta gamma".to_bytes())
 

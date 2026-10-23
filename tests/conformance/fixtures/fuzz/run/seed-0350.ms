@@ -9,23 +9,33 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (((1.5 - 519.197) + (2.0e-9 - 8.5)) * ((708.795 + 679.332) + (3.0e13 * 260.137)))
+    let f1 = (
+        ((1.5 - 519.197) + (2.0e-9 - 8.5))
+        * ((708.795 + 679.332) + (3.0e13 * 260.137))
+    )
     say("f1 = {f1}")
+
     let i2 = 399967
     say("i2 = {i2}")
+
     let i3 = ((13 * (i2 + (-5))) * i2)
     say("i3 = {i3}")
+
     let b4 = ((-21) >= ((-603781) - ((-9223372036854775807) / 582451)))
     say("b4 = {b4}")
+
     let l5 = [(-19), (-17)]
     say("l5 = {l5} len {l5.length()}")
+
     if (("日本語" != "back\\slash") or (false and b4)):
         say("gamma")
     else:
         say("line\nbreak".trim())
+
     var l6 = l5.clone()
     l6.append(17)
     say("l6 = {l6} len {l6.length()}")
+
     let big7 = -9223372036854775808
     say("{big7 - 4}")
     return 0

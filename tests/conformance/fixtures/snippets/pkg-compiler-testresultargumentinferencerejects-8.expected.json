@@ -12,9 +12,9 @@
         "message": "unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
-          "line": 6,
+          "line": 7,
           "column": 15,
-          "offset": 256
+          "offset": 257
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
-          "line": 9,
+          "line": 12,
           "column": 18,
-          "offset": 349
+          "offset": 352
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
-          "line": 9,
+          "line": 12,
           "column": 23,
-          "offset": 354
+          "offset": 357
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "Read does not satisfy Error; use a type that implements it",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
-          "line": 8,
+          "line": 10,
           "column": 1,
-          "offset": 288
+          "offset": 290
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:6:15: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:9:18: type: cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:9:23: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:8:1: type: Read does not satisfy Error; use a type that implements it\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:7:15: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:18: type: cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:23: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:10:1: type: Read does not satisfy Error; use a type that implements it\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

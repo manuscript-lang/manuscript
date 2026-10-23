@@ -6,7 +6,6 @@ test "binary integer boundaries and both byte orders":
     for little in [false, true]:
         for number in [-9223372036854775808, -32768, -1, 0, 32767, 9223372036854775807]:
             let data = try write_integer(number, 8, signed: true, little_endian: little)
-
             try expect_false(
                 (
                     (
@@ -40,7 +39,6 @@ test "binary integer boundaries and both byte orders":
 
 test "binary errors preserve domain and range":
     let range_error: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
-
     try expect_equal(
         write_integer(256, 1, signed: false, little_endian: false), range_error
     )
@@ -49,7 +47,6 @@ test "binary errors preserve domain and range":
     )
 
     let invalid: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
-
     try expect_equal(
         read_integer(Bytes([0]), -1, 1, signed: true, little_endian: false), invalid
     )

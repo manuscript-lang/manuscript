@@ -11,30 +11,46 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = "quote\"d".contains("MiXeD CaSe")
     say("b1 = {b1}")
+
     let s2 = ("{(17 * (-11))}:" + "back\\slash".upper()).upper()
     say("s2 = [{s2}]")
+
     let b3 = (((true or true) or "MiXeD CaSe".is_empty()) and (not (not b1)))
     say("b3 = {b3}")
+
     let i4 = ((-49) * ((430056 + 25) * ((-48) + (-25))))
     say("i4 = {i4}")
+
     let i5 = (-10)
     say("i5 = {i5}")
+
     let f6 = (((664.540 + 0.0) + 566.628) * ((68.839 / 539.375) / (9.0e5 + 710.25)))
     say("f6 = {f6}")
+
     let s7 = s2.clone()
     say("s7 = [{s7}]")
+
     let f8 = (8.5 + (800.554 - (f6 + 890.25)))
     say("f8 = {f8}")
+
     let l9 = [(-9), (-7)]
     say("l9 = {l9} len {l9.length()}")
+
     let s10 = (s2 + s2).upper().reverse()
     say("s10 = [{s10}]")
+
     let s11 = s7
     say("s11 = [{s11}]")
-    say("{((i4 / i5) * ((-16) / i5))} {i4} {(((i4 / i5) * ((-16) / i5)) < i4)} sum {((i4 / i5) * ((-16) / i5)) + i4}")
+    say(
+        "{((i4 / i5) * ((-16) / i5))} {i4} {(((i4 / i5) * ((-16) / i5)) < i4)} sum {((i4 / i5) * ((-16) / i5)) + i4}"
+    )
+
     let i12 = (((39 * (-582672814795)) + (i4 / 43)) + (((-25) / i4) + 226076))
     say("i12 = {i12}")
+
     let l13 = [22, 26, 19, 7]
     say("l13 = {l13} len {l13.length()}")
-    say("{(29 + l13.get(3))} {i4} {((29 + l13.get(3)) < i4)} sum {(29 + l13.get(3)) + i4}")
+    say(
+        "{(29 + l13.get(3))} {i4} {((29 + l13.get(3)) < i4)} sum {(29 + l13.get(3)) + i4}"
+    )
     return 0

@@ -14,6 +14,7 @@ export fn bench_path_url_math() Unit:
                 n += (join(["/a", "b/../c", "d.txt"]) | normalize | .length())
             return n
     )
+
     bench(
         "path.basename",
         100000,
@@ -23,6 +24,7 @@ export fn bench_path_url_math() Unit:
                 n += basename("/a/b/c/file.txt").length()
             return n
     )
+
     bench(
         "url.parse",
         20000,
@@ -33,6 +35,7 @@ export fn bench_path_url_math() Unit:
                 if parse(address).is_ok(): n += 1
             return n
     )
+
     bench(
         "url.encode_component",
         50000,
@@ -42,6 +45,7 @@ export fn bench_path_url_math() Unit:
                 n += encode_component("a b&c=d/é").length()
             return n
     )
+
     bench(
         "math.sqrt_sin",
         1000000,

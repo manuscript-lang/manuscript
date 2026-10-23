@@ -11,15 +11,19 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     say("fact(10) = {fact(10)}")
+
     let bad = "abc".no_such_method()
     let i1 = (31 % ((934670 / (-12)) * (-26)))
     say("i1 = {i1}")
+
     if "delta".lower().is_empty():
         say("ms".lower())
     else:
         say("naïve".upper())
+
     return 0

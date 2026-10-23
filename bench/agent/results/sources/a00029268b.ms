@@ -133,7 +133,6 @@ fn words(text: String) List[String]:
 fn cut_word(text: String) Word:
     let cs = text.chars()
     var i = 0
-
     while i < cs.length() and not is_space(cs.get(i)):
         i += 1
     return Word(
@@ -166,7 +165,6 @@ fn sorted_text(xs: List[String]) List[String]:
 
 fn unique_sorted(xs: List[String]) List[String]:
     var out: List[String] = []
-
     for x in xs:
         if not out.contains(x):
             out.append(x)
@@ -246,7 +244,6 @@ fn days_in(m: Int, y: Int) Int:
 
 fn num_at(v: List[Int], a: Int, b: Int) Int:
     var x = 0
-
     for i in range(a, b):
         x = x * 10 + digit_value(v.get(i))
     return x
@@ -325,18 +322,15 @@ fn tokenize(text: String) Result[List[String], Fail]:
 
 fn parse_id(arg: String) Result[String, Fail]:
     var cs = arg.chars()
-
     if cs.length() > 0 and cs.get(0) == "#":
         cs = cs.drop(1)
 
     var digits_only = cs.length() > 0
-
     for c in cs:
         if not is_digit_text(c):
             digits_only = false
 
     var k = 0
-
     while k < cs.length() and cs.get(k) == "0":
         k += 1
 
@@ -453,12 +447,10 @@ fn parse_update(tok: String) Result[Update, Fail]:
         return error(Fail(msg: "unknown field '{field}'"))
 
     let norm = try normalize(field, value)
-
     return ok(Update(field: field, norm: norm))
 
 fn parse_updates(toks: List[String]) Result[List[Update], Fail]:
     var out: List[Update] = []
-
     for tok in toks:
         out.append(try parse_update(tok))
     return ok(out)
@@ -515,7 +507,6 @@ fn log_add(var app: App, id: Int, detail: String) Unit:
 fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fail]:
     let old = app.issues.get(idx).clone()
     var nw = old.clone()
-
     for u in updates:
         apply_update(var nw, u)
 
@@ -524,7 +515,6 @@ fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fa
     for f in field_order():
         let before = field_norm(old, f)
         let after = field_norm(nw, f)
-
         if before != after:
             changes.append("{f}: {dash(before)} -> {dash(after)}")
 
@@ -547,7 +537,6 @@ fn edit_core(var app: App, id: Int, fields: List[String]) Result[List[String], F
         return error(Fail(msg: "usage: edit ID field=value..."))
 
     let updates = try parse_updates(fields)
-
     return commit(var app, idx, updates)
 
 fn cmd_edit(var app: App, rest: String) Result[List[String], Fail]:
@@ -556,7 +545,6 @@ fn cmd_edit(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: edit ID field=value..."))
 
     let id = try lookup_id(app, toks.get(0))
-
     return edit_core(var app, id, toks.drop(1))
 
 fn cmd_assign(var app: App, rest: String) Result[List[String], Fail]:
@@ -565,12 +553,10 @@ fn cmd_assign(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: assign ID NAME"))
 
     let id = try lookup_id(app, toks.get(0))
-
     return edit_core(var app, id, ["assignee=".concat(toks.get(1))])
 
 fn lookup_id(app: App, arg: String) Result[Int, Fail]:
     let idx = try lookup(app, arg)
-
     return ok(app.issues.get(idx).id)
 
 fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fail]:
@@ -609,7 +595,6 @@ fn cmd_label(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: label ID +label -label..."))
 
     let id = try lookup_id(app, toks.get(0))
-
     return label_core(var app, id, toks.drop(1))
 
 fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
@@ -631,7 +616,6 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
     )
     let base = it.clone()
     let updates = try parse_updates(toks.drop(1))
-
     for u in updates:
         apply_update(var it, u)
     app.t += 1
@@ -644,7 +628,6 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
     for f in field_order():
         let before = field_norm(base, f)
         let after = field_norm(it, f)
-
         if before != after:
             log_add(var app, it.id, "{f}: {dash(before)} -> {dash(after)}")
 
@@ -686,7 +669,6 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
         return error(Fail(msg: "transition '{from} -> {to}' not allowed"))
 
     var missing: List[String] = []
-
     for g in guards.get():
         if not guard_met(it, g):
             missing.append(g)
@@ -700,7 +682,6 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     app.t += 1
 
     var nw = it.clone()
-
     nw.state = to
     nw.updated = app.t
     if comment != "":
@@ -718,7 +699,6 @@ fn cmd_move(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: move ID STATE [comment...]"))
 
     let id = try lookup_id(app, w1.head)
-
     return move_core(var app, id, w2.head, w2.rest)
 
 fn cmd_comment(var app: App, rest: String) Result[List[String], Fail]:
@@ -727,11 +707,9 @@ fn cmd_comment(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: comment ID TEXT"))
 
     let idx = try lookup(app, w.head)
-
     app.t += 1
 
     var nw = app.issues.get(idx).clone()
-
     nw.comments.append(Comment(t: app.t, actor: app.actor, text: w.rest))
     nw.updated = app.t
     app.issues.set(idx, nw.clone())
@@ -744,11 +722,9 @@ fn cmd_delete(var app: App, rest: String) Result[List[String], Fail]:
         return error(Fail(msg: "usage: delete ID"))
 
     let idx = try lookup(app, ws.get(0))
-
     app.t += 1
 
     let id = app.issues.get(idx).id
-
     app.issues.remove(idx)
     log_add(var app, id, "deleted")
     return ok(["deleted #{id}"])
@@ -761,7 +737,6 @@ fn cmd_show(app: App, rest: String) Result[List[String], Fail]:
     let idx = try lookup(app, ws.get(0))
     let it = app.issues.get(idx)
     var out: List[String] = []
-
     out.append("#{it.id} {it.title}")
     out.append("  state: {it.state}")
     out.append("  priority: {it.priority}")
@@ -927,7 +902,6 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
             i += 1
         else:
             var j = i
-
             while j < n and not is_term_stop(cs.get(j)):
                 j += 1
 
@@ -1001,7 +975,6 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
                 i = p
             else:
                 var p = i
-
                 while (
                     p < n
                     and not is_space(cs.get(p))
@@ -1088,7 +1061,6 @@ fn check_term(app: App, t: Tok) Result[Expr, Fail]:
     let field = t.field
     let op = t.op
     var canon = field
-
     if field == "label":
         canon = "labels"
     if not known_field(field):
@@ -1135,7 +1107,6 @@ fn parse_or(var ps: Parser, app: App) Result[Expr, Fail]:
         ps.pos += 1
 
         let right = try parse_and(var ps, app)
-
         left = Or(left, right)
 
     return ok(left)
@@ -1148,7 +1119,6 @@ fn parse_and(var ps: Parser, app: App) Result[Expr, Fail]:
             ps.pos += 1
 
         let right = try parse_not(var ps, app)
-
         left = And(left, right)
 
     return ok(left)
@@ -1158,7 +1128,6 @@ fn parse_not(var ps: Parser, app: App) Result[Expr, Fail]:
         ps.pos += 1
 
         let inner = try parse_not(var ps, app)
-
         return ok(Not(inner))
 
     return parse_primary(var ps, app)
@@ -1207,17 +1176,14 @@ fn split_limit(text: String) Clause:
     let cs = text.chars()
     let n = cs.length()
     var s = n
-
     while s > 0 and not is_space(cs.get(s - 1)):
         s -= 1
 
     var e = s
-
     while e > 0 and is_space(cs.get(e - 1)):
         e -= 1
 
     var b = e
-
     while b > 0 and not is_space(cs.get(b - 1)):
         b -= 1
     if n > 0 and e < s and join_range(cs, b, e) == "limit":
@@ -1283,7 +1249,6 @@ fn parse_spec(app: App, text: String) Result[Spec, Fail]:
     let srt = split_sort(lim.head)
     let filter = try parse_filter(app, srt.head)
     var keys: List[SortKey] = []
-
     if srt.found:
         keys = try parse_sort_keys(srt.tail)
     return ok(Spec(filter: filter, sort: keys, has_limit: lim.found, limit: limit))
@@ -1411,7 +1376,6 @@ fn one(app: App, f: String, op: String, a: String, it: Issue) Bool:
         return it.reporter.is_some()
 
     let spec = try_view(app, a)
-
     return eval(app, spec, it)
 
 fn try_view(app: App, name: String) Expr:
@@ -1529,7 +1493,6 @@ fn sort_issues(states: List[String], keys: List[SortKey], xs: List[Issue]) List[
 
     for x in xs:
         var pos = 0
-
         while (
             pos < out.length()
             and cmp_issues(states, keys.clone(), out.get(pos), x) < 0
@@ -1551,7 +1514,6 @@ fn count_line(n: Int) String:
 fn query_lines(app: App, spec: Spec) List[String]:
     var hits: List[Issue] = []
     let matcher = spec.filter.clone()
-
     for it in app.issues:
         if eval(app, matcher.clone(), it):
             hits.append(it.clone())
@@ -1561,7 +1523,6 @@ fn query_lines(app: App, spec: Spec) List[String]:
         hits = hits.take(spec.limit)
 
     var out: List[String] = []
-
     for it in hits:
         out.append(issue_line(it))
     out.append(count_line(hits.length()))
@@ -1569,7 +1530,6 @@ fn query_lines(app: App, spec: Spec) List[String]:
 
 fn cmd_list(app: App, rest: String) Result[List[String], Fail]:
     let spec = try parse_spec(app, rest)
-
     return ok(query_lines(app, spec))
 
 fn view_save(var app: App, rest: String) Result[List[String], Fail]:
@@ -1619,7 +1579,6 @@ fn view_list(app: App) Result[List[String], Fail]:
         return ok(["(no views)"])
 
     var out: List[String] = []
-
     for n in names:
         out.append("{n}: {app.views.get(n).get()}")
     return ok(out)
@@ -1721,7 +1680,6 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
 
     let filt = try parse_filter(app, query)
     var ids: List[Int] = []
-
     for it in app.issues:
         if eval(app, filt.clone(), it):
             ids.append(it.id)
@@ -1776,7 +1734,6 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
         limit_n = t.get()
 
     var sel: List[Entry] = []
-
     for e in app.journal:
         if (n != 1 and n != 3) or e.id == wanted:
             sel.append(e)
@@ -1786,14 +1743,12 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
         return ok(["(no log entries)"])
 
     var out: List[String] = []
-
     for e in sel:
         out.append("t={e.t} {e.actor} #{e.id} {e.detail}")
     return ok(out)
 
 fn count_state(app: App, s: String) Int:
     var c = 0
-
     for it in app.issues:
         if it.state == s:
             c += 1
@@ -1801,7 +1756,6 @@ fn count_state(app: App, s: String) Int:
 
 fn count_priority(app: App, p: String) Int:
     var c = 0
-
     for it in app.issues:
         if it.priority == p:
             c += 1
@@ -1826,7 +1780,6 @@ fn report_summary(app: App) List[String]:
     let total = app.issues.length()
     let final_n = total - open_n
     var out: List[String] = []
-
     out.append("issues: {total} (open {open_n}, final {final_n})")
     out.append("by state:")
     for s in app.states:
@@ -1880,7 +1833,6 @@ fn report_workload(app: App) List[String]:
             let name = it.assignee.get()
             let key = name.lower()
             var found = -1
-
             for gi in range(0, groups.length()):
                 if groups.get(gi).key == key:
                     found = gi
@@ -1889,7 +1841,6 @@ fn report_workload(app: App) List[String]:
                 groups.append(Group(key: key, name: name, count: 1, points: pts))
             else:
                 var g = groups.get(found)
-
                 g.count += 1
                 g.points += pts
                 groups.set(found, g)
@@ -1898,7 +1849,6 @@ fn report_workload(app: App) List[String]:
         return ["(no open issues)"]
 
     var out: List[String] = []
-
     for g in groups.sorted(fn(a: Group, b: Group) Int: return cmp_group(a, b)):
         out.append("{g.name}: {g.count} {issue_word(g.count)}, {g.points} points")
     if unassigned_n > 0:
@@ -1916,7 +1866,6 @@ fn cmp_label(a: LabelCount, b: LabelCount) Int:
 fn report_labels(app: App, text: String) Result[List[String], Fail]:
     let filt = try parse_filter(app, text)
     var counts = Map[String, Int]()
-
     for it in app.issues:
         if eval(app, filt.clone(), it):
             for l in it.labels:
@@ -1925,7 +1874,6 @@ fn report_labels(app: App, text: String) Result[List[String], Fail]:
         return ok(["(no labels)"])
 
     var rows: List[LabelCount] = []
-
     for l in counts.keys():
         rows.append(LabelCount(name: l, count: counts.get(l).get()))
 
@@ -1933,14 +1881,12 @@ fn report_labels(app: App, text: String) Result[List[String], Fail]:
         fn(a: LabelCount, b: LabelCount) Int: return cmp_label(a, b)
     )
     var out: List[String] = []
-
     for r in sorted_rows:
         out.append("{r.name}: {r.count}")
     return ok(out)
 
 fn period(state: String, from: Int, to: Int) String:
     let dur = to - from
-
     return "{state}: t={from}..{to} ({dur})"
 
 fn report_timeline(app: App, rest: String) Result[List[String], Fail]:
@@ -1957,7 +1903,6 @@ fn report_timeline(app: App, rest: String) Result[List[String], Fail]:
     for e in app.journal:
         if e.id == it.id and e.detail.starts_with("state: "):
             let to_state = e.detail.split(" -> ").get(1)
-
             out.append(period(state, from, e.t))
             state = to_state
             from = e.t
@@ -2043,7 +1988,6 @@ export fn main() Int:
 
     while i < lines.length():
         let line = lines.get(i).trim_end()
-
         i += 1
 
         let body = line.trim_start()

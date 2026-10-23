@@ -14,15 +14,20 @@ export fn main() Int:
     for i in range(0, 0):
         acc1 += i * 2
     say("acc1 = {acc1}")
+
     let i2 = (-39)
     say("i2 = {i2}")
+
     let bad = undefined_name + 1
     let s3 = "日本語"
     say("s3 = [{s3}]")
+
     let i4 = (((-i2) % (i2 * i2)) * i2)
     say("i4 = {i4}")
+
     let i5 = 49
     say("i5 = {i5}")
+
     let s6 = s3
     say("s6 = [{s6}]")
     return 0

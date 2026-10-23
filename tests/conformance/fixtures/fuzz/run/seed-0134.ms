@@ -11,37 +11,54 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let l1 = [11, 19]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (-8)
     say("i2 = {i2}")
+
     let l3 = [(-25), (-1), (-29), (-14)]
     say("l3 = {l3} len {l3.length()}")
     say("fact(16) = {fact(16)}")
+
     let f4 = (859.301 + ((0.0 * 551.25) * (8.5 + 104.784)))
     say("f4 = {f4}")
+
     let f5 = (((f4 + f4) * f4) + ((f4 + f4) + (f4 * 861.975)))
     say("f5 = {f5}")
+
     let i6 = i2
     say("i6 = {i6}")
-    let s7 = (("brace\{s\}" + "emoji 😀").replace("  padded  ", "brace\{s\}") + "line\nbreak")
+
+    let s7 = (
+        ("brace\{s\}" + "emoji 😀").replace("  padded  ", "brace\{s\}")
+        + "line\nbreak"
+    )
     say("s7 = [{s7}]")
+
     let s8 = (s7 + ("{37}:" + "Tab\there"))
     say("s8 = [{s8}]")
-    say("{((2 + i2) / i6)} {l1.get(1)} {(((2 + i2) / i6) < l1.get(1))} sum {((2 + i2) / i6) + l1.get(1)}")
+    say(
+        "{((2 + i2) / i6)} {l1.get(1)} {(((2 + i2) / i6) < l1.get(1))} sum {((2 + i2) / i6) + l1.get(1)}"
+    )
+
     let s9 = "beta".replace("", s8)
     say("s9 = [{s9}]")
     say("gcd(1411, 2114) = {gcd(1411, 2114)}")
+
     let s10 = ("ms" + ("{28}:" + ("gamma" + "héllo")))
     say("s10 = [{s10}]")
+
     let s11 = ("{(-i6)}:" + s10.replace(s9, "gamma"))
     say("s11 = [{s11}]")
     return 0

@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (111.920 != 182.156)
     say("b1 = {b1}")
+
     let f2 = (((467.895 - 589.106) / (345.643 / 0.0)) * 95.662)
     say("f2 = {f2}")
+
     let b3 = (((b1 or b1) and (not b1)) and ((true or b1) and (b1 or true)))
     say("b3 = {b3}")
+
     let bad = 1.5 + 2
     let i4 = ((-31) + ((-707522951890) * 22))
     say("i4 = {i4}")

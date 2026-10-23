@@ -6,7 +6,6 @@ import {stdout} from "@std/io.ms"
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-
 fn keep(text: String) List[String]:
     var out: List[String] = []
     for p in text.split(","):
@@ -21,19 +20,25 @@ fn first_long(text: String) String:
 
 fn count(text: String) Int:
     var n = 0
+
     for p in text.split(","):
         if p == "skip":
             continue
         if p == "stop":
             break
+
         n += p.length()
+
     return n
 
 export fn main() Int:
     let a = keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
         say("[{x}]")
-    say("\n{first_long("a,bbbbb,cc")} {first_long("a,b")} {count("ab,skip,cde,stop,zzz")}\n")
+    say(
+        "\n{first_long("a,bbbbb,cc")} {first_long("a,b")} {count("ab,skip,cde,stop,zzz")}\n"
+    )
+
     var t = 0
     for q in "héllo wörld".split(""):
         t += q.length()
@@ -42,14 +47,19 @@ export fn main() Int:
     for q in "".split(","):
         say("<{q}>")
     say("\n{t}\n")
-    say("{let_form("ab,c,,defgh")} {let_kept("ab,c")} {nested("a,bb;ccc,dddd,e;")} {closure_keeps("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")}\n")
+    say(
+        "{let_form("ab,c,,defgh")} {let_kept("ab,c")} {nested("a,bb;ccc,dddd,e;")} {closure_keeps("x,yyyy,zz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww")}\n"
+    )
     for q in "a,b".split(",", max_parts: 0):
         say("never")
+
     for q in "p,q,r".split(","):
         for r in "1-2".split("-"):
             if q == "q":
                 break
+
             say("{q}{r} ")
+
     say("\n")
     return 0
 
@@ -78,6 +88,7 @@ fn closure_keeps(text: String) Int:
     var fs: List[fn() Int] = []
     for p in text.split(","):
         fs.append(fn() Int: return p.length())
+
     var t = 0
     for f in fs:
         t += f()

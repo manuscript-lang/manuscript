@@ -4,6 +4,7 @@
 fn probe(value: Int) Int:
     var sum = 0
     sum = value
+
     let callback = fn() Int:
         return sum + value
     return callback()

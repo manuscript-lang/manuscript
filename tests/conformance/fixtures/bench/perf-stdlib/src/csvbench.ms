@@ -6,7 +6,9 @@ export fn bench_csv() Unit:
     var rows: List[List[String]] = []
     for i in range(0, 5000):
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
+
     let csv_text = stringify(rows).get("")
+
     bench(
         "csv.stringify",
         5000,
@@ -16,6 +18,7 @@ export fn bench_csv() Unit:
 
             return 0
     )
+
     bench(
         "csv.parse",
         5000,

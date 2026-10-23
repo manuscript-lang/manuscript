@@ -3,5 +3,5 @@
 # conform: origin=pkg/build/compiler_test.go:676 TestLocalQueueBoundaries
 import Queue from "@std/queue.ms"
 import Closeable from "@std/core.ms"
+
 fn invalid() Unit:
-    

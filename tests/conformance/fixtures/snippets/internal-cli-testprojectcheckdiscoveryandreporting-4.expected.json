@@ -13,7 +13,7 @@
           "index": 0,
           "name": "internal-cli-testprojectcheckdiscoveryandreporting-4.ms::never execute",
           "status": "failed",
-          "failure": "check executed code\n  at internal-cli-testprojectcheckdiscoveryandreporting-4.ms:6 in test never execute"
+          "failure": "check executed code\n  at internal-cli-testprojectcheckdiscoveryandreporting-4.ms:7 in test never execute"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN internal-cli-testprojectcheckdiscoveryandreporting-4.ms::never execute\nFAIL internal-cli-testprojectcheckdiscoveryandreporting-4.ms::never execute: check executed code\n  at internal-cli-testprojectcheckdiscoveryandreporting-4.ms:6 in test never execute\n1 tests, 1 failed\n",
+      "stdout": "RUN internal-cli-testprojectcheckdiscoveryandreporting-4.ms::never execute\nFAIL internal-cli-testprojectcheckdiscoveryandreporting-4.ms::never execute: check executed code\n  at internal-cli-testprojectcheckdiscoveryandreporting-4.ms:7 in test never execute\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

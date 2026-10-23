@@ -4,4 +4,5 @@
 fn use(value: Result[Int, Error]) Int:
     if let n = value:
         return n
+
     return 0

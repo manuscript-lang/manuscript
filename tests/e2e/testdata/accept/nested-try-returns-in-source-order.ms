@@ -16,7 +16,6 @@ fn sum(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
         (try step(log: var log, name: "a", n: a))
         + (try step(log: var log, name: "b", n: b))
     )
-
     log.append(value: "done")
     return ok(value: v)
 
@@ -32,7 +31,6 @@ fn effect_first(var log: List[String], a: Int) Result[Int, TextError]:
     log.append(value: "before")
 
     let v = add(x: 1, y: try step(log: var log, name: "s", n: a))
-
     return ok(value: v)
 
 fn loop(var log: List[String], n: Int) Result[Int, TextError]:
@@ -55,31 +53,25 @@ fn text(log: List[String]) String:
 
 test "nested try":
     var first = List[String]()
-
     try expect_true((sum(log: var first, a: 1, b: 2).get() == 3))
     try expect_true((text(log: first) == "a,b,done"))
 
     var second = List[String]()
-
     try expect_true((sum(log: var second, a: -1, b: 2).err().message() == "a"))
     try expect_true((text(log: second) == "a"))
 
     var third = List[String]()
-
     try expect_true((arguments(log: var third, a: 1, b: -1).err().message() == "y"))
     try expect_true((text(log: third) == "x,y"))
 
     var fourth = List[String]()
-
     try expect_true((effect_first(log: var fourth, a: -1).err().message() == "s"))
     try expect_true((text(log: fourth) == "before,s"))
 
     var fifth = List[String]()
-
     try expect_true((loop(log: var fifth, n: 5).err().message() == "l"))
     try expect_true((text(log: fifth) == "l,l,l"))
 
     var sixth = List[String]()
-
     try expect_true((joined(log: var sixth).err().message() == "q"))
     try expect_true((text(log: sixth) == "p,q"))

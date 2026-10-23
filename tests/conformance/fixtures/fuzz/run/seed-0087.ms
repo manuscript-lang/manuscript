@@ -11,51 +11,71 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     say("collatz(1330) = {collatz(1330)}")
+
     let l1 = [16, (-30), 16]
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = (-35)
     say("i2 = {i2}")
     say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
+
     let s3 = "a"
     say("s3 = [{s3}]")
+
     let b4 = (((i2 + 27070) >= (i2 - i2)) or (not (true and true)))
     say("b4 = {b4}")
+
     if true:
         say((s3 + s3))
     else:
         say("ms")
+
     let s5 = "emoji 😀"
     say("s5 = [{s5}]")
+
     if ((i2 / (-708236)) != (i2 * 40)):
         say(("a" + s5))
     else:
         say(s5)
+
     let i6 = ((((-30) + (-33)) * i2) - s5.length())
     say("i6 = {i6}")
+
     var l7 = l1.clone()
     l7.append(23)
     say("l7 = {l7} len {l7.length()}")
+
     let l8 = l7.take(1)
     say("l8 = {l8} len {l8.length()}")
+
     let s9 = "emoji 😀"
     say("s9 = [{s9}]")
-    say("{(l8.get(0) + (38 % i2))} {((48 - (-47)) * (9223372036854775807 % (-6)))} {((l8.get(0) + (38 % i2)) < ((48 - (-47)) * (9223372036854775807 % (-6))))} sum {(l8.get(0) + (38 % i2)) + ((48 - (-47)) * (9223372036854775807 % (-6)))}")
+    say(
+        "{(l8.get(0) + (38 % i2))} {((48 - (-47)) * (9223372036854775807 % (-6)))} {((l8.get(0) + (38 % i2)) < ((48 - (-47)) * (9223372036854775807 % (-6))))} sum {(l8.get(0) + (38 % i2)) + ((48 - (-47)) * (9223372036854775807 % (-6)))}"
+    )
+
     let s10 = ("{(i6 * i2)}:" + "delta")
     say("s10 = [{s10}]")
+
     let l11 = l8.drop(3)
     say("l11 = {l11} len {l11.length()}")
+
     let i12 = l7.get(2)
     say("i12 = {i12}")
+
     let big13 = -9223372036854775808
     say("{-big13}")
     return 0

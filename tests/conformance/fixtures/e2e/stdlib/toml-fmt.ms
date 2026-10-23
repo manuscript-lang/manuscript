@@ -25,29 +25,13 @@ fn limits(
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
     let root = parse(text: source) | try expect_ok | try entries
-    (
-        root.get("title").get() | try expect_equal(
-            TomlValue.StringValue("é🙂 # text")
-        )
-    )
-    (
-        root.get("").get() | try expect_equal(
-            TomlValue.StringValue("literal\\n")
-        )
-    )
-    (
-        root.get("large").get() | try expect_equal(
-            TomlValue.IntValue(9007199254740993)
-        )
-    )
+    (root.get("title").get() | try expect_equal(TomlValue.StringValue("é🙂 # text")))
+    (root.get("").get() | try expect_equal(TomlValue.StringValue("literal\\n")))
+    (root.get("large").get() | try expect_equal(TomlValue.IntValue(9007199254740993)))
     (root.get("hex").get() | try expect_equal(TomlValue.IntValue(3735928559)))
     root.get("oct").get() | try expect_equal(TomlValue.IntValue(493))
     root.get("bin").get() | try expect_equal(TomlValue.IntValue(10))
-    (
-        root.get("float").get() | try expect_equal(
-            TomlValue.FloatValue(-1250.0)
-        )
-    )
+    (root.get("float").get() | try expect_equal(TomlValue.FloatValue(-1250.0)))
     try expect_false(
         (
             root.get("stamp").get() != TomlValue.DateTimeValue(
@@ -55,16 +39,8 @@ test "TOML scalars quoted keys comments exact integers and dates":
             )
         )
     )
-    (
-        root.get("date").get() | try expect_equal(
-            TomlValue.DateTimeValue("2024-02-29")
-        )
-    )
-    (
-        root.get("time").get() | try expect_equal(
-            TomlValue.DateTimeValue("07:32:00.123")
-        )
-    )
+    (root.get("date").get() | try expect_equal(TomlValue.DateTimeValue("2024-02-29")))
+    (root.get("time").get() | try expect_equal(TomlValue.DateTimeValue("07:32:00.123")))
 
 test "TOML multiline strings Unicode escapes arrays and inline tables":
     let root = (
@@ -76,24 +52,18 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
             )
         )
     )
-    (
-        root.get("basic").get() | try expect_equal(
-            TomlValue.StringValue("hello world!")
-        )
-    )
+    (root.get("basic").get() | try expect_equal(TomlValue.StringValue("hello world!")))
     (
         root.get("literal").get() | try expect_equal(
             TomlValue.StringValue("raw\\text\nnext")
         )
     )
+
     let array = (try items(root.get("array").get()))
     array.length() | try expect_equal(3)
+
     let person = (try entries(array.get(2).clone()))
-    (
-        person.get("name").get() | try expect_equal(
-            TomlValue.StringValue("Ada")
-        )
-    )
+    (person.get("name").get() | try expect_equal(TomlValue.StringValue("Ada")))
     try expect_false(
         (
             (try entries(person.get("meta").get())).get(
@@ -113,6 +83,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
             ).get() != TomlValue.StringValue("Ada")
         )
     )
+
     let products = (try items(root.get("products").get()))
     products.length() | try expect_equal(2)
     try expect_false(
@@ -129,6 +100,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
     (try items((try entries(products.last().get())).get("variants").get())).length() | try expect_equal(
         2
     )
+
     let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | try expect_ok | try entries
     (try entries((try entries(dotted.get("a").get())).get("b").get())).length() | try expect_equal(
         2
@@ -149,6 +121,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         match cause:
             InvalidData(line, column, reason):
                 (line < 1 or column < 1 or reason == "") | try expect_false
+
                 let boundary = Error(cause)
                 ((boundary.message().starts_with("TOML ")) | try expect_true)
             _: return fail("wrong TOML error")
@@ -159,32 +132,28 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 2, depth: none, values: none)
+                text: "a=1", limits: limits(bytes: 2, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: 2, values: none)
+                text: "a.b=1", limits: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1",
-                limits: limits(bytes: none, depth: none, values: 2)
+                text: "a.b=1", limits: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
@@ -194,16 +163,14 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "",
-                limits: limits(bytes: none, depth: -1, values: none)
+                text: "", limits: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "a=1",
-                limits: limits(bytes: 3, depth: 2, values: 2)
+                text: "a=1", limits: limits(bytes: 3, depth: 2, values: 2)
             ) != parse(text: "a=1")
         )
     )
@@ -234,11 +201,7 @@ test "TOML nonfinite floats CRLF and repeated separators":
             ((number.is_nan()) | try expect_true)
         _: return fail("expected float")
 
-    (
-        root.get("integer").get() | try expect_equal(
-            TomlValue.IntValue(1000000)
-        )
-    )
+    (root.get("integer").get() | try expect_equal(TomlValue.IntValue(1000000)))
 
 fn failure(text: String) String:
     match parse(text: text):
@@ -249,15 +212,9 @@ test "TOML errors report the offending line and column":
     failure("x = 1\ny = \"a\u{1}b\"") | try expect_equal(
         "TOML 2:7: invalid control character"
     )
-    failure("x = 1\ny = 2\rz = 3") | try expect_equal(
-        "TOML 2:6: bare carriage return"
-    )
-    failure("x = 1\n\u{0}") | try expect_equal(
-        "TOML 2:1: invalid control character"
-    )
-    failure("a = 1\u{0}") | try expect_equal(
-        "TOML 1:6: invalid control character"
-    )
+    failure("x = 1\ny = 2\rz = 3") | try expect_equal("TOML 2:6: bare carriage return")
+    failure("x = 1\n\u{0}") | try expect_equal("TOML 2:1: invalid control character")
+    failure("a = 1\u{0}") | try expect_equal("TOML 1:6: invalid control character")
     failure("y = True") | try expect_equal("TOML 1:5: invalid value")
     failure("y = yes") | try expect_equal("TOML 1:5: invalid value")
     failure("y = abc") | try expect_equal("TOML 1:5: invalid value")
@@ -285,8 +242,10 @@ test "TOML stringify requires a table root and honors max_bytes":
     let wrong: Result[String, TomlError] = error(TomlError.InvalidInput)
     let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
     stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
+
     let root = (parse(text: "a = 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
+
     let exact: Result[String, TomlError] = ok("a = 1\n")
     stringify(value: root, max_bytes: 6) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
@@ -307,6 +266,7 @@ test "TOML long strings parse and stringify in linear time":
     let table = (try entries(root.clone()))
     (table.get("a").get() | try expect_equal(TomlValue.StringValue(expected)))
     (table.get("b").get() | try expect_equal(TomlValue.StringValue(expected)))
+
     let text = (stringify(value: root) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(root)
 
@@ -317,6 +277,7 @@ test "TOML stringify rejects invalid date-time text":
         var table = Map[String, TomlValue]()
         table.add("x", TomlValue.DateTimeValue(text))
         try expect_equal(stringify(TomlValue.TableValue(table.clone())), invalid)
+
         var nested = Map[String, TomlValue]()
         nested.add("a", TomlValue.ArrayValue([TomlValue.TableValue(table)]))
         try expect_equal(stringify(TomlValue.TableValue(nested)), invalid)
@@ -324,6 +285,5 @@ test "TOML stringify rejects invalid date-time text":
     var good = Map[String, TomlValue]()
     good.add("x", TomlValue.DateTimeValue("1979-05-27T07:32:00Z"))
     try expect_equal(
-        (try stringify(TomlValue.TableValue(good))),
-        "x = 1979-05-27T07:32:00Z\n"
+        (try stringify(TomlValue.TableValue(good))), "x = 1979-05-27T07:32:00Z\n"
     )

@@ -10,7 +10,6 @@ fn checked(n: Int) Result[Int, TextError]:
 
 fn wrapped(n: Int) Result[Int, TextError]:
     let value = try checked(n)
-
     return ok(value)
 
 fn total(positive: Bool) Int:
@@ -128,7 +127,6 @@ test "hidden successful returns in error construction keep checks":
 
 test "Result bounds preserve argument effects and cleanup":
     var visits: List[Int] = []
-
     ordered(var visits) | try expect_equal(3)
     visits | try expect_equal([-1, 0, 1])
     cleanup(visits) | try expect_equal(500498)

@@ -12,16 +12,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "tests-e2e-testconstantdiagnostics-1.ms",
-          "line": 6,
+          "line": 7,
           "column": 9,
-          "offset": 167
+          "offset": 168
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-1.ms:6:9: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-1.ms:7:9: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

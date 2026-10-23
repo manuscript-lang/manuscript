@@ -11,10 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = (not ((8.5 * 1.5) > (976.698 / 663.997)))
     say("b1 == {b1}")
+
     let i2 = 570869
     say("i2 = {i2}")
+
     let i3 = (((38 + 13) - i2) - (i2 + i2))
     say("i3 = {i3}")
+
     let l4 = [15]
     say("l4 = {l4} len {l4.length()}")
     return 0

@@ -10,25 +10,39 @@ fn say(text: String) Unit:
 
 export fn main() Int:
     say("{(-8)} {(-((-8) * 11))} {((-8) < (-((-8) * 11)))} sum {(-8) + (-((-8) * 11))}")
-    let b1 = (("MiXeD CaSe" == "quote\"d".replace("gamma", "Tab\there")) or (not (40 == 0)))
+
+    let b1 = (
+        ("MiXeD CaSe" == "quote\"d".replace("gamma", "Tab\there"))
+        or (not (40 == 0))
+    )
     say("b1 = {b1}")
+
     let l2 = [(-6), (-23)]
     say("l2 = {l2} len {l2.length()}")
-    say("{16} {(((-34) - (-8)) - ((-671717686406) + 11))} {(16 < (((-34) - (-8)) - ((-671717686406) + 11)))} sum {16 + (((-34) - (-8)) - ((-671717686406) + 11))}")
+    say(
+        "{16} {(((-34) - (-8)) - ((-671717686406) + 11))} {(16 < (((-34) - (-8)) - ((-671717686406) + 11)))} sum {16 + (((-34) - (-8)) - ((-671717686406) + 11))}"
+    )
+
     let i3 = (-37)
     say("i3 = {i3}")
+
     let i4 = (((i3 / (-898917)) + (i3 + 25)) - (i3 + 3))
     say("i4 = {i4}")
+
     let s5 = "hello world"
     say("s5 = [{s5}]")
+
     if ("a" + s5).is_empty():
         say(("ms" + s5))
     else:
         say(("{(-12)}:" + "a"))
+
     let i6 = (l2.length() / (-8))
     say("i6 = {i6}")
+
     let i7 = i3
     say("i7 = {i7}")
+
     let i8 = l2.get(1)
     say("i8 = {i8}")
     return 0

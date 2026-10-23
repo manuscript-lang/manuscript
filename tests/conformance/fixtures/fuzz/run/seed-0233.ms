@@ -11,25 +11,33 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let l1 = [(-28), 0, 15]
     say("l1 = {l1} len {l1.length()}")
+
     let b2 = false
     say("b2 = {b2}")
+
     let l3 = [(-25), (-12)]
     say("l3 = {l3} len {l3.length()}")
+
     let b4 = "brace\{s\}".reverse().contains("delta")
     say("b4 = {b4}")
+
     let l5 = [25, 29, 21, 26, (-2)]
     say("l5 = {l5} len {l5.length()}")
+
     let b6 = ((-852881) < ((32 % 49) + ((-47) / (-14))))
     say("b6 = {b6}")
     say("collatz(1008) = {collatz(1008)}")

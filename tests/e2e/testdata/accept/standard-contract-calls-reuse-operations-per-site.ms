@@ -17,7 +17,6 @@ test "repeated calls through one site":
     while i < 3:
         let a = c.now()
         let b = c.now()
-
         try expect_true((b.difference(other: a).to_milliseconds() >= 0))
         i = i + 1
 

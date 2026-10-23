@@ -11,25 +11,42 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "back\\slash"
     say("s1 = [{s1}]")
+
     let i2 = s1.length()
     say("i2 = {i2}")
+
     let l3 = [(-7)]
     say("l3 = {l3} len {l3.length()}")
+
     if ((i2 <= i2) and (true and false)):
         say((s1 + "naïve"))
     else:
         say("  padded  ")
+
     let b4 = ((false or true) and (620.691 < (0.0 + 991.089)))
     say("b4 = {b4}")
+
     let i5 = (-543844684734)
     say("i5 = {i5}")
-    let b6 = ((18 <= (i2 * (-8))) or ("  padded  ".replace("brace\{s\}", "quote\"d") != ("{(354932 + i2)}:" + s1)))
+
+    let b6 = (
+        (18 <= (i2 * (-8)))
+        or (
+            "  padded  ".replace("brace\{s\}", "quote\"d") != (
+                "{(354932 + i2)}:"
+                + s1
+            )
+        )
+    )
     say("b6 = {b6}")
+
     let b7 = true
     say("b7 = {b7}")
+
     let s8 = "x"
     say("s8 = [{s8}]")
     say("{(l3.get(0) + i2)} {i2} {((l3.get(0) + i2) < i2)} sum {(l3.get(0) + i2) + i2}")
+
     let b9 = (("42" == "gamma".replace("ms", s1)) or false)
     say("b9 = {b9}")
     return 0

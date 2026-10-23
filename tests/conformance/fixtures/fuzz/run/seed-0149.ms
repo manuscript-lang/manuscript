@@ -11,45 +11,66 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = 31
     say("i1 = {i1}")
-    let b2 = ((("a" + "alpha") + ("héllo" + "a")) != ("Tab\there".replace("Tab\there", "42") + "a"))
+
+    let b2 = (
+        (("a" + "alpha") + ("héllo" + "a")) != (
+            "Tab\there".replace("Tab\there", "42")
+            + "a"
+        )
+    )
     say("b2 = {b2}")
+
     let i3 = i1
     say("i3 = {i3}")
-    say("{(((-15) * (-393159)) * (57735672287 + i1))} {(-(-481878))} {((((-15) * (-393159)) * (57735672287 + i1)) < (-(-481878)))} sum {(((-15) * (-393159)) * (57735672287 + i1)) + (-(-481878))}")
+    say(
+        "{(((-15) * (-393159)) * (57735672287 + i1))} {(-(-481878))} {((((-15) * (-393159)) * (57735672287 + i1)) < (-(-481878)))} sum {(((-15) * (-393159)) * (57735672287 + i1)) + (-(-481878))}"
+    )
+
     let i4 = ((((-641461) * i1) + i3) + ((i1 + i3) + (i3 * i1)))
     say("i4 = {i4}")
+
     let s5 = ("{(i1 * 9)}:" + "42".reverse()).upper()
     say("s5 = [{s5}]")
+
     let l6 = [21, (-2), 11, 7]
     say("l6 = {l6} len {l6.length()}")
+
     let b7 = (s5.reverse().lower() == "gamma".upper())
     say("b7 = {b7}")
+
     let i8 = 22
     say("i8 = {i8}")
     say("gcd(2375, 3184) = {gcd(2375, 3184)}")
+
     let i9 = ((i3 - (i3 * (-1))) - i3)
     say("i9 = {i9}")
+
     let i10 = i8
     say("i10 = {i10}")
     say("fib(51) = {fib(51)}")
+
     let f11 = (324.25 * 537.417)
     say("f11 = {f11}")
+
     let l12 = l6.sorted(fn(a, b): a.compare(b))
     say("l12 = {l12} len {l12.length()}")
     return 0

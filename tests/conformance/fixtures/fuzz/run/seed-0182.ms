@@ -11,12 +11,15 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
@@ -24,8 +27,10 @@ export fn main() Int:
     say("i1 = {i1}")
     say("collatz(522) = {collatz(522)}")
     say("{(i1 / 25)} {42} {((i1 / 25) < 42)} sum {(i1 / 25) + 42}")
+
     let s3 = "x".replace("naïve", "").lower()
     say("s3 = [{s3}]")
+
     let i4 = i1
     say("i4 = {i4}")
     return 0

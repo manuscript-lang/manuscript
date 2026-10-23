@@ -11,34 +11,48 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let i2 = 21
     say("i2 = {i2}")
     say("gcd(4844, 2932) = {gcd(4844, 2932)}")
+
     let i3 = (i2 + l1.length())
     say("i3 = {i3}")
     say("gcd(2487, 4064) = {gcd(2487, 4064)}")
+
     let s4 = "beta".replace("x", "")
     say("s4 = [{s4}]")
+
     let i5 = ((-44) + (((-46117) * i3) + (-i3)))
     say("i5 = {i5}")
-    say("{(i2 * (i2 + (-40)))} {((-110128413456) + (502623789706 + (-28)))} {((i2 * (i2 + (-40))) < ((-110128413456) + (502623789706 + (-28))))} sum {(i2 * (i2 + (-40))) + ((-110128413456) + (502623789706 + (-28)))}")
+    say(
+        "{(i2 * (i2 + (-40)))} {((-110128413456) + (502623789706 + (-28)))} {((i2 * (i2 + (-40))) < ((-110128413456) + (502623789706 + (-28))))} sum {(i2 * (i2 + (-40))) + ((-110128413456) + (502623789706 + (-28)))}"
+    )
+
     let f6 = ((993.25 * (641.433 + 1.5)) / 607.316)
     say("f6 = {f6}")
+
     let b7 = s4.trim().is_empty()
     say("b7 = {b7}")
+
     let i8 = (5 % ((i2 - i5) % (-19)))
     say("i8 = {i8}")
+
     let i9 = l1.length()
     say("i9 = {i9}")
+
     let s10 = "hello world"
     say("s10 = [{s10}]")
+
     if ("héllo".ends_with("  padded  ") or ("héllo" != s10)):
         say((s4 + s4))
     else:
         say(("héllo" + "delta"))
+
     return 0

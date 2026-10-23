@@ -11,20 +11,26 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     var acc1 = 0
     var stepacc1 = 0
+
     while stepacc1 < 7:
         stepacc1 += 1
         acc1 += stepacc1 * stepacc1 + 2
+
     say("acc1 = {acc1}")
+
     let bad = say
     let i2 = ((31 / (-36)) - ((501219160189 - 834825) + (-(-987398))))
     say("i2 = {i2}")
+
     let i3 = i2
     say("i3 = {i3}")
+
     let f4 = 430.546
     say("f4 = {f4}")
     say("gcd(4773, 402) = {gcd(4773, 402)}")

@@ -11,9 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = false
     say("b1 = {b1}")
+
     let s2 = "beta".upper().upper().replace("quote\"d", "Tab\there")
     say("s2 = [{s2}]")
+
     let f3 = (((208.25 - 700.588) * (0.5 - 407.714)) + (278.416 + (8.0e16 * 7.5)))
     say("f3 = {f3}")
+
     let bad = say(1, 2)
     return 0

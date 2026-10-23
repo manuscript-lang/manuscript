@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "back\\slash"
     say("s1 = [{s1}]")
+
     let f2 = 0.0
     say("f2 = {f2}")
+
     let i3 = (s1.length() + (((-14) - 6) % (-38)))
     say("i3 = {i3}")
     return 0

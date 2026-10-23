@@ -11,13 +11,17 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [(-24)]
     say("l1 = {l1} len {l1.length()}")
+
     let bad = missing_function(3)
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 8:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + 9
+
     say("acc2 = {acc2}")
+
     let i3 = (-187444059179)
     say("i3 = {i3}")
     return 0

@@ -7,6 +7,7 @@ type QuantityError:
 fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:
         return error(QuantityError.MustBePositive)
+
     return ok(value)
 
 fn order_total(count: Int) Result[Int, QuantityError]:

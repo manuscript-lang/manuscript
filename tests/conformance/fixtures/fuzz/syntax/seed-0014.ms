@@ -9,8 +9,8 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-
     say("b1 = {b1}")
+
     let b2 = (0.0 != ((0.0 + 5.5) - 610.483))
     say("b2 = {b2}")
     return 0

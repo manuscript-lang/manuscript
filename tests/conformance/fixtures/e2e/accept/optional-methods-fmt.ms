@@ -27,6 +27,7 @@ test "Optional presence and extraction preserve false and zero":
     try expect_false(missing.is_some())
     try expect_false(not (missing.is_none()))
     try expect_equal(present.get(), 0)
+
     let flag: Optional[Bool] = some(false)
     try expect_false(flag.get())
     try expect_equal(value_or(missing, 7), 7)
@@ -39,6 +40,7 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
     var counter = Counter(0)
     try expect_equal(present.get(fallback(var counter)), 0)
     try expect_equal(counter.calls, 1)
+
     let create = fn(): some(42)
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
@@ -48,13 +50,17 @@ test "Optional methods retain generic payload and receiver identity":
     let outer: Optional[Optional[Int]] = some(inner)
     try expect_false(not (outer.is_some()))
     try expect_false(not (outer.get().is_none()))
+
     let counter = Counter(3)
     let record: Optional[Counter] = some(counter.clone())
     try expect_equal(record.get().calls, 3)
+
     let extract = record.get
     try expect_equal(extract().calls, 3)
+
     let callback: Optional[fn(value: Int) Int] = some(increment)
     try expect_equal(callback.get()(2), 3)
+
     let snapshot = outer.clone()
     try expect_equal(snapshot, outer)
 

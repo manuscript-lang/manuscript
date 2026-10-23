@@ -47,11 +47,9 @@ impl Hashable for Link:
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
-
     (evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
 
     let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
-
     tree | try expect_equal(
         Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     )
@@ -68,11 +66,9 @@ test "recursive records clone into independent storage":
     let root = Node(value: 1, next: some(child.clone()))
     var alias = root.clone()
     var copy = root.clone()
-
     alias.value = 3
 
     var inner = copy.next.get().clone()
-
     inner.value = 4
     copy.next = some(inner)
     (
@@ -87,38 +83,32 @@ test "recursive records clone into independent storage":
 test "recursive structural equality checks nested and unequal fields":
     var left = Node(value: 1, next: none)
     var right = Node(value: 1, next: none)
-
     left.next = some(left.clone())
     right.next = some(right.clone())
     left.clone() | try expect_equal(right.clone())
 
     var copy = left.clone()
     var inner = copy.next.get().clone()
-
     inner.value = 2
     copy.next = some(inner)
     (left.value != 1 or copy.value != 1 or left == copy or left != right) | try expect_false
 
     var a = Node(value: 1, next: none)
     let b = Node(value: 1, next: some(a.clone()))
-
     a.next = some(b)
     (right == a) | try expect_false
 
 test "recursive domain hashing uses explicit implementations":
     var left = Link(value: 7, next: none)
     var right = Link(value: 7, next: none)
-
     left.next = some(left.clone())
     right.next = some(right.clone())
     (left != right or left.hash() != right.hash()) | try expect_false
 
     var values = Map[Link, Int]()
-
     values.add(key: left.clone(), value: 9)
 
     var members = Set[Link]([left.clone()])
-
     (values.get(right.clone()).get() != 9 or not members.contains(right.clone())) | try expect_false
     values.add(key: right.clone(), value: 10)
     members.add(right.clone())
@@ -131,7 +121,6 @@ test "recursive domain hashing uses explicit implementations":
 test "recursive defaults construct independent complete objects":
     var first = DefaultNode(value: 1)
     let second = DefaultNode(value: 2)
-
     first.next = some(first.clone())
     (second.next.is_some() or first.next.get().value != 1) | try expect_false
 
@@ -157,7 +146,6 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
     let person = Person(Entry(name: "Ada", nickname: some("A")))
-
     person.primary.get().nickname.get() | try expect_equal("A")
 
     let optional = NestedOptional.Value(some(some(4)))
@@ -178,11 +166,9 @@ test "finite nested generic composition constructs and extracts values":
         error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
-
     box.value.value | try expect_equal(6)
 
     let pair: Pair[Optional[Int], Optional[Optional[String]]] = Pair(
         first: some(7), second: some(some("nested"))
     )
-
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

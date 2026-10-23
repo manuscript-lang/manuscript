@@ -13,10 +13,13 @@ export fn main() Int:
         say("quote\"d".reverse())
     else:
         say(("  padded  " + ""))
+
     let i1 = (-23)
     say("i1 = {i1}")
+
     let f2 = 0.0
     say("f2 = {f2}")
+
     let bad = 1.5 + 2
     let i3 = 281655265031
     say("i3 = {i3}")

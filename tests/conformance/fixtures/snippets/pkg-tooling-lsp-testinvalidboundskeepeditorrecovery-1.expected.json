@@ -23,9 +23,9 @@
         "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
         "position": {
           "file": "pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 6,
+          "line": 7,
           "column": 1,
-          "offset": 237
+          "offset": 238
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "extra operation message; Error declares:  (remove it or add it to the interface)",
         "position": {
           "file": "pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 7,
+          "line": 8,
           "column": 8,
-          "offset": 271
+          "offset": 272
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown or ambiguous member message on Error; this type has no fields or operations",
         "position": {
           "file": "pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms",
-          "line": 7,
+          "line": 8,
           "column": 37,
-          "offset": 300
+          "offset": 301
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:4:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:6:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:7:8: type: extra operation message; Error declares:  (remove it or add it to the interface)\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:7:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:4:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:7:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:8:8: type: extra operation message; Error declares:  (remove it or add it to the interface)\n<DIR>/pkg-tooling-lsp-testinvalidboundskeepeditorrecovery-1.ms:8:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

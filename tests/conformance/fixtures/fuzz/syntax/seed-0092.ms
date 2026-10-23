@@ -9,10 +9,16 @@ fn say(text: String) Unit:
     let written = stdout().write("{text}\n")
 
 export fn main() Int:
-    say("{19} {(-((-18126) / 14))} {(19 < (-((-18126) / 14)))} sum {19 + (-((-18126) / 14))}")
-    let s1 = ("alpha".upper().upper() + "back\\slash".replace("héllo", "quote\"d").trim())
+    say(
+        "{19} {(-((-18126) / 14))} {(19 < (-((-18126) / 14)))} sum {19 + (-((-18126) / 14))}"
+    )
+
+    let s1 = (
+        "alpha".upper().upper()
+        + "back\\slash".replace("héllo", "quote\"d").trim()
+    )
     say("s1 = [{s1}]")
+
     let i2 = ((12 % (521515579054 - (-28))) + ((8 + (-20)) - ((-29) * (-12))))
     say("i2 = {i2}")
-
     return 0

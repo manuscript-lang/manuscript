@@ -14,7 +14,6 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
         with transport = try file_transport(path):
             let logger = try create(transport, timestamp: false)
                 | try bind(bindings)
-
             try emit(logger)
             try logger.flush()
 
@@ -23,7 +22,6 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
     with transport = stdout_transport():
         if mode == "limit":
             let logger = try create(transport, max_bytes: 1)
-
             try logger.info("too large")
         else:
             let logger = try create(transport)
@@ -43,7 +41,6 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
     with transport = stdout_transport():
         let logger = try create(transport, timestamp: false)
-
         try logger.info("still open")
 
     return ok(unit)
@@ -56,7 +53,6 @@ export fn main() Int:
 
     if result.is_error():
         let _ignored = stderr().write("{result.err().message()}\n")
-
         return 1
 
     return 0

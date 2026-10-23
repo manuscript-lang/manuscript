@@ -11,12 +11,16 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = (27 * 12)
     say("i1 = {i1}")
+
     let s2 = "back\\slash"
     say("s2 = [{s2}]")
+
     let i3 = ((i1 * s2.length()) + i1)
     say("i3 = {i3}")
+
     let f4 = (6.0e4 + ((812.525 * 600.051) / (56.182 / 131.920)))
     say("f4 = {f4}")
+
     let fixed = 1
     fixed = 2
     return 0

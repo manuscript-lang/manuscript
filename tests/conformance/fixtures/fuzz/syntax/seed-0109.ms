@@ -12,19 +12,24 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let b1 = false
     say("b1 = {b1}")
+
     var acc2 = 0
     for i in range(0, 8):
         acc2 += i * (-5)
     say("acc2 = {acc2}")
+
     let b3 = ("a" == "hello world".reverse())
     say("b3 = {b3}")
+
     let l4 = [(-21), (-1), (-27), (-13), (-4)]
     say("l4 = {l4} len {l4.length()}")
+
     let s5 = "gamma".trim()
     say("s5 = [{s5}]")
     say("fact(4) = {fact(4)}")

@@ -11,47 +11,64 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let s1 = "alpha".upper().lower().lower()
     say("s1 = [{s1}]")
+
     let b2 = (56.191 < 3.5)
     say("b2 = {b2}")
+
     let i3 = s1.length()
     say("i3 = {i3}")
-    say("{(21 - (i3 / i3))} {(-((-884288) + (-43)))} {((21 - (i3 / i3)) < (-((-884288) + (-43))))} sum {(21 - (i3 / i3)) + (-((-884288) + (-43)))}")
+    say(
+        "{(21 - (i3 / i3))} {(-((-884288) + (-43)))} {((21 - (i3 / i3)) < (-((-884288) + (-43))))} sum {(21 - (i3 / i3)) + (-((-884288) + (-43)))}"
+    )
+
     let s4 = (s1.replace("back\\slash", s1).reverse() + "42".lower())
     say("s4 = [{s4}]")
+
     let b5 = "brace\{s\}".contains("back\\slash")
     say("b5 = {b5}")
+
     let f6 = (5.5 / 896.126)
     say("f6 = {f6}")
+
     let f7 = (((f6 + f6) + 0.0) + (0.0 + (582.599 + f6)))
     say("f7 = {f7}")
+
     let f8 = (((f6 * 564.389) - (f6 - f6)) * (f6 * 959.287))
     say("f8 = {f8}")
+
     var acc9 = 0
     var stepacc9 = 0
+
     while stepacc9 < 5:
         stepacc9 += 1
         acc9 += stepacc9 * stepacc9 + (-3)
+
     say("acc9 = {acc9}")
     say("gcd(3028, 2461) = {gcd(3028, 2461)}")
     say("fib(7) = {fib(7)}")
+
     let b10 = (not "42".replace(s4, s1).is_empty())
     say("b10 = {b10}")
+
     let b11 = (not ((not true) and (not b2)))
     say("b11 = {b11}")
     return 0

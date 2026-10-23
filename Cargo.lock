@@ -979,6 +979,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "ms-check",
+ "ms-clif",
  "ms-driver",
  "ms-guide",
  "ms-json",
@@ -1002,6 +1003,7 @@ dependencies = [
  "cranelift-object",
  "flate2",
  "gimli",
+ "ms-linker",
  "ms-mir",
  "ms-rt-abi",
  "object",
@@ -1042,6 +1044,13 @@ name = "ms-json"
 version = "0.1.0"
 
 [[package]]
+name = "ms-linker"
+version = "0.0.0"
+dependencies = [
+ "flate2",
+]
+
+[[package]]
 name = "ms-lower"
 version = "0.0.0"
 dependencies = [
@@ -1079,7 +1088,6 @@ dependencies = [
  "ms-std-compress",
  "ms-std-core",
  "ms-std-crypto",
- "ms-std-csv",
  "ms-std-decimal",
  "ms-std-encoding",
  "ms-std-fs",
@@ -1094,7 +1102,6 @@ dependencies = [
  "ms-std-random",
  "ms-std-regex",
  "ms-std-rt",
- "ms-std-semver",
  "ms-std-system",
  "ms-std-terminal",
  "ms-std-time",
@@ -1118,6 +1125,7 @@ dependencies = [
 name = "ms-rt"
 version = "0.1.0"
 dependencies = [
+ "memchr",
  "mio",
  "ms-rt-abi",
  "ms-std-core",
@@ -1201,15 +1209,6 @@ dependencies = [
  "sha3",
  "subtle",
  "x25519-dalek",
-]
-
-[[package]]
-name = "ms-std-csv"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-core",
 ]
 
 [[package]]
@@ -1367,15 +1366,6 @@ dependencies = [
  "libc",
  "ms-rt",
  "ms-rt-abi",
-]
-
-[[package]]
-name = "ms-std-semver"
-version = "0.1.0"
-dependencies = [
- "ms-rt",
- "ms-rt-abi",
- "ms-std-core",
 ]
 
 [[package]]

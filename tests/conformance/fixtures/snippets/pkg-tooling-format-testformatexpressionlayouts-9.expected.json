@@ -12,9 +12,9 @@
         "message": "unknown binding initial_account_balance; declare it with 'let initial_account_balance = ...' before use, define 'fn initial_account_balance(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-9.ms",
-          "line": 5,
-          "column": 30,
-          "offset": 197
+          "line": 6,
+          "column": 20,
+          "offset": 206
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "unknown binding pending_deposit_total; declare it with 'let pending_deposit_total = ...' before use, define 'fn pending_deposit_total(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-9.ms",
-          "line": 5,
-          "column": 56,
-          "offset": 223
+          "line": 7,
+          "column": 11,
+          "offset": 240
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown binding applicable_exchange_rate; declare it with 'let applicable_exchange_rate = ...' before use, define 'fn applicable_exchange_rate(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-9.ms",
-          "line": 5,
-          "column": 80,
-          "offset": 247
+          "line": 7,
+          "column": 35,
+          "offset": 264
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown binding pending_withdrawal_total; declare it with 'let pending_withdrawal_total = ...' before use, define 'fn pending_withdrawal_total(...)', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-9.ms",
-          "line": 5,
-          "column": 107,
-          "offset": 274
+          "line": 8,
+          "column": 11,
+          "offset": 299
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:5:30: resolution: unknown binding initial_account_balance; declare it with 'let initial_account_balance = ...' before use, define 'fn initial_account_balance(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:5:56: resolution: unknown binding pending_deposit_total; declare it with 'let pending_deposit_total = ...' before use, define 'fn pending_deposit_total(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:5:80: resolution: unknown binding applicable_exchange_rate; declare it with 'let applicable_exchange_rate = ...' before use, define 'fn applicable_exchange_rate(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:5:107: resolution: unknown binding pending_withdrawal_total; declare it with 'let pending_withdrawal_total = ...' before use, define 'fn pending_withdrawal_total(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:6:20: resolution: unknown binding initial_account_balance; declare it with 'let initial_account_balance = ...' before use, define 'fn initial_account_balance(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:7:11: resolution: unknown binding pending_deposit_total; declare it with 'let pending_deposit_total = ...' before use, define 'fn pending_deposit_total(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:7:35: resolution: unknown binding applicable_exchange_rate; declare it with 'let applicable_exchange_rate = ...' before use, define 'fn applicable_exchange_rate(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-9.ms:8:11: resolution: unknown binding pending_withdrawal_total; declare it with 'let pending_withdrawal_total = ...' before use, define 'fn pending_withdrawal_total(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

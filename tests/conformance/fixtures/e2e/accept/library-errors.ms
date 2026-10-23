@@ -108,10 +108,13 @@ fn generic_type_pattern[T](cause: Error, expected: T) Bool:
 test "generic handling preserves the concrete error and its payload":
     let json = Error(JsonError.InvalidData)
     describe_error(json) | try expect_equal("malformed JSON")
+
     let io = Error(IoError.Failed("disk diagnostic"))
     describe_error(io) | try expect_equal("I/O: disk diagnostic")
+
     let custom = Error(CustomError("application diagnostic"))
     describe_error(custom) | try expect_equal("application diagnostic")
+
     let wrapped = Error(json)
     describe_error(wrapped) | try expect_equal("malformed JSON")
 
@@ -162,9 +165,7 @@ impl Error for ReadError:
 fn failed_read() Result[Unit, ReadError]:
     return error(
         ReadError(
-            diagnostic: "read failed",
-            path: "settings.json",
-            attempt: 2,
+            diagnostic: "read failed", path: "settings.json", attempt: 2,
             retryable: true
         )
     )
@@ -180,8 +181,10 @@ test "domain error fields survive propagation without a wrapper":
         error(cause): cause
 
     (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable) | try expect_false
+
     let message = cause.message
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
+
     let generic: Error = cause
 
     match generic:
@@ -220,10 +223,7 @@ fn describe_direct(cause: Error) String:
 
 test "specific errors pass directly into Error boundaries":
     let original = ReadError(
-        diagnostic: "read failed",
-        path: "settings.json",
-        attempt: 3,
-        retryable: true
+        diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: true
     )
     let shared: Error = Error(original.clone())
     (
@@ -231,11 +231,10 @@ test "specific errors pass directly into Error boundaries":
             original.clone()
         ) != "read failed" or shared.message() != "read failed"
     ) | try expect_false
+
     let results: List[Result[Unit, Error]] = [
-        general_read(original.clone()),
-        forward_read(original.clone()),
-        generic_propagation(original.clone()),
-        error(original.clone())
+        general_read(original.clone()), forward_read(original.clone()),
+        generic_propagation(original.clone()), error(original.clone())
     ]
 
     for result in results:
@@ -309,6 +308,7 @@ import {CommandError} from "@std/process.ms"
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
     Error(sink).message() | try expect_equal("sink diagnostic")
+
     let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
     Error(file_sink).message() | try expect_equal("file sink diagnostic")
     (
@@ -354,6 +354,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
             return fail(message: "unrelated contract pattern did not run")
 
     count.value | try expect_equal(1)
+
     let view = Label[String](Labelled("separate handler"))
     match_label(view) | try expect_equal("separate handler")
 

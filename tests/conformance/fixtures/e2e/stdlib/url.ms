@@ -21,14 +21,17 @@ test "URL query retains duplicate keys empty values and spaces":
     let entries = try parse_query("a=1&a=2&empty=&space=hello+world")
     try expect_false(entries.length() != 4 or entries.get(3).value != "hello world")
     try expect_equal(format_query(entries), "a=1&a=2&empty=&space=hello+world")
+
     let limited: Result[List[QueryEntry], UrlError] = error(UrlError.LimitExceeded)
     try expect_equal(parse_query("a=1&b=2", 1), limited)
+
     let invalid: Result[String, UrlError] = error(UrlError.InvalidData)
     try expect_equal(decode_component("%zz"), invalid)
 
 test "URL query skips empty segments":
     try expect_equal((try parse_query("&a=1&&b=2&") | format_query), "a=1&b=2")
     try expect_false(not (try parse_query("&&")).is_empty())
+
     let bounded = try parse_query("a=1&&b=2", 2)
     try expect_equal(bounded.length(), 2)
 
@@ -53,6 +56,7 @@ test "URL parse rejects malformed hosts and queries and keeps an empty authority
     let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
         if parse(text) != invalid: return fail("accepted {text}")
+
     let empty = try parse("http://")
     try expect_equal((try format(empty)), "http://")
     try expect_equal((empty | try format | try parse), empty)

@@ -7,7 +7,6 @@ fn next_line() String:
 
 fn read_lines(count: Int) List[String]:
     var lines = List[String]()
-
     for k in range(0, count):
         lines.append(next_line())
     return lines
@@ -37,10 +36,10 @@ export fn main() Int:
     let m = header.get(4).parse_int().get(0)
     let a = read_lines(n)
     let b = read_lines(m)
+
     # table[i * width + j] holds L(i, j); row n and column m are all zero.
     let width = m + 1
     var table = List[Int]()
-
     for k in range(0, (n + 1) * width):
         table.append(0)
 
@@ -74,7 +73,6 @@ export fn main() Int:
             j += 1
         else:
             var delete = j == m
-
             if not delete and i < n:
                 delete = table.get((i + 1) * width + j) >= table.get(i * width + j + 1)
 
@@ -117,7 +115,6 @@ export fn main() Int:
         return 0
 
     var out = List[String]()
-
     out.append("--- {name_a}")
     out.append("+++ {name_b}")
 
@@ -135,7 +132,6 @@ export fn main() Int:
 
         let sa = a_before.get(s) + present(la)
         let sb = b_before.get(s) + present(lb)
-
         out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for k in range(s, e + 1):

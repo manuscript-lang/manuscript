@@ -4,4 +4,5 @@
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {PriorityQueue, Queue} from "@std/queue.ms"
 import from_int from "@std/math.ms"
+
 fn compare(left: Int, right: Int) Int: left - right

@@ -12,16 +12,16 @@
         "message": "unknown binding undefined_name; declare it with 'let undefined_name = ...' before use, define 'fn undefined_name(...)', or import it from a module",
         "position": {
           "file": "seed-0143.ms",
-          "line": 19,
+          "line": 21,
           "column": 15,
-          "offset": 562
+          "offset": 564
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0143.ms:19:15: resolution: unknown binding undefined_name; declare it with 'let undefined_name = ...' before use, define 'fn undefined_name(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0143.ms:21:15: resolution: unknown binding undefined_name; declare it with 'let undefined_name = ...' before use, define 'fn undefined_name(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

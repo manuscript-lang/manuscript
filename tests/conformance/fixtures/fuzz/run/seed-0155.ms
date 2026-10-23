@@ -12,31 +12,40 @@ fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [(-16), (-18), (-30)]
     say("l1 = {l1} len {l1.length()}")
+
     let b2 = ((40 + (44 + 859973)) != (((-601437) / (-779777)) * (-47)))
     say("b2 = {b2}")
+
     let l3 = l1.drop(1)
     say("l3 = {l3} len {l3.length()}")
+
     let l4 = [(-3), 4, (-21), 20]
     say("l4 = {l4} len {l4.length()}")
+
     var l5 = l1.clone()
     l5.append(87)
     say("l5 = {l5} len {l5.length()}")
     say("fib(52) = {fib(52)}")
+
     let i6 = ((((-17) + 50) + 40) + (((-419679) * 50) + 33))
     say("i6 = {i6}")
     say("fib(21) = {fib(21)}")
+
     let l7 = [(-18), 5, 12, 19]
     say("l7 = {l7} len {l7.length()}")
+
     let big8 = 9223372036854775807
     say("{big8 * 5}")
     return 0

@@ -54,6 +54,7 @@ fn exercise() Result[Int, Error]:
         first: report(output: stdout(), label: "first", value: 1)
     )
     total | try expect_equal(3)
+
     let pair = Pair(
         second: report(output: stdout(), label: "pair second", value: 2),
         first: report(output: stdout(), label: "pair first", value: 1)
@@ -62,6 +63,7 @@ fn exercise() Result[Int, Error]:
     with resource = Resource(label: "normal", output: stdout()):
         let completed = unit
     stdout().write(data: "after normal\n")
+
     var count = 0
 
     while count < 2:

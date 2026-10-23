@@ -18,7 +18,6 @@ fn depth() Int:
 
 test "static specializations are reused across calls":
     var acc = 0
-
     for i in range(0, 100):
         acc += ident(i)
     try expect_equal(acc, 4950)

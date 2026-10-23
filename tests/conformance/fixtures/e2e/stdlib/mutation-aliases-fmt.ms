@@ -8,6 +8,7 @@ test "Map remove direct and bound preserve order and no-op absence":
     values.add(1, "one")
     values.add(2, "two")
     values.add(3, "three")
+
     let snapshot = values.clone()
     values.remove(2)
     values.add(4, "four")
@@ -18,12 +19,15 @@ test "Map remove direct and bound preserve order and no-op absence":
     try expect_equal(values.keys(), [3, 4, 5])
     values.remove(99)
     try expect_equal(values.keys(), [3, 4, 5])
+
     var empty = Map[Int, String]()
     empty.remove(1)
     empty.add(2, "two")
     try expect_equal(empty.get(2), some("two"))
+
     var legacy = values.clone()
     legacy.remove(4)
+
     var preferred = values.clone()
     preferred.remove(4)
     try expect_equal(legacy, preferred)
@@ -31,6 +35,7 @@ test "Map remove direct and bound preserve order and no-op absence":
 test "Map remove evaluates its key after choosing the receiver and keeps conversions":
     var first = Map[Optional[Int], Int]()
     first.add(1, 10)
+
     let trigger = some(1)
     first.remove(
         match trigger:
@@ -57,9 +62,11 @@ test "Map explicit and bound interface views remove through the adapter":
     values.add(1, "one")
     values.add(2, "two")
     values.add(3, "three")
+
     var adapter = MapAdapter(values)
     adapter.remove(1)
     try expect_equal(adapter.values.keys(), [2, 3])
+
     var view = MapRemoval(adapter)
     view.remove(2)
     try expect_equal(view.keys(), [3])
@@ -74,8 +81,10 @@ test "List splice direct and bound stage a copy of the receiver as replacement":
     values.splice(1, 4, [9])
     values.append(5)
     try expect_equal(values, [1, 9, 4, 5])
+
     var legacy = values.clone()
     legacy.splice(0, 1, [7])
+
     var preferred = values.clone()
     preferred.splice(0, 1, [7])
     try expect_equal(legacy, preferred)
@@ -84,6 +93,7 @@ test "List splice direct and bound stage a copy of the receiver as replacement":
     values.splice(0, values.length(), [])
     values.append(8)
     try expect_equal(values, [8])
+
     var empty: List[Int] = []
     empty.splice(0, 0, [])
     empty.append(3)
@@ -96,6 +106,7 @@ test "List splice moves replacement elements and handles Optional elements":
     var values = [Item(2)]
     values.splice(0, 1, [Item(1)])
     try expect_equal(values[0].value, 1)
+
     var optional: List[Optional[Int]] = [some(1)]
     optional.splice(0, 1, [some(2)])
     try expect_equal(optional[0], some(2))
@@ -117,6 +128,7 @@ test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])
     adapter.splice(0, 1, [7])
     try expect_equal(adapter.values, [7, 2, 3])
+
     var view = ListSplicing(adapter)
     view.splice(0, 1, [7])
     try expect_equal(view.contents(), [7, 2, 3])

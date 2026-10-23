@@ -24,12 +24,11 @@ fn put_list(var maps: List[Map[String, Int]], id: Int) Unit:
 
 export fn main() Int:
     var reader = Reader(
-        entries: [Map[String, Int](), Map[String, Int]()],
-        names: ["a", "b"],
-        depth: 0
+        entries: [Map[String, Int](), Map[String, Int]()], names: ["a", "b"], depth: 0
     )
     put(var reader, 1, "x", 5)
     put(var reader, 1, "y", 6)
+
     var id = 0
     reader.entries[id].add("z", 7)
 
@@ -41,10 +40,16 @@ export fn main() Int:
     put_list(var maps, 1)
 
     var total = 0
+
     for i in range(0, 20000):
         reader.names.append("n")
         total += 1
-    stdout().write("{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n")
-    stdout().write("{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n")
+
+    stdout().write(
+        "{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
+    )
+    stdout().write(
+        "{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
+    )
     stdout().write("{maps[1].length()} {maps[0].length()}\n")
     return 0

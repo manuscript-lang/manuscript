@@ -12,57 +12,77 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = ((((-25) * (-23)) % (895329406106 - (-7))) + 786399378670)
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
+
     var acc3 = 0
     for i in range(0, 0):
         acc3 += i * (-1)
     say("acc3 = {acc3}")
+
     let b4 = ((436.25 * (461.077 - 296.341)) != 4.5)
     say("b4 = {b4}")
     say("collatz(2641) = {collatz(2641)}")
+
     let l5 = [(-26)]
     say("l5 = {l5} len {l5.length()}")
+
     let f6 = ((1.5 * (307.711 / 0.0)) * 0.0)
     say("f6 = {f6}")
     say("collatz(1822) = {collatz(1822)}")
+
     let i7 = 30
     say("i7 = {i7}")
+
     let i8 = (-l5.length())
     say("i8 = {i8}")
+
     let b9 = "  padded  ".replace("  padded  ", "line\nbreak").is_empty()
     say("b9 = {b9}")
+
     let i10 = ((i2 - (9 + i2)) / i2)
     say("i10 = {i10}")
+
     if ("alpha" + "line\nbreak").is_empty():
         say("delta")
     else:
         say("日本語".trim())
+
     let i11 = ((((-457691) % i1) + (-1)) + (l5.get(0) % i8))
     say("i11 = {i11}")
+
     let s12 = (("{(-41)}:" + "Tab\there").upper() + "brace\{s\}")
     say("s12 = [{s12}]")
+
     let i13 = (-((-i10) / (251018 + i2)))
     say("i13 = {i13}")
+
     let b14 = (not ("héllo".ends_with(s12) or b4))
     say("b14 = {b14}")
+
     let i15 = ((i8 * (-i7)) - ((-(-9223372036854775807)) + i10))
     say("i15 = {i15}")
+
     if (not b4):
         say("line\nbreak".reverse())
     else:
         say(s12)
+
     let big16 = 9223372036854775807
     say("{big16 + 3}")
     return 0

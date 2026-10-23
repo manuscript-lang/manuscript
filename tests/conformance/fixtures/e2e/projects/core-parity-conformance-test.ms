@@ -3,27 +3,13 @@
 # conform: origin=tests/e2e/testdata/projects/core_parity/conformance_test.ms
 import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
 import {
-    first_mapped,
-    first_bound_map,
-    first_generic_map,
-    first_lookup,
-    first_failure,
-    first_queries,
-    first_converted,
-    first_folded,
-    first_key_transform,
-    first_bound_keys,
+    first_mapped, first_bound_map, first_generic_map, first_lookup, first_failure,
+    first_queries, first_converted, first_folded, first_key_transform, first_bound_keys,
     first_value_transform
 } from "./first.ms"
 import {
-    second_mapped,
-    second_failure,
-    second_queries,
-    second_converted,
-    second_folded,
-    second_key_transform,
-    second_bound_keys,
-    second_value_transform
+    second_mapped, second_failure, second_queries, second_converted, second_folded,
+    second_key_transform, second_bound_keys, second_value_transform
 } from "./second.ms"
 import {Key, Cause} from "./domain.ms"
 
@@ -32,9 +18,11 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     let by_label = second_mapped()
     (by_id.length() != 1 or by_label.length() != 2) | try expect_false
     by_id.values().get(0).label | try expect_equal("1")
+
     let bound = first_bound_map()
     let mapped = bound(fn(n): Key(0, n.to_string()))
     mapped.length() | try expect_equal(1)
+
     let input = Set[Int]([1, 2])
     first_generic_map(input).length() | try expect_equal(1)
     first_lookup() | try expect_equal("found")
@@ -51,6 +39,7 @@ test "Result composition retains concrete Error and its local implementation":
 
 test "conversions and queries retain scoped generic evidence and Error identity":
     (not (first_queries()) or not (second_queries())) | try expect_false
+
     var cause = Cause(1)
     let one = first_converted(cause)
     let two = second_converted(cause)
@@ -77,6 +66,7 @@ test "Map transformations preserve input and output equality evidence":
     let two = second_key_transform(input)
     (one.length() != 1 or two.length() != 2) | try expect_false
     (one.keys().get(0).label != "1" or one.values() != [20]) | try expect_false
+
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
     try expect_equal(bound_one(fn(key, value): Key(0, key.to_string())).length(), 1)

@@ -11,11 +11,13 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     say("gcd(4843, 3727) = {gcd(4843, 3727)}")
     return "not an int"
+
     let l1 = [8, 12]
     say("l1 = {l1} len {l1.length()}")
     return 0

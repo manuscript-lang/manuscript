@@ -23,9 +23,9 @@
         "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
         "position": {
           "file": "learn-tour-9.ms",
-          "line": 10,
+          "line": 11,
           "column": 12,
-          "offset": 334
+          "offset": 335
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
         "position": {
           "file": "learn-tour-9.ms",
-          "line": 14,
+          "line": 15,
           "column": 12,
-          "offset": 453
+          "offset": 454
         }
       },
       {
@@ -56,16 +56,16 @@
         "message": "QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it",
         "position": {
           "file": "learn-tour-9.ms",
-          "line": 12,
+          "line": 13,
           "column": 1,
-          "offset": 345
+          "offset": 346
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/learn-tour-9.ms:9:16: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:10:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:14:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:7:1: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:12:1: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/learn-tour-9.ms:9:16: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:11:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:15:12: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:7:1: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n<DIR>/learn-tour-9.ms:13:1: type: QuantityError does not satisfy Error; add 'impl Error for QuantityError:' or use a type that implements it\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

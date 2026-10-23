@@ -524,6 +524,14 @@ impl<'m> Gen<'m> {
 
 pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     let isa_builder = cranelift_native::builder().map_err(|e| e.to_string())?;
+    compile_with_isa(m, opts, isa_builder)
+}
+
+fn compile_with_isa(
+    m: &Module,
+    opts: &Options,
+    isa_builder: cranelift_codegen::isa::Builder,
+) -> Result<crate::Parts, Error> {
     let arm64_coff = windows_arm64(isa_builder.triple());
     let mut flags = settings::builder();
     flags
@@ -1047,4 +1055,61 @@ fn emit_main(
     let r = define(g, ctx, id, "main");
     g.llvm = llvm;
     r
+}
+
+#[cfg(test)]
+mod target_tests {
+    use super::*;
+
+    #[test]
+    fn mir_fixtures_emit_for_all_six_supported_platforms() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ms-mir/tests");
+        let mut files = Vec::new();
+        for dir in ["fixtures", "fixtures-opt"] {
+            files.extend(
+                std::fs::read_dir(root.join(dir))
+                    .unwrap()
+                    .map(|entry| entry.unwrap().path())
+                    .filter(|p| p.extension().is_some_and(|e| e == "mir")),
+            );
+        }
+        files.sort();
+        assert!(files.len() >= 18);
+        let targets: [(&str, &[u8]); 6] = [
+            ("x86_64-unknown-linux-gnu", b"\x7fELF"),
+            ("aarch64-unknown-linux-gnu", b"\x7fELF"),
+            ("x86_64-apple-darwin", b"\xcf\xfa\xed\xfe"),
+            ("aarch64-apple-darwin", b"\xcf\xfa\xed\xfe"),
+            ("x86_64-pc-windows-gnu", b"\x64\x86"),
+            ("aarch64-pc-windows-gnullvm", b"\x64\xaa"),
+        ];
+        for path in files {
+            let source = std::fs::read_to_string(&path).unwrap();
+            for level in [ms_mir::opt::Level::None, ms_mir::opt::Level::Speed] {
+                let mut m = ms_mir::parse::parse_module(&source).unwrap();
+                ms_mir::verify::verify_module(&m).unwrap();
+                ms_mir::opt::optimize(&mut m, level, true);
+                let opts = Options {
+                    opt_level: if level == ms_mir::opt::Level::None {
+                        "none"
+                    } else {
+                        "speed"
+                    },
+                    ..Options::default()
+                };
+                for (target, magic) in targets {
+                    let triple: target_lexicon::Triple = target.parse().unwrap();
+                    let isa = cranelift_codegen::isa::lookup(triple).unwrap();
+                    let parts = compile_with_isa(&m, &opts, isa)
+                        .unwrap_or_else(|e| panic!("{} {target} {level:?}: {e}", path.display()));
+                    assert!(
+                        parts.object.starts_with(magic),
+                        "{} {target}",
+                        path.display()
+                    );
+                    assert!(parts.llvm.is_none());
+                }
+            }
+        }
+    }
 }

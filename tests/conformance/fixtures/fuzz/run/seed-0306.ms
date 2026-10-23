@@ -11,25 +11,37 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((876.690 + 1.5) + 695.671) * 952.741)
     say("f1 = {f1}")
+
     let i2 = ((-423958) + (((-74502) - (-5)) % (764356 * (-43))))
     say("i2 = {i2}")
+
     let i3 = (((i2 - i2) + i2) - 31)
     say("i3 = {i3}")
+
     let l4 = [(-15), (-20), (-14), 17, (-3)]
     say("l4 = {l4} len {l4.length()}")
-    say("{(39 * (i2 + 15))} {((i3 - 41) % (-(-45)))} {((39 * (i2 + 15)) < ((i3 - 41) % (-(-45))))} sum {(39 * (i2 + 15)) + ((i3 - 41) % (-(-45)))}")
+    say(
+        "{(39 * (i2 + 15))} {((i3 - 41) % (-(-45)))} {((39 * (i2 + 15)) < ((i3 - 41) % (-(-45))))} sum {(39 * (i2 + 15)) + ((i3 - 41) % (-(-45)))}"
+    )
+
     let i5 = (i2 - (-958263))
     say("i5 = {i5}")
+
     let i6 = i5
     say("i6 = {i6}")
+
     let i7 = l4.length()
     say("i7 = {i7}")
+
     let s8 = ("{(469085 + i5)}:" + "line\nbreak").lower()
     say("s8 = [{s8}]")
+
     let s9 = s8.clone()
     say("s9 = [{s9}]")
+
     if true:
         say("hello world")
     else:
         say(s8.replace("back\\slash", s9))
+
     return 0

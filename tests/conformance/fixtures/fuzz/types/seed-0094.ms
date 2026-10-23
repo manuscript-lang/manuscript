@@ -11,14 +11,18 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((19 / (33 + 28)) * ((12 + 29) - ((-877019) / 305282)))
     say("i1 = {i1}")
+
     let i2 = (274712 - (-(-15)))
     say("i2 = {i2}")
+
     let b3 = (false and ((true or true) and false))
     say("b3 = {b3}")
+
     let s4 = "MiXeD CaSe".reverse()
     say("s4 = [{s4}]")
     if 1:
         say("truthy")
+
     let i5 = (s4.length() + ((i2 / 183121) - 12))
     say("i5 = {i5}")
     return 0

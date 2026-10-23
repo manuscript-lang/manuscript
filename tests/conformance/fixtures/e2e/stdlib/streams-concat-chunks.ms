@@ -13,6 +13,7 @@ export fn main() Int:
     let joined = concat([from_bytes(data, 4), from_bytes(data, 4)])
     let all = read_all(joined).get()
     say("joined {all.length()}\n")
+
     let again = concat([from_bytes(data, 3), from_bytes(data, 5)])
     say("digest {digest(again, HashAlgorithm.Sha256).get().length()}\n")
     return 0

@@ -4,5 +4,6 @@
 type Entry:
     name: String
     nickname: Optional[String]
+
 type Person:
     primary: Optional[Entry]

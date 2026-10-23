@@ -3,5 +3,6 @@ export fn main() Int:
     let add = xs.append
     add(4)
     add(5)
+
     let n = xs.length()
     return n

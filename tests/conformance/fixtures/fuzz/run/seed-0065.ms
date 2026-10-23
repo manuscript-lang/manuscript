@@ -11,38 +11,54 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = 521.25
     say("f1 = {f1}")
+
     let i2 = ((36 - ((-9) * 363069819608)) * (-46))
     say("i2 = {i2}")
+
     let b3 = (((f1 * f1) != 5.5) and (not true))
     say("b3 = {b3}")
+
     let i4 = i2
     say("i4 = {i4}")
+
     let s5 = "日本語"
     say("s5 = [{s5}]")
+
     let b6 = (((112.386 * f1) * (f1 * f1)) == 0.0)
     say("b6 = {b6}")
+
     let l7 = [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
+
     let f8 = (((1.0e-2 - f1) * (889.146 + f1)) - f1)
     say("f8 = {f8}")
+
     if (s5 == "hello world"):
         say(s5)
     else:
         say("line\nbreak".replace("hello world", "日本語"))
+
     let l9 = l7.map(fn(x): x + 1).filter(fn(x): x % 2 == 0)
     say("l9 = {l9} len {l9.length()}")
+
     let i10 = i2
     say("i10 = {i10}")
+
     let f11 = ((7.25 / (606.498 / 0.0)) + ((729.787 * f1) + 8.5))
     say("f11 = {f11}")
+
     let i12 = 854935
     say("i12 = {i12}")
+
     let s13 = ("x" + s5.lower()).trim()
     say("s13 = [{s13}]")
+
     let i14 = (((-48) * (i2 + i2)) - ((i10 + i2) + (i4 - i4)))
     say("i14 = {i14}")
+
     let b15 = ((-((-3) - i14)) == ((-i12) - ((-31) % 35)))
     say("b15 = {b15}")
+
     let big16 = -9223372036854775808
     say("{big16 - 3}")
     return 0

@@ -11,18 +11,24 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i2 = (((44 + (-1)) * 30) - ((-(-27)) + (-4)))
     say("i2 = {i2}")
+
     if ((145.442 / 228.405) > (871.196 * 3.0e2)):
         say("back\\slash")
     else:
         say("gamma".trim())
+
     let l4 = [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
+
     let i5 = ((-(i2 * i2)) + i2)
     say("i5 = {i5}")
+
     let s6 = ("{l4.length()}:" + "alpha".trim().lower())
     say("s6 = [{s6}]")
+
     let b7 = ("日本語" == s6)
     say("b7 = {b7}")
+
     let i8 = (((i2 + i5) - (i2 % i2)) + i5)
     say("i8 = {i8}")
     return 0

@@ -5,6 +5,7 @@ import {create, file_transport, Transport, Logger} from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Unit:
     let data = "0123456789abcdef".repeat(4096).get("").to_bytes()
+
     bench(
         "fs.write_file_64k",
         200,
@@ -14,15 +15,14 @@ fn run(fs: FileSystem, root: String) Unit:
                 if (
                     fs
                     .write_file_bytes(
-                        "{root}/f{i}.bin",
-                        data,
-                        replace: true
+                        "{root}/f{i}.bin", data, replace: true
                     )
                     .is_ok()
                 ):
                     n += 1
             return n
     )
+
     bench(
         "fs.read_file_64k",
         200,
@@ -33,6 +33,7 @@ fn run(fs: FileSystem, root: String) Unit:
                     n += b.length()
             return n
     )
+
     bench(
         "fs.stat",
         200,
@@ -43,6 +44,7 @@ fn run(fs: FileSystem, root: String) Unit:
                     n += 1
             return n
     )
+
     bench(
         "fs.list_200",
         1,

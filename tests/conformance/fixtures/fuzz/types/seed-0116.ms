@@ -14,7 +14,9 @@ export fn main() Int:
     for i in range(0, 3):
         acc1 += i * (-5)
     say("acc1 = {acc1}")
+
     let f2 = ((522.194 * 924.132) * ((4.0e24 - 54.955) - (125.094 / 495.250)))
     say("f2 = {f2}")
+
     let bad = say
     return 0

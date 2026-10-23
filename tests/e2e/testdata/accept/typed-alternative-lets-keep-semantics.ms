@@ -51,7 +51,6 @@ fn results(n: Int) String:
 
 fn formatted(n: Int) String:
     let found = halve(n: n)
-
     return "{found}"
 
 fn captured(n: Int) Int:
@@ -62,7 +61,6 @@ fn captured(n: Int) Int:
                 return v
             none:
                 return 0 - 1
-
     return read()
 
 test "typed alternative lets":

@@ -14,15 +14,12 @@ test "numeric boundary rules":
 
     let infinity = 1.0 / 0.0
     let nan = 0.0 / 0.0
-
     try expect_equal("{infinity}", "Infinity")
     try expect_not_equal(nan, nan)
 
     let third = 1d / 3d
-
     try expect_equal("{third}", "0.3333333333333333333333333333333333")
 
     let absent: Optional[Int] = none
-
     try expect_equal(1e300.truncate_to_int(), absent)
     try expect_equal((2.seconds + 1.seconds), 3.seconds)

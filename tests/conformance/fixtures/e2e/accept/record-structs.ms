@@ -30,6 +30,7 @@ test "struct records read write compare format and clone":
     b.x = 5
     try expect_not_equal(a, b)
     try expect_false(not (a.x == 1 and b.x == 5 and shifted(a, 3).y == 5))
+
     var copy = a.clone()
     copy.y = 9
     try expect_false(not (a.y == 2 and copy.y == 9))
@@ -57,5 +58,6 @@ test "struct records as keys and defaults":
     set.add(Point(1, 1))
     set.add(Point(2, 1))
     try expect_equal(set.length(), 2)
+
     let sized = Sized(3)
     try expect_false(area(sized) != 6 or area(Sized(3, 5)) != 15)

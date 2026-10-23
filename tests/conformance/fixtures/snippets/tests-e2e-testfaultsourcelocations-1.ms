@@ -7,5 +7,6 @@ fn probe() Int:
     for x in values:
         sum += x
     return sum
+
 export fn main() Int:
     return probe()

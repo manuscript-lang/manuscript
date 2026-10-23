@@ -12,9 +12,9 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "learn-tour-7.ms",
-          "line": 6,
+          "line": 5,
           "column": 25,
-          "offset": 170
+          "offset": 169
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "learn-tour-7.ms",
-          "line": 9,
+          "line": 6,
           "column": 29,
-          "offset": 245
+          "offset": 239
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/learn-tour-7.ms:6:25: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-7.ms:9:29: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/learn-tour-7.ms:5:25: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-7.ms:6:29: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

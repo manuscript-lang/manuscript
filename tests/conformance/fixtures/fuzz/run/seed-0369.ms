@@ -13,34 +13,49 @@ export fn main() Int:
         say(("  padded  " + "quote\"d"))
     else:
         say(("a" + "  padded  "))
+
     let i1 = ((-24) % (-1))
     say("i1 = {i1}")
+
     if (9.5 != 206.523):
         say("a".replace("MiXeD CaSe", "quote\"d"))
     else:
         say("héllo".reverse())
+
     say("{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
+
     let i3 = (-18)
     say("i3 = {i3}")
+
     let s4 = ("{(i3 + i3)}:" + "héllo")
     say("s4 = [{s4}]")
+
     let b5 = (((i1 + (-157859)) + (-778644)) <= i1)
     say("b5 = {b5}")
+
     let b6 = (9.0e10 != 5.5)
     say("b6 = {b6}")
+
     if s4.trim().starts_with(s4):
         say(("{i1}:" + s4))
     else:
         say("x")
+
     let b7 = ("{((-13) + i1)}:" + "beta").is_empty()
     say("b7 = {b7}")
+
     let f8 = (223.776 * 441.551)
     say("f8 = {f8}")
+
     let i9 = (-365727)
     say("i9 = {i9}")
+
     let b10 = ((not (not b6)) or b5)
     say("b10 = {b10}")
-    say("{(42 / i9)} {(((-7) - i3) + ((-828856935568) * i9))} {((42 / i9) < (((-7) - i3) + ((-828856935568) * i9)))} sum {(42 / i9) + (((-7) - i3) + ((-828856935568) * i9))}")
+    say(
+        "{(42 / i9)} {(((-7) - i3) + ((-828856935568) * i9))} {((42 / i9) < (((-7) - i3) + ((-828856935568) * i9)))} sum {(42 / i9) + (((-7) - i3) + ((-828856935568) * i9))}"
+    )
+
     let big11 = i1 - i1
     say("{i1 / big11}")
     return 0

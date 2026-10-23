@@ -12,9 +12,9 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "seed-0079.ms",
-          "line": 23,
+          "line": 26,
           "column": 38,
-          "offset": 675
+          "offset": 678
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "seed-0079.ms",
-          "line": 23,
+          "line": 26,
           "column": 41,
-          "offset": 678
+          "offset": 681
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0079.ms:23:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n<DIR>/seed-0079.ms:23:41: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0079.ms:26:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n<DIR>/seed-0079.ms:26:41: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

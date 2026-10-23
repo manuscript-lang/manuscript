@@ -48,6 +48,7 @@ fn validate(report: Report) Result[Unit, Error]:
     (report.summary.passed + report.summary.skipped) | try expect_equal(
         expected: (report.summary.selected)
     )
+
     var passed = 0
     var skipped = 0
 
@@ -71,9 +72,9 @@ fn inventory(suite: String) Result[List[String], Error]:
         let core = try fs.glob("tests/e2e/testdata/accept", "*.ms")
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file}")
+
         let projects = try fs.glob(
-            "tests/e2e/testdata/projects",
-            "*/conformance_test.ms"
+            "tests/e2e/testdata/projects", "*/conformance_test.ms"
         )
         projects.is_empty() | try expect_false
         for file in projects: files.append("tests/e2e/testdata/projects/{file}")
@@ -104,9 +105,11 @@ fn run(args: List[String]) Result[Unit, Error]:
     let ms = args.get(0)
     let suite = args.get(1)
     (suite == "all" or suite == "core" or suite == "stdlib") | try expect_true
+
     let shard = args.get(2) | .parse_int() | try expect_some
     let count = args.get(3) | .parse_int() | try expect_some
     (count > 0 and shard >= 0 and shard < count) | try expect_true
+
     let files = try inventory(suite)
     var index = 0
     var failed = 0
@@ -116,6 +119,7 @@ fn run(args: List[String]) Result[Unit, Error]:
         if selected(index, shard, count):
             ran = ran + 1
             try emit("TEST {file}")
+
             let result = run_file(ms, file)
 
             match result:
@@ -132,9 +136,7 @@ fn run(args: List[String]) Result[Unit, Error]:
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
     let output = try commands().run(
-        ms,
-        ["test", file, "--json", "--timeout=30s"],
-        timeout: 3.minutes,
+        ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes,
         max_output_bytes: 16000000
     )
     let text = output.stdout.decode_utf8() | try expect_some
@@ -148,6 +150,7 @@ fn run_file(ms: String, file: String) Result[Unit, Error]:
 
 fn check_output(status: Int, text: String) Result[Unit, Error]:
     status | try expect_equal(expected: 0)
+
     let report = try parse[Report](text)
     return validate(report)
 
@@ -160,10 +163,7 @@ export fn main() Int:
 
 test "reports require complete nonempty executions and count explicit skips":
     var report = Report(
-        1,
-        true,
-        0,
-        [Case("pass", "passed"), Case("skip", "skipped")],
+        1, true, 0, [Case("pass", "passed"), Case("skip", "skipped")],
         Summary(2, 2, 1, 0, 1, 0)
     )
     try validate(report)

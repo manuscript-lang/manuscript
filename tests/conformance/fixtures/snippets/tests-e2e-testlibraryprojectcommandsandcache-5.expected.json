@@ -13,10 +13,10 @@
           "index": 0,
           "name": "tests-e2e-testlibraryprojectcommandsandcache-5.ms::unimported",
           "status": "failed",
-          "failure": "changed unimported test\n  at tests-e2e-testlibraryprojectcommandsandcache-5.ms:7:5",
+          "failure": "changed unimported test\n  at tests-e2e-testlibraryprojectcommandsandcache-5.ms:9:5",
           "position": {
             "file": "tests-e2e-testlibraryprojectcommandsandcache-5.ms",
-            "line": 7,
+            "line": 9,
             "column": 5,
             "offset": 0
           }
@@ -32,7 +32,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testlibraryprojectcommandsandcache-5.ms::unimported\nFAIL tests-e2e-testlibraryprojectcommandsandcache-5.ms::unimported: changed unimported test\n  at tests-e2e-testlibraryprojectcommandsandcache-5.ms:7:5\n1 tests, 1 failed\n",
+      "stdout": "RUN tests-e2e-testlibraryprojectcommandsandcache-5.ms::unimported\nFAIL tests-e2e-testlibraryprojectcommandsandcache-5.ms::unimported: changed unimported test\n  at tests-e2e-testlibraryprojectcommandsandcache-5.ms:9:5\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

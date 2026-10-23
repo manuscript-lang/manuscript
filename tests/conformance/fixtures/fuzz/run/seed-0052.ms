@@ -11,55 +11,76 @@ fn say(text: String) Unit:
 fn collatz(start: Int) Int:
     var n = start
     var steps = 0
+
     while n != 1:
         if n % 2 == 0:
             n = n / 2
         else:
             n = 3 * n + 1
+
         steps += 1
+
     return steps
 
 export fn main() Int:
     let i1 = ((((-40) + 625640) * (0 + 412160908886)) % (-28))
     say("i1 = {i1}")
+
     let i2 = (14 - (-43))
     say("i2 = {i2}")
+
     let f3 = 221.25
     say("f3 = {f3}")
+
     let s4 = "a".reverse().trim().upper()
     say("s4 = [{s4}]")
+
     let l5 = [(-10), (-8)]
     say("l5 = {l5} len {l5.length()}")
+
     let l6 = l5.map(fn(x): x * 4)
     say("l6 = {l6} len {l6.length()}")
+
     let l7 = [(-8), (-16), 20, (-6), (-23)]
     say("l7 = {l7} len {l7.length()}")
+
     if (s4 + "ms").is_empty():
         say(s4)
     else:
         say(("{(i2 * 39)}:" + "héllo"))
+
     if true:
         say(s4.lower())
     else:
         say("héllo".reverse())
+
     if (not false):
         say(s4)
     else:
         say("  padded  ".replace(s4, s4))
+
     let s8 = "héllo"
     say("s8 = [{s8}]")
+
     let l9 = l7.drop(4)
     say("l9 = {l9} len {l9.length()}")
+
     let f10 = ((442.940 * f3) + ((878.000 / 0.0) / f3))
     say("f10 = {f10}")
+
     let b11 = true
     say("b11 = {b11}")
+
     let i12 = (i2 * (((-508397) + i1) - i1))
     say("i12 = {i12}")
-    say("{((i2 + i12) + (-(-33)))} {(((-908081) + (-32)) + i12)} {(((i2 + i12) + (-(-33))) < (((-908081) + (-32)) + i12))} sum {((i2 + i12) + (-(-33))) + (((-908081) + (-32)) + i12)}")
+    say(
+        "{((i2 + i12) + (-(-33)))} {(((-908081) + (-32)) + i12)} {(((i2 + i12) + (-(-33))) < (((-908081) + (-32)) + i12))} sum {((i2 + i12) + (-(-33))) + (((-908081) + (-32)) + i12)}"
+    )
+
     let b13 = ((9.0e15 + f3) != (f10 * (f10 - f10)))
     say("b13 = {b13}")
     say("collatz(1355) = {collatz(1355)}")
+
     let b14 = ((271.801 * f3) != ((948.25 - 336.078) - 849.487))
     say("b14 = {b14}")
     return 0

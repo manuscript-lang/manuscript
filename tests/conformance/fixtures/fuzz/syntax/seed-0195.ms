@@ -11,17 +11,22 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let i1 = (-(((-9) + (-2)) / (257788 * 47)))
     say("i1 = {i1}")
+
     let l2 = [5]
     say("l2 = {l2} len {l2.length()}")
+
     let i3 = (i1 + ((i1 - 15) + (i1 * 859413570503)))
     say("i3 = {i3}")
+
     let b4 = ((617.807 > (0.0 + 657.452)) and ("alpha" + "delta").is_empty())
     say("b4 = {b4}")
+
     let b5 = (not (("{(i3 % 36)}:" + "line\nbreak") == ("{i1}:" + "delta")))
     say("b5 = {b5}")
     say("gcd(320, 1357) = {gcd(320, 137)}")

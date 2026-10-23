@@ -127,12 +127,10 @@ impl SseDecoder for Decoder:
 
         while index < total:
             let step = consume(var self, chunk.get(index), var events)
-
             index += 1
 
             if step.is_error():
                 let failure = step.err()
-
                 self.failure = some(failure)
                 return error(failure)
 
@@ -157,7 +155,6 @@ fn consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) Result[
     Unit, SseError
 ]:
     let after_carriage = decoder.carriage
-
     decoder.carriage = false
     if byte == 10 and after_carriage: return ok(unit)
 
@@ -175,7 +172,6 @@ fn consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) Result[
 
 fn end_line(var decoder: Decoder, var events: List[SseEvent]) Result[Unit, SseError]:
     var bytes = decoder.line.freeze()
-
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
 
@@ -229,14 +225,12 @@ fn reconnect(var decoder: Decoder, value: String) Unit:
     if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
     let milliseconds = value.parse_int()
-
     if milliseconds.is_some(): decoder.retry_ms = milliseconds
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
         let current = decoder.event_type
         var name = current
-
         if name == "": name = "message"
         events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id))
 
@@ -285,7 +279,6 @@ export fn reader(
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 
     let created = try decoder(limits)
-
     return ok(
         SseReader(
             input: input, decoder: created, ready: List[SseEvent](), next: 0,
@@ -299,7 +292,6 @@ export fn next_event(var reader: SseReader) Result[Optional[SseEvent], SseError]
     while true:
         if reader.next < reader.ready.length():
             let event = reader.ready.get(reader.next)
-
             reader.next += 1
             return ok(some(event))
 

@@ -24,6 +24,7 @@ test "length and chars use scalars and preserve text boundaries":
     try expect_equal("👩\u{200d}🚀".length(), 3)
     try expect_equal("a\u{0}b".chars(), ["a", "\u{0}", "b"])
     try expect_false(not ("".chars().is_empty()) or "".length() != 0)
+
     var characters = text.chars()
     let second = text.chars()
     characters.set(0, "changed")
@@ -36,6 +37,7 @@ test "reverse operates on scalars without normalization":
     try expect_equal("👩\u{200d}🚀".reverse(), "🚀\u{200d}👩")
     try expect_equal("a\u{0}b".reverse(), "b\u{0}a")
     try expect_false("".reverse() != "" or "🙂".reverse() != "🙂")
+
     let original = "é🙂e\u{301}"
     try expect_equal(original.reverse().reverse(), original)
 
@@ -46,6 +48,7 @@ test "compare is normalized sign and scalar lexical order":
     try expect_equal("é".compare("e\u{301}"), 1)
     try expect_equal("\u{e000}".compare("\u{10000}"), -1)
     try expect_equal("a\u{0}".compare("a\u{1}"), -1)
+
     let equal = "é🙂"
     try expect_equal(equal.compare(equal), 0)
 
@@ -55,21 +58,12 @@ type LineCase:
 
 test "lines preserve interior empties and recognize LF and CRLF only":
     let cases = [
-        LineCase("", []),
-        LineCase("\n", [""]),
-        LineCase("\r\n", [""]),
-        LineCase("\n\n", ["", ""]),
-        LineCase("\r\n\r\n", ["", ""]),
-        LineCase("a\n", ["a"]),
-        LineCase("a\r\n", ["a"]),
-        LineCase("a\n\n", ["a", ""]),
-        LineCase("a\r\nb\nc", ["a", "b", "c"]),
-        LineCase("a\r", ["a\r"]),
-        LineCase("\r", ["\r"]),
-        LineCase("\r\r\n", ["\r"]),
-        LineCase("a\rb", ["a\rb"]),
-        LineCase("é\r\n🙂\n", ["é", "🙂"]),
-        LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
+        LineCase("", []), LineCase("\n", [""]), LineCase("\r\n", [""]),
+        LineCase("\n\n", ["", ""]), LineCase("\r\n\r\n", ["", ""]),
+        LineCase("a\n", ["a"]), LineCase("a\r\n", ["a"]), LineCase("a\n\n", ["a", ""]),
+        LineCase("a\r\nb\nc", ["a", "b", "c"]), LineCase("a\r", ["a\r"]),
+        LineCase("\r", ["\r"]), LineCase("\r\r\n", ["\r"]), LineCase("a\rb", ["a\rb"]),
+        LineCase("é\r\n🙂\n", ["é", "🙂"]), LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
         LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"])
     ]
     for line_case in cases:
@@ -89,11 +83,13 @@ test "String basic bound methods capture immutable receiver values":
     try expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])
     try expect_false((reverse() != "\n🙂\né" or length() != 4 or empty()))
     try expect_equal(compare("é\n🙂\n"), 0)
+
     var first = lines()
     let second = lines()
     first.set(0, "changed")
     first.append("new")
     try expect_equal(second, ["é", "🙂"])
+
     var empty_lines = "".lines()
     empty_lines.append("new")
     try expect_false(not ("".lines().is_empty()))

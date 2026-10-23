@@ -20,5 +20,4 @@ export fn main() Int:
         ok(status): return status
         error(cause):
             let written = stderr().write("{cause.message()}\n")
-
             return 1

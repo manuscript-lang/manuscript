@@ -77,13 +77,11 @@ test "shared categories keep exact standard domain values":
     category(SseError.Truncated).is_some() | try expect_false
 
     let allocation_error = range_by(start: 0, end: 268435457, step: 1).err()
-
     category(allocation_error) | try expect_equal(some(ErrorCategory.LimitExceeded))
 
     let original: Error = YamlError.InvalidData(
         line: 3, column: 9, reason: "retained detail"
     )
-
     category(original) | try expect_equal(some(ErrorCategory.InvalidData))
 
     match (try yaml_error(original)):
@@ -104,7 +102,6 @@ test "timeout classification keeps timeout spelling out of generic handling":
         NetworkError.Timeout, HttpError.Timeout, CommandError.Timeout
     ]
     let query = category
-
     for cause in causes:
         query(cause) | try expect_equal(some(ErrorCategory.Timeout))
 
@@ -112,7 +109,6 @@ test "classification does not parse messages invoke user code or guess domain-sp
     let custom = CustomError(
         calls: 0, message: "filesystem: file or directory not found"
     )
-
     (category(custom).is_some() or custom.calls != 0) | try expect_false
     category(PathError.InvalidInput).is_some() | try expect_false
 
@@ -122,6 +118,5 @@ test "classification does not parse messages invoke user code or guess domain-sp
         YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]
-
     for cause in causes:
         category(cause).is_some() | try expect_false

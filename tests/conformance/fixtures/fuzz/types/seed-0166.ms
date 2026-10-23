@@ -11,8 +11,10 @@ fn say(text: String) Unit:
 export fn main() Int:
     let b1 = false
     say("b1 = {b1}")
+
     let b2 = ("quote\"d" == (("delta" + "back\\slash") + "beta".upper()))
     say("b2 = {b2}")
+
     let bad = not 5
     let i3 = ((-45) * (-3))
     say("i3 = {i3}")

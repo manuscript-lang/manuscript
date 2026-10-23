@@ -12,12 +12,15 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-((-46) % (-5))) + 47)
     say("i1 = {i1}")
+
     if ((not false) and false):
         say("brace\{s\}")
     else:
         say("  padded  ")
+
     let f2 = ((805.192 + (161.901 / 304.045)) * (55.427 - (0.0 + 28.580)))
     say("f2 = {f2}")
+
     let bad = Map[Int, Int]().get(1, 2, 3)
     var acc3 = 0
     for i in range(0, 7):

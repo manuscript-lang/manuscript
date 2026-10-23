@@ -12,44 +12,62 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (((527.314 * 240.261) + 185.444) * ((0.0 / 901.234) + 824.25))
     say("f1 = {f1}")
+
     let i2 = 170460
     say("i2 = {i2}")
+
     let s3 = ("{i2}:" + "alpha".lower().upper())
     say("s3 = [{s3}]")
+
     if false:
         say("x")
     else:
         say("héllo".reverse())
+
     var acc4 = 0
     for i in range(0, 2):
         acc4 += i * 9
     say("acc4 = {acc4}")
+
     let i5 = ((((-640285770713) - i2) - (15 / i2)) * i2)
     say("i5 = {i5}")
+
     let f6 = (((f1 / f1) + (736.314 / f1)) * (534.141 * (6.0e18 * f1)))
     say("f6 = {f6}")
+
     let i7 = (46 + 186260)
     say("i7 = {i7}")
+
     let b8 = ((s3 + s3).contains(s3) and true)
     say("b8 = {b8}")
+
     let i9 = (i5 + (((-31) + 19) * (i7 - (-41))))
     say("i9 = {i9}")
+
     let b10 = false
     say("b10 = {b10}")
+
     let f11 = (((f1 + f1) * 909.824) / (965.827 + (f6 + 863.25)))
     say("f11 = {f11}")
+
     var acc12 = 0
     var stepacc12 = 0
+
     while stepacc12 < 0:
         stepacc12 += 1
         acc12 += stepacc12 * stepacc12 + 9
+
     say("acc12 = {acc12}")
+
     let i13 = (i9 * ((16 / (-41)) * (i2 % (-37))))
     say("i13 = {i13}")
+
     let l14 = [(-21), (-23), (-14)]
     say("l14 = {l14} len {l14.length()}")
+
     let i15 = l14.get(1)
     say("i15 = {i15}")
+
     let i16 = (188118 + 36)
     say("i16 = {i16}")
     return 0

@@ -11,35 +11,48 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let l1 = [(-10), 4, 18, (-25), 28]
     say("l1 = {l1} len {l1.length()}")
-    let b2 = (((361.276 - 196.139) > (277.841 + 962.341)) or ((0 - (-31)) <= (139960 - 44)))
+
+    let b2 = (
+        ((361.276 - 196.139) > (277.841 + 962.341))
+        or ((0 - (-31)) <= (139960 - 44))
+    )
     say("b2 = {b2}")
+
     let i3 = 0
     say("i3 = {i3}")
+
     let s4 = "alpha"
     say("s4 = [{s4}]")
+
     let f5 = (((639.509 * 0.0) + 909.373) / ((996.741 * 6.0e17) + (1.5 * 4.5)))
     say("f5 = {f5}")
+
     let s6 = s4.clone()
     say("s6 = [{s6}]")
+
     let i7 = i3
     say("i7 = {i7}")
     say("gcd(1334, 1596) = {gcd(1334, 1596)}")
+
     let i8 = ((((-1) - i7) * l1.length()) - (s4.length() % s6.length()))
     say("i8 = {i8}")
     say("fib(10) = {fib(10)}")

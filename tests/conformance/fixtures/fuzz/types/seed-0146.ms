@@ -11,16 +11,25 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
+
     let f2 = (105.814 - ((741.807 - 982.25) + (2.0e6 + 825.500)))
     say("f2 = {f2}")
+
     let i3 = ((l1.length() % (8 + (-45))) % ((-(-17)) + (1 + 32)))
     say("i3 = {i3}")
-    let b4 = ("brace\{s\}".reverse().is_empty() and ((false and false) and (false and false)))
+
+    let b4 = (
+        "brace\{s\}".reverse().is_empty()
+        and ((false and false) and (false and false))
+    )
     say("b4 = {b4}")
+
     let i5 = (-l1.length())
     say("i5 = {i5}")
+
     let f6 = (((f2 * 5.0e18) * (f2 - 807.831)) + ((f2 / 377.25) / (219.25 + 0.0)))
     say("f6 = {f6}")
+
     let bad = [1, "two"]
     let f7 = f6
     say("f7 = {f7}")

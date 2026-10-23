@@ -674,6 +674,48 @@ fn close_cancels_open_bodies_and_sessions() {
     ));
 }
 
+/// Cancellation releases both the body's state and the session's driver turn through
+/// runtime cleanup, so another request can still use the same HTTP/2 connection.
+#[test]
+fn cancelled_body_read_releases_the_stream_and_session_driver() {
+    crate::wait::use_tasks();
+    let (address, accepted, log) = serve(|req, _| {
+        if req.path() == "/stall" {
+            return Reply::Partial {
+                body: b"abc".to_vec(),
+                reset: None,
+            };
+        }
+        ok("still usable")
+    });
+    let (_net, c) = client(ClientOptions::default());
+    let mut req = request("GET", &address, "/stall");
+    req.deadline = Deadline::after(Duration::from_secs(5));
+    let body = c.send(req).unwrap();
+    assert_eq!(body.read(100).unwrap().unwrap(), b"abc");
+    unsafe extern "C-unwind" fn read(arg: *mut u8) {
+        // SAFETY: the caller retains the body until this task has joined.
+        let body = unsafe { &*arg.cast::<ResponseBody>() };
+        let _ = body.read(1);
+    }
+    // SAFETY: serialized runtime access; the body outlives the joined task.
+    let task =
+        unsafe { ms_rt::task::msrt_task_spawn(read, Rc::as_ptr(&body).cast_mut().cast(), 0, 0) };
+    rt::sleep(0);
+    assert!(body.reading.get());
+    // SAFETY: serialized runtime access to the live joinable task.
+    unsafe {
+        ms_rt::task::msrt_task_cancel(task);
+        assert_eq!(ms_rt::task::msrt_task_join(task, std::ptr::null_mut()), 2);
+    }
+    assert!(matches!(body.read(1), Err(IoErr::Closed)));
+    assert!(wait_for(&log, "reset:8"), "{:?}", log.lock().unwrap());
+    let mut next = request("GET", &address, "/next");
+    next.deadline = Deadline::after(Duration::from_secs(5));
+    assert_eq!(text(&c.send(next).unwrap()), "still usable");
+    assert_eq!(accepted.load(Ordering::SeqCst), 1);
+}
+
 #[test]
 fn replaces_idle_sessions() {
     let (address, accepted, _) = serve(|_, _| ok("ok"));

@@ -10,10 +10,12 @@ test "insert and remove shift the tail for every element kind":
     numbers.remove(1)
     numbers.remove(-1)
     try expect_equal(numbers, [0, 2, 9, 3])
+
     var words = ["a", "b"]
     words.insert(1, "z")
     words.remove(0)
     try expect_equal(words, ["z", "b"])
+
     var rows: List[List[Int]] = [[1], [2]]
     let row = [7, 7]
     rows.insert(1, row.clone())

@@ -23,16 +23,16 @@
         "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
         "position": {
           "file": "pkg-parser-testemptyfunctiondeclarations-3.ms",
-          "line": 7,
+          "line": 8,
           "column": 1,
-          "offset": 256
+          "offset": 257
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n<DIR>/pkg-parser-testemptyfunctiondeclarations-3.ms:7:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n<DIR>/pkg-parser-testemptyfunctiondeclarations-3.ms:8:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

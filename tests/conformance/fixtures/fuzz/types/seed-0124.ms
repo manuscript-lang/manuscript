@@ -13,8 +13,10 @@ export fn main() Int:
         say("42".upper())
     else:
         say("line\nbreak")
+
     let s1 = "hello world"
     say("s1 = [{s1}]")
+
     let bad = missing_function(3)
     let i2 = (6 * (s1.length() - (-11)))
     say("i2 = {i2}")

@@ -11,38 +11,58 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "hello world"
     say("s1 = [{s1}]")
-    say("{((-8) - 1)} {s1.length()} {(((-8) - 1) < s1.length())} sum {((-8) - 1) + s1.length()}")
+    say(
+        "{((-8) - 1)} {s1.length()} {(((-8) - 1) < s1.length())} sum {((-8) - 1) + s1.length()}"
+    )
+
     let i2 = ((-27) + 10)
     say("i2 = {i2}")
+
     let i3 = (((i2 * i2) - (730576 * i2)) + (6 + (i2 - i2)))
     say("i3 = {i3}")
+
     let b4 = false
     say("b4 = {b4}")
+
     let s5 = ("{(-15)}:" + "quote\"d").lower().reverse()
     say("s5 = [{s5}]")
-    say("{(3 * i2)} {((i3 - i2) % (942040 * i2))} {((3 * i2) < ((i3 - i2) % (942040 * i2)))} sum {(3 * i2) + ((i3 - i2) % (942040 * i2))}")
+    say(
+        "{(3 * i2)} {((i3 - i2) % (942040 * i2))} {((3 * i2) < ((i3 - i2) % (942040 * i2)))} sum {(3 * i2) + ((i3 - i2) % (942040 * i2))}"
+    )
+
     let s6 = (s5 + ("  padded  ".reverse() + s5.reverse()))
     say("s6 = [{s6}]")
+
     let i7 = i2
     say("i7 = {i7}")
+
     let l8 = [23, 0, 18]
     say("l8 = {l8} len {l8.length()}")
+
     let f9 = 164.012
     say("f9 = {f9}")
+
     let s10 = ("{(41 % 221446200376)}:" + "delta".upper().lower())
     say("s10 = [{s10}]")
+
     let i11 = 609910002488
     say("i11 = {i11}")
+
     var acc12 = 0
     var stepacc12 = 0
+
     while stepacc12 < 8:
         stepacc12 += 1
         acc12 += stepacc12 * stepacc12 + (-3)
+
     say("acc12 = {acc12}")
+
     let l13 = [29, (-4), (-3), 5, 23]
     say("l13 = {l13} len {l13.length()}")
+
     let i14 = i2
     say("i14 = {i14}")
+
     let big15 = ((i11 - i11) * i3) - ((i11 - i11) * i3)
     say("{((i11 - i11) * i3) % big15}")
     return 0

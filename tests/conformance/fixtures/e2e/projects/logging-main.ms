@@ -32,9 +32,7 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
 
             if mode == "invalid":
                 try record(
-                    logger,
-                    level: LogLevel.Info,
-                    message: "invalid",
+                    logger, level: LogLevel.Info, message: "invalid",
                     fields: JsonValue.NumberValue("NaN")
                 )
             else if mode == "closed":

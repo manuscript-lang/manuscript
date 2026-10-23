@@ -12,27 +12,33 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 export fn main() Int:
     let l1 = [(-7), (-7), (-29)]
     say("l1 = {l1} len {l1.length()}")
+
     let l2 = [30, 28, (-25), (-18), (-4)]
     say("l2 = {l2} len {l2.length()}")
     say("gcd(1452, 48) = {gcd(1452, 48)}")
+
     let bad = not 5
     var acc3 = 0
     for i in range(0, 0):
         acc3 += i * (-1)
     say("acc3 = {acc3}")
     say("fact(19) = {fact(19)}")
+
     let s4 = "back\\slash".lower()
     say("s4 = [{s4}]")
+
     let f5 = (426.25 * ((24.561 / 457.128) / (606.247 * 731.879)))
     say("f5 = {f5}")
     return 0

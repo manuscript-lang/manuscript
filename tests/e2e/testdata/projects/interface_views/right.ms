@@ -5,5 +5,4 @@ impl Read for Reader:
 
 export fn right() Read:
     let value = 2
-
     return Read(Reader(fn() Int: value))

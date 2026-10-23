@@ -37,7 +37,6 @@ fn top(k: Int) String:
 
     while n < k:
         let best = pick_after(prev_id, prev_score)
-
         if n > 0:
             out = "{out},"
         out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
@@ -82,7 +81,6 @@ fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
 
 fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
     let fs = filesystem()
-
     try fs.write_file_bytes(path, payload, replace: true)
     return ok(try fs.read_file(path))
 
@@ -100,6 +98,7 @@ export fn main() Int:
         i += 1
 
     let payload = text.to_bytes()
+
     let handler = fn(request: HttpRequest) HttpResponse:
         if request.path == "/health":
             return reply(200, "ok\n")
@@ -117,7 +116,6 @@ export fn main() Int:
     ):
         with server = acquired:
             let _ignored = server.wait()
-
             return 0
 
     return 1

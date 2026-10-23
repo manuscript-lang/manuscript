@@ -81,6 +81,7 @@ test "nested loops share one cached list":
 
 test "an out of range read or write inside a cached loop faults":
     var values = [1, 2, 3]
+
     let read = try expect_fault(
         fn():
             var i = 0

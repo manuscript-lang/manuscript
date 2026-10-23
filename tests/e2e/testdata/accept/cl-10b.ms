@@ -42,7 +42,6 @@ test "contract views and callbacks":
     let _optional: Optional[ReadValue[Int]] = some(forward_view(box))
     let callback = CallbackReader(seven)
     let callback_view = ReadValue[Int](callback)
-
     try expect_equal(first.get(), 7)
     try expect_equal(copied.get(), 7)
     try expect_equal(callback_view.get(), 7)

@@ -11,44 +11,58 @@ fn say(text: String) Unit:
 fn fact(n: Int) Int:
     if n <= 1:
         return 1
+
     return n * fact(n - 1)
 
 fn fib(n: Int) Int:
     var a = 0
     var b = 1
     var i = 0
+
     while i < n:
         let next = a + b
         a = b
         b = next
         i += 1
+
     return a
 
 export fn main() Int:
     let i1 = ((-917213) / 17)
     say("i1 = {i1}")
+
     let l2 = [11, (-19), (-11), 8, 21]
     say("l2 = {l2} len {l2.length()}")
+
     let i3 = ((-16) % (i1 + ((-7) * 379025897152)))
     say("i3 = {i3}")
     say("fact(19) = {fact(19)}")
+
     let i4 = (((23 * i1) + 45) * i1)
     say("i4 = {i4}")
+
     var acc5 = 0
     var stepacc5 = 0
+
     while stepacc5 < 8:
         stepacc5 += 1
         acc5 += stepacc5 * stepacc5 + 6
+
     say("acc5 = {acc5}")
+
     let s6 = ("emoji 😀" + "brace\{s\}".upper()).trim()
     say("s6 = [{s6}]")
+
     let s7 = "  padded  ".upper()
     say("s7 = [{s7}]")
+
     let s8 = ("x" + "日本語").reverse().reverse()
     say("s8 = [{s8}]")
     say("fib(58) = {fib(58)}")
+
     let i9 = (48 + i3)
     say("i9 = {i9}")
+
     let big10 = l2.length() - l2.length()
     say("{l2.length() / big10}")
     return 0

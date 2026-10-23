@@ -436,7 +436,9 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() == 1 {
         return memchr(needle[0], hay);
     }
-    find_from(hay, needle, 0)
+    // memmem falls back to Two-Way search when candidate filtering is ineffective.
+    // Comparing every candidate slice is quadratic on repetitive near matches.
+    memchr::memmem::find(hay, needle)
 }
 
 /// First index of `c` in `hay`, 16 bytes at a time where SSE2 is available.
@@ -465,48 +467,7 @@ fn memchr(c: u8, hay: &[u8]) -> Option<usize> {
     }
 }
 
-/// First occurrence of `needle` (two bytes or more, no longer than `hay`) at or after `start`.
-fn find_from(hay: &[u8], needle: &[u8], start: usize) -> Option<usize> {
-    let n = needle.len();
-    let last = hay.len() - n;
-    let mut i = start;
-    #[cfg(target_arch = "x86_64")]
-    {
-        use core::arch::x86_64::*;
-        // Compare the first and last needle byte of 16 candidate positions at once, then verify
-        // the middle of each survivor.
-        // SAFETY: SSE2 is part of the x86_64 baseline; both loads end at or before `hay.len()`.
-        unsafe {
-            let (first, tail) = (
-                _mm_set1_epi8(needle[0] as i8),
-                _mm_set1_epi8(needle[n - 1] as i8),
-            );
-            while i + 15 <= last {
-                let a = _mm_loadu_si128(hay.as_ptr().add(i) as *const __m128i);
-                let b = _mm_loadu_si128(hay.as_ptr().add(i + n - 1) as *const __m128i);
-                let hits = _mm_and_si128(_mm_cmpeq_epi8(a, first), _mm_cmpeq_epi8(b, tail));
-                let mut mask = _mm_movemask_epi8(hits) as u32;
-                while mask != 0 {
-                    let at = i + mask.trailing_zeros() as usize;
-                    if hay[at + 1..at + n - 1] == needle[1..n - 1] {
-                        return Some(at);
-                    }
-                    mask &= mask - 1;
-                }
-                i += 16;
-            }
-        }
-    }
-    while i <= last {
-        i += hay[i..=last].iter().position(|&c| c == needle[0])?;
-        if &hay[i..i + n] == needle {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
-}
-
+/// Last occurrence of `needle` in `hay` (empty matches at `hay.len()`).
 pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.is_empty() {
         return Some(hay.len());
@@ -514,9 +475,7 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() > hay.len() {
         return None;
     }
-    (0..=hay.len() - needle.len())
-        .rev()
-        .find(|&i| &hay[i..i + needle.len()] == needle)
+    memchr::memmem::rfind(hay, needle)
 }
 
 #[unsafe(no_mangle)]
@@ -931,9 +890,58 @@ unsafe fn replace_limited(
         } else {
             text.len() as i64
         };
-        let out = replace_n_bytes(text, o, bytes(new), n.min(bound));
-        from_buf(out)
+        let n = n.min(bound);
+        if o.is_empty() {
+            return from_buf(replace_n_bytes(text, o, bytes(new), n));
+        }
+        replace_into_str(text, o, bytes(new), n)
     }
+}
+
+/// `replace_n_bytes` for a non-empty `old`, written straight into the result string: one allocation,
+/// and an unchanged text is a plain copy.
+fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> *mut StrObj {
+    let mut matches = 0usize;
+    let mut i = 0;
+    while (matches as i64) < n {
+        match find(&text[i..], old) {
+            None => break,
+            Some(p) => {
+                i += p + old.len();
+                matches += 1;
+            }
+        }
+    }
+    fill_replaced(text, old, new, matches)
+}
+
+/// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
+/// `matches` is the full count), written straight into one new string.
+fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> *mut StrObj {
+    if matches == 0 {
+        return from_bytes(text);
+    }
+    let len = text.len() - matches * old.len() + matches * new.len();
+    if len < 2 {
+        // from_bytes shares the empty and one-ASCII-byte strings.
+        return from_buf(replace_n_bytes(text, old, new, matches as i64));
+    }
+    let out = alloc_str(len);
+    // SAFETY: `out` has room for `len` bytes, exactly what the loop below writes.
+    unsafe {
+        let mut dst = data_ptr(out);
+        let mut i = 0;
+        for _ in 0..matches {
+            let p = find(&text[i..], old).unwrap_or(0);
+            core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
+            dst = dst.add(p);
+            core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+            dst = dst.add(new.len());
+            i += p + old.len();
+        }
+        core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, text.len() - i);
+    }
+    out
 }
 
 #[unsafe(no_mangle)]
@@ -997,7 +1005,11 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         if total > limit as i128 || total > MAX_BYTES as i128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        *out = from_buf(replace_n_bytes(text, o, n, -1));
+        *out = if o.is_empty() {
+            from_buf(replace_n_bytes(text, o, n, -1))
+        } else {
+            fill_replaced(text, o, n, count)
+        };
         STATUS_OK
     }
 }
@@ -1749,6 +1761,65 @@ mod tests {
             assert_eq!(find(&hay, &needle), naive, "{hay:?} {needle:?}");
         }
     }
+    #[test]
+    fn substring_search_matches_exhaustive_byte_model() {
+        // Include NUL and invalid UTF-8; these helpers also implement Bytes search.
+        fn words(max_len: usize) -> Vec<Vec<u8>> {
+            let mut words = vec![vec![]];
+            let mut level = vec![vec![]];
+            for _ in 0..max_len {
+                level = level
+                    .iter()
+                    .flat_map(|word| {
+                        [0, b'a', 0xff].map(|byte| {
+                            let mut next = word.clone();
+                            next.push(byte);
+                            next
+                        })
+                    })
+                    .collect();
+                words.extend(level.iter().cloned());
+            }
+            words
+        }
+        for hay in words(5) {
+            for needle in words(4) {
+                // Subslice searches exercise the offset handling used by split/replace.
+                for start in 0..=hay.len() {
+                    let text = &hay[start..];
+                    let (first, last) = if needle.is_empty() {
+                        (Some(0), Some(text.len()))
+                    } else {
+                        (
+                            text.windows(needle.len()).position(|w| w == needle),
+                            text.windows(needle.len()).rposition(|w| w == needle),
+                        )
+                    };
+                    assert_eq!(find(text, &needle), first, "{text:?} {needle:?}");
+                    assert_eq!(rfind(text, &needle), last, "{text:?} {needle:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn substring_search_repetitive_near_matches() {
+        for n in [4096, 65_536, 262_144] {
+            let mut hay = vec![b'a'; n];
+            let mut needle = vec![b'a'; n / 16];
+            let middle = needle.len() / 2;
+            needle[middle] = b'b';
+            assert_eq!(find(&hay, &needle), None);
+            assert_eq!(rfind(&hay, &needle), None);
+            hay.extend_from_slice(&needle);
+            assert_eq!(find(&hay, &needle), Some(n));
+            assert_eq!(rfind(&hay, &needle), Some(n));
+            hay[..needle.len()].copy_from_slice(&needle);
+            assert_eq!(find(&hay, &needle), Some(0));
+            assert_eq!(rfind(&hay, &needle), Some(n));
+        }
+    }
+
     use crate::testutil;
     use std::string::String as S;
 

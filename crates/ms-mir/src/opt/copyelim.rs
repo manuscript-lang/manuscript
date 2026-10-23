@@ -16,7 +16,7 @@ pub fn run(m: &mut Module) -> bool {
     for fi in 0..m.funcs.len() {
         changed |= run_func(m, fi);
         changed |= move_dead_sources(&mut m.funcs[fi]);
-        changed |= borrow_closure_copies(m, fi);
+        changed |= borrow_local_copies(m, fi);
         changed |= borrow_str_copies_across_blocks(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
@@ -85,11 +85,12 @@ fn move_dead_sources(f: &mut Func) -> bool {
     true
 }
 
-/// Removes `c = copy v; ...; drop c` for a closure `v` that the instructions in between only
-/// borrow. Closures are immutable, so the copy only exists to hold a reference count; `v` is
-/// live across the whole span because nothing in it consumes `v`. This is the shape of calling a
-/// closure held in a variable, which would otherwise count a reference up and down per call.
-fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
+/// Removes `c = copy v; ...; drop c` when the span only borrows the copy and its
+/// source stays alive. Composite values additionally require a span without writes
+/// that could change or release a projection's owner. String length may cache its
+/// result, but cannot release or replace data. This includes read-only iteration
+/// over a list of records, which otherwise copies every record on every visit.
+fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
@@ -118,7 +119,13 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
             let v = inst.args[0];
             let kind = m.types.kind(f.ty(v));
             let is_str = matches!(kind, TyKind::Str);
-            if !(matches!(kind, TyKind::Fn(..)) || is_str) || alias[v.index()].is_some() {
+            let composite = matches!(
+                kind,
+                TyKind::Rec(_) | TyKind::Alt(_) | TyKind::Opt(_) | TyKind::List(_) | TyKind::Bytes
+            );
+            if !(matches!(kind, TyKind::Fn(..)) || is_str || composite)
+                || alias[v.index()].is_some()
+            {
                 continue;
             }
             let Some(j) = b.insts[i + 1..]
@@ -132,6 +139,14 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
             if is_str && !str_source_stable(m, f, &defs, v, span) {
                 continue;
             }
+            if composite
+                && span.iter().any(|n| {
+                    let e = n.op.info().effects;
+                    (e.writes && n.op != Op::StrLen) || (e.rc && n.op != Op::Copy)
+                })
+            {
+                continue;
+            }
             let c_uses = span
                 .iter()
                 .map(|n| n.args.iter().filter(|a| **a == c).count() as u32)
@@ -143,7 +158,7 @@ fn borrow_closure_copies(m: &mut Module, fi: usize) -> bool {
                 n.args
                     .iter()
                     .zip(arg_modes(m, n))
-                    .any(|(a, mode)| *a == v && mode == Mode::Own)
+                    .any(|(a, mode)| (*a == v || *a == c) && mode != Mode::Borrow)
             });
             if consumed {
                 continue;

@@ -71,6 +71,7 @@ test "records alternatives and collections convert":
         )
     )
     (try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
+
     let absent: Optional[Int] = none
     let present: Optional[Int] = some(3)
     let result: Result[Int, TextError] = error(TextError("failed"))
@@ -78,20 +79,23 @@ test "records alternatives and collections convert":
     (try check(value: present.to_string(), expected: "Optional.some(3)"))
     (
         try check(
-            value: result.to_string(),
-            expected: "Result.error(TextError(text: failed))"
+            value: result.to_string(), expected: "Result.error(TextError(text: failed))"
         )
     )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
     (try check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]"))
+
     let empty: List[Int] = []
     (try check(value: empty.to_string(), expected: "[]"))
+
     var map = Map[String, Int]()
     map.add(key: "b", value: 2)
     map.add(key: "a", value: 1)
     (try check(value: map.to_string(), expected: "Map(b: 2, a: 1)"))
+
     let set = Set[Int]([2, 1])
     (try check(value: set.to_string(), expected: "Set(2, 1)"))
+
     let bytes = Bytes([0, 65, 255])
     (try check(value: bytes.to_string(), expected: "Bytes(0, 65, 255)"))
     (
@@ -106,13 +110,16 @@ test "generics views bound methods functions and resources":
     (try check(value: stringify(person), expected: person.to_string()))
     (try check(value: interpolate(person), expected: person.to_string()))
     (try check(value: bound_stringify(person), expected: person.to_string()))
+
     let view = Named(person)
     (try check(value: view.to_string(), expected: person.to_string()))
     (try check(value: "{view}", expected: person.to_string()))
+
     let convert: fn() String = view.to_string
     (try check(value: convert(), expected: person.to_string()))
     (try check(value: answer.to_string(), expected: "[function]"))
     (try check(value: "{answer}", expected: "[function]"))
+
     var queue = Queue[Int](1)
     (try check(value: queue.to_string(), expected: "[object]"))
     (try check(value: "{queue}", expected: "[object]"))
@@ -125,6 +132,7 @@ test "interpolation and bound conversion evaluate each receiver once":
             expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
         )
     )
+
     let convert = next(var state).to_string
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))
     (try check(value: convert(), expected: "Person(age: 3, name: Ada)"))

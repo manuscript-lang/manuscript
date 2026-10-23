@@ -13,22 +13,31 @@ export fn main() Int:
         say("gamma".trim())
     else:
         say(("42" + "  padded  "))
+
     let f1 = 119.25
     say("f1 = {f1}")
+
     let b2 = false
     say("b2 = {b2}")
+
     let i3 = ((-8) - (182996 / (-(-26))))
     say("i3 = {i3}")
+
     let s4 = ("{(i3 % i3)}:" + "brace\{s\}".trim()).replace("brace\{s\}", "ms")
     say("s4 = [{s4}]")
+
     let s5 = s4.clone()
     say("s5 = [{s5}]")
+
     let b6 = ((-20) < ((4361 - (-26)) + ((-17) + i3)))
     say("b6 = {b6}")
+
     let s7 = "ms"
     say("s7 = [{s7}]")
+
     let i8 = 323076
     say("i8 = {i8}")
+
     let b9 = ((s7 + "delta").replace(s4, s5) == "x")
     say("b9 = {b9}")
     return 0

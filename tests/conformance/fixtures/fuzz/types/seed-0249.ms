@@ -11,19 +11,26 @@ fn say(text: String) Unit:
 export fn main() Int:
     let f1 = (225.681 + ((809.25 + 261.169) / 867.637))
     say("f1 = {f1}")
+
     let f2 = 0.0
     say("f2 = {f2}")
+
     let i3 = ((-903249) * (-22))
     say("i3 = {i3}")
+
     let i4 = (((14 - (-82637)) * i3) + (i3 / (-17)))
     say("i4 = {i4}")
+
     let b5 = ("back\\slash".trim() == "line\nbreak")
     say("b5 = {b5}")
+
     if ((true and false) or (true and true)):
         say("quote\"d".trim())
     else:
         say("delta".upper())
+
     let i6 = (103596 - i4)
     say("i6 = {i6}")
+
     let bad = 1 and 2
     return 0

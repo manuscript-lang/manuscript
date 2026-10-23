@@ -11,6 +11,23 @@ use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 use std::rc::Rc;
 
+/// Captures use environment indices, never SSA values from the enclosing function.
+pub(crate) enum LambdaCapture {
+    Local(ct::BindingRef, usize),
+    Alias {
+        binding: ct::BindingRef,
+        root: ct::BindingRef,
+        slot: usize,
+        steps: Vec<CapturedStep>,
+    },
+}
+
+pub(crate) enum CapturedStep {
+    Field(ct::Name),
+    Index(usize),
+    Key(usize),
+}
+
 impl FnLower<'_> {
     /// A lambda: captures are copied into the closure object.
     pub fn lambda(&mut self, e: &Expr) -> Result<Val, Error> {
@@ -24,8 +41,16 @@ impl FnLower<'_> {
         };
         let mut cap_tys = Vec::new();
         let mut cap_vals = Vec::new();
+        let mut saved = Vec::new();
         let changed = lambda_changes(self, lam, &captures);
         for b in &captures {
+            if changed.contains(&b.uid)
+                && let Some(alias) = self.aliases.get(&b.uid).cloned()
+            {
+                saved.push(self.capture_alias(b, alias, &mut cap_tys, &mut cap_vals)?);
+                continue;
+            }
+            saved.push(LambdaCapture::Local(b.clone(), cap_vals.len()));
             if changed.contains(&b.uid) {
                 // The closure changes this variable: it shares the variable's storage.
                 let slot = self
@@ -64,7 +89,7 @@ impl FnLower<'_> {
                 expr: e.clone(),
                 hir: self.hir.clone(),
                 subst: self.subst.clone(),
-                captures,
+                captures: saved,
             })),
         });
         let v = self
@@ -72,6 +97,50 @@ impl FnLower<'_> {
             .emit(Op::ClosureNew, &cap_vals, Imm::Func(id), Some(fty))
             .expect("closure");
         Ok(Val { v, own: true })
+    }
+
+    pub(crate) fn capture_alias(
+        &mut self,
+        b: &ct::BindingRef,
+        alias: crate::alias::Alias,
+        cap_tys: &mut Vec<MTy>,
+        cap_vals: &mut Vec<Value>,
+    ) -> Result<LambdaCapture, Error> {
+        let slot = self
+            .local(&alias.root)?
+            .slot
+            .ok_or_else(|| Error::new("a captured mutable borrow needs its origin's storage"))?;
+        let index = cap_vals.len();
+        cap_tys.push(MTy::PTR);
+        cap_vals.push(slot);
+        let mut steps = Vec::new();
+        for step in alias.steps {
+            let (value, is_key) = match step {
+                crate::alias::AStep::Field(name) => {
+                    steps.push(CapturedStep::Field(name));
+                    continue;
+                }
+                crate::alias::AStep::Index(value) => (value, false),
+                crate::alias::AStep::Key(var) => (self.b.use_var(var), true),
+            };
+            let index = cap_vals.len();
+            cap_tys.push(self.ty_of(value));
+            cap_vals.push(self.owned(Val {
+                v: value,
+                own: false,
+            }));
+            steps.push(if is_key {
+                CapturedStep::Key(index)
+            } else {
+                CapturedStep::Index(index)
+            });
+        }
+        Ok(LambdaCapture::Alias {
+            binding: b.clone(),
+            root: alias.root,
+            slot: index,
+            steps,
+        })
     }
 
     /// A named source function used as a value: a closure forwarding to the instance.
@@ -338,6 +407,9 @@ impl FnLower<'_> {
 
     /// A method used as a value (`view.read`): a closure holding a copy of the receiver.
     pub fn bound_method(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
+        if let Some(value) = self.bound_alias_method(e, left, m)? {
+            return Ok(value);
+        }
         let fty = self.emty(e)?;
         let TyKind::Fn(params, ret) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
@@ -644,6 +716,9 @@ impl FnLower<'_> {
         left: &Expr,
         m: &ct::MethodRef,
     ) -> Result<Val, Error> {
+        if let Some(value) = self.bound_alias_method(e, left, m)? {
+            return Ok(value);
+        }
         let shared = if ms_check::effects::collection_mutation(m) {
             self.shared_receiver(left)
         } else {
@@ -1254,6 +1329,53 @@ pub(crate) fn build_lambda(
     Ok(())
 }
 
+pub(crate) fn restore_alias_capture(
+    fl: &mut FnLower<'_>,
+    capture: &LambdaCapture,
+    values: &[Value],
+) -> Result<bool, Error> {
+    let LambdaCapture::Alias {
+        binding,
+        root,
+        slot,
+        steps,
+    } = capture
+    else {
+        return Ok(false);
+    };
+    let ty = fl.mty(&root.ty)?;
+    let var = fl.b.declare_var(ty, Mode::Borrow);
+    fl.locals.insert(
+        root.uid,
+        crate::func::Local {
+            var,
+            ty,
+            slot: Some(values[*slot]),
+        },
+    );
+    let steps = steps
+        .iter()
+        .map(|step| match step {
+            CapturedStep::Field(name) => crate::alias::AStep::Field(*name),
+            CapturedStep::Index(index) => crate::alias::AStep::Index(values[*index]),
+            CapturedStep::Key(index) => {
+                let value = values[*index];
+                let var = fl.b.declare_var(fl.ty_of(value), Mode::Borrow);
+                fl.b.def_var(var, value);
+                crate::alias::AStep::Key(var)
+            }
+        })
+        .collect();
+    fl.aliases.insert(
+        binding.uid,
+        crate::alias::Alias {
+            root: root.clone(),
+            steps,
+        },
+    );
+    Ok(true)
+}
+
 fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) -> Result<(), Error> {
     let ExprKind::Lambda(lam) = &job.expr.kind else {
         return Err(Error::new("not a lambda"));
@@ -1262,10 +1384,23 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
     let env = params[0];
     let mutated = lambda_mutated(fl, lam);
     fl.slotted = slotted_in(fl, &lam.body);
-    for (i, (b, t)) in job.captures.iter().zip(captures).enumerate() {
-        let v =
+    let values: Vec<_> = captures
+        .iter()
+        .enumerate()
+        .map(|(i, t)| {
             fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(i as u32), Some(*t))
-                .expect("capture");
+                .expect("capture")
+        })
+        .collect();
+    for capture in &job.captures {
+        if restore_alias_capture(fl, capture, &values)? {
+            continue;
+        }
+        let LambdaCapture::Local(b, index) = capture else {
+            unreachable!()
+        };
+        let v = values[*index];
+        let t = &captures[*index];
         if mutated.contains(&b.uid) && *t == MTy::PTR && fl.mty(&b.ty).is_ok() {
             // The closure shares the variable's storage with its maker.
             let ty = fl.mty(&b.ty)?;
@@ -1323,7 +1458,7 @@ fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<u
     for d in lam.params.iter().filter_map(|p| p.default.as_ref()) {
         changed.extend(scan(ms_check::hir::Body::Expr(d)));
     }
-    changed
+    with_alias_origins(fl, &lam.body, changed)
 }
 
 /// The captured locals the lambda `lam` changes: they are shared by reference.
@@ -1364,5 +1499,74 @@ pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::H
         ms_check::hir::Body::Block(body),
         &fl.cx.mutated,
     ));
-    scan.found
+    // Resolve reborrows before any branch is lowered: their owning roots must
+    // have storage on every incoming path, not just where the closure is made.
+    with_alias_origins(fl, body, scan.found)
+}
+
+/// Mutation through a locally declared alias also changes its owning root.
+fn with_alias_origins(
+    fl: &FnLower<'_>,
+    body: &[Stmt],
+    mut changed: std::collections::HashSet<usize>,
+) -> std::collections::HashSet<usize> {
+    struct Origins<'a, 'b> {
+        fl: &'a FnLower<'b>,
+        roots: std::collections::HashMap<usize, usize>,
+    }
+    impl ms_syntax::visit::Visitor for Origins<'_, '_> {
+        fn stmt(&mut self, s: &Stmt) {
+            let (pattern, value) = match &s.kind {
+                StmtKind::Bind { pattern, value, .. } => (pattern, value),
+                StmtKind::If {
+                    binding: Some(pattern),
+                    cond,
+                    ..
+                } => (pattern, cond),
+                _ => return,
+            };
+            let Some(binding) = self.fl.hir.pattern_binding(pattern) else {
+                return;
+            };
+            if self.fl.cx.exclusive.contains(&binding.uid)
+                && let Some(root) = alias_origin(self.fl, value)
+            {
+                self.roots.insert(binding.uid, root);
+            }
+        }
+    }
+    let mut origins = Origins {
+        fl,
+        roots: Default::default(),
+    };
+    ms_syntax::visit::walk_block(&mut origins, body);
+    let mut pending: Vec<_> = changed.iter().copied().collect();
+    while let Some(uid) = pending.pop() {
+        if let Some(root) = origins.roots.get(&uid)
+            && changed.insert(*root)
+        {
+            pending.push(*root);
+        }
+    }
+    changed
+}
+
+fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
+    match &e.kind {
+        ExprKind::Name(_) => {
+            let ms_check::hir::Resolution::Local(b) = fl.hir.resolution(e) else {
+                return None;
+            };
+            Some(b.uid)
+        }
+        ExprKind::Member { left, .. } => alias_origin(fl, left),
+        ExprKind::Call { callee, args } => {
+            let source = match (&callee.kind, fl.hir.resolution(e)) {
+                (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,
+                _ => &args.first()?.value,
+            };
+            alias_origin(fl, source)
+        }
+        _ => crate::mutation::index_parts(&fl.hir, e).and_then(|(left, _)| alias_origin(fl, left)),
+    }
 }

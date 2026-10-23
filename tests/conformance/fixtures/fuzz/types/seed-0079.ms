@@ -11,17 +11,21 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let i1 = ((((-33) % (-11)) + ((-224942) * (-41))) - 9)
     say("i1 = {i1}")
+
     if "brace\{s\}".contains("beta"):
         say(("{i1}:" + "beta"))
     else:
         say(("beta" + "delta"))
+
     let bad = Map[Int, Int]().get(1, 2, 3)
     say("gcd(4638, 395) = {gcd(4638, 395)}")
+
     let i2 = (((i1 * i1) * (i1 % i1)) - ((i1 + i1) / i1))
     say("i2 = {i2}")
     return 0

@@ -12,9 +12,9 @@
         "message": "expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
         "position": {
           "file": "seed-0049.ms",
-          "line": 19,
+          "line": 21,
           "column": 19,
-          "offset": 514
+          "offset": 516
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "seed-0049.ms",
-          "line": 19,
+          "line": 21,
           "column": 22,
-          "offset": 517
+          "offset": 519
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0049.ms:19:19: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n<DIR>/seed-0049.ms:19:22: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0049.ms:21:19: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n<DIR>/seed-0049.ms:21:22: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -8,7 +8,6 @@ fn checked(value: Int) Int:
     # Prepare the next case.
     let third = second + 1
     let fourth = third + 1
-
     consume(fourth)
     consume(third)
 
@@ -16,18 +15,15 @@ fn checked(value: Int) Int:
         left = third
         right = fourth
     )
-
     return left + right
 
 test "setup and assertions":
     let actual = 3
     let expected = 3
-
     actual | try expect_equal(expected)
 
     let callback = fn(value: Int) Int:
         let result = value + 1
-
         return result
 
     callback(3) | try expect_equal(4)

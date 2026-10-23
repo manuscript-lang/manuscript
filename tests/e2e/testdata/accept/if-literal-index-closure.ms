@@ -32,20 +32,19 @@ test "literal match":
 
 test "indexed assignment":
     var xs = [1, 2, 3]
-
     xs[1] = 9
     xs[2] += 1
     expect_equal(xs, [1, 9, 4])
 
 test "optional wrap":
     let m: Optional[Int] = 5
-
     expect_equal(first_or(m), 5)
     expect_equal(first_or(maybe(3)), 3)
 
 test "closure mutates capture":
     var total = 0
     var box = Box(n: 1)
+
     let add = fn(x: Int) Unit:
         total += x
         box.n += x

@@ -13,19 +13,28 @@ export fn main() Int:
         say("naïve".trim())
     else:
         say("back\\slash".upper())
+
     let i1 = (-43)
     say("i1 = {i1}")
+
     let s2 = (("emoji 😀" + ("" + "alpha")) + "alpha".trim().lower())
     say("s2 = [{s2}]")
+
     let s3 = ("Tab\there" + s2)
     say("s3 = [{s3}]")
+
     if false:
         say(s3.trim())
     else:
         say("quote\"d".replace("42", "naïve"))
-    say("{(-(732761 * i1))} {((i1 + (-12)) + (i1 - i1))} {((-(732761 * i1)) < ((i1 + (-12)) + (i1 - i1)))} sum {(-(732761 * i1)) + ((i1 + (-12)) + (i1 - i1))}")
+
+    say(
+        "{(-(732761 * i1))} {((i1 + (-12)) + (i1 - i1))} {((-(732761 * i1)) < ((i1 + (-12)) + (i1 - i1)))} sum {(-(732761 * i1)) + ((i1 + (-12)) + (i1 - i1))}"
+    )
+
     let b4 = (((false and false) and false) and (not (977.885 < 6.5)))
     say("b4 = {b4}")
+
     let i5 = (((35 * i1) / 17) - 30)
     say("i5 = {i5}")
     return 0

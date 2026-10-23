@@ -11,9 +11,12 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [18, (-22), 20]
     say("l1 = {l1} len {l1.length()}")
+
     let bad = say
+
     if ((851.465 * 617.113) < (0.0 + 0.0)):
         say(("日本語" + "ms"))
     else:
         say("x".upper())
+
     return 0

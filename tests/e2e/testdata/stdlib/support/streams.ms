@@ -15,11 +15,9 @@ impl ReadStream for MemoryStream:
         if count <= 0: return error(IoError.InvalidInput)
 
         var end = self.offset + count
-
         if end > self.data.length(): end = self.data.length()
 
         let chunk = self.data.slice(self.offset, end).get().clone()
-
         self.offset = end
         return ok(chunk)
 

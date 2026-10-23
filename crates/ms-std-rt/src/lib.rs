@@ -16,7 +16,7 @@ use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
 use core::sync::atomic::{AtomicU8, Ordering};
-use ms_rt_abi::{STR_DATA_OFFSET, StrObj};
+use ms_rt_abi::{STATUS_FAILED, STR_DATA_OFFSET, StrObj};
 
 unsafe extern "C-unwind" {
     fn msrt_string_from_bytes(ptr: *const u8, len: usize) -> *mut StrObj;
@@ -356,6 +356,12 @@ static FAILURE: Failure = Failure(UnsafeCell::new(Vec::new()));
 pub fn record_failure(message: Vec<u8>) {
     // SAFETY: single-threaded runtime; no reference into FAILURE outlives a call.
     unsafe { *FAILURE.0.get() = message };
+}
+
+/// Records `message` and returns `STATUS_FAILED`.
+pub fn failed(message: &[u8]) -> u8 {
+    record_failure(message.to_vec());
+    STATUS_FAILED
 }
 
 /// A fresh string holding the most recently recorded failure text.

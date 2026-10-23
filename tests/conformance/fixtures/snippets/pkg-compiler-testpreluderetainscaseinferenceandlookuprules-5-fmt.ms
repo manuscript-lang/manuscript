@@ -3,5 +3,6 @@
 # conform: origin=pkg/compiler/prelude_test.go:16 TestPreludeRetainsCaseInferenceAndLookupRules
 type Other:
     case some(value: Int)
+
 fn f() Optional[Int]:
     return some(value: 1)

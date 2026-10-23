@@ -5,7 +5,6 @@ import {parse, stringify, YamlValue} from "@std/yaml.ms"
 
 fn yaml_doc(count: Int) String:
     var sb = StringBuilder()
-
     for i in range(0, count):
         sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
     return sb.freeze()
@@ -28,6 +27,7 @@ export fn bench_yaml() Unit:
 
             return 0
     )
+
     bench(
         "yaml.roundtrip",
         2000,

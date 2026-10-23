@@ -27,12 +27,14 @@ test "domain equality and hashing select interfaces":
     let b = Key(1, "second")
     try expect_equal(a, b)
     try expect_equal(a.hash(), b.hash())
+
     var values = Map[Key, String]()
     values.add(a.clone(), "a")
     values.add(b.clone(), "b")
     try expect_equal(values.length(), 1)
     try expect_equal(values.get(a), some("b"))
     try expect_false(not ([a.clone()].contains(b)))
+
     let view = Equal(Equal(a))
     try expect_false(not (view.equals(Equal(b))))
 
@@ -77,7 +79,9 @@ test "native compositions preserve Optional arguments for source implementations
     var stream = ReadStream(EchoReader(0))
     let omitted: Result[Optional[Bytes], IoError] = stream.read()
     try expect_equal(omitted, ok(some(Bytes([0]))))
+
     let supplied: Result[Optional[Bytes], IoError] = stream.read(8)
     try expect_equal(supplied, ok(some(Bytes([8]))))
+
     let line = read_line(stream)
     try expect_false(line.is_ok())

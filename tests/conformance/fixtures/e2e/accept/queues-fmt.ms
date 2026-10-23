@@ -29,6 +29,7 @@ test "a copy is an independent queue":
     (queue.dequeue() == missing and queue.peek() == missing) | try expect_true
     (queue.enqueue(3) and queue.enqueue(value: 4)) | try expect_true
     queue.enqueue(5) | try expect_false
+
     var copy = queue.clone()
     let first: Optional[Int] = some(3)
     let second: Optional[Int] = some(4)
@@ -42,10 +43,7 @@ test "a copy is an independent queue":
 
 test "queue elements include ordinary functions":
     var queue = Queue[fn() Int](1)
-    queue.enqueue(
-        fn():
-            return 7
-    )
+    queue.enqueue(fn(): return 7)
 
     match queue.dequeue():
         some(callback):

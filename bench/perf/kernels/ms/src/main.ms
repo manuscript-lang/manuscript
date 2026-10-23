@@ -31,7 +31,6 @@ fn sieve(n: Int) Int:
         i += 1
 
     var count = 0
-
     i = 2
 
     while i <= n:
@@ -66,7 +65,6 @@ fn advance(var bodies: List[Body], steps: Int) Float:
                 let dz = a.z - b.z
                 let d2 = dx * dx + dy * dy + dz * dz + 0.01
                 let mag = 0.01 / (d2 * d2)
-
                 a.vx -= dx * b.mass * mag
                 a.vy -= dy * b.mass * mag
                 a.vz -= dz * b.mass * mag
@@ -83,7 +81,6 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 
         while i < n:
             var a = bodies.get(i)
-
             a.x += 0.01 * a.vx
             a.y += 0.01 * a.vy
             a.z += 0.01 * a.vz
@@ -97,7 +94,6 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 
     while k < n:
         let a = bodies.get(k)
-
         e += a.mass * (a.vx * a.vx + a.vy * a.vy + a.vz * a.vz)
         k += 1
 
@@ -106,7 +102,6 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 fn cell(g: Grid, x: Int, y: Int) Int:
     let wx = (x + g.width) % g.width
     let wy = (y + g.height) % g.height
-
     return g.cells.get(wy * g.width + wx)
 
 fn neighbors(g: Grid, x: Int, y: Int) Int:
@@ -188,7 +183,6 @@ fn matmul(n: Int) Float:
         i += 1
 
     var total = 0.0
-
     i = 0
 
     while i < n:
@@ -260,7 +254,6 @@ fn wordfreq(n: Int) Int:
 
     while i < n:
         let k = (i * 7919) % 5003
-
         m.add(k, m.get(k).get(0) + 1)
         i += 1
 
@@ -269,11 +262,11 @@ fn wordfreq(n: Int) Int:
 fn timed(name: String, run: fn() Int) Unit:
     let t = clock().now()
     let r = run()
-
     say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 export fn main() Int:
     timed("sieve_5M", fn() Int: return sieve(5000000))
+
     timed(
         "nbody_200k",
         fn() Int:
@@ -284,9 +277,9 @@ export fn main() Int:
                 Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
                 Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5)
             ]
-
             return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get(0)
     )
+
     timed("life_128x128_50", fn() Int: return life(50))
     timed("matmul_200", fn() Int: return matmul(200).truncate_to_int().get(0))
     timed("trees_d16_x20", fn() Int: return trees(20))

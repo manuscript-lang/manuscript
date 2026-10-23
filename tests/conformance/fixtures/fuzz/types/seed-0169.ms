@@ -14,17 +14,22 @@ export fn main() Int:
         say("a".upper())
     else:
         say("delta".lower())
+
     let i1 = ((-5) + 3)
     say("i1 = {i1}")
+
     let bad: String = 5
     let s2 = "quote\"d"
     say("s2 = [{s2}]")
+
     var acc3 = 0
     for i in range(0, 4):
         acc3 += i * 1
     say("acc3 = {acc3}")
+
     let b4 = ((623838 != i1) or ((402.088 / 216.797) != (126.436 * 289.567)))
     say("b4 = {b4}")
+
     let s5 = s2
     say("s5 = [{s5}]")
     return 0

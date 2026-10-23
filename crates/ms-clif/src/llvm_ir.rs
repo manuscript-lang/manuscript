@@ -211,6 +211,26 @@ fn attr(t: Type) -> &'static str {
     if t == types::I8 { " zeroext" } else { "" }
 }
 
+/// These runtime entry points terminate or unwind; none returns to its caller.
+fn fault_function(name: &str) -> bool {
+    matches!(
+        name,
+        "msrt_fault"
+            | "msrt_fault_string"
+            | "msrt_fault_depth"
+            | "msrt_fault_unwrap_none"
+            | "msrt_fault_result_get"
+            | "msrt_fault_result_err"
+            | "msrt_fault_int_overflow"
+            | "msrt_fault_div_zero"
+            | "msrt_fault_rem_zero"
+            | "msrt_fault_div_overflow"
+            | "msrt_index_fault"
+            | "msrt_list_index_fault"
+            | "msrt_cancelled"
+    )
+}
+
 fn ret_ty(rets: &[ir::AbiParam]) -> String {
     match rets {
         [] => "void".into(),
@@ -572,10 +592,7 @@ impl<'a> Tr<'a> {
             }
             InstructionData::Call { args, func_ref, .. } => {
                 let name = self.callee(func_ref);
-                if name.starts_with("msrt_fault")
-                    || name.starts_with("msrt_index_fault")
-                    || name == "msrt_cancelled"
-                {
+                if fault_function(&name) {
                     // Keeps fault sites distinct, so LLVM neither merges them (which drops the
                     // line of a fault in a trace) nor hoists them.
                     self.sites += 1;
@@ -600,8 +617,15 @@ impl<'a> Tr<'a> {
             }
             InstructionData::Brif { arg, blocks, .. } => {
                 let c = self.cond_i1(arg);
+                let pool = &self.f.dfg.value_lists;
+                let cold = blocks.map(|b| self.f.layout.is_cold(b.block(pool)));
                 let (t, e) = (self.target(blocks[0]), self.target(blocks[1]));
-                self.line(format!("br i1 {c}, label %{t}, label %{e}"));
+                let weights = match cold {
+                    [true, false] => ", !prof !{!\"branch_weights\", i32 1, i32 2000}",
+                    [false, true] => ", !prof !{!\"branch_weights\", i32 2000, i32 1}",
+                    _ => "",
+                };
+                self.line(format!("br i1 {c}, label %{t}, label %{e}{weights}"));
             }
             InstructionData::BranchTable { arg, table, .. } => {
                 let jt = &self.f.stencil.dfg.jump_tables[table];
@@ -654,8 +678,13 @@ impl<'a> Tr<'a> {
         let data = self.ext_func(fr);
         let name = self.name_of(&data.name);
         let sig = &self.f.dfg.signatures[data.signature];
+        let attrs = if fault_function(&name) {
+            " cold noreturn"
+        } else {
+            ""
+        };
         let decl = format!(
-            "declare {} @\"{name}\"({})",
+            "declare {} @\"{name}\"({}){attrs}",
             ret_ty(&sig.returns),
             sig_params(sig)
         );
@@ -1057,5 +1086,163 @@ impl LlvmModule {
             let _ = writeln!(s, "!{i} = {n}");
         }
         s
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cranelift_codegen::ir::{AbiParam, InstBuilder, Signature, TrapCode, UserFuncName};
+    use cranelift_codegen::isa::CallConv;
+    use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+    use std::process::Command;
+
+    struct TestSymbols;
+
+    impl Symbols for TestSymbols {
+        fn symbol(&self, _: u32, _: u32) -> String {
+            "msrt_fault_int_overflow".into()
+        }
+        fn loc(&self, _: u32) -> Option<(u32, u32, u32)> {
+            None
+        }
+        fn scope(&self, _: u32) -> Option<(String, u32, u32, u32)> {
+            None
+        }
+    }
+
+    fn checked_add(cold_first: bool) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::I64));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let sigref = f.import_signature(Signature::new(CallConv::SystemV));
+        let name = f.declare_imported_user_function(ir::UserExternalName::new(1, 0));
+        let fault = f.import_function(ExtFuncData {
+            name: ExternalName::User(name),
+            signature: sigref,
+            colocated: false,
+            patchable: false,
+        });
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        let bad = b.create_block();
+        let good = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let args = b.block_params(entry).to_vec();
+        let (sum, overflow) = b.ins().sadd_overflow(args[0], args[1]);
+        b.set_cold_block(bad);
+        if cold_first {
+            b.ins().brif(overflow, bad, &[], good, &[]);
+        } else {
+            let fits = b.ins().bxor_imm_s(overflow, 1);
+            b.ins().brif(fits, good, &[], bad, &[]);
+        }
+        b.switch_to_block(bad);
+        b.ins().call(fault, &[]);
+        b.ins().trap(TrapCode::unwrap_user(1));
+        b.switch_to_block(good);
+        b.ins().return_(&[sum]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    fn module(cold_first: bool, triple: &str) -> String {
+        let f = checked_add(cold_first);
+        let mut m = LlvmModule::new(vec![Some("cold.ms".into())], ".".into());
+        m.add_function("checked_add", "checked_add", (0, 1), &f, &TestSymbols, true);
+        m.finish(triple, &HashSet::new(), false)
+    }
+
+    #[test]
+    fn cold_edges_and_fault_declarations_keep_their_semantics() {
+        for cold_first in [true, false] {
+            let text = module(cold_first, "x86_64-unknown-linux-gnu");
+            let weights = if cold_first {
+                "i32 1, i32 2000"
+            } else {
+                "i32 2000, i32 1"
+            };
+            assert!(text.contains(weights), "{text}");
+            assert!(
+                text.contains("declare void @\"msrt_fault_int_overflow\"() cold noreturn"),
+                "{text}"
+            );
+            assert!(
+                text.contains("asm sideeffect"),
+                "fault-site identity lost: {text}"
+            );
+        }
+        assert!(fault_function("msrt_list_index_fault"));
+        assert!(!fault_function("msrt_string_concat"));
+        assert!(!fault_function("msrt_fault_user_function#1"));
+    }
+
+    #[test]
+    fn checked_arithmetic_llvm_generates_objects_for_all_supported_targets() {
+        let Some(tools) = crate::link::llvm_tools().unwrap() else {
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("ms-llvm-targets-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let targets: [(&str, &[u8]); 6] = [
+            ("x86_64-unknown-linux-gnu", b"\x7fELF"),
+            ("aarch64-unknown-linux-gnu", b"\x7fELF"),
+            ("x86_64-apple-darwin", b"\xcf\xfa\xed\xfe"),
+            ("aarch64-apple-darwin", b"\xcf\xfa\xed\xfe"),
+            ("x86_64-pc-windows-gnu", b"\x64\x86"),
+            ("aarch64-pc-windows-gnu", b"\x64\xaa"),
+        ];
+        for (triple, magic) in targets {
+            for cold_first in [true, false] {
+                let stem = format!("{triple}-{cold_first}");
+                let ll = dir.join(format!("{stem}.ll"));
+                let bc = dir.join(format!("{stem}.bc"));
+                let object = dir.join(format!("{stem}.o"));
+                std::fs::write(&ll, module(cold_first, triple)).unwrap();
+                for (tool, args) in [
+                    (
+                        "opt",
+                        vec![
+                            "-passes=default<O3>".into(),
+                            "-verify-each".into(),
+                            ll.as_os_str().to_owned(),
+                            "-o".into(),
+                            bc.as_os_str().to_owned(),
+                        ],
+                    ),
+                    (
+                        "llc",
+                        vec![
+                            "-O3".into(),
+                            "-filetype=obj".into(),
+                            bc.as_os_str().to_owned(),
+                            "-o".into(),
+                            object.as_os_str().to_owned(),
+                        ],
+                    ),
+                ] {
+                    let out = Command::new(tools.join(tool)).args(args).output().unwrap();
+                    assert!(
+                        out.status.success(),
+                        "{triple} {tool}: {}",
+                        String::from_utf8_lossy(&out.stderr)
+                    );
+                    assert!(!String::from_utf8_lossy(&out.stderr).contains("invalid debug info"));
+                }
+                assert!(
+                    std::fs::read(&object).unwrap().starts_with(magic),
+                    "{triple}"
+                );
+            }
+        }
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

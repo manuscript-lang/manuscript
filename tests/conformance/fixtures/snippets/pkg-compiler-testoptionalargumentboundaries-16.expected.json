@@ -12,16 +12,16 @@
         "message": "duplicate argument value; pass each argument once",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-16.ms",
-          "line": 5,
+          "line": 6,
           "column": 22,
-          "offset": 213
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-16.ms:5:22: type: duplicate argument value; pass each argument once\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-16.ms:6:22: type: duplicate argument value; pass each argument once\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

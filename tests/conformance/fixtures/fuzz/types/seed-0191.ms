@@ -11,9 +11,13 @@ fn say(text: String) Unit:
 export fn main() Int:
     let s1 = "Tab\there"
     say("s1 = [{s1}]")
+
     let l2 = [26, (-30), (-12)]
     say("l2 = {l2} len {l2.length()}")
-    say("{(s1.length() + 7)} {s1.length()} {((s1.length() + 7) < s1.length())} sum {(s1.length() + 7) + s1.length()}")
+    say(
+        "{(s1.length() + 7)} {s1.length()} {((s1.length() + 7) < s1.length())} sum {(s1.length() + 7) + s1.length()}"
+    )
+
     let bad = 1 and 2
     let i3 = ((((-5) + (-895229)) * s1.length()) * (-1))
     say("i3 = {i3}")

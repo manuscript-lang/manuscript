@@ -11,36 +11,55 @@ fn say(text: String) Unit:
 export fn main() Int:
     let l1 = [19]
     say("l1 = {l1} len {l1.length()}")
+
     var acc2 = 0
     var stepacc2 = 0
+
     while stepacc2 < 2:
         stepacc2 += 1
         acc2 += stepacc2 * stepacc2 + (-3)
+
     say("acc2 = {acc2}")
+
     let i3 = ((29 - 39) - (((-103227) - (-9)) - ((-37) + (-8))))
     say("i3 = {i3}")
+
     let f4 = (0.0 + 660.25)
     say("f4 = {f4}")
+
     let i5 = 32
     say("i5 = {i5}")
+
     let f6 = 1.5
     say("f6 = {f6}")
+
     let l7 = [(-11), 18, 0, 9]
     say("l7 = {l7} len {l7.length()}")
-    let b8 = ("{(21 + i3)}:" + "line\nbreak").replace("MiXeD CaSe", "beta").contains("x")
+
+    let b8 = (
+        ("{(21 + i3)}:" + "line\nbreak")
+        .replace("MiXeD CaSe", "beta")
+        .contains("x")
+    )
     say("b8 = {b8}")
+
     let l9 = [22, (-21), (-16), 11, (-3)]
     say("l9 = {l9} len {l9.length()}")
     say("{i3} {(i5 / (i3 * i5))} {(i3 < (i5 / (i3 * i5)))} sum {i3 + (i5 / (i3 * i5))}")
+
     var acc10 = 0
+
     for x in l7:
         if x % 2 == 0:
             acc10 += x
         else:
             acc10 -= 1
+
     say("acc10 = {acc10}")
+
     let l11 = l1.map(fn(x): x * 9)
     say("l11 = {l11} len {l11.length()}")
+
     let i12 = (((i3 / 36) + i5) + i5)
     say("i12 = {i12}")
     return 0

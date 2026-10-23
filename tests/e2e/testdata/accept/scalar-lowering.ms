@@ -29,7 +29,6 @@ fn returning_match() Bool:
 
 test "primitive equality captures operands once in order":
     var counter = Counter()
-
     try expect_not_equal(mark(var counter, 1), mark(var counter, 2))
     try expect_equal(counter.value, 12)
 
@@ -39,12 +38,10 @@ test "primitive equality captures operands once in order":
             original = 2
             value
         none: 0
-
     try expect_false(not captured or original != 2)
 
     let skipped = false and mark(var counter, 3) == 3
     let skipped_again = true or mark(var counter, 4) == 4
-
     try expect_false((skipped or not skipped_again or counter.value != 12))
     try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
     try expect_false(not generic(left: true, right: true))
@@ -75,7 +72,6 @@ fn defaulted(
 fn nested(marker: String) Unit:
     let callback = fn() Unit:
         with resource = Resource(marker.clone()): return
-
     callback()
 
 fn failed() Result[Int, TextError]: error(TextError("expected"))
@@ -83,19 +79,16 @@ fn failed() Result[Int, TextError]: error(TextError("expected"))
 fn propagate(marker: String) Result[Int, TextError]:
     with resource = Resource(marker.clone()):
         let value = try failed()
-
         return ok(value)
 
     return ok(0)
 
 fn bare_propagate() Result[Int, TextError]:
     let value = try failed()
-
     return ok(value)
 
 fn equality_propagate() Result[Bool, TextError]:
     let matches = (try failed()) == 0
-
     return ok(matches)
 
 fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
@@ -104,13 +97,12 @@ fn nested_results(marker: String) Result[Int, TextError]:
     let child = fn() Result[Bool, TextError]:
         with resource = Resource(marker.clone()):
             let value = try bool_failed()
-
             return ok(value)
 
         return ok(false)
+
     let _ignored = child()
     let value = try failed()
-
     return ok(value)
 
 fn statement_match_try(marker: String) Result[Int, TextError]:
@@ -118,7 +110,6 @@ fn statement_match_try(marker: String) Result[Int, TextError]:
         some(_):
             with resource = Resource(marker.clone()):
                 let value = try failed()
-
                 return ok(value)
         none: return ok(0)
 
@@ -145,7 +136,6 @@ test "combined lowering retains callable state and try boundaries":
     with temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
         let dir = temporary.path()
         let expected = Result[Int, TextError].error(TextError("expected"))
-
         try expect_equal(nested_results("{dir}/nested"), expected)
         try expect_true(closed("{dir}/nested"))
         try expect_equal(statement_match_try("{dir}/statement"), expected)
@@ -158,7 +148,6 @@ test "cleanup remains owned by its source callable":
 
     with temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
         let dir = temporary.path()
-
         try expect_equal(conditional("{dir}/skipped", take: false), 8)
         try expect_false(closed("{dir}/skipped"))
         try expect_equal(conditional("{dir}/taken", take: true), 7)

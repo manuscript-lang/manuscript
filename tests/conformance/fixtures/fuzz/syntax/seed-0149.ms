@@ -11,16 +11,21 @@ fn say(text: String) Unit:
 export fn main() Int:
     let i1 = ((-5) - ((6 + (-29)) % ((-9223372036854775807) / 46)))
     say("i1 = {i1}")
+
     let i2 = (-38)
     say("i2 = {i2}")
+
     if ((true or false) and "a".is_empty()):
         say("naïve")
     else:
         say(("x" + "brace\{s\}"))
+
     let b3 = true
     say("b3 = {b3}")
+
     if true:
         say("back\\slash")
     else:
         say("naïve".upper())
+
     return 0

@@ -18,6 +18,7 @@ test "list elements read before a later match assigns them":
         x
     ]
     try expect_equal(items, [1, 5, 50])
+
     let texts = [
         y,
         match some("b"):

@@ -16,8 +16,10 @@ test "big integers exceed machine range without losing precision":
 test "big integers validate digits budgets and zero divisors":
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
+
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
     try expect_equal(parse("123", 10, 2), limited)
+
     let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
     try expect_equal(parse("1_0", 10), malformed)
 
@@ -51,12 +53,13 @@ test "big integers support sign pow shifts and conversion":
     try expect_equal((try five.shift_left(3)).to_int(), some(40))
     try expect_equal((try from_int(-5).shift_right(1)).to_int(), some(-3))
     try expect_equal(
-        (try from_int(1).shift_left(70)).to_float(),
-        1180591620717411303424.0
+        (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
     )
+
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
     try expect_equal(five.pow(-1), invalid)
     try expect_equal(five.shift_left(-1), invalid)
+
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
     try expect_equal(from_int(2).pow(100000000), limited)
     try expect_equal(five.shift_left(100000000), limited)

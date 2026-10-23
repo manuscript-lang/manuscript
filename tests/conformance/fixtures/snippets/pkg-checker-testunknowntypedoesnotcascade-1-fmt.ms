@@ -3,6 +3,7 @@
 # conform: origin=pkg/checker/defaults_test.go:89 TestUnknownTypeDoesNotCascade
 fn peek() Missing:
     return 0
+
 fn f() Int:
     match peek():
         some(x):

@@ -4,5 +4,6 @@
 type A:
     case End
     case Next(value: B)
+
 type B:
     a: A

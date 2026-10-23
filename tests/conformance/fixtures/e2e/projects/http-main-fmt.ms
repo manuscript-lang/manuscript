@@ -12,13 +12,8 @@ export fn main() Int:
     let serve = network().serve
 
     if let acquired = serve(
-        address: "127.0.0.1:0",
-        handler: handle,
-        max_requests: 2,
-        max_body_bytes: 1024,
-        max_response_bytes: 1024,
-        timeout: 2.seconds,
-        grace: 0.seconds
+        address: "127.0.0.1:0", handler: handle, max_requests: 2, max_body_bytes: 1024,
+        max_response_bytes: 1024, timeout: 2.seconds, grace: 0.seconds
     ):
         with server = acquired:
             if stdout().write("{server.address()}\n").is_error():

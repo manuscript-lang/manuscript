@@ -11,9 +11,7 @@ fn entries(count: Int) List[ArchiveEntry]:
     for i in range(0, count):
         out.append(
             ArchiveEntry(
-                "dir/file{i}.txt",
-                "contents of file {i}".to_bytes(),
-                directory: false
+                "dir/file{i}.txt", "contents of file {i}".to_bytes(), directory: false
             )
         )
     return out
@@ -26,6 +24,7 @@ fn sse_stream(count: Int) Bytes:
 
 fn bench_archive() Unit:
     let list = entries(2000)
+
     bench(
         "archive.zip_pack",
         2000,
@@ -35,6 +34,7 @@ fn bench_archive() Unit:
 
             return 0
     )
+
     bench(
         "archive.tar_pack",
         2000,
@@ -44,6 +44,7 @@ fn bench_archive() Unit:
 
             return 0
     )
+
     if let packed = pack(list, "zip"):
         bench_unpack(packed)
 
@@ -60,6 +61,7 @@ fn bench_unpack(packed: Bytes) Unit:
 
 fn bench_sse() Unit:
     let stream = sse_stream(2000)
+
     bench(
         "sse.feed",
         2000,
@@ -79,6 +81,7 @@ fn feed_all(d: SseDecoder, stream: Bytes) Int:
 export fn bench_host() Unit:
     bench_archive()
     bench_sse()
+
     bench(
         "time.timestamp_to_string",
         20000,
@@ -89,6 +92,7 @@ export fn bench_host() Unit:
                     n += t.to_string().length()
             return n
     )
+
     bench(
         "random.uuid_v4",
         20000,

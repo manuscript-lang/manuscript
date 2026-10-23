@@ -13,6 +13,7 @@ export fn main() Int:
         say(("gamma" + "naïve"))
     else:
         say(("  padded  " + "hello world"))
+
     let bad: Bool = 1
     let b1 = (((-(-46)) >= 20654) and ("ms".trim() != ("brace\{s\}" + "ms")))
     say("b1 = {b1}")

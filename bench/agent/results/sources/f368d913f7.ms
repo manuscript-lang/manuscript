@@ -93,7 +93,6 @@ fn parse_term(tokens: List[Token], pos: Int) Parsed:
     var value = 0
     var next = 0
     var div_zero = false
-
     value = first.value
     next = first.next
     div_zero = first.div_zero
@@ -126,7 +125,6 @@ fn parse_expr(tokens: List[Token], pos: Int) Parsed:
     var value = 0
     var next = 0
     var div_zero = false
-
     value = first.value
     next = first.next
     div_zero = first.div_zero

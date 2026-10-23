@@ -11,37 +11,50 @@ fn say(text: String) Unit:
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
         return a
+
     return gcd(b, a % b)
 
 export fn main() Int:
     let i1 = (((13 * 405015) + (0 + 23)) + (-47))
     say("i1 = {i1}")
+
     let i2 = i1
     say("i2 = {i2}")
     say("gcd(238, 1857) = {gcd(238, 1857)}")
+
     let l3 = [(-16)]
     say("l3 = {l3} len {l3.length()}")
+
     let i4 = i1
     say("i4 = {i4}")
+
     let l5 = l3.concat(l3)
     say("l5 = {l5} len {l5.length()}")
+
     let b6 = (((not true) or (true and false)) and true)
     say("b6 = {b6}")
+
     let i7 = ((((-6) / i1) + ((-39) % i4)) * i1)
     say("i7 = {i7}")
     say("{l5.get(1)} {l3.get(0)} {(l5.get(1) < l3.get(0))} sum {l5.get(1) + l3.get(0)}")
+
     var acc8 = 0
+
     for x in l5:
         if x % 2 == 0:
             acc8 += x
         else:
             acc8 -= 1
+
     say("acc8 = {acc8}")
+
     let b9 = (((8.0e-1 * 500.178) + 836.907) > (495.111 - (21.552 + 607.030)))
     say("b9 = {b9}")
     say("gcd(1873, 3508) = {gcd(1873, 3508)}")
+
     let i10 = (((i2 + 25) % 816916) / (16 + ((-14) * (-33))))
     say("i10 = {i10}")
+
     let s11 = "  padded  "
     say("s11 = [{s11}]")
     return 0
