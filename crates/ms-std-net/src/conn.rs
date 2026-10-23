@@ -7,7 +7,7 @@ use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use socket2::Socket;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, UdpSocket};
 
@@ -312,6 +312,27 @@ impl Connection {
         }
     }
 
+    /// Writes what the socket takes without waiting; the count accepted. For a task that must
+    /// not park on the descriptor because another task already waits on it.
+    pub fn write_nowait(&self, data: &[u8]) -> Result<usize, IoErr> {
+        if self.closed.get() {
+            return Err(IoErr::Closed);
+        }
+        let mut done = 0;
+        while done < data.len() {
+            match self.io.write(&data[done..]) {
+                Step::Done(n) if n > 0 => done += n,
+                Step::Err(e) => return Err(self.failure(DriveError::Io(e))),
+                _ => break,
+            }
+        }
+        // TLS buffers records; push out what the socket takes.
+        if let Step::Err(e) = self.io.flush() {
+            return Err(self.failure(DriveError::Io(e)));
+        }
+        Ok(done)
+    }
+
     /// Whether an idle connection can no longer carry a new exchange: the peer
     /// closed it, sent unexpected bytes, or it was closed here.
     pub fn is_stale(&self) -> bool {
@@ -551,7 +572,8 @@ pub struct Datagrams {
     sock: UdpSocket,
     closed: Cell<bool>,
     address: String,
-    scratch: RefCell<Vec<u8>>,
+    /// Taken out for a receive, which can park; see ABI.md.
+    scratch: Cell<Vec<u8>>,
 }
 
 impl Resource for Datagrams {
@@ -568,7 +590,7 @@ impl Datagrams {
             sock,
             closed: Cell::new(false),
             address,
-            scratch: RefCell::new(Vec::new()),
+            scratch: Cell::new(Vec::new()),
         }
     }
 
@@ -601,11 +623,22 @@ impl Datagrams {
             return Err(NetErr::InvalidInput);
         }
         let max = max as usize;
-        let mut buf = self.scratch.borrow_mut();
+        let mut buf = self.scratch.take();
         buf.resize(max + 1, 0);
+        let got = self.receive_into(&mut buf, max, deadline);
+        self.scratch.set(buf);
+        got
+    }
+
+    fn receive_into(
+        &self,
+        buf: &mut [u8],
+        max: usize,
+        deadline: Deadline,
+    ) -> Result<Datagram, NetErr> {
         loop {
             rt::check_cancel();
-            match self.sock.recv_from(&mut buf) {
+            match self.sock.recv_from(buf) {
                 Ok((n, from)) => {
                     if n > max {
                         return Err(NetErr::LimitExceeded);

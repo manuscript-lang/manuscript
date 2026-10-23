@@ -371,7 +371,7 @@ impl Reactor {
 /// The scheduler is process-global while test threads are many: servers of
 /// different tests take turns, each holding the lock until its thread ends.
 #[cfg(test)]
-fn serialize_tests() {
+pub(crate) fn serialize_tests() {
     use std::sync::{Mutex, MutexGuard};
     static LOCK: Mutex<()> = Mutex::new(());
     thread_local! {
