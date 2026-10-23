@@ -1,7 +1,7 @@
 //! Natives for `@std/net.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
 
 use super::tls::TlsOptionsWire;
-use super::{ExchH, HeadersH, NetH, SocketH, report};
+use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
@@ -27,11 +27,6 @@ fn ws_from_code(status: u8, failed: String) -> WsErr {
         6 => WsErr::Timeout,
         _ => WsErr::Failed(failed),
     }
-}
-
-/// Flattened `Optional[Int]` parameter.
-fn opt(has: bool, v: i64) -> Option<i64> {
-    has.then_some(v)
 }
 
 fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {

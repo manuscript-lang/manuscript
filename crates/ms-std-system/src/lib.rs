@@ -267,9 +267,7 @@ mod imp {
     use super::*;
     use alloc::vec;
     use core::ffi::CStr;
-    use ms_rt_abi::{
-        STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED,
-    };
+    use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
     use rustix::io::Errno;
     use rustix::process::{Pid, Signal, getpriority_process, getuid, setpriority_process};
     use rustix::system::uname as host_uname;
@@ -315,10 +313,7 @@ mod imp {
             Errno::INVAL => STATUS_INVALID_INPUT,
             Errno::SRCH | Errno::NOENT => STATUS_NOT_FOUND,
             Errno::PERM | Errno::ACCESS => STATUS_PERMISSION_DENIED,
-            _ => {
-                ms_std_rt::record_failure(b"system call failed".to_vec());
-                STATUS_FAILED
-            }
+            _ => ms_std_rt::failed(b"system call failed"),
         }
     }
 

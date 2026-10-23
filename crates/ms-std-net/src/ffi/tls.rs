@@ -1,6 +1,6 @@
 //! Natives for `@std/net.ms` and the TLS entry points of `@std/net.ms`.
 
-use super::{ConnH, ListenerH, NetH, report};
+use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
 use ms_std_core::{
@@ -57,11 +57,6 @@ abi_record! {
         pub not_after_nanos: i32,
         pub der: Bytes,
     }
-}
-
-/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
-fn opt(has: bool, v: i64) -> Option<i64> {
-    has.then_some(v)
 }
 
 native! {

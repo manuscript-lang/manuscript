@@ -32,6 +32,11 @@ pub fn report<T, E: Status>(
     })
 }
 
+/// Flattened `Optional[Int]`/`Optional[Duration]` parameter.
+fn opt(has: bool, v: i64) -> Option<i64> {
+    has.then_some(v)
+}
+
 /// The status byte of a std error.
 pub fn code<E: Status>(e: E) -> ms_std_core::StatusCode {
     ms_std_core::StatusCode(e.code())
