@@ -51,7 +51,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
 
-A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
+A closure that is only called in the function that made it borrows what it captures, so a captured collection or record cannot change while the closure is still used. Make the changes first, then create the closure. A scalar (`Int`, `Float`, `Bool`) the closure only reads is copied when the closure is created, so later assignments to the variable are not seen by the closure ([snapshot captures](#snapshot-captures)):
 
 ```manuscript
 
