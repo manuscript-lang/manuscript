@@ -145,7 +145,7 @@ impl Poller {
         let poll = mio::Poll::new().expect("poller");
         let registry = poll.registry().try_clone().expect("poller registry");
         let wake = Wake::new().expect("poller wake-up");
-        let wake_fd = wake.0.as_raw_fd();
+        let wake_fd = wake.sock().as_raw_fd();
         registry
             .register(
                 &mut SourceFd(&wake_fd),
@@ -261,7 +261,7 @@ impl Poller {
             raw += 1;
             if e.token().0 == WAKE_TOKEN as usize {
                 let mut buf = [0u8; 8];
-                while io::read(&self.wake.0, &mut buf).is_ok() {}
+                while io::read(self.wake.sock(), &mut buf).is_ok() {}
                 continue;
             }
             let r = Raised::from(e);
