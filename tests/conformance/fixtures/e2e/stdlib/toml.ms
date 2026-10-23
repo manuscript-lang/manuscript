@@ -27,25 +27,25 @@ test "TOML scalars quoted keys comments exact integers and dates":
     let root = parse(text: source) | try expect_ok | try entries
     (
         root.get("title").get() | try expect_equal(
-            expected: TomlValue.StringValue("é🙂 # text")
+            TomlValue.StringValue("é🙂 # text")
         )
     )
     (
         root.get("").get() | try expect_equal(
-            expected: TomlValue.StringValue("literal\\n")
+            TomlValue.StringValue("literal\\n")
         )
     )
     (
         root.get("large").get() | try expect_equal(
-            expected: TomlValue.IntValue(9007199254740993)
+            TomlValue.IntValue(9007199254740993)
         )
     )
-    (root.get("hex").get() | try expect_equal(expected: TomlValue.IntValue(3735928559)))
-    root.get("oct").get() | try expect_equal(expected: TomlValue.IntValue(493))
-    root.get("bin").get() | try expect_equal(expected: TomlValue.IntValue(10))
+    (root.get("hex").get() | try expect_equal(TomlValue.IntValue(3735928559)))
+    root.get("oct").get() | try expect_equal(TomlValue.IntValue(493))
+    root.get("bin").get() | try expect_equal(TomlValue.IntValue(10))
     (
         root.get("float").get() | try expect_equal(
-            expected: TomlValue.FloatValue(-1250.0)
+            TomlValue.FloatValue(-1250.0)
         )
     )
     try expect_false(
@@ -57,12 +57,12 @@ test "TOML scalars quoted keys comments exact integers and dates":
     )
     (
         root.get("date").get() | try expect_equal(
-            expected: TomlValue.DateTimeValue("2024-02-29")
+            TomlValue.DateTimeValue("2024-02-29")
         )
     )
     (
         root.get("time").get() | try expect_equal(
-            expected: TomlValue.DateTimeValue("07:32:00.123")
+            TomlValue.DateTimeValue("07:32:00.123")
         )
     )
 
@@ -78,20 +78,20 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     )
     (
         root.get("basic").get() | try expect_equal(
-            expected: TomlValue.StringValue("hello world!")
+            TomlValue.StringValue("hello world!")
         )
     )
     (
         root.get("literal").get() | try expect_equal(
-            expected: TomlValue.StringValue("raw\\text\nnext")
+            TomlValue.StringValue("raw\\text\nnext")
         )
     )
     let array = (try items(root.get("array").get()))
-    array.length() | try expect_equal(expected: 3)
+    array.length() | try expect_equal(3)
     let person = (try entries(array.get(2).clone()))
     (
         person.get("name").get() | try expect_equal(
-            expected: TomlValue.StringValue("Ada")
+            TomlValue.StringValue("Ada")
         )
     )
     try expect_false(
@@ -114,7 +114,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
         )
     )
     let products = (try items(root.get("products").get()))
-    products.length() | try expect_equal(expected: 2)
+    products.length() | try expect_equal(2)
     try expect_false(
         (
             (
@@ -127,11 +127,11 @@ test "TOML implicit parents dotted keys and arrays of tables":
         )
     )
     (try items((try entries(products.last().get())).get("variants").get())).length() | try expect_equal(
-        expected: 2
+        2
     )
     let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | try expect_ok | try entries
     (try entries((try entries(dotted.get("a").get())).get("b").get())).length() | try expect_equal(
-        expected: 2
+        2
     )
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
@@ -185,7 +185,7 @@ test "TOML optional limits include implicit tables and zero":
         )
     )
     parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
-        expected: limited
+        limited
     )
     try expect_false(
         (
@@ -230,7 +230,7 @@ test "TOML nonfinite floats CRLF and repeated separators":
 
     (
         root.get("integer").get() | try expect_equal(
-            expected: TomlValue.IntValue(1000000)
+            TomlValue.IntValue(1000000)
         )
     )
 
@@ -241,49 +241,49 @@ fn failure(text: String) String:
 
 test "TOML errors report the offending line and column":
     failure("x = 1\ny = \"a\u{1}b\"") | try expect_equal(
-        expected: "TOML 2:7: invalid control character"
+        "TOML 2:7: invalid control character"
     )
     failure("x = 1\ny = 2\rz = 3") | try expect_equal(
-        expected: "TOML 2:6: bare carriage return"
+        "TOML 2:6: bare carriage return"
     )
     failure("x = 1\n\u{0}") | try expect_equal(
-        expected: "TOML 2:1: invalid control character"
+        "TOML 2:1: invalid control character"
     )
     failure("a = 1\u{0}") | try expect_equal(
-        expected: "TOML 1:6: invalid control character"
+        "TOML 1:6: invalid control character"
     )
-    failure("y = True") | try expect_equal(expected: "TOML 1:5: invalid value")
-    failure("y = yes") | try expect_equal(expected: "TOML 1:5: invalid value")
-    failure("y = abc") | try expect_equal(expected: "TOML 1:5: invalid value")
-    failure("x = 1\ny = 1e") | try expect_equal(expected: "TOML 2:5: invalid exponent")
+    failure("y = True") | try expect_equal("TOML 1:5: invalid value")
+    failure("y = yes") | try expect_equal("TOML 1:5: invalid value")
+    failure("y = abc") | try expect_equal("TOML 1:5: invalid value")
+    failure("x = 1\ny = 1e") | try expect_equal("TOML 2:5: invalid exponent")
 
 test "TOML limits fields default to none":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
     parse(text: "a=1", limits: some(TomlLimits(max_bytes: 2))) | try expect_equal(
-        expected: limited
+        limited
     )
     parse(text: "a=1", limits: some(TomlLimits())) | try expect_equal(
-        expected: parse(text: "a=1")
+        parse(text: "a=1")
     )
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
     let parsed = (parse(text: source) | try expect_ok)
     let text = (stringify(value: parsed) | try expect_ok)
-    parse(text: text) | try expect_ok | try expect_equal(expected: parsed)
+    parse(text: text) | try expect_ok | try expect_equal(parsed)
     stringify(value: (parse(text: text) | try expect_ok)) | try expect_ok | try expect_equal(
-        expected: text
+        text
     )
 
 test "TOML stringify requires a table root and honors max_bytes":
     let wrong: Result[String, TomlError] = error(TomlError.InvalidInput)
     let limited: Result[String, TomlError] = error(TomlError.LimitExceeded)
-    stringify(value: TomlValue.IntValue(1)) | try expect_equal(expected: wrong)
+    stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
     let root = (parse(text: "a = 1") | try expect_ok)
-    stringify(value: root, max_bytes: 3) | try expect_equal(expected: limited)
+    stringify(value: root, max_bytes: 3) | try expect_equal(limited)
     let exact: Result[String, TomlError] = ok("a = 1\n")
-    stringify(value: root, max_bytes: 6) | try expect_equal(expected: exact)
-    stringify(value: root, max_bytes: -1) | try expect_equal(expected: wrong)
+    stringify(value: root, max_bytes: 6) | try expect_equal(exact)
+    stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
 
 fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
@@ -301,12 +301,12 @@ test "TOML long strings parse and stringify in linear time":
     let table = (try entries(root.clone()))
     (
         table.get("a").get() | try expect_equal(
-            expected: TomlValue.StringValue(expected.clone())
+            TomlValue.StringValue(expected.clone())
         )
     )
-    (table.get("b").get() | try expect_equal(expected: TomlValue.StringValue(expected)))
+    (table.get("b").get() | try expect_equal(TomlValue.StringValue(expected)))
     let text = (stringify(value: root) | try expect_ok)
-    parse(text: text) | try expect_ok | try expect_equal(expected: root)
+    parse(text: text) | try expect_ok | try expect_equal(root)
 
 test "TOML stringify rejects invalid date-time text":
     let invalid: Result[String, TomlError] = error(TomlError.InvalidInput)

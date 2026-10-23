@@ -23,23 +23,33 @@ test "primitive list loops":
 
     try expect_true((sum == 10))
     try expect_true((ints.length() == 6))
+
     var total = 0.0
+
     for f in floats:
         total = total + f
     try expect_true((total == 2.5))
+
     var trues = 0
+
     for b in bools:
         if b:
             trues = trues + 1
     try expect_true((trues == 3))
+
     var joined = ""
+
     for w in words:
         joined = joined + w
     try expect_true((joined == "w0w1w2w3w4"))
+
     var unique = Set[Int]()
+
     unique.add(value: 4)
     unique.add(value: 7)
+
     var seen = 0
+
     for n in unique:
         seen = seen + n
     try expect_true((seen == 11))

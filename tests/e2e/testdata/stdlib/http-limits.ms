@@ -41,6 +41,7 @@ test "serve timeout closes idle connections":
 
         with reused = (net.connect(server.address(), 2.seconds) | try expect_ok):
             reused.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
+
             let first = (reused.read(timeout: 2.seconds) | try expect_ok)
             let answered = first.get(Bytes([]))
             if answered.length() == 0: return error(TextError("no response"))

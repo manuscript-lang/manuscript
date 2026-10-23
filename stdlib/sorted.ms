@@ -76,6 +76,7 @@ impl SortedMap[K, V]:
 
         let c = self.chunk_for(key)
         let at = self.lower_bound(c, key)
+
         return (
             at < self.key_chunks[c].length()
             and order(self.key_chunks[c].get(at), key) == 0
@@ -129,6 +130,7 @@ impl SortedMap[K, V]:
         let half = length / 2
         let tail_keys = self.key_chunks[c].slice(half, length).get()
         let tail_values = self.value_chunks[c].slice(half, length).get()
+
         self.key_chunks[c].splice(half, length - half, [])
         self.value_chunks[c].splice(half, length - half, [])
         self.key_chunks.insert(c + 1, tail_keys)
@@ -184,6 +186,7 @@ impl SortedMap[K, V]:
 
         let c = self.key_chunks.length() - 1
         let at = self.key_chunks[c].length() - 1
+
         return some(
             SortedEntry(
                 self.key_chunks[c].get(at), self.value_chunks[c].get(at)
@@ -193,6 +196,7 @@ impl SortedMap[K, V]:
     # Removes and returns the entry with the smallest key, or none when empty.
     var fn pop_first() Optional[SortedEntry[K, V]]:
         let entry = self.first()
+
         if self.size > 0:
             self.remove_at(0, 0)
         return entry
@@ -203,6 +207,7 @@ impl SortedMap[K, V]:
 
         if self.size > 0:
             let c = self.key_chunks.length() - 1
+
             self.remove_at(c, self.key_chunks[c].length() - 1)
 
         return entry
@@ -281,6 +286,7 @@ impl SortedMap[K, V]:
     # Returns a new list of the keys in ascending order.
     fn keys() List[K]:
         var out: List[K] = []
+
         for chunk in self.key_chunks:
             out = out.concat(chunk)
         return out
@@ -288,6 +294,7 @@ impl SortedMap[K, V]:
     # Returns a new list of the values in ascending key order.
     fn values() List[V]:
         var out: List[V] = []
+
         for chunk in self.value_chunks:
             out = out.concat(chunk)
         return out
@@ -298,6 +305,7 @@ impl SortedMap[K, V]:
 
         for c in range(0, self.key_chunks.length()):
             let keys = self.key_chunks[c]
+
             for at in range(0, keys.length()):
                 out.append(SortedEntry(keys.get(at), self.value_chunks[c].get(at)))
 
@@ -385,6 +393,7 @@ impl SortedSet[T]:
     # Returns a new list of the members with `low` <= member < `high`, in ascending order.
     fn range(low: T, high: T) List[T]:
         var out: List[T] = []
+
         for entry in self.members.range(low, high):
             out.append(entry.key)
         return out

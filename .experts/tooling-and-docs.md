@@ -14,6 +14,10 @@ Verify: bindings and consecutive guards stay together; subsequent work starts a 
 
 Verified: formatter policy changes also require reformatting the repository's `.ms` files, including `stdlib/`, because `make repo-check` checks `.ms` formatting and stdlib syntax. Keep generic file headers out of declaration documentation when blank lines are discarded.
 
+Decision: remove redundant argument labels from ordinary test assertions and separate setup from surrounding checks with structural paragraph breaks. Consecutive local bindings stay together, and guard checks stay attached to their setup; do not restore a wall of adjacent setup and assertions when formatting tests.
+
+Correction: a single explicit-return callback should not keep an unnecessary indented body when its call fits, e.g. `queue.enqueue(fn(): return 7)`. Preserve comments and nested suites; never compact a bare call body into an implicit return. Verify LF/CRLF and idempotence with [the callback fixture](../crates/ms-syntax/tests/data/format/041.in.src).
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery that splits their column-zero closing delimiters into separate chunks whenever any declaration is malformed discards valid functions and their parameter scopes in the language server. Recovery must consult the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.

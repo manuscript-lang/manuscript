@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import invoke from \"./domain.ms\"\nimport left from \"./left.ms\"\nimport right from \"./right.ms\"\nimport expect_equal from \"@std/testing.ms\"\n\ntest \"each module keeps its own view implementation\":\n    let first = left()\n    let second = right()\n    let bound = first.read\n    bound() | try expect_equal(expected: 11)\n    second.read() | try expect_equal(expected: 22)\n    invoke(first) | try expect_equal(expected: 11)\n    invoke(second) | try expect_equal(expected: 22)\n"
+    "fmt": "import invoke from \"./domain.ms\"\nimport left from \"./left.ms\"\nimport right from \"./right.ms\"\nimport expect_equal from \"@std/testing.ms\"\n\ntest \"each module keeps its own view implementation\":\n    let first = left()\n    let second = right()\n    let bound = first.read\n\n    bound() | try expect_equal(11)\n    second.read() | try expect_equal(22)\n    invoke(first) | try expect_equal(11)\n    invoke(second) | try expect_equal(22)\n"
   }
 }

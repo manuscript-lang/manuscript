@@ -67,7 +67,7 @@ test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
     let input = ReadStream(source)
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(expected: some("λ"))
+    (try read_line(input)) | try expect_equal(some("λ"))
     present(input) | try expect_true
     present(input) | try expect_false
 
@@ -82,7 +82,7 @@ test "presence retains written argument order and cleanup":
     var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, false))
     var visits: List[Int] = []
     reordered(var visits) | try expect_true
-    visits | try expect_equal(expected: [1, 2])
+    visits | try expect_equal([1, 2])
     let fs = filesystem()
 
     with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
@@ -104,6 +104,6 @@ test "presence and text reads share buffered consumption":
         with handle = (fs.open(path, "r", 384) | try expect_ok):
             let input = handle.reader()
             present(input) | try expect_true
-            (try read_line(input)) | try expect_equal(expected: some("λ"))
+            (try read_line(input)) | try expect_equal(some("λ"))
             present(input) | try expect_true
             present(input) | try expect_false

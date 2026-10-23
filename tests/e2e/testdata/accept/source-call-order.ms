@@ -13,6 +13,7 @@ test "arguments":
                 i
             none: 0
     )
+
     try expect_equal(result, 12)
 
 fn optional(value: Optional[Int]) Int: value.get()
@@ -26,6 +27,8 @@ test "source call dispatch contracts":
     try expect_equal(defaulted(5), 5)
     try expect_equal(defaulted(), 3)
     try expect_equal(pair(b: 2, a: 1), 12)
+
     let callback = pair
+
     try expect_equal(callback(a: 3, b: 4), 34)
     try expect_equal(identity(6), 6)

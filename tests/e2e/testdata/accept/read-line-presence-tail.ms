@@ -18,8 +18,11 @@ impl ReadStream for MemoryStream:
         if count <= 0: return error(IoError.InvalidInput)
 
         var end = self.offset + count
+
         if end > self.data.length(): end = self.data.length()
+
         let chunk = self.data.slice(self.offset, end).get().clone()
+
         self.offset = end
         return ok(chunk)
 
@@ -63,14 +66,16 @@ fn reordered(var visits: List[Int]) Bool:
 test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
     let input = ReadStream(source)
+
     present(input) | try expect_true
-    (try read_line(input)) | try expect_equal(expected: some("λ"))
+    (try read_line(input)) | try expect_equal(some("λ"))
     present(input) | try expect_true
     present(input) | try expect_false
 
 test "presence retains custom errors and limits":
     let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
     let input = ReadStream(source)
+
     present(input, 2) | try expect_false
     input.close()
     present(input) | try expect_false
@@ -78,13 +83,16 @@ test "presence retains custom errors and limits":
 test "presence retains written argument order and cleanup":
     var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, false))
     var visits: List[Int] = []
+
     reordered(var visits) | try expect_true
-    visits | try expect_equal(expected: [1, 2])
+    visits | try expect_equal([1, 2])
+
     let fs = filesystem()
 
     with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
         let first = "{temporary.path()}/first"
         let second = "{temporary.path()}/second"
+
         with_cleanup(var input, first.clone()) | try expect_true
         fs.read_file(first).is_ok() | try expect_true
         fs.read_file(second).is_ok() | try expect_false
@@ -100,7 +108,8 @@ test "presence and text reads share buffered consumption":
 
         with handle = (fs.open(path, "r", 384) | try expect_ok):
             let input = handle.reader()
+
             present(input) | try expect_true
-            (try read_line(input)) | try expect_equal(expected: some("λ"))
+            (try read_line(input)) | try expect_equal(some("λ"))
             present(input) | try expect_true
             present(input) | try expect_false

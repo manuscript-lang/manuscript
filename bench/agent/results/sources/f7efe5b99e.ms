@@ -71,6 +71,7 @@ fn p95(latencies: List[Int]) Int:
         return 0
 
     let rank = (95 * latencies.length() + 99) / 100
+
     return latencies.get(rank - 1)
 
 fn report(entries: List[Entry], malformed: Int) Unit:
@@ -130,16 +131,20 @@ fn report(entries: List[Entry], malformed: Int) Unit:
 
     if slowest.is_some():
         let slow = slowest.get()
+
         out("slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
 
     var stats: List[PathStat] = []
+
     for path in counts.keys():
         stats.append(
             PathStat(
                 path: path, count: counts.get_or(path, 0), total: totals.get_or(path, 0)
             )
         )
+
     let ranked = stats.sorted(compare_paths)
+
     out("top:\n")
 
     for i in range(0, ranked.length()):
@@ -147,6 +152,7 @@ fn report(entries: List[Entry], malformed: Int) Unit:
             break
 
         let stat = ranked.get(i)
+
         out("{stat.path} {stat.count} avg={stat.total / stat.count}\n")
 
 export fn main() Int:

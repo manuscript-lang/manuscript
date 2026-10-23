@@ -12,6 +12,7 @@ impl Hashable for Key:
 
 export fn label_map() Map[Key, Int]:
     var values = Map[Key, Int]()
+
     values.add(Key(1, "one"), 10)
     values.add(Key(2, "two"), 20)
     values.add(Key(3, "three"), 30)
@@ -22,6 +23,7 @@ export fn label_direct(var values: Map[Key, Int], key: Key) Unit:
 
 export fn label_bound(var values: Map[Key, Int], key: Key) Unit:
     let remove = values.remove
+
     remove(key)
 
 export fn label_generic(var values: Map[Key, Int], key: Key) Unit:

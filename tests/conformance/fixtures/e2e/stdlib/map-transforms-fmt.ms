@@ -49,9 +49,9 @@ fn reverse_set[T: Hashable, A](
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
     let mapped = source.map(fn(k, v): v.to_string())
-    mapped.get("b").get() | try expect_equal(expected: "2")
+    mapped.get("b").get() | try expect_equal("2")
     let keyed = source.map_keys(fn(k, v): v)
-    keyed.get(2).get() | try expect_equal(expected: 2)
+    keyed.get(2).get() | try expect_equal(2)
     try expect_equal(source.find_last(fn(k, v): true).get().key, "a")
     try expect_equal(source.fold_right("", fn(acc, k, v): acc + k), "ab")
     let values = Set[Int]([2, 1])
@@ -73,7 +73,7 @@ test "Map value transformation copies ordered snapshots and keeps independent va
             seen.append(k.label + v.count.to_string())
             return v
     )
-    seen | try expect_equal(expected: ["b2", "a1", "c3"])
+    seen | try expect_equal(["b2", "a1", "c3"])
     try expect_equal(mapped.keys().map(fn(k): k.id), [2, 1, 3])
     var edited = mapped.get(first).get().clone()
     edited.count = 7
@@ -105,10 +105,10 @@ test "Map key transformation retains first equal keys and last values":
     try expect_false((created.get(0).label != "2" or created.get(2).label != "4"))
     var looked_up = mapped.get(Key(0, "lookup")).get().clone()
     looked_up.count = 9
-    source.get(4).get().count | try expect_equal(expected: 3)
+    source.get(4).get().count | try expect_equal(3)
     mapped.clear()
     mapped.add(Key(7, "fresh"), Counter(10))
-    source.length() | try expect_equal(expected: 4)
+    source.length() | try expect_equal(4)
 
 test "Map key transformation snapshots callbacks and keeps generic nesting":
     let source: Map[Int, Counter] = {2: Counter(2), 1: Counter(1), 3: Counter(3)}
@@ -120,12 +120,12 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
             return k.to_string()
     )
     (seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]) | try expect_false
-    mapped.get("3").get().count | try expect_equal(expected: 3)
+    mapped.get("3").get().count | try expect_equal(3)
     let values: Map[String, Int] = {"a": 0}
     let map = values.clone().map[Optional[Int]]
     try expect_true((map(fn(k, v): none).get("a").get().is_none()))
     let nested = values.map(fn(k, v): Result[Int, TextError].error(TextError("nested")))
-    nested.get("a").get().err().message() | try expect_equal(expected: "nested")
+    nested.get("a").get().err().message() | try expect_equal("nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
     var empty_calls: List[Int] = []
@@ -165,9 +165,9 @@ test "Map reverse fold and last match retain ordered snapshots":
             next.append(k + v.count.to_string())
             return next
     )
-    folded | try expect_equal(expected: ["c3", "a1", "b2"])
+    folded | try expect_equal(["c3", "a1", "b2"])
     folded.append("copy")
-    initial.length() | try expect_equal(expected: 0)
+    initial.length() | try expect_equal(0)
     var seen: List[String] = []
     let find = source.clone().find_last
     var found = find(
@@ -178,7 +178,7 @@ test "Map reverse fold and last match retain ordered snapshots":
     (seen != ["c", "a"] or found.key != "a") | try expect_false
     var edited = found.value.clone()
     edited.count = 8
-    source.get("a").get().count | try expect_equal(expected: 1)
+    source.get("a").get().count | try expect_equal(1)
     found.key = "changed"
     source.contains("changed") | try expect_false
 
@@ -196,9 +196,9 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
             next.append(v.label)
             return next
     )
-    folded | try expect_equal(expected: ["c", "a", "b"])
+    folded | try expect_equal(["c", "a", "b"])
     folded.append("copy")
-    initial.length() | try expect_equal(expected: 0)
+    initial.length() | try expect_equal(0)
     var seen: List[Int] = []
     let find = source.clone().find_last
     var found = find(
@@ -206,9 +206,9 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
             seen.append(v.id)
             return v.id == 1
     ).get().clone()
-    seen | try expect_equal(expected: [3, 1])
+    seen | try expect_equal([3, 1])
     found.label = "found"
-    a.label | try expect_equal(expected: "a")
+    a.label | try expect_equal("a")
 
 test "empty and nonmatching reverse queries keep fold and predicate contracts":
     var empty_calls: List[Int] = []
@@ -235,8 +235,8 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
         )
     )
     set_result.append(2)
-    map_result | try expect_equal(expected: [1])
-    set_result | try expect_equal(expected: [2])
+    map_result | try expect_equal([1])
+    set_result | try expect_equal([2])
     initial.is_empty() | try expect_true
     try expect_false(
         not (

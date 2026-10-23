@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n    let cap: Optional[Int] = some(-7)\n    let parts = Bytes([1]).split(Bytes([]), cap)\n    return parts.length()\n"
+    "fmt": "export fn main() Int:\n    let cap: Optional[Int] = some(-7)\n    let parts = Bytes([1]).split(Bytes([]), cap)\n\n    return parts.length()\n"
   }
 }

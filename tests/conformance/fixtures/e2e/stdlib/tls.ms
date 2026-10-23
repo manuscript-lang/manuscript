@@ -68,10 +68,10 @@ test "TLS certificate parsing verification hostname and expiration":
 
 test "TLS rejects malformed PEM and certificate budgets":
     let invalid: Result[List[CertificateInfo], TlsError] = error(TlsError.InvalidData)
-    parse_certificates(pem: "not PEM") | try expect_equal(expected: invalid)
+    parse_certificates(pem: "not PEM") | try expect_equal(invalid)
     let limited: Result[List[CertificateInfo], TlsError] = error(TlsError.LimitExceeded)
     parse_certificates(pem: certificate(), max_certificates: 0) | try expect_equal(
-        expected: limited
+        limited
     )
 
 test "HTTPS trusts only the explicitly supplied local test root":

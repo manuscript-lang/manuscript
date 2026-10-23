@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn crash(key: String, value: Int) Bool:\n    return 1 / value == 0\n\nexport fn main() Int:\n    let value: Map[String, Int] = {\"a\": 0}\n    return value.filter(crash).length()\n"
+    "fmt": "fn crash(key: String, value: Int) Bool:\n    return 1 / value == 0\n\nexport fn main() Int:\n    let value: Map[String, Int] = {\"a\": 0}\n\n    return value.filter(crash).length()\n"
   }
 }

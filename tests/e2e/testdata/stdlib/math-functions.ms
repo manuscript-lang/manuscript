@@ -55,6 +55,7 @@ impl Comparable for Ranked:
 test "extrema use comparator signs without negating Int minimum":
     let low = Ranked(1)
     let high = Ranked(2)
+
     try expect_equal(min(high.clone(), low.clone()).rank, 1)
     try expect_equal(max(low.clone(), high.clone()).rank, 2)
 
@@ -65,6 +66,7 @@ test "extrema use comparator signs without negating Int minimum":
     let values = [high.clone(), low.clone(), Ranked(1), Ranked(2)]
     var minimum = min_of(values.clone()).get().clone()
     var maximum = max_of(values.clone()).get().clone()
+
     minimum.rank = 0
     maximum.rank = 3
     try expect_false(values[1].rank != 1 or values[2].rank != 1)

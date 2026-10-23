@@ -20,6 +20,7 @@ export fn main() Int:
     # Line i of A is lines[1 + i]; line j of B is lines[1 + n + j].
     let cols = m + 1
     var table = List[Int]()
+
     for k in range(0, (n + 1) * cols):
         table.append(0)
 
@@ -72,6 +73,7 @@ export fn main() Int:
 
     let total = kinds.length()
     var changes = List[Int]()
+
     for k in range(0, total):
         if kinds[k] != 0:
             changes.append(k)
@@ -81,12 +83,14 @@ export fn main() Int:
     # Number of A and B lines consumed before each script position.
     var a_before = List[Int]()
     var b_before = List[Int]()
+
     a_before.append(0)
     b_before.append(0)
 
     for k in range(0, total):
         var da = 0
         var db = 0
+
         if kinds[k] != 2:
             da = 1
         if kinds[k] != 1:
@@ -95,8 +99,10 @@ export fn main() Int:
         b_before.append(b_before[k] + db)
 
     var out = List[String]()
+
     out.append("--- {name_a}")
     out.append("+++ {name_b}")
+
     var g = 0
 
     while g < changes.length():
@@ -121,6 +127,7 @@ export fn main() Int:
 
         var sa = a_before[start]
         var sb = b_before[start]
+
         if la > 0:
             sa += 1
         if lb > 0:
@@ -141,6 +148,7 @@ export fn main() Int:
         g = h
 
     let body = out.join("\n")
+
     stdout().write("{body}\n").get()
     return 0
 

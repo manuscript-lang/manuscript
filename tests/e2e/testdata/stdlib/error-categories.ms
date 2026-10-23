@@ -44,22 +44,18 @@ test "shared categories keep exact standard domain values":
     (is_missing(FileSystemError.NotFound)) | try expect_true
     (is_missing(SystemError.NotFound)) | try expect_true
     (is_missing(ProcessError.NotFound)) | try expect_true
-    category(IoError.Unavailable) | try expect_equal(
-        expected: some(ErrorCategory.Unavailable)
-    )
-    category(JsonError.InvalidData) | try expect_equal(
-        expected: some(ErrorCategory.InvalidData)
-    )
+    category(IoError.Unavailable) | try expect_equal(some(ErrorCategory.Unavailable))
+    category(JsonError.InvalidData) | try expect_equal(some(ErrorCategory.InvalidData))
     category(FileSystemError.AlreadyExists) | try expect_equal(
-        expected: some(ErrorCategory.AlreadyExists)
+        some(ErrorCategory.AlreadyExists)
     )
     category(SystemError.PermissionDenied) | try expect_equal(
-        expected: some(ErrorCategory.PermissionDenied)
+        some(ErrorCategory.PermissionDenied)
     )
     category(CryptoError.Unsupported) | try expect_equal(
-        expected: some(ErrorCategory.Unsupported)
+        some(ErrorCategory.Unsupported)
     )
-    category(IoError.Closed) | try expect_equal(expected: some(ErrorCategory.Closed))
+    category(IoError.Closed) | try expect_equal(some(ErrorCategory.Closed))
     (
         (
             category(
@@ -70,23 +66,25 @@ test "shared categories keep exact standard domain values":
         )
     ) | try expect_false
     category(YamlError.LimitExceeded) | try expect_equal(
-        expected: some(ErrorCategory.LimitExceeded)
+        some(ErrorCategory.LimitExceeded)
     )
     category(TomlError.InvalidInput) | try expect_equal(
-        expected: some(ErrorCategory.InvalidInput)
+        some(ErrorCategory.InvalidInput)
     )
     category(SseError.LimitExceeded) | try expect_equal(
-        expected: some(ErrorCategory.LimitExceeded)
+        some(ErrorCategory.LimitExceeded)
     )
     category(SseError.Truncated).is_some() | try expect_false
+
     let allocation_error = range_by(start: 0, end: 268435457, step: 1).err()
-    category(allocation_error) | try expect_equal(
-        expected: some(ErrorCategory.LimitExceeded)
-    )
+
+    category(allocation_error) | try expect_equal(some(ErrorCategory.LimitExceeded))
+
     let original: Error = YamlError.InvalidData(
         line: 3, column: 9, reason: "retained detail"
     )
-    category(original) | try expect_equal(expected: some(ErrorCategory.InvalidData))
+
+    category(original) | try expect_equal(some(ErrorCategory.InvalidData))
 
     match (try yaml_error(original)):
         InvalidData(line, column, reason):
@@ -106,20 +104,24 @@ test "timeout classification keeps timeout spelling out of generic handling":
         NetworkError.Timeout, HttpError.Timeout, CommandError.Timeout
     ]
     let query = category
+
     for cause in causes:
-        query(cause) | try expect_equal(expected: some(ErrorCategory.Timeout))
+        query(cause) | try expect_equal(some(ErrorCategory.Timeout))
 
 test "classification does not parse messages invoke user code or guess domain-specific cases":
     let custom = CustomError(
         calls: 0, message: "filesystem: file or directory not found"
     )
+
     (category(custom).is_some() or custom.calls != 0) | try expect_false
     category(PathError.InvalidInput).is_some() | try expect_false
+
     let causes: List[Error] = [
         IoError.Failed("not found; operation timed out"), NumberError.OutOfRange,
         CommandError.OutputLimit, CryptoError.AuthenticationFailed,
         YamlError.UnsupportedFeature(line: 7, reason: "detail"),
         LogError.Io(IoError.Closed)
     ]
+
     for cause in causes:
         category(cause).is_some() | try expect_false

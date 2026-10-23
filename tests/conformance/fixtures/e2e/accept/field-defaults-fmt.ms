@@ -46,9 +46,9 @@ test "record defaults and explicit overrides":
     calls.is_empty() | try expect_true
     (explicit.option.is_none()) | try expect_true
     let box = Box(value: "text")
-    box.copy | try expect_equal(expected: "text")
+    box.copy | try expect_equal("text")
     let specified = Box[Int](value: 7, copy: 0)
-    specified.copy | try expect_equal(expected: 0)
+    specified.copy | try expect_equal(0)
 
 test "supplied fields precede defaults in field order":
     var log = Counter()

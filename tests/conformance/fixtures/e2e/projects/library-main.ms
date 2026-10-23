@@ -39,19 +39,19 @@ fn exercise(path: String) Result[Unit, Error]:
     let info = try common_result(
         result: filesystem().stat(path: path, follow_links: true)
     )
-    info.size | try expect_equal(expected: 5)
+    info.size | try expect_equal(5)
     (not info.directory) | try expect_true
     let bytes = try common_result(result: entropy().bytes(count: 16))
-    bytes.length() | try expect_equal(expected: 16)
+    bytes.length() | try expect_equal(16)
     let identifier = try common_result(result: uuid_v4(entropy: entropy()))
-    identifier.byte_length() | try expect_equal(expected: 36)
+    identifier.byte_length() | try expect_equal(36)
     let random = try common_result(
         result: secure_int(entropy: entropy(), min: -2, max_exclusive: 3)
     )
     (random >= -2 and random < 3) | try expect_true
     let now = wall_clock().now()
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
-        expected: now
+        now
     )
     (system().info().cpu_count > 0) | try expect_true
 
@@ -68,7 +68,7 @@ fn exercise(path: String) Result[Unit, Error]:
         )
         let synced = try common_result(result: file.sync())
         let resized = try common_result(result: file.truncate(size: 3))
-        (try common_result(result: file.stat())).size | try expect_equal(expected: 3)
+        (try common_result(result: file.stat())).size | try expect_equal(3)
 
     with watcher = try common_result(
         result: filesystem().watch_native(
@@ -97,7 +97,7 @@ fn exercise(path: String) Result[Unit, Error]:
         )
     )
     let windows = win32()
-    windows.parse("C:/work/file.txt").extension | try expect_equal(expected: ".txt")
+    windows.parse("C:/work/file.txt").extension | try expect_equal(".txt")
     let process_info = try common_result(result: control().info())
     (process_info.pid > 0) | try expect_true
     let memory = try common_result(result: control().memory_usage())

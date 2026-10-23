@@ -15,7 +15,9 @@ impl BitSet:
     var fn add(index: Int) Unit:
         if index < 0 or index > 1073741823:
             panic("BitSet: index must be between 0 and 1073741823, found {index}")
+
         let word = index / 64
+
         while self.words.length() <= word:
             self.words.append(0)
         self.words.set(word, bit_or(self.words.get(word), shift_left(1, index % 64)))
@@ -26,6 +28,7 @@ impl BitSet:
             return
 
         let word = index / 64
+
         (
             self
             .words
@@ -47,6 +50,7 @@ impl BitSet:
     # Returns the number of members.
     fn length() Int:
         var total = 0
+
         for word in self.words:
             total += count_ones(word)
         return total
@@ -65,8 +69,10 @@ impl BitSet:
     # Returns the smallest member that is at least `from`, or `none` when there is none.
     fn next(from: Int = 0) Optional[Int]:
         var start = from
+
         if start < 0:
             start = 0
+
         var word = start / 64
         if word >= self.words.length():
             return none
@@ -94,6 +100,7 @@ impl BitSet:
 
             while bits != 0:
                 let low = trailing_zeros(bits)
+
                 out.append(word * 64 + low)
                 bits = bit_and(bits, bit_not(shift_left(1, low)))
 
@@ -119,17 +126,23 @@ impl BitSet:
     fn combine(other: BitSet, mode: Int) BitSet:
         var out: List[Int] = []
         var count = self.words.length()
+
         if other.words.length() > count:
             count = other.words.length()
 
         for word in range(0, count):
             var left = 0
+
             if word < self.words.length():
                 left = self.words.get(word)
+
             var right = 0
+
             if word < other.words.length():
                 right = other.words.get(word)
+
             var merged = bit_or(left, right)
+
             if mode == 1:
                 merged = bit_and(left, right)
             if mode == 2:

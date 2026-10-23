@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {clock, Instant} from \"@std/time.ms\"\nimport stdout from \"@std/io.ms\"\n\nfn measure(start: Int) Int:\n    let t = clock().now()\n    var i = start\n    var hits = 0\n\n    while i < 10000000:\n        hits += i % 3\n        i += 1\n\n    let elapsed = clock().now().difference(t).to_nanoseconds()\n    let line = \"{start} {elapsed} {hits}\\n\"\n    let ignored = stdout().write(line.to_bytes())\n    return hits\n\nexport fn main() Int:\n    measure(-137)\n    measure(0)\n    measure(5)\n    return 0\n"
+    "fmt": "import {clock, Instant} from \"@std/time.ms\"\nimport stdout from \"@std/io.ms\"\n\nfn measure(start: Int) Int:\n    let t = clock().now()\n    var i = start\n    var hits = 0\n\n    while i < 10000000:\n        hits += i % 3\n        i += 1\n\n    let elapsed = clock().now().difference(t).to_nanoseconds()\n    let line = \"{start} {elapsed} {hits}\\n\"\n    let ignored = stdout().write(line.to_bytes())\n\n    return hits\n\nexport fn main() Int:\n    measure(-137)\n    measure(0)\n    measure(5)\n    return 0\n"
   }
 }

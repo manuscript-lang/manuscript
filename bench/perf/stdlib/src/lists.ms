@@ -3,11 +3,13 @@ import {bench, ints, Point} from "./harness.ms"
 
 export fn bench_list() Unit:
     let data = ints(100000)
+
     bench(
         "list.append",
         200000,
         fn() Int:
             var xs: List[Int] = []
+
             for i in range(0, 200000):
                 xs.append(i)
             return xs.length()
@@ -17,6 +19,7 @@ export fn bench_list() Unit:
         200000,
         fn() Int:
             var n = 0
+
             for i in range(0, 200000):
                 n += data.get(i % 100000, default: 0)
             return n
@@ -26,6 +29,7 @@ export fn bench_list() Unit:
         100000,
         fn() Int:
             var n = 0
+
             for x in data:
                 n += x
             return n
@@ -59,26 +63,21 @@ export fn bench_list() Unit:
         100,
         fn() Int:
             var n = 0
+
             for i in range(0, 100):
                 if data.contains(-1): n += 1
             return n
     )
+    bench("list.distinct", 100000, fn() Int: return data.distinct().length())
     bench(
-        "list.distinct",
-        100000,
-        fn() Int:
-            return data.distinct().length()
-    )
-    bench(
-        "list.concat_reverse",
-        100000,
-        fn() Int:
-            return data.concat(data).reversed().length()
+        "list.concat_reverse", 100000,
+        fn() Int: return data.concat(data).reversed().length()
     )
     bench(
         "list.records_map",
         100000,
         fn() Int:
             let points = data.map(fn(x: Int) Point: Point(x, x + 1))
+
             return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
     )

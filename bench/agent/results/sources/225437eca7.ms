@@ -20,6 +20,7 @@ fn number(text: String) Int:
 
 fn zeros(n: Int) List[Int]:
     var xs = [0]
+
     for i in range(1, n): xs.append(0)
     return xs
 
@@ -41,7 +42,9 @@ fn lcs(a: Bytes, b: Bytes) Int:
 
 fn edit(a: Bytes, b: Bytes) Int:
     var prev = zeros(b.length() + 1)
+
     for j in range(0, b.length() + 1): prev[j] = j
+
     var cur = zeros(b.length() + 1)
 
     for i in range(1, a.length() + 1):
@@ -49,8 +52,11 @@ fn edit(a: Bytes, b: Bytes) Int:
 
         for j in range(1, b.length() + 1):
             var cost = 1
+
             if a.get(i - 1) == b.get(j - 1): cost = 0
+
             var best = prev[j - 1] + cost
+
             if prev[j] + 1 < best: best = prev[j] + 1
             if cur[j - 1] + 1 < best: best = cur[j - 1] + 1
             cur[j] = best
@@ -61,9 +67,13 @@ fn edit(a: Bytes, b: Bytes) Int:
 
 fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
+
     for w in ws: total += w
+
     var limit = cap
+
     if total < cap: limit = total
+
     var best = zeros(limit + 1)
 
     for k in range(0, ws.length()):
@@ -72,6 +82,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
         for step in range(0, limit - w + 1):
             let c = limit - step
+
             if best[c - w] + vs[k] > best[c]: best[c] = best[c - w] + vs[k]
 
     return best[limit]
@@ -82,6 +93,7 @@ fn coins(amount: Int, denoms: List[Int]) Int:
 
     for a in range(1, amount + 1):
         var fewest = inf
+
         for c in denoms:
             if c <= a and dp[a - c] + 1 < fewest: fewest = dp[a - c] + 1
         dp.append(fewest)

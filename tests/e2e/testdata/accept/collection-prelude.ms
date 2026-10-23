@@ -19,7 +19,9 @@ fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
 
 test "issue 187 programs need no collection imports":
     let shapes = [Shape.Circle(1.0)]
+
     try expect_false(shapes.length() != 1 or count(["/var", "log"]) != 2)
+
     var rolls: List[Int] = []
 
     for i in range(0, 5):
@@ -29,15 +31,20 @@ test "issue 187 programs need no collection imports":
             return fail("roll")
 
     try expect_equal(rolls.length(), 5)
+
     var points = Map[Point, Int]()
+
     points.add(Point(1, 2), 7)
     try expect_equal(points.get(Point(1, 2)).get(), 7)
+
     let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
+
     try expect_equal(nested[1].get("a").get().length(), 0)
 
 test "map add retains clones and insertion order":
     var values = {"a": 1, "b": 2}
     let copy = values.clone()
+
     values.add("a", 3)
     values.add("c", 4)
     values.add(value: 5, key: "b")
@@ -50,8 +57,10 @@ test "map add retains clones and insertion order":
     values.remove("b")
     values.add("b", 9)
     try expect_equal(values.keys(), ["a", "c", "d", "e", "b"])
+
     var payload = [1]
     var nested = Map[Int, List[Int]]()
+
     nested.add(1, payload.clone())
     payload.append(2)
     try expect_equal(nested.get(1).get(), [1])
@@ -59,18 +68,22 @@ test "map add retains clones and insertion order":
 
 test "map add retains optional wrapping and generic bound calls":
     var values = Map[Optional[Int], Optional[Int]]()
+
     values.add(1, 2)
     values.add(value: 3, key: 1)
     values.add(4, 5)
     try expect_equal(values.get(1).get().get(), 3)
     try expect_equal(values.get(4).get().get(), 5)
+
     var generic = update[Optional[Int], Optional[Int]](var values, some(6), some(7))
+
     generic.add(8, 9)
     try expect_false(generic.get(6).get().get() != 7 or generic.get(8).get().get() != 9)
 
 test "map add captures receivers and arguments in written order":
     var original = Map[Int, Int]()
     var visits = 0
+
     original.add(
         match some(1):
             some(_):
@@ -81,7 +94,9 @@ test "map add captures receivers and arguments in written order":
         2
     )
     try expect_false(original.get(1).get() != 2 or visits != 1)
+
     var key = 3
+
     original.add(
         key,
         match some(1):
@@ -91,7 +106,9 @@ test "map add captures receivers and arguments in written order":
             none: 0
     )
     try expect_false(original.get(3).get() != 5 or original.contains(4))
+
     var order = 0
+
     original.add(
         value: match some(1):
             some(_):

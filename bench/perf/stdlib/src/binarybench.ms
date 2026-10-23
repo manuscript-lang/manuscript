@@ -6,13 +6,14 @@ import {BytesBuilder} from "@std/bytes.ms"
 
 export fn bench_binary() Unit:
     let blob = words(20000).join(",").to_bytes()
+
     bench(
-        "encoding.base64_encode",
-        blob.length(),
-        fn() Int:
-            return base64_encode(blob).length()
+        "encoding.base64_encode", blob.length(),
+        fn() Int: return base64_encode(blob).length()
     )
+
     let b64 = base64_encode(blob)
+
     bench(
         "encoding.base64_decode",
         blob.length(),
@@ -23,22 +24,15 @@ export fn bench_binary() Unit:
             return 0
     )
     bench(
-        "encoding.hex_encode",
-        blob.length(),
-        fn() Int:
-            return hex_encode(blob).length()
+        "encoding.hex_encode", blob.length(), fn() Int: return hex_encode(blob).length()
     )
-    bench(
-        "crypto.sha256",
-        blob.length(),
-        fn() Int:
-            return sha256(blob).length()
-    )
+    bench("crypto.sha256", blob.length(), fn() Int: return sha256(blob).length())
     bench(
         "bytes.builder",
         100000,
         fn() Int:
             var bb = BytesBuilder()
+
             for j in range(0, 100000):
                 bb.append(j % 256)
             return bb.freeze().length()

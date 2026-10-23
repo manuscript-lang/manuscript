@@ -40,7 +40,9 @@ test "UDP loopback preserves datagram data and sender":
     with receiver = try net.bind_datagram("127.0.0.1:0"):
         with sender = try net.bind_datagram("127.0.0.1:0"):
             try sender.send("packet", receiver.address(), 2.seconds)
+
             let packet = try receiver.receive(64, 2.seconds)
+
             try expect_false(
                 (
                     packet.data != "packet".to_bytes()
@@ -50,6 +52,7 @@ test "UDP loopback preserves datagram data and sender":
 
 test "network restriction denies admission and close rejects acquisitions":
     let restricted = try network().restrict([], [], allow_listen: false)
+
     with scoped = restricted.clone():
         try expect_false(
             (
@@ -72,6 +75,7 @@ test "network restriction denies admission and close rejects acquisitions":
 
 test "typed addresses preserve normalization and reject zones":
     let ip = try parse_ip("::ffff:192.0.2.1")
+
     try expect_false(ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4)
     try expect_equal((try parse_ip("2001:db8::1")).family(), IpFamily.IPv6)
     try expect_ip_error("fe80::1%eth0")
