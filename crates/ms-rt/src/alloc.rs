@@ -280,6 +280,9 @@ pub unsafe fn free(p: *mut u8) {
         // least 16 bytes, so it can hold the free-list link in its first word.
         unsafe {
             let class = *s.page_class.add(page) as usize;
+            // The counting runtime scribbles over freed blocks so a use after free shows up.
+            #[cfg(any(test, feature = "stats"))]
+            core::ptr::write_bytes(p, 0xDD, CLASS_SIZES[class] as usize);
             *(p as *mut *mut u8) = s.free[class];
             s.free[class] = p;
         }
@@ -541,18 +544,21 @@ mod owner {
     /// The thread that owns the arena; 0 until the runtime thread starts, when any thread may use it.
     static OWNER: AtomicUsize = AtomicUsize::new(0);
 
+    std::thread_local! {
+        static IS_OWNER: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+    }
+
     pub fn claim() {
         OWNER.store(crate::sys::thread_self(), Ordering::Relaxed);
+        IS_OWNER.with(|c| c.set(true));
     }
 
     #[inline(always)]
     pub fn is_current() -> bool {
-        let owner = OWNER.load(Ordering::Relaxed);
-        owner == 0 || owner == crate::sys::thread_self()
+        IS_OWNER.with(|c| c.get()) || OWNER.load(Ordering::Relaxed) == 0
     }
 }
 
-/// Makes the calling thread the only one that allocates from the arena.
 #[cfg(target_os = "linux")]
 pub fn claim_arena() {
     owner::claim();

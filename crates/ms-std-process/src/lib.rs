@@ -37,7 +37,7 @@ pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
 
 use alloc::vec::Vec;
 use command::Subprocess;
-use ms_rt_abi::{STATUS_INVALID_INPUT, StrObj};
+use ms_rt_abi::{STATUS_INVALID_INPUT, StrVal};
 use ms_std_core::{
     Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
     Text, TextList, abi_handle, abi_record, argv, native, start_nanos,
@@ -162,7 +162,7 @@ fn info_or_default() -> control::Info {
 
 native! {
     /// The text of the last `FAILED` result.
-    safe fn msstd_process_failure_message() -> *mut StrObj {
+    fn msstd_process_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 
@@ -184,9 +184,9 @@ native! {
     fn msstd_process_set_environment(
         name: &str,
         has_value: bool,
-        value: Option<&str>,
+        value: &str,
     ) -> Result<(), StatusCode> {
-        let value = value.filter(|_| has_value).map(str::as_bytes);
+        let value = has_value.then_some(value.as_bytes());
         fs_status(control::set_environment(name.as_bytes(), value))
     }
 

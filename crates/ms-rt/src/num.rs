@@ -1,6 +1,6 @@
 //! Int and Float formatting and parsing with shortest round-trip output.
 use ms_rt_abi::{
-    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrObj,
+    STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
 use std::io::Write;
 
@@ -317,7 +317,7 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
 /// `Numbers.parse_int(text, radix)`: status, with the value written to `out` only on success.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
-    text: *const StrObj,
+    text: *const StrVal,
     radix: i64,
     out: *mut i64,
 ) -> u8 {
@@ -334,7 +334,7 @@ pub unsafe extern "C-unwind" fn msrt_numbers_parse_int(
 
 /// `Numbers.parse_float(text)`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrObj, out: *mut f64) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8 {
     // SAFETY: the caller passes a live string and a writable out.
     match parse_float(unsafe { crate::string::bytes(text) }) {
         Ok(v) => {
@@ -348,7 +348,12 @@ pub unsafe extern "C-unwind" fn msrt_numbers_parse_float(text: *const StrObj, ou
 
 /// `NumberError.message()` for a status code (`STATUS_INVALID_INPUT`, `_INVALID_DATA`, `_OUT_OF_RANGE`).
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_numbers_error_message(status: u8) -> *mut StrObj {
+pub unsafe extern "C-unwind" fn msrt_numbers_error_message(status: u8, out: *mut StrVal) {
+    // SAFETY: caller passes a writable `out` and live arguments.
+    unsafe { out.write(msrt_numbers_error_message_val(status)) }
+}
+
+unsafe fn msrt_numbers_error_message_val(status: u8) -> StrVal {
     crate::string::from_bytes(match status {
         STATUS_INVALID_INPUT => b"number: invalid input",
         STATUS_INVALID_DATA => b"number: invalid data",
@@ -357,13 +362,7 @@ pub extern "C-unwind" fn msrt_numbers_error_message(status: u8) -> *mut StrObj {
     })
 }
 
-unsafe fn precision_out(
-    v: f64,
-    format: u8,
-    digits: i64,
-    minimum: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
+unsafe fn precision_out(v: f64, format: u8, digits: i64, minimum: i64, out: *mut StrVal) -> u8 {
     match float_precision(v, format, digits, minimum) {
         Some(text) => {
             // SAFETY: the caller passes a writable out.
@@ -379,7 +378,7 @@ unsafe fn precision_out(
 pub unsafe extern "C-unwind" fn msrt_float_to_precision(
     v: f64,
     digits: i64,
-    out: *mut *mut StrObj,
+    out: *mut StrVal,
 ) -> u8 {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'g', digits, 1, out) }
@@ -390,7 +389,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_precision(
 pub unsafe extern "C-unwind" fn msrt_float_to_exponential(
     v: f64,
     digits: i64,
-    out: *mut *mut StrObj,
+    out: *mut StrVal,
 ) -> u8 {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'e', digits, 0, out) }
@@ -398,11 +397,7 @@ pub unsafe extern "C-unwind" fn msrt_float_to_exponential(
 
 /// `Float.to_fixed(digits)`: `digits` in `0..=100`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_float_to_fixed(
-    v: f64,
-    digits: i64,
-    out: *mut *mut StrObj,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal) -> u8 {
     // SAFETY: forwarded caller contract.
     unsafe { precision_out(v, b'f', digits, 0, out) }
 }
@@ -545,7 +540,9 @@ mod tests {
     #[test]
     fn exported_numbers_natives() {
         let _g = crate::testutil::lock();
-        let st = crate::string::from_bytes;
+        let st = |t: &[u8]| -> *const ms_rt_abi::StrVal {
+            Box::leak(Box::new(crate::string::from_bytes(t)))
+        };
         let mut n = 0i64;
         // SAFETY: live strings and writable outs.
         unsafe {
@@ -562,9 +559,9 @@ mod tests {
                 msrt_numbers_parse_float(st(b"1e999"), &mut f),
                 STATUS_OUT_OF_RANGE
             );
-            let mut out: *mut StrObj = core::ptr::null_mut();
+            let mut out = crate::string::NO_STR;
             assert_eq!(msrt_float_to_fixed(1.005, 2, &mut out), STATUS_OK);
-            assert_eq!(crate::string::bytes(out), b"1.00");
+            assert_eq!(crate::string::bytes(&out), b"1.00");
             assert_eq!(
                 msrt_float_to_precision(1.0, 0, &mut out),
                 STATUS_INVALID_INPUT
@@ -580,10 +577,12 @@ mod tests {
         assert_eq!(msrt_float_compare(-0.0, 0.0), 0);
         assert_eq!(msrt_float_compare(2.0, 1.0), 1);
         assert_eq!(msrt_int_compare(1, 2), -1);
-        let m = msrt_numbers_error_message(STATUS_OUT_OF_RANGE);
+        let mut m = crate::string::NO_STR;
+        // SAFETY: `m` is writable.
+        unsafe { msrt_numbers_error_message(STATUS_OUT_OF_RANGE, &mut m) };
         // SAFETY: live string.
         assert_eq!(
-            unsafe { crate::string::bytes(m) },
+            unsafe { crate::string::bytes(&m) },
             b"number: value out of range"
         );
     }

@@ -26,6 +26,10 @@ test "shifts distinguish arithmetic from logical":
     try expect_equal(shift_right(-8, 1), -4)
     try expect_equal(shift_right_unsigned(-1, 63), 1)
     try expect_equal(shift_right_unsigned(8, 2), 2)
+    try expect_equal(shift_right_unsigned(-1, 0), -1)
+    try expect_equal(shift_right_unsigned(-1, 1), max_int())
+    try expect_equal(shift_right_unsigned(min_int(), 63), 1)
+    try expect_equal(shift_right_unsigned(-16, 4), 1152921504606846975)
 
 test "shift counts outside 0 through 63 fault":
     let first = try expect_fault(shift_too_far)
@@ -46,3 +50,4 @@ test "wrapping arithmetic never faults":
     try expect_equal(wrapping_add(max_int(), 1), min_int())
     try expect_equal(wrapping_subtract(min_int(), 1), max_int())
     try expect_equal(wrapping_multiply(max_int(), 2), -2)
+    try expect_equal(wrapping_multiply(min_int(), 3), min_int())

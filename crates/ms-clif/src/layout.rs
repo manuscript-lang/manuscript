@@ -8,12 +8,13 @@
 //! | --- | --- |
 //! | `Unit` | none |
 //! | `Bool` | `i8` |
-//! | `Int`, `Ptr`, `String`, closures, `Shared[T]` | `i64` |
+//! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
 //! | `Float` | `f64` |
+//! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
-//! | `Map`, `Set` | six `i64` words (`MapVal`) |
+//! | `Map`, `Set` | seven `i64` words (`MapVal`) |
 //! | record | the fields' leaves in declaration order |
-//! | `Optional[String]` (single-pointer payloads) | nullable `i64` |
+//! | `Optional[T]` of a closure or handle object (single-pointer payloads) | nullable `i64` |
 //! | `Optional[T]` otherwise | `present: i8`, then `T`'s leaves |
 //! | `Optional[T]` that reaches itself by value | nullable `i64` pointer to a block of `T`'s leaves |
 //! | alternative | `tag: i64`, then payload slots shared by all cases |
@@ -230,7 +231,7 @@ impl<'m> Layouts<'m> {
     /// Whether `Optional[inner]` is a nullable pointer.
     pub fn opt_is_nullable(&self, inner: Ty) -> bool {
         self.opt_is_boxed(inner)
-            || matches!(self.m.types.kind(inner), TyKind::Str | TyKind::Fn(..))
+            || matches!(self.m.types.kind(inner), TyKind::Fn(..))
             || matches!(self.m.types.kind(inner), TyKind::Obj(n, _) if n != "Map" && n != "Set")
     }
 
@@ -240,10 +241,11 @@ impl<'m> Layouts<'m> {
         match self.m.types.kind(ty) {
             TyKind::Unit => plain(vec![]),
             TyKind::Bool => plain(vec![I8]),
-            TyKind::Int | TyKind::Ptr | TyKind::Str | TyKind::Fn(..) => plain(vec![I64]),
+            TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => plain(vec![I64]),
             TyKind::Float => plain(vec![F64]),
+            TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
-            TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 6]),
+            TyKind::Obj(n, _) if n == "Map" || n == "Set" => plain(vec![I64; 7]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
             TyKind::Rec(r) => plain(

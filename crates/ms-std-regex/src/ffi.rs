@@ -94,21 +94,21 @@ mod tests {
         let mut re = core::ptr::null_mut();
         // SAFETY: strings and handle are live for each call; released through the runtime.
         unsafe {
-            assert_eq!(msrt_regex_compile(pat, &mut re), 0);
-            assert_eq!(msrt_regex_matches(re, hay), 1);
+            assert_eq!(msrt_regex_compile(&pat, &mut re), 0);
+            assert_eq!(msrt_regex_matches(re, &hay), 1);
             let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
-            assert_eq!(msrt_regex_find_all(re, hay, 0, 0, out.as_mut_ptr()), 0);
+            assert_eq!(msrt_regex_find_all(re, &hay, 0, 0, out.as_mut_ptr()), 0);
             assert_eq!(out.assume_init().len, 1);
             let bad = new_string("(");
             let mut none = core::ptr::null_mut();
             assert_eq!(
-                msrt_regex_compile(bad, &mut none),
+                msrt_regex_compile(&bad, &mut none),
                 ms_std_core::STATUS_INVALID_DATA
             );
             ms_rt::obj::msrt_release(re.cast());
-            ms_rt::obj::msrt_release(pat.cast());
-            ms_rt::obj::msrt_release(hay.cast());
-            ms_rt::obj::msrt_release(bad.cast());
+            ms_std_core::str_release(&pat);
+            ms_std_core::str_release(&hay);
+            ms_std_core::str_release(&bad);
         }
     }
 }

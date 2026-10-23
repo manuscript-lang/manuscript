@@ -2,7 +2,7 @@
 #![cfg(unix)]
 #![allow(unsafe_code)]
 
-use ms_rt::{fault, obj, string, trap};
+use ms_rt::{fault, string, trap};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -58,7 +58,7 @@ fn capture(operation: impl FnOnce()) -> Option<String> {
         operation();
         trap::msrt_trap_end();
     }
-    let mut message = std::ptr::null_mut();
+    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
     // SAFETY: the message out pointer is writable and the trap belongs to this thread.
     let faulted = unsafe { trap::msrt_trap_wait(&mut message) };
     if faulted == 0 {
@@ -66,8 +66,8 @@ fn capture(operation: impl FnOnce()) -> Option<String> {
     }
     // SAFETY: a successful wait transfers a live runtime string to the caller.
     unsafe {
-        let text = String::from_utf8_lossy(string::bytes(message)).into_owned();
-        obj::release(message.cast());
+        let text = String::from_utf8_lossy(string::bytes(&message)).into_owned();
+        string::release(&message);
         Some(text)
     }
 }

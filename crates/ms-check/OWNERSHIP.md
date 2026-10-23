@@ -55,8 +55,13 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 | Move out of borrow/var | `consume_borrowed_binding`, `projection_move_out` (a `var` parameter's part), `match_payload_move_out`, `loop_variable_moved_out`, `return_borrowed_binding`, `var_parameter_moved_out` |
 | Closures | `closure_exclusive_borrow`, `closure_borrow_then_mutation`, `closure_reads_changed_variable`, `escaping_closure_changes_capture`, `escaping_closure_takes_capture` |
 | Borrowed results | `getter_result_mutate_parent`, `getter_result_local`, `getter_result_stored`, `getter_result_second_mutable`, `getter_result_not_var`, `getter_result_read_while_mutable`, `getter_result_from_var_param`, `getter_result_also_consumed` |
+| String views | `view_result_stored`, `view_bound_then_stored`, `view_source_changed`, `view_result_returned_from_local`; accepted: `view_in_place`, `view_lent_result` |
 | Mutable borrows | `var_borrow_second_mutable`, `var_borrow_read_origin`, `var_borrow_mutate_origin`, `var_borrow_of_let`, `var_borrow_reassigned`, `var_borrow_moved_out`, `if_var_of_let`, `if_var_read_origin`, `if_var_mutate_origin`, `if_var_reassigned` |
 | Mutators | `mutator_chaining`, `mutator_result_used` |
+
+## String views
+
+`trim`, `trim_start` and `trim_end` on a string held in a variable return an immutable view into it: the checker treats the result as a borrow of the receiver (`LENDING_NATIVES` in `receivers.rs`, the same rules as an accessor), so `let t = s.trim()` holds `s` unchanged until `t`'s last use and a result that is stored, passed to a consuming parameter or returned from a local is rejected with `.clone()` as the remedy. Nothing is allocated for a view; strings stay immutable (there is no in-place trim). In the runtime a view is a `StrVal` with `cap == STR_VIEW_CAP`: dropping it frees nothing, copying it allocates, and the scalar-count cache ignores it. A view of a temporary receiver (`read_line().trim()`) is an ordinary owned string. Lowering emits a view only when the receiver is a variable place, which is a subset of what the checker treats as a borrow, so a view never outlives its source.
 
 ## Behavior changes for the migration tool
 

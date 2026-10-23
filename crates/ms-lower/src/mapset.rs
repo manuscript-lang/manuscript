@@ -125,6 +125,76 @@ impl<'a> FnLower<'a> {
         Ok(Some(Val { v: u, own: false }))
     }
 
+    /// `m.add(key: k.clone(), value: v)` and `m.add_default(..)` on a `String`-keyed map held in a
+    /// local, with `k` a part of a variable that cannot change: the runtime copies the key only when
+    /// the entry is absent, so updating an existing entry allocates nothing.
+    pub(crate) fn lent_key_add(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(name, "add" | "add_default")
+            || self.discard != Some(e as *const Expr as usize)
+            || view.arguments.len() != 2
+        {
+            return Ok(None);
+        }
+        let declared: Vec<_> = m.ty.params.iter().map(|p| p.name).collect();
+        if declared.len() != 2
+            || view.arguments[0].slot.name != declared[0]
+            || view.arguments[1].slot.name != declared[1]
+        {
+            return Ok(None);
+        }
+        let (key_e, value_e) = (view.arguments[0].expr, view.arguments[1].expr);
+        let Some(inner) = clone_receiver(key_e) else {
+            return Ok(None);
+        };
+        if !self.is_place(recv_expr) || !self.is_place(inner) {
+            return Ok(None);
+        }
+        let base = crate::mutation::place_base(&self.hir, inner);
+        if !matches!(self.hir.resolution(base), Resolution::Local(b) if !b.mutable) {
+            return Ok(None);
+        }
+        let mt = self.emty(recv_expr)?;
+        let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
+            return Ok(None);
+        };
+        if n != "Map" || a.first() != Some(&MTy::STR) {
+            return Ok(None);
+        }
+        let k = self.expr(inner)?;
+        if self.dead {
+            return Ok(Some(k));
+        }
+        let k = self.borrow(k);
+        let v = self.expr(value_e)?;
+        if self.dead {
+            return Ok(Some(v));
+        }
+        let v = self.owned(v);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let sym = if name == "add" {
+            "msrt_map_add_lent"
+        } else {
+            "msrt_map_add_default_lent"
+        };
+        self.place_update(recv_expr, &mut |s, old| {
+            let slot = s.put_slot(old);
+            let ks = s.lend_slot(k);
+            let vs = s.put_slot(v);
+            s.call_runtime(sym, &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+            Ok(s.take_slot(slot, mt))
+        })?;
+        let u = self.b.unit();
+        Ok(Some(Val { v: u, own: false }))
+    }
+
     /// The default `d` of `recv.get(key).get(d)` when `e` is exactly that read of the same
     /// local map and an equal simple key, with `d` a number literal.
     fn counter_read<'e>(
@@ -221,6 +291,7 @@ impl<'a> FnLower<'a> {
         if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
+        let stable = self.stable_place(map);
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
@@ -272,10 +343,11 @@ impl<'a> FnLower<'a> {
                     self.b.switch_to(bad);
                     self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                     self.b.switch_to(good);
-                    Ok(Some(Val {
-                        v: load(self),
-                        own: false,
-                    }))
+                    let v = load(self);
+                    if stable {
+                        self.stable_reads.insert(v);
+                    }
+                    Ok(Some(Val { v, own: false }))
                 }
                 Some(d) => {
                     let out = self.two_ways(
@@ -306,7 +378,31 @@ impl<'a> FnLower<'a> {
 
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
-        self.call_runtime("msrt_map_new", &[], ty)
+        let v = self.call_runtime("msrt_map_new", &[], ty)?;
+        self.stamped(v)
+    }
+
+    /// A map or set that keeps the `Equal` and `Hashable` of the module that makes it, when its
+    /// key type has local extensions; any other value is returned unchanged.
+    pub(crate) fn stamped(&mut self, v: Value) -> Result<Value, Error> {
+        let t = self.ty_of(v);
+        let TyKind::Obj(n, args) = self.b.m.types.kind(t).clone() else {
+            return Ok(v);
+        };
+        if (n != "Map" && n != "Set") || !self.cx.holds_extension(self.b.m, args[0]) {
+            return Ok(v);
+        }
+        let kd = self.type_desc(args[0]);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
+            .expect("slot");
+        self.b.emit(Op::Put, &[slot, v], Imm::None, None);
+        self.call_runtime("msrt_map_stamp", &[slot, kd], MTy::UNIT)?;
+        Ok(self
+            .b
+            .emit(Op::Take, &[slot], Imm::Ty(t), Some(t))
+            .expect("take"))
     }
 
     /// `Set(values)`: the set of a list's elements.
@@ -317,6 +413,7 @@ impl<'a> FnLower<'a> {
         let d = self.type_desc(a[0]);
         let l = self.borrow(list);
         let out = self.call_runtime("msrt_list_to_set", &[l, d], ty)?;
+        let out = self.stamped(out)?;
         Ok(Val { v: out, own: true })
     }
 
@@ -775,10 +872,8 @@ impl<'a> FnLower<'a> {
         let (kd, vd) = self.map_descs(mt)?;
         let vd = match vd {
             Some(v) => v,
-            None => {
-                let ot = self.b.m.types.opt(MTy::STR);
-                self.b.opt_none(ot)
-            }
+            // A set is a map without a value descriptor: a null pointer.
+            None => self.b.iconst(0),
         };
         let kp = self.ptr_slot();
         let vp = self.ptr_slot();

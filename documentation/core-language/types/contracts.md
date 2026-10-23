@@ -71,6 +71,7 @@ Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `D
 - Each module sees the defining module's implementations plus its own extensions. Duplicate or overlapping receiver/contract pairs in that set are rejected, including replacing a defining-module implementation.
 - Separate modules may define the same local pair; extensions never propagate through imports.
 - Views, bound methods, and specialized generics keep the implementation selected where they were created; a raw concrete value carries no extra conformance into another module.
+- A `Map` or `Set` whose key type has a local `Equal` or `Hashable` keeps the implementations of the module that created it, including when another module adds, removes, or looks up keys; a collection created where the type has none keeps structural equality.
 - Receivers must be source-defined nominal records or alternatives. Standard-library receivers, interfaces, bare type parameters, specialization, generic operations, and implementation inheritance are unsupported.
 - Contracts may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
 - Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](records.md#public-data-surfaces).

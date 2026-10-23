@@ -41,30 +41,133 @@ pub const OBJ_DROP_OFFSET: usize = 8;
 pub const OBJ_HEADER_SIZE: usize = 16;
 
 // ---------------------------------------------------------------------------
-// String (the only refcounted value besides Shared)
+// String
 // ---------------------------------------------------------------------------
 
-/// `scalars` value meaning "not counted yet".
-pub const SCALARS_UNKNOWN: usize = usize::MAX;
-
-/// `String`: header, UTF-8 byte length, cached Unicode scalar count, bytes, and
-/// one trailing NUL byte (not counted in `len`). Strings are immutable and
-/// shared by reference count (non-atomic).
+/// `String`: two words in the owner's slot, `ptr` at the UTF-8 bytes and `len` the byte length
+/// with the ownership tag in its top two bits. The bytes are followed by one NUL (not counted).
+///
+/// A string is an owned value over immutable bytes: copying it allocates and copies the bytes,
+/// dropping it frees them. The tag says what the bytes are:
+///
+/// | top bits | kind | drop | copy |
+/// | --- | --- | --- | --- |
+/// | `00` | owned allocation starting at `ptr` | frees | duplicates |
+/// | `10` | static (a literal or a shared one-byte ASCII string) | nothing | shares |
+/// | `11` | view borrowed from another string | nothing | duplicates |
+///
+/// So `tagged as i64 >= 0` is "owned", and the length is `tagged & STR_LEN_MASK`.
 #[repr(C)]
-pub struct StrObj {
-    pub hdr: Obj,
-    /// Byte length.
-    pub len: usize,
-    /// Scalar count or [`SCALARS_UNKNOWN`]. Written lazily by `length()`.
-    pub scalars: usize,
-    // `len + 1` bytes of data follow at offset 32.
+pub struct StrVal {
+    pub ptr: *mut u8,
+    /// Byte length and tag; read it through [`StrVal::len`].
+    pub tagged: usize,
 }
+/// Tag bit of a string that is not owned (static or view).
+pub const STR_BORROWED: usize = 1 << 63;
+/// Tag of a static string.
+pub const STR_STATIC: usize = STR_BORROWED;
+/// Tag of a view.
+pub const STR_VIEW: usize = 3 << 62;
+/// Mask of the byte length in the second word.
+pub const STR_LEN_MASK: usize = (1 << 62) - 1;
 
-pub const STR_LEN_OFFSET: usize = 16;
-pub const STR_SCALARS_OFFSET: usize = 24;
-pub const STR_DATA_OFFSET: usize = 32;
+impl StrVal {
+    /// An owned string over the allocation at `ptr`.
+    #[inline(always)]
+    pub const fn owned(ptr: *mut u8, len: usize) -> StrVal {
+        StrVal { ptr, tagged: len }
+    }
+
+    /// A static string (never freed, shared on copy).
+    #[inline(always)]
+    pub const fn literal(ptr: *mut u8, len: usize) -> StrVal {
+        StrVal {
+            ptr,
+            tagged: len | STR_STATIC,
+        }
+    }
+
+    /// A view of bytes another string owns.
+    #[inline(always)]
+    pub const fn view(ptr: *mut u8, len: usize) -> StrVal {
+        StrVal {
+            ptr,
+            tagged: len | STR_VIEW,
+        }
+    }
+
+    /// Byte length.
+    #[inline(always)]
+    pub const fn len(&self) -> usize {
+        self.tagged & STR_LEN_MASK
+    }
+
+    /// Whether the string has no bytes.
+    #[inline(always)]
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Whether dropping the string frees an allocation (not a literal and not a view).
+    #[inline(always)]
+    pub const fn owns(&self) -> bool {
+        (self.tagged as isize) >= 0
+    }
+
+    /// Whether the string is static: copies share it.
+    #[inline(always)]
+    pub const fn is_static(&self) -> bool {
+        self.tagged >> 62 == 2
+    }
+
+    /// Whether the string is a view of another string's bytes.
+    #[inline(always)]
+    pub const fn is_view(&self) -> bool {
+        self.tagged >> 62 == 3
+    }
+
+    /// A second handle to the same bytes. Every call site decides what it stands for (a move or
+    /// a short-lived borrow); the compiler no longer duplicates strings silently, so
+    /// `grep alias` lists every site that shares.
+    #[inline(always)]
+    pub fn alias(&self) -> StrVal {
+        StrVal {
+            ptr: self.ptr,
+            tagged: self.tagged,
+        }
+    }
+
+    /// Writes the two words to `out` as separate stores. A plain struct write lets the compiler
+    /// copy through a 16-byte vector move, which stalls reading words a callee just stored
+    /// separately.
+    ///
+    /// # Safety
+    /// `out` must be writable.
+    #[inline(always)]
+    pub unsafe fn write_to(self, out: *mut StrVal) {
+        // SAFETY: caller contract.
+        unsafe {
+            core::ptr::write_volatile(&raw mut (*out).ptr, self.ptr);
+            core::ptr::write_volatile(&raw mut (*out).tagged, self.tagged);
+        }
+    }
+}
+pub const STR_PTR_OFFSET: usize = 0;
+pub const STR_LEN_OFFSET: usize = 8;
+pub const STR_SIZE: usize = 16;
+
 /// Distance between consecutive entries of the shared one-character ASCII strings (`msrt_ascii_chars`).
-pub const ASCII_CHAR_STRIDE: usize = 40;
+pub const ASCII_CHAR_STRIDE: usize = 2;
+
+/// `Optional[String]`: a presence byte, then the string at offset 8 (24 bytes).
+#[repr(C)]
+pub struct OptStr {
+    pub present: u8,
+    pub value: StrVal,
+}
+pub const OPT_STR_VALUE_OFFSET: usize = 8;
+pub const OPT_STR_SIZE: usize = 24;
 
 // ---------------------------------------------------------------------------
 // Owned aggregate values: List, Bytes, Map, Set (no header, no count)
@@ -104,9 +207,11 @@ pub struct MapVal {
     pub cap: usize,
     /// Index size minus one (0 when there is no index).
     pub mask: usize,
+    /// The key descriptor the map was created with, or null to use the caller's.
+    pub desc: *const TypeDesc,
 }
 pub const MAP_LEN_OFFSET: usize = 16;
-pub const MAP_SIZE: usize = 48;
+pub const MAP_SIZE: usize = 56;
 
 // ---------------------------------------------------------------------------
 // Type descriptors
@@ -115,12 +220,12 @@ pub const MAP_SIZE: usize = 48;
 pub const KIND_INT: u32 = 0;
 pub const KIND_FLOAT: u32 = 1;
 pub const KIND_BOOL: u32 = 2;
-/// Slot holds a non-null `*mut StrObj`; copy = retain, drop = release; content equality and hash.
+/// Slot holds a `StrVal` (16 bytes); copy duplicates, drop frees; content equality and hash.
 pub const KIND_STRING: u32 = 3;
 /// Slot holds a `VecVal` of bytes (24 bytes). Copy duplicates the buffer.
 pub const KIND_BYTES: u32 = 4;
 /// Slot holds a nullable pointer to a reference-counted object with an `Obj`
-/// header (`Shared[T]`, `Optional[String]`...). Copy = retain, drop = release.
+/// header (`Shared[T]`, closures, handle objects...). Copy = retain, drop = release.
 /// `eq`/`hash` are called when present, else identity.
 pub const KIND_SHARED: u32 = 5;
 /// Plain bits without ownership (scalars, records of scalars, inline `Optional[Int]`).
@@ -383,9 +488,11 @@ mod tests {
         assert_eq!(size_of::<Obj>(), OBJ_HEADER_SIZE);
         assert_eq!(offset_of!(Obj, rc), OBJ_RC_OFFSET);
         assert_eq!(offset_of!(Obj, drop), OBJ_DROP_OFFSET);
-        assert_eq!(offset_of!(StrObj, len), STR_LEN_OFFSET);
-        assert_eq!(offset_of!(StrObj, scalars), STR_SCALARS_OFFSET);
-        assert_eq!(size_of::<StrObj>(), STR_DATA_OFFSET);
+        assert_eq!(offset_of!(StrVal, ptr), STR_PTR_OFFSET);
+        assert_eq!(offset_of!(StrVal, tagged), STR_LEN_OFFSET);
+        assert_eq!(size_of::<StrVal>(), STR_SIZE);
+        assert_eq!(offset_of!(OptStr, value), OPT_STR_VALUE_OFFSET);
+        assert_eq!(size_of::<OptStr>(), OPT_STR_SIZE);
         assert_eq!(offset_of!(VecVal, ptr), VEC_PTR_OFFSET);
         assert_eq!(offset_of!(VecVal, len), VEC_LEN_OFFSET);
         assert_eq!(offset_of!(VecVal, cap), VEC_CAP_OFFSET);

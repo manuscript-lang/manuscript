@@ -79,7 +79,8 @@ Verify: exercise stored, bound, and generic calls that omit a defaulted argument
 
 Decision: the user rejected per-call bookkeeping in generated code; a fault captures its frames where it is created, and the process runs `with` cleanups in reverse order before aborting ([design contract](../crates/DESIGN.md)). Frames are `file:line in function` with no column, and a call spanning several lines reports the line of its statement's first line. A function's return-type position identifies its declaration, not a failing expression, so the located statement carries the position. Lower operands before the operation that can fault so a successful nested call does not take over the enclosing site. Do not reintroduce columns or per-call recording without a new decision.
 
-Open: two conformance fixtures still differ (a multiline statement reports its last line; a callee inlined into `main` loses its frame). They are listed in `tests/conformance/expect-fail.txt`.
+Verified: omitted defaults lowered directly into a caller still need the callee's logical frame. Existing MIR inline scopes carry that frame without per-call runtime bookkeeping; default thunks already provide it. A source function must retain its declaration file even if its surviving instructions all come from an imported default.
+Evidence: [default frame regressions](../crates/ms-cli/tests/default_frames.rs), [default lowering](../crates/ms-lower/src/call.rs), and the frozen `tests-e2e-testfaultsourcelocations-20` corpus fixture.
 
 Apply when: adding lowered operations, inlining, source fault traces, or call fast paths.
 Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).

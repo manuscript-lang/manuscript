@@ -7,7 +7,7 @@
 //! out-pointer; a record result (`-> out T`) is written through a trailing out-pointer and the
 //! shim returns nothing. This is the same layout the hand-written shims used.
 use crate::{
-    Fail, StrObj, TypeDesc, VecVal, bytes_ref, new_string, new_string_bytes, read_string_list,
+    Fail, StrVal, TypeDesc, VecVal, bytes_ref, new_string, new_string_bytes, read_string_list,
     str_ref, write_bytes,
 };
 use alloc::boxed::Box;
@@ -15,7 +15,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
-use ms_rt_abi::{Closure, MapVal};
+use ms_rt_abi::{Closure, MapVal, OptStr};
 
 unsafe extern "C" {
     fn msrt_retain(o: *mut ms_rt_abi::Obj);
@@ -111,24 +111,24 @@ impl IntoAbi for bool {
 }
 
 impl AbiType for &str {
-    type Raw = *const StrObj;
+    type Raw = *const StrVal;
 }
-// SAFETY: `String` arguments are live, non-null `StrObj`s that outlive the call.
+// SAFETY: `String` arguments are live `StrVal`s that outlive the call.
 unsafe impl<'a> FromAbi<'a> for &'a str {
-    unsafe fn from_raw(raw: *const StrObj) -> &'a str {
+    unsafe fn from_raw(raw: *const StrVal) -> &'a str {
         // SAFETY: caller contract.
         unsafe { str_ref(raw) }
     }
 }
 impl IntoAbi for &str {
-    type Raw = *mut StrObj;
-    fn into_raw(self) -> *mut StrObj {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
         new_string(self)
     }
 }
 impl IntoAbi for String {
-    type Raw = *mut StrObj;
-    fn into_raw(self) -> *mut StrObj {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
         new_string(&self)
     }
 }
@@ -167,20 +167,20 @@ unsafe impl<'a> FromAbi<'a> for Vec<&'a str> {
     }
 }
 
-/// A record of `N` strings (all fields `String`), laid out as `N` consecutive pointers.
+/// A record of `N` strings (all fields `String`), laid out as `N` consecutive string values.
 impl<const N: usize> AbiType for [&str; N] {
-    type Raw = *const [*mut StrObj; N];
+    type Raw = *const [StrVal; N];
 }
 // SAFETY: record arguments are live records of `N` live strings that outlive the call.
 unsafe impl<'a, const N: usize> FromAbi<'a> for [&'a str; N] {
-    unsafe fn from_raw(raw: *const [*mut StrObj; N]) -> [&'a str; N] {
+    unsafe fn from_raw(raw: *const [StrVal; N]) -> [&'a str; N] {
         // SAFETY: caller contract; each field is a live string.
-        unsafe { (*raw).map(|p| str_ref(p)) }
+        unsafe { core::array::from_fn(|i| str_ref(&(*raw)[i])) }
     }
 }
 impl<const N: usize> IntoAbi for [String; N] {
-    type Raw = [*mut StrObj; N];
-    fn into_raw(self) -> [*mut StrObj; N] {
+    type Raw = [StrVal; N];
+    fn into_raw(self) -> [StrVal; N] {
         self.map(|s| new_string(&s))
     }
 }
@@ -188,7 +188,7 @@ impl<const N: usize> IntoAbi for [String; N] {
 /// An owned runtime string stored inside a record (`String` field), for [`abi_record!`].
 /// Dropping it does not free the string: the record's owner does that.
 #[repr(transparent)]
-pub struct Str(*mut StrObj);
+pub struct Str(StrVal);
 
 impl Str {
     pub fn new(s: &str) -> Str {
@@ -200,13 +200,13 @@ impl Str {
         Str(new_string_bytes(b))
     }
 
-    pub fn as_ptr(&self) -> *const StrObj {
-        self.0
+    pub fn as_ptr(&self) -> *const StrVal {
+        &raw const self.0
     }
 
     pub fn as_str(&self) -> &str {
         // SAFETY: a `Str` is only created by `new` or by the runtime inside a live record.
-        unsafe { str_ref(self.0) }
+        unsafe { str_ref(&raw const self.0) }
     }
 }
 
@@ -258,8 +258,8 @@ pub fn start_nanos() -> i64 {
 pub struct Text(pub Vec<u8>);
 
 impl IntoAbi for Text {
-    type Raw = *mut StrObj;
-    fn into_raw(self) -> *mut StrObj {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
         new_string_bytes(&self.0)
     }
 }
@@ -547,18 +547,19 @@ impl<T: AbiHandle> IntoAbi for ObjShare<T> {
     }
 }
 
-type PairCode = unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj) -> u8;
+/// Compiled closure code takes a `String` as its two leaves `(ptr, tagged)`, not a pointer.
+type PairCode = unsafe extern "C-unwind" fn(*mut Closure, *mut u8, usize, *mut u8, usize) -> u8;
 type EntryCode =
-    unsafe extern "C-unwind" fn(*mut Closure, *const StrObj, *const StrObj, u8, u8) -> u8;
+    unsafe extern "C-unwind" fn(*mut Closure, *mut u8, usize, *mut u8, usize, u8, u8) -> u8;
 
 /// Calls `code` with temporary strings made from `bytes`, released after the call.
-fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(*const StrObj, *const StrObj) -> R) -> R {
+fn with_strings<R>(bytes: [&[u8]; 2], call: impl FnOnce(&StrVal, &StrVal) -> R) -> R {
     let (a, b) = (new_string_bytes(bytes[0]), new_string_bytes(bytes[1]));
-    let r = call(a, b);
+    let r = call(&a, &b);
     // SAFETY: the callee only borrowed the strings; this releases the one reference made above.
     unsafe {
-        msrt_release(a.cast());
-        msrt_release(b.cast());
+        crate::str_release(&a);
+        crate::str_release(&b);
     }
     r
 }
@@ -569,7 +570,10 @@ pub struct PairFilter(*mut Closure, PairCode);
 impl PairFilter {
     pub fn call(&self, a: &[u8], b: &[u8]) -> bool {
         // SAFETY: the compiler built the closure with this signature (`FromAbi`).
-        with_strings([a, b], |a, b| unsafe { (self.1)(self.0, a, b) } != 0)
+        with_strings(
+            [a, b],
+            |a, b| unsafe { (self.1)(self.0, a.ptr, a.tagged, b.ptr, b.tagged) } != 0,
+        )
     }
 }
 
@@ -581,7 +585,17 @@ impl EntryFilter {
         // SAFETY: the compiler built the closure with this signature (`FromAbi`).
         with_strings(
             [path, name],
-            |p, n| unsafe { (self.1)(self.0, p, n, u8::from(directory), u8::from(symlink)) } != 0,
+            |p, n| unsafe {
+                (self.1)(
+                    self.0,
+                    p.ptr,
+                    p.tagged,
+                    n.ptr,
+                    n.tagged,
+                    u8::from(directory),
+                    u8::from(symlink),
+                )
+            } != 0,
         )
     }
 }
@@ -704,12 +718,11 @@ impl OptInt {
 impl AbiSlot for Str {
     unsafe fn release(&mut self) {
         // SAFETY: caller contract; a `Str` owns one reference.
-        unsafe { msrt_release(self.0.cast()) }
+        unsafe { crate::str_release(&self.0) }
     }
     unsafe fn duplicate(&self) -> Str {
         // SAFETY: caller contract.
-        unsafe { msrt_retain(self.0.cast()) };
-        Str(self.0)
+        Str(unsafe { crate::str_clone(&self.0) })
     }
 }
 
@@ -812,22 +825,11 @@ impl IntoAbi for () {
 }
 
 /// A runtime string passes through unchanged (+1 owned by the caller).
-impl IntoAbi for *mut StrObj {
-    type Raw = *mut StrObj;
-    fn into_raw(self) -> *mut StrObj {
+impl IntoAbi for StrVal {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
         self
     }
-}
-
-// SAFETY: an optional `String` argument is a live string or null.
-unsafe impl<'a> FromAbi<'a> for Option<&'a str> {
-    unsafe fn from_raw(raw: *const StrObj) -> Option<&'a str> {
-        // SAFETY: caller contract.
-        (!raw.is_null()).then(|| unsafe { str_ref(raw) })
-    }
-}
-impl AbiType for Option<&str> {
-    type Raw = *const StrObj;
 }
 
 impl AbiType for Vec<Vec<&str>> {
@@ -866,8 +868,8 @@ impl IntoAbi for Vec<String> {
     }
 }
 
-/// The nullable `err: *mut *mut StrObj` slot where a fallible native stores a `Failed` message.
-pub struct ErrOut(*mut *mut StrObj);
+/// The nullable `err: *mut StrVal` slot where a fallible native stores a `Failed` message.
+pub struct ErrOut(*mut StrVal);
 
 impl ErrOut {
     /// Stores `msg` as a fresh string, unless the caller passed no slot.
@@ -879,11 +881,11 @@ impl ErrOut {
     }
 }
 impl AbiType for ErrOut {
-    type Raw = *mut *mut StrObj;
+    type Raw = *mut StrVal;
 }
-// SAFETY: the caller passes null or writable memory for one string pointer.
+// SAFETY: the caller passes null or writable memory for one string.
 unsafe impl FromAbi<'_> for ErrOut {
-    unsafe fn from_raw(raw: *mut *mut StrObj) -> ErrOut {
+    unsafe fn from_raw(raw: *mut StrVal) -> ErrOut {
         ErrOut(raw)
     }
 }
@@ -1005,14 +1007,8 @@ impl<T: AbiHandle> AbiSlot for ObjSlot<T> {
     }
 }
 
-type ReadCode = unsafe extern "C-unwind" fn(
-    *mut Closure,
-    u8,
-    i64,
-    *mut VecVal,
-    *mut u8,
-    *mut *mut StrObj,
-) -> u8;
+type ReadCode =
+    unsafe extern "C-unwind" fn(*mut Closure, u8, i64, *mut VecVal, *mut u8, *mut StrVal) -> u8;
 
 /// A compiled `ReadStream` closure, read with the `Connection.read` convention of `ABI.md`. It
 /// borrows the closure for the duration of the native call that received it.
@@ -1034,7 +1030,7 @@ impl ReadSource {
     pub fn read(&self, max: usize) -> Result<Option<Vec<u8>>, u8> {
         let mut out = core::mem::MaybeUninit::<VecVal>::uninit();
         let mut present = 0u8;
-        let mut message: *mut StrObj = core::ptr::null_mut();
+        let mut message = StrVal::owned(core::ptr::null_mut(), 0);
         // SAFETY: the code follows the `Connection.read` convention, filling `out` with an owned
         // `Bytes` when it reports a chunk; the closure is borrowed for the call.
         unsafe {
@@ -1046,8 +1042,8 @@ impl ReadSource {
                 &mut present,
                 &mut message,
             );
-            if !message.is_null() {
-                msrt_release(message.cast());
+            if !message.ptr.is_null() {
+                crate::str_release(&message);
             }
             if status != 0 {
                 return Err(status);
@@ -1192,33 +1188,42 @@ unsafe impl<'a> FromAbi<'a> for IdArray<'a> {
     }
 }
 
-/// Like [`IdArray`], for an array of string pointers.
-pub struct StrArray<'a>(*const *const StrObj, PhantomData<&'a StrObj>);
+/// Like [`IdArray`], for an array of strings.
+pub struct StrArray<'a>(*const StrVal, PhantomData<&'a StrVal>);
 
 impl<'a> StrArray<'a> {
     pub fn get(&self, n: i64) -> Vec<&'a str> {
         let n = usize::try_from(n).unwrap_or(0);
         (0..n)
             // SAFETY: the generated code passes `n` live strings.
-            .map(|i| unsafe { str_ref(*self.0.add(i)) })
+            .map(|i| unsafe { str_ref(self.0.add(i)) })
             .collect()
     }
 }
 impl AbiType for StrArray<'_> {
-    type Raw = *const *const StrObj;
+    type Raw = *const StrVal;
 }
 // SAFETY: the caller passes a pointer to as many live strings as the `n` argument it pairs with.
 unsafe impl<'a> FromAbi<'a> for StrArray<'a> {
-    unsafe fn from_raw(raw: *const *const StrObj) -> StrArray<'a> {
+    unsafe fn from_raw(raw: *const StrVal) -> StrArray<'a> {
         StrArray(raw, PhantomData)
     }
 }
 
-/// `None` becomes a null string pointer.
+/// `None` is an absent `Optional[String]`.
 impl IntoAbi for Option<String> {
-    type Raw = *mut StrObj;
-    fn into_raw(self) -> *mut StrObj {
-        self.map_or(core::ptr::null_mut(), |s| new_string(&s))
+    type Raw = OptStr;
+    fn into_raw(self) -> OptStr {
+        match self {
+            Some(s) => OptStr {
+                present: 1,
+                value: new_string(&s),
+            },
+            None => OptStr {
+                present: 0,
+                value: StrVal::owned(core::ptr::null_mut(), 0),
+            },
+        }
     }
 }
 
@@ -1547,6 +1552,47 @@ macro_rules! native {
         }
         $crate::native! { $($rest)* }
     };
+    // Strings are three words: they come back through a trailing out-pointer, like lists.
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> String $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out String $body $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> &'static str $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out &'static str $body $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> &str $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out &str $body $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Text $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out Text $body $($rest)* }
+    };
+    (
+        @item [$($q:tt)*]
+        $(#[$m:meta])*
+        fn $name:ident($($p:ident: $t:ty),* $(,)?) -> Option<String> $body:block
+        $($rest:tt)*
+    ) => {
+        $crate::native! { @item [unsafe] $(#[$m])* fn $name($($p: $t),*) -> out Option<String> $body $($rest)* }
+    };
     (
         @item [$($q:tt)*]
         $(#[$m:meta])*
@@ -1559,6 +1605,12 @@ macro_rules! native {
         pub $($q)* extern "C-unwind" fn $name(
             $($p: <$t as $crate::AbiType>::Raw),*
         ) -> <$ret as $crate::IntoAbi>::Raw {
+            const {
+                assert!(
+                    ::core::mem::size_of::<<$ret as $crate::IntoAbi>::Raw>() <= 8,
+                    "results wider than a word return through `-> out`"
+                )
+            };
             fn native_body($($p: $t),*) -> $ret $body
             // SAFETY: arguments are live values of their declared types (`FromAbi`).
             $crate::IntoAbi::into_raw(native_body($(unsafe { <$t as $crate::FromAbi>::from_raw($p) }),*))

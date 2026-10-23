@@ -5,7 +5,7 @@
 use crate::alloc::live_blocks;
 use crate::desc::{msrt_desc_int, msrt_desc_string};
 use crate::map::*;
-use crate::string::{self, from_bytes};
+use crate::string::{self, NO_STR, from_bytes};
 use crate::testutil;
 use crate::vec::*;
 use ms_rt_abi::*;
@@ -38,12 +38,12 @@ fn key(r: &mut Rng, space: usize) -> std::string::String {
     }
 }
 
-fn text(s: *const StrObj) -> std::string::String {
+fn text(s: &StrVal) -> std::string::String {
     // SAFETY: tests pass live strings.
     std::string::String::from_utf8_lossy(unsafe { string::bytes(s) }).into_owned()
 }
 
-fn new_str(s: &str) -> *mut StrObj {
+fn new_str(s: &str) -> StrVal {
     from_bytes(s.as_bytes())
 }
 
@@ -51,7 +51,7 @@ unsafe fn strings(v: &VecVal) -> std::vec::Vec<std::string::String> {
     // SAFETY: tests build string lists.
     unsafe {
         (0..v.len)
-            .map(|i| text(*(v.ptr as *const *const StrObj).add(i)))
+            .map(|i| text(&*(v.ptr as *const StrVal).add(i)))
             .collect()
     }
 }
@@ -98,12 +98,12 @@ fn string_map_matches_ordered_model(seed: u64) {
                 }
                 5..=7 => {
                     msrt_map_remove(&mut m, kd, vd, probe);
-                    crate::obj::release(ks as *mut Obj);
+                    string::release(&ks);
                     model.retain(|e| e.0 != k);
                 }
                 8 => {
                     let p = msrt_map_get_ptr(&m, kd, vd, probe);
-                    crate::obj::release(ks as *mut Obj);
+                    string::release(&ks);
                     let want = model.iter().find(|e| e.0 == k).map(|e| e.1);
                     assert_eq!(
                         if p.is_null() {
@@ -116,7 +116,7 @@ fn string_map_matches_ordered_model(seed: u64) {
                 }
                 _ => {
                     let has = msrt_map_contains(&m, kd, vd, probe) != 0;
-                    crate::obj::release(ks as *mut Obj);
+                    string::release(&ks);
                     assert_eq!(has, model.iter().any(|e| e.0 == k));
                 }
             }
@@ -298,10 +298,7 @@ type SetOp =
 
 unsafe extern "C-unwind" fn cmp_strings(_: *mut u8, a: *const u8, b: *const u8) -> i64 {
     // SAFETY: string slots.
-    unsafe {
-        string::bytes(*(a as *const *const StrObj)).cmp(string::bytes(*(b as *const *const StrObj)))
-            as i64
-    }
+    unsafe { string::bytes(a as *const StrVal).cmp(string::bytes(b as *const StrVal)) as i64 }
 }
 
 fn pick(r: &mut Rng, len: usize) -> usize {
@@ -344,7 +341,7 @@ fn string_list_matches_vec_model(seed: u64) {
                 }
                 5 => {
                     if n == 0 {
-                        crate::obj::release(e as *mut Obj);
+                        string::release(&e);
                     } else {
                         let i = r.below(n);
                         msrt_list_set(&mut v, d, i as i64, ep);
@@ -352,7 +349,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 6 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     if n > 0 {
                         let i = r.below(n);
                         msrt_list_remove(&mut v, d, i as i64 - n as i64);
@@ -360,24 +357,24 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 7 => {
-                    crate::obj::release(e as *mut Obj);
-                    let mut out: *mut StrObj = core::ptr::null_mut();
+                    string::release(&e);
+                    let mut out = NO_STR;
                     let got = msrt_list_pop(&mut v, d, &mut out as *mut _ as *mut u8) != 0;
                     assert_eq!(got, n > 0);
                     if got {
-                        assert_eq!(text(out), model.pop().unwrap());
-                        crate::obj::release(out as *mut Obj);
+                        assert_eq!(text(&out), model.pop().unwrap());
+                        string::release(&out);
                     }
                 }
                 8 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     if n > 0 {
                         msrt_list_remove(&mut v, d, 0);
                         model.remove(0);
                     }
                 }
                 9 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     let start = pick(&mut r, n);
                     let count = pick(&mut r, n - start);
                     let mut rep = VecVal {
@@ -397,17 +394,17 @@ fn string_list_matches_vec_model(seed: u64) {
                     model.splice(start..start + count, rep_model);
                 }
                 10 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     msrt_list_reverse_in_place(&mut v, d);
                     model.reverse();
                 }
                 11 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     msrt_list_sort_in_place(&mut v, d, cmp_strings, core::ptr::null_mut());
                     model.sort();
                 }
                 12 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     let mut out = VecVal {
                         ptr: core::ptr::null_mut(),
                         len: 0,
@@ -424,7 +421,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     drop_list(&mut out, d);
                 }
                 13 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     let (a, b) = (pick(&mut r, n), pick(&mut r, n));
                     let (a, b) = (a.min(b), a.max(b));
                     let mut out = VecVal {
@@ -444,11 +441,11 @@ fn string_list_matches_vec_model(seed: u64) {
                     let (a, b) = (pick(&mut r, n), pick(&mut r, n));
                     let (a, b) = (a.min(b), a.max(b));
                     msrt_list_fill(&mut v, d, ep, a as i64, b as i64);
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     model[a..b].fill(s);
                 }
                 15 => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     if n > 0 {
                         let (a, b) = (r.below(n), r.below(n + 1));
                         let (a, b) = (a.min(b), a.max(b));
@@ -460,7 +457,7 @@ fn string_list_matches_vec_model(seed: u64) {
                     }
                 }
                 _ => {
-                    crate::obj::release(e as *mut Obj);
+                    string::release(&e);
                     let mut other = VecVal {
                         ptr: core::ptr::null_mut(),
                         len: 0,
@@ -497,37 +494,40 @@ fn string_ops_match_char_model(seed: u64) {
             // Long inputs exercise the sequential-access hint (strings over 256 bytes).
             let max = if r.below(4) == 0 { 400 } else { 24 };
             let model = build(&mut r, max);
-            let s = new_str(&model);
+            let sv = new_str(&model);
+            let s = &sv;
             let chars: std::vec::Vec<char> = model.chars().collect();
             let n = chars.len();
             assert_eq!(string::msrt_string_length(s), n as i64);
             for _ in 0..8 {
                 let a = r.below(n + 1);
                 let b = a + r.below(n + 1 - a);
-                let mut out: *mut StrObj = core::ptr::null_mut();
+                let mut out = NO_STR;
                 assert_eq!(
                     string::msrt_string_slice_scalars(s, a as i64, b as i64, &mut out),
                     STATUS_OK
                 );
                 assert_eq!(
-                    text(out),
+                    text(&out),
                     chars[a..b].iter().collect::<std::string::String>()
                 );
-                assert_eq!(string::msrt_string_length(out), (b - a) as i64);
-                crate::obj::release(out as *mut Obj);
+                assert_eq!(string::msrt_string_length(&out), (b - a) as i64);
+                string::release(&out);
             }
             for _ in 0..n.min(6) {
                 let i = r.below(n);
-                let got = string::msrt_string_get(s, i as i64, core::ptr::null_mut());
-                assert_eq!(text(got), chars[i].to_string());
-                crate::obj::release(got as *mut Obj);
+                let mut got = NO_STR;
+                string::msrt_string_get(s, i as i64, 0, s, &mut got);
+                assert_eq!(text(&got), chars[i].to_string());
+                string::release(&got);
                 assert_eq!(
                     string::msrt_string_scalar_at(s, i as i64 - n as i64, 0, 0),
                     chars[i] as i64
                 );
             }
             let needle = build(&mut r, 3);
-            let ns = new_str(&needle);
+            let nv = new_str(&needle);
+            let ns = &nv;
             let mut at = 0i64;
             let found = string::msrt_string_index_of(s, ns, &mut at) != 0;
             let want = model
@@ -540,11 +540,12 @@ fn string_ops_match_char_model(seed: u64) {
                 .map(|b| model[..b].chars().count() as i64);
             assert_eq!(found.then_some(at), want);
             if !needle.is_empty() {
-                let rep = new_str("<>");
-                let got = string::msrt_string_replace_n(s, ns, rep, i64::MAX);
-                assert_eq!(text(got), model.replace(&needle, "<>"));
-                crate::obj::release(got as *mut Obj);
-                crate::obj::release(rep as *mut Obj);
+                let rep = &new_str("<>");
+                let mut got = NO_STR;
+                string::msrt_string_replace_n(s, ns, rep, i64::MAX, &mut got);
+                assert_eq!(text(&got), model.replace(&needle, "<>"));
+                string::release(&got);
+                string::release(rep);
                 let mut parts = VecVal {
                     ptr: core::ptr::null_mut(),
                     len: 0,
@@ -558,24 +559,27 @@ fn string_ops_match_char_model(seed: u64) {
                 assert_eq!(strings(&parts), want);
                 drop_list(&mut parts, &msrt_desc_string);
             }
-            let rev = string::msrt_string_reverse(s);
+            let mut rev = NO_STR;
+            string::msrt_string_reverse(s, &mut rev);
             assert_eq!(
-                text(rev),
+                text(&rev),
                 model.chars().rev().collect::<std::string::String>()
             );
-            crate::obj::release(rev as *mut Obj);
-            let trimmed = string::msrt_string_trim(s);
-            assert_eq!(text(trimmed), model.trim());
-            crate::obj::release(trimmed as *mut Obj);
-            let cat = string::msrt_string_concat(s, ns);
-            assert_eq!(text(cat), std::format!("{model}{needle}"));
+            string::release(&rev);
+            let mut trimmed = NO_STR;
+            string::msrt_string_trim(s, &mut trimmed);
+            assert_eq!(text(&trimmed), model.trim());
+            string::release(&trimmed);
+            let mut cat = NO_STR;
+            string::msrt_string_concat(s, ns, &mut cat);
+            assert_eq!(text(&cat), std::format!("{model}{needle}"));
             assert_eq!(
-                string::msrt_string_length(cat),
+                string::msrt_string_length(&cat),
                 (n + needle.chars().count()) as i64
             );
-            crate::obj::release(cat as *mut Obj);
-            crate::obj::release(ns as *mut Obj);
-            crate::obj::release(s as *mut Obj);
+            string::release(&cat);
+            string::release(&nv);
+            string::release(&sv);
         }
     }
     assert_eq!(live_blocks(), before);

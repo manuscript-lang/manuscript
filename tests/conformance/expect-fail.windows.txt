@@ -1,13 +1,4 @@
 # Fixtures that pass on Linux and fail on Windows (make conform adds this file on Windows hosts).
 # check: the "cannot find module ../x.ms" message names an unresolved <DIR>/.. on Windows; Linux collapses it.
-snippets/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3
 # check: an import of a file in a missing directory names the whole path; Linux (and Go) name the missing directory.
-e2e/stdlib/http-paths
-e2e/stdlib/http-websocket
-e2e/stdlib/io
-e2e/stdlib/tls
-snippets/internal-cli-testprojectcheckdiscoveryandreporting-1
-docs/core-language-modules-declarations-4
-docs/developer-tooling-builds-project-configuration-1
 # run: the Windows stack walk stops after 255 frames, so a 200000-deep recursion fault collapses to "repeated 255 more times" and never reaches main.
-snippets/tests-e2e-testrunawayrecursionisafault-1

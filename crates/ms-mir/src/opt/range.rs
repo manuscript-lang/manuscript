@@ -26,6 +26,11 @@
 //!   values threaded through mutators. Element replacement preserves length, including
 //!   through loop parameters whose incoming lists all have the same length origin.
 //!   Length-changing operations and fresh memory reads start new origins.
+//! * `idx < list.len l` is proved by a goal-directed search (`prove_le`) over those
+//!   relations and the definitions of the values involved: constant and ranged offsets
+//!   (`a[i + 1]` under `i < len - 1`, `a[len - 1 - i]`), division and scaling
+//!   (`a[i * 3 + 2]` under `i < len / 3`), and loop parameters by induction (a binary
+//!   search whose `hi` starts at `len - 1`).
 //! * An induction variable (`i` stepping by `i + c`, `c > 0`, guarded by `i < n`) is
 //!   bounded by the upper bound of `n` because the guard refines the value that feeds
 //!   the back edge.
@@ -159,6 +164,18 @@ enum Edit {
     Term(usize, Term),
 }
 
+/// What a proved upper bound is measured against.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Goal {
+    /// The length of lists with this length origin.
+    Len(Value),
+    /// An SSA value.
+    Val(Value),
+}
+
+/// Proof-search budget per query.
+const PROOF_FUEL: u32 = 200;
+
 struct Fa<'a> {
     m: &'a Module,
     f: &'a Func,
@@ -172,6 +189,8 @@ struct Fa<'a> {
     lenof: HashMap<Value, Value>,
     lengths: Vec<Value>,
     byte_lists: Vec<bool>,
+    /// Block and index of the block parameter that defines a value.
+    param_of: Vec<Option<(usize, usize)>>,
 }
 
 /// A list length can flow through replacement and block arguments without its
@@ -361,6 +380,12 @@ impl<'a> Fa<'a> {
                 }
             }
         }
+        let mut param_of = vec![None; f.values.len()];
+        for (bi, b) in f.blocks.iter().enumerate().skip(1) {
+            for (pi, p) in b.params.iter().enumerate() {
+                param_of[p.value.index()] = Some((bi, pi));
+            }
+        }
         let rpo = f.rpo();
         let preds = f.predecessors();
         let idom = crate::verify::dominators(f, &rpo, &preds);
@@ -402,6 +427,7 @@ impl<'a> Fa<'a> {
             lenof,
             lengths,
             byte_lists,
+            param_of,
         }
     }
 
@@ -951,44 +977,216 @@ impl<'a> Fa<'a> {
 
     // ---- rewrites -------------------------------------------------------
 
-    /// Proves `idx < list.len l` from recorded relations, following `<=`/`<` chains
-    /// and `x - c` (c > 0) definitions.
+    /// Proves `idx < list.len l` from recorded relations.
     fn below_len(&self, idx: Value, l: Value, env: &Env) -> bool {
         if let (Some(i), Some(n)) = (self.get(idx, env), self.list_length(l))
             && i.hi < n
         {
             return true;
         }
-        let mut seen: Vec<(Value, bool)> = vec![(idx, false)];
-        let mut i = 0;
-        while i < seen.len() {
-            let (v, strict) = seen[i];
-            i += 1;
-            if strict && self.lenof.get(&v) == Some(&self.lengths[l.index()]) {
+        let goal = Goal::Len(self.lengths[l.index()]);
+        self.prove_le(idx, goal, -1, env, &mut Vec::new(), &mut { PROOF_FUEL })
+    }
+
+    /// Proves `idx >= 0` where the interval alone cannot, for `idx = x - y` with `y <= x`.
+    fn nonneg(&self, idx: Value, env: &Env) -> bool {
+        if self.get(idx, env).is_some_and(|i| i.lo >= 0) {
+            return true;
+        }
+        let Some(d) = self.def_inst(idx) else {
+            return false;
+        };
+        match d.op {
+            Op::ISub | Op::ISubChk if self.no_wrap(d, env) => self.prove_le(
+                d.args[1],
+                Goal::Val(d.args[0]),
+                0,
+                env,
+                &mut Vec::new(),
+                &mut { PROOF_FUEL },
+            ),
+            _ => false,
+        }
+    }
+
+    /// Whether the add, subtract or multiply `d` computes the exact integer result.
+    fn no_wrap(&self, d: &Inst, env: &Env) -> bool {
+        if matches!(d.op, Op::IAddChk | Op::ISubChk | Op::IMulChk) {
+            return true;
+        }
+        let (Some(x), Some(y)) = (self.get(d.args[0], env), self.get(d.args[1], env)) else {
+            return false;
+        };
+        let (lo, hi) = match d.op {
+            Op::IAdd => (x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128),
+            Op::ISub => (x.lo as i128 - y.hi as i128, x.hi as i128 - y.lo as i128),
+            Op::IMul => corners(|a, b| a * b, x, y),
+            _ => return false,
+        };
+        fits(lo, hi)
+    }
+
+    fn goal_matches(&self, v: Value, goal: Goal) -> bool {
+        match goal {
+            Goal::Val(t) => v == t || self.same_value(v, t),
+            Goal::Len(o) => self.lenof.get(&v) == Some(&o),
+        }
+    }
+
+    /// Folds a constant offset in the goal value into `d`: `v <= (x + c) + d` is `v <= x + (c + d)`.
+    fn normalize_goal(&self, goal: Goal, d: i128, env: &Env) -> (Goal, i128) {
+        let (mut goal, mut d) = (goal, d);
+        for _ in 0..4 {
+            let Goal::Val(t) = goal else { break };
+            let Some(def) = self.def_inst(t) else { break };
+            let step = match def.op {
+                Op::IAdd | Op::IAddChk | Op::ISub | Op::ISubChk if self.no_wrap(def, env) => {
+                    let sub = matches!(def.op, Op::ISub | Op::ISubChk);
+                    match (self.constant(def.args[1]), self.constant(def.args[0])) {
+                        (Some(c), _) => {
+                            Some((def.args[0], if sub { -(c as i128) } else { c as i128 }))
+                        }
+                        (None, Some(c)) if !sub => Some((def.args[1], c as i128)),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
+            let Some((x, c)) = step else { break };
+            goal = Goal::Val(x);
+            d += c;
+        }
+        (goal, d)
+    }
+
+    /// Proves `v <= goal + d` from intervals, recorded relations and the definitions of
+    /// the values involved. A loop parameter is proved by induction: assuming the bound,
+    /// every incoming argument must meet it too.
+    fn prove_le(
+        &self,
+        v: Value,
+        goal: Goal,
+        d: i128,
+        env: &Env,
+        assumed: &mut Vec<(Value, Goal, i128)>,
+        fuel: &mut u32,
+    ) -> bool {
+        if *fuel == 0 {
+            return false;
+        }
+        *fuel -= 1;
+        let (goal, d) = self.normalize_goal(goal, d, env);
+        if self.goal_matches(v, goal) && d >= 0 {
+            return true;
+        }
+        if let Some(i) = self.get(v, env) {
+            let floor = match goal {
+                Goal::Val(t) => self.get(t, env).map(|g| g.lo as i128),
+                Goal::Len(_) => Some(0),
+            };
+            if floor.is_some_and(|f| i.hi as i128 <= f + d) {
                 return true;
             }
-            let mut next: Vec<(Value, bool)> = Vec::new();
-            for &(a, b, s) in &env.rels {
-                if a == v {
-                    next.push((b, strict || s));
-                }
-            }
-            if let Some(d) = self.def_inst(v)
-                && matches!(d.op, Op::ISub | Op::ISubChk)
-                && let Some(c) = self.constant(d.args[1]).filter(|c| *c > 0)
+        }
+        if assumed
+            .iter()
+            .any(|&(av, ag, ad)| av == v && ag == goal && ad <= d)
+        {
+            return true;
+        }
+        for &(a, b, strict) in &env.rels {
+            if self.same_value(a, v)
+                && self.prove_le(b, goal, d + strict as i128, env, assumed, fuel)
             {
-                let safe = d.op == Op::ISubChk
-                    || self
-                        .get(d.args[0], env)
-                        .is_some_and(|x| x.lo >= i64::MIN + c);
-                if safe {
-                    next.push((d.args[0], true));
-                }
+                return true;
             }
-            for n in next {
-                if !seen.contains(&n) {
-                    seen.push(n);
-                }
+        }
+        if let Some((bi, pi)) = self.param_of[v.index()]
+            && !self.incoming[bi].is_empty()
+        {
+            assumed.push((v, goal, d));
+            let all = self.incoming[bi].iter().all(|(pred, kind, args)| {
+                let edge = self.edge_env(*pred, *kind);
+                self.prove_le(args[pi], goal, d, &edge, assumed, fuel)
+            });
+            assumed.pop();
+            if all {
+                return true;
+            }
+        }
+        let Some(def) = self.def_inst(v) else {
+            return false;
+        };
+        let hi_of = |x: Value| self.get(x, env).map(|i| i.hi as i128);
+        let lo_of = |x: Value| self.get(x, env).map(|i| i.lo as i128);
+        match def.op {
+            Op::IAdd | Op::IAddChk if self.no_wrap(def, env) => {
+                let (x, y) = (def.args[0], def.args[1]);
+                hi_of(y).is_some_and(|h| self.prove_le(x, goal, d - h, env, assumed, fuel))
+                    || hi_of(x).is_some_and(|h| self.prove_le(y, goal, d - h, env, assumed, fuel))
+            }
+            Op::ISub | Op::ISubChk if self.no_wrap(def, env) => {
+                let (x, y) = (def.args[0], def.args[1]);
+                lo_of(y).is_some_and(|l| self.prove_le(x, goal, d + l, env, assumed, fuel))
+            }
+            Op::SDiv | Op::SDivChk => {
+                let (x, c) = (def.args[0], self.constant(def.args[1]));
+                c.is_some_and(|c| c >= 1)
+                    && lo_of(x).is_some_and(|l| l >= 0)
+                    && self.prove_le(x, goal, d, env, assumed, fuel)
+            }
+            Op::SRem | Op::SRemChk => {
+                let (x, y) = (def.args[0], def.args[1]);
+                lo_of(x).is_some_and(|l| l >= 0)
+                    && lo_of(y).is_some_and(|l| l >= 1)
+                    && (self.prove_le(x, goal, d, env, assumed, fuel)
+                        || self.prove_le(y, goal, d + 1, env, assumed, fuel))
+            }
+            Op::And => {
+                let (x, y) = (def.args[0], def.args[1]);
+                (lo_of(x).is_some_and(|l| l >= 0) && self.prove_le(x, goal, d, env, assumed, fuel))
+                    || (lo_of(y).is_some_and(|l| l >= 0)
+                        && self.prove_le(y, goal, d, env, assumed, fuel))
+            }
+            Op::Select => {
+                self.prove_le(def.args[1], goal, d, env, assumed, fuel)
+                    && self.prove_le(def.args[2], goal, d, env, assumed, fuel)
+            }
+            Op::IMul | Op::IMulChk if self.no_wrap(def, env) => {
+                self.prove_scaled(def, goal, d, env)
+            }
+            _ => false,
+        }
+    }
+
+    /// `u * c <= goal + d` from `u < goal / c` (or `<=`): `(goal / c) * c <= goal` for `goal >= 0`.
+    fn prove_scaled(&self, def: &Inst, goal: Goal, d: i128, env: &Env) -> bool {
+        let (u, c) = match (self.constant(def.args[1]), self.constant(def.args[0])) {
+            (Some(c), _) => (def.args[0], c),
+            (None, Some(c)) => (def.args[1], c),
+            _ => return false,
+        };
+        if c < 1 {
+            return false;
+        }
+        for &(a, b, strict) in &env.rels {
+            if !self.same_value(a, u) {
+                continue;
+            }
+            let Some(q) = self.def_inst(b) else { continue };
+            if !matches!(q.op, Op::SDiv | Op::SDivChk) || self.constant(q.args[1]) != Some(c) {
+                continue;
+            }
+            let x = q.args[0];
+            let same = match goal {
+                Goal::Val(t) => x == t,
+                Goal::Len(o) => self.lenof.get(&x) == Some(&o),
+            };
+            if same
+                && self.get(x, env).is_some_and(|i| i.lo >= 0)
+                && -(strict as i128) * c as i128 <= d
+            {
+                return true;
             }
         }
         false
@@ -1064,8 +1262,10 @@ impl<'a> Fa<'a> {
                         }
                     }
                     Op::ListGet | Op::ListGetNn | Op::ListSet | Op::ListSetNn => {
-                        let Some(idx) = get(1) else { continue };
-                        let nonneg = idx.lo >= 0;
+                        if get(1).is_none() {
+                            continue;
+                        }
+                        let nonneg = self.nonneg(inst.args[1], env);
                         let inside = nonneg && self.below_len(inst.args[1], inst.args[0], env);
                         let set = matches!(inst.op, Op::ListSet | Op::ListSetNn);
                         let target = if inside {
@@ -1080,8 +1280,12 @@ impl<'a> Fa<'a> {
                         }
                     }
                     Op::ListAddr => {
-                        let Some(idx) = get(1) else { continue };
-                        if idx.lo >= 0 && self.below_len(inst.args[1], inst.args[0], env) {
+                        if self.get(inst.args[1], env).is_none() {
+                            continue;
+                        }
+                        if self.nonneg(inst.args[1], env)
+                            && self.below_len(inst.args[1], inst.args[0], env)
+                        {
                             out.push(Edit::Op(bi, ii, Op::ListAddrU));
                         }
                     }
