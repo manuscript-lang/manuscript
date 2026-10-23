@@ -922,7 +922,8 @@ impl Walker<'_> {
     fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
             let scrutinee = self.scrutinee(s.id, value);
-            self.pattern_bindings(pattern, &scrutinee, Role::Pattern);
+            let role = if mutable { Role::Var } else { Role::Pattern };
+            self.pattern_bindings(pattern, &scrutinee, role);
             return;
         };
         let Some(b) = self.cx.m.pattern_binding(pattern) else {
@@ -1376,7 +1377,12 @@ impl Walker<'_> {
     fn payload(&mut self, b: &BindingRef, source: &Scrutinee, role: Role, pos: Pos) {
         let class = self.cx.classes.class(&b.ty);
         if class == Class::Copy || source.owned {
-            self.declare(b, role, Perm::Immutable, None, false);
+            let perm = if role == Role::Var {
+                Perm::Mutable
+            } else {
+                Perm::Immutable
+            };
+            self.declare(b, role, perm, None, false);
         } else {
             self.declare_borrow(b, role, source.origins.clone(), pos, "pattern binding");
         }
