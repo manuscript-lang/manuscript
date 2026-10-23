@@ -55,6 +55,8 @@ pub(crate) struct FnLower<'a> {
     pub hir: Rc<ModuleHir>,
     pub subst: Subst,
     pub file: u32,
+    /// Logical source frame for defaults evaluated in their caller.
+    pub source_scope: u32,
     pub locals: HashMap<usize, Local>,
     /// Locals needing a drop, per lexical scope.
     pub scopes: Vec<Vec<usize>>,
@@ -341,6 +343,7 @@ impl<'a> FnLower<'a> {
             split_view_for: None,
             discard: None,
             stmt_pos: None,
+            source_scope: 0,
             fixture: None,
             err_slot: None,
             split_iter_for: None,
@@ -352,7 +355,10 @@ impl<'a> FnLower<'a> {
 
     /// The source position as a MIR location.
     pub fn loc(&self, pos: Pos) -> Loc {
-        Loc::new(self.file, pos.line, pos.column)
+        Loc {
+            scope: self.source_scope,
+            ..Loc::new(self.file, pos.line, pos.column)
+        }
     }
 
     /// Sets the location of subsequent instructions.
@@ -709,6 +715,9 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- bodies
 
     fn lower_callable(&mut self, c: &Rc<Callable>) -> Result<(), Error> {
+        // Inline/default frames must return to this declaration's file, even
+        // when every surviving instruction originates in another module.
+        self.b.func_mut().loc = self.loc(c.func.decl.decl().pos);
         let params = self.b.params();
         let bindings: Vec<BindingRef> = c
             .self_binding

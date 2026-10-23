@@ -51,7 +51,7 @@ impl<'a> FnLower<'a> {
                     v
                 } else {
                     let names = self.param_names(&c);
-                    let args = self.eval_args(&view, &names, &c, &subst, None)?;
+                    let args = self.eval_args(&view, &names, &c, &subst, None, e.pos)?;
                     self.call_callable(&c, &subst, args, e)?
                 }
             }
@@ -133,6 +133,7 @@ impl<'a> FnLower<'a> {
         callee: &Callable,
         subst: &Subst,
         recv: Option<Val>,
+        call_pos: ms_syntax::Pos,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
@@ -183,7 +184,28 @@ impl<'a> FnLower<'a> {
         }
         for i in 0..slots.len() {
             if slots[i].is_none() {
-                let d = self.default_argument(callee, i, subst, &mut slots, recv)?;
+                // Defaults execute in the callee's lexical frame even though their
+                // instructions live in the caller. Reuse inline-frame metadata so
+                // faults retain both frames without runtime call bookkeeping.
+                let parent = self.source_scope;
+                let file = self.b.m.add_file(callee.module.file.as_str());
+                let name = if let DeclKind::Impl(implementation) = &callee.func.decl.decl().kind {
+                    format!("{}.{}", implementation.receiver.name(), callee.name)
+                } else {
+                    callee.name.to_string()
+                };
+                let call_line = self.stmt_pos.unwrap_or(call_pos).line;
+                let scopes = &mut self.b.func_mut().scopes;
+                scopes.push(ms_mir::ir::Scope {
+                    name,
+                    file,
+                    parent,
+                    call_line,
+                });
+                self.source_scope = scopes.len() as u32;
+                let result = self.default_argument(callee, i, subst, &mut slots, recv);
+                self.source_scope = parent;
+                let d = result?;
                 slots[i] = Some(d);
             }
         }
@@ -521,7 +543,7 @@ impl<'a> FnLower<'a> {
         };
         let names = self.param_names(&c);
         let at = self.b.current();
-        let args = self.eval_args(view, &names, &c, &subst, Some(recv))?;
+        let args = self.eval_args(view, &names, &c, &subst, Some(recv), e.pos)?;
         if self.dead {
             return Ok(recv);
         }
