@@ -337,12 +337,28 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 /// contiguous generated caller chain. Stop at native/glue boundaries rather
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
-unsafe fn walk_fault_frames(_fp: usize, t: &Tables, mut f: impl FnMut(usize) -> bool) {
-    let Some((mut pc, mut fp)) = sys::source_frame(|pc| find_func(t, pc).is_some()) else {
+unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
+    let Some((pc, fp)) = sys::source_frame(|pc| find_func(t, pc).is_some()) else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    for _ in 0..256 {
+    // SAFETY: source_frame recovered the current generated frame and stack_limits
+    // bounds the live thread stack.
+    unsafe { walk_source_frames(pc, fp, t, lo, hi, f) }
+}
+
+#[cfg(any(windows, test))]
+unsafe fn walk_source_frames(
+    mut pc: usize,
+    mut fp: usize,
+    t: &Tables,
+    lo: usize,
+    hi: usize,
+    mut f: impl FnMut(usize) -> bool,
+) {
+    // Each link must advance within the stack, so the stack bounds terminate
+    // even a malformed chain. A fixed frame count truncates legitimate recursion.
+    loop {
         if find_func(t, pc).is_none() || !f(pc) {
             break;
         }
@@ -1156,6 +1172,65 @@ mod tests {
 
     static LOG: Global<[u8; 8]> = Global::new([0; 8]);
     static LOG_N: Global<usize> = Global::new(0);
+
+    #[test]
+    fn source_frame_walk_keeps_deep_recursion_and_stops_at_native_boundary() {
+        let mut chain = vec![[0usize, 0x1010usize]; 200_002];
+        let base = chain.as_mut_ptr();
+        let len = chain.len();
+        // SAFETY: all frame links point inside this one allocation. The final
+        // source caller returns into unregistered native code.
+        unsafe {
+            for index in 0..len - 1 {
+                (*base.add(index))[0] = base.add(index + 1).expose_provenance();
+            }
+            (*base.add(len - 2))[1] = 0x9999;
+        }
+        let funcs = [FuncEntry {
+            addr: 0x1000,
+            size: 0x100,
+            name_off: 0,
+            file_off: 0,
+            line: 1,
+        }];
+        let tables = Tables {
+            abi_version: 1,
+            reserved: 0,
+            line_scopes: core::ptr::null(),
+            scopes: core::ptr::null(),
+            scope_count: 0,
+            funcs: funcs.as_ptr(),
+            func_count: funcs.len(),
+            lines: core::ptr::null(),
+            line_count: 0,
+            strings: core::ptr::null(),
+            strings_len: 0,
+        };
+        let lo = base.expose_provenance();
+        let hi = lo + core::mem::size_of_val(chain.as_slice());
+        let mut count = 0;
+        // SAFETY: the synthetic frame chain and tables outlive the walk.
+        unsafe {
+            walk_source_frames(0x1010, lo, &tables, lo, hi, |_| {
+                count += 1;
+                true
+            });
+        }
+        assert_eq!(count, 200_001);
+
+        // A backward link must terminate without dereferencing it.
+        // SAFETY: mutate the first frame inside the same allocation.
+        unsafe { (*base)[0] = lo };
+        count = 0;
+        // SAFETY: the same valid synthetic chain, now ending immediately.
+        unsafe {
+            walk_source_frames(0x1010, lo, &tables, lo, hi, |_| {
+                count += 1;
+                true
+            });
+        }
+        assert_eq!(count, 1);
+    }
 
     #[cfg(unix)]
     #[test]
