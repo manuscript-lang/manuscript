@@ -312,6 +312,27 @@ impl Connection {
         }
     }
 
+    /// Writes what the socket takes without waiting; the count accepted. For a task that must
+    /// not park on the descriptor because another task already waits on it.
+    pub fn write_nowait(&self, data: &[u8]) -> Result<usize, IoErr> {
+        if self.closed.get() {
+            return Err(IoErr::Closed);
+        }
+        let mut done = 0;
+        while done < data.len() {
+            match self.io.write(&data[done..]) {
+                Step::Done(n) if n > 0 => done += n,
+                Step::Err(e) => return Err(self.failure(DriveError::Io(e))),
+                _ => break,
+            }
+        }
+        // TLS buffers records; push out what the socket takes.
+        if let Step::Err(e) = self.io.flush() {
+            return Err(self.failure(DriveError::Io(e)));
+        }
+        Ok(done)
+    }
+
     /// Whether an idle connection can no longer carry a new exchange: the peer
     /// closed it, sent unexpected bytes, or it was closed here.
     pub fn is_stale(&self) -> bool {

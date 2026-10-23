@@ -7,11 +7,19 @@
 //! reads once, feeds the core and files the resulting events into per-stream
 //! queues. A waiter then looks at its own queue; data that arrived for other
 //! streams stays queued until their readers ask.
+//!
+//! Tasks share a session, and the runtime allows one waiter per descriptor, so one
+//! task at a time owns the socket (`driving`): it is the driver, parked in a read or a
+//! blocking write. Another task that needs a pump parks on a token until the driver has
+//! filed events, then looks at its queue again and drives if it is still empty. A task that
+//! only has output (a new request) hands the bytes to the socket without waiting, and keeps
+//! what does not fit for the driver's next write.
 
 use crate::conn::Connection;
 use crate::error::IoErr;
 use crate::h2::{self, Event, Header, Settings, StreamId, error_code};
-use crate::wait::Deadline;
+use crate::rt::{self, Token};
+use crate::wait::{Deadline, Wait, wait_token};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -113,8 +121,28 @@ struct State {
 pub(crate) struct Session {
     conn: Rc<Connection>,
     state: RefCell<State>,
-    scratch: RefCell<Vec<u8>>,
+    /// Taken out for the driver's read; see the module notes.
+    scratch: Cell<Vec<u8>>,
     used: Cell<Instant>,
+    /// A task owns the socket, parked in a read or a blocking write.
+    driving: Cell<bool>,
+    /// Tokens of the tasks waiting for the driver.
+    waiters: RefCell<Vec<u64>>,
+    /// Output the core produced that the socket has not taken yet.
+    pending: RefCell<Vec<u8>>,
+}
+
+/// Ownership of the socket for one drive; dropping it wakes the waiting tasks.
+struct Turn<'a>(&'a Session);
+
+impl Drop for Turn<'_> {
+    fn drop(&mut self) {
+        self.0.driving.set(false);
+        let waiters = std::mem::take(&mut *self.0.waiters.borrow_mut());
+        for id in waiters {
+            rt::post(id);
+        }
+    }
 }
 
 fn map_io(e: IoErr) -> PumpErr {
@@ -136,8 +164,11 @@ impl Session {
                 dead: false,
                 goaway: false,
             }),
-            scratch: RefCell::new(vec![0; READ_BUF]),
+            scratch: Cell::new(Vec::new()),
             used: Cell::new(Instant::now()),
+            driving: Cell::new(false),
+            waiters: RefCell::new(Vec::new()),
+            pending: RefCell::new(Vec::new()),
         })
     }
 
@@ -168,53 +199,114 @@ impl Session {
         self.state.borrow_mut().dead = true;
     }
 
-    /// Writes everything the core queued.
+    /// Writes everything the core queued. While another task owns the socket, writes what
+    /// the socket takes at once and leaves the rest to that task.
     pub(crate) fn flush(&self, deadline: Deadline) -> Result<(), PumpErr> {
-        let out = self.state.borrow_mut().core.take_output();
+        if self.driving.get() {
+            return self.flush_nowait();
+        }
+        let _turn = self.turn();
+        self.flush_owned(deadline)
+    }
+
+    fn turn(&self) -> Turn<'_> {
+        self.driving.set(true);
+        Turn(self)
+    }
+
+    /// The core's output after what is still pending.
+    fn output(&self) -> Vec<u8> {
+        let fresh = self.state.borrow_mut().core.take_output();
+        let mut out = std::mem::take(&mut *self.pending.borrow_mut());
+        out.extend(fresh);
+        out
+    }
+
+    fn flush_nowait(&self) -> Result<(), PumpErr> {
+        let out = self.output();
         if out.is_empty() {
             return Ok(());
         }
-        self.conn.write_until(&out, deadline).map_err(|e| {
-            let e = map_io(e);
-            if matches!(e, PumpErr::Failed(_)) {
-                self.mark_dead();
+        match self.conn.write_nowait(&out) {
+            Ok(n) => {
+                self.pending.borrow_mut().extend_from_slice(&out[n..]);
+                Ok(())
             }
-            e
-        })
+            Err(e) => Err(self.failed(e)),
+        }
+    }
+
+    /// Like `flush` for the task that owns the socket (holds a [`Turn`]).
+    fn flush_owned(&self, deadline: Deadline) -> Result<(), PumpErr> {
+        let out = self.output();
+        if out.is_empty() {
+            return Ok(());
+        }
+        self.conn
+            .write_until(&out, deadline)
+            .map_err(|e| self.failed(e))
+    }
+
+    fn failed(&self, e: IoErr) -> PumpErr {
+        let e = map_io(e);
+        if matches!(e, PumpErr::Failed(_)) {
+            self.mark_dead();
+        }
+        e
+    }
+
+    /// Waits until the task that owns the socket has filed what it read (or finished
+    /// writing); the caller then looks at its queue again.
+    fn await_driver(&self, deadline: Deadline) -> Result<(), PumpErr> {
+        let token = Token::new();
+        self.waiters.borrow_mut().push(token.id());
+        let got = wait_token(&token, deadline);
+        self.waiters.borrow_mut().retain(|&w| w != token.id());
+        match got {
+            Wait::Ready => Ok(()),
+            Wait::TimedOut => Err(PumpErr::Timeout),
+        }
     }
 
     /// Writes pending output, reads once and files the events. The caller
-    /// inspects its own queue afterwards.
+    /// inspects its own queue afterwards. Another task may be reading already; this one
+    /// then waits for it instead.
     pub(crate) fn pump(&self, deadline: Deadline) -> Result<(), PumpErr> {
-        self.flush(deadline)?;
+        if self.driving.get() {
+            return self.await_driver(deadline);
+        }
+        let _turn = self.turn();
+        self.flush_owned(deadline)?;
         if self.state.borrow().dead {
             return Ok(());
         }
-        let mut buf = self.scratch.borrow_mut();
-        let n = self
-            .conn
-            .read_into(&mut buf, deadline)
-            .map_err(map_io)
-            .inspect_err(|e| {
-                if matches!(e, PumpErr::Failed(_)) {
-                    self.mark_dead();
-                }
-            })?;
+        // The read parks, so nothing shared is borrowed across it.
+        let mut buf = self.scratch.take();
+        buf.resize(READ_BUF, 0);
+        let got = self.conn.read_into(&mut buf, deadline);
+        let n = match got {
+            Ok(n) => n,
+            Err(e) => {
+                self.scratch.set(buf);
+                return Err(self.failed(e));
+            }
+        };
         if n == 0 {
+            self.scratch.set(buf);
             self.mark_dead();
             return Ok(());
         }
         let fed = self.state.borrow_mut().core.feed(&buf[..n]);
-        drop(buf);
+        self.scratch.set(buf);
         let Ok(events) = fed else {
             // The core queued a GOAWAY; push it out, then give up.
-            let _ = self.flush(Deadline::after(CANCEL_FLUSH));
+            let _ = self.flush_owned(Deadline::after(CANCEL_FLUSH));
             self.mark_dead();
             self.conn.close();
             return Ok(());
         };
         self.dispatch(events);
-        self.flush(deadline)
+        self.flush_owned(deadline)
     }
 
     fn dispatch(&self, events: Vec<Event>) {
