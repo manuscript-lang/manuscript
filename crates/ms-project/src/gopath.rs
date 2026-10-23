@@ -332,8 +332,7 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
 pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
     use std::path::{Component, Prefix};
 
-    let canonical =
-        std::fs::canonicalize(path).map_err(|e| ProjectError::path("lstat", path, &e))?;
+    let canonical = canonicalize_with_prefix_error(path)?;
     let unsupported = || {
         ProjectError::msg(format!(
             "unsupported Windows project path {}; use names that do not require a verbatim namespace",
@@ -369,9 +368,57 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
     Ok(ordinary)
 }
 
+/// Match the component walk's missing-path diagnostics without replacing native
+/// Windows canonicalization (which also resolves junctions and drive roots).
+#[cfg(any(windows, test))]
+fn canonicalize_with_prefix_error(path: &str) -> Result<std::path::PathBuf, ProjectError> {
+    let error = match std::fs::canonicalize(path) {
+        Ok(canonical) => return Ok(canonical),
+        Err(error) => ProjectError::path("lstat", path, &error),
+    };
+    if !error.is_not_exist() {
+        return Err(error);
+    }
+    let ancestors: Vec<_> = std::path::Path::new(path).ancestors().collect();
+    for prefix in ancestors.into_iter().rev() {
+        if prefix.as_os_str().is_empty() {
+            continue;
+        }
+        if let Err(cause) = std::fs::canonicalize(prefix) {
+            let prefix = clean(&prefix.to_string_lossy());
+            return Err(ProjectError::path("lstat", &prefix, &cause));
+        }
+    }
+    Err(error)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn canonicalization_reports_first_missing_component() {
+        let root = std::env::temp_dir().join(format!("ms-missing-prefix-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("existing")).unwrap();
+        for (input, missing) in [
+            ("absent/nested/value.ms", "absent"),
+            ("existing/../absent/value.ms", "absent"),
+            ("existing/value.ms", "existing/value.ms"),
+        ] {
+            let path = root.join(input);
+            let error = canonicalize_with_prefix_error(path.to_str().unwrap()).unwrap_err();
+            assert!(error.is_not_exist());
+            let ProjectError::Path(error) = error else {
+                panic!("expected path error")
+            };
+            assert_eq!(error.path, clean(root.join(missing).to_str().unwrap()));
+        }
+        assert_eq!(
+            canonicalize_with_prefix_error(root.to_str().unwrap()).unwrap(),
+            std::fs::canonicalize(&root).unwrap()
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn clean_matches_go() {
