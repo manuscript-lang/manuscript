@@ -1,8 +1,8 @@
 import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
 
 interface Counter:
-    fn bump(by: Int) Int
-    fn lower(by: Int) Int
+    var fn bump(by: Int) Int
+    var fn lower(by: Int) Int
 
 type Cell:
     total: Int

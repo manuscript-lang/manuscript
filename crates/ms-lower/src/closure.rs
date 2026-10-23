@@ -1316,12 +1316,14 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
 
 /// The locals a lambda's body changes.
 fn lambda_mutated(fl: &FnLower<'_>, lam: &Lambda) -> std::collections::HashSet<usize> {
-    crate::mutation::mutated_locals(
-        &fl.hir,
-        ms_check::hir::Body::Block(&lam.body),
-        &fl.cx.callables,
-        &fl.cx.mutated,
-    )
+    let scan =
+        |body| crate::mutation::mutated_locals(&fl.hir, body, &fl.cx.callables, &fl.cx.mutated);
+    let mut changed = scan(ms_check::hir::Body::Block(&lam.body));
+    // A default runs in the lambda's frame, so what it changes counts too.
+    for d in lam.params.iter().filter_map(|p| p.default.as_ref()) {
+        changed.extend(scan(ms_check::hir::Body::Expr(d)));
+    }
+    changed
 }
 
 /// The captured locals the lambda `lam` changes: they are shared by reference.

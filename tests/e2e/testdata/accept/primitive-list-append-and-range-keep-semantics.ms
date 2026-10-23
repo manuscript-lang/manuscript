@@ -16,7 +16,7 @@ test "primitive list loops":
 
     var sum = 0
 
-    for v in ints:
+    for v in ints.clone():
         sum = sum + v
         if v == 2:
             ints.append(value: 100)

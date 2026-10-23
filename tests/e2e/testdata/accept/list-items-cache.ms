@@ -80,7 +80,7 @@ test "nested loops share one cached list":
     try expect_equal(total, 10)
 
 test "an out of range read or write inside a cached loop faults":
-    let values = [1, 2, 3]
+    var values = [1, 2, 3]
     let read = try expect_fault(
         fn():
             var i = 0

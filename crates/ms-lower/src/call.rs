@@ -176,9 +176,9 @@ impl<'a> FnLower<'a> {
             return false;
         };
         let uid = self.aliases.get(&uid).map_or(uid, |a| a.root.uid);
-        self.locals
-            .get(&uid)
-            .is_some_and(|l| !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own)
+        self.locals.get(&uid).is_some_and(|l| {
+            l.slot.is_some() || !self.needs_drop(l.ty) || self.b.var_mode(l.var) == Mode::Own
+        })
     }
 
     /// Reads a borrowed place again after evaluating a sibling: a branch passes the variable's

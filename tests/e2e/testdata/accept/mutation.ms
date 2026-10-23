@@ -2,7 +2,7 @@ import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.m
 import range from "@std/collections.ms"
 
 interface Counter:
-    fn increment() Unit
+    var fn increment() Unit
 
 type Val:
     val: Int

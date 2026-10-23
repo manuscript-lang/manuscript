@@ -265,7 +265,11 @@ pub(crate) fn method_changes_receiver(
     match (&m.decl, m.native.as_str()) {
         (Some(d), "contract") => d.method().is_some_and(|x| x.mutating),
         (_, "contract") => false,
-        (_, native) if !native.is_empty() => ms_check::effects::collection_mutation(m),
+        // A builder is a handle: copying it already shares the contents.
+        (_, native) if !native.is_empty() => {
+            crate::sharedbuilder::builder_kind(&m.receiver).is_none()
+                && ms_check::effects::collection_mutation(m)
+        }
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }
