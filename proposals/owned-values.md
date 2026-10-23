@@ -21,10 +21,10 @@ Non-goals: changing scalar-indexed `length()`/indexing semantics; changing `Shar
 | `Map[K,V]`, `Set[T]` | `MapVal`, 6 words, header-less | owned, deep copy |
 | `String` | 1 pointer to `StrObj {rc, drop, len, scalars, data, NUL}` | refcounted, shared (`ABI.md` §3) |
 | `Optional[String]` | nullable pointer, `KIND_SHARED` | refcounted |
-| `Queue[T]` | pointer to `QueueObj {Obj hdr, ...}` (`ms-rt/src/queue.rs`: "copies of a queue value share one queue") | refcounted, shared |
+| `Queue[T]` | owned value (landed in #985) | owned, deep copy |
 | `Deque[T]` | Manuscript record over `List[Optional[T]]` (`stdlib/deque.ms`) | owned, independent copy |
 
-So strings and `Queue` are the two ordinary-data types that still use reference counting, and `Queue` copies alias while `Deque` copies do not. The lowering never emits retain (`grep retain crates/ms-lower/src` is empty): sharing of a string happens only inside `desc.copy` (`.clone()`) and inside runtime natives that return their input unchanged (`trimmed`, `retained` in `ms-rt/src/string.rs`, `ms-std-core`, `ms-std-net`).
+So strings are the one ordinary-data type that still uses reference counting; `Queue` became an owned value in #985, so `Queue` and `Deque` copies are both independent. The lowering never emits retain (`grep retain crates/ms-lower/src` is empty): sharing of a string happens only inside `desc.copy` (`.clone()`) and inside runtime natives that return their input unchanged (`trimmed`, `retained` in `ms-rt/src/string.rs`, `ms-std-core`, `ms-std-net`).
 
 ## 3. Design
 
@@ -34,7 +34,7 @@ So strings and `Queue` are the two ordinary-data types that still use reference 
 - No NUL terminator is stored. Natives that need a C string (a few in `ms-std-fs`, `ms-std-process`, `ms-std-system`, `ms-std-net`) build one in a scratch buffer, exactly as Rust's `CString` does.
 - `StringBuilder` is a `VecVal` of bytes already; `freeze` becomes a move (it copies today).
 - `Optional[String]` uses the same layout rule as `Optional[List[T]]` (presence flag plus payload leaves). `ptr == null && cap != 0` is not used as a niche, so every `Optional[X]` for non-pointer `X` is uniform. `Optional[String]` becomes 32 bytes.
-- `Queue[T]` becomes an owned value `QueueVal {buf, head, len, cap}` (a ring or head-indexed buffer), copied deeply, dropped by `msrt_queue_drop`, with a descriptor kind `KIND_QUEUE`; `Deque[T]` keeps its implementation or moves onto the same value later. `Set[T]` already shares `MapVal` with `Map`.
+- `Queue[T]` is already an owned value (#985), copied deeply like `Deque[T]`. `Set[T]` already shares `MapVal` with `Map`.
 - Descriptors: `msrt_desc_string` becomes `builtin(24, 8, KIND_STRING)`; `KIND_STRING` drop frees `ptr` when `cap` has an owned capacity, copy allocates and copies bytes, equality and hash read `(ptr, len)` directly. `KIND_SHARED` keeps covering `Shared[T]`, closures, handle objects and `Optional` of those (nullable-pointer path in `layout.rs:231-235` unchanged for them); `Optional[String]` leaves it and follows the `Optional[List]` rule.
 
 ### 3.2 Calling convention
@@ -59,7 +59,7 @@ Aggregates already cross the native ABI by pointer to the value (`*const VecVal`
 
 | Component | Change |
 |---|---|
-| `ms-rt-abi` | `StrVal`, flag constants, `QueueVal`, `KIND_QUEUE`; remove `StrObj`, `STR_*_OFFSET` |
+| `ms-rt-abi` | `StrVal`, flag constants, remove `StrObj`, `STR_*_OFFSET` |
 | `ms-rt/src/string.rs` | all ops on `(ptr,len)`; shared statics for empty/ASCII bytes become `cap == 0` values; `trimmed` returning the input becomes returning a view or the moved value |
 | `ms-rt/src/desc.rs`, `map.rs`, `vec.rs` | `KIND_STRING` slot code; `StrKey` hash/eq fast path reads `(ptr,len)`; list sort/search comparators for strings |
 | `ms-rt/src/queue.rs` | rewrite as an owned value |
@@ -67,7 +67,7 @@ Aggregates already cross the native ABI by pointer to the value (`*const VecVal`
 | `ms-lower` | string literals as constant triples; `Ty::STR` uses become multi-leaf; interpolation and concat build owned values; the new `StrView` type and `to_owned` insertion |
 | `ms-check` | lending marker for stdlib string methods; `OWNERSHIP.md` rule for view-to-owned |
 | `ms-mir` | `Str` multi-leaf in verifier/interpreter; `StrView`; optimizer rules that assume one-pointer strings (`copyelim`) |
-| `stdlib/*.ms`, `bindings.json` | no source change for owned operations; add lending annotations for view-returning operations; `Queue` becomes an owned type |
+| `stdlib/*.ms`, `bindings.json` | no source change for owned operations; add lending annotations for view-returning operations |
 | `ms-std-*` crates and `ms-rt` (about 20 crates; `StrObj` appears in over 30 files; strings cross the native ABI as `i64` today) | signatures take `*const StrVal` and return via out pointer; `Optional[String]` results use flag plus out; C-string conversions explicit; `ms-std-core`, `json`, `regex`, `csv`, `fs`, `io`, `net`, `process`, `random`, `system`, `terminal`, `url`, `rt`; `stdlib/toml.ms` and `yaml.ms` need an audit of how they reach strings |
 | MIR interpreter | `Val::Str(Rc<str>)` diverges from the native model and cannot catch ownership bugs; decide whether it models the three-leaf value or stays an oracle |
 
@@ -82,7 +82,7 @@ Aggregates already cross the native ABI by pointer to the value (`*const VecVal`
 
 The review of this note found that the switch can be split by separating the value shape from ownership. Stages:
 1. Measurement and prerequisites (mergeable): count static and dynamic `Op::Copy`/`Drop` of `Str` per benchmark (a `stats`-style counter in `ms-rt` and a MIR pass report) and set a numeric budget; replace hard-coded header offsets in `ms-clif` (`lower.rs` StrLen 24, `string_eq_literal` 16/32, `cg.rs:29,506-515`) with constants; make `copyelim` exhaustive for strings.
-2. `Queue` as an owned value (mergeable alone; fixes the copy-aliasing inconsistency with `Deque`).
+2. `Queue` as an owned value (landed in #985).
 3. Shape first: `String` becomes the three-leaf value `{ptr,len,cap}` in layout, descriptors, call ABI, natives and lowering, with `ptr` still pointing at a refcounted block (copy is a retain, drop a release). This lands the layout, the `*const StrVal` ABI, `Optional[String]`, descriptor and map/list slot changes, and the stdlib crate ports, and already removes the length pointer chase. Gate: `make conform`, leak sweep, benchmark tables.
 4. Ownership second: replace the refcounted block with a uniquely owned buffer (copy allocates, drop frees, `freeze` moves), gated by the stage 1 copy budget and any lending changes needed to meet it.
 5. Views: prototype lending on one stdlib function, then the `StrView` MIR type and explicit `.clone()` at owning positions, then the rest of `trim`/`split`/`slice`/`basename`.

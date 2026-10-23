@@ -895,6 +895,25 @@ impl<'a> FnLower<'a> {
             self.chars_iter_for = None;
             return Ok(recv);
         }
+        if self.keys_view_for == Some(e as *const Expr)
+            && let Some(sym) = self.keys_view_symbol(m, recv_expr, recv.v)
+        {
+            // `for k in p.m.keys()` over a map in a parameter the body only reads: the list
+            // borrows the map's strings instead of copying them.
+            self.keys_view_for = None;
+            let result = self.emty(e)?;
+            return self.rt_method(sym, recv, &[], &[], result);
+        }
+        if native == "string/split"
+            && self.split_view_for == Some(e as *const Expr)
+            && self.stable_place(recv_expr)
+        {
+            // `let parts = text.split(..)` read only in place, over a parameter the body only
+            // reads: the pieces are views of `text`.
+            self.split_view_for = None;
+            let result = self.emty(e)?;
+            return self.rt_method("msrt_string_split_view", recv, &m.ty.params, &args, result);
+        }
         if native == "string/split" && self.split_iter_for == Some(e as *const Expr) {
             // `for piece in text.split(..)`: pieces are produced one at a time.
             self.split_iter_for = None;
@@ -1592,6 +1611,9 @@ impl<'a> FnLower<'a> {
         {
             return Ok(done);
         }
+        if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
+            return Ok(done);
+        }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
@@ -1778,6 +1800,20 @@ impl<'a> FnLower<'a> {
                 };
                 self.finish(recv);
                 Ok(Val { v, own: false })
+            }
+            "get" if args.is_empty() && self.needs_drop(inner) => {
+                // The payload is a borrow of the optional, which stays alive as a temporary; a
+                // consumer that keeps it copies it, and a `let` extends the temporary's life.
+                let (good, bad) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(some, good, &[], bad, &[]);
+                self.b.seal_block(good);
+                self.b.seal_block(bad);
+                self.b.switch_to(bad);
+                self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+                self.b.switch_to(good);
+                let p = self.b.opt_get(r);
+                self.borrow(recv);
+                Ok(Val { v: p, own: false })
             }
             "get" => {
                 let default = args.first().copied();
@@ -2952,5 +2988,27 @@ fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
         "crypto/hash_algorithm_hasher" => Some("msrt_crypto_hasher_new"),
         "crypto/hash_algorithm_hmac_hasher" => Some("msrt_crypto_hmac_hasher_new"),
         _ => None,
+    }
+}
+
+impl FnLower<'_> {
+    /// The runtime entry that lists a map's keys (or values) as borrowed views, when `m` is that
+    /// method on a map that stays unchanged for the whole call.
+    fn keys_view_symbol(
+        &self,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+        recv: Value,
+    ) -> Option<&'static str> {
+        if !self.stable_place(recv_expr) {
+            return None;
+        }
+        let is_map =
+            matches!(self.b.m.types.kind(self.ty_of(recv)), TyKind::Obj(n, _) if n == "Map");
+        match m.name()?.as_str() {
+            "keys" if is_map => Some("msrt_map_keys_view"),
+            "values" if is_map => Some("msrt_map_values_view"),
+            _ => None,
+        }
     }
 }

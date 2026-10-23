@@ -25,10 +25,38 @@ impl<'a> FnLower<'a> {
                 i += gap + 2;
                 continue;
             }
-            self.stmt(&body[i])?;
+            self.split_view_for = self.split_read_in_place(&body[i], &body[i + 1..]);
+            let r = self.stmt(&body[i]);
+            self.split_view_for = None;
+            r?;
             i += 1;
         }
         Ok(())
+    }
+
+    /// `let name = <text>.split(..)` where the rest of the block only reads `name` in place
+    /// (indexing, length, a `for`): the split call, whose pieces may then borrow `text`.
+    fn split_read_in_place(&self, s: &Stmt, rest: &[Stmt]) -> Option<*const Expr> {
+        let StmtKind::Bind {
+            mutable: false,
+            pattern,
+            value,
+            ..
+        } = &s.kind
+        else {
+            return None;
+        };
+        let ExprKind::Call { callee, .. } = &value.kind else {
+            return None;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return None;
+        };
+        if name.as_str() != "split" {
+            return None;
+        }
+        let b = self.hir.pattern_binding(pattern)?;
+        crate::mutation::only_read_in_place(&self.hir, rest, b.uid).then_some(value as *const Expr)
     }
 
     /// `let name = <call>.split(..)`, then plain `let`s of literals, then `for x in name:` with
@@ -196,8 +224,28 @@ impl<'a> FnLower<'a> {
             self.aliases.insert(b.uid, alias);
             return Ok(());
         }
+        let mark = self.temps.len();
         let x = self.expr(value)?;
         if self.dead {
+            return Ok(());
+        }
+        if let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && !b.mutable
+            && !x.own
+            && !self.slotted.contains(&b.uid)
+            && self.needs_drop(self.ty_of(x.v))
+            && (matches!(
+                self.b.defining_op(x.v),
+                Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet | Op::OptGet)
+            ) || self.stable_reads.contains(&x.v))
+        {
+            // A lexical borrow (the checker rejects changing its source while it lives): the
+            // temporaries it points into live as long as the binding does.
+            for t in self.temps.split_off(mark) {
+                self.bind_hidden(Val { v: t, own: true });
+            }
+            self.bind_lent(&b, x.v);
             return Ok(());
         }
         self.bind_pattern(pattern, x)
@@ -716,13 +764,32 @@ impl<'a> FnLower<'a> {
         Ok(Some((a.v, b.v)))
     }
 
-    /// Whether `iter` is a plain local that `body` never mentions.
-    fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
-        matches!(&iter.kind, ExprKind::Name(_))
+    /// Whether `iter` is a local, or a field of one, that the loop cannot change: the local is
+    /// immutable or `body` never mentions it. The loop then borrows the list instead of copying it.
+    /// Whether `e` is a field path from a parameter the body only reads: the caller keeps it
+    /// alive and unchanged for the whole call.
+    pub(crate) fn stable_place(&self, e: &Expr) -> bool {
+        let mut root = e;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        matches!(&root.kind, ExprKind::Name(_))
             && matches!(
-                self.hir.resolution(iter),
+                self.hir.resolution(root),
+                ms_check::hir::Resolution::Local(b) if self.borrowed_params.contains(&b.uid)
+            )
+    }
+
+    fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
+        let mut root = iter;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        matches!(&root.kind, ExprKind::Name(_))
+            && matches!(
+                self.hir.resolution(root),
                 ms_check::hir::Resolution::Local(b)
-                    if !crate::mutation::block_mentions(&self.hir, body, b.uid)
+                    if !b.mutable || !crate::mutation::block_mentions(&self.hir, body, b.uid)
             )
     }
 
@@ -744,16 +811,16 @@ impl<'a> FnLower<'a> {
         self.b.br(header, &[]);
         self.enter(header);
         let iter = self.b.use_var(var);
-        let opt = self.b.m.types.opt(MTy::STR);
-        let piece = self.call_runtime("msrt_split_next", &[iter], opt)?;
-        let more = self.b.opt_is_some(piece);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        let more = self.call_runtime("msrt_split_next", &[iter, slot], MTy::BOOL)?;
         self.b.br_if(more, body_b, &[], done, &[]);
         self.b.seal_block(body_b);
         self.b.seal_block(done);
-        // The runtime hands out a counted reference to the piece; the end of the pieces is
-        // a null that still has to be released.
+        // The piece is a borrow of the iterator's buffer, valid until the next call.
         self.enter(done);
-        self.drop_value(piece);
         self.b.br(exit, &[]);
         self.enter(body_b);
         let depth = self.scopes.len();
@@ -765,14 +832,15 @@ impl<'a> FnLower<'a> {
             brk_used: false,
         });
         self.push_scope();
-        // The scope releases the counted piece on every way out of the body.
-        let held = self.bind_hidden(Val {
-            v: piece,
-            own: true,
-        });
-        let piece = self.b.use_var(held);
-        let e = self.b.opt_get(piece);
-        self.bind_local(loop_var, Val { v: e, own: false });
+        let e = self
+            .b
+            .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+            .expect("load");
+        if !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+            self.bind_lent(loop_var, e);
+        } else {
+            self.bind_local(loop_var, Val { v: e, own: false });
+        }
         self.stmts(body)?;
         self.pop_scope();
         self.loops.pop();
@@ -900,9 +968,11 @@ impl<'a> FnLower<'a> {
             None => {
                 self.split_iter_for = Some(iter as *const Expr);
                 self.chars_iter_for = Some(iter as *const Expr);
+                self.keys_view_for = Some(iter as *const Expr);
                 let it = self.expr(iter);
                 self.split_iter_for = None;
                 self.chars_iter_for = None;
+                self.keys_view_for = None;
                 let it = it?;
                 if self.dead {
                     self.scopes.pop();
@@ -985,7 +1055,12 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
-        self.bind_local(&loop_var, Val { v: e, own: false });
+        if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+            // The loop holds the list and the body cannot change it: the element is a borrow.
+            self.bind_lent(&loop_var, e);
+        } else {
+            self.bind_local(&loop_var, Val { v: e, own: false });
+        }
         self.stmts(body)?;
         self.pop_scope();
         let ctx = self.loops.pop().expect("loop");

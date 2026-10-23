@@ -280,6 +280,9 @@ pub unsafe fn free(p: *mut u8) {
         // least 16 bytes, so it can hold the free-list link in its first word.
         unsafe {
             let class = *s.page_class.add(page) as usize;
+            // The counting runtime scribbles over freed blocks so a use after free shows up.
+            #[cfg(any(test, feature = "stats"))]
+            core::ptr::write_bytes(p, 0xDD, CLASS_SIZES[class] as usize);
             *(p as *mut *mut u8) = s.free[class];
             s.free[class] = p;
         }

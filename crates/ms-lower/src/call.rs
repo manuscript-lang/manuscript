@@ -437,7 +437,43 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
+        let trim_view = match native {
+            "string/trim" => Some("msrt_string_trim_view"),
+            "string/trim_start" => Some("msrt_string_trim_start_view"),
+            "string/trim_end" => Some("msrt_string_trim_end_view"),
+            _ => None,
+        };
+        if let Some(sym) = trim_view
+            && !recv.own
+            && self.is_place(recv_expr)
+        {
+            return Ok(self.trim_view(sym, recv));
+        }
         self.native_method(e, view, m, recv_expr, recv)
+    }
+
+    /// `text.trim()` (or `trim_start`, `trim_end`) on a string that stays where it is: a view into it, nothing allocated. The
+    /// checker keeps `text` unchanged while the result lives and asks for `.clone()` wherever
+    /// the result would be kept.
+    fn trim_view(&mut self, sym: &str, text: Val) -> Val {
+        let s = self.borrow(text);
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(MTy::STR), Some(MTy::PTR))
+            .expect("slot");
+        self.call_runtime(sym, &[s, slot], MTy::UNIT)
+            .expect("trim view");
+        let v = self
+            .b
+            .emit(
+                Op::Load,
+                &[slot],
+                ms_mir::ir::Imm::Ty(MTy::STR),
+                Some(MTy::STR),
+            )
+            .expect("load");
+        self.views.insert(v);
+        Val { v, own: false }
     }
 
     fn source_method_call(

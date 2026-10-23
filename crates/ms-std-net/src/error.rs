@@ -2,7 +2,7 @@
 //!
 //! The status byte a fallible native returns is `1 + the case's declaration
 //! index` in the corresponding `stdlib/*.ms` error type (`0` is success).
-//! The `Failed` case carries its message through a trailing `*mut *mut StrObj`.
+//! The `Failed` case carries its message through a trailing `*mut StrVal`.
 
 use std::fmt;
 use std::io;

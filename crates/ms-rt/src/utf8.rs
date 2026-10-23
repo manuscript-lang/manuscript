@@ -90,8 +90,42 @@ pub fn is_ascii(s: &[u8]) -> bool {
     s.is_ascii()
 }
 
+/// Whether a string of at most 16 bytes is ASCII, by reading it as one or two words; `None` for
+/// longer strings.
+#[inline(always)]
+fn ascii_short(s: &[u8]) -> Option<bool> {
+    let n = s.len();
+    let p = s.as_ptr();
+    // SAFETY: each read stays inside the `n` bytes.
+    unsafe {
+        if n > 16 {
+            None
+        } else if n >= 8 {
+            let w =
+                (p as *const u64).read_unaligned() | (p.add(n - 8) as *const u64).read_unaligned();
+            Some(w & 0x8080_8080_8080_8080 == 0)
+        } else if n >= 4 {
+            let w =
+                (p as *const u32).read_unaligned() | (p.add(n - 4) as *const u32).read_unaligned();
+            Some(w & 0x8080_8080 == 0)
+        } else {
+            // 0..=3 bytes: the first, middle and last cover them all.
+            Some(n == 0 || (*p | *p.add(n / 2) | *p.add(n - 1)) < 0x80)
+        }
+    }
+}
+
 /// Number of scalars.
+#[inline(always)]
 pub fn count(s: &[u8]) -> usize {
+    if ascii_short(s) == Some(true) {
+        return s.len();
+    }
+    count_long(s)
+}
+
+#[inline(never)]
+fn count_long(s: &[u8]) -> usize {
     if s.is_ascii() {
         return s.len();
     }

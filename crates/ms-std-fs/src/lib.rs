@@ -25,7 +25,7 @@ pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
-use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NONE, StrObj};
+use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NONE, StrVal};
 use ms_std_core::{
     BytesList, EntryFilter, IntList, ObjMut, ObjRef, ObjShare, Object, PairFilter, RecList,
     StatusCode, Str, Text, TextList, abi_record, native,
@@ -146,7 +146,7 @@ abi_record! {
 
 native! {
     /// The text describing the last `STATUS_FAILED` result (a fresh string).
-    safe fn msstd_fs_failure_message() -> *mut StrObj {
+    fn msstd_fs_failure_message() -> out StrVal {
         ms_std_rt::failure_message()
     }
 

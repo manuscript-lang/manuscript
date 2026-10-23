@@ -86,6 +86,18 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Values that are views into another string: no drop, and an immutable `let` may hold one.
+    pub views: HashSet<Value>,
+    /// Parameters the body only reads: the caller keeps them alive and unchanged for the whole
+    /// call, so anything read out of them may be held without a copy.
+    pub borrowed_params: HashSet<usize>,
+    /// Values read in place out of a borrowed parameter (`p.m.get(k).get()`): an immutable `let`
+    /// may hold one without a copy.
+    pub stable_reads: HashSet<Value>,
+    /// The iterable of the `for` being lowered when it may yield views of a map's keys.
+    pub keys_view_for: Option<*const ms_syntax::ast::Expr>,
+    /// The `split` call of a `let` whose list the rest of the block only reads in place.
+    pub split_view_for: Option<*const ms_syntax::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -322,6 +334,11 @@ impl<'a> FnLower<'a> {
             counts_depth: false,
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            views: HashSet::new(),
+            borrowed_params: HashSet::new(),
+            stable_reads: HashSet::new(),
+            keys_view_for: None,
+            split_view_for: None,
             discard: None,
             stmt_pos: None,
             fixture: None,
@@ -448,9 +465,40 @@ impl<'a> FnLower<'a> {
 
     // -------------------------------------------------------------- locals
 
+    /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
+    pub fn bind_lent(&mut self, binding: &BindingRef, v: Value) {
+        let ty = self.ty_of(v);
+        let var = self.b.declare_var(ty, Mode::Borrow);
+        self.b.def_var(var, v);
+        self.locals.insert(
+            binding.uid,
+            Local {
+                var,
+                ty,
+                slot: None,
+            },
+        );
+    }
+
     /// Declares the local of `binding` holding `value`.
     pub fn bind_local(&mut self, binding: &BindingRef, x: Val) {
         let ty = self.ty_of(x.v);
+        // An immutable `let` of a string read from a list element or record field is a lexical
+        // borrow (the checker rejects changing the container while it lives): no copy, no drop.
+        let lent = ty == MTy::STR
+            && !x.own
+            && !binding.mutable
+            && !self.slotted.contains(&binding.uid)
+            && self.temps.is_empty()
+            && (self.views.contains(&x.v)
+                || matches!(
+                    self.b.defining_op(x.v),
+                    Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
+                ));
+        if lent {
+            self.bind_lent(binding, x.v);
+            return;
+        }
         let owned = self.needs_drop(ty);
         let var = self
             .b
@@ -723,6 +771,9 @@ impl<'a> FnLower<'a> {
                 self.scopes.last_mut().expect("scope").push(b.uid);
             } else {
                 self.bind_borrowed(b, v);
+                if !self.slotted.contains(&b.uid) {
+                    self.borrowed_params.insert(b.uid);
+                }
             }
         }
         self.counts_depth = true;

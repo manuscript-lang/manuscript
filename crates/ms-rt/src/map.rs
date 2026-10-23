@@ -106,6 +106,32 @@ fn layout(kd: &TypeDesc, vd: Option<&TypeDesc>) -> Layout {
             vsize: 8,
         };
     }
+    // Word-multiple slots (a `String` is two words) need only additions.
+    let (ks, ka) = (kd.size as usize, kd.align);
+    if ka == 8 && ks % 8 == 0 {
+        match vd {
+            Some(v) if v.align == 8 && v.size % 8 == 0 => {
+                let vs = v.size as usize;
+                return Layout {
+                    koff: 8,
+                    voff: 8 + ks,
+                    stride: 8 + ks + vs,
+                    ksize: ks,
+                    vsize: vs,
+                };
+            }
+            None => {
+                return Layout {
+                    koff: 8,
+                    voff: 8 + ks,
+                    stride: 8 + ks,
+                    ksize: ks,
+                    vsize: 0,
+                };
+            }
+            _ => {}
+        }
+    }
     layout_general(kd, vd)
 }
 
@@ -171,19 +197,15 @@ impl KeyOps for IntKey {
 }
 
 impl KeyOps for StrKey {
-    const WORD_KEY: bool = true;
     #[inline(always)]
     unsafe fn hash(_: &TypeDesc, key: *const u8) -> u64 {
         // SAFETY: the key slot holds a live string.
-        unsafe { crate::string::hash_bytes(crate::string::bytes(*(key as *const *const StrObj))) }
+        unsafe { crate::string::hash_bytes(crate::string::bytes(key as *const StrVal)) }
     }
     #[inline(always)]
     unsafe fn eq(_: &TypeDesc, a: *const u8, b: *const u8) -> bool {
         // SAFETY: both slots hold live strings. A lookup of an inserted key hits the same object.
-        unsafe {
-            let (x, y) = (*(a as *const *const StrObj), *(b as *const *const StrObj));
-            x == y || crate::string::bytes_eq(x, y)
-        }
+        unsafe { crate::string::equal(a as *const StrVal, b as *const StrVal) }
     }
 }
 
@@ -681,17 +703,18 @@ pub unsafe extern "C-unwind" fn msrt_map_add(
     }
 }
 
-/// [`upsert_k`] for a word key (`Int` or `String`) and a plain 8-byte scalar value: the layout is
-/// fixed (stride 24) and a replaced value needs no drop, so the call site skips descriptor dispatch.
+/// [`upsert_k`] for an `Int` (`ksize` 8) or `String` (`ksize` 16) key and a plain 8-byte scalar
+/// value: the layout is fixed and a replaced value needs no drop, so the call site skips
+/// descriptor dispatch.
 #[inline(always)]
-unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8) {
-    // SAFETY: caller contract; the key slot is a live word and `val` an 8-byte scalar.
+unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksize: usize) {
+    // SAFETY: caller contract; the key slot is a live key and `val` an 8-byte scalar.
     unsafe {
         let l = Layout {
             koff: 8,
-            voff: 16,
-            stride: 24,
-            ksize: 8,
+            voff: 8 + ksize,
+            stride: 16 + ksize,
+            ksize,
             vsize: 8,
         };
         let kd = &crate::desc::msrt_desc_string; // ignored by the word key kinds
@@ -699,9 +722,9 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8) {
         if let Some(i) = find::<K>(m, kd, &l, key, h) {
             let p = slot(m, &l, i);
             if !K::CHEAP_EQ {
-                crate::obj::release(*(key as *const *mut Obj));
+                crate::string::release(&*(key as *const StrVal));
             }
-            copy_slot(val, p.add(16), 8);
+            copy_slot(val, p.add(l.voff), 8);
             return;
         }
         if m.used == m.cap {
@@ -709,8 +732,8 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8) {
         }
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
-        copy_slot(key, p.add(8), 8);
-        copy_slot(val, p.add(16), 8);
+        copy_slot(key, p.add(8), ksize);
+        copy_slot(val, p.add(l.voff), 8);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
         loop {
             let e = *index_of(m).add(pos);
@@ -740,7 +763,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_w8(
         if !(*m).desc.is_null() {
             return msrt_map_add(m, _kd, _vd, key, val);
         }
-        insert_word::<IntKey>(&mut *m, key, val)
+        insert_word::<IntKey>(&mut *m, key, val, 8)
     }
 }
 
@@ -759,7 +782,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
         if !(*m).desc.is_null() {
             return msrt_map_add(m, _kd, _vd, key, val);
         }
-        insert_word::<StrKey>(&mut *m, key, val)
+        insert_word::<StrKey>(&mut *m, key, val, STR_SIZE)
     }
 }
 
@@ -809,6 +832,68 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
             let at = upsert_k::<K>(m, kd, Some(vd), owned, default, false).0;
             alloc::free(owned);
             at
+        })
+    }
+}
+
+/// `add(key, value)` with a borrowed `key`: it is copied into the map only when the entry is
+/// absent, so replacing the value of an existing key allocates nothing. `val` is consumed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_lent(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| {
+            let l = layout(kd, Some(vd));
+            let h = hash_key::<K>(kd, key);
+            if let Some(i) = find::<K>(m, kd, &l, key, h) {
+                let p = slot(m, &l, i).add(l.voff);
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, p);
+                }
+                copy_slot(val, p, l.vsize);
+                return;
+            }
+            let owned = alloc::alloc((kd.size as usize).max(8));
+            slot_copy(kd, key, owned);
+            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
+            alloc::free(owned);
+        })
+    }
+}
+
+/// `add_default(key, value)` with a borrowed `key`: nothing is copied or stored when the entry
+/// exists. `val` is consumed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    key: *const u8,
+    val: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
+        keyed!(kd, |K| {
+            let l = layout(kd, Some(vd));
+            let h = hash_key::<K>(kd, key);
+            if find::<K>(m, kd, &l, key, h).is_some() {
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, val);
+                }
+                return;
+            }
+            let owned = alloc::alloc((kd.size as usize).max(8));
+            slot_copy(kd, key, owned);
+            upsert_k::<K>(m, kd, Some(vd), owned, val, true);
+            alloc::free(owned);
         })
     }
 }
@@ -925,6 +1010,11 @@ unsafe fn find_w8(m: &MapVal, key: *const u8) -> *const u8 {
     }
 }
 
+/// Stride of a `String`-keyed slot with an 8-byte value: hash, key, value.
+const SW8_STRIDE: usize = 8 + STR_SIZE + 8;
+/// Offset of the value in such a slot.
+const SW8_VALUE: usize = 8 + STR_SIZE;
+
 /// [`find_w8`] for a `String` key: slot of the entry, or null.
 #[inline(always)]
 unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
@@ -934,7 +1024,7 @@ unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
     // SAFETY: caller contract; index and slots are consistent for a non-empty map, and the key
     // slot holds a live string.
     unsafe {
-        let k = *(key as *const *const StrObj);
+        let k = key as *const StrVal;
         let h = crate::string::hash_bytes(crate::string::bytes(k)) | LIVE;
         let index = index_of(m);
         let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
@@ -944,12 +1034,9 @@ unsafe fn find_sw8(m: &MapVal, key: *const u8) -> *const u8 {
                 return core::ptr::null();
             }
             if (e ^ h) >> 32 == 0 {
-                let p = m.slots.add((e as u32 - 1) as usize * 24);
-                if slot_hash_of(p) == h {
-                    let stored = *(p.add(8) as *const *const StrObj);
-                    if stored == k || crate::string::bytes_eq(stored, k) {
-                        return p;
-                    }
+                let p = m.slots.add((e as u32 - 1) as usize * SW8_STRIDE);
+                if slot_hash_of(p) == h && crate::string::equal(p.add(8) as *const StrVal, k) {
+                    return p;
                 }
             }
             pos = (pos + 1) & m.mask;
@@ -968,7 +1055,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_ptr_sw8(
     // SAFETY: caller contract.
     unsafe {
         let p = find_sw8(&*m, key);
-        if p.is_null() { p } else { p.add(16) }
+        if p.is_null() { p } else { p.add(SW8_VALUE) }
     }
 }
 
@@ -999,7 +1086,7 @@ pub unsafe extern "C-unwind" fn msrt_map_get_sw8(
         if p.is_null() {
             return 0;
         }
-        core::ptr::copy_nonoverlapping(p.add(16), out, 8);
+        core::ptr::copy_nonoverlapping(p.add(SW8_VALUE), out, 8);
         1
     }
 }
@@ -1155,6 +1242,75 @@ pub unsafe extern "C-unwind" fn msrt_map_values(
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe { collect(m, &*kd, opt(vd), false, out) }
+}
+
+/// `for k in m.keys()` over a map that outlives the loop unchanged: string keys come back as
+/// views of the map's own strings, so nothing is copied. Other keys are copied as by `keys`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_keys_view(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe { collect_view(m, &*kd, opt(vd), true, out) }
+}
+
+/// `for v in m.values()` over a map that outlives the loop unchanged (see [`msrt_map_keys_view`]).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_values_view(
+    m: *const MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    out: *mut VecVal,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe { collect_view(m, &*kd, opt(vd), false, out) }
+}
+
+unsafe fn collect_view(
+    m: *const MapVal,
+    kd: &TypeDesc,
+    vd: Option<&TypeDesc>,
+    keys: bool,
+    out: *mut VecVal,
+) {
+    let d = if keys { kd } else { vd.unwrap_or(kd) };
+    // SAFETY: caller contract.
+    unsafe {
+        if d.kind != ms_rt_abi::KIND_STRING {
+            return collect(m, kd, vd, keys, out);
+        }
+        let m = &*m;
+        let l = layout(kd, vd);
+        let mut v = VecVal {
+            ptr: core::ptr::null_mut(),
+            len: 0,
+            cap: 0,
+        };
+        if m.len > 0 {
+            v.ptr = alloc::alloc(m.len * STR_SIZE);
+            v.cap = m.len;
+        }
+        for i in 0..m.used {
+            let p = slot(m, &l, i);
+            if slot_hash_of(p) & LIVE == 0 {
+                continue;
+            }
+            let s = &*(p.add(if keys { l.koff } else { l.voff }) as *const StrVal);
+            let view = if s.owns() {
+                StrVal::view(s.ptr, s.len())
+            } else {
+                s.alias()
+            };
+            view.write_to((v.ptr as *mut StrVal).add(v.len));
+            v.len += 1;
+        }
+        *out = v;
+    }
 }
 
 unsafe fn collect(
@@ -1721,7 +1877,7 @@ mod tests {
             let got: std::vec::Vec<_> = (0..vals.len)
                 .map(|i| {
                     std::string::String::from_utf8_lossy(string::bytes(
-                        *(vals.ptr as *const *const StrObj).add(i),
+                        (vals.ptr as *const StrVal).add(i),
                     ))
                     .into_owned()
                 })

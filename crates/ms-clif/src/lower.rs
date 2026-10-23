@@ -12,8 +12,8 @@ use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
 use ms_rt_abi::{
-    ASCII_CHAR_STRIDE, STR_DATA_OFFSET, STR_LEN_OFFSET, VEC_CAP_OFFSET, VEC_LEN_OFFSET,
-    VEC_PTR_OFFSET,
+    ASCII_CHAR_STRIDE, STR_LEN_MASK, STR_LEN_OFFSET, STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET,
+    VEC_LEN_OFFSET, VEC_PTR_OFFSET,
 };
 use std::collections::HashMap;
 
@@ -289,22 +289,24 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// `rc -= 1; if rc == 0 { drop_slow }` on a non-null object pointer.
     fn release(&mut self, p: Value) {
-        self.release_with(p, "msrt_drop_slow")
-    }
-
-    /// `release` for a string, which has no children: freed without the generic drop path.
-    fn release_str(&mut self, p: Value) {
-        self.release_with(p, "msrt_string_drop")
-    }
-
-    fn release_with(&mut self, p: Value, f: &'static str) {
         let rc = self.b.ins().load(types::I64, flags(), p, 0);
         let n = self.b.ins().iadd_imm_s(rc, -1);
         self.b.ins().store(flags(), n, p, 0);
         let zero = self.b.ins().icmp_imm_s(IntCC::Equal, n, 0);
         self.if_then(zero, |s| {
-            s.rt_call(f, &[p]);
+            s.rt_call("msrt_drop_slow", &[p]);
         });
+    }
+
+    /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
+    /// (1) with its capacity word to the counting runtime (`ms-rt` feature `stats`), which prints
+    /// the dynamic totals at exit. `bench/perf/copy-report.sh` counts the static sites.
+    fn count_str(&mut self, kind: i64, cap: Value) {
+        if !self.g.count_str {
+            return;
+        }
+        let kind = self.b.ins().iconst(types::I64, kind);
+        self.rt_call("msrt_str_count", &[kind, cap]);
     }
 
     fn retain(&mut self, p: Value) {
@@ -320,7 +322,17 @@ impl<'a, 'm> Lower<'a, 'm> {
             return;
         }
         match m.types.kind(ty) {
-            TyKind::Str => self.release_str(vs[0]),
+            TyKind::Str => {
+                self.count_str(0, vs[1]);
+                // A static or view string has the top tag bit set: nothing to free.
+                let owned = self
+                    .b
+                    .ins()
+                    .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, vs[1], 0);
+                self.if_then(owned, |s| {
+                    s.rt_call("msrt_str_free", &[vs[0]]);
+                });
+            }
             TyKind::Fn(..) => self.release(vs[0]),
             TyKind::Obj(n, _) if n != "Map" && n != "Set" => self.release(vs[0]),
             TyKind::Opt(inner)
@@ -343,7 +355,27 @@ impl<'a, 'm> Lower<'a, 'm> {
             return vs.to_vec();
         }
         match m.types.kind(ty) {
-            TyKind::Str | TyKind::Fn(..) => {
+            TyKind::Str => {
+                self.count_str(1, vs[1]);
+                // A static string (tag `10`) is shared; an owned one or a view is duplicated.
+                let tag = self.b.ins().ushr_imm_u(vs[1], 62);
+                let shared = self.b.ins().icmp_imm_s(IntCC::Equal, tag, 2);
+                let (dup, join) = (self.b.create_block(), self.b.create_block());
+                for _ in 0..2 {
+                    self.b.append_block_param(join, types::I64);
+                }
+                let same = [vs[0], vs[1]].map(BlockArg::Value);
+                self.b.ins().brif(shared, join, &same, dup, &[]);
+                self.b.switch_to_block(dup);
+                let len = self.b.ins().band_imm_s(vs[1], STR_LEN_MASK as i64);
+                let p = self.rt_call("msrt_str_dup", &[vs[0], len])[0];
+                self.b
+                    .ins()
+                    .jump(join, &[BlockArg::Value(p), BlockArg::Value(len)]);
+                self.b.switch_to_block(join);
+                self.b.block_params(join).to_vec()
+            }
+            TyKind::Fn(..) => {
                 self.retain(vs[0]);
                 vs.to_vec()
             }
@@ -1113,7 +1145,8 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     fn is_wide(&self, ty: Ty) -> bool {
-        matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
+        matches!(self.g.m.types.kind(ty), TyKind::Str)
+            || matches!(self.g.m.types.kind(ty), TyKind::Obj(n, _) if n == "Map" || n == "Set")
     }
 
     fn new_slot(&mut self, size: u32) -> ir::StackSlot {
@@ -1421,10 +1454,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             FaultKind::Message(s) => {
                 let d = self.g.str_lit(s.0);
                 let base = self.data_addr(d);
-                let p = self
-                    .b
-                    .ins()
-                    .iadd_imm_s(base, crate::cg::STR_DATA_OFFSET as i64);
+                let p = base;
                 let n = self.iconst(self.g.m.strings[s.index()].len() as i64);
                 self.rt_call("msrt_fault", &[p, n]);
             }
@@ -1482,7 +1512,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if let Some(r) = inst.res {
                     self.str_lits.insert(r.index(), s.0);
                 }
-                vec![self.data_addr(d)]
+                let base = self.data_addr(d);
+                let ptr = base;
+                let len = self.g.m.strings[s.0 as usize].len() as i64;
+                let tagged = self.iconst(len | STR_STATIC as i64);
+                vec![ptr, tagged]
             }
             Op::IAdd => vec![{
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1883,10 +1917,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::StrByte => {
                 let (p, i) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 let at = self.b.ins().iadd(p, i);
-                let byte = self
-                    .b
-                    .ins()
-                    .load(types::I8, flags(), at, STR_DATA_OFFSET as i32);
+                let byte = self.b.ins().load(types::I8, flags(), at, 0);
                 let byte = self.b.ins().uextend(types::I64, byte);
                 vec![byte]
             }
@@ -1895,25 +1926,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let d = self.g.rt_data("msrt_ascii_chars");
                 let base = self.data_addr(d);
                 let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
-                vec![self.b.ins().iadd(base, off)]
+                let ptr = self.b.ins().iadd(base, off);
+                let tagged = self.iconst(1 | STR_STATIC as i64);
+                vec![ptr, tagged]
             }
             Op::StrLen => {
-                // Scalar count: cached in the object, else computed (and cached) by the runtime.
-                let p = self.a(inst, 0)[0];
-                let n = self.b.ins().load(types::I64, flags(), p, 24);
-                let unknown = self.b.ins().icmp_imm_s(IntCC::Equal, n, -1);
-                let join = self.b.create_block();
-                self.b.append_block_param(join, types::I64);
-                let slow = self.b.create_block();
-                self.b.set_cold_block(slow);
-                self.b
-                    .ins()
-                    .brif(unknown, slow, &[], join, &[BlockArg::Value(n)]);
-                self.b.switch_to_block(slow);
-                let c = self.rt_call("msrt_string_length", &[p])[0];
-                self.b.ins().jump(join, &[BlockArg::Value(c)]);
-                self.b.switch_to_block(join);
-                vec![self.b.block_params(join)[0]]
+                // Scalar count: computed by the runtime (long strings are remembered there).
+                let s = self.a(inst, 0);
+                let at = match self.home_of(inst.args[0]) {
+                    Some(h) => h.addr,
+                    None => self.spill(&s, &[Leaf::I64; 2]),
+                };
+                vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
             Op::SharedNew => {
                 let t = self.g.m.types.kind(res_ty.expect("result")).clone();
@@ -2469,8 +2493,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             self.str_lits.get(&inst.args[0].index()),
             self.str_lits.get(&inst.args[1].index()),
         ) {
-            (_, Some(l)) => (*l, self.a(inst, 0)[0]),
-            (Some(l), None) => (*l, self.a(inst, 1)[0]),
+            (_, Some(l)) => (*l, self.a(inst, 0)),
+            (Some(l), None) => (*l, self.a(inst, 1)),
             (None, None) => return None,
         };
         let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
@@ -2478,7 +2502,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             return None;
         }
         let unaligned = MemFlagsData::new().with_notrap();
-        let len = self.b.ins().load(types::I64, flags(), other, 16);
+        let len = self.b.ins().band_imm_s(other[1], STR_LEN_MASK as i64);
         let same_len = self
             .b
             .ins()
@@ -2508,7 +2532,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             word[..n].copy_from_slice(&bytes[at..at + n]);
             let shift = 64 - 8 * n as u32;
             let want = (i64::from_le_bytes(word) << shift) >> shift;
-            let got = self.b.ins().load(ty, unaligned, other, 32 + at as i32);
+            let got = self.b.ins().load(ty, unaligned, other[0], at as i32);
             let eq = self.b.ins().icmp_imm_s(IntCC::Equal, got, want);
             all = Some(match all {
                 Some(a) => self.b.ins().band(a, eq),
@@ -2523,16 +2547,52 @@ impl<'a, 'm> Lower<'a, 'm> {
         Some(vec![self.b.block_params(join)[0]])
     }
 
+    /// `a == b` for two strings: differing lengths are unequal and identical pointers equal without
+    /// a call; only same-length distinct blocks reach the runtime.
+    fn string_eq_inline(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let (a, b) = (self.a(inst, 0), self.a(inst, 1));
+        // Equal lengths with any tags: the tag sits in the top two bits.
+        let diff = self.b.ins().bxor(a[1], b[1]);
+        let diff = self.b.ins().ishl_imm_u(diff, 2);
+        let same_len = self.b.ins().icmp_imm_s(IntCC::Equal, diff, 0);
+        let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
+        let join = self.b.create_block();
+        self.b.append_block_param(join, types::I8);
+        let (check, slow) = (self.b.create_block(), self.b.create_block());
+        let no = self.b.ins().iconst(types::I8, 0);
+        self.b
+            .ins()
+            .brif(same_len, check, &[], join, &[BlockArg::Value(no)]);
+        self.b.switch_to_block(check);
+        let yes = self.b.ins().iconst(types::I8, 1);
+        self.b
+            .ins()
+            .brif(same_ptr, join, &[BlockArg::Value(yes)], slow, &[]);
+        self.b.switch_to_block(slow);
+        let r = self.call_extern_plain(f, inst);
+        self.b.ins().jump(join, &[BlockArg::Value(r[0])]);
+        self.b.switch_to_block(join);
+        vec![self.b.block_params(join)[0]]
+    }
+
     fn call_extern(&mut self, f: &Func, inst: &Inst) -> Vs {
         let Imm::Ext(e) = inst.imm else {
             unreachable!()
         };
-        let def = self.g.m.externs[e.index()].clone();
-        if def.name == "msrt_string_eq"
-            && let Some(r) = self.string_eq_literal(inst)
-        {
-            return r;
+        if self.g.m.externs[e.index()].name == "msrt_string_eq" {
+            if let Some(r) = self.string_eq_literal(inst) {
+                return r;
+            }
+            return self.string_eq_inline(f, inst);
         }
+        self.call_extern_plain(f, inst)
+    }
+
+    fn call_extern_plain(&mut self, f: &Func, inst: &Inst) -> Vs {
+        let Imm::Ext(e) = inst.imm else {
+            unreachable!()
+        };
+        let def = self.g.m.externs[e.index()].clone();
         let id = match self.g.ext.get(&e) {
             Some(id) => *id,
             None => {
@@ -2630,6 +2690,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
+        let size = self.b.ins().band_imm_s(size, STR_LEN_MASK as i64);
         let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
         let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
         let fast = self.b.ins().band(single, room);
@@ -2639,10 +2700,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         let join = self.b.create_block();
         self.b.ins().brif(fast, store, &[], slow, &[]);
         self.b.switch_to_block(store);
-        let byte = self
+        let bytes = self
             .b
             .ins()
-            .load(types::I8, flags(), text, STR_DATA_OFFSET as i32);
+            .load(types::I64, flags(), text, STR_PTR_OFFSET as i32);
+        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         let data = self
             .b
             .ins()
@@ -2710,7 +2772,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int
             | TyKind::Float
             | TyKind::Ptr
-            | TyKind::Str
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,
             TyKind::Obj(n, _) => n != "Map" && n != "Set",

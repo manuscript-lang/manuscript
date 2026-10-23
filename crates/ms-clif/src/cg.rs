@@ -23,10 +23,6 @@ use ms_mir::ir::{ExtId, Func, Module};
 use ms_mir::types::{Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 
-/// `rc` of static objects (`ms_rt_abi::STATIC_RC`).
-pub const STATIC_RC: u64 = 1 << 62;
-/// `ms_rt_abi::STR_DATA_OFFSET`.
-pub const STR_DATA_OFFSET: usize = 32;
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
 /// Offset of the payload in a `Shared[T]` box.
@@ -64,7 +60,9 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_free", "i", ""),
     ("msrt_realloc", "ii", "i"),
     ("msrt_drop_slow", "i", ""),
-    ("msrt_string_drop", "i", ""),
+    ("msrt_str_count", "ii", ""),
+    ("msrt_str_free", "i", ""),
+    ("msrt_str_dup", "ii", "i"),
     ("msrt_fault", "ii", ""),
     ("msrt_fault_int_overflow", "", ""),
     ("msrt_fault_div_zero", "", ""),
@@ -132,6 +130,8 @@ pub struct Gen<'m> {
     pub funcs: Vec<FuncId>,
     pub rt: HashMap<&'static str, FuncId>,
     pub rt_data: HashMap<&'static str, DataId>,
+    /// Emit `msrt_str_count` calls at every string copy and drop (`MS_COUNT_STR` at compile time).
+    pub count_str: bool,
     pub ext: HashMap<ExtId, FuncId>,
     pub strs: HashMap<u32, DataId>,
     pub glue: HashMap<(Glue, Ty), FuncId>,
@@ -507,17 +507,13 @@ impl<'m> Gen<'m> {
         id
     }
 
-    /// A static `String` object for literal `i`.
+    /// A static `String` block for literal `i`: the bytes then a NUL.
     pub fn str_lit(&mut self, i: u32) -> DataId {
         if let Some(id) = self.strs.get(&i) {
             return *id;
         }
         let s = &self.m.strings[i as usize];
-        let mut bytes = vec![0u8; STR_DATA_OFFSET];
-        bytes[0..8].copy_from_slice(&STATIC_RC.to_le_bytes());
-        bytes[16..24].copy_from_slice(&(s.len() as u64).to_le_bytes());
-        bytes[24..32].copy_from_slice(&(s.chars().count() as u64).to_le_bytes());
-        bytes.extend_from_slice(s.as_bytes());
+        let mut bytes = s.as_bytes().to_vec();
         bytes.push(0);
         let id = self
             .module
@@ -576,6 +572,7 @@ fn compile_with_isa(
         funcs: Vec::new(),
         rt: HashMap::new(),
         rt_data: HashMap::new(),
+        count_str: std::env::var_os("MS_COUNT_STR").is_some(),
         ext: HashMap::new(),
         strs: HashMap::new(),
         glue: HashMap::new(),

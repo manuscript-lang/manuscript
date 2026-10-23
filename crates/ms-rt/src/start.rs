@@ -281,7 +281,16 @@ pub unsafe extern "C-unwind" fn msrt_start(
         #[cfg(feature = "stats")]
         crate::task::reset_for_tests();
         #[cfg(feature = "stats")]
-        eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+        {
+            eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+            let c = *crate::string::STR_COUNTS.ptr();
+            if c.iter().any(|n| *n != 0) {
+                eprintln!(
+                    "ms-rt string drops: {} static, {} owned; copies: {} static, {} owned",
+                    c[0], c[1], c[2], c[3]
+                );
+            }
+        }
         *MAIN_RESULT.ptr() as i32
     }
 }
@@ -303,8 +312,8 @@ pub unsafe extern "C-unwind" fn msrt_argv(out: *mut VecVal) {
         let p = if n == 0 {
             core::ptr::null_mut()
         } else {
-            alloc::alloc(n * 8)
-        } as *mut *mut ms_rt_abi::StrObj;
+            alloc::alloc(n * core::mem::size_of::<ms_rt_abi::StrVal>())
+        } as *mut ms_rt_abi::StrVal;
         for i in 0..n {
             let a = *argv.add(i);
             let mut len = 0;
@@ -344,8 +353,8 @@ pub unsafe extern "C-unwind" fn msrt_args(out: *mut VecVal) {
         let p = if n == 0 {
             core::ptr::null_mut()
         } else {
-            alloc::alloc(n * 8)
-        } as *mut *mut ms_rt_abi::StrObj;
+            alloc::alloc(n * core::mem::size_of::<ms_rt_abi::StrVal>())
+        } as *mut ms_rt_abi::StrVal;
         for i in 0..n {
             let mut a = *argv.add(i + first as usize);
             let mut len = 0;

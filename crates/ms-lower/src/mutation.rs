@@ -150,6 +150,73 @@ pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool
     v.found
 }
 
+/// Whether `body` names the list `uid` only as the receiver of a read in place (`get`,
+/// `length`, `is_empty`) or as the iterable of a `for`, never inside a closure: nothing can keep
+/// the list or move it.
+pub(crate) fn only_read_in_place(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool {
+    struct Reads<'h> {
+        hir: &'h ModuleHir,
+        uid: usize,
+        mentions: usize,
+        reads: usize,
+        lambdas: usize,
+        captured: bool,
+    }
+    impl Reads<'_> {
+        fn names(&self, e: &Expr) -> bool {
+            matches!(self.hir.resolution(e), Resolution::Local(b) if b.uid == self.uid)
+        }
+    }
+    impl Visitor for Reads<'_> {
+        fn expr(&mut self, e: &Expr) {
+            match &e.kind {
+                ExprKind::Lambda(_) => self.lambdas += 1,
+                ExprKind::Call { callee, .. } => {
+                    if let ExprKind::Member { left, name } = &callee.kind
+                        && matches!(name.as_str(), "get" | "length" | "is_empty")
+                        && self.names(left)
+                    {
+                        self.reads += 1;
+                    }
+                }
+                _ => {}
+            }
+            if self.names(e) {
+                self.mentions += 1;
+                self.captured |= self.lambdas > 0;
+            }
+        }
+        fn leave_expr(&mut self, e: &Expr) {
+            if let ExprKind::Lambda(_) = &e.kind {
+                self.lambdas -= 1;
+            }
+        }
+        fn stmt(&mut self, s: &Stmt) {
+            match &s.kind {
+                StmtKind::For { iter, .. } if self.names(iter) => self.reads += 1,
+                StmtKind::Assign {
+                    target: AssignTarget::Name(_),
+                    value,
+                    ..
+                } if self.hir.assigned(value).is_some_and(|b| b.uid == self.uid) => {
+                    self.captured = true;
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut v = Reads {
+        hir,
+        uid,
+        mentions: 0,
+        reads: 0,
+        lambdas: 0,
+        captured: false,
+    };
+    ms_syntax::visit::walk_block(&mut v, body);
+    !v.captured && v.mentions == v.reads
+}
+
 /// The locals a body assigns to or mutates in place, and the source calls they feed.
 struct Mutations<'h> {
     hir: &'h ModuleHir,

@@ -366,10 +366,7 @@ pub(crate) fn build_format(
             let kd = desc(&mut b, args[0]);
             let vd = match args.get(1) {
                 Some(v) => desc(&mut b, *v),
-                None => {
-                    let ot = b.m.types.opt(MTy::STR);
-                    b.opt_none(ot)
-                }
+                None => b.iconst(0),
             };
             let count_ext = runtime_fn(b.m, "msrt_map_slot_count", &[t], MTy::INT);
             let count = b.call_rt(count_ext, &[x]);

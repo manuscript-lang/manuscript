@@ -124,10 +124,8 @@ impl FnLower<'_> {
                 let kd = self.type_desc(a[0]);
                 let vd = match a.get(1) {
                     Some(v) => self.type_desc(*v),
-                    None => {
-                        let ot = self.b.m.types.opt(MTy::STR);
-                        self.b.opt_none(ot)
-                    }
+                    // A set is a map without a value descriptor: a null pointer.
+                    None => self.b.iconst(0),
                 };
                 let slot = |s: &mut Self| {
                     s.b.emit(Op::Slot, &[], Imm::Ty(MTy::PTR), Some(MTy::PTR))

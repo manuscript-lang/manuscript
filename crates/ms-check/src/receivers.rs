@@ -1,6 +1,10 @@
 //! Native receiver operation identities.
 
 /// `(receiver, [(operation, native identity)])`.
+/// String operations whose result is an immutable view into the receiver: the checker treats the
+/// result as a borrow of the receiver's place, so keeping it past the receiver takes `.clone()`.
+pub const LENDING_NATIVES: &[&str] = &["string/trim", "string/trim_start", "string/trim_end"];
+
 pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
     (
         "IpAddress",

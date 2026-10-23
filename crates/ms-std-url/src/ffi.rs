@@ -99,34 +99,30 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_rt::obj::msrt_release;
     use ms_rt_abi::STATUS_OK;
     use ms_std_core::AbiRecord;
-    use ms_std_core::{StrObj, VecVal, new_string, str_ref};
+    use ms_std_core::{StrVal, VecVal, new_string, str_ref, take_string};
 
     #[test]
     fn abi_roundtrip() {
         let text = new_string("https://Example.com:81/p?a=1&a=2#f");
         let mut rec = MaybeUninit::<UrlRec>::uninit();
-        let mut s = MaybeUninit::<*mut StrObj>::uninit();
+        let mut s = MaybeUninit::<StrVal>::uninit();
         let mut q = MaybeUninit::<VecVal>::uninit();
         // SAFETY: all pointers are live; results are released below.
         unsafe {
-            assert_eq!(msrt_url_parse(text, rec.as_mut_ptr()), STATUS_OK);
+            assert_eq!(msrt_url_parse(&text, rec.as_mut_ptr()), STATUS_OK);
             let r = rec.assume_init_ref();
             assert_eq!((r.host.as_str(), r.port.get()), ("example.com", Some(81)));
             assert_eq!(msrt_url_format(rec.as_ptr(), s.as_mut_ptr()), STATUS_OK);
-            assert_eq!(
-                str_ref(s.assume_init()),
-                "https://example.com:81/p?a=1&a=2#f"
-            );
+            assert_eq!(str_ref(s.as_ptr()), "https://example.com:81/p?a=1&a=2#f");
             assert_eq!(
                 msrt_url_parse_query(r.query.as_ptr(), 0, 0, q.as_mut_ptr()),
                 STATUS_OK
             );
             assert_eq!((*q.as_ptr()).len, 2);
-            let f = msrt_url_format_query(q.as_ptr().cast());
-            assert_eq!(str_ref(f), "a=1&a=2");
+            let f = take_string(|o| msrt_url_format_query(q.as_ptr().cast(), o));
+            assert_eq!(f, "a=1&a=2");
             ms_rt::vec::msrt_list_drop(q.as_mut_ptr(), QueryEntryRec::desc());
             for o in [
                 r.scheme.as_ptr(),
@@ -135,10 +131,10 @@ mod tests {
                 r.query.as_ptr(),
                 r.fragment.as_ptr(),
             ] {
-                msrt_release(o.cast_mut().cast());
+                ms_std_core::str_release(&*o);
             }
-            for o in [text, f, s.assume_init()] {
-                msrt_release(o.cast());
+            for o in [text, s.assume_init()] {
+                ms_std_core::str_release(&o);
             }
         }
     }

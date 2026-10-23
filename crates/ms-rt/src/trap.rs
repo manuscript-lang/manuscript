@@ -8,7 +8,7 @@
 use crate::global::Global;
 use crate::string;
 use crate::sys;
-use ms_rt_abi::StrObj;
+use ms_rt_abi::StrVal;
 
 /// Read end of the child's stderr pipe and the child's process id.
 static TRAP: Global<(i32, i32)> = Global::new((-1, 0));
@@ -55,7 +55,7 @@ pub extern "C" fn msrt_trap_end() -> ! {
 /// # Safety
 /// `out` must be writable.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn msrt_trap_wait(out: *mut *mut StrObj) -> u8 {
+pub unsafe extern "C" fn msrt_trap_wait(out: *mut StrVal) -> u8 {
     // SAFETY: single threaded access to the trap state; `out` is writable.
     unsafe {
         let (fd, pid) = *TRAP.ptr();

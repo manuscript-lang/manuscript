@@ -86,7 +86,7 @@ Extraction returns the payload itself: no clone, no flattening. `map` transforms
 
 ```manuscript
 fn first_number(text: Optional[String]) Optional[Int]:
-    return text.map(fn(value): value.trim()).and_then(fn(value): value.parse_int())
+    return text.map(fn(value): value.trim().clone()).and_then(fn(value): value.parse_int())
 ```
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
