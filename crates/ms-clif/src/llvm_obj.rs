@@ -68,13 +68,13 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         _ => (&*format!("default<O{level}>"), &*format!("-O{level}")),
     };
     let bitcode = dir.join("m.bc");
-    let mut opt = Command::new(tools.join("opt"));
+    let mut opt = Command::new(tools.join(format!("opt{}", std::env::consts::EXE_SUFFIX)));
     opt.arg(format!("-passes={pipeline}"))
         .arg(&ll)
         .arg("-o")
         .arg(&bitcode);
     run(opt, "opt (LLVM optimizer)")?;
-    let mut llc = Command::new(tools.join("llc"));
+    let mut llc = Command::new(tools.join(format!("llc{}", std::env::consts::EXE_SUFFIX)));
     // The line tables address every function from one anchor, so code must stay in a single section; without this
     // LLVM 20 and later move functions that only reach a noreturn call into `.text.unlikely.`.
     llc.args([
