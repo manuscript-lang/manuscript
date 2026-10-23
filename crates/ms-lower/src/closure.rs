@@ -88,7 +88,7 @@ impl FnLower<'_> {
             }
         }
         let fid = self.cx.function_for(self.b.m, &callee, &subst)?;
-        if let Some(thunk) = self.default_thunk(e, fid, &callee, &subst, None)? {
+        if let Some(thunk) = self.default_thunk(e, fid, &callee, &subst, None, None)? {
             let fty = self.emty(e)?;
             let v = self
                 .b
@@ -137,6 +137,7 @@ impl FnLower<'_> {
         callee: &Rc<ms_check::hir::Callable>,
         subst: &ct::Subst,
         recv: Option<MTy>,
+        shared: Option<MTy>,
     ) -> Result<Option<FuncId>, Error> {
         let fty = self.emty(e)?;
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
@@ -151,9 +152,14 @@ impl FnLower<'_> {
         if own.len() != ptys.len() || own == ptys {
             return Ok(None);
         }
-        let key = format!("default-thunk:{}:{}", fid.index(), fty.0);
+        let key = format!(
+            "default-thunk:{}:{}:{}",
+            fid.index(),
+            fty.0,
+            shared.is_some()
+        );
         Ok(Some(self.queue_default_thunk(
-            key, fid, &ptys, ret, callee, subst, recv,
+            key, fid, &ptys, ret, callee, subst, recv, shared,
         )))
     }
 
@@ -169,6 +175,7 @@ impl FnLower<'_> {
         callee: &Rc<ms_check::hir::Callable>,
         subst: &ct::Subst,
         recv: Option<MTy>,
+        shared: Option<MTy>,
     ) -> FuncId {
         if let Some(t) = self.cx.helpers.get(&key) {
             return *t;
@@ -192,6 +199,7 @@ impl FnLower<'_> {
                 callable: callee.clone(),
                 subst: subst.clone(),
                 recv,
+                shared,
             })),
         });
         self.cx.helpers.insert(key, id);
@@ -238,7 +246,7 @@ impl FnLower<'_> {
             });
         }
         let key = format!("direct-default:{}", fid.index());
-        let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None);
+        let thunk = self.queue_default_thunk(key, fid, &ptys, ret, c, subst, None, None);
         let fty = self.b.m.types.func(ptys.clone(), ret);
         let mut slots: Vec<Option<Value>> = vec![None; ptys.len()];
         for a in view.arguments.iter() {
@@ -279,6 +287,55 @@ impl FnLower<'_> {
         Ok(Some(self.val(v, true)))
     }
 
+    /// The slot of the variable `left` names, and its type: a method value that changes its
+    /// receiver shares that variable. `None` when `left` is not a whole variable in memory.
+    fn shared_receiver(&self, left: &Expr) -> Option<(Value, MTy)> {
+        let ms_check::hir::Resolution::Local(b) = self.hir.resolution(left) else {
+            return None;
+        };
+        let l = self.locals.get(&b.uid)?;
+        Some((l.slot?, l.ty))
+    }
+
+    /// Queues (once per key) the thunk of a source method that changes its receiver, which
+    /// the closure holds as the address of the variable.
+    fn shared_method_thunk(
+        &mut self,
+        key: String,
+        name: &str,
+        fid: FuncId,
+        params: &[MTy],
+        ret: MTy,
+    ) -> FuncId {
+        if let Some(t) = self.cx.helpers.get(&key) {
+            return *t;
+        }
+        let mut ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        ps.extend(params.iter().map(|t| Param {
+            ty: *t,
+            mode: Mode::Borrow,
+        }));
+        let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
+        b.func_mut().kind = FuncKind::Closure {
+            captures: vec![MTy::PTR],
+        };
+        let args = b.params();
+        let slot = b
+            .emit(Op::ClosureCap, &[args[0]], Imm::Idx(0), Some(MTy::PTR))
+            .expect("capture");
+        let mut all = vec![slot];
+        all.extend_from_slice(&args[1..]);
+        let r = b.call(fid, &all);
+        b.ret(Some(r));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
     /// A method used as a value (`view.read`): a closure holding a copy of the receiver.
     pub fn bound_method(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
         let fty = self.emty(e)?;
@@ -295,9 +352,15 @@ impl FnLower<'_> {
                 .iter()
                 .position(|s| s.name == name)
                 .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
+            let shared = if crate::mutation::method_changes_receiver(m, &self.cx.mutated) {
+                self.shared_receiver(left)
+            } else {
+                None
+            };
+            let held_ty = if shared.is_some() { MTy::PTR } else { recv_mty };
             // A function type that takes optionals the interface method takes plainly.
             if self.b.m.ifaces[iface.index()].methods[k].params != params {
-                let key = format!("iface-thunk:{}:{k}:{}", iface.0, fty.0);
+                let key = format!("iface-thunk:{}:{k}:{}:{}", iface.0, fty.0, shared.is_some());
                 let thunk = match self.cx.helpers.get(&key) {
                     Some(t) => *t,
                     None => {
@@ -311,7 +374,7 @@ impl FnLower<'_> {
                         }));
                         let mut f = ms_mir::ir::Func::new(&format!("<{name}>"), ps, ret);
                         f.kind = FuncKind::Closure {
-                            captures: vec![recv_mty],
+                            captures: vec![held_ty],
                         };
                         let id = self.b.m.add_func(f);
                         self.cx.queue.push(Job {
@@ -321,12 +384,20 @@ impl FnLower<'_> {
                                 index: k as u32,
                                 method: m.clone(),
                                 hir: self.hir.clone(),
+                                shared: shared.is_some(),
                             })),
                         });
                         self.cx.helpers.insert(key, id);
                         id
                     }
                 };
+                if let Some((slot, _)) = shared {
+                    let v = self
+                        .b
+                        .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
+                        .expect("closure");
+                    return Ok(Val { v, own: true });
+                }
                 let recv = self.expr(left)?;
                 if self.dead {
                     return Ok(recv);
@@ -335,6 +406,44 @@ impl FnLower<'_> {
                 let v = self
                     .b
                     .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
+            if let Some((slot, _)) = shared {
+                let key = format!("bound-shared:iface{}:{k}:{}", iface.0, fty.0);
+                let thunk = match self.cx.helpers.get(&key) {
+                    Some(t) => *t,
+                    None => {
+                        let mut ps = vec![Param {
+                            ty: MTy::PTR,
+                            mode: Mode::Borrow,
+                        }];
+                        ps.extend(params.iter().map(|t| Param {
+                            ty: *t,
+                            mode: Mode::Borrow,
+                        }));
+                        let mut b = FuncBuilder::new(self.b.m, &format!("<{name}>"), ps, ret);
+                        b.func_mut().kind = FuncKind::Closure {
+                            captures: vec![MTy::PTR],
+                        };
+                        let args = b.params();
+                        let ptr = b
+                            .emit(Op::ClosureCap, &[args[0]], Imm::Idx(0), Some(MTy::PTR))
+                            .expect("capture");
+                        let this = b
+                            .emit(Op::Load, &[ptr], Imm::Ty(recv_mty), Some(recv_mty))
+                            .expect("load");
+                        let r = b.call_method(iface, k as u32, this, &args[1..]);
+                        b.ret(Some(r));
+                        let f = b.into_func();
+                        let id = self.b.m.add_func(f);
+                        self.cx.helpers.insert(key, id);
+                        id
+                    }
+                };
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
                     .expect("closure");
                 return Ok(Val { v, own: true });
             }
@@ -380,7 +489,28 @@ impl FnLower<'_> {
                 return Err(Error::new("method value with changed parameters"));
             }
             let fid = self.cx.function_for(self.b.m, &c, &subst)?;
-            if let Some(thunk) = self.default_thunk(e, fid, &c, &subst, Some(recv_mty))? {
+            let shared = if vars.is_empty() {
+                None
+            } else {
+                self.shared_receiver(left)
+            };
+            if let Some((slot, _)) = shared {
+                // The value shares the variable: the thunk changes it in place.
+                let ptr_ty = Some(MTy::PTR);
+                let thunk = match self.default_thunk(e, fid, &c, &subst, ptr_ty, Some(recv_mty))? {
+                    Some(t) => t,
+                    None => {
+                        let key = format!("bound-shared:{}:{}", fid.index(), fty.0);
+                        self.shared_method_thunk(key, &name, fid, &params, ret)
+                    }
+                };
+                let v = self
+                    .b
+                    .emit(Op::ClosureNew, &[slot], Imm::Func(thunk), Some(fty))
+                    .expect("closure");
+                return Ok(Val { v, own: true });
+            }
+            if let Some(thunk) = self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)? {
                 let recv = self.expr(left)?;
                 if self.dead {
                     return Ok(recv);
@@ -514,16 +644,35 @@ impl FnLower<'_> {
         left: &Expr,
         m: &ct::MethodRef,
     ) -> Result<Val, Error> {
-        let recv = self.expr(left)?;
+        let shared = if ms_check::effects::collection_mutation(m) {
+            self.shared_receiver(left)
+        } else {
+            None
+        };
+        let recv = match shared {
+            Some((slot, _)) => Val {
+                v: slot,
+                own: false,
+            },
+            None => self.expr(left)?,
+        };
         if self.dead {
             return Ok(recv);
         }
-        let rty = self.ty_of(recv.v);
+        // A shared receiver is the address of the variable the closure changes.
+        let rty = shared.map_or_else(|| self.ty_of(recv.v), |(_, t)| t);
+        let held = if shared.is_some() { MTy::PTR } else { rty };
         let fty = self.emty(e)?;
         let TyKind::Fn(ptys, ret) = self.b.m.types.kind(fty).clone() else {
             return Err(Error::new("method value without function type"));
         };
-        let key = format!("bound-native:{}:{}:{}", m.native, rty.0, fty.0);
+        let key = format!(
+            "bound-native:{}:{}:{}:{}",
+            m.native,
+            rty.0,
+            fty.0,
+            shared.is_some()
+        );
         let thunk = match self.cx.helpers.get(&key) {
             Some(f) => *f,
             None => {
@@ -537,7 +686,7 @@ impl FnLower<'_> {
                 }));
                 let mut f = ms_mir::ir::Func::new(m.native.as_str(), ps, ret);
                 f.kind = FuncKind::Closure {
-                    captures: vec![rty],
+                    captures: vec![held],
                 };
                 let id = self.b.m.add_func(f);
                 self.cx.queue.push(Job {
@@ -545,13 +694,18 @@ impl FnLower<'_> {
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
                         method: m.clone(),
                         hir: self.hir.clone(),
+                        shared: shared.map(|(_, t)| t),
                     })),
                 });
                 self.cx.helpers.insert(key, id);
                 id
             }
         };
-        let captured = self.owned(recv);
+        let captured = if shared.is_some() {
+            recv.v
+        } else {
+            self.owned(recv)
+        };
         let v = self
             .b
             .emit(Op::ClosureNew, &[captured], Imm::Func(thunk), Some(fty))
@@ -772,13 +926,21 @@ fn lower_default_thunk(
     job: &crate::cx::DefaultThunkJob,
 ) -> Result<(), Error> {
     let params = fl.b.params();
-    let recv = job.recv.map(|t| Val {
+    let mut recv = job.recv.map(|t| Val {
         v: fl
             .b
             .emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(t))
             .expect("capture"),
         own: false,
     });
+    // A shared receiver is the variable's address; the defaults read its current value.
+    let slot = job.shared.and(recv).map(|r| r.v);
+    if let (Some(t), Some(ptr)) = (job.shared, slot) {
+        let v =
+            fl.b.emit(Op::Load, &[ptr], Imm::Ty(t), Some(t))
+                .expect("load");
+        recv = Some(Val { v, own: false });
+    }
     let callee = job.callable.clone();
     let vars = fl.cx.var_positions(&callee);
     let changes_receiver = vars == [0] && job.recv.is_some();
@@ -807,6 +969,11 @@ fn lower_default_thunk(
         vals.push(fl.borrow(s));
     }
     let r = match (recv, changes_receiver) {
+        (Some(_), true) if slot.is_some() => {
+            let mut all = vec![slot.expect("slot")];
+            all.extend(vals);
+            fl.b.call(fid, &all)
+        }
         (Some(this), true) => {
             let recv_ty = fl.ty_of(this.v);
             call_changing_receiver(&mut fl.b, fid, this.v, recv_ty, &vals)
@@ -851,9 +1018,16 @@ fn lower_iface_thunk(
     recv_ty: MTy,
 ) -> Result<(), Error> {
     let params = fl.b.params();
-    let this =
-        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(recv_ty))
+    let held = if job.shared { MTy::PTR } else { recv_ty };
+    let mut this =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(held))
             .expect("capture");
+    if job.shared {
+        // The closure shares the variable: the call sees its current value.
+        this =
+            fl.b.emit(Op::Load, &[this], Imm::Ty(recv_ty), Some(recv_ty))
+                .expect("load");
+    }
     let func = job.method.decl.as_ref().and_then(|d| d.func());
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
@@ -1019,7 +1193,7 @@ pub(crate) fn build_bound_native(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_bound_native(&mut fl, job, captures[0]);
+    let result = lower_bound_native(&mut fl, job, job.shared.unwrap_or(captures[0]));
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -1034,14 +1208,24 @@ fn lower_bound_native(
 ) -> Result<(), Error> {
     let params = fl.b.params();
     let env = params[0];
+    let held = if job.shared.is_some() {
+        MTy::PTR
+    } else {
+        recv_ty
+    };
     let cap =
-        fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(recv_ty))
+        fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(held))
             .expect("capture");
     let recv = Val { v: cap, own: false };
     let func = job.method.decl.as_ref().and_then(|d| d.func());
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
     let ret = fl.ret_ty;
+    if job.shared.is_some() {
+        let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
+        fl.emit_return(Some(out));
+        return Ok(());
+    }
     let out = fl.bound_native_call(&job.method, recv, &args, ret)?;
     fl.emit_return(Some(out));
     Ok(())
@@ -1173,5 +1357,10 @@ pub(crate) fn slotted_in(fl: &FnLower<'_>, body: &[Stmt]) -> std::collections::H
         found: Default::default(),
     };
     ms_syntax::visit::walk_block(&mut scan, body);
+    scan.found.extend(crate::mutation::changing_method_roots(
+        &fl.hir,
+        ms_check::hir::Body::Block(body),
+        &fl.cx.mutated,
+    ));
     scan.found
 }

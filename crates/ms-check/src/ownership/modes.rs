@@ -260,6 +260,11 @@ fn method_modes(
     native_method_modes(method, count, label)
 }
 
+/// How a method treats its receiver, for a method used as a value.
+pub fn receiver_mode(summaries: &Summaries, method: &MethodRef) -> Option<ParamMode> {
+    method_modes(summaries, method, 0, |_| None).receiver
+}
+
 fn native_unknown(count: usize) -> CallModes {
     CallModes {
         receiver: Some(ParamMode::Borrow),

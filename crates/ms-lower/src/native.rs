@@ -1204,6 +1204,32 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: false })
     }
 
+    /// A collection mutator applied in place to the variable at `slot`, for a method value
+    /// that shares its receiver.
+    pub(crate) fn shared_native_call(
+        &mut self,
+        m: &ct::MethodRef,
+        slot: Value,
+        rty: MTy,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let name = m.name().map(|n| n.to_string()).unwrap_or_default();
+        let old = self.move_out(slot, rty);
+        let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
+        self.move_into(slot, new);
+        if result == MTy::UNIT {
+            if let Some(r) = r.filter(|r| r.own) {
+                self.drop_value(r.v);
+            }
+            return Ok(Val {
+                v: self.b.unit(),
+                own: false,
+            });
+        }
+        r.ok_or_else(|| Error::new("a collection mutator without a result"))
+    }
+
     /// A native method applied to evaluated arguments, for method values.
     pub(crate) fn bound_native_call(
         &mut self,

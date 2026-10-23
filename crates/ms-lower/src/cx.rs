@@ -54,6 +54,8 @@ pub struct IfaceThunkJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
+    /// The closure holds the address of the variable it changes.
+    pub shared: bool,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -62,6 +64,8 @@ pub struct BoundNativeJob {
     pub method: ct::MethodRef,
     /// Module the use is written in.
     pub hir: Rc<ModuleHir>,
+    /// The receiver's type when the closure holds the address of the variable it changes.
+    pub shared: Option<MTy>,
 }
 
 /// A native function value waiting to be lowered.
@@ -98,6 +102,8 @@ pub struct DefaultThunkJob {
     pub subst: Subst,
     /// The captured receiver type of a bound method.
     pub recv: Option<MTy>,
+    /// The receiver's type when the closure holds the address of the variable it changes.
+    pub shared: Option<MTy>,
 }
 
 /// A function body waiting to be lowered.
