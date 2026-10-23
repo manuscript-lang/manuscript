@@ -464,3 +464,98 @@ b0:
     assert_eq!(exec(&after).0, Ok(0));
     assert_eq!(count(&after, "list.len"), 0);
 }
+
+const BYTE_VALUES: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_list_new() -> bytes
+extern @msrt_bytes_values(bytes) -> list<int>
+entry @main
+
+fn @main() -> int export {
+b0:
+  %data: bytes = call.rt @msrt_list_new ()
+  %r: int = call @sum (%data)
+  drop %data
+  ret %r
+}
+
+fn @sum(%data: bytes) -> int {
+b0:
+  %l0: list<int> = call.rt @msrt_bytes_values (%data)
+  %z: int = iconst 0
+  br loop(%z, %z, %l0)
+loop(%i: int, %acc: int, %l: own list<int>):
+  %n: int = list.len %l
+  %cond: bool = icmp.lt %i, %n
+  br_if %cond, body(), done()
+body:
+  %x: int = list.get %l, %i
+  %big: int = iconst 9223372036854775000
+  %y: int = iadd.chk %x, %big
+  %one: int = iconst 1
+  %i1: int = iadd.chk %i, %one
+  %acc2: int = iadd %acc, %y
+  br loop(%i1, %acc2, %l)
+done:
+  drop %l
+  ret %acc
+}
+"#;
+
+const BYTE_VALUES_REPLACED: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_list_new() -> bytes
+extern @msrt_bytes_values(bytes) -> list<int>
+entry @main
+
+fn @main() -> int export {
+b0:
+  %data: bytes = call.rt @msrt_list_new ()
+  %r: int = call @sum (%data)
+  drop %data
+  ret %r
+}
+
+fn @sum(%data: bytes) -> int {
+b0:
+  %l0: list<int> = call.rt @msrt_bytes_values (%data)
+  %z: int = iconst 0
+  br loop(%z, %z, %l0)
+loop(%i: int, %acc: int, %l: own list<int>):
+  %n: int = list.len %l
+  %cond: bool = icmp.lt %i, %n
+  br_if %cond, body(), done()
+body:
+  %x: int = list.get %l, %i
+  %big: int = iconst 9223372036854775000
+  %y: int = iadd.chk %x, %big
+  %one: int = iconst 1
+  %i1: int = iadd.chk %i, %one
+  %acc2: int = iadd %acc, %y
+  %l2: list<int> = list.set %l, %i, %y
+  br loop(%i1, %acc2, %l2)
+done:
+  drop %l
+  ret %acc
+}
+"#;
+
+#[test]
+fn bytes_values_elements_are_bytes() {
+    let mut m = parse(BYTE_VALUES);
+    // `i + 1` and `x + big`.
+    assert_eq!(count(&m, "iadd.chk"), 2);
+    range::run(&mut m);
+    // A byte plus 9223372036854775000 fits an Int, and the elements keep the byte range
+    // through the loop-carried list; only the index counter is proven separately.
+    assert_eq!(count(&m, "iadd.chk"), 0, "{}", print_module(&m));
+}
+
+#[test]
+fn replaced_list_loses_the_byte_range() {
+    let mut m = parse(BYTE_VALUES_REPLACED);
+    range::run(&mut m);
+    // `list.set` makes a new list value that reaches the loop parameter, so the elements
+    // are no longer known to be bytes and the addition can overflow.
+    assert_eq!(count(&m, "iadd.chk"), 1, "{}", print_module(&m));
+}

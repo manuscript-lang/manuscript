@@ -171,6 +171,7 @@ struct Fa<'a> {
     widen: Vec<u32>,
     lenof: HashMap<Value, Value>,
     lengths: Vec<Value>,
+    byte_lists: Vec<bool>,
 }
 
 /// A list length can flow through replacement and block arguments without its
@@ -240,6 +241,59 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         .collect()
 }
 
+/// Lists whose elements all lie in `0..=255` because they came from `Bytes.values()`.
+///
+/// A list value is immutable: `list.set` and the other mutators return a new value, which
+/// is not marked. A block parameter qualifies when every incoming argument does, so the
+/// fact survives loops that thread the list around unchanged. The analysis starts
+/// optimistic for non-entry parameters and removes the ones an edge disproves.
+fn byte_lists(m: &Module, f: &Func) -> Vec<bool> {
+    let mut facts = vec![false; f.values.len()];
+    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    for b in &f.blocks {
+        for i in &b.insts {
+            if let (Op::CallRt, Imm::Ext(e), Some(r)) = (i.op, i.imm, i.res)
+                && m.externs[e.index()].name == "msrt_bytes_values"
+            {
+                facts[r.index()] = true;
+            }
+        }
+    }
+    for b in f.blocks.iter().skip(1) {
+        for p in &b.params {
+            if is_list(p.value) {
+                facts[p.value.index()] = true;
+            }
+        }
+    }
+    let mut incoming = vec![0u32; f.blocks.len()];
+    for b in &f.blocks {
+        b.term.for_each_target(|t| incoming[t.block.index()] += 1);
+    }
+    for (bi, b) in f.blocks.iter().enumerate().skip(1) {
+        if incoming[bi] == 0 {
+            for p in &b.params {
+                facts[p.value.index()] = false;
+            }
+        }
+    }
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for b in &f.blocks {
+            b.term.for_each_target(|t| {
+                for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                    if is_list(p.value) && facts[p.value.index()] && !facts[a.index()] {
+                        facts[p.value.index()] = false;
+                        changed = true;
+                    }
+                }
+            });
+        }
+    }
+    facts
+}
+
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
@@ -294,6 +348,7 @@ impl<'a> Fa<'a> {
     fn new(m: &'a Module, f: &'a Func) -> Self {
         let n = f.blocks.len();
         let lengths = length_origins(m, f);
+        let byte_lists = byte_lists(m, f);
         let mut defs = vec![None; f.values.len()];
         let mut lenof = HashMap::new();
         for (bi, b) in f.blocks.iter().enumerate() {
@@ -346,6 +401,7 @@ impl<'a> Fa<'a> {
             widen: vec![0; f.values.len()],
             lenof,
             lengths,
+            byte_lists,
         }
     }
 
@@ -830,6 +886,9 @@ impl<'a> Fa<'a> {
             Op::ListLen => self
                 .list_length(inst.args[0])
                 .map_or(Itv { lo: 0, hi: LEN_MAX }, Itv::point),
+            Op::ListGet | Op::ListGetNn | Op::ListGetU if self.byte_lists[inst.args[0].index()] => {
+                Itv { lo: 0, hi: 255 }
+            }
             Op::StrLen => Itv { lo: 0, hi: LEN_MAX },
             Op::AltTag => match self.m.types.kind(self.f.ty(inst.args[0])) {
                 TyKind::Alt(a) => {
