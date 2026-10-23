@@ -83,19 +83,10 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
     return -1
 
 # One Base64 digit as text.
-fn base64_char(value: Int, url_safe: Bool) String:
-    if value < 26: return "ABCDEFGHIJKLMNOPQRSTUVWXYZ".get(value)
-    if value < 52: return "abcdefghijklmnopqrstuvwxyz".get(value - 26)
-    if value < 62: return "0123456789".get(value - 52)
+fn base64_table(url_safe: Bool) List[String]:
+    if url_safe: return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".chars()
 
-    if value == 62:
-        if url_safe: return "-"
-
-        return "+"
-
-    if url_safe: return "_"
-
-    return "/"
+    return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".chars()
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Optional[Int]) Int:
@@ -106,6 +97,7 @@ fn budget(max_bytes: Optional[Int]) Int:
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     var out = StringBuilder()
+    let table = base64_table(url_safe)
     let bytes = data.values()
     let length = bytes.length()
     var index = 0
@@ -117,13 +109,13 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
         if remaining > 1: second = bytes[index + 1]
         if remaining > 2: third = bytes[index + 2]
         let value = bytes[index] * 65536 + second * 256 + third
-        out.append(base64_char(value / 262144 % 64, url_safe))
-        out.append(base64_char(value / 4096 % 64, url_safe))
+        out.append(table[value / 262144 % 64])
+        out.append(table[value / 4096 % 64])
 
-        if remaining > 1: out.append(base64_char(value / 64 % 64, url_safe))
+        if remaining > 1: out.append(table[value / 64 % 64])
         else: out.append("=")
 
-        if remaining > 2: out.append(base64_char(value % 64, url_safe))
+        if remaining > 2: out.append(table[value % 64])
         else: out.append("=")
 
         index += 3
@@ -165,10 +157,11 @@ fn hex_digit(byte: Int) Int:
 # Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data: Bytes) String:
     var out = StringBuilder()
+    let digits = "0123456789abcdef".chars()
 
     for byte in data.values():
-        out.append("0123456789abcdef".get(byte / 16))
-        out.append("0123456789abcdef".get(byte % 16))
+        out.append(digits[byte / 16])
+        out.append(digits[byte % 16])
 
     return out.freeze()
 

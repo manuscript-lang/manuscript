@@ -1,4 +1,4 @@
-import {StringBuilder} from "@std/string.ms"
+import {StringBuilder, from_scalars} from "@std/string.ms"
 import {range} from "@std/collections.ms"
 
 # Errors returned for malformed CSV input or configured size limits.
@@ -33,8 +33,8 @@ export fn parse(
     if valid.is_error(): return error(valid.err())
 
     var reader = Reader(
-        lines: text.split("\n"), delimiter: options.delimiter, next_line: 0,
-        total_lines: 0
+        lines: text.split("\n"), delimiter: options.delimiter.scalar_values() [0],
+        next_line: 0, total_lines: 0
     )
     # A final empty piece after the last newline is not a line.
     var count = reader.lines.length()
@@ -88,22 +88,27 @@ fn check_options(options: CsvOptions) Result[Unit, CsvError]:
 # Input split at LF; a record may span several lines when a quoted cell holds a newline.
 type Reader:
     lines: List[String]
-    delimiter: String
+    delimiter: Int
     next_line: Int
     total_lines: Int
 
+fn text_of(scalars: List[Int]) String:
+    if let text = from_scalars(scalars): return text
+
+    return ""
+
 # One line without its CR terminator, as scalars.
 type Line:
-    cells: List[String]
+    cells: List[Int]
     length: Int
     ended: Bool
 
 fn take_line(var reader: Reader) Optional[Line]:
     if reader.next_line >= reader.total_lines: return none
 
-    let cells = reader.lines[reader.next_line].chars()
+    let cells = reader.lines[reader.next_line].scalar_values()
     var length = cells.length()
-    if length > 0 and cells[length - 1] == "\r": length -= 1
+    if length > 0 and cells[length - 1] == 13: length -= 1
     reader.next_line += 1
     return some(
         Line(
@@ -126,22 +131,22 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
 
     var line = first.get()
     var row = List[String]()
-    var cell = StringBuilder()
+    var cell = List[Int]()
     var at = 0
 
     while true:
-        if at >= line.length or line.cells[at] != "\"":
+        if at >= line.length or line.cells[at] != 34:
             var stop = at
 
             while stop < line.length and line.cells[stop] != reader.delimiter:
-                if line.cells[stop] == "\"": return error(CsvError.InvalidData)
+                if line.cells[stop] == 34: return error(CsvError.InvalidData)
 
                 stop += 1
 
             for index in range(at, stop):
                 cell.append(line.cells[index])
-            row.append(cell.freeze())
-            cell = StringBuilder()
+            row.append(text_of(cell))
+            cell = List[Int]()
             if stop >= line.length: break
 
             at = stop + 1
@@ -151,14 +156,14 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
 
         while true:
             var close = at
-            while close < line.length and line.cells[close] != "\"": close += 1
+            while close < line.length and line.cells[close] != 34: close += 1
 
             if close >= line.length:
                 if not line.ended: return error(CsvError.InvalidData)
 
                 for index in range(at, line.length):
                     cell.append(line.cells[index])
-                cell.append("\n")
+                cell.append(10)
                 let following = take_line(var reader)
                 if not following.is_some(): return error(CsvError.InvalidData)
 
@@ -171,19 +176,19 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
             at = close + 1
 
             if at >= line.length:
-                row.append(cell.freeze())
+                row.append(text_of(cell))
                 return ok(some(row))
 
-            if line.cells[at] == "\"":
-                cell.append("\"")
+            if line.cells[at] == 34:
+                cell.append(34)
                 at += 1
                 continue
 
             if line.cells[at] != reader.delimiter: return error(CsvError.InvalidData)
 
             at += 1
-            row.append(cell.freeze())
-            cell = StringBuilder()
+            row.append(text_of(cell))
+            cell = List[Int]()
             break
 
     return ok(some(row))
@@ -204,6 +209,7 @@ export fn stringify(
     var out = StringBuilder()
     var used = 0
     let crlf = options.line_ending == "\r\n"
+    let delimiter = options.delimiter.scalar_values() [0]
 
     for row in rows:
         var line = ""
@@ -213,7 +219,7 @@ export fn stringify(
         else:
             var pieces = List[String]()
             for field in row:
-                pieces.append(encode_field(field, options.delimiter, crlf))
+                pieces.append(encode_field(field, delimiter, crlf))
             line = pieces.join(options.delimiter)
 
         line = "{line}{options.line_ending}"
@@ -225,20 +231,23 @@ export fn stringify(
 
     return ok(out.freeze())
 
-fn needs_quotes(field: String, delimiter: String) Bool:
-    if field == "": return false
-    if field == "\\.": return true
-    if field.contains("\"") or field.contains("\r") or field.contains("\n"): return true
-    if field.contains(delimiter): return true
+fn needs_quotes(field: String, delimiter: Int) Bool:
+    let scalars = field.scalar_values()
+    if scalars.is_empty(): return false
 
-    return field.get(0).trim() == ""
+    for scalar in scalars:
+        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
+    let first = scalars[0]
+    if first <= 32 or first >= 127: return field.get(0).trim() == ""
+
+    return scalars.length() == 2 and first == 92 and scalars[1] == 46
 
 fn replaced(text: String, old: String, new: String) String:
     if let result = text.replace_all(old, new): return result
 
     return text
 
-fn encode_field(field: String, delimiter: String, crlf: Bool) String:
+fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
     if not needs_quotes(field, delimiter): return field
 
     var quoted = replaced(field, "\"", "\"\"")
