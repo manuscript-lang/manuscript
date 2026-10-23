@@ -72,3 +72,28 @@ fn comparing_with_none_points_to_is_none() {
     );
     assert!(got.starts_with("none has no type of its own here"), "{got}");
 }
+
+#[test]
+fn map_index_points_to_get_and_add() {
+    let all = |source: &str| {
+        let file: Arc<str> = Arc::from("t.ms");
+        let module = ms_syntax::parser::parse(&file, source).expect("parses");
+        ms_check::check(
+            vec![ms_check::load_module(&module)],
+            ImportMap::default(),
+            CheckOptions::default(),
+        )
+        .diagnostics
+        .into_iter()
+        .map(|d| d.message)
+        .collect::<Vec<_>>()
+    };
+    let write = all(
+        "export fn main() Int:\n    var m = Map[String, Int]()\n    m[\"a\"] = 1\n    return 0\n",
+    );
+    assert_eq!(write.len(), 1, "{write:?}");
+    assert!(write[0].contains("m.add(key, value)"), "{write:?}");
+    let read = all("export fn main() Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
+    assert_eq!(read.len(), 1, "{read:?}");
+    assert!(read[0].contains("m.get(key)"), "{read:?}");
+}
