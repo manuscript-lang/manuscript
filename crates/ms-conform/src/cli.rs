@@ -95,8 +95,9 @@ impl Args {
         if let Some(n) = self.number::<usize>("jobs")? {
             return Ok(n.max(1));
         }
-        let cores = std::thread::available_parallelism().map_or(2, |n| n.get());
-        Ok((cores / 2).max(1))
+        // Fixtures are single-threaded compiles and runs: on a 4-core host, 4 jobs finish the corpus in
+        // half the time of 2 and 8 gain nothing more.
+        Ok(std::thread::available_parallelism().map_or(2, |n| n.get()))
     }
 
     pub fn filter(&self) -> Result<Filter, String> {
