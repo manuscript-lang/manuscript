@@ -1951,7 +1951,7 @@ impl<'a> Parser<'a> {
                 self.link(&mut links)?;
                 if self.kind() == Tok::Dot {
                     let t = self.peek();
-                    return self.fail(t, "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result");
+                    return self.fail(t, "Manuscript has no '..' range; to count, `for i in range(0, 10):` with range from \"@std/collections.ms\" (range_by adds a step and returns a Result)");
                 }
                 if self.kind() == Tok::Number {
                     let t = self.peek();

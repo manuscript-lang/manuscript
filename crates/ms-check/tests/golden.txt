@@ -3363,7 +3363,7 @@ fn g() Int: return 1
     for i in 0..10:
         return i
     return 0
-parse	2	16	27	Manuscript has no '..' range; to count, use a while loop, or import range from "@std/collections.ms" and loop over range(start: 0, end: 10, step: 1), which returns a Resultfn f() Int:
+parse	2	16	27	Manuscript has no '..' range; to count, `for i in range(0, 10):` with range from "@std/collections.ms" (range_by adds a step and returns a Result)fn f() Int:
     let p = (1, 2)
     return 0
 parse	2	15	26	Manuscript has no tuples; declare a record with 'type Pair:' and named fields, or use a List when the items share one typefn f(a: Int) Int:

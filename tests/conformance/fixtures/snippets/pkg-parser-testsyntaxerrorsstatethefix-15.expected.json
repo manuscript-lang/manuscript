@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "Manuscript has no '..' range; to count, use a while loop, or import range from \"@std/collections.ms\" and loop over range(start: 0, end: 10, step: 1), which returns a Result",
+        "message": "Manuscript has no '..' range; to count, `for i in range(0, 10):` with range from \"@std/collections.ms\" (range_by adds a step and returns a Result)",
         "position": {
           "file": "pkg-parser-testsyntaxerrorsstatethefix-15.ms",
           "line": 5,
