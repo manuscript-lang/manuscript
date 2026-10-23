@@ -301,21 +301,30 @@ impl FnLower<'_> {
         self.rt_call(sym, None, None, decl, args, result)
     }
 
-    /// `Map[Int, V]` lookups whose values are single words go to the `_w8` entry point, which
-    /// probes without descriptor dispatch. `get` copies the value bitwise, so it excludes `String`.
+    /// `Map[Int, V]` and `Map[String, V]` lookups whose values are single words go to the `_w8` /
+    /// `_sw8` entry points, which probe without descriptor dispatch. `get` copies the value bitwise, so it excludes `String`.
     pub(crate) fn word_map_symbol(&self, sym: &str, map: MTy) -> Option<&'static str> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
         };
-        if n != "Map" || a.len() != 2 || !matches!(self.b.m.types.kind(a[0]), TyKind::Int) {
+        if n != "Map" || a.len() != 2 {
             return None;
         }
-        let scalar = matches!(self.b.m.types.kind(a[1]), TyKind::Int | TyKind::Float);
-        let word = scalar || matches!(self.b.m.types.kind(a[1]), TyKind::Str);
-        match sym {
-            "msrt_map_get_ptr" if word => Some("msrt_map_get_ptr_w8"),
-            "msrt_map_contains" if word => Some("msrt_map_contains_w8"),
-            "msrt_map_get" if scalar => Some("msrt_map_get_w8"),
+        let types = &self.b.m.types;
+        let int_key = match types.kind(a[0]) {
+            TyKind::Int => true,
+            TyKind::Str => false,
+            _ => return None,
+        };
+        let scalar = matches!(types.kind(a[1]), TyKind::Int | TyKind::Float);
+        let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
+        match (sym, int_key) {
+            ("msrt_map_get_ptr", true) if word => Some("msrt_map_get_ptr_w8"),
+            ("msrt_map_contains", true) if word => Some("msrt_map_contains_w8"),
+            ("msrt_map_get", true) if scalar => Some("msrt_map_get_w8"),
+            ("msrt_map_get_ptr", false) if word => Some("msrt_map_get_ptr_sw8"),
+            ("msrt_map_contains", false) if word => Some("msrt_map_contains_sw8"),
+            ("msrt_map_get", false) if scalar => Some("msrt_map_get_sw8"),
             _ => None,
         }
     }
