@@ -217,17 +217,21 @@ pub unsafe fn walk_frames(mut fp: usize, mut f: impl FnMut(usize) -> bool) {
     // SAFETY: reading the global stack bounds, set once at start.
     let (lo, hi) = unsafe { (*STACK_LO.ptr(), *STACK_HI.ptr()) };
     let mut steps = 0usize;
+    std::eprintln!("DBG walk fp={fp:#x} lo={lo:#x} hi={hi:#x}");
     while fp != 0 && fp.is_multiple_of(8) && steps < 1_000_000 {
         if hi != 0 && (fp < lo || fp.checked_add(16).is_none_or(|end| end > hi)) {
+            std::eprintln!("DBG out of bounds fp={fp:#x}");
             break;
         }
         // SAFETY: `fp` is inside the stack bounds (or bounds are unknown and the
         // caller promised a valid chain).
         let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
+        std::eprintln!("DBG step fp={fp:#x} next={next:#x} ret={ret:#x}");
         if ret == 0 || !f(ret) {
             break;
         }
         if next <= fp {
+            std::eprintln!("DBG next<=fp");
             break;
         }
         fp = next;

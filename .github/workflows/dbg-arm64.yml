@@ -1,0 +1,19 @@
+name: dbg-arm64
+on:
+  push:
+    branches: [claude/project-thread-so2t7e]
+jobs:
+  dbg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - run: cargo build --locked -q -p ms-cli -p ms-conform 2>&1 | tail -3
+      - run: |
+          for n in 5 7 6; do
+            f=tests/conformance/fixtures/snippets/tests-e2e-testfaultsourcelocations-$n.ms
+            echo "=== $n"; ./target/debug/ms run $f < /dev/null 2>&1 | head -40
+          done
+        continue-on-error: true
+      - run: |
+          ./target/debug/ms-conform run --ms $PWD/target/debug/ms --phase run --id snippets/tests-e2e-testfaultsourcelocations-5 --id snippets/tests-e2e-testfaultsourcelocations-7 2>&1 | head -80
+        continue-on-error: true
