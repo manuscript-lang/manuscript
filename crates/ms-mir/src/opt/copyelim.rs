@@ -18,6 +18,7 @@ pub fn run(m: &mut Module) -> bool {
         changed |= move_dead_sources(&mut m.funcs[fi]);
         changed |= borrow_local_copies(m, fi);
         changed |= borrow_str_copies_across_blocks(m, fi);
+        changed |= borrow_str_phis(m, fi);
         changed |= unbox_dead_sources(m, fi);
         changed |= unbox_dead_options(&mut m.funcs[fi]);
     }
@@ -327,6 +328,210 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
                 }
             }
         }
+    }
+    true
+}
+
+/// Removes string copies that only meet at a block parameter which is borrowed and dropped:
+/// `b1: c1 = copy s1; br b3(c1)`, `b2: c2 = copy s2; br b3(c2)`, `b3(p): ... borrow p ...; drop p`.
+/// This is the shape of an inlined `xs.get(i, default: "")` compared and discarded. When every
+/// source stays alive and unchanged until the drop, `p` borrows the sources instead.
+fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
+    let f = &m.funcs[fi];
+    let nv = f.values.len();
+    let mut defs: Vec<Option<(usize, usize)>> = vec![None; nv];
+    let mut uses = vec![0u32; nv];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            if let Some(r) = inst.res {
+                defs[r.index()] = Some((bi, ii));
+            }
+            for a in &inst.args {
+                uses[a.index()] += 1;
+            }
+        }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
+    }
+    // Per change: the block, the parameter index, the edges' (pred, copy index, source), the drop.
+    type Edge = (usize, usize, Value);
+    let mut plans: Vec<(usize, usize, Vec<Edge>, (usize, usize))> = Vec::new();
+    let mut taken = vec![false; nv];
+    for (bb, b) in f.blocks.iter().enumerate() {
+        'param: for (pi, param) in b.params.iter().enumerate() {
+            let p = param.value;
+            if param.mode != Mode::Own || !matches!(m.types.kind(f.ty(p)), TyKind::Str) {
+                continue;
+            }
+            // Incoming copies, one per edge.
+            let mut edges: Vec<Edge> = Vec::new();
+            for (x, blk) in f.blocks.iter().enumerate() {
+                let mut bad = false;
+                blk.term.for_each_target(|t| {
+                    if t.block.index() != bb {
+                        return;
+                    }
+                    let a = t.args[pi];
+                    match defs[a.index()] {
+                        Some((db, di))
+                            if db == x
+                                && blk.insts[di].op == Op::Copy
+                                && uses[a.index()] == 1
+                                && !taken[a.index()] =>
+                        {
+                            edges.push((x, di, blk.insts[di].args[0]));
+                        }
+                        _ => bad = true,
+                    }
+                });
+                if bad {
+                    continue 'param;
+                }
+            }
+            if edges.is_empty() {
+                continue;
+            }
+            // Values the sources depend on: each source and the chain of lists and records it
+            // was read out of.
+            let mut chain: Vec<Value> = Vec::new();
+            for &(_, _, src) in &edges {
+                chain.push(src);
+                let Some((db, di)) = defs[src.index()] else {
+                    continue;
+                };
+                let def = &f.blocks[db].insts[di];
+                match def.op {
+                    Op::StrLit => continue,
+                    Op::ListGet | Op::ListGetU | Op::ListGetNn => {}
+                    _ => continue 'param,
+                }
+                let mut at = def.args[0];
+                loop {
+                    chain.push(at);
+                    match defs[at.index()] {
+                        Some((rb, ri)) if f.blocks[rb].insts[ri].op == Op::RecGet => {
+                            at = f.blocks[rb].insts[ri].args[0];
+                        }
+                        _ => break,
+                    }
+                }
+            }
+            // The one drop of `p`; every other use borrows it.
+            let mut drop_at = None;
+            let mut borrows = 0u32;
+            for (x, blk) in f.blocks.iter().enumerate() {
+                for (j, n) in blk.insts.iter().enumerate() {
+                    if n.op == Op::Drop && n.args[0] == p {
+                        if drop_at.replace((x, j)).is_some() {
+                            continue 'param;
+                        }
+                        continue;
+                    }
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                        if *a == p {
+                            if mode != Mode::Borrow {
+                                continue 'param;
+                            }
+                            borrows += 1;
+                        }
+                    }
+                }
+            }
+            let Some((bd, jd)) = drop_at else {
+                continue;
+            };
+            if borrows + 1 != uses[p.index()] {
+                continue;
+            }
+            // Blocks that run between `b` and the drop; a path back to `b` is a loop: give up.
+            let nb = f.blocks.len();
+            let mut seen = vec![false; nb];
+            let mut stack: Vec<usize> = Vec::new();
+            if bd != bb {
+                b.term.for_each_target(|t| stack.push(t.block.index()));
+            }
+            while let Some(x) = stack.pop() {
+                if x == bb {
+                    continue 'param;
+                }
+                if x == bd || seen[x] {
+                    continue;
+                }
+                seen[x] = true;
+                f.blocks[x]
+                    .term
+                    .for_each_target(|t| stack.push(t.block.index()));
+            }
+            let mut ok = true;
+            let mut check = |insts: &[Inst], term: Option<&crate::ir::Term>| {
+                for n in insts {
+                    for (a, mode) in n.args.iter().zip(arg_modes(m, n)) {
+                        if chain.contains(a) && mode != Mode::Borrow {
+                            ok = false;
+                        }
+                    }
+                }
+                if let Some(t) = term {
+                    t.for_each_target(|t| {
+                        if t.args.iter().any(|a| chain.contains(a)) {
+                            ok = false;
+                        }
+                    });
+                    if let crate::ir::Term::Ret(Some(v)) = t
+                        && chain.contains(v)
+                    {
+                        ok = false;
+                    }
+                }
+            };
+            for &(x, di, _) in &edges {
+                check(&f.blocks[x].insts[di + 1..], Some(&f.blocks[x].term));
+            }
+            if bd == bb {
+                check(&b.insts[..jd], None);
+            } else {
+                check(&b.insts, Some(&b.term));
+                for (x, blk) in f.blocks.iter().enumerate() {
+                    if seen[x] {
+                        check(&blk.insts, Some(&blk.term));
+                    }
+                }
+                check(&f.blocks[bd].insts[..jd], None);
+            }
+            if !ok {
+                continue;
+            }
+            for &(x, di, _) in &edges {
+                if let Some(c) = f.blocks[x].insts[di].res {
+                    taken[c.index()] = true;
+                }
+            }
+            plans.push((bb, pi, edges, (bd, jd)));
+        }
+    }
+    if plans.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    let mut dead: Vec<(usize, usize)> = Vec::new();
+    for (bb, pi, edges, drop_at) in plans {
+        f.blocks[bb].params[pi].mode = Mode::Borrow;
+        dead.push(drop_at);
+        for (x, di, src) in edges {
+            dead.push((x, di));
+            f.blocks[x].term.for_each_target_mut(|t| {
+                if t.block.index() == bb {
+                    t.args[pi] = src;
+                }
+            });
+        }
+    }
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            let drop_it = dead.contains(&(bi, k));
+            k += 1;
+            !drop_it
+        });
     }
     true
 }

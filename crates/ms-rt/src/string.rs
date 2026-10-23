@@ -1604,7 +1604,12 @@ unsafe fn split_into(
             return;
         }
         if sepb.is_empty() {
-            // Split after each scalar.
+            // Split after each scalar: the piece count is known, so the list is sized once.
+            let n = utf8::count(text).min(limit);
+            if n > 0 {
+                v.ptr = alloc::alloc(n * ELEM);
+                v.cap = n;
+            }
             let mut i = 0;
             while i < text.len() && v.len < limit {
                 let w = utf8::decode(&text[i..]).1;
