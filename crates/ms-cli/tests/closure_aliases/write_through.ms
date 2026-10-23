@@ -11,6 +11,13 @@ type Pair:
     left: List[Int]
     right: List[Int]
 
+impl Box:
+    var fn bump() Unit:
+        self.count += 1
+
+fn add(var values: List[Int]) Unit:
+    values.append(12)
+
 fn next(var count: Int) Int:
     let result = count
 
@@ -82,4 +89,15 @@ export fn main() Int:
 
     invoke(fn(): via_getter.append([6]))
     stdout().write("{box.items}\n")
+
+    var boxes = [Box(count: 20, items: [])]
+    var stored = boxes[0]
+
+    invoke(fn(): stored.bump())
+    stdout().write("{boxes}\n")
+
+    var target = rows[1]
+
+    invoke(fn(): add(var target))
+    stdout().write("{rows}\n")
     return 0
