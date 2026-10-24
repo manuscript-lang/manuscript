@@ -922,7 +922,7 @@ fn lower_depth_limit() {
 #[cfg(all(windows, target_arch = "x86_64"))]
 static mut DEPTH_SITE: [usize; 2] = [0; 2];
 
-#[cfg(all(windows, target_arch = "x86_64"))]
+#[cfg(all(windows, target_arch = "x86_64", not(test)))]
 core::arch::global_asm!(
     ".globl msrt_fault_depth",
     "msrt_fault_depth:",
@@ -934,7 +934,7 @@ core::arch::global_asm!(
     body = sym fault_depth_body,
 );
 
-#[cfg(not(all(windows, target_arch = "x86_64")))]
+#[cfg(not(all(windows, target_arch = "x86_64", not(test))))]
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     fault_depth_body()
