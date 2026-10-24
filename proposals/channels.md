@@ -84,7 +84,7 @@ flowchart TB
 | `Channel[In, Out]`, `send`/`receive`/`close`, `Closed` | Manuscript | generic source type; no externs needed |
 | Framing | Manuscript | 4-byte LE length, 1 kind byte (message / close / result), UTF-8 JSON body; encode with `stringify`, decode with `parse` |
 | Byte transport | existing `ReadStream`/`WriteStream` (`stdlib/io.ms:63-81`) | waiting is ordinary stream I/O through the poller |
-| Duplex pipe creation | Rust, shared with `proposals/child-processes.md` | socketpair on Unix, owner-only named pipe on Windows; returned as a `ReadStream`/`WriteStream` pair per end |
+| Duplex pipe creation | Rust, shared with `proposals/child-processes.md` (`crates/ms-std-process/src/ipc.rs`) | socketpair on Unix, owner-only named pipe on Windows; `pair()` for a child process, `local_pair()` for two ends in one process; each end is a `ReadStream`/`WriteStream` pair. The Manuscript-facing native is needed at stage 2 |
 | Group `spawn` wiring | Manuscript | tasks: both ends stay in this process; workers: the child end goes to the worker isolate (its own poller); processes: the child end is inherited (fd 3, env `MS_IPC`) |
 
 - One pipe kind for all three levels. Tasks also use a socketpair, so there is no separate in-memory pipe and no new park/wake externs; the cost is a syscall per message between tasks (unmeasured).
@@ -94,7 +94,7 @@ flowchart TB
 ## Semantics
 
 - Ownership: `send` consumes its argument (encoded, then dropped); `receive` returns a freshly decoded owned value; each end is move-only.
-- Close: `close()`, drop, or entry return writes a close frame and closes that end. The other end's `receive()` returns buffered messages, then `none`; its `send` returns `Closed`. EOF counts as close. Safe errors, not faults.
+- Close: `close()`, drop, or entry return writes a close frame and closes that end. The other end's `receive()` returns buffered messages, then `none`; its `send` returns `Closed`. EOF counts as close. Both stream handles of an end share one pipe, so closing only the writer does not signal the peer: close is always the close frame, and EOF means the peer process is gone or both handles closed. Safe errors, not faults.
 - Backpressure: `send` parks when the OS pipe buffer is full; no separate capacity parameter.
 - Cancellation: `send` and `receive` are cancellation points (stream I/O already is).
 - Limits: two peers that both `send` first into full pipes park forever; no fan-in without `select`; sibling tasks talk through the parent; JSON losses (`NaN`, map key types) apply at every level.
