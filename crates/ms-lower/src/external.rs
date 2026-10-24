@@ -86,6 +86,11 @@ impl FnLower<'_> {
             let v = self.call_runtime(symbol, &vals, result)?;
             return Ok(Val { v, own: false });
         }
+        if matches!(self.b.m.types.kind(result), TyKind::Obj(..)) {
+            // A runtime handle (such as a big integer) is returned directly, owned by the caller.
+            let v = self.call_runtime(symbol, &vals, result)?;
+            return Ok(Val { v, own: true });
+        }
         // An owned value (a string, a record) comes back through a trailing `out`.
         let (slot, _) = self.out_slot(result, &mut vals);
         self.call_runtime(symbol, &vals, MTy::UNIT)?;
@@ -117,6 +122,8 @@ impl FnLower<'_> {
         let t = self.ty_of(v);
         match self.b.m.types.kind(t).clone() {
             _ if matches!(t, MTy::INT | MTy::FLOAT | MTy::BOOL | MTy::STR) => vals.push(v),
+            // A runtime handle is its own pointer.
+            TyKind::Obj(..) => vals.push(v),
             TyKind::Opt(inner) => {
                 let kind = self.b.m.types.kind(inner).clone();
                 let payload = payload_kind(&kind, inner);

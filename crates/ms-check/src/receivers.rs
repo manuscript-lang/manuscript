@@ -291,22 +291,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     (
-        "BigInt",
-        &[
-            ("add", "math/add"),
-            ("subtract", "math/subtract"),
-            ("multiply", "math/multiply"),
-            ("divide", "math/divide"),
-            ("remainder", "math/remainder"),
-            ("compare", "math/compare"),
-            ("bit_and", "math/bit_and"),
-            ("bit_or", "math/bit_or"),
-            ("bit_xor", "math/bit_xor"),
-            ("to_int", "math/to_int"),
-            ("to_string_radix", "math/format"),
-        ],
-    ),
-    (
         "Regex",
         &[
             ("matches", "string/matches"),
