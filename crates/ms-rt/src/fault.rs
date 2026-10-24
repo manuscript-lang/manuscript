@@ -506,7 +506,12 @@ unsafe fn walk_source_frames(
     // native prefix, rather than imposing a separate Windows source-frame cap.
     let mut n = 0usize;
     let dbg = |why: &str, n: usize, pc: usize, fp: usize| {
-        let m = std::format!("WALKDBG {why} n={n} pc={pc:#x} fp={fp:#x} lo={lo:#x} hi={hi:#x} remaining={remaining}\n");
+        if hi.saturating_sub(fp) < (1 << 20) && why == "nofunc" {
+            return;
+        }
+        let m = std::format!(
+            "WALKDBG {why} n={n} pc={pc:#x} fp={fp:#x} lo={lo:#x} hi={hi:#x} remaining={remaining}\n"
+        );
         sys::write_all(sys::STDERR, m.as_bytes());
     };
     for _ in 0..remaining {
