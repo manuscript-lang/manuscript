@@ -60,14 +60,9 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
         );
         id_to_key.insert(e.id.clone(), key);
     }
-    let owners: HashMap<&str, String> = inspection
-        .entities
-        .iter()
-        .map(|e| (e.id.as_str(), fact_key(&e.file, &e.kind, &e.name)))
-        .collect();
     for call in &inspection.calls {
-        let Some(owner) = owners
-            .get(call.owner.as_str())
+        let Some(owner) = id_to_key
+            .get(&call.owner)
             .and_then(|k| facts.entities.get_mut(k))
         else {
             continue;
