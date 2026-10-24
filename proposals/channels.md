@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction.
-- Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end, `spawn` returns the other. No constructor, no `create_mirror`, no tuples, no hidden state.
+- Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end; `spawn` returns the handle of the spawned child (`Task`, `Worker`, `Child`), whose `channel` field is the other end. No constructor, no `create_mirror`, no tuples, no hidden state.
 - Layout: one Manuscript type over one runtime endpoint object with three transports (same-thread queue, cross-thread queue, process socket). Each group's `spawn` picks the transport; user code never sees it.
 - Cost: a runtime endpoint (`crates/ms-rt/src/channel.rs`), two lowering intrinsics for moving a generic value through it, and one checker gap (methods cannot declare their own type parameters).
 - Decision requested: sign-off on the API and the layering below.
@@ -11,7 +11,7 @@
 ## Status
 
 - Proposal, 2026-10-24, against `main` at `6361798f`. Nothing implemented.
-- Direction (Chinmay, 2026-10-24): "channels should be bidirectional"; keep `Channel` uppercase; "can the entry take in a Channel directly? why two args"; "our design needs to be more coherent than node"; "having spawn create them is fine, but I need to understand the overall structure".
+- Direction (Chinmay, 2026-10-24): "channels should be bidirectional"; keep `Channel` uppercase; "can the entry take in a Channel directly? why two args"; "our design needs to be more coherent than node"; "having spawn create them is fine, but I need to understand the overall structure"; "spawn should return the handle to what was spawned, not the channel. Channel can be a field on that return type ... so that we can close the thing that was spawned".
 - History in this thread: a `channel_pair` returning a tuple (no tuples in the language), `peer()` and `create_mirror` (both need an "already mirrored" mark) were dropped in favor of spawn-created ends.
 - Review: the earlier draft had one skeptical subagent review; applicable findings are folded in. This version needs a fresh review.
 
@@ -31,8 +31,16 @@ impl Channel[In, Out]:
     var def receive() -> Optional[Out]                # owned value; none once the other end closed and drained
     var def close() -> Unit                           # Closeable; idempotent; also on drop
 
-# on TaskGroup, WorkerGroup and ProcessGroup
-var def spawn(entry: Callable[[Channel[In, Out]], T]) -> Channel[Out, In]
+# handle of one spawned child: Task (TaskGroup), Worker (WorkerGroup), Child (ProcessGroup)
+type Worker[T, In, Out]:
+    channel: Channel[In, Out]                 # the parent's end
+
+impl Worker[T, In, Out]:
+    var def result() -> Result[T, TaskError]  # waits for this child
+    var def close() -> Unit                   # stops this child: closes its channel, cancels, joins
+
+# on each group; the entry gets the mirrored end
+var def spawn(entry: Callable[[Channel[Out, In]], T]) -> Worker[T, In, Out]
 ```
 
 ```manuscript
@@ -46,16 +54,18 @@ def square_all(var ch: Channel[Int, Int]) -> Unit:   # child's end
 
 def main() -> Int:
     with WorkerGroup[Unit]() as group:     # or TaskGroup / ProcessGroup
-        var ch = group.spawn(square_all)   # parent's end
-        ch.send(3)
-        if let square = ch.receive():
+        var worker = group.spawn(square_all)   # Worker[Unit, Int, Int]
+        worker.channel.send(3)
+        if let square = worker.channel.receive():
             ...
-        ch.close()                         # child's receive() returns none; child returns
+        worker.close()                         # closes the channel, stops and joins this worker
     return 0
 ```
 
 - Entry parameter and bindings that send, receive or close are `var` (`ms check` rejects them otherwise).
-- Checker gap: `spawn` needs its own type parameters `In`, `Out`; `ms check` today: "method spawn declares its own type parameters, which source methods do not support yet". Either add method type parameters, or expose a free function `spawn(group, entry)`. Decided in stage 0.
+- The handle owns the parent's end, so closing the handle closes the conversation; `worker.channel.close()` alone ends the conversation but lets the child finish and return its result.
+- Handle and group behavior (results order, faults, timeouts) stay as specified in the group proposals; this proposal only adds the `channel` field and the entry shape.
+- Checker gap: `spawn` needs its own type parameters `In`, `Out`; `ms check` today: "method spawn declares its own type parameters, which source methods do not support yet". Either add method type parameters, or expose a free function `spawn(group, entry)`. Verified: a free generic `spawn[T, In, Out](entry: Callable[[Channel[Out, In]], T]) -> Worker[T, In, Out]` infers all three from `square_all` under `ms check`. Decided in stage 0.
 
 ## Structure
 
@@ -102,9 +112,9 @@ flowchart TB
 
 ### Layer 4: groups wire the pair in `spawn`
 
-- `TaskGroup.spawn(entry)`: creates a `Local` pair; the task's closure calls `entry(child_end)`; returns the parent end.
-- `WorkerGroup.spawn(entry)`: creates a `Thread` pair; the child end moves to the worker isolate with the entry; returns the parent end. Needs the per-thread runtime of `proposals/worker-threads.md`; nothing here changes how worker groups behave.
-- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (loopback socket, `MS_ENTRY`); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry. One channel per child, so frames carry no channel id.
+- `TaskGroup.spawn(entry)`: creates a `Local` pair; the task's closure calls `entry(child_end)`; returns a `Task` handle holding the parent end.
+- `WorkerGroup.spawn(entry)`: creates a `Thread` pair; the child end moves to the worker isolate with the entry; returns a `Worker` handle holding the parent end. Needs the per-thread runtime of `proposals/worker-threads.md`; nothing here changes how worker groups behave.
+- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (loopback socket, `MS_ENTRY`); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Child` handle holding the parent end. One channel per child, so frames carry no channel id.
 
 ## Semantics
 
@@ -123,14 +133,14 @@ flowchart TB
 | `crates/ms-lower` | `channel_send[T]`, `channel_receive[T]` intrinsics | per-type fixtures incl. records and alternatives |
 | `crates/ms-rt` | `channel.rs` endpoint, three transports | runtime tests: cancel while parked, cross-thread wake, EOF close |
 | `crates/ms-check` | method type parameters, or none with a free `spawn` | accept/reject fixtures |
-| group stdlib modules | `spawn(entry)` returns the parent end | one fixture body run against all three groups |
+| group stdlib modules | `spawn(entry)` returns the child handle with a `channel` field; handle `close()` closes the channel first | one fixture body run against all three groups |
 | syntax, formatter, LSP, CLI | unchanged | none |
 | docs, `ms guide` | one channel section | docs build |
 | sibling proposals | replace `Sender`/`Receiver`/`fork` channel plans; edited after approval | consistency |
 
 ## Verification of examples
 
-- `ms check` (built from `6361798f`) against a stub of `Channel`, `Closed` and a group with a free-function `spawn` passes `square_all` and the caller shape; the stub is not in the repo.
+- `ms check` (built from `6361798f`) against a stub of `Channel`, `Closed`, `Worker[T, In, Out]` and a free generic `spawn` passes `square_all` and the caller (`worker.channel.send`, `worker.channel.receive`, `worker.close()`, `worker.result()`); the stub is not in the repo.
 - Found by the check and applied: `var` entry parameters; no `record`, `guard` or tuples in the language; no method type parameters.
 - Unverified: the runtime, intrinsics, and the method form of `spawn`.
 
