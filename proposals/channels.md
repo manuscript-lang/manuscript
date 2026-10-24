@@ -4,8 +4,8 @@
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction.
 - Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end; `spawn` returns the handle of the spawned child (`Task`, `Worker`, `Process`), whose `channel` field is the other end. No constructor, no `create_mirror`, no tuples, no hidden state.
-- Layout: written in Manuscript except the cross-thread transport. One `Channel` type over three transports (same-thread queue and process framing in Manuscript; cross-thread queue in `ms-rt`). Each group's `spawn` picks the transport; user code never sees it.
-- Cost: token externs for park/wake; a Rust cross-thread queue with one move intrinsic (worker stage only); one checker gap (methods cannot declare their own type parameters).
+- Layout: all three transports in Manuscript (same-thread queue, cross-thread lock-free ring, process framing) over small internal Rust primitives. Each group's `spawn` picks the transport; user code never sees it.
+- Cost: internal primitives only: park-token externs, `Atomic[Int]` externs, and a compiler-built `SyncShared[T]`; one checker gap (methods cannot declare their own type parameters).
 - Decision requested: sign-off on the API and the layering below.
 
 ## Status
@@ -69,7 +69,7 @@ def main() -> Int:
 
 ## Structure
 
-Rule: write it in Manuscript unless it cannot be. Only the cross-thread transport is in Rust.
+Rule: write it in Manuscript unless it cannot be. All three transports are Manuscript; Rust supplies only small internal primitives (Chinmay, 2026-10-24: "update the design to do most of this in ms itself").
 
 ```mermaid
 flowchart TB
@@ -77,8 +77,8 @@ flowchart TB
   C["@std/channels.ms (Manuscript): Channel[In, Out] = one of three transports"]
   L["Local (Manuscript): Shared state, two bounded queues, closed flags"]
   P["Process (Manuscript): frames over ReadStream / WriteStream, stringify / parse"]
-  T["Thread (Rust, ms-rt): mutex queue, value moved between isolates"]
-  K["park tokens (existing ms-rt, plain Int externs)"]
+  T["Thread (Manuscript): lock-free single-producer ring per direction, value moved"]
+  K["internal primitives (ms-rt): park tokens, Atomic[Int], SyncShared[T]"]
   G["group spawn (Manuscript): create the ends, call entry, return handle"]
   U --> C
   C --> L
@@ -86,6 +86,7 @@ flowchart TB
   C --> T
   L --> K
   T --> K
+  P --> K
   G --> C
 ```
 
@@ -96,10 +97,14 @@ flowchart TB
 | Waiting and waking | existing Rust, new externs | `msrt_token_new/park/post/free` (`crates/ms-rt/src/task.rs:1003-1126`) take and return integers, so they can be plain non-generic externs in `stdlib/channels.ms` |
 | Process transport | Manuscript | frame encode/decode (4-byte LE length, kind byte message/close/result, UTF-8 JSON body) over the existing `ReadStream`/`WriteStream` (`stdlib/io.ms`) with `stringify`/`parse` |
 | Process IPC setup | Rust (child-processes proposal) | socketpair on Unix (fd 3, env `MS_IPC`), owner-only named pipe on Windows; readiness via the poller on Unix, 2 ms slices on Windows |
-| Thread transport | Rust (`crates/ms-rt/src/channel.rs`, new) | `Shared` is non-atomic and values move between two isolates' heaps: needs a mutex queue, `msrt_token_post_remote` (`task.rs:1114`), and one move intrinsic for a generic `T` in `crates/ms-lower` |
+| Thread transport | Manuscript | one owner per end makes each direction single-producer single-consumer, so a lock-free ring needs no mutex: slots of `Optional[T]`, `head`/`tail` as `Atomic[Int]` (release on publish, acquire on read), wake via `msrt_token_post_remote` (`task.rs:1114`). The value moves (no codec), matching the worker direction "send memory rather than a codec" (`proposals/worker-threads.md:14`) |
+| `Atomic[Int]` (new, internal) | Rust primitive, non-generic externs | `load`, `store`, `compare_exchange`, `fetch_add` with acquire/release; exposed only inside `@std`, not to users |
+| `SyncShared[T]` (new, internal) | compiler-built like `Shared` (`crates/ms-lower/src/sharedbuilder.rs`) | atomic refcount so both isolates can hold the pair state; `Shared` stays non-atomic. Internal to `@std` |
+| Cross-arena free | Rust (worker-threads proposal) | a moved value is freed by the receiving isolate; already required by `proposals/worker-threads.md:89-90`; nothing new here |
 | Group `spawn` wiring | Manuscript | create the two ends, call the entry with one, return the handle with the other |
 
 - `Channel[In, Out]` holds one of `Local`, `Thread` or `Process` state; `send`/`receive` dispatch on it. One public type; the transport is never visible.
+- Why `Atomic` alone is not enough: the ring state must be reachable from two isolates, and `Shared`'s count is non-atomic, so a holder type with an atomic count (`SyncShared[T]`) is also needed. Both stay internal, so users still get no shared memory, as the TaskGroup plan states (`proposals/taskgroup.md`, "No shared memory, no Atomics, no mutexes"). Exposing them to users is a separate decision.
 - Open: `Queue[T]` requires `T: Clonable` (`stdlib/queue.ms`); channel payloads would inherit that bound unless the local transport uses a move-only queue. Verify in stage 0.
 
 ### Groups wire the ends in `spawn`
@@ -122,8 +127,8 @@ flowchart TB
 | Component | Change | Test |
 | --- | --- | --- |
 | `stdlib/channels.ms` (new) | `Channel[In, Out]`, `Closed` | conformance: order, drain-then-none, closed send, drop closes |
-| `crates/ms-lower` | one move intrinsic for the thread transport only (worker stage) | per-type fixtures incl. records and alternatives |
-| `crates/ms-rt` | `channel.rs` cross-thread queue only; token externs exposed | runtime tests: cross-thread wake, cancel while parked |
+| `crates/ms-lower` | `SyncShared[T]` beside `Shared` in `sharedbuilder.rs` | per-type fixtures incl. records and alternatives |
+| `crates/ms-rt` | token externs, `Atomic[Int]` externs, atomic refcount for `SyncShared` | runtime tests: cross-thread wake, ring ordering stress on 3 platforms |
 | `crates/ms-check` | method type parameters, or none with a free `spawn` | accept/reject fixtures |
 | group stdlib modules | `spawn(entry)` returns the child handle with a `channel` field; handle `close()` closes the channel first | one fixture body run against all three groups |
 | syntax, formatter, LSP, CLI | unchanged | none |
@@ -146,7 +151,7 @@ flowchart TB
 
 ## Drawbacks
 
-- The thread transport still needs Rust and a move intrinsic; the Manuscript transports cost an extra dispatch per call versus a native queue (unmeasured).
+- Two new internal primitives (`Atomic[Int]`, `SyncShared[T]`); a lock-free ring written in Manuscript must get memory ordering right, which only a stress test on all three platforms can show. Manuscript transports cost an extra dispatch per call versus a native queue (unmeasured).
 - No direct sibling channels and no fan-in until `select`.
 - The process transport serializes while the others move; observable only in cost (and JSON limits on `T`).
 - Prior art: Unix pipes and sockets (two ends, created together); Go channels (shared, one-way typed); Rust `mpsc` (one-way, cloneable sender); Node `MessagePort` (two ends, event-driven). Manuscript keeps two ends, typed per direction, created only by `spawn`. Benefit is design-level; nothing measured.
