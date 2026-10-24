@@ -32,5 +32,5 @@ test "addition":
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `.message()` reads any `Error`. Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
-- Borrows: a fn that returns part of a parameter or the receiver writes `ref` in its result type (`fn name() ref String: return self.name`); callers need no marker, `.clone()` to own. `let ref x = a.b` / `var ref x = xs[i]` borrow a place.
+- A fn returning part of a parameter or the receiver writes `ref` before its result type (`fn name() ref String`); `let ref x = a.b` borrows a place.
 - Closures may change captures. `with f = try ...:` closes `f` at block end.

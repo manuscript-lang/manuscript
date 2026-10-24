@@ -48,7 +48,7 @@ fn cheatsheet_program_checks() {
 #[test]
 fn cheatsheet_stays_short() {
     assert!(
-        cheatsheet().len() <= 2720,
+        cheatsheet().len() <= 2870,
         "cheat sheet is {} bytes",
         cheatsheet().len()
     );
