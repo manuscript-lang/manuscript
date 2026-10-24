@@ -2,6 +2,10 @@
 
 Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](compiler.md) and [ownership notes](../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
+### Implementing types convert to their interface implicitly
+
+Decision (Chinmay, reversing the explicit-view rule): a type with a declared `impl I for T` passes wherever `I` is expected; `Error` widening was already implicit and shares the path (`Info.error_source`). The conversion follows the position: a read-only argument borrows the operand, a stored position moves it at its last use; the interface value owns a copy when the operand is borrowed. Chinmay then removed interface construction: `I(value: x)` is rejected ("cannot be constructed"); annotate a `let` to select an interface. Generic inference still does not convert. Evidence: `crates/ms-check/tests/ownership/*/interface_conversion_*.ms`, `crates/ms-cli/tests/interface_conversion/`. Open: no interface-to-interface conversion.
+
 ### Standard and user code share one method syntax
 
 Decision: the user required that the standard library, as the reference, use only forms user code can write. Methods live in `impl` blocks, never in `type` bodies: `impl Type:` declares a type's own methods and `impl Interface for Type:` implements an interface; the presence of `for` fixes which name is the type, so no lookup is needed. Rejected spellings: `impl Type as/with/satisfies Interface`, a comma form, and a stdlib-only `native impl`. Method-level type parameters work only in bundled modules; source methods reject them, a known gap.

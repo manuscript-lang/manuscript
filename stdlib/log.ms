@@ -241,7 +241,7 @@ impl Logger for StdLogger:
         let child = self.state.child(fields)
         if child.is_error(): return error(core_error(child.err()))
 
-        return ok(Logger(StdLogger(child.get(), self.transport)))
+        return ok(StdLogger(child.get(), self.transport))
 
     def enabled(level: LogLevel) -> Bool:
         return self.state.enabled(level_index(level))
@@ -299,11 +299,11 @@ export def create(
     let state = new_state(index, timestamp, max_bytes)
     if state.is_error(): return error(core_error(state.err()))
 
-    return ok(Logger(StdLogger(state.get(), share(transport))))
+    return ok(StdLogger(state.get(), share(transport)))
 
 # Writes log records to an existing byte stream.
 export def stream_transport(output: WriteStream) -> Transport:
-    return Transport(StreamTransport(output, new_gate()))
+    return StreamTransport(output, new_gate())
 
 # Writes log records to the process standard-output stream.
 export def stdout_transport() -> Transport:
@@ -317,7 +317,7 @@ export def file_transport(path: String) -> Result[Transport, LogError]:
 
 def file_stream_transport(file: FileHandle) -> Transport:
     let stream = StreamTransport(file.writer(), new_gate())
-    return Transport(FileTransport(file, stream))
+    return FileTransport(file, stream)
 
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.

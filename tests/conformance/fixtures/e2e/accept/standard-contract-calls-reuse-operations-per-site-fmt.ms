@@ -30,5 +30,5 @@ test "repeated calls through one site":
         try expect_true((out.write(data: "x").is_ok()))
         n = n + 1
 
-    try expect_true((describe(e: Error(value: Boom(code: 1))) == "boom 1"))
-    try expect_true((describe(e: Error(value: Boom(code: 2))) == "boom 2"))
+    try expect_true((describe(e: Boom(code: 1)) == "boom 1"))
+    try expect_true((describe(e: Boom(code: 2)) == "boom 2"))

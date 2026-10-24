@@ -601,7 +601,7 @@ def wrong() -> Result[Unit, JsonError]:
     detail: String
 def wrong(value: Impostor) -> Error:
     return value
-type	4	12	82	expected Error, found Impostor (in the return value); no applicable 'impl Error for Impostor' is visible; declare an implementation before creating an interface viewdef wrong() -> Result[String, Error]:
+type	4	12	82	expected Error, found Impostor (in the return value); no applicable 'impl Error for Impostor' is visible; declare an implementation before passing it as Errordef wrong() -> Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
 resolution	2	24	61	unknown type JsonError; add: from "@std/json.ms" import JsonErrordef wrong(value: Error) -> JsonError:
     return value
@@ -618,11 +618,11 @@ impl Diagnostic for LocalError:
         return self.detail
 def wrong(value: LocalError) -> Diagnostic:
     return value
-type	9	12	229	expected Diagnostic, found LocalError (in the return value); LocalError implements Diagnostic; write Diagnostic(value: ...) to create an explicit interface viewtype Impostor:
+type	6	22	139	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Impostor:
     detail: String
 def wrong(value: Impostor) -> Error:
     return Error(value: value)
-type	4	12	82	Impostor does not implement Error; declare 'impl Error for Impostor:' with every operation of the interfacedef wrong(cause: Error) -> String:
+type	4	12	82	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlydef wrong(cause: Error) -> String:
     match cause:
         case JsonError(value):
             return value.message()
@@ -1061,7 +1061,7 @@ def general(value: Result) -> Error:
 type	4	20	90	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 0; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	12	119	expected Error, found Result (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)impl Error for Result[Int]:
+type	5	12	119	expected Error, found Result (in the return value); use a concrete value implementing Errorimpl Error for Result[Int]:
     def message() -> String:
         return "x"
 def f(x: Result[Int]) -> Result[Int, Error]:
@@ -1069,7 +1069,7 @@ def f(x: Result[Int]) -> Result[Int, Error]:
 type	4	10	85	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	16	15	Result requires 2 type arguments, found 1; write Result[T1, T2]
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	18	138	expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)def f[Equal](a: Equal) -> Unit:
+type	5	18	138	expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Errordef f[Equal](a: Equal) -> Unit:
     return
 resolution	1	7	6	duplicate or intrinsic type parameter Equal; choose a different type parameter nametype Box[Hashable]:
     v: Hashable
@@ -1118,7 +1118,7 @@ impl I for Pair[A, A]:
         return 1
 export def main() -> Int:
     return I(value: Pair[Int, String](a: 1, b: "x")).n()
-type	10	12	164	Pair[Int, String] does not implement I; declare 'impl I for Pair[Int, String]:' with every operation of the interfacetype Int:
+type	10	12	164	I is an interface and cannot be constructed; a type with 'impl I for <Type>:' passes wherever I is expected, so pass the value directlytype Int:
     x: Int
 def f() -> Int:
     let t = Int(x: 2)
@@ -1288,7 +1288,7 @@ impl J for A:
     def m() -> Int: return 2
 def f(a: A) -> Int:
     return a.m()
-resolution	12	14	202	ambiguous member m on A; it is provided by I, J, so call it through an interface view, e.g. I(value: ...).m()def id[T](x: T) -> T:
+resolution	12	14	202	ambiguous member m on A; it is provided by I, J, so bind it to the interface first, e.g. let view: I = value; view.m()def id[T](x: T) -> T:
     return x
 def f() -> Int:
     let g = id
@@ -1507,7 +1507,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     def get() -> T: self.item
 def read() -> Read[Int]: Box(1)
-type	7	26	143	expected Read[Int], found Box[Int] (in the return value); Box[Int] implements Read[Int]; write Read[Int](value: ...) to create an explicit interface viewtype E:
+type	6	18	105	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type E:
     text: String
 impl Error for E:
     def message() -> String: this.text
@@ -1536,18 +1536,18 @@ def error_value() -> Error: E("bad input")
 interface Shape:
     def area() -> Int
 def f() -> Shape: 1
-type	3	19	57	expected Shape, found Int (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface A:
+type	3	19	57	expected Shape, found Int (in the return value); use a concrete value implementing Shapeinterface A:
     def a() -> Int
 interface B:
     def b() -> Int
 def f(value: A) -> B: value
-type	5	23	86	expected B, found A (in the return value); use a concrete value implementing B and create its explicit interface view with B(value: ...)interface Shape:
+type	5	23	86	expected B, found A (in the return value); use a concrete value implementing Binterface Shape:
     def area() -> Int
 def f[T](value: T) -> Shape: value
-type	3	30	68	expected Shape, found T (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)interface Shape:
+type	3	30	68	expected Shape, found T (in the return value); use a concrete value implementing Shapeinterface Shape:
     def area() -> Int
 def f(value: Callable[[], Int]) -> Shape: value
-type	3	43	81	expected Shape, found Callable[[], Int] (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)def f() -> Int:
+type	3	43	81	expected Shape, found Callable[[], Int] (in the return value); use a concrete value implementing Shapedef f() -> Int:
     let x = nope
     return x + x
 resolution	2	13	28	unknown binding nope; declare it with 'let nope = ...' before use, define 'def nope(...) -> T:', or import it from a modulelet X = nope
@@ -2632,7 +2632,7 @@ type	2	18	34	<invalid> does not satisfy Error; use a type that implements itdef
 type	2	18	34	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
 type	2	18	34	String does not satisfy Error; use a type that implements itdef f() -> Error:
     return "failed"
-type	2	12	29	expected Error, found String (in the return value); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)type Other:
+type	2	12	29	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
     case some(value: Int)
 def f() -> Optional[Int]:
     return some(value: 1)
@@ -2833,7 +2833,8 @@ export def main() -> Int:
     let b = Box[Int](v: 1)
     let i = I[Int](value: b)
     return 0
-type	2	9	24	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycletype Expr:
+type	11	13	208	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
+type	2	9	24	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycletype Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 def value(expr: Expr) -> Int:
@@ -4330,13 +4331,15 @@ resolution	5	11	140	unknown binding pending_withdrawal_total; declare it with 'l
         case _: return 0
 resolution	1	19	18	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itdef work() -> Bool:
     return Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic"
-resolution	2	25	44	unknown binding CommandError; add: from "@std/process.ms" import CommandErrordef work() -> Bool:
+resolution	2	25	44	unknown binding CommandError; add: from "@std/process.ms" import CommandError
+type	2	12	31	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlydef work() -> Bool:
     return (
         Error(
             value: CommandError.Failed(message: "command diagnostic")
         ).message() != "command diagnostic"
     )
-resolution	4	20	67	unknown binding CommandError; add: from "@std/process.ms" import CommandErrordef work() -> Int:
+resolution	4	20	67	unknown binding CommandError; add: from "@std/process.ms" import CommandError
+type	3	9	41	Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directlydef work() -> Int:
     if tagged_detail(integer) != "integer 7" or tagged_detail(text) != "text diagnostic":
         return 1
     return 0
@@ -6115,7 +6118,7 @@ test "encoded nominal identity":
     let view = Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-from "@std/io.ms" import stdout
+type	12	16	249	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfrom "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 from "@std/time.ms" import Instant
 
@@ -6422,7 +6425,7 @@ impl Read for Reader:
 export def main() -> Int:
     let view = Read(Reader(lambda () -> Int: 1))
     return view.read()
-fn prepare() fn() Int:
+type	9	16	202	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfn prepare() fn() Int:
     let invalid = 1 / 0
     return fn() Int: 1
 export fn main()parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'from "@std/testing.ms" import fail
@@ -6839,7 +6842,7 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
-from "@std/testing.ms" import TestHooks, expect_equal, expect_ok
+type	13	17	333	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyfrom "@std/testing.ms" import TestHooks, expect_equal, expect_ok
 from "@std/http.ms" import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers
 from "@std/net.ms" import network
 type ApiFixture:

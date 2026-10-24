@@ -37,7 +37,7 @@ test "request_stream uploads each chunk of a ReadStream":
             let upload = Chunks(parts: ["alpha ", "beta ", "gamma"])
             let response = try client.request_stream(
                 HttpMethod.Post, f"http://{server.address()}/", headers(),
-                ReadStream(value: upload)
+                upload
             )
             try expect_equal(response.metadata().status, 200)
 
@@ -50,6 +50,6 @@ test "request_stream reports a failing ReadStream":
             let upload = Chunks(parts: ["partial"], failure: some("disk gone"))
             let sent = client.request_stream(
                 HttpMethod.Post, f"http://{server.address()}/", headers(),
-                ReadStream(value: upload)
+                upload
             )
             try expect_equal(sent.is_error(), True)

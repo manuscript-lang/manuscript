@@ -81,7 +81,7 @@ test "optional labels on methods and native functions":
     let offset = Offset(3)
     offset.apply(4) | try expect_equal(7)
 
-    let view = Increment(offset)
+    let view: Increment = offset
     view.apply(4) | try expect_equal(7)
 
     let method = view.apply

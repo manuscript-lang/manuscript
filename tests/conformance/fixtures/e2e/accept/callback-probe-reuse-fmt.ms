@@ -74,7 +74,7 @@ test "later returns repair incomplete and convertible evidence":
 
     let cause = from_callback(
         lambda:
-            if False: return Error(Failure(1))
+            if False: return Failure(1)
 
             return Failure(2)
     )

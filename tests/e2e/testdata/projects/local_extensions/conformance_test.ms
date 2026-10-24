@@ -12,12 +12,7 @@ test "views and functions retain local implementations across modules":
     let first = first_view(item)
     let second = second_view(item)
     (first.get() != 12 or second.get() != 22) | try expect_false
-    try expect_false(
-        (
-            read_view(Read[Int](first)) != 12
-            or read_view(Read[Int](second)) != 22
-        )
-    )
+    try expect_false((read_view(first) != 12 or read_view(second) != 22))
 
     let first_call = first_method(item)
     let second_call = second_method(item)

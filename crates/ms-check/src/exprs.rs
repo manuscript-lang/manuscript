@@ -143,7 +143,11 @@ impl Checker {
                 && exp.id != "<invalid>"
                 && !compatible(&Some(actual.clone()), exp)
             {
-                if self.error_assignable(&actual, exp) {
+                if self.interface_assignable(&actual, exp) {
+                    i.error_source = Some(actual.clone());
+                    i.scoped_error = exp.is_std("Error") && self.error_needs_scope(&actual);
+                    i.ty = Some(exp.clone());
+                } else if self.error_assignable(&actual, exp) {
                     i.error_source = Some(actual.clone());
                     let mut cause = actual.clone();
                     if cause.is_std("Result") && cause.args.len() == 2 {

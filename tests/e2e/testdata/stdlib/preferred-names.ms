@@ -137,7 +137,7 @@ test "explicit views and bound views preserve native mutation":
     adapter.set(0, 8)
     try expect_equal(adapter.items, [8, 2, 3])
 
-    var view = ListMutation(adapter)
+    var view: ListMutation = adapter
     view.set(0, 7)
     view.append(4)
     view.set(1, 9)
@@ -147,7 +147,7 @@ test "explicit views and bound views preserve native mutation":
     try expect_equal(view.reversed(), [5, 3, 9])
 
     var set = Set[Int]([1, 2])
-    var set_view = SetMutation(SetAdapter(set))
+    var set_view: SetMutation = SetAdapter(set)
     set_view.add(3)
     set_view.add(4)
     set_view.remove(1)
@@ -155,7 +155,7 @@ test "explicit views and bound views preserve native mutation":
     set_view.add(5)
     try expect_equal(set_view.values(), [3, 4, 5])
 
-    let text_view = FirstReplacement(TextAdapter("aaaa"))
+    let text_view: FirstReplacement = TextAdapter("aaaa")
     let view_first = text_view.replace_first
     try expect_false(
         (
@@ -199,7 +199,7 @@ test "regex replace_all preserves literal text and exact output budgets":
     let empty = try compile("")
     try expect_equal((try empty.replace_all("é🙂", "x")), "xéx🙂x")
 
-    let view = RegexReplacement(RegexAdapter(pattern))
+    let view: RegexReplacement = RegexAdapter(pattern)
     let view_all = view.replace_all
     try expect_false(
         (
@@ -272,7 +272,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     try expect_false(nested.get(0).value != 1 or nested.get(1).value != 2)
 
     var viewed = ListAdapter([4, 5])
-    var view = ListMutation(viewed)
+    var view: ListMutation = viewed
     var other = view.reversed()
     other.append(6)
     view.reverse_in_place()
@@ -286,7 +286,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 test "byte reversal names copy across direct bound and view calls":
     let data = Bytes([0, 1, 255])
     let reversed = data.reversed
-    let view = ByteCopy(ByteAdapter(data.clone()))
+    let view: ByteCopy = ByteAdapter(data.clone())
     let view_reversed = view.reversed
     try expect_false(
         (data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed())

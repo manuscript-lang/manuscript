@@ -32,7 +32,7 @@ impl Extract for Holder[T]:
         return self.value.get()
 
 export def second_view(value: Item) -> Read[Int]:
-    return Read[Int](value)
+    return value
 
 export def second_method(value: Item) -> Callable[[], Int]:
     return value.get
@@ -61,7 +61,7 @@ def leave(resource: Resource) -> Unit:
         return
 
 export def second_resource(resource: Resource) -> Closeable:
-    return Closeable(resource)
+    return resource
 
 test "second local cleanup":
     var events = ListBuilder[Int]()

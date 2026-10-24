@@ -103,16 +103,16 @@ def generic_type_pattern[T](cause: Error, expected: T) -> Bool:
             return False
 
 test "generic handling preserves the concrete error and its payload":
-    let json = Error(JsonError.InvalidData)
+    let json: Error = JsonError.InvalidData
     describe_error(json) | try expect_equal("malformed JSON")
 
-    let io = Error(IoError.Failed("disk diagnostic"))
+    let io: Error = IoError.Failed("disk diagnostic")
     describe_error(io) | try expect_equal("I/O: disk diagnostic")
 
-    let custom = Error(CustomError("application diagnostic"))
+    let custom: Error = CustomError("application diagnostic")
     describe_error(custom) | try expect_equal("application diagnostic")
 
-    let wrapped = Error(json)
+    let wrapped: Error = json
     describe_error(wrapped) | try expect_equal("malformed JSON")
 
     let cause = match propagate_generic():
@@ -127,19 +127,19 @@ test "generic handling preserves the concrete error and its payload":
             return fail(message: "generic propagation lost concrete type")
 
 test "type patterns compare exact generic applications":
-    let integer = Error(TaggedError(7))
-    let text = Error(TaggedError("text diagnostic"))
+    let integer: Error = TaggedError(7)
+    let text: Error = TaggedError("text diagnostic")
     (
         (
-            tagged_detail(Error(TaggedError(7))) != "integer 7"
+            tagged_detail(TaggedError(7)) != "integer 7"
             or tagged_detail(text) != "text diagnostic"
         )
     ) | try expect_false
-    (generic_type_pattern(cause: Error(TaggedError(7)), expected: 1)) | try expect_true
+    (generic_type_pattern(cause: TaggedError(7), expected: 1)) | try expect_true
     generic_type_pattern(cause: integer, expected: "different type") | try expect_false
 
 test "Error views can be stored and matched":
-    let shared = Error(CustomError("shared diagnostic"))
+    let shared: Error = CustomError("shared diagnostic")
     let errors: List[Error] = [shared]
     let cause = errors[0]
 
@@ -222,7 +222,7 @@ test "specific errors pass directly into Error boundaries":
     let original = ReadError(
         diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: True
     )
-    let shared: Error = Error(original.clone())
+    let shared: Error = original.clone()
     (
         describe_direct(
             original.clone()
@@ -304,17 +304,11 @@ from "@std/process.ms" import CommandError
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
-    Error(sink).message() | try expect_equal("sink diagnostic")
+    sink.message() | try expect_equal("sink diagnostic")
 
     let file_sink = LogError.FileSystem(FileSystemError.Failed("file sink diagnostic"))
-    Error(file_sink).message() | try expect_equal("file sink diagnostic")
-    (
-        (
-            Error(
-                CommandError.Failed("command diagnostic")
-            ).message() != "command diagnostic"
-        )
-    ) | try expect_false
+    file_sink.message() | try expect_equal("file sink diagnostic")
+    ((CommandError.Failed("command diagnostic").message() != "command diagnostic")) | try expect_false
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
@@ -339,7 +333,7 @@ type Count:
 
 def counted_view(var count: Count) -> Label[String]:
     count.value = count.value + 1
-    return Label[String](Labelled("label diagnostic"))
+    return Labelled("label diagnostic")
 
 test "contract matches evaluate once and preserve ordinary contract semantics":
     var count = Count(value: 0)
@@ -352,7 +346,7 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
 
     count.value | try expect_equal(1)
 
-    let view = Label[String](Labelled("separate handler"))
+    let view: Label[String] = Labelled("separate handler")
     match_label(view) | try expect_equal("separate handler")
 
 from "@std/fs.ms" import filesystem

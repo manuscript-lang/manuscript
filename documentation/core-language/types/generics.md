@@ -21,14 +21,14 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
-| `Comparable` | Values have an order: `a.compare(Comparable(value: b))` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
+| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data and functions qualify; interface views, regular expressions and resource handles do not |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
-`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, explicit views (`Equal(value: x)`), and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
+`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
 ```manuscript
 type Key:
@@ -109,7 +109,7 @@ def first() -> Result[Int, TextError]: fail("empty")  # T = Int
 let failed: Result[Int, TextError] = fail("empty")
 ```
 
-Matching adds no numeric conversions, implicit interface views, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
+Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `Optional[T]` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 

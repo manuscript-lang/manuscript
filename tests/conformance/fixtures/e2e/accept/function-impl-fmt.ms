@@ -20,5 +20,5 @@ test "implementation variables inside function signatures":
     let box = Box(render)
     try expect_equal(box.apply(3), "3")
 
-    let operation = Apply[String](box)
+    let operation: Apply[String] = box
     try expect_equal(operation.apply(4), "4")

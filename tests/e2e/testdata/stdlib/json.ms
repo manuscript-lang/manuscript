@@ -250,7 +250,7 @@ type Holder:
     done: Unit
 
 test "JSON stringify omits interface values and monotonic instants":
-    let who = Named(Person("p"))
+    let who: Named = Person("p")
     let holder = Holder(who, clock().now(), ())
     try expect_equal((try encoded(holder)), "{}")
 

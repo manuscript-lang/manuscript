@@ -67,7 +67,7 @@ test "Map explicit and bound interface views remove through the adapter":
     adapter.remove(1)
     try expect_equal(adapter.values.keys(), [2, 3])
 
-    var view = MapRemoval(adapter)
+    var view: MapRemoval = adapter
     view.remove(2)
     try expect_equal(view.keys(), [3])
     view.remove(3)
@@ -129,7 +129,7 @@ test "List explicit and bound interface views splice through the adapter":
     adapter.splice(0, 1, [7])
     try expect_equal(adapter.values, [7, 2, 3])
 
-    var view = ListSplicing(adapter)
+    var view: ListSplicing = adapter
     view.splice(0, 1, [7])
     try expect_equal(view.contents(), [7, 2, 3])
     view.splice(1, 2, [8])

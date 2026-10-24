@@ -54,7 +54,8 @@ test "concrete implementation defaults and interface defaults stay distinct":
     let concrete = service.run
     try expect_equal((try concrete("fake", [])).stdout, service.input)
 
-    let viewed = Commands(service).run
+    let commands: Commands = service
+    let viewed = commands.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 
     let explicit = "explicit".to_bytes()
@@ -134,7 +135,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     try expect_equal((try bound("fake", [])).stdout.length(), 0)
     try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
 
-    let view = Commands(Capture("x".to_bytes()))
+    let view: Commands = Capture("x".to_bytes())
     let viewed = view.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
     try expect_equal((try generic_run(Capture("x".to_bytes()))).length(), 0)

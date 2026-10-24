@@ -25,7 +25,7 @@ def make(name: String) -> Holder:
     let config = share(
         Config(name.clone(), ["a-tag-long-enough-for-the-heap", "second"])
     )
-    let speaker = share(Speaker(Dog(name)))
+    let speaker = share[Speaker](Dog(name))
     return Holder(config, speaker)
 
 def child(holder: Holder) -> Holder:

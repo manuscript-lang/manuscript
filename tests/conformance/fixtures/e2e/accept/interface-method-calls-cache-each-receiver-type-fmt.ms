@@ -30,8 +30,8 @@ def measure(shape: Shape, scale: Int) -> Int: shape.area(scale: scale)
 
 test "three receiver types alternate at one site":
     let shapes: List[Shape] = [
-        Shape(value: Sq(side: 3)), Shape(value: Rect(w: 2, h: 5)),
-        Shape(value: Tri(b: 4, h: 5))
+        Sq(side: 3), Rect(w: 2, h: 5),
+        Tri(b: 4, h: 5)
     ]
     var total = 0
     var round = 0

@@ -145,7 +145,11 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- literals
 
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
-        let t = self.ety(e);
+        // A literal converted to an interface keeps its own type until the conversion.
+        let t = match self.hir.info(e).error_source {
+            Some(src) => ct::sub(&src, &self.subst),
+            None => self.ety(e),
+        };
         match t.id.as_str() {
             "Int" => {
                 let n: i128 = parse_int(text)

@@ -247,17 +247,10 @@ test "interface view consumers dispatch after shrink":
     for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last_record = Payload(3)
-            var values = [
-                ReadValue(Payload(1)), ReadValue(Payload(2)),
-                ReadValue(last_record.clone())
-            ]
+            var values = [Payload(1), Payload(2), last_record.clone()]
             let clone = values.clone()
-            let want = remaining(mode, values.clone(), [ReadValue(Payload(9))])
-            let seen = (
-                try observe(
-                    var values, mode, [ReadValue(Payload(9))], callback
-                )
-            )
+            let want = remaining(mode, values.clone(), [Payload(9)])
+            let seen = (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
             for value in seen: total = total + value.read()

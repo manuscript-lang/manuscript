@@ -104,7 +104,7 @@ test "generic calls constructors and callback inference":
 test "methods native APIs function values and contextual labels":
     let offset = Offset(3)
     let bound = offset.subtract
-    let view = Subtract(offset)
+    let view: Subtract = offset
     try expect_false(
         (
             offset.subtract(10) != 7

@@ -35,8 +35,8 @@ test "domain equality and hashing select interfaces":
     try expect_equal(values.get(a), some("b"))
     try expect_false(not ([a].contains(b)))
 
-    let view = Equal(Equal(a))
-    try expect_false(not (view.equals(Equal(b))))
+    let view: Equal = a
+    try expect_false(not (view.equals(b)))
 
 test "stable priority queue and optional capacity":
     var queue = PriorityQueue(compare)
@@ -76,7 +76,7 @@ impl ReadStream for EchoReader:
     def close() -> Unit: ()
 
 test "native compositions preserve Optional arguments for source implementations":
-    var stream = ReadStream(EchoReader(0))
+    var stream: ReadStream = EchoReader(0)
     let omitted: Result[Optional[Bytes], IoError] = stream.read()
     try expect_equal(omitted, ok(some(Bytes([0]))))
 
