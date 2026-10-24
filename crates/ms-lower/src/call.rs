@@ -945,6 +945,20 @@ impl<'a> FnLower<'a> {
             ExprKind::Call { .. } if matches!(self.b.m.types.kind(mt), TyKind::Bytes) => {
                 Some(self.empty_bytes()?)
             }
+            // `Stdio.Pipe`: a payload-free case of the parameter's own alternative.
+            ExprKind::Member { left, name } if matches!(left.kind, ExprKind::Name(_)) => {
+                let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
+                    return Ok(None);
+                };
+                let case = self.b.m.alts[a.index()]
+                    .cases
+                    .iter()
+                    .position(|c| c.name == name.as_str() && c.fields.is_empty());
+                case.map(|c| Val {
+                    v: self.b.alt_new(a, c as u32, &[]),
+                    own: true,
+                })
+            }
             ExprKind::List(items) if items.is_empty() => {
                 let v = self.call_runtime("msrt_list_new", &[], mt)?;
                 Some(Val { v, own: true })

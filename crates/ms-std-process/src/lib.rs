@@ -123,6 +123,17 @@ fn timeout(has: bool, value: i64) -> Res<Option<i64>> {
     }
 }
 
+/// The stream over a subprocess's parent end, or an already closed stream when that standard
+/// stream was not piped.
+fn parent_end(fd: &mut command::Fd, name: &[u8]) -> Stream {
+    if fd.is_open() {
+        return Stream::new(fd.take(), true, name);
+    }
+    let mut closed = Stream::new(fd.0, false, name);
+    let _ = closed.close();
+    closed
+}
+
 fn valid_command(program: &[u8], args: &[&[u8]]) -> Res<Vec<Vec<u8>>> {
     if program.is_empty() || program.contains(&0) || args.iter().any(|a| a.contains(&0)) {
         return Err(Fail::status(STATUS_INVALID_INPUT));
@@ -345,18 +356,22 @@ native! {
         })
     }
 
+    /// `stdin`, `stdout`, `stderr`: the case index of `Stdio` (`command::STDIO_*`).
     fn msstd_process_command_spawn(
         program: &str,
         arguments: Vec<&str>,
+        stdin: i64,
+        stdout: i64,
+        stderr: i64,
     ) -> Result<Object<Child>, StatusCode> {
         let program = program.as_bytes();
         let spawned = valid_command(program, &bytes_of(&arguments))
-            .and_then(|args| command::spawn(program, &args));
+            .and_then(|args| command::spawn(program, &args, [stdin, stdout, stderr]));
         let mut p = fs_status(spawned)?;
         let streams = [
-            ObjBox::new(Stream::new(p.stdin.take(), true, b"|1")),
-            ObjBox::new(Stream::new(p.stdout.take(), true, b"|0")),
-            ObjBox::new(Stream::new(p.stderr.take(), true, b"|0")),
+            ObjBox::new(parent_end(&mut p.stdin, b"|1")),
+            ObjBox::new(parent_end(&mut p.stdout, b"|0")),
+            ObjBox::new(parent_end(&mut p.stderr, b"|0")),
         ];
         Ok(Object(Child { proc: p, streams }))
     }

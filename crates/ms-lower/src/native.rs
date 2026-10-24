@@ -2676,7 +2676,9 @@ impl<'a> FnLower<'a> {
                         .collect();
                     Ok(self.lit(&text))
                 }
-                ExprKind::Call { .. } if self.cx.module(module).is_err() => {
+                ExprKind::Call { .. } | ExprKind::Member { .. }
+                    if self.cx.module(module).is_err() =>
+                {
                     match self.literal_default(d, &p.ty)? {
                         Some(v) => Ok(v),
                         None => continue,

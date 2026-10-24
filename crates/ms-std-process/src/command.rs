@@ -27,7 +27,7 @@ mod plat;
 #[allow(unsafe_code)]
 mod plat;
 
-pub use crate::spawn::{Child, start};
+pub use crate::spawn::{Child, StdStream, start};
 pub use plat::pipe;
 
 /// Monotonic nanoseconds since the first call.
@@ -109,7 +109,15 @@ pub fn run(
     let (in_r, mut in_w) = pipe().map_err(start_failure)?;
     let (mut out_r, out_w) = pipe().map_err(start_failure)?;
     let (mut err_r, err_w) = pipe().map_err(start_failure)?;
-    let child = start(program, args, in_r.0, out_w.0, err_w.0)?;
+    let child = start(
+        program,
+        args,
+        [
+            StdStream::Pipe(in_r.0),
+            StdStream::Pipe(out_w.0),
+            StdStream::Pipe(err_w.0),
+        ],
+    )?;
     let mut child = Reaper(child);
     drop((in_r, out_w, err_w));
 
@@ -225,7 +233,13 @@ pub fn run(
     })
 }
 
-/// A long-lived child with its three pipes (parent ends).
+/// Where `spawn` sends each standard stream, as the case index of `Stdio`.
+pub const STDIO_PIPE: i64 = 0;
+pub const STDIO_INHERIT: i64 = 1;
+pub const STDIO_NULL: i64 = 2;
+
+/// A long-lived child with the parent ends of its piped streams; a stream that is not piped is
+/// closed.
 pub struct Subprocess {
     pub child: Child,
     pub closed: bool,
@@ -234,17 +248,39 @@ pub struct Subprocess {
     pub stderr: Fd,
 }
 
-pub fn spawn(program: &[u8], args: &[Vec<u8>]) -> Res<Subprocess> {
-    let (in_r, in_w) = pipe().map_err(start_failure)?;
-    let (out_r, out_w) = pipe().map_err(start_failure)?;
-    let (err_r, err_w) = pipe().map_err(start_failure)?;
-    let child = start(program, args, in_r.0, out_w.0, err_w.0)?;
+/// Starts `program`; `modes` gives stdin, stdout and stderr each as a `STDIO_*` value.
+pub fn spawn(program: &[u8], args: &[Vec<u8>], modes: [i64; 3]) -> Res<Subprocess> {
+    let mut parent = [
+        Fd(sys::INVALID_FD),
+        Fd(sys::INVALID_FD),
+        Fd(sys::INVALID_FD),
+    ];
+    let mut child_ends = Vec::new();
+    let mut streams = [StdStream::Null; 3];
+    for (i, mode) in modes.into_iter().enumerate() {
+        streams[i] = match mode {
+            STDIO_PIPE => {
+                let (r, w) = pipe().map_err(start_failure)?;
+                // The parent writes the child's stdin and reads the rest.
+                let (mine, theirs) = if i == 0 { (w, r) } else { (r, w) };
+                let fd = theirs.0;
+                parent[i] = mine;
+                child_ends.push(theirs);
+                StdStream::Pipe(fd)
+            }
+            STDIO_INHERIT => StdStream::Inherit,
+            _ => StdStream::Null,
+        };
+    }
+    let child = start(program, args, streams)?;
+    drop(child_ends);
+    let [stdin, stdout, stderr] = parent;
     Ok(Subprocess {
         child,
         closed: false,
-        stdin: in_w,
-        stdout: out_r,
-        stderr: err_r,
+        stdin,
+        stdout,
+        stderr,
     })
 }
 
@@ -351,7 +387,7 @@ mod tests {
     #[test]
     fn subprocess_pipes_and_close() {
         let _guard = crate::environment_guard();
-        let mut p = spawn(b"cat", &[]).unwrap();
+        let mut p = spawn(b"cat", &[], [STDIO_PIPE; 3]).unwrap();
         assert_eq!(p.wait(Some(20_000_000)).unwrap_err().status, STATUS_TIMEOUT);
         sys::write(p.stdin.0, b"ping").unwrap();
         p.stdin.close();
@@ -359,8 +395,25 @@ mod tests {
         let mut buf = [0u8; 8];
         assert_eq!(sys::read(p.stdout.0, &mut buf).unwrap(), 4);
         p.stop();
-        let mut sleeper = spawn(b"sleep", &args(&["30"])).unwrap();
+        let mut sleeper = spawn(b"sleep", &args(&["30"]), [STDIO_PIPE; 3]).unwrap();
         sleeper.child.signal(false);
         assert_eq!(sleeper.wait(Some(5_000_000_000)).unwrap(), -1);
+    }
+
+    #[test]
+    fn subprocess_streams_inherit_or_discard() {
+        let _guard = crate::environment_guard();
+        // A null stdin reads as end of input at once; only the piped stderr has a parent end.
+        let mut p = spawn(
+            b"sh",
+            &args(&["-c", "cat; echo done >&2"]),
+            [STDIO_NULL, STDIO_INHERIT, STDIO_PIPE],
+        )
+        .unwrap();
+        assert!(!p.stdin.is_open() && !p.stdout.is_open() && p.stderr.is_open());
+        assert_eq!(p.wait(Some(5_000_000_000)).unwrap(), 0);
+        let mut buf = [0u8; 8];
+        assert_eq!(sys::read(p.stderr.0, &mut buf).unwrap(), 5);
+        assert_eq!(&buf[..5], b"done\n");
     }
 }

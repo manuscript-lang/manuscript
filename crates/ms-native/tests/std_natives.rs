@@ -616,7 +616,7 @@ mod process {
 
             let mut child = core::ptr::null_mut();
             assert_eq!(
-                msstd_process_command_spawn(st("cat"), &empty(), &mut child),
+                msstd_process_command_spawn(st("cat"), &empty(), 0, 0, 0, &mut child),
                 STATUS_OK
             );
             let stdin = msstd_process_subprocess_stream(child, 0);
