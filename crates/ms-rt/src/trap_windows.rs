@@ -31,6 +31,9 @@ extern "C" fn prepare() {
 }
 
 unsafe extern "C" {
+    /// Saves the registers and returns 0; returns again with 1 once the operation ends or faults.
+    /// Defined by the assembly below; the caller's frame must stay live until then.
+    pub fn msrt_trap_begin() -> u8;
     /// Resumes after `msrt_trap_begin` with its second return (the value 1).
     fn msrt_trap_restore(buf: *mut usize, status: usize) -> !;
 }

@@ -5,6 +5,7 @@
     clippy::missing_safety_doc
 )]
 use ms_rt::string::{bytes, from_bytes};
+use ms_rt::trap;
 use std::sync::{Mutex, MutexGuard};
 
 static LOCK: Mutex<()> = Mutex::new(());
@@ -14,12 +15,17 @@ fn lock() -> MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Runs `operation` in a trap (a forked child, the production fault path) and returns the fault
-/// text it raised, or `None` when it returned.
-#[cfg(unix)]
+/// Runs `operation` in a trap and returns the fault text it raised, or `None` when it returned.
+/// Unix traps in a forked child (the production fault path); Windows has no fork, so the
+/// operation runs in this frame under a setjmp-style guard and `msrt_trap_begin` returns twice.
+#[inline(never)]
 fn fault_of<R>(operation: impl FnOnce() -> R) -> Option<String> {
-    use ms_rt::trap;
-    if trap::msrt_trap_begin() == 0 {
+    // SAFETY: this frame stays live until `msrt_trap_end` resumes after the call.
+    #[cfg(windows)]
+    let began = unsafe { trap::msrt_trap_begin() };
+    #[cfg(not(windows))]
+    let began = trap::msrt_trap_begin();
+    if began == 0 {
         operation();
         trap::msrt_trap_end();
     }
@@ -38,16 +44,11 @@ fn fault_of<R>(operation: impl FnOnce() -> R) -> Option<String> {
 }
 
 /// Asserts the closure faults with exactly this first line (frames ignored).
-#[cfg(unix)]
 #[track_caller]
 fn assert_fault<R>(message: &str, operation: impl FnOnce() -> R) {
     let got = fault_of(operation).expect("expected a fault");
     assert_eq!(got.lines().next().unwrap_or(""), message);
 }
-/// Windows traps are `setjmp`-style and only compiled code can enter them, so a fault cannot be
-/// observed from a Rust test; the operation is not run because it would end the process.
-#[cfg(not(unix))]
-fn assert_fault<R>(_message: &str, _operation: impl FnOnce() -> R) {}
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
