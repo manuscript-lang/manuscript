@@ -15,6 +15,21 @@
           "line": 4,
           "column": 28,
           "offset": 186
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
