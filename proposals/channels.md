@@ -10,7 +10,7 @@
 
 ## Status
 
-- Proposal, 2026-10-24, against `main` at `6361798f`. Nothing implemented.
+- **Approved** by Chinmay on 2026-10-24 ("great, let's build it"). Implementation: stage 2 (tasks) next. Written against `main` at `6361798f`; TaskGroup (#1166) has since landed on `main`.
 - Direction (Chinmay, 2026-10-24): bidirectional; `Channel` uppercase; spawn creates the ends; "spawn should return the handle ... Channel can be a field on that return type"; "i want majority of things in ms"; "tasks and workers should be just in memory, no socket, use socket pair only for processes"; "channel should have a dedicated transport field ... instantiate a different transport for different levels ... only use Rust for things that are not feasible"; "a full result, no connect. let's do full def if needed".
 - Superseded drafts (git history): tuple `channel_pair`, `peer()`/`create_mirror`, `AtomicWords` ring, JSON over a pipe at every level.
 - Reviews: two skeptical subagent reviews; the second (2026-10-24, against source with `ms build`) is folded in below and listed in Review outcome.
@@ -42,11 +42,15 @@ type ChannelError:
     case Broken(reason: String)                  # peer died, malformed or oversize frame, decode failure
 ```
 
-Groups (one form for all three):
+Groups (one form for all three): the group carries the channel types, like it carries `T`, with `Unit` defaults.
 
 ```manuscript
-var def spawn(entry: Callable[[Channel[Out, In]], T]) -> Task[T, In, Out]   # Worker / Process likewise; handle.channel: Channel[In, Out]
+type TaskGroup[T, In = Unit, Out = Unit]          # WorkerGroup / ProcessGroup likewise
+def spawn(entry: Callable[[Channel[Out, In]], T]) -> Task[T, In, Out]   # handle.channel: Channel[In, Out]
 ```
+
+- Source methods cannot declare their own type parameters (`crates/ms-check/src/passes.rs:131`; inherent methods become a synthetic contract and contracts have no per-operation generics), so `In`/`Out` live on the group. Every child of one group then has the same channel types, as it has the same `T`.
+- Because the entry type is concrete, an untyped lambda infers: `group.spawn(lambda ch: fetch(url.clone()))` works for fan-out (built and run with `ms build`, 2026-10-24).
 
 ```manuscript
 def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
@@ -59,11 +63,14 @@ def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
             open = False
     return ok(())
 
-def fetch_size(ch: Channel[Unit, Unit]) -> Int:   # no messages: Unit both ways
-    return 42
+def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
+    with TaskGroup[Int]() as group:                 # no messages: Channel[Unit, Unit]
+        for url in urls:
+            group.spawn(lambda ch: fetch_size(url.clone()))
+        return group.results()
 
 def main() -> Int:
-    with WorkerGroup[Result[Unit, ChannelError]]() as group:      # or TaskGroup / ProcessGroup
+    with WorkerGroup[Result[Unit, ChannelError], Int, Int]() as group:   # or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
         if worker.channel.send(3).is_error():
             return 1
@@ -73,10 +80,7 @@ def main() -> Int:
     return 0
 ```
 
-- Built and run with `ms build` on a stub (2026-10-24), including `if let n = try c.receive():`.
-- Every entry is a full `def` (or a lambda with typed parameters for tasks); untyped lambdas do not infer `In`/`Out`. An entry with no messages takes `Channel[Unit, Unit]` and ignores it.
-
-- Worker and process entries are named top-level `def`s.
+- Worker and process entries are named top-level `def`s; tasks also take lambdas.
 - `receive` returns `Result`: `ok(some(v))` a message, `ok(none)` a clean close after draining, `error(Broken(..))` a broken channel.
 
 ## Transports
@@ -139,7 +143,7 @@ def main() -> Int:
 
 ## Staging
 
-0. Spike: issue #1191; `spawn` typing (method type parameters or free function).
+0. Issue #1191 (var-parameter `Callable`); entries rebind with `var` until it is fixed.
 1. Docs.
 2. `TaskTransport` + `TaskGroup.spawn(entry)` (after TaskGroup stages 2-3).
 3. `ProcessTransport` with the child-processes stages.
@@ -149,7 +153,7 @@ Gate: `make conform`, `make verify` on Linux, macOS and Windows with `ms build`,
 
 ## Open questions (decider: Chinmay)
 
-1. `spawn` typing: method type parameters in the checker, or a free `spawn(group, entry)`.
+1. None open. `spawn` typing resolved by group-level `In`/`Out` with `Unit` defaults (no checker change).
 
 ## Decided (Chinmay, 2026-10-24)
 
