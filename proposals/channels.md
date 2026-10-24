@@ -77,7 +77,7 @@ flowchart TB
   E["ms-rt channel.rs: Endpoint (shared state of a pair, close flags, wait tokens)"]
   L["Local: VecDeque of values, msrt_token_post"]
   T["Thread: Mutex VecDeque of values, msrt_token_post_remote"]
-  P["Process: length-prefixed JSON frames on the IPC socket, poller"]
+  P["Process: framed JSON on the IPC channel (socketpair / named pipe)"]
   G["TaskGroup / WorkerGroup / ProcessGroup .spawn: create the pair, pick the transport"]
   U --> W --> I --> E
   E --> L
@@ -108,13 +108,13 @@ flowchart TB
 | --- | --- | --- | --- |
 | `Local` (tasks) | `VecDeque<value ptr>` | `msrt_token_post` | flag; peer's park returns |
 | `Thread` (workers) | `Mutex<VecDeque<value ptr>>`, value moved (no copy) | `msrt_token_post_remote` | atomic flag |
-| `Process` | socket frames: 4-byte LE length + UTF-8 JSON; zero length = close | poller readiness on the IPC socket | close frame or EOF (crash, kill) |
+| `Process` | frames: 4-byte LE length, 1 kind byte (message / close / result), UTF-8 JSON body; over an inherited socketpair on Unix (fd 3, env `MS_IPC`) or an owner-only named pipe on Windows | poller readiness on Unix; 2 ms polling slices on Windows | close frame or EOF (crash, kill) |
 
 ### Layer 4: groups wire the pair in `spawn`
 
 - `TaskGroup.spawn(entry)`: creates a `Local` pair; the task's closure calls `entry(child_end)`; returns a `Task` handle holding the parent end.
 - `WorkerGroup.spawn(entry)`: creates a `Thread` pair; the child end moves to the worker isolate with the entry; returns a `Worker` handle holding the parent end. Needs the per-thread runtime of `proposals/worker-threads.md`; nothing here changes how worker groups behave.
-- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (loopback socket, `MS_ENTRY`); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Process` handle holding the parent end. One channel per child, so frames carry no channel id.
+- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (socketpair or named pipe, `MS_ENTRY`; no ports); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Process` handle holding the parent end. One channel per child, so frames carry no channel id; the result frame is distinct from `Out` messages by its kind byte. A child that dies without a result frame makes `result()` return an error carrying the exit status; the parent does not fault.
 
 ## Semantics
 
