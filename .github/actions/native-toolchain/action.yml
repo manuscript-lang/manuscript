@@ -1,5 +1,5 @@
 name: Native toolchain
-description: Fetch the pinned lld, and on Windows llvm-mingw, that ms links programs with, and cache the LLVM tools ms fetches on its first release build.
+description: On Windows fetch the llvm-mingw that ms links programs with, and cache the lld and LLVM tools ms downloads on first use.
 
 inputs:
   os:
@@ -12,25 +12,18 @@ inputs:
 runs:
   using: composite
   steps:
-    # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
-    # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
-    - name: Fetch bundled lld
-      shell: bash
-      run: |
-        dest="$RUNNER_TEMP/llvm-bundle/install"
-        if [ "$RUNNER_OS" = Windows ]; then dest=$(cygpath -u "$dest"); fi
-        sh scripts/fetch-lld.sh "${{ inputs.os }}" "${{ inputs.arch }}" "$dest"
-        if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
-        else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
-    # `ms` fetches the pinned LLVM tools (opt, llc) into $XDG_CACHE_HOME/ms/llvm on the first release
-    # build; restoring that directory keeps CI off the network.
+    # `ms` downloads the pinned lld and LLVM tools into $XDG_CACHE_HOME/ms/{lld,llvm} on first use
+    # (manuscript-lang/llvm-bundle, pinned by checksum in scripts/lld.lock); restoring them keeps CI
+    # off the network.
     - name: Point the ms cache at a fixed directory
       shell: bash
       run: echo "XDG_CACHE_HOME=$RUNNER_TEMP/ms-cache" >> "$GITHUB_ENV"
-    - name: Cache the LLVM tools
+    - name: Cache the lld and LLVM tools
       uses: actions/cache@v6
       with:
-        path: ${{ runner.temp }}/ms-cache/ms/llvm
+        path: |
+          ${{ runner.temp }}/ms-cache/ms/lld
+          ${{ runner.temp }}/ms-cache/ms/llvm
         key: ms-llvm-tools-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/lld.lock') }}
     # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
     # with its clang (scripts/fetch-mingw.sh).

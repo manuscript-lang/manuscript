@@ -1,4 +1,4 @@
-//! Linking with the `lld` bundled in `ms`, so no C toolchain is needed. Linux produces a static
+//! Linking with the pinned `lld` (downloaded once into the cache), so no C toolchain is needed. Linux produces a static
 //! executable over musl's startup files and libc; macOS links against generated SDK stubs; Windows
 //! links an executable over the mingw-w64 CRT and import libraries, so it needs neither the MSVC
 //! SDK nor a C compiler.
@@ -9,9 +9,9 @@ use std::process::Command;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::bundled::{FILES, LINKER_ID, LLD};
+use super::bundled::{FILES, LINKER_ID};
 
-/// The directory holding `opt` and `llc`: `MS_LLVM_TOOLS`, else the pinned release fetched into
+/// The directory holding `opt`, `llc` and `llvm-link`: `MS_LLVM_TOOLS`, else the pinned release fetched into
 /// the cache on first use. `None` when there is no such release for this target or it could not be
 /// fetched; release builds then use Cranelift.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
@@ -32,39 +32,47 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
         .clone())
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
+    fetch(
+        "llvm",
+        super::bundled::LLVM_TOOLS_URL,
+        super::bundled::LLVM_TOOLS_SHA256,
+        &["opt", "llc", "llvm-link"],
+    )
+}
+
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
 
-/// Downloads the pinned LLVM tools archive, checks its SHA-256 and unpacks `opt` and
-/// `llc` into the cache, once. Everything is staged beside the destination so concurrent builds
-/// never see a partial tool.
+/// Downloads the pinned `url` archive, checks its SHA-256 and unpacks `files` from its `bin/` into
+/// `<cache>/ms/<name>/<sha>/`, once. Everything is staged beside the destination so concurrent
+/// builds never see a partial file. `None` when the target has no published archive.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
+fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<PathBuf>, String> {
     use sha2::{Digest, Sha256};
-    let (url, sha) = (
-        super::bundled::LLVM_TOOLS_URL,
-        super::bundled::LLVM_TOOLS_SHA256,
-    );
     if url.is_empty() {
         return Ok(None);
     }
-    let root = cache_root().join("ms").join("llvm");
+    let root = cache_root().join("ms").join(name);
     let dir = root.join(&sha[..16]);
-    let tools = ["opt", "llc", "llvm-link"]
-        .map(|t| format!("{t}{}", if cfg!(windows) { ".exe" } else { "" }));
-    if dir.join(".ok").is_file() && tools.iter().all(|t| dir.join(t).is_file()) {
+    let files: Vec<String> = files
+        .iter()
+        .map(|f| format!("{f}{}", if cfg!(windows) { ".exe" } else { "" }))
+        .collect();
+    if dir.join(".ok").is_file() && files.iter().all(|f| dir.join(f).is_file()) {
         return Ok(Some(dir));
     }
     let failed = |what: &str, e: &dyn std::fmt::Display| {
-        format!("cannot {what} the LLVM tools into {}: {e}", dir.display())
+        format!("cannot {what} {name} into {}: {e}", dir.display())
     };
     let stage = root.join(format!(".fetch-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&stage);
     std::fs::create_dir_all(&stage).map_err(|e| failed("create the cache for", &e))?;
     let result = (|| {
-        eprintln!("ms: fetching the LLVM tools for release builds (once, about 70 MB)");
+        eprintln!("ms: fetching {name} (once)");
         let archive = super::fetch::get(url).map_err(|e| failed("download", &e))?;
         let got: String = Sha256::digest(&archive)
             .iter()
@@ -76,15 +84,13 @@ fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
                 &format!("checksum {got} does not match the pinned {sha}"),
             ));
         }
-        std::fs::create_dir_all(stage.join("bin")).map_err(|e| failed("create", &e))?;
-        super::fetch::unpack_tools(&archive, &tools, &stage.join("bin"))
-            .map_err(|e| failed("unpack", &e))?;
+        super::fetch::unpack_tools(&archive, &files, &stage).map_err(|e| failed("unpack", &e))?;
         std::fs::create_dir_all(&dir).map_err(|e| failed("create the cache for", &e))?;
-        for tool in &tools {
-            // A concurrent build may have installed (and be running) the same tool already.
-            let _ = std::fs::rename(stage.join("bin").join(tool), dir.join(tool));
-            if !dir.join(tool).is_file() {
-                return Err(failed("install", &format!("{tool} is missing")));
+        for file in &files {
+            // A concurrent build may have installed (and be running) the same file already.
+            let _ = std::fs::rename(stage.join(file), dir.join(file));
+            if !dir.join(file).is_file() {
+                return Err(failed("install", &format!("{file} is missing")));
             }
         }
         std::fs::write(dir.join(".ok"), b"").map_err(|e| failed("finish", &e))
@@ -93,39 +99,37 @@ fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
     result.map(|()| Some(dir))
 }
 
-/// Unpacks the gzipped executable `gz` as `dir/name`, once: a marker file records that the
-/// unpacked copy is complete, and it is staged beside the destination so concurrent builds never
-/// see a partial file.
-fn unpack(dir: &Path, name: &str, gz: &[u8]) -> std::io::Result<()> {
-    use std::io::Read;
-    static STAGED: AtomicUsize = AtomicUsize::new(0);
-    let done = dir.join(format!("{name}.ok"));
-    if done.is_file() && dir.join(name).is_file() {
-        return Ok(());
+/// The `lld` to link with: `MS_LLD`, else the pinned release fetched into the cache on first use.
+fn lld_path() -> Result<PathBuf, Error> {
+    if let Some(path) = std::env::var_os("MS_LLD").filter(|v| !v.is_empty()) {
+        return Ok(PathBuf::from(path));
     }
-    let staged = dir.join(format!(
-        ".{name}-{}-{}",
-        std::process::id(),
-        STAGED.fetch_add(1, Ordering::Relaxed)
-    ));
-    let unpacked = (|| {
-        let mut bytes = Vec::new();
-        flate2::read::GzDecoder::new(gz).read_to_end(&mut bytes)?;
-        std::fs::write(&staged, bytes)?;
-        set_mode(&staged, true)?;
-        std::fs::rename(&staged, dir.join(name))?;
-        std::fs::write(&done, b"")
-    })();
-    if unpacked.is_err() {
-        let _ = std::fs::remove_file(&staged);
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    {
+        let exe = if cfg!(windows) { "lld.exe" } else { "lld" };
+        let fetched = fetch(
+            "lld",
+            super::bundled::LLD_URL,
+            super::bundled::LLD_SHA256,
+            &["lld"],
+        );
+        if let Some(dir) = fetched.map_err(|e| {
+            Error(format!(
+                "{e}; set MS_LLD to a local lld to link without downloading"
+            ))
+        })? {
+            return Ok(dir.join(exe));
+        }
     }
-    unpacked
+    Err(Error(
+        "no lld is published for this platform; set MS_LLD to one".into(),
+    ))
 }
 
 /// Links `object` and `inputs` (the runtime built for this platform) into the executable `out`.
 pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<(), Error> {
     let dir = extract()?;
-    let mut command = Command::new(dir.join(LLD.0));
+    let mut command = Command::new(lld_path()?);
     #[cfg(target_os = "linux")]
     linux_arguments(&mut command, &dir, object, inputs, out, strip);
     #[cfg(target_os = "windows")]
@@ -298,8 +302,7 @@ fn extract() -> Result<PathBuf, Error> {
     let present = |name: &str, bytes: &[u8]| {
         std::fs::metadata(dir.join(name)).is_ok_and(|m| m.len() == bytes.len() as u64)
     };
-    let lld_ready = dir.join(format!("{}.ok", LLD.0)).is_file();
-    if lld_ready && FILES.iter().all(|(name, bytes)| present(name, bytes)) {
+    if FILES.iter().all(|(name, bytes)| present(name, bytes)) {
         return Ok(dir);
     }
     let failed = |e: std::io::Error| {
@@ -330,7 +333,6 @@ fn extract() -> Result<PathBuf, Error> {
             }
         }
     }
-    unpack(&dir, LLD.0, LLD.1).map_err(failed)?;
     Ok(dir)
 }
 

@@ -1,7 +1,7 @@
-//! Bundles what linking needs so `ms build` runs no C toolchain: the pinned static `lld` (released by
-//! manuscript-lang/llvm-bundle and fetched by `scripts/fetch-lld.sh`) and, on Linux, the self-contained musl startup objects and libc
+//! Bundles what linking needs so `ms build` runs no C toolchain: on Linux, the self-contained musl startup objects and libc
 //! that Rust's musl target carries, or, on Windows, the mingw-w64 startup object, libraries and import
-//! libraries of the pinned llvm-mingw release (`scripts/fetch-mingw.sh`).
+//! libraries of the pinned llvm-mingw release (`scripts/fetch-mingw.sh`). It also pins the downloads
+//! (`lld`, the LLVM tools) that `ms` fetches on first use, so they stay out of the binary.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -35,14 +35,12 @@ const MINGW_FILES: [&str; 18] = [
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-env-changed=MS_LLD");
     println!("cargo:rerun-if-env-changed=RUSTC");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
     let bundle = out.join("linker");
     std::fs::create_dir_all(&bundle).expect("create the linker bundle directory");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS");
-    let mut names: Vec<String> = vec!["lld.gz".to_string()];
-    compress(&lld(), &bundle.join("lld.gz"));
+    let mut names: Vec<String> = Vec::new();
     if target_os == "windows" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         println!("cargo:rerun-if-env-changed=MS_MINGW");
@@ -64,7 +62,8 @@ fn main() {
         "cargo:rustc-env=MS_EXE_SUFFIX={}",
         if target_os == "windows" { ".exe" } else { "" }
     );
-    pin_llvm_tools(&target_os);
+    pin_download("lld", "MS_LLD", &target_os);
+    pin_download("llvm-tools", "MS_LLVM_TOOLS", &target_os);
     if target_os == "linux" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         let musl = sysroot()
@@ -93,10 +92,10 @@ fn main() {
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
 }
 
-/// Pins the LLVM tools release `scripts/lld.lock` names for this target, so `ms` can fetch `opt` and
-/// `llc` on the first release build and check them. Unlisted targets get empty values: release
-/// builds there stay on Cranelift.
-fn pin_llvm_tools(target_os: &str) {
+/// Pins the `kind` archive (`lld` or `llvm-tools`) that `scripts/lld.lock` names for this target as
+/// `<prefix>_URL` and `<prefix>_SHA256`, so `ms` can fetch and check it on first use. Unlisted targets
+/// get empty values.
+fn pin_download(kind: &str, prefix: &str, target_os: &str) {
     let lock = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/lld.lock");
     println!("cargo:rerun-if-changed={}", lock.display());
     let text = std::fs::read_to_string(&lock).expect("read scripts/lld.lock");
@@ -117,7 +116,7 @@ fn pin_llvm_tools(target_os: &str) {
         Ok("aarch64") => "arm64",
         _ => "",
     };
-    let asset = format!("llvm-tools-{version}-{os}-{arch}.tar.gz");
+    let asset = format!("{kind}-{version}-{os}-{arch}.tar.gz");
     let sha = text
         .lines()
         .find_map(|l| l.strip_suffix(asset.as_str())?.split_whitespace().next())
@@ -127,8 +126,8 @@ fn pin_llvm_tools(target_os: &str) {
     } else {
         format!("https://github.com/manuscript-lang/llvm-bundle/releases/download/{tag}/{asset}")
     };
-    println!("cargo:rustc-env=MS_LLVM_TOOLS_URL={url}");
-    println!("cargo:rustc-env=MS_LLVM_TOOLS_SHA256={sha}");
+    println!("cargo:rustc-env={prefix}_URL={url}");
+    println!("cargo:rustc-env={prefix}_SHA256={sha}");
 }
 
 /// The number of DWARF line-table sections left in `file`, or `None` when llvm-objdump cannot be run.
@@ -229,23 +228,6 @@ fn mingw() -> PathBuf {
     root
 }
 
-/// Writes `from` gzipped to `to`, or an empty file when `from` does not exist.
-fn compress(from: &Path, to: &Path) {
-    use std::io::Write;
-    println!("cargo:rerun-if-changed={}", from.display());
-    let Ok(bytes) = std::fs::read(from) else {
-        std::fs::write(to, b"").expect("write placeholder");
-        return;
-    };
-    let mut packed = Vec::new();
-    let mut encoder = flate2::write::GzEncoder::new(&mut packed, flate2::Compression::new(6));
-    encoder.write_all(&bytes).expect("compress");
-    encoder.finish().expect("compress");
-    if std::fs::read(to).ok().as_deref() != Some(&packed) {
-        std::fs::write(to, packed).expect("write compressed tool");
-    }
-}
-
 /// Copies the `ms-rt-hot` IR that `cargo xtask runtime` writes (`MS_RT_HOT_IR` names another) into the
 /// bundle, or an empty placeholder: without it release builds still work, they just do not inline the
 /// runtime's pure helpers. Returns the bundled file's name.
@@ -269,23 +251,6 @@ fn embed_hot_ir(bundle: &Path) -> String {
         std::fs::write(&to, bytes).expect("write the runtime helper IR");
     }
     "ms_rt_hot.ll".to_string()
-}
-
-/// `MS_LLD`, else the one `scripts/fetch-lld.sh` leaves in `target/llvm-bundle`.
-fn lld() -> PathBuf {
-    if let Some(path) = std::env::var_os("MS_LLD") {
-        return PathBuf::from(path);
-    }
-    let exe = if cfg!(windows) { "lld.exe" } else { "lld" };
-    let built = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../target/llvm-bundle/install/bin")
-        .join(exe);
-    println!("cargo:rerun-if-changed={}", built.display());
-    assert!(
-        built.is_file(),
-        "no lld to bundle: run `sh scripts/fetch-lld.sh` or set MS_LLD to a static lld"
-    );
-    built
 }
 
 fn sysroot() -> PathBuf {
