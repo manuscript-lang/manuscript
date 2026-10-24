@@ -1,0 +1,16 @@
+[package]
+name = "ms-rt-hot"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+description = "Pure, static-free runtime helpers (map probes, string compare and hash) that release builds link into the program as LLVM bitcode so they inline"
+
+[lib]
+# Also emitted as bitcode (`cargo rustc --emit=llvm-bc`, see `xtask`) for `ms build`.
+crate-type = ["rlib"]
+
+[dependencies]
+ms-rt-abi = { path = "../ms-rt-abi" }
+
+[lints]
+workspace = true

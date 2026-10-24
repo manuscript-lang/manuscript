@@ -326,17 +326,6 @@ pub unsafe extern "C-unwind" fn msrt_slot_hash(d: *const TypeDesc, slot: *const 
 }
 
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_hash_int(v: i64) -> i64 {
-    string::mix(v as u64 ^ 0x9e37_79b9) as i64
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_hash_bytes(p: *const u8, len: usize) -> i64 {
-    // SAFETY: caller passes a readable range.
-    unsafe { string::hash_bytes(core::slice::from_raw_parts(p, len)) as i64 }
-}
-
-#[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_hash_combine(a: i64, b: i64) -> i64 {
     string::mix((a as u64).rotate_left(5) ^ b as u64) as i64
 }

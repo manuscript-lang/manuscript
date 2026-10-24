@@ -36,9 +36,9 @@ bundled!(
 #[cfg(target_os = "macos")]
 bundled!("lld");
 
-/// The embedded `opt` and `llc`, gzipped; empty when `ms` was built without the LLVM tools.
+/// The embedded `opt`, `llc` and `llvm-link`, gzipped; empty when `ms` was built without the LLVM tools.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
-pub const TOOLS: [(&str, &[u8]); 2] = [
+pub const TOOLS: [(&str, &[u8]); 3] = [
     (
         concat!("opt", env!("MS_EXE_SUFFIX")),
         include_bytes!(concat!(env!("OUT_DIR"), "/linker/opt.gz")),
@@ -47,7 +47,15 @@ pub const TOOLS: [(&str, &[u8]); 2] = [
         concat!("llc", env!("MS_EXE_SUFFIX")),
         include_bytes!(concat!(env!("OUT_DIR"), "/linker/llc.gz")),
     ),
+    (
+        concat!("llvm-link", env!("MS_EXE_SUFFIX")),
+        include_bytes!(concat!(env!("OUT_DIR"), "/linker/llvm-link.gz")),
+    ),
 ];
+
+/// LLVM IR of the runtime's pure helpers (`ms-rt-hot`), linked into release programs before they
+/// are optimized so the helpers inline; empty when the runtime was not built with `cargo xtask runtime`.
+pub const RUNTIME_HOT_IR: &str = include_str!(concat!(env!("OUT_DIR"), "/linker/ms_rt_hot.ll"));
 
 /// A hash of every bundled file; names the cache directory the files are unpacked into.
 pub const LINKER_ID: &str = env!("MS_LINKER_ID");
