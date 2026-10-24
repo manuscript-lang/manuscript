@@ -119,7 +119,7 @@ fn exceeds(value: Int, limit: Optional[Int]) Bool:
 impl SseDecoder for Decoder:
     var fn feed(chunk: Bytes) Result[List[SseEvent], SseError]:
         var events = List[SseEvent]()
-        if let failure = self.failure: return error(failure)
+        if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
         var index = 0
@@ -131,13 +131,13 @@ impl SseDecoder for Decoder:
 
             if step.is_error():
                 let failure = step.err()
-                self.failure = some(failure)
-                return error(failure)
+                self.failure = some(failure.clone())
+                return error(failure.clone())
 
         return ok(events)
 
     var fn finish() Result[Unit, SseError]:
-        if let failure = self.failure: return error(failure)
+        if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
         self.closed = true
@@ -200,7 +200,7 @@ fn end_line(var decoder: Decoder, var events: List[SseEvent]) Result[Unit, SseEr
     return ok(unit)
 
 fn apply(var decoder: Decoder, line: String) Unit:
-    var name = line
+    var name = line.clone()
     var value = ""
     let colon = line.index_of(":")
 
@@ -230,9 +230,11 @@ fn reconnect(var decoder: Decoder, value: String) Unit:
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     if decoder.data.length() > 0:
         let current = decoder.event_type
-        var name = current
+        var name = current.clone()
         if name == "": name = "message"
-        events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id))
+        var id: Optional[String] = none
+        if decoder.last_id.is_some(): id = some(decoder.last_id.get().clone())
+        events.append(SseEvent(name, decoder.data.join("\n"), id))
 
     decoder.event_type = ""
     decoder.data = List[String]()
@@ -293,7 +295,7 @@ export fn next_event(var reader: SseReader) Result[Optional[SseEvent], SseError]
         if reader.next < reader.ready.length():
             let event = reader.ready.get(reader.next)
             reader.next += 1
-            return ok(some(event))
+            return ok(some(event.clone()))
 
         if reader.finished: return ok(none)
 
@@ -301,7 +303,7 @@ export fn next_event(var reader: SseReader) Result[Optional[SseEvent], SseError]
         reader.next = 0
 
         let read = reader.input.read(reader.chunk_bytes)
-        if read.is_error(): return error(SseError.ReadFailed(cause: read.err()))
+        if read.is_error(): return error(SseError.ReadFailed(cause: read.err().clone()))
 
         let chunk = read.get()
 
