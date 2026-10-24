@@ -73,6 +73,7 @@ struct World {
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_bindings: HashMap<String, Name>,
     receiver_requirements: HashMap<String, Vec<ReceiverRequirement>>,
+    runtime_symbols: HashMap<String, String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
 }
@@ -92,6 +93,7 @@ struct Bindings {
     intrinsic_receivers: HashMap<String, String>,
     contract_methods: HashMap<String, String>,
     receiver_requirements: HashMap<String, HashMap<String, String>>,
+    runtime_symbols: HashMap<String, String>,
 }
 
 fn read_bindings() -> Result<Bindings, String> {
@@ -127,6 +129,7 @@ fn read_bindings() -> Result<Bindings, String> {
         intrinsic_receivers: strings("intrinsic_receivers"),
         contract_methods: strings("contract_methods"),
         receiver_requirements: requirements,
+        runtime_symbols: strings("runtime_symbols"),
     })
 }
 
@@ -185,6 +188,12 @@ pub fn intrinsic_operations(id: Name) -> Option<Ty> {
 /// The native identity of a receiver operation (`Receiver id/name`).
 pub fn receiver_binding(key: &str) -> Option<Name> {
     world(|w| w.receiver_bindings.get(key).copied())
+}
+
+/// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
+pub fn runtime_symbol(native: &str) -> Option<String> {
+    ensure_standard();
+    world(|w| w.runtime_symbols.get(native).cloned())
 }
 
 /// Requirements a native receiver operation puts on its receiver.
@@ -495,6 +504,7 @@ fn has_inherent_body(module: &Module) -> bool {
 
 fn load() -> Result<(), String> {
     let bindings = read_bindings()?;
+    world(|w| w.runtime_symbols = bindings.runtime_symbols.clone());
     let mut modules: Vec<ModRef> = Vec::new();
     for (name, source) in SOURCES {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
