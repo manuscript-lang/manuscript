@@ -72,7 +72,10 @@ fn fetch(name: &str, url: &str, sha: &str, files: &[&str]) -> Result<Option<Path
     let _ = std::fs::remove_dir_all(&stage);
     std::fs::create_dir_all(&stage).map_err(|e| failed("create the cache for", &e))?;
     let result = (|| {
-        eprintln!("ms: fetching {name} (once)");
+        // Only for a person at a terminal: programs and tests read this stream as output.
+        if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+            eprintln!("ms: fetching {name} (once)");
+        }
         let archive = super::fetch::get(url).map_err(|e| failed("download", &e))?;
         let got: String = Sha256::digest(&archive)
             .iter()
