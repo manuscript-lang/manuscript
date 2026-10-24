@@ -323,7 +323,13 @@ fn native_method_modes(
     let result = method.ty.result_ty();
     let element = |t: &Ty| receiver.args.iter().any(|a| same(a, t));
     // `join` builds a new String even though its result type is the element type; `clone` copies.
-    let lending = crate::receivers::LENDING_NATIVES.contains(&method.native.as_str());
+    // A native declares in the standard library source that its result lends (`ref`); the
+    // shape test below still covers lending natives that do not declare it yet.
+    let lending = method
+        .decl
+        .as_ref()
+        .and_then(|d| d.func())
+        .is_some_and(|f| f.result_ref);
     let accessor = lending
         || (!mutator
             && method
