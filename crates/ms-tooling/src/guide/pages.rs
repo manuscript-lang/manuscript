@@ -4,7 +4,7 @@
 //! the index and module pages list one line per item, a declaration page lists
 //! its members as signatures, and only a single member shows its full doc.
 
-use crate::api::{ApiDeclaration, ApiModule, standard_library};
+use crate::guide::api::{ApiDeclaration, ApiModule, standard_library};
 use std::sync::OnceLock;
 
 const PAGE_BUDGET: usize = 3500;
@@ -13,7 +13,7 @@ const MODULE_LINES: usize = 45;
 
 /// The one-page language guide for agents.
 pub fn cheatsheet() -> &'static str {
-    include_str!("../data/cheatsheet.md")
+    include_str!("../../data/cheatsheet.md")
 }
 
 pub(crate) fn short_name(path: &str) -> &str {

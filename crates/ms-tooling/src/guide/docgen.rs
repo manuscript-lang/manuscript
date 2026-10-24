@@ -2,8 +2,8 @@
 //! Markdown pages, the structured JSON download, and
 //! the description inventory and policy.
 
-use crate::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};
-use crate::json::{self, Json};
+use crate::guide::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};
+use crate::guide::json::{self, Json};
 use std::collections::{BTreeMap, BTreeSet};
 
 fn declaration_kind(kind: &str) -> &str {
@@ -356,7 +356,7 @@ pub struct DescriptionPolicy {
 
 /// Reads the policy that ships with the compiler.
 pub fn standard_description_policy() -> Result<DescriptionPolicy, String> {
-    parse_policy(include_str!("../data/description_backlog.json"))
+    parse_policy(include_str!("../../data/description_backlog.json"))
 }
 
 fn parse_policy(text: &str) -> Result<DescriptionPolicy, String> {

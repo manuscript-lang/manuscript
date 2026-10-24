@@ -1,7 +1,9 @@
 //! Tests for the guide and search modules.
 
 use ms_check::{CheckOptions, ImportMap};
-use ms_guide::{cheatsheet, format_matches, index, module_names, page, search, standard_library};
+use ms_tooling::guide::{
+    cheatsheet, format_matches, index, module_names, page, search, standard_library,
+};
 use std::sync::Arc;
 
 /// Diagnostics (or the parse error) for one source file.

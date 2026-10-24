@@ -140,7 +140,7 @@ impl<L: Lower> Backend for RustBackend<L> {
     }
 
     fn guide(&self, io: &mut Io) -> BackendResult {
-        let _ = write!(io.stdout, "{}", ms_guide::cheatsheet());
+        let _ = write!(io.stdout, "{}", ms_tooling::guide::cheatsheet());
         Ok(0)
     }
 

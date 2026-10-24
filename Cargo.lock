@@ -994,7 +994,6 @@ dependencies = [
  "ms-check",
  "ms-clif",
  "ms-driver",
- "ms-guide",
  "ms-json",
  "ms-lsp",
  "ms-mir",
@@ -1016,7 +1015,6 @@ dependencies = [
  "cranelift-object",
  "flate2",
  "gimli",
- "ms-linker",
  "ms-mir",
  "ms-rt-abi",
  "object",
@@ -1041,24 +1039,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ms-guide"
-version = "0.1.0"
-dependencies = [
- "ms-check",
- "ms-json",
- "ms-syntax",
-]
-
-[[package]]
 name = "ms-json"
 version = "0.1.0"
-
-[[package]]
-name = "ms-linker"
-version = "0.0.0"
-dependencies = [
- "flate2",
-]
 
 [[package]]
 name = "ms-lower"

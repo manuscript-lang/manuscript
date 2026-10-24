@@ -5,7 +5,7 @@ description: Write Manuscript tutorials, canonical rules, generated API referenc
 
 # Documentation
 
-Use for `README.md`, `documentation/`, `crates/ms-guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../.experts/tooling-and-docs.md).
+Use for `README.md`, `documentation/`, `crates/ms-tooling/src/guide/`, or `website/`. Read [development/publishing](../../documentation/contributing/development.md), [source ownership](../../documentation/contributing/architecture.md#keep-source-and-generated-output-distinct), and [lessons](../../.experts/tooling-and-docs.md).
 
 For a broad refresh, marketing homepage, or reader-journey redesign, start with
 [improve-documentation](../improve-documentation/SKILL.md); this skill owns the
@@ -17,7 +17,7 @@ authoring, source ownership, and publication rules it uses.
 - Give exact rules one canonical home and link there. Tutorials teach use and references define contracts. State limits on the relevant page; do not maintain separate coverage maps or language-comparison inventories.
 - Check behavior/signatures against current source. Newer direction can supersede older guides; label pending design as pending rather than shipped.
 - Complete tutorial fences use existing `manuscript-example` JSON annotations for run/test expectations. Confirm its directory is included in example discovery; annotations alone do not register other guides. Exercise displayed commands with stated prerequisites; label fragments. Do not duplicate complete examples in fixtures.
-- Edit declarations/generators for generated APIs. Special contextual calls live in `stdlib/intrinsics.ms`; `make docs` (the `ms-docgen` binary in `crates/ms-guide`) generates ignored guides/references/call rules/downloads in `.artifacts/docs/` and `website/static/`. Never repair generated HTML/catalogs by hand.
+- Edit declarations/generators for generated APIs. Special contextual calls live in `stdlib/intrinsics.ms`; `make docs` (the `ms-docgen` binary in `crates/ms-tooling/src/guide`) generates ignored guides/references/call rules/downloads in `.artifacts/docs/` and `website/static/`. Never repair generated HTML/catalogs by hand.
 - Language and contributor guides live in `documentation/`; standard-library guides live in documentation comment blocks in `stdlib/*.ms`, Hugo inputs/overrides in `website/`, generated HTML in ignored `.artifacts/book/`. Customize project overrides rather than vendored theme; `.msversion` is the shared version source.
 - Run applicable example checks, `make docs-check` (validates source without requiring generated Markdown), and `make book-check`; `make book` generates production output with destination cleanup. Check project-prefix links, rendered signatures/downloads, highlighting, retired routes, and search artifacts after removal.
 - When publishing is requested, verify actual Pages deployment and current reader artifacts separately from source freshness or merge success.

@@ -16,7 +16,7 @@ Verified: a payload binder such as `error(NotFound)` can conceal a case name wit
 
 ### Documentation and site inputs keep their own homes
 
-Verified: authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs. The book and API reference come from the Rust docgen (`crates/ms-guide`), not a checked-in HTML tree.
+Verified: authored guides live in `documentation/`, site inputs in `website/`, and Pages output is built into ignored `.artifacts/book/` and deployed as an Actions artifact. Hugo mounts the shared root version and extension grammar as assets; parent-relative `readFile` calls did not resolve those inputs. The book and API reference come from the Rust docgen (`crates/ms-tooling/src/guide`), not a checked-in HTML tree.
 
 Apply when: relocating documentation or site inputs, or changing the publication workflow.
 Evidence: [site mounts](../website/hugo.toml), [publication checks](../tests/docs/publication.test.cjs), [architecture](../documentation/contributing/architecture.md).

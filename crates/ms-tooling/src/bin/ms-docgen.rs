@@ -7,8 +7,8 @@
 //! `.artifacts/docs`) and `-static <dir>` (default `website/static`) redirect
 //! the output trees for differential runs.
 
-use ms_guide::docgen::{self, check_descriptions, inventory, standard_description_policy};
-use ms_guide::standard_library;
+use ms_tooling::guide::docgen::{self, check_descriptions, inventory, standard_description_policy};
+use ms_tooling::guide::standard_library;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 

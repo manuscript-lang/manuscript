@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # `ms` embeds a pinned static lld to link programs (crates/ms-linker/build.rs reads MS_LLD). It is
+    # `ms` embeds a pinned static lld to link programs (crates/ms-clif/build.rs reads MS_LLD). It is
     # built and released by manuscript-lang/llvm-bundle and pinned by checksum in scripts/lld.lock.
     - name: Fetch bundled lld
       shell: bash

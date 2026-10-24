@@ -1,12 +1,12 @@
 //! Tests for documentation generation.
 
-use ms_guide::docgen::{
+use ms_tooling::guide::docgen::{
     DescriptionPolicy, DocumentationEntry, check_descriptions, description_key, inventory,
     render_module, render_site_module, site_files, standard_description_policy,
     standard_library_markdown, to_json,
 };
-use ms_guide::json::{self, Json};
-use ms_guide::{ApiDeclaration, ApiMember, ApiModule, standard_library};
+use ms_tooling::guide::json::{self, Json};
+use ms_tooling::guide::{ApiDeclaration, ApiMember, ApiModule, standard_library};
 
 fn member(name: &str, kind: &str, signature: &str, doc: &str) -> ApiMember {
     ApiMember {

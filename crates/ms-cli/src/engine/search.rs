@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use ms_guide::Match;
 use ms_lsp::query::{SymbolMatch, name_rank, search_symbols};
+use ms_tooling::guide::Match;
 
 use crate::backend::{BackendError, BackendResult, Io, SearchSymbolRequest};
 use crate::json::Json;
@@ -26,7 +26,7 @@ struct Described {
 
 pub(super) fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
     if request.names.is_empty() {
-        let _ = write!(io.stdout, "{}", ms_guide::index());
+        let _ = write!(io.stdout, "{}", ms_tooling::guide::index());
         return Ok(0);
     }
     let query = request.names.join(" ");
@@ -36,7 +36,7 @@ pub(super) fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> Backe
     if request.names.len() == 1
         && !request.json
         && !matches.iter().any(|m| name_rank(&m.name, &query) == 0)
-        && let Ok(page) = ms_guide::page(&query)
+        && let Ok(page) = ms_tooling::guide::page(&query)
     {
         let _ = write!(io.stdout, "{page}");
         return Ok(0);
@@ -121,7 +121,7 @@ fn describe_project(m: SymbolMatch) -> Described {
 /// Standard-library symbols follow, matched on names only and leaving room for
 /// at least two even when the project fills the limit.
 fn library_matches(query: &str, words: usize, project: usize, limit: usize) -> Vec<Described> {
-    let concept = ms_guide::search(query, 50);
+    let concept = ms_tooling::guide::search(query, 50);
     let mut library: Vec<(i32, &Match)> = Vec::new();
     for m in &concept {
         let (path, own) = (name_rank(&m.path, query), name_rank(&m.name, query));
