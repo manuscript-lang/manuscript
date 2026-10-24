@@ -1,77 +1,65 @@
 ---
 name: author-proposal
-description: Write a Manuscript design proposal in technical language with sectioned bullets, touched components and per-component changes, examples, diagrams, a simplification pass, and alternatives including doing nothing.
+description: Write a Manuscript design proposal grounded in the existing language, with checked syntax examples, touched components, and the smallest design that works.
 ---
 
 # Author a proposal
 
-Structure follows common RFC practice: Rust RFCs (drawbacks, alternatives, prior art, unresolved questions), Python PEPs (motivation, rationale, rejected ideas), and Fuchsia's RFC guidance (stakeholder implications, simple language, diagrams, recorded alternatives).
+Use whenever you write or revise a design proposal. Store it in the repo as `proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design-taste](../language-design-taste/SKILL.md).
 
-Use whenever you write or revise a design proposal. Store every proposal in the repo as `proposals/<kebab-name>.md` and commit it with the change or in its own PR; do not leave it only in chat, a doc, or project files. Update the file in place as the design changes and record the decision in Status.
+The default design is no new syntax, no new type, and no new keyword. Earn each addition.
 
-This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) for contract tracing and [language-design-taste](../language-design-taste/SKILL.md) for design choices. Read one or two existing proposals in `proposals/` for shape before drafting. Link a proposal that is a skeptical-review target to the reviewer's findings once it has them.
+## Step 1: learn the language before designing
 
-## Style
+Do this before writing any section. A proposal that invents syntax or names without it is rejected.
 
-- Technical language: name crates, files, functions, types, MIR ops, and ABI details exactly (`crates/ms-check/src/ownership/modes.rs`, `msrt_task_spawn`). No marketing words, no narrative, no "we feel".
-- Structure everything as headed sections with bullet lists. A paragraph is acceptable only for one connecting sentence. Prefer one fact per bullet.
-- Every claim is evidenced or labeled: measured (command, commit, number), verified in source (`file:line`), or hypothesis. State what is not yet measured.
-- No walls of text: bullets of one line (two at most), no paragraph longer than two sentences, a section the reader can scan in seconds. Lead each section with its conclusion. Put detail in a table, example, or diagram instead of prose.
-- One key idea per proposal. Split unfocused or broad ones.
-- Write for the decider: put the decision and its consequences up front, and spell out what the design means for each stakeholder (users, stdlib authors, compiler, tooling, agents).
-- Compare options objectively: same criteria for each, no subjective wording, assumptions labeled apart from verified facts.
-- Short. Cut background the reviewer already knows; link canonical docs instead of restating rules.
+- Run `ms guide` and read the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
+- Read `crates/DESIGN.md` for the pipeline, ABI, and recorded decisions, and `.experts/` for the domain (see `.experts/index.yml`).
+- Find existing idioms with `ms search_symbol <words>` and read the nearest `stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
+- Read `proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.
+- Never contradict a stated user decision (spelling, casing, names, scope). Quote the decision in Status; if the design needs to reverse one, put it in Open questions, do not assume.
+- Do not import syntax from other languages (guards, tuples, records, static methods, lowercase generics, and so on). If Manuscript lacks a construct, the design works without it or proposes it as its own explicit, justified language change.
+- Reuse existing names. A new name must be plain and say what it does; avoid metaphors and paired terms that need explaining (near/far).
 
-## Required sections
+## Step 2: write it
 
-0. **Summary**: 3 to 5 bullets at the top: the problem, the proposed change, the cost, and the decision requested.
-1. **Status**: proposal, approved, or implemented; date; checkout or commit verified against; the user's direction being implemented, quoted with date.
-2. **Problem**: observable failure or cost, with a minimal `.ms` repro and exact output, or a measurement. Who is affected.
-3. **Goals and non-goals**: bullets. Non-goals prevent scope creep and name what stays unchanged.
-4. **Design**: the rule, stated once. Include:
-   - **Syntax / API**: `.ms` examples for accepted and rejected source, with the exact diagnostic text or code. Show before and after for changed programs. Examples must run or be marked illustrative.
-   - **Semantics**: ownership, evaluation order, cancellation, errors, edge cases; each as a bullet with an example where the rule is not obvious.
-   - **Diagram** (see below) whenever data flow, lifetimes, layout, or stage ordering matter.
-5. **Components touched**: a table or bullet per component with *what changes*. Cover every surface the change reaches (see manuscript-change): syntax/parser, checker, lowering/MIR, codegen (Cranelift, LLVM), runtime (`ms-rt`) and ABI, stdlib `.ms` and `bindings.json`, formatter, lint, LSP/VS Code, CLI, docs, conformance and e2e tests. State "unchanged" for components a reader would expect to change.
+Technical, bulleted, scannable. One fact per bullet, bullets of one or two lines, no paragraph over two sentences. Name crates, files, functions, and types exactly. Label claims as measured (command, commit, number), verified (`file:line`), or hypothesis.
 
-   | Component | Change | Risk / test |
+Sections, in order (a small change uses Summary, Problem, Design, Components, Alternatives):
+
+1. **Summary**: 3 to 5 bullets: problem, change, cost, decision requested.
+2. **Status**: proposal, approved, or implemented; date; commit checked against; the user's direction, quoted.
+3. **Problem**: observable failure or cost with a minimal repro or measurement. Non-goals as bullets.
+4. **Design**: the rule, stated once.
+   - Syntax and API as `.ms` examples (accepted and rejected, with exact diagnostics) and before/after for changed programs.
+   - Semantics for ownership, errors, cancellation, and edge cases, one bullet each.
+   - A diagram (mermaid or ASCII) only where data flow, lifetimes, layout, or stage order matter; show before and after when rewiring. Never restate a bullet list.
+5. **Components touched**: one row per component, including "unchanged" for any a reader would expect to change.
+
+   | Component | Change | Test |
    | --- | --- | --- |
-   | `crates/ms-check` | new `ref` result rule, MS#### diagnostic | conformance reject cases |
+   | `crates/ms-check` | new rule, diagnostic | conformance reject case |
 
-6. **Examples**: at least one end-to-end program, and one rejected program with its diagnostic. Prefer realistic code over toy names.
-7. **Alternatives**: each with why it was set aside, including **do nothing** and the smallest possible version. Cite evidence, not taste.
-8. **Drawbacks**: why we should not do this; implementation cost, learning cost, compatibility, and risk. Argue against your own design.
-   **Prior art**: how Rust, Go, Zig, Python, Swift, or others handle it, and where Manuscript deliberately differs. Precedent motivates but does not justify.
-   **Evidence and cost**: measurements or code removed, and what the change adds (binary size, instructions, API surface, concepts a learner must hold).
-9. **Staging and verification**: ordered stages that each land green, the check per stage (`make conform`, a benchmark, a test name), and the go/no-go gate.
-10. **Open questions**: split into *resolve before approval* and *resolve during implementation*. Each has options and a recommendation; owner decisions only for language or user-visible changes. Name the decider.
-11. **Rejected ideas**: ideas raised in review and why they were dropped, so they are not re-argued.
-12. **Future possibilities** (optional, at most 3 bullets): keep it short so review stays on the proposal.
+   Consider: parser, checker, lowering/MIR, codegen, `ms-rt`/ABI, `stdlib/*.ms` and `bindings.json`, formatter, lint, LSP/VS Code, CLI, docs, tests.
+6. **Alternatives**: including do nothing and the smallest version, each with evidence for why it lost. Add drawbacks of the chosen design and a line on how comparable languages do it only when that changes the decision.
+7. **Staging and verification**: stages that each land green, the check per stage, the go/no-go gate.
+8. **Open questions**: options with a recommendation, for the owner, only where the language or user-visible behavior changes.
 
-Scale to size: a small or local change uses a mini proposal (Summary, Problem, Design, Components, Alternatives); a language, ABI, or cross-crate change uses every section. Share an early draft before polishing.
+Omit a section by saying in one line why it does not apply. Add nothing beyond these.
 
-Omit a section only by writing one line saying why it does not apply.
+## Step 3: check the syntax
 
-## Diagrams
+Every `.ms` example must pass `ms check` against current main before the proposal is committed.
 
-- Use fenced `mermaid` (flow, sequence, state) or fixed-width ASCII for layouts. Use a diagram for: pipeline or stage changes, ownership/borrow lifetimes, memory or ABI layout, task/cancellation sequences, component dependency changes.
-- Show before and after when the change rewires something. Label each edge with what flows across it. Keep to the components the proposal touches.
-- Do not add a diagram that restates a bullet list.
+- Build `ms` from main (`cargo build --release --locked -p ms-cli`), put each example in a scratch project, and run `ms check`.
+- For APIs or syntax the proposal adds, check against stubs: write the declaration as a stdlib-style `def` with a placeholder body so the call sites type-check. Mark only the stubbed lines.
+- A rejected example must fail with the quoted diagnostic. Paste real output, not recollection.
+- If an example needs syntax that does not check, it is a language change: say so in Summary and Open questions.
 
-## Simplification pass (before review)
+## Step 4: simplify, then review
 
-Ask, and answer in the proposal's Alternatives or Design section:
-- What can be removed? List each new concept, keyword, flag, type, runtime entry point, and pass, and justify or delete it.
-- Can an existing mechanism cover the case (existing syntax, stdlib function, check, runtime path)? Show why not.
-- Can the first version be smaller (one stage, one platform path, no new syntax) and still prove the benefit?
-- Does it add a second rule where one rule would do (see the `ref` proposal's place-projection decision)? Collapse to one.
-- Will a user or agent learn it from the guide in one example? If not, simplify.
-
-Rework the design until each remaining piece has a stated reason. Record what the pass removed.
-
-## Before handing off
-
-- Verify every `file:line`, command, and snippet against the checkout; run repros.
-- Check parity: behavior and tests must hold on Linux, macOS, and Windows; never propose disabling a test on a platform.
-- Run the skeptical review required by [AGENTS.md](../../AGENTS.md) on the finished draft, give the reviewer the proposal rather than your conclusion, and revise. Record the review outcome in Status.
+- List every new concept, name, flag, type, keyword, runtime entry point, and pass. For each: can an existing mechanism cover it? Can the first version drop it? Delete what cannot be justified, and record what was removed.
+- Prefer one rule over two; prefer a stdlib function over syntax; prefer a smaller first stage.
+- Keep Linux, macOS, and Windows at parity; never propose disabling a test on a platform.
+- Run the skeptical review in [AGENTS.md](../../AGENTS.md) on the finished file, giving the reviewer the file rather than your conclusion, and record the outcome in Status.
 - Run `make repo-check`; keep `match` flat in examples.
