@@ -126,10 +126,23 @@ impl Stream {
         };
         let mut stream = Stream::with_pollable(fd, false, Cow::Borrowed(name), pollable);
         if which == 0 {
-            // Each `stdin()` call makes a new handle: pick up what the previous one read ahead.
+            // A new standard-input handle picks up what the previous one read ahead.
             (stream.pending, stream.head) = take_stdin_pending();
         }
         stream
+    }
+
+    /// Picks up what standard-input handles dropped since this one was made had read ahead.
+    pub fn take_stashed(&mut self) {
+        let (bytes, head) = take_stdin_pending();
+        if head >= bytes.len() {
+            return;
+        }
+        if self.available().is_empty() {
+            (self.pending, self.head) = (bytes, head);
+        } else {
+            self.pending.extend_from_slice(&bytes[head..]);
+        }
     }
 
     fn available(&self) -> &[u8] {
