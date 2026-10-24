@@ -2,8 +2,8 @@
 //! of the bundled standard library, or the
 //! exports of a checked program.
 
-use crate::render;
-use crate::source::{Source, leading_comment};
+use crate::guide::render;
+use crate::guide::source::{Source, leading_comment};
 use ms_check::Program;
 use ms_check::checker::Names;
 use ms_check::stdlib;

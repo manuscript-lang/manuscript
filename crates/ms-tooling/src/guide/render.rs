@@ -1,7 +1,7 @@
 //! Declaration-only source excerpts:
 //! source names and order are kept, function bodies are omitted.
 
-use crate::source::Source;
+use crate::guide::source::Source;
 use ms_syntax::token::Tok;
 use ms_syntax::{ExprKind, Param, TypeKind, TypeParam, TypeRef};
 

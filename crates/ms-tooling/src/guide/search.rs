@@ -1,7 +1,7 @@
 //! Fuzzy standard-library search.
 
-use crate::api::standard_library;
-use crate::guide::{clip_text, first_line, short_name, std_path};
+use crate::guide::api::standard_library;
+use crate::guide::pages::{clip_text, first_line, short_name, std_path};
 use std::collections::HashSet;
 use std::sync::OnceLock;
 

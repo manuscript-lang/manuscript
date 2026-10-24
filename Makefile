@@ -67,15 +67,15 @@ licenses:
 licenses-check:
 	cargo run --release --locked -q -p ms-repo-check -- licenses -check
 
-# The book and API reference come from the Rust docgen (crates/ms-guide).
+# The book and API reference come from the Rust docgen (crates/ms-tooling).
 docs:
-	cargo run -q --release --locked -p ms-guide --bin ms-docgen
+	cargo run -q --release --locked -p ms-tooling --bin ms-docgen
 
 docs-check:
-	cargo run -q --release --locked -p ms-guide --bin ms-docgen -- -check
+	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check
 
 docs-coverage:
-	cargo run -q --release --locked -p ms-guide --bin ms-docgen -- -check -coverage .artifacts/stdlib-doc-coverage.json
+	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check -coverage .artifacts/stdlib-doc-coverage.json
 
 book: docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir

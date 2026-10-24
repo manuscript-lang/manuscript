@@ -37,7 +37,7 @@ weight = 1
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
 | `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, build and link |
-| `ms-tooling`, `ms-guide`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
+| `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
 
 `stdlib/*.ms` holds the public standard declarations and `bindings.json` the native identities; it is the signature authority and the Rust implementation embeds it unchanged.
