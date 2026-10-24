@@ -7,7 +7,7 @@ use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
 use crate::error::{HttpErr, IoErr, NetErr};
 use crate::http::server::{CloseError, Limits, Options, Server};
 use crate::tls;
-use ms_std_core::{
+use ms_rt::ffi::{
     ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, abi_record, fault, native,
 };
 use std::time::Duration;

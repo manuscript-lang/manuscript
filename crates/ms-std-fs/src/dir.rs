@@ -3,8 +3,8 @@ use crate::err::{Fail, Res};
 use crate::ops;
 use crate::sys::{self, CPath};
 use alloc::vec::Vec;
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_UNSUPPORTED};
-use ms_std_rt::poll_cancel;
 
 /// One entry of a directory cursor.
 pub struct Item {
@@ -13,7 +13,7 @@ pub struct Item {
     pub symlink: bool,
 }
 
-ms_std_core::abi_handle!(Directory);
+ms_rt::ffi::abi_handle!(Directory);
 
 pub struct Directory {
     dir: sys::Dir,
@@ -77,7 +77,7 @@ impl Drop for Directory {
     }
 }
 
-ms_std_core::abi_handle!(Temporary);
+ms_rt::ffi::abi_handle!(Temporary);
 
 /// A temporary directory removed with its contents when closed.
 pub struct Temporary {

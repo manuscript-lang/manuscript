@@ -21,10 +21,10 @@ mod raw;
 mod raw;
 
 use core::cell::RefCell;
+use ms_rt::ffi::{Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
-use ms_std_core::{Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
-use ms_std_rt::poll_cancel;
 
 abi_handle!(raw::Raw);
 
@@ -133,7 +133,7 @@ fn raw_mode_capable() -> bool {
 native! {
     /// The text of the last `FAILED` result.
     fn msstd_terminal_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     safe fn msstd_terminal_capabilities_input_is_terminal() -> bool {
@@ -251,7 +251,7 @@ native! {
             decoder::Event::Key { name, .. } => name.clone(),
             decoder::Event::Resize { .. } => alloc::vec::Vec::new(),
         });
-        ms_std_rt::new_string(&text.unwrap_or_default())
+        ms_rt::glue::new_string(&text.unwrap_or_default())
     }
 
     safe fn msstd_terminal_event_ctrl() -> bool {

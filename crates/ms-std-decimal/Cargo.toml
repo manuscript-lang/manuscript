@@ -8,16 +8,14 @@ description = "Native implementation of @std/decimal.ms (exact decimals of at mo
 [features]
 default = ["ffi"]
 # The C ABI shims. The compiler uses the crate without them, to fold literals.
-ffi = ["dep:ms-std-core"]
+ffi = ["dep:ms-rt"]
 
 [dependencies]
-ms-std-core = { path = "../ms-std-core", optional = true }
+ms-rt = { path = "../ms-rt", optional = true }
 num-bigint = { version = "0.4", default-features = false }
 num-integer = { version = "0.1", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

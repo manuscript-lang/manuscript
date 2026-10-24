@@ -44,6 +44,7 @@ Keep public crate APIs small and documented with rustdoc; cross-crate changes mu
 - Scalars cross the C-layout ABI directly. Aggregates cross by pointer, and constructed aggregates use a trailing output pointer. Fallible calls use status codes and outputs; see [ABI conventions](ms-rt/ABI.md#1-conventions).
 - Arguments are borrowed unless documented as consuming; `var` receivers are exclusive mutable pointers. Returned values are owned, while explicitly lending source operations retain the borrow relationship checked by `ms-check`.
 - `ms-rt-abi` defines shared layouts and constants; its layout tests keep compiler and runtime assumptions aligned.
+- Layering: `ms-rt-abi` < `ms-rt` < `ms-std-*` < `ms-native`. `ms-rt` is the only crate that defines `msrt_*` symbols and also exports the safe helpers the native crates use (`ms_rt::ffi`: the `native!` macro and value marshalling; `ms_rt::glue`: strings, faults, cancellation, task waits and the blocking pool). A native crate calls those as Rust items, so a signature change is a compile error, not a link-time surprise. `ms-native` is the only staticlib; `ms-rt` is an rlib, and its `testing` feature turns faults into panics for tests that drive the natives through the C ABI.
 
 ## Pure and stateful runtime code
 

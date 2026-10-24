@@ -8,12 +8,12 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
+use ms_rt::ffi::{Mut, Own, Ref, StatusCode, Text, abi_handle, native};
+use ms_rt::glue::record_failure;
 use ms_rt_abi::{
     STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
     STATUS_OK,
 };
-use ms_std_core::{Mut, Own, Ref, StatusCode, Text, abi_handle, native};
-use ms_std_rt::record_failure;
 
 const CHUNK: i64 = 32768;
 

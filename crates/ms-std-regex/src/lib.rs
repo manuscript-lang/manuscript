@@ -13,7 +13,7 @@ mod translate;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 /// A compiled pattern.
 pub struct Regex(regex::Regex);

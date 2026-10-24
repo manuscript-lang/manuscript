@@ -13,7 +13,7 @@ pub mod gourl;
 use alloc::string::String;
 use alloc::vec::Vec;
 use gourl::{S, Url};
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 /// The `Url` record of `@std/net.ms`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

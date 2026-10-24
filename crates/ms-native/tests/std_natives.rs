@@ -1,6 +1,47 @@
 //! Drives the exported `msstd_*` natives of the `ms-std-*` crates through the C ABI with real runtime strings.
-use crate::string::{bytes, from_bytes};
-use crate::testutil::{assert_fault, lock};
+#![allow(
+    unsafe_code,
+    clippy::undocumented_unsafe_blocks,
+    clippy::missing_safety_doc
+)]
+use ms_rt::string::{bytes, from_bytes};
+use ms_rt::trap;
+use std::sync::{Mutex, MutexGuard};
+
+static LOCK: Mutex<()> = Mutex::new(());
+
+/// Serializes tests that touch runtime globals.
+fn lock() -> MutexGuard<'static, ()> {
+    LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Runs `operation` in a trap (a forked child, the production fault path) and returns the fault
+/// text it raised, or `None` when it returned.
+fn fault_of<R>(operation: impl FnOnce() -> R) -> Option<String> {
+    if trap::msrt_trap_begin() == 0 {
+        operation();
+        trap::msrt_trap_end();
+    }
+    let mut message = ms_rt_abi::StrVal::literal(std::ptr::null_mut(), 0);
+    // SAFETY: the message out pointer is writable and the trap belongs to this thread.
+    let faulted = unsafe { trap::msrt_trap_wait(&mut message) };
+    if faulted == 0 {
+        return None;
+    }
+    // SAFETY: a successful wait transfers a live runtime string to the caller.
+    unsafe {
+        let text = String::from_utf8_lossy(bytes(&message)).into_owned();
+        ms_rt::string::release(&message);
+        Some(text)
+    }
+}
+
+/// Asserts the closure faults with exactly this first line (frames ignored).
+#[track_caller]
+fn assert_fault<R>(message: &str, operation: impl FnOnce() -> R) {
+    let got = fault_of(operation).expect("expected a fault");
+    assert_eq!(got.lines().next().unwrap_or(""), message);
+}
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
@@ -14,7 +55,7 @@ fn st(t: &str) -> *const StrVal {
 
 /// Calls a string-returning native on a fresh output slot and reads the result.
 fn ret(f: impl FnOnce(*mut StrVal)) -> String {
-    let mut out = crate::string::NO_STR;
+    let mut out = ms_rt::string::NO_STR;
     f(&mut out);
     text(&out)
 }
@@ -116,7 +157,7 @@ fn timestamps_round_trip_through_strings() {
             STATUS_INVALID_INPUT
         );
 
-        let mut out = crate::string::NO_STR;
+        let mut out = ms_rt::string::NO_STR;
         assert_eq!(
             msstd_time_timestamp_format(&t, st("YYYY/MM/DD HH:mm ZZ"), st("+05:30"), &mut out),
             STATUS_OK
@@ -170,13 +211,13 @@ mod fs_io {
             cap: 0,
         };
         // SAFETY: `v` is writable.
-        unsafe { ms_std_rt::write_bytes(b, &mut v) };
+        unsafe { ms_rt::glue::write_bytes(b, &mut v) };
         v
     }
 
     fn contents(v: &VecVal) -> Vec<u8> {
         // SAFETY: `v` is a live byte vector.
-        unsafe { ms_std_rt::vec_bytes(v) }.to_vec()
+        unsafe { ms_rt::glue::vec_bytes(v) }.to_vec()
     }
 
     #[test]
@@ -216,7 +257,7 @@ mod fs_io {
             );
             assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
             assert_eq!(msstd_fs_remove(dir, 1), STATUS_OK);
-            let mut s = crate::string::NO_STR;
+            let mut s = ms_rt::string::NO_STR;
             assert_eq!(msstd_fs_read_link(file, &mut s), STATUS_NOT_FOUND);
         }
     }
@@ -262,8 +303,7 @@ mod fs_io {
             st(&std::format!("{root}/sub/deep")),
             st(&std::format!("{root}-out")),
         );
-        let mut handle: *mut ms_std_core::ObjCell<ms_std_fs::stream::Stream> =
-            core::ptr::null_mut();
+        let mut handle: *mut ms_rt::ffi::ObjCell<ms_std_fs::stream::Stream> = core::ptr::null_mut();
         let mut out = empty();
         let mut size = 0i64;
         let data = vec_of(b"abcdef");
@@ -286,9 +326,9 @@ mod fs_io {
             assert_eq!(contents(&out), b"aXYd");
             msstd_io_close(handle.cast());
             assert_eq!(msstd_fs_file_sync(handle), ms_rt_abi::STATUS_CLOSED);
-            ms_std_rt::release(handle.cast());
+            ms_rt::glue::release(handle.cast());
 
-            let mut cursor: *mut ms_std_core::ObjCell<ms_std_fs::dir::Directory> =
+            let mut cursor: *mut ms_rt::ffi::ObjCell<ms_std_fs::dir::Directory> =
                 core::ptr::null_mut();
             assert_eq!(msstd_fs_directory_open(r, &mut cursor), STATUS_OK);
             let mut entry = std::mem::MaybeUninit::<ms_std_fs::EntryOut>::uninit();
@@ -300,7 +340,7 @@ mod fs_io {
             seen.sort();
             assert_eq!(seen, [("a.txt".into(), 0), ("sub".into(), 1)]);
             msstd_fs_directory_close(cursor);
-            ms_std_rt::release(cursor.cast());
+            ms_rt::glue::release(cursor.cast());
 
             let pattern = st("**/*.txt");
             assert_eq!(msstd_fs_glob(r, pattern, 0, 0, &mut out), STATUS_OK);
@@ -352,7 +392,7 @@ mod fs_io {
     fn native_file_watchers_are_unsupported_off_linux() {
         let _g = lock();
         let r = st("/tmp");
-        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_rt::ffi::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
         // SAFETY: valid runtime strings and a writable handle.
         unsafe {
             assert_eq!(
@@ -369,7 +409,7 @@ mod fs_io {
         let root = std::format!("/tmp/msrt-watch-{}", std::process::id());
         let r = st(&root);
         let overflow = st("error");
-        let mut h: *mut ms_std_core::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
+        let mut h: *mut ms_rt::ffi::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
         let (mut paths, mut kinds) = (empty(), empty());
         // SAFETY: valid runtime strings, live handles and writable outputs throughout.
         unsafe {
@@ -391,7 +431,7 @@ mod fs_io {
                 msstd_fs_watch_next(h, &mut paths, &mut kinds),
                 ms_rt_abi::STATUS_CLOSED
             );
-            ms_std_rt::release(h.cast());
+            ms_rt::glue::release(h.cast());
             assert_eq!(msstd_fs_remove(r, 1), STATUS_OK);
         }
     }
@@ -408,7 +448,7 @@ mod fs_io {
             len: 0,
             cap: 0,
         };
-        let mut line = crate::string::NO_STR;
+        let mut line = ms_rt::string::NO_STR;
         // SAFETY: valid handles and out pointers throughout.
         unsafe {
             assert_eq!(
@@ -445,7 +485,7 @@ mod process {
             cap: 0,
         };
         // SAFETY: `v` is writable.
-        unsafe { ms_std_rt::write_string_list(&strs, &mut v) };
+        unsafe { ms_rt::glue::write_string_list(&strs, &mut v) };
         v
     }
 
@@ -460,7 +500,7 @@ mod process {
     #[test]
     fn memory_usage_reports_heap_and_resident() {
         let _g = lock();
-        let blocks: std::vec::Vec<*mut u8> = (0..1000).map(|_| crate::alloc::alloc(64)).collect();
+        let blocks: std::vec::Vec<*mut u8> = (0..1000).map(|_| ms_rt::alloc::alloc(64)).collect();
         let mut out = std::mem::MaybeUninit::<MemoryOut>::uninit();
         // SAFETY: `out` is writable.
         let (status, m) = unsafe {
@@ -469,7 +509,7 @@ mod process {
         };
         for b in blocks {
             // SAFETY: allocated above.
-            unsafe { crate::alloc::free(b) };
+            unsafe { ms_rt::alloc::free(b) };
         }
         if !cfg!(any(target_os = "linux", windows)) {
             assert_eq!(status, ms_rt_abi::STATUS_UNSUPPORTED);
@@ -494,10 +534,10 @@ mod process {
         let list = {
             let mut v = empty();
             // SAFETY: `v` is writable.
-            unsafe { ms_std_rt::write_list(&[usr1], &mut v) };
+            unsafe { ms_rt::glue::write_list(&[usr1], &mut v) };
             v
         };
-        let mut h: *mut ms_std_core::ObjCell<ms_std_process::signals::Watcher> =
+        let mut h: *mut ms_rt::ffi::ObjCell<ms_std_process::signals::Watcher> =
             core::ptr::null_mut();
         let mut n = 0i64;
         // SAFETY: valid list, writable outputs and a live handle throughout.
@@ -511,7 +551,7 @@ mod process {
                 msstd_process_signal_next(h, &mut n),
                 ms_rt_abi::STATUS_CLOSED
             );
-            ms_std_rt::release(h.cast());
+            ms_rt::glue::release(h.cast());
         }
     }
 
@@ -523,7 +563,7 @@ mod process {
         let mut input = empty();
         // SAFETY: valid runtime values and out pointers throughout.
         unsafe {
-            ms_std_rt::write_bytes(b"", &mut input);
+            ms_rt::glue::write_bytes(b"", &mut input);
             assert_eq!(
                 msstd_process_command_run(st("sh"), &args, &input, 0, 0, 0, 0, out.as_mut_ptr()),
                 STATUS_OK
@@ -575,12 +615,12 @@ mod process {
             let stdin = msstd_process_subprocess_stream(child, 0);
             let stdout = msstd_process_subprocess_stream(child, 1);
             let mut data = empty();
-            ms_std_rt::write_bytes(b"ping", &mut data);
+            ms_rt::glue::write_bytes(b"ping", &mut data);
             assert_eq!(msstd_io_write_bytes(stdin.cast(), &data), STATUS_OK);
             msstd_io_close(stdin.cast());
             let mut chunk = empty();
             assert_eq!(msstd_io_read(stdout.cast(), 0, 0, &mut chunk), STATUS_OK);
-            assert_eq!(ms_std_rt::vec_bytes(&chunk), b"ping");
+            assert_eq!(ms_rt::glue::vec_bytes(&chunk), b"ping");
             let mut code = -9;
             assert_eq!(
                 msstd_process_subprocess_wait(child, 1, 5_000_000_000, &mut code),
@@ -588,9 +628,9 @@ mod process {
             );
             assert_eq!(code, 0);
             msstd_process_subprocess_close(child);
-            ms_std_rt::release(stdin.cast());
-            ms_std_rt::release(stdout.cast());
-            ms_std_rt::release(child.cast());
+            ms_rt::glue::release(stdin.cast());
+            ms_rt::glue::release(stdout.cast());
+            ms_rt::glue::release(child.cast());
         }
     }
 
@@ -605,7 +645,7 @@ mod process {
             let a = msstd_process_monotonic_time();
             let uptime = msstd_process_uptime();
             assert!(started >= 0 && a >= 0 && uptime >= a && uptime >= started);
-            let mut cwd = crate::string::NO_STR;
+            let mut cwd = ms_rt::string::NO_STR;
             assert_eq!(msstd_process_working_directory(&mut cwd), STATUS_OK);
             assert!(!text(&cwd).is_empty());
             assert_eq!(

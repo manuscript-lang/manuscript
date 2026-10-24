@@ -2,7 +2,7 @@
 //! fallible functions return a status byte and write the ok value through `out` only on success.
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Fail, native};
+use ms_rt::ffi::{Fail, native};
 
 native! {
     fn msrt_encoding_base64_encode(data: &[u8], url_safe: bool) -> String {
@@ -24,7 +24,7 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_std_core::{VecVal, bytes_ref, new_string, take_string};
+    use ms_rt::ffi::{VecVal, bytes_ref, new_string, take_string};
 
     #[test]
     fn abi_roundtrip() {
@@ -39,10 +39,10 @@ mod tests {
             let bad = new_string("%");
             assert_eq!(
                 msrt_encoding_base64_decode(&bad, 0, 0, 0, b.as_mut_ptr()),
-                ms_std_core::STATUS_INVALID_DATA
+                ms_rt::ffi::STATUS_INVALID_DATA
             );
-            ms_std_core::str_release(&t);
-            ms_std_core::str_release(&bad);
+            ms_rt::ffi::str_release(&t);
+            ms_rt::ffi::str_release(&bad);
         }
     }
 }

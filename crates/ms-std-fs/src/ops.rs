@@ -6,8 +6,8 @@ use crate::err::{Fail, Res, read_failure};
 use crate::path;
 use crate::sys::{self, CPath, Errno};
 use alloc::vec::Vec;
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
-use ms_std_rt::poll_cancel;
 
 pub const UNLIMITED: i64 = i64::MAX;
 
@@ -69,8 +69,9 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
 
 pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     #[cfg(all(unix, not(test)))]
-    if !ms_std_rt::pool::alone() {
-        let ran = ms_std_rt::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job);
+    if !ms_rt::glue::pool::alone() {
+        let ran =
+            ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job);
         match ran {
             Offloaded::Done(result) => return result,
             Offloaded::NotRegular => {}
@@ -107,9 +108,13 @@ fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8], cancellable: bool) -> Re
 
 fn write_with(path: &[u8], flags: i32, data: &[u8]) -> Res<()> {
     #[cfg(all(unix, not(test)))]
-    if !ms_std_rt::pool::alone() {
-        match ms_std_rt::pool::run_shielded(Lane::General, (path.to_vec(), flags), data, write_job)
-        {
+    if !ms_rt::glue::pool::alone() {
+        match ms_rt::glue::pool::run_shielded(
+            Lane::General,
+            (path.to_vec(), flags),
+            data,
+            write_job,
+        ) {
             Offloaded::Done(result) => return result,
             Offloaded::NotRegular => {}
         }
@@ -151,7 +156,7 @@ pub fn copy_file(source: &[u8], destination: &[u8], replace: bool, max: i64) -> 
 // request; it takes effect once the job is done.
 
 #[cfg(all(unix, not(test)))]
-use ms_std_rt::pool::Lane;
+use ms_rt::glue::pool::Lane;
 
 /// What a whole-file job found.
 #[cfg(all(unix, not(test)))]

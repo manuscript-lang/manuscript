@@ -112,7 +112,7 @@ impl Waiter {
     /// Parks the task until something in the set is ready or `timeout_ns` passes (negative: no
     /// limit).
     pub fn park(&self, timeout_ns: i64) {
-        ms_std_rt::task_wait_fd(self.set.0, ms_std_rt::WAIT_READ, timeout_ns);
+        ms_rt::glue::task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns);
     }
 }
 

@@ -7,13 +7,10 @@ description = "Native implementation of @std/math.ms"
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-core = { path = "../ms-std-core" }
-ms-std-rt = { path = "../ms-std-rt" }
+ms-rt = { path = "../ms-rt" }
 num-bigint = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

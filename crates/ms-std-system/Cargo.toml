@@ -10,16 +10,13 @@ crate-type = ["rlib"]
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-core = { path = "../ms-std-core" }
+ms-rt = { path = "../ms-rt" }
 ms-std-process = { path = "../ms-std-process" }
-ms-std-rt = { path = "../ms-std-rt" }
 
 [target.'cfg(unix)'.dependencies]
 libc = { version = "0.2", default-features = false }
 rustix = { version = "1", default-features = false, features = ["std", "process", "system", "thread", "param"] }
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true

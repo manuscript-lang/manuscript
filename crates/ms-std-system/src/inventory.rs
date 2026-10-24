@@ -7,10 +7,10 @@
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use ms_rt::ffi::Global;
 use ms_rt_abi::STATUS_UNSUPPORTED;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use ms_rt_abi::{STATUS_NOT_FOUND, STATUS_PERMISSION_DENIED};
-use ms_std_core::Global;
 
 /// One address of one network interface.
 #[derive(Default)]
@@ -71,7 +71,7 @@ pub fn interfaces() -> Result<Vec<Interface>, u8> {
     let mut head: *mut libc::ifaddrs = core::ptr::null_mut();
     // SAFETY: `head` receives a list that `freeifaddrs` releases below.
     if unsafe { libc::getifaddrs(&mut head) } != 0 {
-        return Err(ms_std_rt::failed(b"getifaddrs failed"));
+        return Err(ms_rt::glue::failed(b"getifaddrs failed"));
     }
     let mut macs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
     let mut found = Vec::new();
@@ -200,7 +200,7 @@ fn read_file(path: &str) -> Result<Vec<u8>, u8> {
     std::fs::read(path).map_err(|e| match e.kind() {
         ErrorKind::NotFound => STATUS_NOT_FOUND,
         ErrorKind::PermissionDenied => STATUS_PERMISSION_DENIED,
-        _ => ms_std_rt::failed(b"cannot read host statistics"),
+        _ => ms_rt::glue::failed(b"cannot read host statistics"),
     })
 }
 

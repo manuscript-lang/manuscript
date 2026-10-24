@@ -19,7 +19,7 @@ pub mod ffi;
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 /// The deepest container nesting `parse` accepts.
 pub const DEPTH_CEILING: usize = 100_000;

@@ -17,7 +17,7 @@ mod parse;
 mod token;
 
 use alloc::vec::Vec;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 pub use escape::{escape_string as escape, unescape_string as unescape};
 pub use parse::{Id, Node, NodeType};

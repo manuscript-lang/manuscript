@@ -19,8 +19,8 @@ mod inventory;
 
 use alloc::vec::Vec;
 use inventory::{Cpu, Interface, Metrics, Slot};
+use ms_rt::ffi::{IntMap, StatusCode, Text, native};
 use ms_rt_abi::{STATUS_OK, STATUS_UNSUPPORTED, StrVal};
-use ms_std_core::{IntMap, StatusCode, Text, native};
 use ms_std_process::control;
 
 static INTERFACES: Slot<Vec<Interface>> = Slot::new();
@@ -52,7 +52,7 @@ fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
 
 native! {
     fn msstd_system_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     safe fn msstd_system_endianness() -> &'static str {
@@ -313,7 +313,7 @@ mod imp {
             Errno::INVAL => STATUS_INVALID_INPUT,
             Errno::SRCH | Errno::NOENT => STATUS_NOT_FOUND,
             Errno::PERM | Errno::ACCESS => STATUS_PERMISSION_DENIED,
-            _ => ms_std_rt::failed(b"system call failed"),
+            _ => ms_rt::glue::failed(b"system call failed"),
         }
     }
 

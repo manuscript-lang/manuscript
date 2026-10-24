@@ -3,7 +3,7 @@
 
 //! this crate's rlib, so a unit test that also uses `ms-rt` defines every `msrt_path_*` twice.
 use ms_rt as _; // links the msrt_* runtime symbols
-use ms_std_core::{StrVal, new_string, str_ref, str_release, take_string};
+use ms_rt::ffi::{StrVal, new_string, str_ref, str_release, take_string};
 use ms_std_path::ffi::*;
 
 #[test]

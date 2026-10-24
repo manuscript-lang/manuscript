@@ -10,7 +10,7 @@
 
 use crate::rt;
 use crate::sys::{self, Borrowed};
-pub use ms_std_rt::pool::Lane;
+pub use ms_rt::glue::pool::Lane;
 #[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
@@ -189,7 +189,7 @@ pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
     let timeout = deadline
         .remaining()
         .map_or(-1, |left| left.as_nanos().min(i64::MAX as u128) as i64);
-    ms_std_rt::pool::run(lane, input, f, timeout)
+    ms_rt::glue::pool::run(lane, input, f, timeout)
 }
 
 #[cfg(test)]

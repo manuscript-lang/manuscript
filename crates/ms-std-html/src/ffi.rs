@@ -6,7 +6,7 @@
 
 use crate::{Limits, NodeType, Tree};
 use alloc::string::String;
-use ms_std_core::{Fail, ObjRef, Object, Out, abi_handle, native};
+use ms_rt::ffi::{Fail, ObjRef, Object, Out, abi_handle, native};
 
 abi_handle!(Tree);
 
@@ -129,8 +129,8 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _;
+    use ms_rt::ffi::{ObjCell, new_string, take_string};
     use ms_rt_abi::STATUS_OK;
-    use ms_std_core::{ObjCell, new_string, take_string};
 
     #[test]
     fn parse_walk() {
@@ -153,7 +153,7 @@ mod tests {
             let tx = msrt_html_first_child(t, p);
             assert_eq!(take_string(|o| msrt_html_data(t, tx, o)), "x&y");
             ms_rt::obj::msrt_release(t.cast());
-            ms_std_core::str_release(&text);
+            ms_rt::ffi::str_release(&text);
         }
     }
 }

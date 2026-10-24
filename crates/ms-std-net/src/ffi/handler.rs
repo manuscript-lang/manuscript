@@ -7,23 +7,16 @@ use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
 use crate::http::headers::Headers;
 use crate::http::server::{Dispatch, Outcome, Reply, Request as ServerRequest};
-use ms_rt_abi::{Obj, StrVal, VecVal};
-use ms_std_core::{
+use ms_rt::ffi::{
     FromAbi, Handler, IntoAbi, ObjRef, Object, bytes_ref, new_string, str_ref, str_release,
     write_bytes,
 };
+use ms_rt_abi::{Obj, StrVal, VecVal};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-unsafe extern "C" {
-    fn msrt_guard_call(
-        code: unsafe extern "C-unwind" fn(*mut u8),
-        data: *mut u8,
-        msg_out: *mut StrVal,
-    ) -> u8;
-    fn msrt_free(p: *mut u8);
-    fn msrt_release(o: *mut Obj);
-}
+use ms_rt::fault::msrt_guard_call;
+use ms_rt::obj::{msrt_free, msrt_release};
 
 /// A string slot no one has written: the null string a thunk leaves when it reports no message.
 const NO_MESSAGE: StrVal = StrVal::literal(std::ptr::null_mut(), 0);
@@ -263,9 +256,7 @@ unsafe fn closure_code<T: Copy>(env: *mut Obj) -> T {
 unsafe fn retained(env: *mut Obj) -> *mut Obj {
     // SAFETY: caller contract.
     unsafe {
-        unsafe extern "C" {
-            fn msrt_retain(o: *mut Obj);
-        }
+        use ms_rt::obj::msrt_retain;
         msrt_retain(env);
     }
     env
@@ -275,9 +266,7 @@ unsafe fn retained(env: *mut Obj) -> *mut Obj {
 mod tests {
     use super::*;
 
-    unsafe extern "C" {
-        fn msrt_fault(msg: *const u8, len: usize) -> !;
-    }
+    use ms_rt::fault::msrt_fault;
 
     unsafe extern "C" fn thunk(_env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire) {
         // SAFETY: the dispatcher passes live wires; the path string is owned by us.

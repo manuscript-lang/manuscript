@@ -5,9 +5,9 @@ use crate::path;
 use crate::sys::{self, CPath};
 use alloc::string::String;
 use alloc::vec::Vec;
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use ms_std_path::glob::Glob;
-use ms_std_rt::poll_cancel;
 
 pub const UNLIMITED: i64 = i64::MAX;
 

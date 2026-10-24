@@ -2,9 +2,9 @@
 //! round-trips the streaming encoder.
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
+use ms_rt::ffi::Fail;
 use ms_std_compress::stream::{Decoder, Encoder, Poll};
 use ms_std_compress::{Format, crc32, decompress_bytes};
-use ms_std_core::Fail;
 use std::collections::HashMap;
 
 fn bytes(tok: &str) -> Vec<u8> {

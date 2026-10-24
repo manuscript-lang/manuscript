@@ -10,8 +10,7 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-core = { path = "../ms-std-core" }
-ms-std-rt = { path = "../ms-std-rt" }
+ms-rt = { path = "../ms-rt" }
 mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 socket2 = { version = "0.6", features = ["all"] }
 
@@ -37,8 +36,6 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_IO",
 ] }
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
