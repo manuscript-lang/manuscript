@@ -167,3 +167,25 @@ impl<'a> FnLower<'a> {
         self.builder_call(name, handle, &m.ty.params, &args, result)
     }
 }
+
+impl<'a> FnLower<'a> {
+    /// `shared.get()`: the payload of a user-facing `Shared[T]`, read in place and not owned.
+    pub(crate) fn shared_get(
+        &mut self,
+        e: &ms_syntax::ast::Expr,
+        recv_expr: &ms_syntax::ast::Expr,
+    ) -> Result<Val, Error> {
+        let recv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        let handle = self.borrow(recv);
+        self.at(e.pos);
+        let result = self.emty(e)?;
+        let v = self
+            .b
+            .emit(Op::SharedGet, &[handle], Imm::None, Some(result))
+            .expect("shared payload");
+        Ok(Val { v, own: false })
+    }
+}

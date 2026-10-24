@@ -358,6 +358,7 @@ impl<'a> FnLower<'a> {
                 | "math/max_of"
                 | "math/min_of"
                 | "time/duration"
+                | "shared/share"
                 | "core/category"
                 | "math/bit_and"
                 | "math/bit_or"
@@ -408,6 +409,20 @@ impl<'a> FnLower<'a> {
             let cty = self.ty_of(cause);
             let f = self.cx.category_fn(self.b.m, cty, result);
             let v = self.b.call(f, &[cause]);
+            return Ok(Val { v, own: true });
+        }
+        if native == "shared/share" {
+            // The payload moves into a refcounted box; copies of the handle retain it.
+            let payload = self.owned(args[0].val);
+            let v = self
+                .b
+                .emit(
+                    ms_mir::ir::Op::SharedNew,
+                    &[payload],
+                    ms_mir::ir::Imm::None,
+                    Some(result),
+                )
+                .expect("shared result");
             return Ok(Val { v, own: true });
         }
         if native == "time/duration" {
