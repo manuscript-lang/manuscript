@@ -44,7 +44,7 @@
       "T": "Equal"
     },
     "@std/collections.ms/List/join": {
-      "T": "String"
+      "T": "String|Int"
     },
     "@std/collections.ms/List/last_index_of": {
       "T": "Equal"

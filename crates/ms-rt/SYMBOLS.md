@@ -233,6 +233,7 @@ msrt_list_flatten( lists: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_distinct( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_keys(v: *const VecVal, out: *mut VecVal)
 msrt_list_join( v: *const VecVal, sep: *const StrVal, out: *mut StrVal, )
+msrt_list_join_int( v: *const VecVal, sep: *const StrVal, out: *mut StrVal, )
 msrt_list_sort_in_place( v: *mut VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, )
 msrt_list_sorted( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, out: *mut VecVal, )
 msrt_list_filled( value: *const u8, d: *const TypeDesc, count: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8

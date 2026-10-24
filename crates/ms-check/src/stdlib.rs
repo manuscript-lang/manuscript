@@ -56,8 +56,8 @@ pub struct StdResult {
 pub struct ReceiverRequirement {
     /// The receiver variable.
     pub variable: Ty,
-    /// The contract or type it must satisfy.
-    pub constraint: Ty,
+    /// The contracts or types it may satisfy; any one suffices.
+    pub constraints: Vec<Ty>,
 }
 
 #[derive(Default)]
@@ -965,22 +965,26 @@ impl Loader<'_> {
                             let Some(variable) = variable else {
                                 return Err(format!("unknown receiver variable {name} in {key}"));
                             };
-                            let required = self
-                                .c
-                                .sym(n(&constraint))
-                                .filter(|r| r.kind == SymKind::Type);
-                            let Some(required) = required else {
-                                return Err(format!(
-                                    "unknown receiver requirement {constraint} in {key}"
-                                ));
-                            };
+                            let mut constraints = Vec::new();
+                            for alternative in constraint.split('|') {
+                                let required = self
+                                    .c
+                                    .sym(n(alternative))
+                                    .filter(|r| r.kind == SymKind::Type);
+                                let Some(required) = required else {
+                                    return Err(format!(
+                                        "unknown receiver requirement {constraint} in {key}"
+                                    ));
+                                };
+                                constraints.push(required.ty());
+                            }
                             world(|w| {
                                 w.receiver_requirements
                                     .entry(sym_key.clone())
                                     .or_default()
                                     .push(ReceiverRequirement {
                                         variable,
-                                        constraint: required.ty(),
+                                        constraints,
                                     })
                             });
                         }

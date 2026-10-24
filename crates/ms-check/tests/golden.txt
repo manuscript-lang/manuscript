@@ -1398,8 +1398,8 @@ fn f() Int:
     let n = "abc".foo()
     return 0
 resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, to_bytes, trim, trim_end, trim_start, upperfn f() String:
-    return [1].join(separator: ",")
-resolution	2	16	30	unknown or ambiguous member join on List[Int]; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) String: "{value}").join(separator: ",")fn double(n: Int) Int:
+    return [1.5].join(separator: ",")
+resolution	2	18	32	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn(value: Float) String: "{value}").join(separator: ",")fn double(n: Int) Int:
     return n * 2
 fn f() Int:
     return [1, 2].map(double).length()

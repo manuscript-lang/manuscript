@@ -138,6 +138,10 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         "compare_int" | "compare_float" => "compare",
         other => other,
     };
+    let name = match (m.types.kind(recv), name) {
+        (TyKind::List(elem), "join") if matches!(m.types.kind(*elem), TyKind::Int) => "join_int",
+        _ => name,
+    };
     let name = name
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
