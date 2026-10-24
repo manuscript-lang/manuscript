@@ -1,2 +1,2 @@
-export fn divide(value: Int = 1 / 0) Int:
+export def divide(value: Int = 1 / 0) -> Int:
     return value

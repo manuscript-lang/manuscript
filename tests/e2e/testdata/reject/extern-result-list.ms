@@ -2,10 +2,10 @@ type ReadError:
     case Missing
 
 impl Error for ReadError:
-    fn message() String:
+    def message() -> String:
         return "missing"
 
-extern fn read_values() Result[List[Int], ReadError]
+extern def read_values() -> Result[List[Int], ReadError]
 
-export fn main() Int:
+export def main() -> Int:
     return 0

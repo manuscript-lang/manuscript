@@ -6,9 +6,9 @@ export type Failure:
     case Denied(reason: String)
 
 impl Error for Failure:
-    fn message() String: "f"
+    def message() -> String: "f"
 
 export type Item:
     value: Int
 
-export fn fail() Result[Int, Failure]: error(Failure.Denied("denied"))
+export def fail() -> Result[Int, Failure]: error(Failure.Denied("denied"))

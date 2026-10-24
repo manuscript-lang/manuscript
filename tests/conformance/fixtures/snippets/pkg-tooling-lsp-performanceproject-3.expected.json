@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...)', or import it from a module",
+        "message": "unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'def f_0_0(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-lsp-performanceproject-3.ms",
           "line": 5,
           "column": 18,
-          "offset": 176
+          "offset": 180
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-lsp-performanceproject-3.ms:5:18: resolution: unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'fn f_0_0(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-lsp-performanceproject-3.ms:5:18: resolution: unknown binding f_0_0; declare it with 'let f_0_0 = ...' before use, define 'def f_0_0(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

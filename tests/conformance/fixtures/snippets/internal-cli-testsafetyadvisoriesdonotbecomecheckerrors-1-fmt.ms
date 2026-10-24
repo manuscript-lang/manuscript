@@ -1,10 +1,10 @@
 # conform: tags=formatter,match,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/advisory_lint_test.go:16 TestSafetyAdvisoriesDoNotBecomeCheckErrors
-fn use(value: Optional[Int]) Unit:
+def use(value: Optional[Int]) -> Unit:
     match value:
-        some(_):
+        case some(_):
             match value:
-                some(_): unit
-                none: unit
-        none: unit
+                case some(_): ()
+                case none: ()
+        case none: ()

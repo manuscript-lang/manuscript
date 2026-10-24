@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 test "required replacement count retains zero finite oversized and literal semantics":
     try expect_equal("aaaa".replace_n("a", "b", 0), "aaaa")
@@ -18,17 +18,17 @@ test "empty patterns use Unicode scalar boundaries without normalization":
     try expect_equal("é😀".replace_n("", "|", 99), "|é|😀|")
     try expect_equal("".replace_n("", "x", 5), "x")
     try expect_equal("".replace_n("a", "x", 5), "")
-    try expect_equal("e\u{301}".replace_n("é", "x", 2), "e\u{301}")
+    try expect_equal(f"e\u{301}".replace_n("é", "x", 2), f"e\u{301}")
     try expect_equal("éé".replace_n("é", "😀", 1), "😀é")
 
-fn forward[T](value: T) T: value
+def forward[T](value: T) -> T: value
 
 test "bound typed and generic calls retain the required count":
     let text = "aaaa"
     let replace = text.replace_n
     try expect_equal(replace("a", "b", 2), "bbaa")
 
-    let typed: fn(old: String, new: String, max_replacements: Int) String = text.replace_n
+    let typed: Callable[[String, String, Int], String] = text.replace_n
     try expect_equal(typed("a", "b", 3), "bbba")
 
     let generic = forward(text.replace_n)
@@ -37,19 +37,20 @@ test "bound typed and generic calls retain the required count":
     try expect_equal("aaaa".replace("a", "b", none), "baaa")
 
 interface CappedReplacement:
-    fn replace_n(old: String, new: String, max_replacements: Int) String
+    def replace_n(old: String, new: String, max_replacements: Int) -> String
 
 type TextAdapter:
     text: String
-    replace_n: fn(old: String, new: String, max_replacements: Int) String
+    replace_n: Callable[[String, String, Int], String]
 
 impl CappedReplacement for TextAdapter:
-    fn replace_n(old: String, new: String, max_replacements: Int) String:
+    def replace_n(old: String, new: String, max_replacements: Int) -> String:
         return self.text.replace_n(old, new, max_replacements)
 
 test "explicit and bound views retain method contracts and callable field shadowing":
     let adapter = TextAdapter(
-        "aaaa", fn(old: String, new: String, max_replacements: Int) String: "field"
+        "aaaa",
+        lambda (old: String, new: String, max_replacements: Int) -> String: "field"
     )
     try expect_equal(adapter.replace_n("a", "b", 2), "field")
 

@@ -188,6 +188,11 @@ fn formatter_matches_go() {
                 std::fs::read_to_string(path.to_string_lossy().replace(".in.src", ".out.src"))
                     .unwrap();
             let file: Arc<str> = Arc::from("f.ms");
+            if update_golden() {
+                let out = path.to_string_lossy().replace(".in.src", ".out.src");
+                std::fs::write(out, format(&file, &text).unwrap()).unwrap();
+                continue;
+            }
             assert_eq!(format(&file, &text).unwrap(), want, "{}", path.display());
         }
     });
@@ -245,17 +250,17 @@ fn callback_defaults_keep_the_enclosing_function_suite_aligned() {
 fn nesting_limits() {
     big_stack(|| {
         let deep = 200_000;
-        let wrap = |body: String| format!("fn f() Int:\n    return {body}\n");
+        let wrap = |body: String| format!("def f() -> Int:\n    return {body}\n");
         let cases = [
             wrap("(".repeat(deep) + "1" + &")".repeat(deep)),
             wrap("[".repeat(deep) + &"]".repeat(deep)),
             wrap("f(".repeat(deep) + "1" + &")".repeat(deep)),
             wrap("-".repeat(deep) + "1"),
             wrap("1+".repeat(deep) + "1"),
-            wrap("\"{".repeat(deep) + "1" + &"}\"".repeat(deep)),
+            wrap("f\"{".repeat(deep) + "1" + &"}\"".repeat(deep)),
             wrap("x".to_string() + &".a".repeat(deep)),
             format!(
-                "fn f(x: {}Int{}) Int:\n    return 1\n",
+                "def f(x: {}Int{}) -> Int:\n    return 1\n",
                 "(".repeat(deep),
                 ")".repeat(deep)
             ),
@@ -266,7 +271,7 @@ fn nesting_limits() {
             assert!(err.message.contains("exceeds"), "{}", err.message);
         }
         let moderate = format!(
-            "fn f() Int:\n    return {}1{} {}\n",
+            "def f() -> Int:\n    return {}1{} {}\n",
             "(".repeat(500),
             ")".repeat(500),
             "+ 1 ".repeat(5000)

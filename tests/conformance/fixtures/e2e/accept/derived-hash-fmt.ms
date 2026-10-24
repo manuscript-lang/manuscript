@@ -1,8 +1,8 @@
 # conform: tags=alternatives,control-flow,decimal,formatter,generics,modules,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/derived-hash.ms
-import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal
+from "@std/decimal.ms" import Decimal
 
 type P:
     x: Int
@@ -12,7 +12,7 @@ type Shape:
     case Dot(x: Int)
     case Line(a: Int, b: Optional[Int])
 
-fn code[T: Hashable](value: T) Int:
+def code[T: Hashable](value: T) -> Int:
     return value.hash()
 
 test "derived hashes agree for equal values and are stable":
@@ -22,4 +22,4 @@ test "derived hashes agree for equal values and are stable":
     try expect_not_equal(code(Dot(1)), code(Line(1, none)))
     try expect_false(code("abc") != "abc".hash() or 7.hash() != code(7))
     try expect_false(code(some(3)) != code(some(3)) or code(12.50d) != code(12.5d))
-    try expect_not_equal(code(true), code(false))
+    try expect_not_equal(code(True), code(False))

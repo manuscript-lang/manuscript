@@ -6,10 +6,10 @@ type CustomerKey:
     label: String
 
 impl Equal for CustomerKey:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            CustomerKey(value): return self.id == value.id
-            _: return false
+            case CustomerKey(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for CustomerKey:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id

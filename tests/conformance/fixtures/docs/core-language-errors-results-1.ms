@@ -6,12 +6,12 @@ type DiscountError:
     case InvalidPercent
 
 impl Error for DiscountError:
-    fn message() String:
+    def message() -> String:
         match self:
-            InvalidPrice: return "invalid price"
-            InvalidPercent: return "invalid percent"
+            case InvalidPrice: return "invalid price"
+            case InvalidPercent: return "invalid percent"
 
-fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
+def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:

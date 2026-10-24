@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/features_test.go:344 TestGroupedImportFixKeepsUsedBindingAndRenameUsesNameOffsets
-import {first, second} from "./helper.ms"
+from "./helper.ms" import first, second
 
-fn answer() Int:
+def answer() -> Int:
     return first()

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Increment:\n    fn apply(value: Int) Int\n\ntype Offset:\n    delta: Int\n\nimpl Increment for Offset:\n    fn apply(value: Int) Int:\n        return value + self.delta\n"
+    "fmt": "interface Increment:\n    def apply(value: Int) -> Int\n\ntype Offset:\n    delta: Int\n\nimpl Increment for Offset:\n    def apply(value: Int) -> Int:\n        return value + self.delta\n"
   }
 }

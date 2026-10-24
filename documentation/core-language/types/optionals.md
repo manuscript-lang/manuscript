@@ -30,17 +30,17 @@ There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs
 An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `Optional[T]` passes unchanged, including `none`.
 
 ```manuscript
-import Queue from "@std/queue.ms"
+from "@std/queue.ms" import Queue
 
-fn main() Unit:
+def main() -> Unit:
     var bounded = Queue[Int](capacity: 4)
     var unbounded = Queue[Int]()
 ```
 
 - Applies to functions, methods, function values, constructor fields, and alternative payloads.
 - Wraps exactly one layer: an `Optional[Int]` fits `Optional[Optional[Int]]`, a bare `Int` does not.
-- The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
-- Generic inference matches either the whole optional or its payload: `fn present[T](value: Optional[T]) Optional[T]` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
+- The expression evaluates once, in argument order. Zero, `False`, and empty values stay present.
+- Generic inference matches either the whole optional or its payload: `def present[T](value: Optional[T]) -> Optional[T]` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
 - An `Optional[T]` parameter is still required unless it has a default or a library omission permission.
 - The same wrapping applies wherever an `Optional[T]` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Optional[Int] = 3`). A user-defined `Optional` gets no wrapping.
 
@@ -52,31 +52,31 @@ Receiver methods:
 
 | Method | Behavior |
 | --- | --- |
-| `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
-| `is_none() Bool` | Whether the optional is absent |
-| `get(default: Optional[T] = none) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
-| `map[U](transform: fn(value: T) U) Optional[U]` | Transform a present payload once; preserve absence |
-| `and_then[U](transform: fn(value: T) Optional[U]) Optional[U]` | Return the callback's Optional when present; preserve absence |
-| `or_else(create: fn() Optional[T]) Optional[T]` | Keep a present Optional or call `create` once when absent |
+| `is_some() -> Bool` | Whether the optional contains a value, including `False`, zero, or an empty string |
+| `is_none() -> Bool` | Whether the optional is absent |
+| `get(default: Optional[T] = none) -> T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
+| `map[U](transform: Callable[[T], U]) -> Optional[U]` | Transform a present payload once; preserve absence |
+| `and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]` | Return the callback's Optional when present; preserve absence |
+| `or_else(create: Callable[[], Optional[T]]) -> Optional[T]` | Keep a present Optional or call `create` once when absent |
 
 Fallback for routine absence:
 
 ```manuscript
-fn display_name(name: Optional[String]) String:
+def display_name(name: Optional[String]) -> ref String:
     return name.get("Anonymous")
 ```
 
 `get(default)` always evaluates its argument. Use `or_else` with `get()` when the fallback costs work:
 
 ```manuscript
-fn display_name(name: Optional[String], create: fn() Optional[String]) String:
+def display_name(name: Optional[String], create: Callable[[], Optional[String]]) -> ref String:
     return name.or_else(create).get()
 ```
 
 Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; use `get` only when absence is a programming error:
 
 ```manuscript
-fn greet(name: Optional[String]) String:
+def greet(name: Optional[String]) -> String:
     if let value = name:
         return "Hello, " + value
     return "Hello!"
@@ -85,8 +85,8 @@ fn greet(name: Optional[String]) String:
 Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
 
 ```manuscript
-fn first_number(text: Optional[String]) Optional[Int]:
-    return text.map(fn(value): value.trim().clone()).and_then(fn(value): value.parse_int())
+def first_number(text: Optional[String]) -> Optional[Int]:
+    return text.map(lambda value: value.trim().clone()).and_then(lambda value: value.parse_int())
 ```
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
@@ -94,7 +94,7 @@ fn first_number(text: Optional[String]) Optional[Int]:
 [`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
 ```manuscript
-fn display_name(name: Optional[String]) String:
+def display_name(name: Optional[String]) -> ref String:
     if let value = name:
         return value
     return "Anonymous"
@@ -104,13 +104,13 @@ A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms 
 
 ## Converting absence to a Result
 
-- `ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
-- `ok_or_else[E: Error](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
+- `ok_or[E: Error = MissingValue](cause: Optional[E] = none) -> Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` must implement `Error`.
+- `ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]`: calls `create` once, only on absence.
 
 Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
 
 ```manuscript
-fn port_number(text: String) Result[Int, Error]:
+def port_number(text: String) -> Result[Int, Error]:
     let port = try text.parse_int().ok_or()
     return ok(port)
 ```

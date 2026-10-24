@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-3.ms",
           "line": 6,
-          "column": 17,
-          "offset": 209
+          "column": 21,
+          "offset": 217
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-3.ms:6:17: type: missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-3.ms:6:21: type: missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

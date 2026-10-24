@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong(values: Map[String, Int]) Unit:\n    let found = values.find_last(fn(k, v): v)\n"
+    "fmt": "def wrong(values: Map[String, Int]) -> Unit:\n    let found = values.find_last(lambda k, v: v)\n"
   }
 }

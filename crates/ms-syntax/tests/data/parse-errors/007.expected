@@ -1,1 +1,1 @@
-error parse 1:30:29 "an unmatched closing brace must be escaped; write \x5c} for a literal brace (and \x5c{ for the opening brace), or open an interpolation with {expression}"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

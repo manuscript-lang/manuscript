@@ -1,15 +1,15 @@
 # conform: tags=lists,faults,perf,tier-core
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
-import {stdout} from "@std/io.ms"
-import {range} from "@std/collections.ms"
+from "@std/io.ms" import stdout
+from "@std/collections.ms" import range
 
-fn last_after_loop(a: List[Int]) Int:
+def last_after_loop(a: List[Int]) -> Int:
     var t = 0
     for i in range(0, a.length()):
         t = t + a[i]
     return t + a[a.length() - 1]
 
-export fn main() Int:
-    stdout().write("{last_after_loop([])}\n")
+export def main() -> Int:
+    stdout().write(f"{last_after_loop([])}\n")
     return 0

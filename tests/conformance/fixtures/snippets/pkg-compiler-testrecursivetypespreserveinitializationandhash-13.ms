@@ -5,6 +5,6 @@ type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-fn value(expr: Expr) Int:
+def value(expr: Expr) -> Int:
     match expr:
-        Num(value): return value
+        case Num(value): return value

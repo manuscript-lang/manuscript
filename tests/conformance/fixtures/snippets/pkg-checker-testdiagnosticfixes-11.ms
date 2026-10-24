@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,modules,stdlib-queues,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/checker/diagnostic_fixes_test.go:31 TestDiagnosticFixes
-import Queue from "@std/queue.ms"
+from "@std/queue.ms" import Queue
 
-fn f(q: Queue[Int]) Int:
+def f(q: Queue[Int]) -> Int:
     q.capacity = 5
     return q.capacity

@@ -695,6 +695,8 @@ pub enum StmtKind {
     },
     /// `for name in iter:`
     For {
+        /// Written `for ref name`: the variable borrows each element (the default for a loop).
+        by_ref: bool,
         /// Loop variable.
         name: Symbol,
         /// Iterated value.

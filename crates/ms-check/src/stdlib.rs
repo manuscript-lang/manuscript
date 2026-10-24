@@ -65,6 +65,9 @@ pub struct ReceiverRequirement {
 struct World {
     state: u8, // 0 unloaded, 1 loading, 2 loaded
     symbols: HashMap<Name, SymRef>,
+    /// Exported records and alternatives of source modules, declared when the module is registered so
+    /// native modules can name them before the source module is checked.
+    source_types: HashMap<(Name, Name), SymRef>,
     modules: HashMap<Name, HashMap<Name, SymRef>>,
     module_order: Vec<Name>,
     sources: Vec<ModRef>,
@@ -233,6 +236,52 @@ pub fn is_native_module(path: Name) -> bool {
     world(|w| w.modules.contains_key(&path))
 }
 
+/// The symbol of a record or alternative declared in a bundled source module, as registered at load.
+pub fn source_type(module: Name, name: Name) -> Option<SymRef> {
+    ensure_standard();
+    world(|w| w.source_types.get(&(module, name)).cloned())
+}
+
+/// Declares the symbol of a record or alternative of a bundled source module. The checker of the
+/// module reuses it, so native modules and the source module agree on one type.
+pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
+    let name = d.name();
+    let kind = if matches!(d.decl().kind, DeclKind::Alternative(_)) {
+        Kind::Alternative
+    } else {
+        Kind::Record
+    };
+    let stem = module
+        .file
+        .as_str()
+        .trim_start_matches("@std/")
+        .trim_end_matches(".ms");
+    let s = Rc::new(Sym {
+        name,
+        id: n(&format!("standard_{stem}_symbol_{name}")),
+        kind: SymKind::Type,
+        module: module.file,
+        native: n(""),
+        export: d.decl().export,
+        ty: RefCell::new(None),
+        variables: RefCell::new(Vec::new()),
+        decl: Some(d.clone()),
+    });
+    let def = Definition::new(&s, kind);
+    let mut t = Type::new(
+        name,
+        n(&format!(
+            "module/{}#{}",
+            crate::checker::hex(module.file.as_str()),
+            name
+        )),
+        kind,
+    );
+    t.def = Some(def);
+    *s.ty.borrow_mut() = Some(Rc::new(t));
+    s
+}
+
 /// A native module's declaration by name.
 pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     ensure_standard();
@@ -240,6 +289,7 @@ pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
         w.modules
             .get(&path)
             .and_then(|m| m.get(&name).cloned())
+            .or_else(|| w.source_types.get(&(path, name)).cloned())
             // An `extern type` of a source module is canonical from the moment of loading.
             .or_else(|| {
                 w.symbols
@@ -598,8 +648,13 @@ impl Loader<'_> {
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
-                if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
-                    self.register_extern_type(module, d)?;
+                match &d.decl().kind {
+                    DeclKind::Record(r) if r.external => self.register_extern_type(module, d)?,
+                    DeclKind::Record(_) | DeclKind::Alternative(_) if d.decl().export => {
+                        let stub = source_type_symbol(module, d);
+                        world(|w| w.source_types.insert((module.file, d.name()), stub));
+                    }
+                    _ => {}
                 }
             }
             world(|w| {

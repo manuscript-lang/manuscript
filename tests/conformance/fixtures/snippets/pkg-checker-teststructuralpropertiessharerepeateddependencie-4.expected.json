@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms",
           "line": 4,
-          "column": 16,
-          "offset": 187
+          "column": 17,
+          "offset": 188
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms",
           "line": 4,
-          "column": 32,
-          "offset": 203
+          "column": 33,
+          "offset": 204
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms:4:16: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms:4:32: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms:4:17: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-4.ms:4:33: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

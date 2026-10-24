@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {terminal, TerminalError} from "@std/io.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/io.ms" import terminal, TerminalError
 
 test "redirected streams report no terminal and refuse raw mode":
     let capabilities = terminal().capabilities()
@@ -8,7 +8,7 @@ test "redirected streams report no terminal and refuse raw mode":
     try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
     try expect_false(capabilities.resize_events)
 
-    let raw = terminal().raw_mode(alternate_screen: false)
+    let raw = terminal().raw_mode(alternate_screen: False)
 
     if let active = raw:
         active.close()

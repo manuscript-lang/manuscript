@@ -1,31 +1,31 @@
 # conform: tags=closures,control-flow,diagnostics,interfaces,modules,records,stdlib-cleanup,stdlib-queues,tier-stdlib,with-cleanup
 # conform: phase=check
 # conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
-import Closeable from "@std/core.ms"
-import Queue from "@std/queue.ms"
+from "@std/core.ms" import Closeable
+from "@std/queue.ms" import Queue
 
 type Resource:
     state: Queue[Int]
 
 impl Closeable for Resource:
-    fn close() Unit:
+    def close() -> Unit:
         self.state.dequeue()
 
-fn pure() Int:
+def pure() -> Int:
     return 1
 
-fn direct(resource: Resource) Unit:
-    with item = resource:
+def direct(resource: Resource) -> Unit:
+    with resource as item:
         return
 
-fn transitive(resource: Resource) Unit:
+def transitive(resource: Resource) -> Unit:
     direct(resource: resource)
 
-fn nested(resource: Resource) Unit:
-    let callback = fn(item: Resource) Unit:
-        with held = item:
+def nested(resource: Resource) -> Unit:
+    let callback = lambda (item: Resource) -> Unit:
+        with item as held:
             return
     callback(resource)
 
-fn indirect(callback: fn() Unit) Unit:
+def indirect(callback: Callable[[], Unit]) -> Unit:
     callback()

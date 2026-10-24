@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms",
           "line": 4,
-          "column": 18,
-          "offset": 187
+          "column": 19,
+          "offset": 188
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms",
           "line": 4,
-          "column": 31,
-          "offset": 200
+          "column": 32,
+          "offset": 201
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms:4:18: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms:4:31: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms:4:19: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-14.ms:4:32: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

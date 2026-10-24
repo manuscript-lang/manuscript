@@ -1,13 +1,13 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
-fn append_generic[T](var values: List[Optional[T]], value: T) Unit:
+def append_generic[T](var values: List[Optional[T]], value: T) -> Unit:
     values.append(value)
 
 type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() String: "failure"
+    def message() -> String: "failure"
 
 test "direct append preserves checked argument conversions":
     var values: List[Optional[Int]] = []
@@ -18,11 +18,11 @@ test "direct append preserves checked argument conversions":
     try expect_false(not values.get(2).is_none())
 
     var flags: List[Optional[Bool]] = []
-    flags.append(false)
+    flags.append(False)
     try expect_false(flags.get(0).is_none() or flags.get(0).get())
 
     var units: List[Optional[Unit]] = []
-    units.append(unit)
+    units.append(())
     try expect_false(units.get(0).is_none())
 
     let inner: Optional[Int] = none
@@ -30,8 +30,8 @@ test "direct append preserves checked argument conversions":
     nested.append(inner)
     try expect_false((nested.get(0).is_none() or not nested.get(0).get().is_none()))
 
-    var callbacks: List[Optional[fn(value: Int) Int]] = []
-    callbacks.append(fn(value): value + 1)
+    var callbacks: List[Optional[Callable[[Int], Int]]] = []
+    callbacks.append(lambda value: value + 1)
     try expect_equal(callbacks.get(0).get()(7), 8)
 
     var errors: List[Error] = []
@@ -71,10 +71,10 @@ test "direct calls capture receiver and arguments in written order":
     receiver.append(
         (
             match some(7):
-                some(value):
+                case some(value):
                     receiver = second.clone()
                     value
-                none: 0
+                case none: 0
         ) + 0
     )
     try expect_false(not first.is_empty() or not second.is_empty())
@@ -85,10 +85,10 @@ test "direct calls capture receiver and arguments in written order":
         key,
         (
             match some(7):
-                some(value):
+                case some(value):
                     key = 2
                     value
-                none: 0
+                case none: 0
         ) + 0
     )
     try expect_false(

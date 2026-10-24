@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,stdlib-faults,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:48 TestDiagnosticsStateCauseAndFix
-import nope from "@std/core.ms"
+from "@std/core.ms" import nope
 
-fn f() Unit:
+def f() -> Unit:
     return

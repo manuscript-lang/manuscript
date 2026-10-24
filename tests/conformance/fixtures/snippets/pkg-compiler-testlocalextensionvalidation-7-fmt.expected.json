@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "impl Read[Int] for Read[Int]:\n    fn get() Int:\n        return 0\n"
+    "fmt": "impl Read[Int] for Read[Int]:\n    def get() -> Int:\n        return 0\n"
   }
 }

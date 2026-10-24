@@ -1,1 +1,1 @@
-error parse 1:43:42 "unterminated interpolation; the quote after this '{' opens a nested text that never closes ('{' starts an interpolation; write \x5c{ and \x5c} for literal braces)"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

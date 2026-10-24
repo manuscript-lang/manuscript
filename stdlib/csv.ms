@@ -1,5 +1,5 @@
-import {StringBuilder, from_scalars} from "@std/string.ms"
-import {range} from "@std/collections.ms"
+from "@std/string.ms" import StringBuilder, from_scalars
+from "@std/collections.ms" import range
 
 # Errors returned for malformed CSV input or configured size limits.
 export type CsvError:
@@ -19,12 +19,12 @@ export type CsvOptions:
 
 # Parses CSV into rows of cells, using fresh default options when omitted.
 # Optional row and cell limits bound large inputs.
-export fn parse(
+export def parse(
     text: String,
     options: CsvOptions = CsvOptions(),
     max_rows: Optional[Int] = none,
     max_cells: Optional[Int] = none
-) Result[List[List[String]], CsvError]:
+) -> Result[List[List[String]], CsvError]:
     let rows_budget = budget(max_rows)
     let cells_budget = budget(max_cells)
     if rows_budget < 0 or cells_budget < 0: return error(CsvError.InvalidInput)
@@ -45,7 +45,7 @@ export fn parse(
     var rows = List[List[String]]()
     var cells = 0
 
-    while true:
+    while True:
         let record = read_record(var reader)
         if record.is_error(): return error(record.err())
 
@@ -63,13 +63,13 @@ export fn parse(
     return ok(rows)
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
-fn budget(limit: Optional[Int]) Int:
+def budget(limit: Optional[Int]) -> Int:
     if let value = limit: return value
 
     return 9223372036854775807
 
 # Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
-fn check_options(options: CsvOptions) Result[Unit, CsvError]:
+def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
     let scalars = options.delimiter.scalar_values()
     if scalars.length() != 1: return error(CsvError.InvalidInput)
 
@@ -85,7 +85,7 @@ fn check_options(options: CsvOptions) Result[Unit, CsvError]:
         CsvError.InvalidInput
     )
 
-    return ok(unit)
+    return ok(())
 
 # Input split at LF; a record may span several lines when a quoted cell holds a newline.
 type Reader:
@@ -94,7 +94,7 @@ type Reader:
     next_line: Int
     total_lines: Int
 
-fn text_of(scalars: List[Int]) String:
+def text_of(scalars: List[Int]) -> String:
     if let text = from_scalars(scalars): return text
 
     return ""
@@ -105,7 +105,7 @@ type Line:
     length: Int
     ended: Bool
 
-fn take_line(var reader: Reader) Optional[Line]:
+def take_line(var reader: Reader) -> Optional[Line]:
     if reader.next_line >= reader.total_lines: return none
 
     let cells = reader.lines[reader.next_line].scalar_values()
@@ -120,10 +120,10 @@ fn take_line(var reader: Reader) Optional[Line]:
     )
 
 # Reads the next record, skipping empty lines; none at end of input.
-fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
+def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
     var first = take_line(var reader)
 
-    while true:
+    while True:
         if let candidate = first:
             if candidate.length > 0: break
 
@@ -136,7 +136,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
     var cell = List[Int]()
     var at = 0
 
-    while true:
+    while True:
         if at >= line.length or line.cells[at] != 34:
             var stop = at
 
@@ -156,7 +156,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
 
         at += 1
 
-        while true:
+        while True:
             var close = at
             while close < line.length and line.cells[close] != 34: close += 1
 
@@ -198,11 +198,11 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.
-export fn stringify(
+export def stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
     max_bytes: Optional[Int] = none
-) Result[String, CsvError]:
+) -> Result[String, CsvError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(CsvError.InvalidInput)
 
@@ -225,7 +225,7 @@ export fn stringify(
                 pieces.append(encode_field(field, delimiter, crlf))
             line = pieces.join(options.delimiter)
 
-        line = "{line}{options.line_ending}"
+        line = f"{line}{options.line_ending}"
 
         let size = line.byte_length()
         if size > limit - used: return error(CsvError.LimitExceeded)
@@ -235,34 +235,34 @@ export fn stringify(
 
     return ok(out.freeze())
 
-fn needs_quotes(field: String, delimiter: Int) Bool:
+def needs_quotes(field: String, delimiter: Int) -> Bool:
     let scalars = field.scalar_values()
-    if scalars.is_empty(): return false
+    if scalars.is_empty(): return False
 
     for scalar in scalars:
-        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
+        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return True
 
     let first = scalars[0]
     if first <= 32 or first >= 127: return field.get(0).trim() == ""
 
     return scalars.length() == 2 and first == 92 and scalars[1] == 46
 
-fn replaced(text: String, old: String, new: String) String:
+def replaced(text: String, old: String, new: String) -> String:
     if let result = text.replace_all(old, new): return result
 
     return text.clone()
 
-fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
+def encode_field(field: String, delimiter: Int, crlf: Bool) -> String:
     if not needs_quotes(field, delimiter): return field.clone()
 
     var quoted = replaced(field, "\"", "\"\"")
     if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")
-    return "\"{quoted}\""
+    return f"\"{quoted}\""
 
 impl Error for CsvError:
     # Returns a CSV-prefixed diagnostic without exposing input cells or parser text.
-    fn message() String:
+    def message() -> String:
         match self:
-            InvalidInput: return "CSV: invalid input"
-            InvalidData: return "CSV: invalid data"
-            LimitExceeded: return "CSV: limit exceeded"
+            case InvalidInput: return "CSV: invalid input"
+            case InvalidData: return "CSV: invalid data"
+            case LimitExceeded: return "CSV: limit exceeded"

@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-3.ms",
           "line": 8,
-          "column": 19,
-          "offset": 289
+          "column": 23,
+          "offset": 297
         }
       },
       {
@@ -36,18 +36,18 @@
           "file": "pkg-checker-testfilefixturecontracts-3.ms",
           "line": 8,
           "column": 1,
-          "offset": 271
+          "offset": 275
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module",
+        "message": "unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-3.ms",
           "line": 9,
           "column": 12,
-          "offset": 307
+          "offset": 315
         }
       },
       {
@@ -57,15 +57,15 @@
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-3.ms",
           "line": 12,
-          "column": 26,
-          "offset": 382
+          "column": 34,
+          "offset": 398
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-3.ms:8:19: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:8:1: type: make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:9:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...)', or import it from a module\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:12:26: resolution: fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-3.ms:8:23: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:8:1: type: make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:9:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module\n<DIR>/pkg-checker-testfilefixturecontracts-3.ms:12:34: resolution: fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

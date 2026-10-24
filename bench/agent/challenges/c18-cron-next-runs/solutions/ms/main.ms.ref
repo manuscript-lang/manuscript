@@ -1,13 +1,13 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
+from "@std/io.ms" import stdin, stdout, read_line
 
-fn pad2(n: Int) String:
+def pad2(n: Int) -> String:
     if n < 10:
-        return "0{n}"
+        return f"0{n}"
 
-    return "{n}"
+    return f"{n}"
 
 # Parses s when it is lo to hi ASCII digits.
-fn digits(s: String, lo: Int, hi: Int) Optional[Int]:
+def digits(s: String, lo: Int, hi: Int) -> Optional[Int]:
     let codes = s.scalar_values()
     if codes.length() < lo or codes.length() > hi:
         return none
@@ -22,21 +22,23 @@ fn digits(s: String, lo: Int, hi: Int) Optional[Int]:
 
     return some(n)
 
-fn days_from_civil(year: Int, m: Int, d: Int) Int:
+def days_from_civil(year: Int, m: Int, d: Int) -> Int:
     var y = year
     if m <= 2:
         y = y - 1
+
     let era = y / 400
     let yoe = y - era * 400
     var mp = m - 3
     if m <= 2:
         mp = m + 9
+
     let doy = (153 * mp + 2) / 5 + d - 1
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
     return era * 146097 + doe - 719468
 
 # Returns [year, month, day].
-fn civil_from_days(days: Int) List[Int]:
+def civil_from_days(days: Int) -> List[Int]:
     let z = days + 719468
     let era = z / 146097
     let doe = z - era * 146097
@@ -52,12 +54,12 @@ fn civil_from_days(days: Int) List[Int]:
         y = y + 1
     return [y, m, d]
 
-fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
+def parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
     var set = List[Bool]()
     var i = 0
 
     while i <= hi:
-        set.append(false)
+        set.append(False)
         i = i + 1
 
     for item in text.split(","):
@@ -82,7 +84,7 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         if body == "*":
             a = lo
             b = hi
-        else if single.is_some():
+        elif single.is_some():
             if parts.length() == 2:
                 return none
 
@@ -107,17 +109,18 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         var v = a
 
         while v <= b:
-            set.set(v, true)
+            set.set(v, True)
             v = v + step
 
     return some(set)
 
 # Returns [day number, minute of day] for a valid START, or an empty list.
-fn parse_start(s: String) List[Int]:
+def parse_start(s: String) -> List[Int]:
     let codes = s.scalar_values()
     let empty = List[Int]()
     if codes.length() != 16:
         return empty
+
     # '-' 45, 'T' 84, ':' 58
     if (
         codes.get(4) != 45
@@ -159,39 +162,40 @@ fn parse_start(s: String) List[Int]:
 
     return [days_from_civil(year, month, day), h.get() * 60 + mi.get()]
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
     let lows = [0, 0, 1, 1, 0]
     let highs = [59, 23, 31, 12, 6]
     var n = 0
 
-    while true:
+    while True:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
 
         n = n + 1
+
         let l = next.get()
         if l.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        let pre = "line {n}:"
+        let pre = f"line {n}:"
         let t = l.split(" ")
 
         if t.length() != 7:
-            try stdout().write("{pre} error: bad line\n")
+            try stdout().write(f"{pre} error: bad line\n")
             continue
 
         let start = parse_start(t.get(0))
 
         if start.is_empty():
-            try stdout().write("{pre} error: bad start\n")
+            try stdout().write(f"{pre} error: bad start\n")
             continue
 
         let count_opt = digits(t.get(1), 1, 2)
 
         if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
-            try stdout().write("{pre} error: bad count\n")
+            try stdout().write(f"{pre} error: bad count\n")
             continue
 
         let count = count_opt.get()
@@ -200,11 +204,7 @@ fn run() Result[Unit, Error]:
         var i = 0
 
         while i < 5:
-            let s = parse_field(
-                t.get(2 + i),
-                lows.get(i),
-                (highs.get(i))
-            )
+            let s = parse_field(t.get(2 + i), lows.get(i), (highs.get(i)))
 
             if s.is_none():
                 bad = names.get(i).clone()
@@ -214,7 +214,7 @@ fn run() Result[Unit, Error]:
             i = i + 1
 
         if not bad.is_empty():
-            try stdout().write("{pre} error: bad {bad}\n")
+            try stdout().write(f"{pre} error: bad {bad}\n")
             continue
 
         let minutes = sets.get(0)
@@ -251,7 +251,7 @@ fn run() Result[Unit, Error]:
                                 )
                             ):
                                 runs.append(
-                                    "{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
+                                    f"{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
                                 )
                             mn = mn + 1
 
@@ -260,16 +260,16 @@ fn run() Result[Unit, Error]:
             k = k + 1
 
         if runs.is_empty():
-            try stdout().write("{pre} never\n")
+            try stdout().write(f"{pre} never\n")
             continue
 
-        try stdout().write("{pre} {runs.length()} runs\n")
+        try stdout().write(f"{pre} {runs.length()} runs\n")
         for r in runs:
-            try stdout().write("{r}\n")
+            try stdout().write(f"{r}\n")
 
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

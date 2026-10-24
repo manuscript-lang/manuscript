@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn twice[T](r: Optional[Optional[Result[T, Error]]]) Unit: return\n\nfn first() Unit: twice(f())\n"
+    "fmt": "def twice[T](r: Optional[Optional[Result[T, Error]]]) -> Unit: return\n\ndef first() -> Unit: twice(f())\n"
   }
 }

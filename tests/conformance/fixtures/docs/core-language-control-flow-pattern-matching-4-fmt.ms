@@ -1,9 +1,9 @@
 # conform: tags=formatter,match,parser,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/control-flow/pattern-matching.md:83
-fn paid(payment: Payment) Bool:
+def paid(payment: Payment) -> Bool:
     match payment:
-        Paid(_):
-            return true
-        _:
-            return false
+        case Paid(_):
+            return True
+        case _:
+            return False

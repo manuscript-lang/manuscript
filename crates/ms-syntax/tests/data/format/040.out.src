@@ -1,4 +1,4 @@
-fn checked(value: Int) Int:
+def checked(value: Int) -> Int:
     let first = value
     let second = first + 1
     if second < 0: return 0
@@ -22,7 +22,7 @@ test "setup and assertions":
     let expected = 3
     actual | try expect_equal(expected)
 
-    let callback = fn(value: Int) Int:
+    let callback = lambda (value: Int) -> Int:
         let result = value + 1
         return result
 

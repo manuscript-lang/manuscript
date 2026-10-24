@@ -1,19 +1,19 @@
-import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
+from "@std/bytes.ms" import Bytes
+from "@std/time.ms" import Duration
 
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
     # Releases the file resource; retained aliases do not extend its open lifetime.
-    fn close() Unit
+    def close() -> Unit
     # Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
     # Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
 export interface Files:
     # Opens path for read-only access; native missing, denied, and other open failures become Unavailable.
-    fn open(path: String) Result[File, IoError]
+    def open(path: String) -> Result[File, IoError]
 
 # Errors returned while reading, writing, or closing an I/O resource.
 export type IoError:
@@ -36,59 +36,59 @@ export type IoError:
 # A readable byte stream. Each read returns a chunk or `none` at end of stream.
 export interface ReadStream:
     # Releases this implementation's read resource; ownership of underlying handles is implementation-defined.
-    var fn close() Unit
+    var def close() -> Unit
     # Returns a chunk or none at EOF; a final nonempty chunk can precede EOF.
     # A supplied positive max_bytes requests a chunk size; native omission/none uses 64 KiB.
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]
+    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
 
 # A writable byte stream. Successful write accepts all bytes; failure may leave an external prefix.
 # Buffering/flush depends on the implementation: native stderr is unbuffered and native stdout is buffered when not a terminal (flush drains it),
 # while FileHandle.writer().flush synchronizes the file. Success does not acknowledge peer processing.
 export interface WriteStream:
     # Releases this implementation's write resource; close does not imply a successful flush.
-    var fn close() Unit
+    var def close() -> Unit
     # Completes implementation-specific buffering or synchronization; native stdout drains its buffer and stderr has none.
     # File-handle writers synchronize the file, and failures retain IoError identity.
-    var fn flush() Result[Unit, IoError]
+    var def flush() -> Result[Unit, IoError]
     # Accepts the complete input on success; a source implementation may buffer until flush.
-    var fn write(data: String) Result[Unit, IoError]
+    var def write(data: String) -> Result[Unit, IoError]
     # Accepts the complete bytes on success, with the buffering rules of write.
-    var fn write_bytes(data: Bytes) Result[Unit, IoError]
+    var def write_bytes(data: Bytes) -> Result[Unit, IoError]
 
 # Copies bytes until end of input or the supplied byte limit; returns bytes copied.
-export fn copy(
+export def copy(
     input: ReadStream,
     output: WriteStream,
     max_bytes: Optional[Int] = none
-) Result[Int, IoError]:
+) -> Result[Int, IoError]: ...
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
-export fn read_all(
+export def read_all(
     input: ReadStream,
     max_bytes: Optional[Int] = none
-) Result[Bytes, IoError]:
+) -> Result[Bytes, IoError]: ...
 
 # Reads one line, omitting its line ending; returns `none` at end of stream.
-export fn read_line(
+export def read_line(
     input: ReadStream,
     max_bytes: Optional[Int] = none
-) Result[Optional[String], IoError]:
+) -> Result[Optional[String], IoError]: ...
 
 impl Error for IoError:
     # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.
-    fn message() String:
+    def message() -> String: ...
 
 # Returns the process standard-input stream.
-export fn stdin() ReadStream:
+export def stdin() -> ReadStream: ...
 
 # Returns the process standard-output stream.
-export fn stdout() WriteStream:
+export def stdout() -> WriteStream: ...
 
 # Returns the process standard-error stream.
-export fn stderr() WriteStream:
+export def stderr() -> WriteStream: ...
 
 # Returns file operations for the current host.
-export fn files() Files:
+export def files() -> Files: ...
 
 # Errors returned by terminal queries and raw-mode operations.
 export type TerminalError:
@@ -176,11 +176,11 @@ export type EraseRegion:
 # Queries the terminal and enters raw input mode.
 export interface Terminal:
     # Reports terminal availability and color support without changing terminal state.
-    fn capabilities() TerminalCapabilities
+    def capabilities() -> TerminalCapabilities
     # Returns the terminal size, or `NotTerminal` when output is redirected.
-    fn size() Result[TerminalSize, TerminalError]
+    def size() -> Result[TerminalSize, TerminalError]
     # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
-    fn raw_mode(alternate_screen: Bool) Result[RawTerminal, TerminalError]
+    def raw_mode(alternate_screen: Bool) -> Result[RawTerminal, TerminalError]
 
 # Raw terminal input and cursor control. Closing it, or leaving the `with`
 # scope that acquired it by return, error, fault, or cancellation, restores the
@@ -188,23 +188,23 @@ export interface Terminal:
 # In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
 export interface RawTerminal:
     # Restores the terminal; closing again does nothing.
-    fn close() Unit
+    def close() -> Unit
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(
+    def next_event(
         timeout: Optional[Duration] = none
-    ) Result[Optional[TerminalEvent], TerminalError]
+    ) -> Result[Optional[TerminalEvent], TerminalError]
     # Returns the current terminal size, or `Closed` after close.
-    fn size() Result[TerminalSize, TerminalError]
+    def size() -> Result[TerminalSize, TerminalError]
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
-    fn move_cursor(row: Int, column: Int) Result[Unit, TerminalError]
+    def move_cursor(row: Int, column: Int) -> Result[Unit, TerminalError]
     # Shows or hides the cursor until the terminal is restored on close.
-    fn show_cursor(visible: Bool) Result[Unit, TerminalError]
+    def show_cursor(visible: Bool) -> Result[Unit, TerminalError]
     # Erases the selected screen region without moving the cursor.
-    fn erase(region: EraseRegion) Result[Unit, TerminalError]
+    def erase(region: EraseRegion) -> Result[Unit, TerminalError]
 
 impl Error for TerminalError:
     # Returns a fixed diagnostic, or the host message for `Failed`.
-    fn message() String:
+    def message() -> String: ...
 
 # Returns terminal operations for the current process.
-export fn terminal() Terminal:
+export def terminal() -> Terminal: ...

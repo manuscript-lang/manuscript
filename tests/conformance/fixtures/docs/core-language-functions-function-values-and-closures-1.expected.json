@@ -14,7 +14,7 @@
           "file": "core-language-functions-function-values-and-closures-1.ms",
           "line": 8,
           "column": 17,
-          "offset": 285
+          "offset": 291
         }
       },
       {
@@ -25,14 +25,36 @@
           "file": "core-language-functions-function-values-and-closures-1.ms",
           "line": 10,
           "column": 14,
-          "offset": 344
+          "offset": 358
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument value; parameters of transform: _0",
+        "position": {
+          "file": "core-language-functions-function-values-and-closures-1.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 245
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument _0: Int in call to transform; add '_0: <Int>'",
+        "position": {
+          "file": "core-language-functions-function-values-and-closures-1.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 235
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-functions-function-values-and-closures-1.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-function-values-and-closures-1.ms:10:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-functions-function-values-and-closures-1.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-function-values-and-closures-1.ms:10:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-functions-function-values-and-closures-1.ms:5:22: type: unknown argument value; parameters of transform: _0\n<DIR>/core-language-functions-function-values-and-closures-1.ms:5:12: type: missing argument _0: Int in call to transform; add '_0: <Int>'\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,33 +1,33 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
-import range from "@std/collections.ms"
-import {max, min} from "@std/math.ms"
+from "@std/io.ms" import read_line, stdin, stdout
+from "@std/collections.ms" import range
+from "@std/math.ms" import max, min
 
-fn next_line() String:
+def next_line() -> String:
     return read_line(stdin()).get().get("")
 
-fn read_lines(count: Int) List[String]:
+def read_lines(count: Int) -> List[String]:
     var lines = List[String]()
     for k in range(0, count):
         lines.append(next_line())
     return lines
 
-fn present(length: Int) Int:
+def present(length: Int) -> Int:
     if length > 0:
         return 1
 
     return 0
 
-fn span(start: Int, length: Int) String:
+def span(start: Int, length: Int) -> String:
     if length == 1:
-        return "{start}"
+        return f"{start}"
 
-    return "{start},{length}"
+    return f"{start},{length}"
 
-fn write_all(text: String) Result[Unit, Error]:
+def write_all(text: String) -> Result[Unit, Error]:
     try stdout().write(text)
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     let header = next_line().split(" ")
     let name_a = header.get(0)
     let name_b = header.get(1)
@@ -100,7 +100,7 @@ export fn main() Int:
         if kinds.get(k) != 0:
             if last < 0:
                 first = k
-            else if k - last - 1 > 2 * context:
+            elif k - last - 1 > 2 * context:
                 starts.append(max(first - context, 0))
                 ends.append(min(last + context, count - 1))
                 first = k
@@ -115,8 +115,8 @@ export fn main() Int:
         return 0
 
     var out = List[String]()
-    out.append("--- {name_a}")
-    out.append("+++ {name_b}")
+    out.append(f"--- {name_a}")
+    out.append(f"+++ {name_b}")
 
     for h in range(0, starts.length()):
         let s = starts.get(h)
@@ -132,12 +132,12 @@ export fn main() Int:
 
         let sa = a_before.get(s) + present(la)
         let sb = b_before.get(s) + present(lb)
-        out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
+        out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for k in range(s, e + 1):
             if kinds.get(k) == 0:
                 out.append(" " + texts.get(k))
-            else if kinds.get(k) == 1:
+            elif kinds.get(k) == 1:
                 out.append("-" + texts.get(k))
             else:
                 out.append("+" + texts.get(k))

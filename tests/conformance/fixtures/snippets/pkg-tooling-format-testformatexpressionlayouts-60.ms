@@ -1,9 +1,9 @@
 # conform: tags=closures,diagnostics,lists,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/format/format_layout_test.go:438 TestFormatExpressionLayouts
-fn work() Bool:
+def work() -> Bool:
     return (
         [[1, 2], [3]].flat_map(
-            transform: fn(value: List[Int]) List[Int]: return value
+            transform: lambda (value: List[Int]) -> List[Int]: return value
         ) == [1, 2, 3]
     )

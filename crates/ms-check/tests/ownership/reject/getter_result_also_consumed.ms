@@ -4,7 +4,7 @@ type Box:
 type Wrap:
     inner: Box
 
-fn f(b: Box, first: Bool) List[Int]:
+def f(b: Box, first: Bool) -> List[Int]:
     if first:
         return b.items  # error: also takes ownership
 

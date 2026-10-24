@@ -4,5 +4,5 @@
 type Box[T]:
     value: T
 
-fn f() Box[Int]:
+def f() -> Box[Int]:
     return Box(value: 1)

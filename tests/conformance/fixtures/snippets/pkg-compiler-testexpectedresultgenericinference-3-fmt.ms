@@ -1,6 +1,6 @@
 # conform: tags=formatter,generics,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/compiler/contextual_generics_test.go:56 TestExpectedResultGenericInference
-fn failed[T]() Result[T, Failure]: error(Failure("empty"))
+def failed[T]() -> Result[T, Failure]: error(Failure("empty"))
 
-fn first() Result[Int, Error]: failed()
+def first() -> Result[Int, Error]: failed()

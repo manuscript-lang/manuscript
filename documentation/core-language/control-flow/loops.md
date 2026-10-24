@@ -10,7 +10,7 @@ weight = 2
 ## Traversing a list
 
 ```manuscript
-fn sum(values: List[Int]) Int:
+def sum(values: List[Int]) -> Int:
     var total = 0
     for value in values:
         total += value
@@ -24,15 +24,15 @@ fn sum(values: List[Int]) Int:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import range from "@std/collections.ms"
-import panic from "@std/core.ms"
+from "@std/collections.ms" import range
+from "@std/core.ms" import panic
 
 test "sum indexes":
     var total = 0
     for index in range(0, 5):
         total += index
     if total != 10:
-        return panic("Expected 10, got {total}")
+        return panic(f"Expected 10, got {total}")
 ```
 
 `end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `range(0, count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
@@ -41,7 +41,7 @@ Use `while` with a counter for other steps or computed exits:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
 test "five iterations":
     var index = 0
@@ -61,8 +61,8 @@ Increment the counter before any `continue` that would skip its update.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import range_by from "@std/collections.ms"
-import expect_equal from "@std/testing.ms"
+from "@std/collections.ms" import range_by
+from "@std/testing.ms" import expect_equal
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)
@@ -76,7 +76,7 @@ test "sum even indexes":
 
 ## Iterable types and binding
 
-The iterable is evaluated once. Traversal borrows the collection for the loop body; mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
+The iterable is evaluated once. Traversal borrows the collection for the loop body (`for ref e in xs:` states it); mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |
@@ -87,7 +87,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
 ```manuscript
-fn total(values: Map[String, Int]) Int:
+def total(values: Map[String, Int]) -> Int:
     var sum = 0
     for entry in values:
         let {key, value} = entry
@@ -100,7 +100,7 @@ fn total(values: Map[String, Int]) Int:
 ## Repeating while a condition holds
 
 ```manuscript
-fn count_down(start: Int) Int:
+def count_down(start: Int) -> Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1

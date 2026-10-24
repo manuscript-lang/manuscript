@@ -8,7 +8,7 @@ weight = 1
 `with` acquires a resource and closes it when its indented block ends. The introduced name cannot be reassigned.
 
 ```manuscript
-with file = try files.open("data.txt"):
+with try files.open("data.txt") as file:
     let chunk = try file.read(max_bytes: 4096)
 ```
 
@@ -31,7 +31,7 @@ The compiler needs a valid close operation:
 | Value's type | Required evidence |
 | --- | --- |
 | Concrete type | An explicit implementation of standard `Closeable`. |
-| Contract view | A declared `fn close() Unit` operation. |
+| Contract view | A declared `def close() -> Unit` operation. |
 | Generic parameter | A bound proving one of those operations. |
 
 See [Closeable](closeable.md) for exact checks.

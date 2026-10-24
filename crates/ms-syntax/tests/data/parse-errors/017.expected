@@ -1,1 +1,1 @@
-error parse 2:13:100 "expected '(', found end of line; a call or parameter list starts with '('"
+error parse 2:8:95 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

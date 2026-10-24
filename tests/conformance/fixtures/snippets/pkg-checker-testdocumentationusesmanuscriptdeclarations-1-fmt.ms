@@ -2,19 +2,19 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/documentation_test.go:87 TestDocumentationUsesManuscriptDeclarations
 interface DatagramSocket:
-    fn address() String
-    fn close() Unit
-    fn receive(
+    def address() -> String
+    def close() -> Unit
+    def receive(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) Result[Datagram, NetworkError]
-    fn send(
+    ) -> Result[Datagram, NetworkError]
+    def send(
         data: String,
         address: String,
         timeout: Optional[Duration] = none
-    ) Result[Unit, NetworkError]
-    fn send_bytes(
+    ) -> Result[Unit, NetworkError]
+    def send_bytes(
         data: Bytes,
         address: String,
         timeout: Optional[Duration] = none
-    ) Result[Unit, NetworkError]
+    ) -> Result[Unit, NetworkError]

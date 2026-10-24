@@ -835,7 +835,9 @@ impl Walker<'_> {
                 self.block(body);
                 self.active = Self::join_active(entry, std::mem::take(&mut self.active));
             }
-            StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body),
+            StmtKind::For {
+                by_ref, iter, body, ..
+            } => self.for_stmt(s, *by_ref, iter, body),
             StmtKind::With { value, body, .. } => {
                 self.expr(value, Demand::Consume);
                 self.release_pending();
@@ -890,9 +892,18 @@ impl Walker<'_> {
         self.active = Self::join_active(then_state, else_state);
     }
 
-    fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {
+    fn for_stmt(&mut self, s: &Stmt, by_ref: bool, iter: &Expr, body: &[Stmt]) {
         let mark = self.declared.len();
         let source = self.scrutinee(s.id, iter);
+        if by_ref && source.origins.is_empty() {
+            let text = self.expr_text(iter);
+            self.error(
+                iter.pos,
+                format!(
+                    "`for ref` borrows the elements of a variable or field; `{text}` is an owned value, so drop `ref`"
+                ),
+            );
+        }
         self.release_pending();
         // The iterable stays unchanged for the whole loop.
         let hidden = usize::MAX - self.hidden;

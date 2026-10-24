@@ -1,11 +1,11 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 # Sum three integer values with explicit named arguments.
-export fn total(first: Int, second: Int, third: Int) Int:
+export def total(first: Int, second: Int, third: Int) -> Int:
     return first + second + third
 
 # Work long enough to produce visible CPU samples.
-export fn compute(iterations: Int) Int:
+export def compute(iterations: Int) -> Int:
     var index = 0
     var result = 0
 

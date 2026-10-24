@@ -2,10 +2,10 @@
 # conform: phase=check
 # conform: origin=pkg/checker/interface_hints_test.go:47 TestInterfaceHintCorrectionsAndReceiverScope
 interface Shape:
-    fn area() Int
+    def area() -> Int
 
 type Sq:
     s: Int
 
 impl Shape for Sq:
-    fn area() Int: self.s * self.s
+    def area() -> Int: self.s * self.s

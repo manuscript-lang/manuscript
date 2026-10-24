@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-2.ms",
           "line": 4,
-          "column": 31,
-          "offset": 220
+          "column": 35,
+          "offset": 224
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-2.ms:4:31: resolution: unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-2.ms:4:35: resolution: unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,16 +1,16 @@
 # conform: tags=closures,formatter,generics,interpolation,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/numeric-lowering.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Counter:
     value: Int
 
-fn step(var counter: Counter, value: Int) Int:
+def step(var counter: Counter, value: Int) -> Int:
     counter.value = counter.value * 10 + value
     return value
 
-fn identity[T](value: T) T:
+def identity[T](value: T) -> T:
     return value
 
 test "typed operands retain evaluation order and generic boundaries":
@@ -22,7 +22,7 @@ test "typed operands retain evaluation order and generic boundaries":
     value += 1
     value -= 1
 
-    let snapshot = fn() Int: return value * 2
+    let snapshot = lambda () -> Int: return value * 2
     try expect_false(snapshot() != 18 or value != 9)
     try expect_equal(-9223372036854775808 % -1, 0)
     try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
@@ -37,12 +37,12 @@ test "unary plus keeps the operand":
 
 test "floating operations retain binary64 edge behavior":
     let negative_zero = -0.0
-    try expect_equal("{1.0 / negative_zero}", "-Infinity")
+    try expect_equal(f"{1.0 / negative_zero}", "-Infinity")
 
     let nan = 0.0 / 0.0
     try expect_false((nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0))
     try expect_false(5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0)
-    try expect_equal("{1.7976931348623157e308 * 2.0}", "Infinity")
+    try expect_equal(f"{1.7976931348623157e308 * 2.0}", "Infinity")
 
     let a = 1.0000000074505806
     let b = 0.9999999925494194

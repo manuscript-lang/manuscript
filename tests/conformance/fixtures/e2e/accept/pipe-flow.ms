@@ -1,10 +1,10 @@
 # conform: tags=closures,control-flow,faults,lists,modules,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/pipe-flow.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false
 
-fn parse(text: String) Result[Int, TextError]:
+def parse(text: String) -> Result[Int, TextError]:
     if text == "-":
         return error(TextError("n"))
     if text == "big":
@@ -12,41 +12,41 @@ fn parse(text: String) Result[Int, TextError]:
 
     return ok(text.length())
 
-fn double(n: Int) Int: n * 2
+def double(n: Int) -> Int: n * 2
 
-fn add(n: Int, by: Int) Int: n + by
+def add(n: Int, by: Int) -> Int: n + by
 
-fn check(n: Int) Result[Int, TextError]:
+def check(n: Int) -> Result[Int, TextError]:
     if n > 100:
         return error(TextError("big"))
 
     return ok(n)
 
-fn flow(text: String) Result[Int, TextError]:
+def flow(text: String) -> Result[Int, TextError]:
     let n = try parse(text)
         | double
         | add(3)
         | try check
     return ok(n)
 
-fn bare(text: String) Result[Int, TextError]:
+def bare(text: String) -> Result[Int, TextError]:
     return ok(try parse(text) | double | check | try)
 
-fn describe(text: String) Result[String, TextError]:
+def describe(text: String) -> Result[String, TextError]:
     let label = try parse(text)
         | try check
         | add(1)
         .to_string_radix(10)
     return ok(label)
 
-fn order(var log: List[String]) Int:
+def order(var log: List[String]) -> Int:
     return trace(var log, "a") | add(trace(var log, "b")) | double
 
-fn trace(var log: List[String], name: String) Int:
+def trace(var log: List[String], name: String) -> Int:
     log.append(name)
     return 1
 
-fn code(r: Result[Int, TextError]) Int:
+def code(r: Result[Int, TextError]) -> Int:
     if let v = r:
         return v
 
@@ -62,7 +62,7 @@ test "bare try unwraps the value so far":
     try expect_equal(code(bare("-")), -1)
 
 test "pipe passes a Result through a step without try":
-    let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
+    let r = parse("abcd") | .map(lambda (value: Int) -> Int: value * 2)
     try expect_equal(r.get(), 8)
 
 test "leading dot after a step applies to its result":

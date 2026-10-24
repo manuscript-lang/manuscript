@@ -1,7 +1,7 @@
 # conform: tags=formatter,interpolation,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-03.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type CustomerId:
     value: String
@@ -13,9 +13,9 @@ type Customer:
     id: CustomerId
     name: String
 
-fn customer_name(customer: Customer) String:
+def customer_name(customer: Customer) -> String:
     let {id: {value}, name: display_name} = customer
-    return "{value}: {display_name}"
+    return f"{value}: {display_name}"
 
 test "nominal record and nested binding":
     let customer = Customer(CustomerId("c1"), "Ada")

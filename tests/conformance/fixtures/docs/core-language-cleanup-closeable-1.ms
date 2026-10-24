@@ -2,4 +2,4 @@
 # conform: phase=check
 # conform: origin=documentation/core-language/cleanup/closeable.md:10
 interface Closeable:
-    fn close() Unit
+    def close() -> Unit

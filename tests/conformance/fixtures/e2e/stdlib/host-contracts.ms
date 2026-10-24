@@ -1,15 +1,15 @@
 # conform: tags=control-flow,faults,interpolation,lists,modules,optional,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-fs,stdlib-io,stdlib-process,stdlib-string,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/host-contracts.ms
-import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import {files, IoError} from "@std/io.ms"
-import {control} from "@std/process.ms"
-import {duration} from "@std/time.ms"
-import {compress, decompress, CompressionError} from "@std/archive.ms"
-import {pack, unpack, ArchiveEntry, ArchiveError} from "@std/archive.ms"
-import StringError from "@std/string.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/io.ms" import files, IoError
+from "@std/process.ms" import control
+from "@std/time.ms" import duration
+from "@std/archive.ms" import compress, decompress, CompressionError
+from "@std/archive.ms" import pack, unpack, ArchiveEntry, ArchiveError
+from "@std/string.ms" import StringError
+from "@std/bytes.ms" import Bytes
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
     let process = control()
@@ -65,12 +65,12 @@ test "closed codec strings reject spelling changes with their domain errors":
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-open-modes-"):
+    with try fs.temporary("manuscript-open-modes-") as temporary:
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
-            let path = "{temporary.path()}/{mode}"
+            let path = f"{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
-                try fs.write_file(path, "", replace: false)
-            with handle = try fs.open(path, mode, 384):
+                try fs.write_file(path, "", replace: False)
+            with try fs.open(path, mode, 384) as handle:
                 let _fileinfo = try handle.stat()
 
         for mode in ["R", "rs", "w+x", " r", ""]:
@@ -79,7 +79,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
                     (
                         try expect_error(
                             fs.open(
-                                "{temporary.path()}/invalid", mode, 384
+                                f"{temporary.path()}/invalid", mode, 384
                             )
                         )
                     ) != FileSystemError.InvalidInput
@@ -89,11 +89,11 @@ test "all ten string open modes are accepted and changed spellings are invalid":
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
 
-    with temporary = try fs.temporary("manuscript-write-contract-"):
-        let path = "{temporary.path()}/data"
+    with try fs.temporary("manuscript-write-contract-") as temporary:
+        let path = f"{temporary.path()}/data"
         let data = (try "é".repeat(40000)).to_bytes()
 
-        with handle = try fs.open(path, "w+", 384):
+        with try fs.open(path, "w+", 384) as handle:
             try handle.write_bytes(data)
             try expect_equal((try handle.stat()).size, 80000)
             try expect_false((try handle.read()).is_some())
@@ -125,7 +125,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
             try expect_equal(handle.read_at(0), closed_read)
             try expect_equal((try expect_error(reader.read())), IoError.Closed)
 
-        let missing = "{temporary.path()}/missing"
+        let missing = f"{temporary.path()}/missing"
         try expect_equal(
             (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
         )

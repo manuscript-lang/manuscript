@@ -1,11 +1,11 @@
 # conform: tags=control-flow,diagnostics,modules,stdlib-fs,stdlib-io,stdlib-process,tier-io,try-result
 # conform: phase=check
 # conform: origin=documentation/learn/common-tasks.md:63
-import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
     let text = (
         try filesystem()
@@ -16,7 +16,7 @@ fn run() Result[Unit, Error]:
     try stdout().write(text)
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
 

@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,lists,modules,optional,records,stdlib-errors,strings,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=documentation/core-language/types/compatibility.md:43
-import {TextError} from "@std/core.ms"
+from "@std/core.ms" import TextError
 
 type Input:
     names: List[Optional[String]]

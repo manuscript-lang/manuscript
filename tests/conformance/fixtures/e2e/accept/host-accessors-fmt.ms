@@ -1,15 +1,15 @@
 # conform: tags=formatter,match,modules,parser,stdlib-io,stdlib-net,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/host-accessors.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {arguments, control} from "@std/process.ms"
-import {stdin, stdout, stderr} from "@std/io.ms"
-import {clock, wall_clock} from "@std/time.ms"
-import entropy from "@std/random.ms"
-import system from "@std/process.ms"
-import network from "@std/net.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/process.ms" import arguments, control
+from "@std/io.ms" import stdin, stdout, stderr
+from "@std/time.ms" import clock, wall_clock
+from "@std/random.ms" import entropy
+from "@std/process.ms" import system
+from "@std/net.ms" import network
 
-fn check_services() Result[Unit, Error]:
+def check_services() -> Result[Unit, Error]:
     arguments().length() | try expect_equal(0)
 
     let before = clock().now()
@@ -21,12 +21,12 @@ fn check_services() Result[Unit, Error]:
     let variables = try control().environment()
 
     match entropy().bytes(0):
-        ok(data):
+        case ok(data):
             try expect_equal(data.length(), 0)
-        error(_):
+        case error(_):
             return fail("entropy unavailable")
 
-    return ok(unit)
+    return ok(())
 
 test "host accessors work in callbacks":
     let check = check_services
@@ -39,19 +39,19 @@ test "repeated accessors retain closed root state":
     network().close()
 
     let cause = match stdout().write(""):
-        ok(_):
+        case ok(_):
             return fail("accessor reopened stdout")
-        error(cause): cause
+        case error(cause): cause
 
     match cause:
-        Closed:
+        case Closed:
             return
-        _:
+        case _:
             return fail("unexpected closed-stream error")
 
 test "a later test receives fresh standard output":
     match stdout().write(""):
-        ok(_):
+        case ok(_):
             return
-        error(_):
+        case error(_):
             return fail("another test closed this test's stdout")

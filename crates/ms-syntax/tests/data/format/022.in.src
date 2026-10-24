@@ -13,25 +13,25 @@ export type Result[T, E: Error]:
 
 impl Result[T, E]:
     # Reports whether this result contains a successful value.
-    fn is_ok() Bool:
+    def is_ok() -> Bool: ...
 
     # Reports whether this result contains an expected error.
-    fn is_error() Bool:
+    def is_error() -> Bool: ...
 
     # Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
-    fn get(default: Optional[T] = none) T:
+    def get(default: Optional[T] = none) -> T: ...
 
     # Returns the error payload; faults when this is successful.
-    fn err() E:
+    def err() -> E: ...
 
     # Calls create once with the original error only when this is an error.
-    fn or_else(create: fn(cause: E) T) T:
+    def or_else(create: Callable[[E], T]) -> T: ...
 
     # Transforms only a successful payload, preserving an error unchanged.
-    fn map[U](transform: fn(value: T) U) Result[U, E]:
+    def map[U](transform: Callable[[T], U]) -> Result[U, E]: ...
 
     # Calls transform only on success. Its result keeps the same error type.
-    fn and_then[U](transform: fn(value: T) Result[U, E]) Result[U, E]:
+    def and_then[U](transform: Callable[[T], Result[U, E]]) -> Result[U, E]: ...
 
     # Returns some with the original success payload, or none for an error.
-    fn to_optional() Optional[T]:
+    def to_optional() -> Optional[T]: ...

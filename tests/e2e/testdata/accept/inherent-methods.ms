@@ -1,7 +1,7 @@
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
 interface Show:
-    fn show() String
+    def show() -> String
 
 type Counter:
     value: Int
@@ -14,37 +14,37 @@ type Shape:
     case Square(s: Int)
 
 impl Counter:
-    fn double() Int:
+    def double() -> Int:
         return self.value * 2
 
-    fn bump(by: Int = 1) Counter:
+    def bump(by: Int = 1) -> Counter:
         return Counter(value: self.value + by)
 
-    fn depth(n: Int) Int:
+    def depth(n: Int) -> Int:
         if n == 0:
             return self.value
 
         return self.depth(n: n - 1) + 1
 
 impl Counter:
-    fn overflow() Int:
+    def overflow() -> Int:
         return self.value * self.value
 
 impl Show for Counter:
-    fn show() String:
+    def show() -> String:
         return "counter"
 
 impl Box[T]:
-    fn get() T:
+    def get() -> ref T:
         return self.item
 
 impl Shape:
-    fn area() Int:
+    def area() -> Int:
         match self:
-            Circle(r): return r * r * 3
-            Square(s): return s * s
+            case Circle(r): return r * r * 3
+            case Square(s): return s * s
 
-fn check(ok: Bool, name: String) Unit:
+def check(ok: Bool, name: String) -> Unit:
     if not ok:
         return panic(message: name)
 

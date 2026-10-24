@@ -1,11 +1,11 @@
 # conform: tags=formatter,match,modules,parser,stdlib-json,strings,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/navigation_test.go:120 TestCommonErrorNavigation
-import JsonError from "@std/json.ms"
+from "@std/json.ms" import JsonError
 
-fn describe(cause: Error) String:
+def describe(cause: Error) -> String:
     match cause:
-        JsonError(json):
+        case JsonError(json):
             return json.message()
-        _:
+        case _:
             return cause.message()

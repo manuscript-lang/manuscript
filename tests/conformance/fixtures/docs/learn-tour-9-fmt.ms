@@ -4,12 +4,12 @@
 type QuantityError:
     case MustBePositive
 
-fn quantity(value: Int) Result[Int, QuantityError]:
+def quantity(value: Int) -> Result[Int, QuantityError]:
     if value <= 0:
         return error(QuantityError.MustBePositive)
 
     return ok(value)
 
-fn order_total(count: Int) Result[Int, QuantityError]:
+def order_total(count: Int) -> Result[Int, QuantityError]:
     let valid_count = try quantity(count)
     return ok(valid_count * 12)

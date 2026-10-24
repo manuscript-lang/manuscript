@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/local_extensions_test.go:91 TestLocalExtensionValidation
 impl Read[Int] for List[Int]:
-    fn get() Int:
+    def get() -> Int:
         return 0

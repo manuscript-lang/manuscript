@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testmutationrejections-3.ms",
           "line": 4,
-          "column": 13,
-          "offset": 147
+          "column": 14,
+          "offset": 148
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "pkg-compiler-testmutationrejections-3.ms",
           "line": 5,
           "column": 11,
-          "offset": 168
+          "offset": 172
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-3.ms:4:13: resolution: unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testmutationrejections-3.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-3.ms:4:14: resolution: unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testmutationrejections-3.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

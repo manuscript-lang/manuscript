@@ -1,5 +1,5 @@
-import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
-import {network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily} from "@std/net.ms"
+from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -23,9 +23,9 @@ test "IP parsing CIDR normalization and containment":
 test "TCP loopback writes reads half close and EOF":
     let net = network()
 
-    with listener = try net.listen("127.0.0.1:0"):
-        with client = try net.connect(listener.address(), 2.seconds):
-            with server = try listener.accept(2.seconds):
+    with try net.listen("127.0.0.1:0") as listener:
+        with try net.connect(listener.address(), 2.seconds) as client:
+            with try listener.accept(2.seconds) as server:
                 try client.write("hello", 2.seconds)
                 try expect_equal(
                     (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
@@ -37,8 +37,8 @@ test "TCP loopback writes reads half close and EOF":
 test "UDP loopback preserves datagram data and sender":
     let net = network()
 
-    with receiver = try net.bind_datagram("127.0.0.1:0"):
-        with sender = try net.bind_datagram("127.0.0.1:0"):
+    with try net.bind_datagram("127.0.0.1:0") as receiver:
+        with try net.bind_datagram("127.0.0.1:0") as sender:
             try sender.send("packet", receiver.address(), 2.seconds)
 
             let packet = try receiver.receive(64, 2.seconds)
@@ -50,9 +50,9 @@ test "UDP loopback preserves datagram data and sender":
             )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: false)
-    var closing = try network().restrict([], [], allow_listen: false)
-    with scoped = restricted:
+    let restricted = try network().restrict([], [], allow_listen: False)
+    var closing = try network().restrict([], [], allow_listen: False)
+    with restricted as scoped:
         try expect_false(
             (
                 (
@@ -78,6 +78,6 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-fn expect_ip_error(input: String) Result[Unit, Error]:
+def expect_ip_error(input: String) -> Result[Unit, Error]:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
-    return ok(unit)
+    return ok(())

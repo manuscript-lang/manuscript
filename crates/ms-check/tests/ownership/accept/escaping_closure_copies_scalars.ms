@@ -1,2 +1,2 @@
-fn adder(n: Int) fn(x: Int) Int:
-    return fn(x: Int) Int: x + n
+def adder(n: Int) -> Callable[[Int], Int]:
+    return lambda (x: Int) -> Int: x + n

@@ -2,9 +2,9 @@ type Counter:
     values: List[Int]
 
 impl Counter:
-    var fn bump() Unit:
+    var def bump() -> Unit:
         self.values.append(1)
 
-    var fn twice() Unit:
+    var def twice() -> Unit:
         self.bump()
         self.bump()

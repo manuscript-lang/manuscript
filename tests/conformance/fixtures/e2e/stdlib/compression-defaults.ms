@@ -1,17 +1,17 @@
 # conform: tags=aliasing,control-flow,faults,generics,lists,modules,mutation,stdlib-bytes,stdlib-compress,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/compression-defaults.ms
-import {expect_equal} from "@std/testing.ms"
-import {compress, decompress, CompressionFormat, CompressionError} from "@std/archive.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/archive.ms" import compress, decompress, CompressionFormat, CompressionError
+from "@std/bytes.ms" import Bytes
 
-fn forwarded[T](item: T) T: item
+def forwarded[T](item: T) -> T: item
 
-fn supplied(var log: List[String], data: Bytes) Bytes:
+def supplied(var log: List[String], data: Bytes) -> Bytes:
     log.append("data")
     return data
 
-fn chosen(var log: List[String], format: String) String:
+def chosen(var log: List[String], format: String) -> String:
     log.append("format")
     return format
 

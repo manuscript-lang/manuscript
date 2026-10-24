@@ -4,5 +4,5 @@
 type HttpHeaders:
     value: String
 
-fn lookup(fields: HttpHeaders) Unit:
+def lookup(fields: HttpHeaders) -> Unit:
     fields.values("content-type")

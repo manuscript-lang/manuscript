@@ -1,19 +1,19 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
+from "@std/io.ms" import stdin, stdout
+from "@std/streams.ms" import read_lines
 
 type Row:
     category: String
     cents: String
 
-fn is_digits(text: String) Bool:
-    if text.is_empty(): return false
+def is_digits(text: String) -> Bool:
+    if text.is_empty(): return False
 
     for c in text.scalar_values():
-        if c < 48 or c > 57: return false
-    return true
+        if c < 48 or c > 57: return False
+    return True
 
 # Converts an amount such as `12`, `12.5` or `0.07` to a string of hundredths.
-fn amount_cents(text: String) Optional[String]:
+def amount_cents(text: String) -> Optional[String]:
     let parts = text.split(".")
 
     if parts.length() == 1:
@@ -31,7 +31,7 @@ fn amount_cents(text: String) Optional[String]:
     return some(whole + frac)
 
 # Returns the record in `line` as its category and amount, or none when the line is invalid.
-fn parse_row(line: String) Optional[Row]:
+def parse_row(line: String) -> Optional[Row]:
     if line.starts_with("\""):
         let rest = line.slice_scalars(1, line.scalar_length()).get()
 
@@ -53,13 +53,13 @@ fn parse_row(line: String) Optional[Row]:
 
     return none
 
-fn digit_at(text: String, from_end: Int) Int:
+def digit_at(text: String, from_end: Int) -> Int:
     if from_end > text.scalar_length(): return 0
 
     return text.scalar_at(-from_end) - 48
 
 # Adds two non-negative decimal digit strings exactly.
-fn add_digits(a: String, b: String) String:
+def add_digits(a: String, b: String) -> String:
     var result = ""
     var carry = 0
     var i = 1
@@ -68,26 +68,26 @@ fn add_digits(a: String, b: String) String:
 
     while i <= n or carry > 0:
         let d = digit_at(a, i) + digit_at(b, i) + carry
-        result = "{d % 10}" + result
+        result = f"{d % 10}" + result
         carry = d / 10
         i += 1
 
     return result
 
-fn strip_zeros(text: String) String:
+def strip_zeros(text: String) -> String:
     var out = text
     while out.scalar_length() > 1 and out.starts_with("0"):
         out = out.slice_scalars(1, out.scalar_length()).get()
     return out
 
 # Formats a hundredths string as a plain decimal with exactly two fractional digits.
-fn money(cents: String) String:
+def money(cents: String) -> String:
     let padded = "000" + cents
     let n = padded.scalar_length()
     let whole = strip_zeros(padded.slice_scalars(0, n - 2).get())
     return whole + "." + padded.slice_scalars(n - 2, n).get()
 
-export fn main() Int:
+export def main() -> Int:
     var totals = Map[String, String]()
     var skipped = 0
 
@@ -102,8 +102,8 @@ export fn main() Int:
             skipped += 1
 
     var out = stdout()
-    for category in totals.keys().sorted(fn(a, b): a.compare(b)):
+    for category in totals.keys().sorted(lambda a, b: a.compare(b)):
         out.write(category + ": " + money(totals.get_or(category, "0")) + "\n").get()
     if skipped > 0:
-        out.write("skipped: {skipped}\n").get()
+        out.write(f"skipped: {skipped}\n").get()
     return 0

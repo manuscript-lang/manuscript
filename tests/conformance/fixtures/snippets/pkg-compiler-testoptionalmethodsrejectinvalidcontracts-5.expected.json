@@ -9,25 +9,25 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export unwrap; @std/core.ms exports: Clonable, Closeable, Comparable, Equal, Error, ErrorCategory, Hashable, MissingValue, Optional, Result, TextError, category, ...; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"@std/core.ms\"'",
+        "message": "module does not export unwrap; @std/core.ms exports: Clonable, Closeable, Comparable, Equal, Error, ErrorCategory, Hashable, MissingValue, Optional, Result, TextError, category, ...; namespace imports are unsupported, so import individual exports with 'from \"@std/core.ms\" import Name, OtherName'",
         "position": {
           "file": "pkg-compiler-testoptionalmethodsrejectinvalidcontracts-5.ms",
           "line": 4,
-          "column": 8,
-          "offset": 187
+          "column": 28,
+          "offset": 207
         },
         "end": {
           "file": "pkg-compiler-testoptionalmethodsrejectinvalidcontracts-5.ms",
           "line": 4,
-          "column": 14,
-          "offset": 193
+          "column": 34,
+          "offset": 213
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-5.ms:4:8: resolution: module does not export unwrap; @std/core.ms exports: Clonable, Closeable, Comparable, Equal, Error, ErrorCategory, Hashable, MissingValue, Optional, Result, TextError, category, ...; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"@std/core.ms\"'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-5.ms:4:28: resolution: module does not export unwrap; @std/core.ms exports: Clonable, Closeable, Comparable, Equal, Error, ErrorCategory, Hashable, MissingValue, Optional, Result, TextError, category, ...; namespace imports are unsupported, so import individual exports with 'from \"@std/core.ms\" import Name, OtherName'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

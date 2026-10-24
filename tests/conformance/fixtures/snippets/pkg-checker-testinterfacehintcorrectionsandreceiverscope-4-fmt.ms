@@ -5,6 +5,6 @@ type E:
     text: String
 
 impl Error for E:
-    fn message() String: self.text
+    def message() -> ref String: self.text
 
-fn error_value() Error: E("bad input")
+def error_value() -> Error: E("bad input")

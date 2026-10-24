@@ -1,9 +1,9 @@
-import {expect_not_equal, fail} from "@std/testing.ms"
-import range from "@std/collections.ms"
-import {parse, stringify, TomlValue} from "@std/toml.ms"
-import {Rng, next, text, mutate} from "./support/generator.ms"
+from "@std/testing.ms" import expect_not_equal, fail
+from "@std/collections.ms" import range
+from "@std/toml.ms" import parse, stringify, TomlValue
+from "./support/generator.ms" import Rng, next, text, mutate
 
-fn generated(rng: Rng, depth: Int) TomlValue:
+def generated(rng: Rng, depth: Int) -> TomlValue:
     var choices = 7
     if depth > 2: choices = 4
     let kind = next(rng, choices)
@@ -20,19 +20,19 @@ fn generated(rng: Rng, depth: Int) TomlValue:
 
     return table(rng, depth + 1)
 
-fn table(rng: Rng, depth: Int) TomlValue:
+def table(rng: Rng, depth: Int) -> TomlValue:
     let entries: Map[String, TomlValue] = {}
     for item in range(0, next(rng, 4)):
         entries.add(text(rng), generated(rng, depth))
     return TomlValue.TableValue(entries)
 
-fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
+def check_round_trip(seed: Int, original: TomlValue) -> Result[Unit, Error]:
     let rendered = try stringify(original)
     if (try parse(rendered)) != original: return fail(
-        "seed {seed}: changed\n{rendered}"
+        f"seed {seed}: changed\n{rendered}"
     )
 
-    return ok(unit)
+    return ok(())
 
-fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
+def check_stable(seed: Int, mutated: String, first: TomlValue) -> Result[Unit, Error]:
     let again = try str

@@ -1,5 +1,5 @@
 # conform: tags=closures,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/basics/grammar.md:77
-fn example() Int:
-    return apply(value: 3, transform: fn(value: Int) Int: return value - 1)
+def example() -> Int:
+    return apply(value: 3, transform: lambda (value: Int) -> Int: return value - 1)

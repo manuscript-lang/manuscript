@@ -1,76 +1,76 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,match,modules,mutation,optional,records,sets,stdlib-bytes,stdlib-regex,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/preferred-names.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Bytes from "@std/bytes.ms"
-import {compile, Regex, RegexError} from "@std/string.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/bytes.ms" import Bytes
+from "@std/string.ms" import compile, Regex, RegexError
 
 interface ListMutation:
-    var fn reverse_in_place() Unit
-    fn reversed() List[Int]
-    var fn set(index: Int, value: Int) Unit
-    var fn remove(index: Int) Unit
-    var fn append(value: Int) Unit
+    var def reverse_in_place() -> Unit
+    def reversed() -> List[Int]
+    var def set(index: Int, value: Int) -> Unit
+    var def remove(index: Int) -> Unit
+    var def append(value: Int) -> Unit
 
 type ListAdapter:
     items: List[Int]
 
 impl ListMutation for ListAdapter:
-    var fn reverse_in_place() Unit:
+    var def reverse_in_place() -> Unit:
         self.items.reverse_in_place()
 
-    fn reversed() List[Int]:
+    def reversed() -> List[Int]:
         return self.items.reversed()
 
-    var fn set(index: Int, value: Int) Unit:
+    var def set(index: Int, value: Int) -> Unit:
         self.items.set(index, value)
 
-    var fn remove(index: Int) Unit:
+    var def remove(index: Int) -> Unit:
         self.items.remove(index)
 
-    var fn append(value: Int) Unit:
+    var def append(value: Int) -> Unit:
         self.items.append(value)
 
 interface SetMutation:
-    var fn add(value: Int) Unit
-    var fn remove(value: Int) Unit
-    fn values() List[Int]
+    var def add(value: Int) -> Unit
+    var def remove(value: Int) -> Unit
+    def values() -> List[Int]
 
 type SetAdapter:
     items: Set[Int]
 
 impl SetMutation for SetAdapter:
-    var fn add(value: Int) Unit:
+    var def add(value: Int) -> Unit:
         self.items.add(value)
 
-    var fn remove(value: Int) Unit:
+    var def remove(value: Int) -> Unit:
         self.items.remove(value)
 
-    fn values() List[Int]:
+    def values() -> List[Int]:
         return self.items.values()
 
 interface RegexReplacement:
-    fn replace_all(
+    def replace_all(
         text: String,
         replacement: String,
         max_bytes: Optional[Int]
-    ) Result[String, RegexError]
+    ) -> Result[String, RegexError]
 
 type RegexAdapter:
     pattern: Regex
 
 impl RegexReplacement for RegexAdapter:
-    fn replace_all(
+    def replace_all(
         text: String,
         replacement: String,
         max_bytes: Optional[Int]
-    ) Result[String, RegexError]:
+    ) -> Result[String, RegexError]:
         return self.pattern.replace_all(text, replacement, max_bytes)
 
-fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
+def add_generic[T: Hashable](var items: Set[T], value: T) -> Unit:
     items.add(value)
 
-fn remove_generic[T: Hashable](var items: Set[T], value: T) Unit:
+def remove_generic[T: Hashable](var items: Set[T], value: T) -> Unit:
     items.remove(value)
 
 test "list names mutate in place and retain shallow copies":
@@ -117,13 +117,21 @@ test "set names mutate in place keep order and no-op membership":
     try expect_equal(optional.values(), [some(9)])
 
 interface FirstReplacement:
-    fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String
+    def replace_first(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int]
+    ) -> String
 
 type TextAdapter:
     text: String
 
 impl FirstReplacement for TextAdapter:
-    fn replace_first(old: String, new: String, max_replacements: Optional[Int]) String:
+    def replace_first(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int]
+    ) -> String:
         return self.text.replace_first(old, new, max_replacements)
 
 test "explicit views and bound views preserve native mutation":
@@ -207,14 +215,14 @@ test "new direct keyed calls evaluate arguments after the receiver is chosen":
     var items = Set[Int]([1])
     items.add(
         match some(0):
-            some(_): 2
-            none: 3
+            case some(_): 2
+            case none: 3
     )
     try expect_equal(items.values(), [1, 2])
     items.remove(
         match some(0):
-            some(_): 1
-            none: 2
+            case some(_): 1
+            case none: 2
     )
     try expect_equal(items.values(), [2])
 
@@ -222,13 +230,13 @@ type Cell:
     value: Int
 
 interface ByteCopy:
-    fn reversed() Bytes
+    def reversed() -> Bytes
 
 type ByteAdapter:
     data: Bytes
 
 impl ByteCopy for ByteAdapter:
-    fn reversed() Bytes:
+    def reversed() -> Bytes:
         return self.data.reversed()
 
 test "list reversal names distinguish receiver mutation and shallow copies":

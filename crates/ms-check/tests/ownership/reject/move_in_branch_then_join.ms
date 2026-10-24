@@ -1,4 +1,4 @@
-fn f(c: Bool) Int:
+def f(c: Bool) -> Int:
     let a = [1]
     var n = 0
 

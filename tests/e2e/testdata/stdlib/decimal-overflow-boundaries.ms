@@ -1,5 +1,5 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/decimal.ms" import Decimal
 
 test "Decimal magnitude rounding and underflow boundaries remain unchanged":
     let maximum = 9.999999999999999999999999999999999e6144d

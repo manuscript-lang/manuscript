@@ -1,23 +1,24 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
-import StringBuilder from "@std/string.ms"
+from "@std/io.ms" import stdin, stdout, read_line
+from "@std/string.ms" import StringBuilder
 
-fn fields(line: String) List[String]:
+def fields(line: String) -> List[String]:
     let spaced = line.replace_all(old: "\t", new: " ").get()
-    return spaced.split(" ").filter(
-        fn(part: String) Bool:
-            return not part.is_empty()
+    return (
+        spaced
+        .split(" ")
+        .filter(lambda (part: String) -> Bool: return not part.is_empty())
     )
 
-fn range_text(start: Int, len: Int) String:
+def range_text(start: Int, len: Int) -> String:
     var s = start
     if len > 0:
         s = s + 1
     if len == 1:
-        return "{s}"
+        return f"{s}"
 
-    return "{s},{len}"
+    return f"{s},{len}"
 
-fn marker(kind: Int) String:
+def marker(kind: Int) -> String:
     if kind == 0:
         return " "
     if kind == 1:
@@ -25,7 +26,7 @@ fn marker(kind: Int) String:
 
     return "+"
 
-fn count_before(kinds: List[Int], end: Int, skip: Int) Int:
+def count_before(kinds: List[Int], end: Int, skip: Int) -> Int:
     var total = 0
     var k = 0
 
@@ -36,7 +37,7 @@ fn count_before(kinds: List[Int], end: Int, skip: Int) Int:
 
     return total
 
-fn count_between(kinds: List[Int], start: Int, end: Int, skip: Int) Int:
+def count_between(kinds: List[Int], start: Int, end: Int, skip: Int) -> Int:
     var total = 0
     var k = start
 
@@ -47,10 +48,10 @@ fn count_between(kinds: List[Int], start: Int, end: Int, skip: Int) Int:
 
     return total
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let first = try read_line(input: stdin(), max_bytes: 1048576)
     if first.is_none():
-        return ok(unit)
+        return ok(())
 
     let h = fields(first.get())
     let name_a = h.get(0)
@@ -109,6 +110,7 @@ fn run() Result[Unit, Error]:
     var kinds = List[Int]()
     var texts = List[String]()
     i = 0
+
     var j = 0
 
     while i < n or j < m:
@@ -117,7 +119,7 @@ fn run() Result[Unit, Error]:
             texts.append(a.get(i).clone())
             i = i + 1
             j = j + 1
-        else if (
+        elif (
             j == m
             or (
                 i < n
@@ -143,10 +145,11 @@ fn run() Result[Unit, Error]:
         k = k + 1
 
     if changes.is_empty():
-        return ok(unit)
+        return ok(())
 
     var out = StringBuilder()
-    out.append("--- {name_a}\n+++ {name_b}\n")
+    out.append(f"--- {name_a}\n+++ {name_b}\n")
+
     var lo_change = changes.get(0)
     var prev = lo_change
     var idx = 1
@@ -164,14 +167,17 @@ fn run() Result[Unit, Error]:
             var lo = lo_change - ctx
             if lo < 0:
                 lo = 0
+
             var hi = prev + 1 + ctx
             if hi > kinds.length():
                 hi = kinds.length()
+
             let sa = count_before(kinds, lo, 2)
             let sb = count_before(kinds, lo, 1)
             let la = count_between(kinds, lo, hi, 2)
             let lb = count_between(kinds, lo, hi, 1)
-            out.append("@@ -{range_text(sa, la)} +{range_text(sb, lb)} @@\n")
+            out.append(f"@@ -{range_text(sa, la)} +{range_text(sb, lb)} @@\n")
+
             var q = lo
 
             while q < hi:
@@ -189,7 +195,7 @@ fn run() Result[Unit, Error]:
     try stdout().write(out.freeze())
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

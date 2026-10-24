@@ -1,1 +1,1 @@
-error parse 34:21:672 "expected '(', found '='; a call or parameter list starts with '('"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

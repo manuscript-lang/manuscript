@@ -1,13 +1,13 @@
-fn helper(left: Int, right: Int) Int:
+def helper(left: Int, right: Int) -> Int:
     return left + right
 
-export fn defaults(
+export def defaults(
     first: Int = -3,
     second: Int = helper(left: first, right: 2),
     text: String = "literal, )",
-    callback: fn(value: Int) Int = (
-        fn(value: Int) Int:
+    callback: Callable[[Int], Int] = (
+        lambda (value: Int) -> Int:
             return value + 1
     )
-) Int:
+) -> Int:
     return callback(second)

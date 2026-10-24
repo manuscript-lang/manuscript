@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Unit:\n    let values = [\n        1,  # Keep the first value explained.\n        2,\n        3,\n        4\n    ]\n"
+    "fmt": "def work() -> Unit:\n    let values = [\n        1,  # Keep the first value explained.\n        2,\n        3,\n        4\n    ]\n"
   }
 }

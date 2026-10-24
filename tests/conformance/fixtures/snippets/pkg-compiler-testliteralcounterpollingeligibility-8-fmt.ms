@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/loop_poll_test.go:41 TestLiteralCounterPollingEligibility
-fn probe(flag: Bool) Unit:
+def probe(flag: Bool) -> Unit:
     var i = 0
     if flag:
         while i < 1000:

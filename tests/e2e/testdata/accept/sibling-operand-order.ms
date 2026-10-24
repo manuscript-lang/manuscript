@@ -1,5 +1,5 @@
-import {expect_equal} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/decimal.ms" import Decimal
 
 test "list elements read before a later match assigns them":
     var x = 1
@@ -7,10 +7,10 @@ test "list elements read before a later match assigns them":
     let items = [
         x,
         match some(5):
-            some(value):
+            case some(value):
                 x = 50
                 value
-            none: 0
+            case none: 0
         ,
         x
     ]
@@ -19,10 +19,10 @@ test "list elements read before a later match assigns them":
     let texts = [
         y,
         match some("b"):
-            some(value):
+            case some(value):
                 y = "z"
                 value
-            none: ""
+            case none: ""
     ]
     try expect_equal(texts, ["a", "b"])
 
@@ -30,10 +30,10 @@ test "map keys read before a later match assigns them":
     var key = 1
     let entries = {
         key: match some(5):
-            some(value):
+            case some(value):
                 key = 50
                 value
-            none: 0
+            case none: 0
         ,
         key: key
     }
@@ -43,10 +43,10 @@ test "map keys read before a later match assigns them":
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
     let sum = amount + match some(2.5d):
-        some(value):
+        case some(value):
             amount = 100d
             value
-        none: 0d
+        case none: 0d
     try expect_equal(sum, 4d)
 
 type Cell:
@@ -57,10 +57,10 @@ test "field assignment keeps sibling field writes made while evaluating the valu
     var cell = Cell(n: 1, s: "a")
 
     cell.n = match some(2):
-        some(value):
+        case some(value):
             cell.s = "changed"
             value
-        none: 0
+        case none: 0
 
     try expect_equal(cell.n, 2)
     try expect_equal(cell.s, "changed")

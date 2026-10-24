@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-basics-expressions-1.ms",
           "line": 4,
-          "column": 30,
-          "offset": 180
+          "column": 34,
+          "offset": 184
         }
       },
       {
@@ -24,26 +24,26 @@
         "position": {
           "file": "core-language-basics-expressions-1.ms",
           "line": 4,
-          "column": 38,
-          "offset": 188
+          "column": 42,
+          "offset": 192
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding validate; declare it with 'let validate = ...' before use, define 'fn validate(...)', or import it from a module",
+        "message": "unknown binding validate; declare it with 'let validate = ...' before use, define 'def validate(...) -> T:', or import it from a module",
         "position": {
           "file": "core-language-basics-expressions-1.ms",
           "line": 8,
           "column": 15,
-          "offset": 288
+          "offset": 292
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:30: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:4:38: resolution: unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'fn validate(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:34: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:4:42: resolution: unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'def validate(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

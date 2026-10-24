@@ -1,11 +1,12 @@
-import Closeable from "@std/core.ms"
-import stdout from "@std/io.ms"
-import {network, Listener, Connection} from "@std/net.ms"
-import control from "@std/process.ms"
-import sleep from "@std/time.ms"
+from "@std/core.ms" import Closeable
+from "@std/io.ms" import stdout
+from "@std/net.ms" import network, Listener, Connection
+from "@std/process.ms" import control
+from "@std/time.ms" import sleep
 
-fn say(text: String) Unit:
+def say(text: String) -> Unit:
     let _written = stdout().write(text)
+
     # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
     let _flushed = stdout().flush()
 
@@ -13,48 +14,51 @@ type WorkerCleanup:
     label: String
 
 impl Closeable for WorkerCleanup:
-    fn close() Unit:
-        say("{self.label} stopped\n")
+    def close() -> Unit:
+        say(f"{self.label} stopped\n")
 
 type Server:
     listener: Listener
     client: Connection
-    closed: Bool = false
+    closed: Bool = False
 
 impl Closeable for Server:
-    var fn close() Unit:
+    var def close() -> Unit:
         if self.closed:
             return
 
-        self.closed = true
+        self.closed = True
         self.listener.close()
         sleep(10.milliseconds)
+
         let farewell = self.client.write("farewell\n", timeout: 1.seconds)
 
         if farewell.is_error():
-            say("farewell failed: {farewell.err().message()}\n")
+            say(f"farewell failed: {farewell.err().message()}\n")
         else:
             say("farewell sent\n")
 
         self.client.close()
 
-fn serve() Result[Unit, Error]:
-    with signals = try control().watch_signals([2, 15]):
+def serve() -> Result[Unit, Error]:
+    with try control().watch_signals([2, 15]) as signals:
         let listener = try network().listen("127.0.0.1:0")
-        say("{listener.address()}\n")
+        say(f"{listener.address()}\n")
+
         let client = try listener.accept()
 
-        with server = Server(listener: listener, client: client):
-            with cleanup = WorkerCleanup(label: "worker"):
+        with Server(listener: listener, client: client) as server:
+            with WorkerCleanup(label: "worker") as cleanup:
                 say("ready\n")
-                let _observed = signals.next()
-                return ok(unit)
 
-export fn main() Int:
+                let _observed = signals.next()
+                return ok(())
+
+export def main() -> Int:
     let served = serve()
 
     if served.is_error():
-        say("{served.err().message()}\n")
+        say(f"{served.err().message()}\n")
         return 1
 
     return 0

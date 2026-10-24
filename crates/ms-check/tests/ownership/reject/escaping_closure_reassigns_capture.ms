@@ -1,6 +1,6 @@
-fn counter() fn() Int:
+def counter() -> Callable[[], Int]:
     var n = 0
 
-    return fn() Int:  # error: cannot be returned
+    return lambda () -> Int:  # error: cannot be returned
         n += 1
         return n

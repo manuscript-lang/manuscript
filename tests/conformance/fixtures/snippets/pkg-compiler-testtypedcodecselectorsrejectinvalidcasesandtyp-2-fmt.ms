@@ -1,10 +1,10 @@
 # conform: tags=formatter,modules,parser,stdlib-string,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/compiler/codec_selectors_test.go:14 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
-import NormalizationForm from "@std/string.ms"
+from "@std/string.ms" import NormalizationForm
 
-fn choose(form: NormalizationForm) Unit:
-    return unit
+def choose(form: NormalizationForm) -> Unit:
+    return ()
 
-fn wrong() Unit:
+def wrong() -> Unit:
     choose("NFC")

@@ -2,14 +2,14 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/direct_methods_test.go:13 TestDirectMethodFaultFrame
 interface Shape:
-    fn area() Int
+    def area() -> Int
 
 type Rect:
     w: Int
     h: Int
 
 impl Shape for Rect:
-    fn area() Int:
+    def area() -> Int:
         return self.w * self.h
 
 test "method fault frame":

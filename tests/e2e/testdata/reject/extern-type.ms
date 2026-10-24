@@ -1,4 +1,4 @@
 extern type Handle
 
-export fn main() Int:
+export def main() -> Int:
     return 0

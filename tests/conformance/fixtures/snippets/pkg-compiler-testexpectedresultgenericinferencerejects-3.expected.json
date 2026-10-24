@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module",
+        "message": "unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-3.ms",
           "line": 5,
-          "column": 40,
-          "offset": 230
+          "column": 42,
+          "offset": 236
         }
       },
       {
         "code": "MS3003",
         "phase": "type",
-        "message": "missing argument value: Int in call to callback; add 'value: <Int>'",
+        "message": "missing argument _0: Int in call to callback; add '_0: <Int>'",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-3.ms",
-          "line": 6,
+          "line": 8,
           "column": 5,
-          "offset": 281
+          "offset": 308
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-3.ms:5:40: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...)', or import it from a module\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-3.ms:6:5: type: missing argument value: Int in call to callback; add 'value: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-3.ms:5:42: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-3.ms:8:5: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

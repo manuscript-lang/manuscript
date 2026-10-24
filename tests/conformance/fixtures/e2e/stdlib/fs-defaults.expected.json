@@ -3,62 +3,182 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "fs-defaults.ms::filesystem removal defaults to retaining nonempty trees",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "fs-defaults.ms::filesystem default preparation retains written argument order",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds\nPASS fs-defaults.ms::filesystem writes default to exclusive creation through aliases and bounds\nRUN fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits\nPASS fs-defaults.ms::filesystem file copies default to no replacement and retain byte limits\nRUN fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets\nPASS fs-defaults.ms::filesystem tree copies default to no replacement with distinct budgets\nRUN fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent\nPASS fs-defaults.ms::filesystem directory creation defaults to requiring an existing parent\nRUN fs-defaults.ms::filesystem removal defaults to retaining nonempty trees\nPASS fs-defaults.ms::filesystem removal defaults to retaining nonempty trees\nRUN fs-defaults.ms::filesystem default preparation retains written argument order\nPASS fs-defaults.ms::filesystem default preparation retains written argument order\n6 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`write` is moved here but used again at 69:23; a value has one owner, so pass `write.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "fs-defaults.ms",
+            "line": 67,
+            "column": 21,
+            "offset": 2194
+          },
+          "fix": {
+            "position": {
+              "file": "fs-defaults.ms",
+              "line": 67,
+              "column": 26,
+              "offset": 2199
+            },
+            "end": {
+              "file": "fs-defaults.ms",
+              "line": 67,
+              "column": 26,
+              "offset": 2199
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`copy` is moved here but used again at 89:23; a value has one owner, so pass `copy.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "fs-defaults.ms",
+            "line": 86,
+            "column": 21,
+            "offset": 3106
+          },
+          "fix": {
+            "position": {
+              "file": "fs-defaults.ms",
+              "line": 86,
+              "column": 25,
+              "offset": 3110
+            },
+            "end": {
+              "file": "fs-defaults.ms",
+              "line": 86,
+              "column": 25,
+              "offset": 3110
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`copy` is moved here but used again at 130:23; a value has one owner, so pass `copy.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "fs-defaults.ms",
+            "line": 127,
+            "column": 21,
+            "offset": 4916
+          },
+          "fix": {
+            "position": {
+              "file": "fs-defaults.ms",
+              "line": 127,
+              "column": 25,
+              "offset": 4920
+            },
+            "end": {
+              "file": "fs-defaults.ms",
+              "line": 127,
+              "column": 25,
+              "offset": 4920
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`create` is moved here but used again at 177:23; a value has one owner, so pass `create.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "fs-defaults.ms",
+            "line": 174,
+            "column": 21,
+            "offset": 6749
+          },
+          "fix": {
+            "position": {
+              "file": "fs-defaults.ms",
+              "line": 174,
+              "column": 27,
+              "offset": 6755
+            },
+            "end": {
+              "file": "fs-defaults.ms",
+              "line": 174,
+              "column": 27,
+              "offset": 6755
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`remove` is moved here but used again at 197:23; a value has one owner, so pass `remove.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "fs-defaults.ms",
+            "line": 195,
+            "column": 21,
+            "offset": 7726
+          },
+          "fix": {
+            "position": {
+              "file": "fs-defaults.ms",
+              "line": 195,
+              "column": 27,
+              "offset": 7732
+            },
+            "end": {
+              "file": "fs-defaults.ms",
+              "line": 195,
+              "column": 27,
+              "offset": 7732
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -69,11 +189,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

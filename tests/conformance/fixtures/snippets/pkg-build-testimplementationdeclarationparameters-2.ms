@@ -2,21 +2,21 @@
 # conform: phase=check
 # conform: origin=pkg/build/compiler_test.go:505 TestImplementationDeclarationParameters
 interface Same[V: Equal]:
-    fn same(other: V) Bool
+    def same(other: V) -> Bool
 
 interface Read[V]:
-    fn get() V
+    def get() -> ref V
 
 type Box[T]:
     value: T
 
 impl Same[T] for Box[T]:
-    fn same(other: T) Bool:
+    def same(other: T) -> Bool:
         return self.value == other
 
 impl Read[T] for Box[T]:
-    fn get() T:
+    def get() -> ref T:
         return self.value
 
-fn read[T](value: Box[T]) T:
+def read[T](value: Box[T]) -> ref T:
     return value.get()

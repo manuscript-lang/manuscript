@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member clone on Connection; did you mean 'close'?",
+        "message": "unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytes",
         "position": {
           "file": "pkg-compiler-testmutationrejections-15.ms",
           "line": 7,
           "column": 12,
-          "offset": 241
+          "offset": 245
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-15.ms:7:12: resolution: unknown or ambiguous member clone on Connection; did you mean 'close'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-15.ms:7:12: resolution: unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytes\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

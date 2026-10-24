@@ -2,4 +2,4 @@
 # conform: phase=check
 # conform: origin=pkg/checker/interface_hints_test.go:14 TestInterfaceAndReceiverHints
 impl Shape for Sq:
-    fn area() Int: self.s * self.s
+    def area() -> Int: self.s * self.s

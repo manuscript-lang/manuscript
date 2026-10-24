@@ -1,5 +1,5 @@
-import {expect_equal} from "@std/testing.ms"
-import {parse_int, parse_float, NumberError} from "@std/math.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/math.ms" import parse_int, parse_float, NumberError
 
 test "numbers radix and signed boundaries":
     try expect_equal((try parse_int("7fffffffffffffff", 16)), 9223372036854775807)

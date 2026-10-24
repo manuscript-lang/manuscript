@@ -5,15 +5,15 @@ weight = 3
 
 # Native functions
 
-`extern fn` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern fn labs(value: Int) Int` calls the native symbol `labs`. To use another Manuscript name, wrap the extern in an ordinary function.
+`extern def` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern def labs(value: Int) -> Int` calls the native symbol `labs`. To use another Manuscript name, wrap the extern in an ordinary function.
 
 <!-- manuscript-example: test -->
 ```manuscript
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-extern fn labs(value: Int) Int
+extern def labs(value: Int) -> Int
 
-fn magnitude(value: Int) Int:
+def magnitude(value: Int) -> Int:
     return labs(value)
 
 test "an extern calls the native symbol":

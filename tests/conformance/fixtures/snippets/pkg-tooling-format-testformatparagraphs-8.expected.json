@@ -9,85 +9,85 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 8,
           "column": 9,
-          "offset": 246
+          "offset": 250
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 9,
-          "column": 24,
-          "offset": 280
+          "column": 21,
+          "offset": 281
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 11,
           "column": 9,
-          "offset": 305
+          "offset": 306
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 16,
           "column": 9,
-          "offset": 370
+          "offset": 371
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 22,
           "column": 9,
-          "offset": 460
+          "offset": 461
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...)', or import it from a module",
+        "message": "unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 24,
-          "column": 21,
-          "offset": 491
+          "column": 10,
+          "offset": 481
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module",
+        "message": "unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-8.ms",
           "line": 25,
           "column": 9,
-          "offset": 510
+          "offset": 512
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:8:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:9:24: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:16:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:22:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:24:21: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:25:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...)', or import it from a module\n7 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:8:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:9:21: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:16:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:22:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:24:10: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-8.ms:25:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n7 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

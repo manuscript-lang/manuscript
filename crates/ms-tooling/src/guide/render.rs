@@ -60,7 +60,11 @@ pub fn parameters(parameters: &[Param], source: Option<&Source>) -> String {
 pub fn type_text(t: &TypeRef) -> String {
     match &t.kind {
         TypeKind::Fn { params, result } => {
-            format!("fn{} {}", parameters(params, None), type_text(result))
+            let types: Vec<String> = params
+                .iter()
+                .map(|p| p.ty.as_ref().map_or(String::new(), type_text))
+                .collect();
+            format!("Callable[[{}], {}]", types.join(", "), type_text(result))
         }
         TypeKind::Named { name, args } => {
             let mut value = name.as_str().to_string();

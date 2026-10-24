@@ -9,19 +9,34 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Connection; add: import Connection from \"@std/net.ms\"",
+        "message": "unknown type Connection; add: from \"@std/net.ms\" import Connection",
         "position": {
           "file": "tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms",
           "line": 4,
-          "column": 14,
-          "offset": 187
+          "column": 15,
+          "offset": 188
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import Connection\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms:4:14: resolution: unknown type Connection; add: import Connection from \"@std/net.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms:4:15: resolution: unknown type Connection; add: from \"@std/net.ms\" import Connection\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

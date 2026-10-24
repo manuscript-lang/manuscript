@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Sq from \"data.ms\"\nimport Shape from \"extension.ms\"\n\nfn shape() Shape: Sq(2)\n"
+    "fmt": "from \"data.ms\" import Sq\nfrom \"extension.ms\" import Shape\n\ndef shape() -> Shape: Sq(2)\n"
   }
 }

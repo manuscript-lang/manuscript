@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/result_bounds_test.go:127 TestSuccessfulResultBoundsRestoreElseScope
-fn probe(found: Int) Int:
+def probe(found: Int) -> Int:
     var sum = 0
     var i = 0
 

@@ -7,9 +7,9 @@ type Mode:
     case Idle
     case Busy
 
-export fn main() Int:
+export def main() -> Int:
     match initial:
-        Idle:
+        case Idle:
             return 0
-        Busy:
+        case Busy:
             return 1

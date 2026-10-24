@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn choose(value: Choice) Int:\n    match value:\n        first: return 1\n        second: return 2\n        third:\n            let result = calculate()\n            return result\n        _: return 0\n\n    return 3\n"
+    "fmt": "def choose(value: Choice) -> Int:\n    match value:\n        case first: return 1\n        case second: return 2\n        case third:\n            let result = calculate()\n            return result\n        case _: return 0\n\n    return 3\n"
   }
 }
