@@ -18,7 +18,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 
 ## Model
 
-- **Classes.** `Copy` (scalars, and records/alternatives/tuples of scalars), `Move` (strings and everything else owned; a borrowed string stored in an owned position needs `.clone()`), `Resource` (types with cleanup; move-only, never `.copy()`). `Shared[T]` is the only refcounted type and is `Copy`-class sharing. Type variables are `Move` (conservative); handle types are `Copy`-class handles, their `with` resources `Resource`.
+- **Classes.** `Copy` (scalars, and records/alternatives/tuples of scalars), `Move` (strings and everything else owned; a borrowed string stored in an owned position needs `.clone()`), `Resource` (types with cleanup; move-only, never `.copy()`). `Shared[T]` is planned (not in the language yet; see `crates/DESIGN.md` decision 1) and would be the only refcounted source type, with `Copy`-class sharing. Type variables are `Move` (conservative); handle types are `Copy`-class handles, their `with` resources `Resource`.
 - **One owner.** A `Move`-class value passed to a consuming position (consuming parameter, record/list/map element, `return`, `let`/`var` initializer from a non-place, closure capture of an escaping closure) is moved. A move is legal only at the value's last use (backward liveness; loops use a head fixpoint; reassignment kills the old value). Use after move is an error.
 - **Modes.** Parameter modes are inferred by a program-wide fixpoint: `Borrow` (read), `Mutate` (declared `var`), `Consume` (moved/stored/returned). `var` is declared in the signature (`var xs: T`, `var fn` receivers) and written at the call (`f(var xs)`); the marker is required exactly where the callee takes `var`. There is no `mut`.
 - **Mutability.** `let` is immutable including contents; only `var` bindings, `var` parameters and `var fn` receivers change. Fields/elements of a `var` binding are changed through it.
@@ -68,7 +68,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 Programs written for reference semantics change as follows:
 
 1. **Aliasing is gone.** `let b = a` of a `Move`-class value borrows (if `a` stays used, `b` is a read-only view that blocks changes to `a`) or moves (last use). Code relying on two names changing one object must pass `var` explicitly or restructure.
-2. **`.clone()` is deep** and renamed `.copy()`; `.clone()` for a cheap shallow share becomes a borrow or a `Shared[T]`.
+2. **`.clone()` is deep** and renamed `.copy()`; `.clone()` for a cheap shallow share becomes a borrow (or, once planned `Shared[T]` exists, a `Shared[T]`).
 3. **Mutator chaining/results** (`xs.append(1).append(2)`, `values.prepend(0).set(1, 9)`) become separate statements; results of mutators are not values.
 4. **Implicit parameter mutation.** A function that changes a parameter declares it `var` and every caller writes `var` at the argument.
 5. **`let` is deeply immutable.** `let xs = []; xs.append(1)` becomes `var xs`.

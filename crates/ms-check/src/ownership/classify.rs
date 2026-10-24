@@ -8,7 +8,7 @@ use std::collections::HashSet;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (`Shared[T]`, native handles).
+    /// and handle types whose identity is shared (native handles; planned `Shared[T]`).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
