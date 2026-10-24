@@ -10,7 +10,7 @@ use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::CommandDiagnostic;
 use crate::fault::{EXIT_FAULT, Fault};
 use crate::json::Json;
-use crate::process::{exit_code, wait_supervised, wait_with_signals};
+use crate::process::{Stops, exit_code, wait_supervised, wait_with_signals};
 use crate::util::emit_json;
 
 use super::testing::pipe_reader;
@@ -61,6 +61,7 @@ pub(super) fn run<L: Lower>(
     }
     // The child shares the terminal: flush what we have written first.
     let _ = io.stdout.flush();
+    let stops = Stops::catch();
     let mut child = match Command::new(&executable).args(&request.arguments).spawn() {
         Ok(child) => child,
         Err(error) => {
@@ -68,7 +69,7 @@ pub(super) fn run<L: Lower>(
             return Ok(1);
         }
     };
-    match wait_with_signals(&mut child) {
+    match wait_with_signals(&mut child, &stops) {
         Ok(status) => Ok(exit_code(status)),
         Err(error) => {
             let _ = writeln!(io.stderr, "{error}");
@@ -95,6 +96,7 @@ fn run_structured(
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {
+    let stops = Stops::catch();
     let spawned = Command::new(executable)
         .args(&request.arguments)
         .stdin(Stdio::inherit())
@@ -111,7 +113,7 @@ fn run_structured(
     let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
     let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
-    let waited = wait_supervised(&mut child, None, &mut || {
+    let waited = wait_supervised(&mut child, &stops, None, &mut || {
         while let Ok(chunk) = stdout.try_recv() {
             out.extend_from_slice(&chunk);
         }

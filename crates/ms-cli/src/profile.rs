@@ -78,7 +78,7 @@ use crate::backend::{BackendResult, BuildRequest, BuildType, Io, finish};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::invocation::Invocation;
 use crate::json::Json;
-use crate::process::{exit_code, wait_with_signals};
+use crate::process::{Stops, exit_code, wait_with_signals};
 use crate::util::emit_json;
 
 pub const DEFAULT_OUT_DIR: &str = "profile";
@@ -432,6 +432,7 @@ pub fn run_profile(
     } else {
         Stdio::inherit()
     });
+    let stops = Stops::catch();
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
@@ -454,7 +455,7 @@ pub fn run_profile(
             data
         })
     });
-    let waited = wait_with_signals(&mut child);
+    let waited = wait_with_signals(&mut child, &stops);
     let stdout_bytes = captured
         .and_then(|handle| handle.join().ok())
         .unwrap_or_default();
