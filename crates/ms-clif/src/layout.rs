@@ -8,8 +8,10 @@
 //! | --- | --- |
 //! | `Unit` | none |
 //! | `Bool` | `i8` |
-//! | `Int`, `Int8`, `Int16`, `Int32`, `Ptr`, closures, `Shared[T]` | `i64` |
-//! | `Float`, `Float32` | `f64` |
+//! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
+//! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
+//! | `Float` | `f64` |
+//! | `Float32` | `f64` in registers, 4 bytes in memory |
 //! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
@@ -36,13 +38,23 @@ pub enum Leaf {
     F64,
     /// Byte (booleans, presence flags).
     I8,
+    /// `Int8`: an `i64` register, one byte in memory.
+    N8,
+    /// `Int16`: an `i64` register, two bytes in memory.
+    N16,
+    /// `Int32`: an `i64` register, four bytes in memory.
+    N32,
+    /// `Float32`: an `f64` register, four bytes in memory.
+    F32,
 }
 
 impl Leaf {
     /// Size and alignment in bytes.
     pub fn size(self) -> u32 {
         match self {
-            Leaf::I8 => 1,
+            Leaf::I8 | Leaf::N8 => 1,
+            Leaf::N16 => 2,
+            Leaf::N32 | Leaf::F32 => 4,
             _ => 8,
         }
     }
@@ -82,7 +94,7 @@ pub struct MemLayout {
     pub offsets: Vec<u32>,
     /// Total size, rounded up to the alignment.
     pub size: u32,
-    /// Alignment (1 for empty or all-byte, else 8).
+    /// Alignment: the widest leaf, 1 for empty.
     pub align: u32,
 }
 
@@ -252,13 +264,12 @@ impl<'m> Layouts<'m> {
         match self.m.types.kind(ty) {
             TyKind::Unit => plain(vec![]),
             TyKind::Bool => plain(vec![I8]),
-            TyKind::Int
-            | TyKind::Int8
-            | TyKind::Int16
-            | TyKind::Int32
-            | TyKind::Ptr
-            | TyKind::Fn(..) => plain(vec![I64]),
-            TyKind::Float | TyKind::Float32 => plain(vec![F64]),
+            TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => plain(vec![I64]),
+            TyKind::Int8 => plain(vec![N8]),
+            TyKind::Int16 => plain(vec![N16]),
+            TyKind::Int32 => plain(vec![N32]),
+            TyKind::Float => plain(vec![F64]),
+            TyKind::Float32 => plain(vec![F32]),
             TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
             TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
@@ -296,6 +307,8 @@ impl<'m> Layouts<'m> {
             .iter()
             .map(|c| c.fields.iter().flat_map(|f| self.leaves(f.1)).collect())
             .collect();
+        // Payload slots are shared per leaf kind, widest first so each stays aligned.
+        const KINDS: [Leaf; 7] = [I64, F64, F32, N32, N16, N8, I8];
         let count = |l: Leaf| {
             cases
                 .iter()
@@ -303,24 +316,24 @@ impl<'m> Layouts<'m> {
                 .max()
                 .unwrap_or(0)
         };
-        let (n64, nf, n8) = (count(I64), count(F64), count(I8));
         let mut block = vec![I64];
-        block.extend(std::iter::repeat_n(I64, n64));
-        block.extend(std::iter::repeat_n(F64, nf));
-        block.extend(std::iter::repeat_n(I8, n8));
+        let mut first = [0usize; 7];
+        for (k, l) in KINDS.iter().enumerate() {
+            first[k] = block.len();
+            block.extend(std::iter::repeat_n(*l, count(*l)));
+        }
         let slots: Vec<Vec<usize>> = cases
             .iter()
             .map(|c| {
-                let (mut a64, mut af, mut a8) = (1, 1 + n64, 1 + n64 + nf);
+                let mut next = first;
                 c.iter()
                     .map(|l| {
-                        let next = match l {
-                            I64 => &mut a64,
-                            F64 => &mut af,
-                            I8 => &mut a8,
-                        };
-                        let i = *next;
-                        *next += 1;
+                        let k = KINDS
+                            .iter()
+                            .position(|x| x == l)
+                            .expect("payload leaf kind");
+                        let i = next[k];
+                        next[k] += 1;
                         i
                     })
                     .collect()

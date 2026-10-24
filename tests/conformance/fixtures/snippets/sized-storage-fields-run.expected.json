@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "[-12, -9, -6, -3, 0, 3, 6, 9, 12, 15] 10 true\n[1.5, 0.1, -2] true\n-5 7 127 -300 2.5 -70000 true\nfalse true\nOptional.some(200) Optional.some(100) 2\n-9 100001 7\n2 -300\n",
+    "stderr": ""
+  }
+}

@@ -224,11 +224,12 @@ impl FnLower<'_> {
         }
         let types = &self.b.m.types;
         let int_key = match types.kind(a[0]) {
-            _ if types.is_int(a[0]) => true,
+            // Only the 8-byte slots of `Int`; packed widths go through descriptors.
+            _ if a[0] == MTy::INT => true,
             TyKind::Str => false,
             _ => return None,
         };
-        let scalar = types.is_int(a[1]) || types.is_float(a[1]);
+        let scalar = a[1] == MTy::INT || a[1] == MTy::FLOAT;
         let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
         match (sym, int_key) {
             ("msrt_map_add", true) if scalar => Some("msrt_map_add_w8"),

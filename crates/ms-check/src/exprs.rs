@@ -65,7 +65,7 @@ pub(crate) fn numeric(t: &Ty) -> bool {
 }
 
 /// An unsuffixed number literal, possibly negated.
-fn is_plain_literal(e: &Expr) -> bool {
+pub(crate) fn is_plain_literal(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Number(t) => !t.ends_with('d'),
         ExprKind::Unary {

@@ -1,7 +1,7 @@
 //! Calls, constructors, specialization.
 
 use crate::checker::Checker;
-use crate::exprs::callee_name;
+use crate::exprs::{callee_name, is_plain_literal};
 use crate::hints::*;
 use crate::inference::*;
 use crate::stmts::case_names;
@@ -680,11 +680,13 @@ impl Checker {
             };
         };
         let checkpoint = self.p.diagnostics.len();
+        let payload = expected_optional.args[0].clone();
+        // A number literal takes a sized payload type; `some(x)` is not needed to pass it.
+        let literal = is_plain_literal(e).then_some(&payload);
         let info = match info {
             Some(i) => i,
-            None => self.infer(e, expected),
+            None => self.infer(e, literal.or(expected)),
         };
-        let payload = expected_optional.args[0].clone();
         let actual = info.ty.clone();
         if compatible(&actual, expected_optional) {
             return self.check_expression(e, info, expected);

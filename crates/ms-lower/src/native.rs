@@ -1081,10 +1081,18 @@ impl<'a> FnLower<'a> {
             return self.numeric_conversion(e, recv);
         }
         // Other operations on a sized number run on its 64-bit kind.
-        let recv = self.widen_numeric(recv);
-        for a in &mut args {
-            a.val = self.widen_numeric(a.val);
-        }
+        let recv_nums = {
+            let t = self.ty_of(recv.v);
+            self.b.m.types.is_int(t) || self.b.m.types.is_float(t)
+        };
+        let recv = if recv_nums {
+            for a in &mut args {
+                a.val = self.widen_numeric(a.val);
+            }
+            self.widen_numeric(recv)
+        } else {
+            recv
+        };
         if let Some(sym) = m
             .name()
             .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))
