@@ -1228,6 +1228,50 @@ impl<'a> FnLower<'a> {
                 let index = index.ok_or_else(|| Error::new("get without index"))?;
                 self.list_get_or(recv, elem, index, default)
             }
+            (_, "abs_int" | "sign_int") => {
+                let x = self.borrow(recv);
+                let (zero, minus) = (self.b.iconst(0), self.b.iconst(-1));
+                let neg = self.b.icmp(ms_mir::ir::Cc::Lt, x, zero);
+                if name == "sign_int" {
+                    let (one, pos) = (self.b.iconst(1), self.b.icmp(ms_mir::ir::Cc::Gt, x, zero));
+                    let upper = self.b.select(pos, one, zero);
+                    let v = self.b.select(neg, minus, upper);
+                    return Ok(Val { v, own: false });
+                }
+                let negated = self.b.binop(ms_mir::ir::Op::ISubChk, zero, x);
+                let v = self.b.select(neg, negated, x);
+                // A narrower receiver keeps its type; the range check faults on its minimum.
+                let result = self.emty(e)?;
+                let v = if self.b.m.types.int_bits(result).is_some_and(|b| b < 64) {
+                    let narrow = self.b.conv(v, result);
+                    self.b.narrow_chk(narrow)
+                } else {
+                    v
+                };
+                Ok(Val { v, own: false })
+            }
+            (_, "abs_float" | "sign_float") => {
+                let x = self.borrow(recv);
+                let v = if name == "abs_float" {
+                    self.b
+                        .emit(
+                            ms_mir::ir::Op::FAbs,
+                            &[x],
+                            ms_mir::ir::Imm::None,
+                            Some(MTy::FLOAT),
+                        )
+                        .expect("fabs")
+                } else {
+                    self.call_runtime("msstd_math_sign", &[x], MTy::FLOAT)?
+                };
+                let result = self.emty(e)?;
+                let v = if result == MTy::FLOAT32 {
+                    self.b.conv(v, result)
+                } else {
+                    v
+                };
+                Ok(Val { v, own: false })
+            }
             (TyKind::Int, "to_decimal") => {
                 let n = self.borrow(recv);
                 let result = self.emty(e)?;
