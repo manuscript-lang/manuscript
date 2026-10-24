@@ -23,7 +23,9 @@ def fetch_all(urls: List[String]) -> List[Int]:
 
 **Type.** `TaskGroup[T]`: every child returns the same `T` (`Unit` for effect-only work; use an alternative for mixed results). It is a `Closeable` resource, so it is used with `with`. No handle type in v1: results come back in spawn order.
 
-**API (all in `@std/tasks.ms`):**
+**API as built (supersedes the list below where they differ; owner direction 2026-10-24: timeouts are required, opt-in only).** `TaskGroup[T](timeout: Optional[Duration] = none)`; `spawn(work, timeout: Optional[Duration] = none) -> Task[T]`; `Task[T].result() -> Result[T, TaskError]` (once); `results() -> Result[List[T], TaskError]`; `wait() -> Result[Unit, TaskError]`; `TaskError` is `TimedOut | Cancelled`. A timeout is a watcher task that sleeps then cancels the target; the group limit counts from creation and a task uses the shorter limit. The group stays typed (`TaskGroup[T]`) because source methods cannot declare their own type parameters yet; an untyped group with `Worker[R]`-style handles needs that compiler support first.
+
+**API (original, all in `@std/tasks.ms`):**
 - `TaskGroup[T]()` creates a group bound to the current task.
 - `spawn(work: Callable[[], T]) -> Unit`. Starts a child task; it first runs when the parent parks or yields (existing `msrt_task_spawn` behavior).
 - `results() -> List[T]`. Waits for every child, returns owned results in spawn order. Faults if any child faulted.

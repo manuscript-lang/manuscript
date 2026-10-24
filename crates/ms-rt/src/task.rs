@@ -995,12 +995,17 @@ pub unsafe extern "C-unwind" fn msrt_tasks_spawn(closure: *mut ms_rt_abi::Closur
     }
 }
 
-/// Waits for a task started by `msrt_tasks_spawn`: 0 when it returned, 1 when it was cancelled.
-/// If the caller is itself cancelled while waiting, the cancellation unwinds the caller.
+/// Waits for a task started by `msrt_tasks_spawn`: 0 when it returned (or its handle is already
+/// consumed), 1 when it was cancelled. If the caller is itself cancelled while waiting, the
+/// cancellation unwinds the caller and the task stays joinable.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_tasks_join(handle: i64) -> u8 {
     // SAFETY: single threaded scheduler.
     unsafe {
+        ensure_init();
+        if lookup(handle as u64).is_null() {
+            return 0;
+        }
         let status = msrt_task_join(handle as u64, null_mut());
         if status == 2 && msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
