@@ -82,7 +82,11 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     assert_eq!(stderr.matches("MSL101").count(), 1, "{stderr}");
     assert!(!stderr.contains("fix them and re-run"), "{stderr}");
 
-    std::fs::write(dir.join("bad.ms"), "def invalid() -> Int:\n    return False\n").unwrap();
+    std::fs::write(
+        dir.join("bad.ms"),
+        "def invalid() -> Int:\n    return False\n",
+    )
+    .unwrap();
     let output = ms(&dir, &["lint", "b.ms", "bad.ms", "a.ms", "--json"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stderr.is_empty());

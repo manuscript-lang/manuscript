@@ -382,7 +382,10 @@ impl Gen {
             2 => {
                 let mut v = base.items.clone();
                 v.sort();
-                (format!("{}.sorted(lambda a, b: a.compare(b))", base.name), v)
+                (
+                    format!("{}.sorted(lambda a, b: a.compare(b))", base.name),
+                    v,
+                )
             }
             3 => {
                 let mut v = base.items.clone();
@@ -828,7 +831,7 @@ mod tests {
         assert_eq!(program(3).source, program(3).source);
         assert_ne!(program(3).source, program(4).source);
         assert!(program(3).source.contains("export def main() -> Int: ..."));
-        assert!(type_error(1).source.contains("export fn main"));
+        assert!(type_error(1).source.contains("export def main"));
         assert!(!syntax_error(2).source.is_empty());
     }
 

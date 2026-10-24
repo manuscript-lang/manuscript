@@ -784,7 +784,9 @@ mod tests {
         let tags = tags_for(text, Phase::Run);
         assert!(tags.contains(&"stdlib-json".to_string()));
         assert!(tags.contains(&"tier-io".to_string()));
-        assert!(tags_for("def f() -> Int:\n    return 1\n", Phase::Run).contains(&"tier-core".into()));
+        assert!(
+            tags_for("def f() -> Int:\n    return 1\n", Phase::Run).contains(&"tier-core".into())
+        );
     }
 
     #[test]

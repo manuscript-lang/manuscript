@@ -189,7 +189,7 @@ fn import_line(m: &ApiModule) -> String {
     if m.path == "prelude" {
         "available in every module; no import".to_string()
     } else {
-        format!("import Name from {:?}", m.path)
+        format!("from {:?} import Name", m.path)
     }
 }
 

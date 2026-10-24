@@ -826,6 +826,9 @@ fn write_type_key(key: &mut String, t: &Ty) {
         for p in &t.params {
             key.push('[');
             write_type_key(key, &p.ty);
+            if t.is_default(p.name) {
+                key.push('=');
+            }
             key.push(']');
         }
         key.push_str("[result:");

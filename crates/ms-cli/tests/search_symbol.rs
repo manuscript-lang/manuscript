@@ -28,7 +28,7 @@ fn search_symbol_describes_project_and_standard_symbols() {
 
     let (status, out) = ms(&dir, &["parse_config"]);
     assert_eq!(status, 0);
-    assert!(out.starts_with("parse_config  fn  a.ms:1:4\n"), "{out}");
+    assert!(out.starts_with("parse_config  fn  a.ms:1:5\n"), "{out}");
     assert!(out.contains("  used (1): a.ms:5:12\n"), "{out}");
 
     let (_, out) = ms(&dir, &["--json", "parseconfig"]);

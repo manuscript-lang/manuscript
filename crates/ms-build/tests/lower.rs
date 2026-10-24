@@ -156,7 +156,7 @@ fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
 fn native_values_and_time() {
     let mir = lower(
         "native-values",
-        "from \"@std/io.ms\" import stdout\nfrom \"@std/math.ms\" import sqrt, max\nfrom \"@std/time.ms\" import Duration, parse_timestamp\n\ndef via(f: Callable[[Float], Float], x: Float) -> Float: f(value: x)\n\nexport def main() -> Int:\n    let to_text: Callable[[], String] = 7.to_string\n    let d: Duration = 2.seconds\n    let t = parse_timestamp(\"2020-01-02T03:04:05Z\")\n    let r = stdout().write(f\"{to_text()} {via(f: sqrt, x: 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\nfrom \"@std/math.ms\" import sqrt, max\nfrom \"@std/time.ms\" import Duration, parse_timestamp\n\ndef via(f: Callable[[Float], Float], x: Float) -> Float: f(x)\n\nexport def main() -> Int:\n    let to_text: Callable[[], String] = 7.to_string\n    let d: Duration = 2.seconds\n    let t = parse_timestamp(\"2020-01-02T03:04:05Z\")\n    let r = stdout().write(f\"{to_text()} {via(sqrt, 4.0)} {max(left: 1, right: 2)} {d.to_milliseconds()}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("closure.new"));
     assert!(mir.contains("msstd_time_parse_timestamp"));
@@ -187,7 +187,7 @@ fn loop_variables_survive_a_removed_trivial_join() {
 fn method_values_type_applications_and_callee_capture() {
     let mir = lower(
         "values",
-        "import stdout from \"@std/io.ms\"\n\nfn identity[T](value: T) T: value\n\nfn run(f: fn(value: Int) Int) Int: f(value: 1)\n\nexport fn main() Int:\n    let items = [4, 5]\n    let count = items.count\n    let lookup = items.get\n    let same = identity[Int]\n    var selected = identity[Int]\n    let n = selected(match some(0):\n        some(_):\n            selected = fn(value: Int): value + 1\n            3\n        none: 3\n    )\n    let r = stdout().write(\"{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\n\ndef identity[T](value: T) -> T: value\n\ndef run(f: Callable[[Int], Int]) -> Int: f(1)\n\nexport def main() -> Int:\n    let items = [4, 5]\n    let count = items.count\n    let lookup = items.get\n    let same = identity[Int]\n    var selected = identity[Int]\n    let n = selected(match some(0):\n        case some(_):\n            selected = lambda (value: Int): value + 1\n            3\n        case none: 3\n    )\n    let r = stdout().write(f\"{lookup(1)} {n} {run(same)} {count(lambda (x: Int): x > 4)}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("closure.new"));
 }

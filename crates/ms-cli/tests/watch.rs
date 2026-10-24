@@ -82,7 +82,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn program(exit: i32) -> String {
-    format!("export fn main() Int:\n    return {exit}\n")
+    format!("export def main() -> Int:\n    return {exit}\n")
 }
 
 /// Rewrite after a pause, so the new modification time differs on coarse file systems.
@@ -117,7 +117,7 @@ fn test_reruns_after_each_change() {
     let source = dir.join("sample_test.ms");
     let tests = |expected: i32| {
         format!(
-            "import {{expect_equal}} from \"@std/testing.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
+            "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
         )
     };
     std::fs::write(&source, tests(3)).unwrap();

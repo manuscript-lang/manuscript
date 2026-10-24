@@ -54,7 +54,7 @@ pub fn error_type(signature: &str) -> String {
         return String::new();
     };
     let bytes = params.as_bytes();
-    let (mut end, mut depth) = (0usize, 2i32);
+    let (mut end, mut depth) = (0usize, 1i32);
     while end < bytes.len() && depth > 0 {
         match bytes[end] {
             b'[' => depth += 1,

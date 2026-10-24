@@ -96,7 +96,11 @@ fn build_writes_an_executable_and_reports_it() {
 #[test]
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
-    let source = write(&dir, "main.ms", "export def main() -> Int:\n    return \"x\"\n");
+    let source = write(
+        &dir,
+        "main.ms",
+        "export def main() -> Int:\n    return \"x\"\n",
+    );
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);

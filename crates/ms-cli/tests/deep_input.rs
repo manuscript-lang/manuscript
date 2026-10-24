@@ -22,7 +22,7 @@ fn long_operator_chain_checks_and_runs() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let terms = vec!["1"; 9000].join(" + ");
-    let source = format!("export fn main() Int:\n    let x = {terms}\n    return x - 9000\n");
+    let source = format!("export def main() -> Int:\n    let x = {terms}\n    return x - 9000\n");
     std::fs::write(dir.join("chain.ms"), source).unwrap();
     for command in ["check", "fmt", "lint"] {
         let (status, text) = run_ms(&[command, "chain.ms"], &dir);
@@ -46,19 +46,19 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     let source = "from \"@std/io.ms\" import stdout\n\
         from \"@std/collections.ms\" import range\n\
         type L:\n\
-            case Nil\n\
-            case Cons(head: Int, tail: L)\n\
+        \x20   case Nil\n\
+        \x20   case Cons(head: Int, tail: L)\n\
         export def main() -> Int:\n\
-            var l: L = Nil\n\
-            for i in range(0, 100000):\n\
-                l = Cons(i, l)\n\
-            let text = f\"{l}\"\n\
-            var xs: List[Int] = []\n\
-            for i in range(0, 300000):\n\
-                xs.append(i)\n\
-            let list_text = f\"{xs}\"\n\
-            stdout().write(f\"{text.length()} {list_text.length()}\\n\").get()\n\
-            return 0\n\
+        \x20   var l: L = Nil\n\
+        \x20   for i in range(0, 100000):\n\
+        \x20       l = Cons(i, l)\n\
+        \x20   let text = f\"{l}\"\n\
+        \x20   var xs: List[Int] = []\n\
+        \x20   for i in range(0, 300000):\n\
+        \x20       xs.append(i)\n\
+        \x20   let list_text = f\"{xs}\"\n\
+        \x20   stdout().write(f\"{text.length()} {list_text.length()}\\n\").get()\n\
+        \x20   return 0\n\
         ";
     std::fs::write(dir.join("text.ms"), source).unwrap();
     let started = std::time::Instant::now();
@@ -77,9 +77,9 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     std::fs::create_dir_all(&dir).unwrap();
     let source = "from \"@std/io.ms\" import stdout\n\
         export def main() -> Int:\n\
-            let lowered = f\"\\u{1C5}\\u{3A3}\".lower()\n\
-            stdout().write(f\"{lowered.scalar_values()}\\n\").get()\n\
-            return 0\n\
+        \x20   let lowered = f\"\\u{1C5}\\u{3A3}\".lower()\n\
+        \x20   stdout().write(f\"{lowered.scalar_values()}\\n\").get()\n\
+        \x20   return 0\n\
         ";
     std::fs::write(dir.join("sigma.ms"), source).unwrap();
     let (status, text) = run_ms(&["run", "sigma.ms"], &dir);

@@ -29,7 +29,7 @@ interface Adder:
 impl Adder for Counter:
     def add(amount: Int, extra: Int) -> Int: self.total + amount + extra
 
-def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...
+def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int:
 ";
 
 #[test]

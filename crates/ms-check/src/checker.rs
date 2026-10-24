@@ -271,10 +271,11 @@ impl Checker {
         let suffix = format!(" import {name}");
         let file = self.current_file();
         let _ = pos;
-        self.p
-            .diagnostics
-            .iter()
-            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains("; add: from ") && d.message.ends_with(&suffix))
+        self.p.diagnostics.iter().any(|d| {
+            d.file.as_ref() == file.as_str()
+                && d.message.contains("; add: from ")
+                && d.message.ends_with(&suffix)
+        })
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.

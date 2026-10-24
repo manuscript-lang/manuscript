@@ -16,18 +16,18 @@ index 111..222 100644
 --- a/src/a.ms
 +++ b/src/a.ms
 @@ -1,4 +1,5 @@
- fn one() Int:
+ def one() -> Int:
 -    return 1
 +    let x = 1
 +    return x
  
- fn two() Int:
+ def two() -> Int:
 diff --git a/new.ms b/new.ms
 new file mode 100644
 --- /dev/null
 +++ b/new.ms
 @@ -0,0 +1,2 @@
-+fn n() Int:
++def n() -> Int:
 +    return 0
 ";
 
@@ -37,7 +37,8 @@ fn parse_diff_and_reverse_apply() {
     assert_eq!(files.len(), 2);
     assert_eq!(files[0].path(), "src/a.ms");
     assert!(files[1].old.is_empty() && files[1].new == "new.ms");
-    let head = "def one() -> Int:\n    let x = 1\n    return x\n\ndef two() -> Int:\n    return 2\n";
+    let head =
+        "def one() -> Int:\n    let x = 1\n    return x\n\ndef two() -> Int:\n    return 2\n";
     let base = reverse_apply(head, &files[0].hunks).unwrap();
     assert_eq!(
         base,
@@ -59,9 +60,10 @@ fn parse_diff_rejects_renames() {
 
 #[test]
 fn removed_content_is_base_text() {
-    let files =
-        parse_diff("--- a/gone.ms\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-fn a() Int:\n-    return 0\n")
-            .unwrap();
+    let files = parse_diff(
+        "--- a/gone.ms\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-def a() -> Int:\n-    return 0\n",
+    )
+    .unwrap();
     assert!(files[0].new.is_empty());
     assert_eq!(
         removed_content(&files[0].hunks),

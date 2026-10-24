@@ -60,7 +60,7 @@ fn impl_cannot_mutate_what_the_interface_does_not() {
     let source = "interface Sink:\n    def put(x: Int) -> Unit\ntype Buf:\n    n: Int\nimpl Sink for Buf:\n    var def put(x: Int) -> Unit:\n        self.n = x\nexport def main() -> Int:\n    return 0\n";
     let got = first_message(source);
     assert!(
-        got.starts_with("implementation of put is declared var fn but Sink declares it fn"),
+        got.starts_with("implementation of put is declared var def but Sink declares it def"),
         "{got}"
     );
 }
@@ -93,7 +93,8 @@ fn map_index_points_to_get_and_add() {
     );
     assert_eq!(write.len(), 1, "{write:?}");
     assert!(write[0].contains("m.add(key, value)"), "{write:?}");
-    let read = all("export def main() -> Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
+    let read =
+        all("export def main() -> Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
     assert_eq!(read.len(), 1, "{read:?}");
     assert!(read[0].contains("m.get(key)"), "{read:?}");
 }
@@ -123,7 +124,7 @@ fn foreign_idioms_name_the_replacement() {
     ];
     for (line, want) in cases {
         let got = first_message(&format!(
-            "export fn main() Int:\n    {line}\n    return 0\n"
+            "export def main() -> Int:\n    {line}\n    return 0\n"
         ));
         assert!(
             got.contains(want),

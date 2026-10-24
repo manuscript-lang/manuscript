@@ -23,12 +23,12 @@ fn graph(depth: usize, recursive: bool) -> String {
     let mut source = String::new();
     for i in 0..depth {
         source.push_str(&format!(
-            "fn f{i}[T](n: Int) Int:\n    return f{}[T](n) + f{}[T](n)\n\n",
+            "def f{i}[T](n: Int) -> Int:\n    return f{}[T](n) + f{}[T](n)\n\n",
             i + 1,
             i + 1
         ));
     }
-    source.push_str(&format!("fn f{depth}[T](n: Int) Int:\n"));
+    source.push_str(&format!("def f{depth}[T](n: Int) -> Int:\n"));
     if recursive {
         source.push_str(&format!("    return f{depth}[T](n)\n"));
     } else {
@@ -46,8 +46,7 @@ fn shared_generic_dag_does_not_expand_every_call_path() {
 
 #[test]
 fn preserving_cycles_and_branching_paths_to_them_remain_valid() {
-    let source =
-        "def a[T](n: Int) -> Int:\n    return b[T](n)\n\ndef b[U](n: Int) -> Int:\n    return a[U](n)\n";
+    let source = "def a[T](n: Int) -> Int:\n    return b[T](n)\n\ndef b[U](n: Int) -> Int:\n    return a[U](n)\n";
     assert!(diagnostics(&[("mutual.ms", source)]).is_empty());
     // Paths feeding a cycle must remain checked; this optimization does not collapse them.
     assert!(diagnostics(&[("cyclic-dag.ms", &graph(6, true))]).is_empty());
