@@ -84,6 +84,10 @@ struct Task {
     fatal: bool,
     /// A closure the task holds a reference to, released when the task ends however it ends.
     owned: *mut ms_rt_abi::Obj,
+    /// When the task is cancelled for running too long, or `NO_DEADLINE`.
+    kill_at: i64,
+    /// Set when the task was cancelled because `kill_at` passed.
+    timed_out: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -112,6 +116,8 @@ struct Sched {
     free_slots: Vec<usize>,
     /// Min-heap of (deadline, handle).
     timers: BinaryHeap<Reverse<(i64, u64)>>,
+    /// Min-heap of (kill deadline, handle) for tasks started with a time limit.
+    kills: BinaryHeap<Reverse<(i64, u64)>>,
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
     /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
@@ -140,6 +146,7 @@ static SCHED: Global<Sched> = Global::new(Sched {
     slots: Vec::new(),
     free_slots: Vec::new(),
     timers: BinaryHeap::new(),
+    kills: BinaryHeap::new(),
     timer_limit: MIN_TIMER_LIMIT,
     fd_waiters: Vec::new(),
     fd_waiting: 0,
@@ -418,6 +425,8 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             wait_token: 0,
             fatal: false,
             owned: null_mut(),
+            kill_at: NO_DEADLINE,
+            timed_out: false,
         });
     }
     s.live += 1;
@@ -543,6 +552,19 @@ unsafe fn wake(t: *mut Task, result: u32) {
 /// Wakes timers that have expired.
 unsafe fn expire_timers(now: i64) {
     let mut s = sched();
+    while let Some(&Reverse((deadline, h))) = s.kills.peek()
+        && deadline <= now
+    {
+        s.kills.pop();
+        // SAFETY: handles are validated by `lookup`.
+        unsafe {
+            let t = lookup(h);
+            if !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline {
+                (*t).timed_out = true;
+                msrt_task_cancel(h);
+            }
+        }
+    }
     while let Some(&Reverse((deadline, h))) = s.timers.peek()
         && deadline <= now
     {
@@ -616,6 +638,21 @@ unsafe fn reactor_wait() {
                 }
                 let ns = (deadline - now).max(0);
                 timeout_ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
+                break;
+            }
+            while let Some(&Reverse((deadline, h))) = s.kills.peek() {
+                let t = lookup(h);
+                if t.is_null() || (*t).state == State::Done || (*t).kill_at != deadline {
+                    s.kills.pop();
+                    continue;
+                }
+                let ns = (deadline - now).max(0);
+                let ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
+                timeout_ms = if timeout_ms < 0 {
+                    ms
+                } else {
+                    timeout_ms.min(ms)
+                };
                 break;
             }
             if timeout_ms < 0 && s.fd_waiting == 0 && s.remote_tokens == 0 {
@@ -841,9 +878,12 @@ unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
             // a loop of short waits with long timeouts must not grow the heap without bound.
             let sched = &mut *s;
             let slots = &sched.slots;
+            let (own, fresh) = ((*cur).handle, deadline);
+            // The calling task is not Waiting yet, but its entry was just pushed and must stay.
             sched.timers.retain(|&Reverse((deadline, h))| {
                 let t = lookup_in(slots, h);
-                !t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline
+                (h == own && deadline == fresh)
+                    || (!t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline)
             });
             s.timer_limit = (s.timers.len() * 2).max(MIN_TIMER_LIMIT);
         }
@@ -905,6 +945,10 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
         }
         if t == cur {
             fault::set_live_task_cancel(1);
+            // A parked task runs the reactor on its own stack, so it can be the one expiring its kill timer.
+            if (*t).state == State::Waiting && !shielded(t) {
+                wake(t, WAIT_CANCELLED);
+            }
             return;
         }
         (*t).ctx.set_cancel(1);
@@ -920,7 +964,15 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8 {
     // SAFETY: single threaded scheduler.
+    unsafe { join(handle, msg_out, false) }
+}
+
+/// The body of `msrt_task_join`. With `keep` the task stays joinable and its fault message is not
+/// taken. Whether the task was cancelled for running past its time limit is left in `TIMED_OUT`.
+unsafe fn join(handle: u64, msg_out: *mut StrVal, keep: bool) -> u8 {
+    // SAFETY: single threaded scheduler.
     unsafe {
+        *TIMED_OUT.ptr() = false;
         let cur = ensure_init();
         if !msg_out.is_null() {
             *msg_out = crate::string::NO_STR;
@@ -956,6 +1008,10 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
             }
         }
         let status = (*t).status;
+        *TIMED_OUT.ptr() = (*t).timed_out && status == 2;
+        if keep {
+            return status;
+        }
         let msg = core::mem::replace(&mut (*t).msg, crate::string::NO_STR);
         if msg_out.is_null() {
             crate::string::release_opt(&msg);
@@ -967,14 +1023,20 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
     }
 }
 
+static TIMED_OUT: Global<bool> = Global::new(false);
+
 // ---- closure tasks (`@std/tasks.ms`) ----
 
 /// Entry of a task that runs a `Callable[[], Unit]`: calls the closure with itself as its
 /// environment, as every closure call does.
 unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;
-    // SAFETY: `arg` is the retained closure object `msrt_tasks_spawn` stored.
+    // SAFETY: `arg` is the retained closure object `spawn_closure` stored.
     unsafe {
+        // A task cancelled before it first ran never starts.
+        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+            fault::msrt_cancelled();
+        }
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
             core::mem::transmute((*closure).code);
         code(closure);
@@ -982,43 +1044,50 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
 }
 
 /// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
-/// when it ends, by return, cancellation, or fault. A fault in the task ends the process.
-/// Returns the task handle.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_tasks_spawn(closure: *mut ms_rt_abi::Closure) -> i64 {
+/// when it ends, by return, cancellation, or fault. A fault in the task ends the process. With a
+/// non-negative `limit_ns` the task is cancelled once it has run that long. Returns the handle.
+pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i64) -> u64 {
     // SAFETY: single threaded scheduler; `closure` is a live closure object.
     unsafe {
         crate::obj::msrt_retain(closure.cast());
         let h = msrt_task_spawn(closure_entry, closure.cast(), SPAWN_FATAL, TASK_GROUP_STACK);
-        (*lookup(h)).owned = closure.cast();
-        h as i64
+        let t = lookup(h);
+        (*t).owned = closure.cast();
+        if limit_ns >= 0 {
+            let at = clock_ns().saturating_add(limit_ns);
+            (*t).kill_at = at;
+            sched().kills.push(Reverse((at, h)));
+        }
+        h
     }
 }
 
-/// Waits for a task started by `msrt_tasks_spawn`: 0 when it returned (or its handle is already
-/// consumed), 1 when it was cancelled. If the caller is itself cancelled while waiting, the
-/// cancellation unwinds the caller and the task stays joinable.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_tasks_join(handle: i64) -> u8 {
+/// Waits for a task started by `spawn_closure` and returns how it ended: 0 returned, 1 timed out,
+/// 2 cancelled, 3 no such task (collected or closed). With `keep` the task stays
+/// joinable. If the caller is cancelled while waiting, the cancellation unwinds the caller.
+pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
     // SAFETY: single threaded scheduler.
     unsafe {
         ensure_init();
-        if lookup(handle as u64).is_null() {
-            return 0;
+        if lookup(handle).is_null() {
+            return 3;
         }
-        let status = msrt_task_join(handle as u64, null_mut());
+        let status = join(handle, null_mut(), keep);
         if status == 2 && msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
         }
-        u8::from(status != 0)
+        match status {
+            0 => 0,
+            _ if *TIMED_OUT.ptr() => 1,
+            _ => 2,
+        }
     }
 }
 
-/// Requests cancellation of a task started by `msrt_tasks_spawn`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_tasks_cancel(handle: i64) {
+/// Requests cancellation of a task started by `spawn_closure`.
+pub(crate) unsafe fn cancel_closure(handle: u64) {
     // SAFETY: single threaded scheduler.
-    unsafe { msrt_task_cancel(handle as u64) }
+    unsafe { msrt_task_cancel(handle) }
 }
 
 // ---- tokens ----

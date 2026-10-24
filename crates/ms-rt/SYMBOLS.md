@@ -816,9 +816,11 @@ msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal)
 msrt_string_char_width(s: *const StrVal, at: i64) -> i64
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64
 msrt_task_forget_fd(fd: i32)
-msrt_tasks_spawn(closure: *mut Closure) -> i64
-msrt_tasks_join(handle: i64) -> u8
-msrt_tasks_cancel(handle: i64)
+msrt_scope_new() -> i64
+msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_limit_ns: i64, ) -> i64
+msrt_scope_join(handle: i64, keep: i64) -> i64
+msrt_scope_wait(scope: i64) -> i64
+msrt_scope_close(scope: i64)
 msrt_token_free(id: u64)
 msrt_token_new(flags: u32) -> u64
 msrt_token_park( id: u64, timeout_ns: i64, value_out: *mut u64, ) -> u32
