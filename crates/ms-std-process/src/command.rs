@@ -3,8 +3,9 @@
 //! Children start in their own process group (a job object on Windows) so a kill reaches the
 //! whole tree.
 //! Waiting parks the task on the child's exit and its pipes at once (a pidfd on Linux, a kqueue
-//! on macOS); on Windows it checks in short slices that park the task. Either way other tasks
-//! run and a pending cancellation kills the tree and unwinds.
+//! on macOS). On Windows `Subprocess.wait` parks on the process handle through a thread-pool
+//! wait, while `run` still checks its pipes in short slices. Either way other tasks run and a
+//! pending cancellation kills the tree and unwinds.
 use crate::ipc::ChildEnd;
 use alloc::vec::Vec;
 use ms_rt::glue::{cancel_pending, cancelled};
@@ -431,5 +432,37 @@ mod tests {
         let mut buf = [0u8; 8];
         assert_eq!(sys::read(p.stderr.0, &mut buf).unwrap(), 5);
         assert_eq!(&buf[..5], b"done\n");
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<Vec<u8>> {
+        list.iter().map(|s| s.as_bytes().to_vec()).collect()
+    }
+
+    #[test]
+    fn waits_park_on_the_process_handle() {
+        let mut quick = spawn(b"cmd", &args(&["/c", "exit 3"]), [STDIO_NULL; 3]).unwrap();
+        assert_eq!(quick.wait(Some(20_000_000_000)).unwrap(), 3);
+        let mut slow = spawn(
+            b"cmd",
+            &args(&["/c", "ping -n 30 127.0.0.1"]),
+            [STDIO_NULL; 3],
+        )
+        .unwrap();
+        assert_eq!(
+            slow.wait(Some(50_000_000)).unwrap_err().status,
+            STATUS_TIMEOUT
+        );
+        // A second wait on the same child reuses its watch.
+        assert_eq!(
+            slow.wait(Some(50_000_000)).unwrap_err().status,
+            STATUS_TIMEOUT
+        );
+        slow.child.signal(true);
+        assert!(slow.wait(Some(20_000_000_000)).is_ok());
     }
 }

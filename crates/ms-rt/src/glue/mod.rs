@@ -227,6 +227,38 @@ pub mod pipe {
     }
 }
 
+/// Windows kernel objects (a child process) the runtime poller waits on through the thread
+/// pool, so a task parks until the object is signalled instead of checking it in slices.
+#[cfg(windows)]
+pub mod object {
+    use super::{WAIT_READ, WAIT_TIMEOUT, cancelled};
+    use crate::task::{WAIT_CANCELLED, msrt_task_wait_fd};
+
+    /// Parks until `handle` is signalled or `timeout_ns` passes (negative: no limit). Returns
+    /// `WAIT_READ`, `WAIT_TIMEOUT`, or `None` when the object cannot be watched.
+    ///
+    /// # Safety
+    /// `handle` is an open waitable handle that stays open until [`forget`].
+    pub unsafe fn wait(handle: isize, timeout_ns: i64) -> Option<u32> {
+        crate::task::ensure_poller();
+        // SAFETY: forwarded from the caller.
+        if !unsafe { crate::poller::object_watch(handle as usize) } {
+            return None;
+        }
+        // SAFETY: parks the current task; no Rust borrow is held across the call.
+        let got = unsafe { msrt_task_wait_fd(handle as i32, WAIT_READ, timeout_ns) };
+        if got & WAIT_CANCELLED != 0 {
+            cancelled();
+        }
+        Some(got & (WAIT_READ | WAIT_TIMEOUT))
+    }
+
+    /// Ends the watch [`wait`] started; call before closing `handle`.
+    pub fn forget(handle: isize) {
+        crate::poller::object_drop(handle as usize);
+    }
+}
+
 /// Parks the running task for `ns` nanoseconds so other tasks keep running, and unwinds the
 /// program when a stop request (or task cancellation) ends the wait early.
 pub fn task_sleep(ns: i64) {

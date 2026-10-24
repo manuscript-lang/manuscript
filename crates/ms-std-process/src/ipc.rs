@@ -500,7 +500,7 @@ mod tests {
         // reactor run, rather than blocking the thread.
         drop((input, output));
         while !child.poll() {
-            ms_rt::glue::task_sleep(2_000_000);
+            assert!(child.park_until_exit(-1));
         }
         assert_eq!(child.wait(), 0);
     }
