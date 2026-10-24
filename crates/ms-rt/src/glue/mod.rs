@@ -220,6 +220,30 @@ pub mod pipe {
         Ok(())
     }
 
+    /// One read without parking: `WouldBlock` until data arrives, 0 at end of stream.
+    pub fn try_read(handle: isize, buf: &mut [u8]) -> std::io::Result<usize> {
+        match crate::poller::pipe_read(handle as usize, buf) {
+            Err(e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
+            r => r,
+        }
+    }
+
+    /// One write without parking: `WouldBlock` while an earlier write is in flight.
+    pub fn try_write(handle: isize, data: &[u8]) -> std::io::Result<usize> {
+        crate::poller::pipe_write(handle as usize, data)
+    }
+
+    /// Whether `handle` is a pipe adopted here.
+    pub fn is_adopted(handle: isize) -> bool {
+        crate::poller::pipe_adopted(handle as usize)
+    }
+
+    /// Wakes the task parked on `key` (for reading) when the adopted pipe `handle` becomes
+    /// readable or writable, so one task can wait on several pipes; [`close`] ends it.
+    pub fn group(handle: isize, key: isize) {
+        crate::poller::pipe_group(handle as usize, key as usize);
+    }
+
     /// Closes an adopted pipe. A read still pending is cancelled, and the handle itself closes
     /// once the poller collects that cancellation, on the next wait of any task.
     pub fn close(handle: isize) {

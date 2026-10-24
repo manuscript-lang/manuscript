@@ -58,6 +58,10 @@ pub struct Stream {
     closed: bool,
     /// Whether reads may block indefinitely (anything that is not a regular file).
     pollable: bool,
+    /// An overlapped pipe the runtime poller adopted (a child's piped stream): reads and writes
+    /// park on the poller instead of being checked in slices.
+    #[cfg(windows)]
+    adopted: bool,
     /// The open mode forbids reading or writing, which is `InvalidInput` on every host.
     pub(crate) no_read: bool,
     pub(crate) no_write: bool,
@@ -90,6 +94,8 @@ impl Stream {
             owned,
             closed: false,
             pollable,
+            #[cfg(windows)]
+            adopted: ms_rt::glue::pipe::is_adopted(fd),
             no_read: false,
             no_write: false,
             file: false,
@@ -195,6 +201,11 @@ impl Stream {
             return Ok(());
         }
         self.closed = true;
+        #[cfg(windows)]
+        if self.adopted {
+            ms_rt::glue::pipe::close(self.fd);
+            return Ok(());
+        }
         if self.owned {
             return sys::close(self.fd).map_err(|e| IoFail::os("close", &self.name, e));
         }
@@ -230,6 +241,11 @@ impl Stream {
     }
 
     fn read_fd(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+        #[cfg(windows)]
+        if self.adopted {
+            return ms_rt::glue::pipe::read(self.fd, buf)
+                .map_err(|e| e.raw_os_error().unwrap_or(0));
+        }
         self.wait(Interest::Read);
         sys::read(self.fd, buf)
     }
@@ -276,6 +292,11 @@ impl Stream {
         self.rewind();
         if self.shares_output {
             msrt_io_flush();
+        }
+        #[cfg(windows)]
+        if self.adopted {
+            return ms_rt::glue::pipe::write(self.fd, data)
+                .map_err(|e| IoFail::os("write", &self.name, e.raw_os_error().unwrap_or(0)));
         }
         while !data.is_empty() {
             self.wait_write();
