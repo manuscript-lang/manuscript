@@ -486,6 +486,14 @@ unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool
         return;
     };
     let (lo, hi) = sys::stack_limits();
+    {
+        let sp: usize = 0;
+        let m = format!("WALKDBG pc={pc:x} fp={fp:x} remaining={remaining} lo={lo:x} hi={hi:x} lo0={:x} hi0={:x} local={:x}\n", unsafe { *STACK_LO.ptr() }, unsafe { *STACK_HI.ptr() }, &sp as *const usize as usize);
+        sys::write_all(sys::STDERR, m.as_bytes());
+        let (n, r) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
+        let m = format!("WALKDBG next={n:x} ret={r:x} infunc={}\n", find_func(t, r).is_some());
+        sys::write_all(sys::STDERR, m.as_bytes());
+    }
     // SAFETY: source_frame recovered the current generated frame and stack_limits
     // bounds the live thread stack.
     unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
