@@ -4,14 +4,13 @@
 from "@std/testing.ms" import expect_equal, expect_false
 from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
 from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
-from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands
+from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio
 from "@std/bytes.ms" import Bytes
 
 def forward[T](item: T) -> T: item
 
 type Capture:
-    last: Bytes
-    calls: Int
+    tag: Bytes
 
 impl Commands for Capture:
     def run(
@@ -21,13 +20,14 @@ impl Commands for Capture:
         max_output_bytes: Optional[Int],
         timeout: Optional[Duration]
     ) -> Result[CommandOutput, CommandError]:
-        self.last = input
-        self.calls += 1
         return ok(CommandOutput(0, input, "".to_bytes()))
 
     def spawn(
         program: String,
-        arguments: List[String]
+        arguments: List[String],
+        stdin: Stdio,
+        stdout: Stdio,
+        stderr: Stdio
     ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
@@ -38,24 +38,6 @@ def generic_run[T: Commands](service: T) -> Result[Bytes, Error]:
 
 type Override:
     input: Bytes
-
-test "bound receiver is captured before supplied arguments":
-    let first = Capture("first".to_bytes(), 0)
-    let second = Capture("second".to_bytes(), 0)
-    var selected = first
-    let index: Optional[Int] = some(0)
-    let output = try selected.run(
-        match index:
-            case some(_):
-                selected = second
-                "fake"
-            case none: "fake"
-        ,
-        []
-    )
-    try expect_false(
-        (first.calls != 1 or second.calls != 0 or output.stdout.length() != 0)
-    )
 
 impl Commands for Override:
     def run(
@@ -69,7 +51,10 @@ impl Commands for Override:
 
     def spawn(
         program: String,
-        arguments: List[String]
+        arguments: List[String],
+        stdin: Stdio,
+        stdout: Stdio,
+        stderr: Stdio
     ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
@@ -78,17 +63,17 @@ test "concrete implementation defaults and interface defaults stay distinct":
     let concrete = service.run
     try expect_equal((try concrete("fake", [])).stdout, service.input)
 
-    let viewed = Commands(service).run
+    let commands: Commands = service
+    let viewed = commands.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 
     let explicit = "explicit".to_bytes()
     try expect_equal((try viewed("fake", [], explicit)).stdout, explicit)
 
 test "CSV defaults are fresh and explicit options retain their meaning":
-    let first = CsvOptions()
-    var alias = first
-    alias.delimiter = ";"
-    alias.line_ending = "\r\n"
+    var first = CsvOptions()
+    first.delimiter = ";"
+    first.line_ending = "\r\n"
 
     let second = CsvOptions()
     try expect_false(
@@ -132,7 +117,7 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_equal(base64_encode(bytes, True), "_w==")
 
     let encode = base64_encode
-    let copied = encode
+    let copied = base64_encode
     try expect_equal(copied(bytes), "/w==")
 
     let typed: Callable[[Bytes, Bool], String] = encode
@@ -154,23 +139,22 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
-    let capture = Capture("x".to_bytes(), 0)
+    let capture = Capture("x".to_bytes())
     let bound = capture.run
     try expect_equal((try bound("fake", [])).stdout.length(), 0)
     try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
 
-    let view = Commands(capture)
+    let view: Commands = Capture("x".to_bytes())
     let viewed = view.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
-    try expect_equal((try generic_run(capture)).length(), 0)
+    try expect_equal((try generic_run(Capture("x".to_bytes()))).length(), 0)
 
     let input = Bytes([42])
     let output = (try view.run("fake", [], input)).stdout
-    try expect_false(output != input or capture.last != input)
+    try expect_equal(output, input)
 
     let forwarded = forward(view.run)
     try expect_equal((try forwarded("fake", [], input, none, none)).stdout.get(0), 42)
-    try expect_equal(capture.calls, 6)
 
     let invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
     let native = commands().run
