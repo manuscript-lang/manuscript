@@ -200,9 +200,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
         // The two tokens of a compound assignment such as +=.
         return false;
     }
-    if current == Tok::LParen
-        && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket)
-    {
+    if current == Tok::LParen && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket) {
         return false;
     }
     if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::RBracket) {

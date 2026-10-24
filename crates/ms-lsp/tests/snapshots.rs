@@ -47,7 +47,7 @@ fn lifecycle_and_diagnostics() {
         1,
     );
     let syntax = ws.uri("syntax.ms");
-    s.open(&syntax, "fn (:\n", 1);
+    s.open(&syntax, "def (:\n", 1);
     s.request("workspace/unknown", obj([]));
     s.notify("workspace/unknown", obj([]));
     s.request(
@@ -151,42 +151,42 @@ fn completion_in_unfinished_code() {
     let cases: &[(&str, &str)] = &[
         (
             "member",
-            "fn main() Int:\n    let p = Point(x: 1)\n    let q = p.",
+            "def main() -> Int:\n    let p = Point(x: 1)\n    let q = p.",
         ),
         (
             "std-member",
-            "import stdout from \"@std/io.ms\"\nfn main() Int:\n    let w = stdout().",
+            "from \"@std/io.ms\" import stdout\ndef main() -> Int:\n    let w = stdout().",
         ),
-        ("list-member", "fn main() Int:\n    let w = [1]."),
-        ("string-member", "fn main() Int:\n    let w = \"a\"."),
+        ("list-member", "def main() -> Int:\n    let w = [1]."),
+        ("string-member", "def main() -> Int:\n    let w = \"a\"."),
         (
             "member-prefix",
             "def main() -> Int:\n    let p = Point(x: 1)\n    return p.no",
         ),
-        ("call", "fn main() Int:\n    return add("),
-        ("call-second", "fn main() Int:\n    return add(1, "),
-        ("call-label", "fn main() Int:\n    return add(a: 1, b"),
-        ("constructor", "fn main() Int:\n    let p = Point("),
+        ("call", "def main() -> Int:\n    return add("),
+        ("call-second", "def main() -> Int:\n    return add(1, "),
+        ("call-label", "def main() -> Int:\n    return add(a: 1, b"),
+        ("constructor", "def main() -> Int:\n    let p = Point("),
         ("case", "def main() -> Int:\n    let s = Shape.C"),
-        ("type", "fn main() Int:\n    let z: In"),
-        ("param-type", "fn run(shape: Sh"),
-        ("import-name", "import {st"),
-        ("import-path", "import stdout from \"@std/i"),
+        ("type", "def main() -> Int:\n    let z: In"),
+        ("param-type", "def run(shape: Sh"),
+        ("import-name", "from \"@std/io.ms\" import st"),
+        ("import-path", "from \"@std/i"),
         (
             "import-from",
-            "import {stdout} from \"@std/io.ms\"\nimport {} from \"@std/testing.ms\"",
+            "from \"@std/testing.ms\" import (\n    expect_equal,\n    ",
         ),
-        ("import-local", "import {x} from \"./"),
-        ("keyword", "fn main() Int:\n    ret"),
-        ("top-level", "fn main() Int:\n    return 0\n\nim"),
+        ("import-local", "from \"./"),
+        ("keyword", "def main() -> Int:\n    ret"),
+        ("top-level", "def main() -> Int:\n    return 0\n\nim"),
         (
             "match",
-            "fn area(shape: Shape) Int:\n    match shape:\n        Ci",
+            "def area(shape: Shape) -> Int:\n    match shape:\n        Ci",
         ),
-        ("string", "fn main() String:\n    return \"abc"),
-        ("comment", "def main() -> Int: ...\n    # note"),
+        ("string", "def main() -> String:\n    return \"abc"),
+        ("comment", "def main() -> Int:\n    # note"),
     ];
-    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
+    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\ndef add(a: Int, b: Int) -> Int:\n    return a + b\n\n";
     for (index, (name, tail)) in cases.iter().enumerate() {
         let uri = ws.uri(&format!("case{index}.ms"));
         let text = if name.starts_with("import") {
@@ -200,7 +200,7 @@ fn completion_in_unfinished_code() {
         s.at("textDocument/completion", &uri, line, character);
         s.at("textDocument/signatureHelp", &uri, line, character);
         if *name == "import-from" {
-            s.at("textDocument/completion", &uri, 1, 8);
+            s.at("textDocument/completion", &uri, 2, 4);
         }
     }
     compare("unfinished", &s);
@@ -273,7 +273,7 @@ fn rename_actions_and_formatting() {
     let messy = ws.uri("messy.ms");
     s.open(
         &messy,
-        "from \"@std/testing.ms\" import expect_equal   \nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\ndef  main( ) -> Int:\n    return 0",
+        "from \"@std/testing.ms\" import expect_equal   \nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\ndef main() -> Int:\n    return 0",
         1,
     );
     let all = obj([
@@ -537,11 +537,11 @@ fn broken_documents() {
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
         "def broken() -> Int:\n    let x: String = 1\n    return missing\n",
-        "fn (:\nfn ok() Int:\n    return 1\n",
-        "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
-        "fn f(a: Int) Int:\n  return a\n",
-        "\u{feff}fn f() Int:\n    return 1\n",
-        "fn f() String:\n    return \"héllo 😀 {1 +\n",
+        "def (:\ndef ok() -> Int:\n    return 1\n",
+        "type T:\n    a: Int\ndef f() -> T:\n    return T(a: \n",
+        "def f(a: Int) -> Int:\n  return a\n",
+        "\u{feff}def f() -> Int:\n    return 1\n",
+        "def f() -> String:\n    return \"héllo 😀 {1 +\n",
         "from \"./nowhere.ms\" import nothing\ndef f() -> Int:\n    return nothing()\n",
         "",
     ];
