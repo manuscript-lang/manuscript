@@ -142,6 +142,7 @@ let d = b + c
   - Approve the contextual numeric literal rule? Recommendation: yes.
   - Unsigned types (`UInt8` ... `UInt64`)? Recommendation: out of scope here; add later with the same `Width` plumbing, since byte data (`Bytes`) wants `UInt8`.
   - Which stdlib quantities become `Int64` in stage 5? Recommendation: time, file sizes and offsets, `hash`, random, net/io byte counts.
+  - Math without casts (owner question, 2026-10-24). Generic bounds exist (`stdlib/math.ms:262` `max[T: Comparable]`), so `min`, `max`, `min_of`, `max_of` already work on every width once each width implements `Comparable`. `abs`, `sqrt`, `pow` and the rest cannot be generic: a generic body is checked against its bounds only (`generics.md`, "checked once"), has no operator bounds and no static constructors, so it cannot do arithmetic or call a per-width native on `T`. Recommendation: (1) `abs` and `sign` become receiver methods on each integer and float width, declared once; (2) transcendental functions stay `Float64`, which is the default `Float`, so only explicit `Float32` users call `to_float64()`; (3) no operator-interface or specialization mechanism in this proposal.
 - Resolve during implementation: conversion method naming (`to_int64()` against `Int64(x)`), record field reordering for padding (recommendation: no).
 
 ## Rejected ideas
