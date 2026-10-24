@@ -90,7 +90,6 @@
     "http/headers_values": "msrt_http_headers_values",
     "io/read_line": "msstd_io_read_line",
     "json/parse": "msrt_json_parse",
-    "json/stringify": "msrt_json_stringify",
     "logcore/new_gate": "msrt_logcore_new_gate",
     "logcore/new_state": "msrt_logcore_new_state",
     "logcore/object_text": "msrt_logcore_object_text",

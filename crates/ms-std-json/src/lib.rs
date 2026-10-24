@@ -389,13 +389,25 @@ struct Scanner<'a> {
 
 impl Scanner<'_> {
     fn skip_space(&mut self) {
-        // Compact documents have no space; indented ones have a newline and runs of spaces.
-        while let Some(&c) = self.text.get(self.pos) {
+        let b = self.text;
+        let mut p = self.pos;
+        // Compact documents have no space; indented ones have a newline and a run of spaces.
+        while let Some(&c) = b.get(p) {
             if c > b' ' || !matches!(c, b' ' | b'\t' | b'\n' | b'\r') {
-                return;
+                break;
             }
-            self.pos += 1;
+            p += 1;
+            while let Some(chunk) = b.get(p..p + 8) {
+                let w = u64::from_le_bytes([
+                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+                ]);
+                if w != ONES * 0x20 {
+                    break;
+                }
+                p += 8;
+            }
         }
+        self.pos = p;
     }
 
     fn literal(&mut self, word: &[u8]) -> bool {
