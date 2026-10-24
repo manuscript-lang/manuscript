@@ -131,6 +131,8 @@ pub struct Func {
     pub result: TypeRef,
     /// Body statements; may be empty for an empty declaration suite.
     pub body: Vec<Stmt>,
+    /// `extern fn`: a native symbol with no body, named after the function.
+    pub external: bool,
 }
 
 /// A module-level constant.

@@ -162,8 +162,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("import"),
             "imports read: import {name} from \"path.ms\"",
         ),
-        "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
-        | "module" => (
+        "static" | "private" | "internal" | "async" | "package" | "namespace" | "module" => (
             None,
             "there is no such modifier; top level holds only import, let, fn, type, interface, impl, and test, optionally prefixed by export",
         ),
@@ -822,6 +821,7 @@ impl<'a> Parser<'a> {
                 params,
                 result,
                 body,
+                external: false,
             },
             mutating,
         })
@@ -845,6 +845,31 @@ impl<'a> Parser<'a> {
                     params,
                     result,
                     body,
+                    external: false,
+                })
+            }
+            Tok::Extern => {
+                self.at += 1;
+                self.need(Tok::Fn)?;
+                let name = self.need(Tok::Name)?;
+                if self.kind() == Tok::LBracket {
+                    let t = self.peek();
+                    return self.fail(t, "an extern fn cannot be generic; declare the concrete types the native symbol takes");
+                }
+                let params = self.parameters(true, false)?;
+                let result = self.result_type()?;
+                if self.kind() == Tok::Colon {
+                    let t = self.peek();
+                    return self.fail(t, "an extern fn has no body; remove the ':'");
+                }
+                self.end()?;
+                DeclKind::Fn(Func {
+                    name: self.sym(name),
+                    type_params: Vec::new(),
+                    params,
+                    result,
+                    body: Vec::new(),
+                    external: true,
                 })
             }
             Tok::Let => {

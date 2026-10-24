@@ -11,6 +11,7 @@ the earlier Go runtime has been removed.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
+- **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
   `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
   clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null

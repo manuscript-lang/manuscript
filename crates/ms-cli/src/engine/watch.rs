@@ -183,7 +183,7 @@ fn build<L: Lower>(
         }
     };
     backend
-        .link(&mut compiled, executable, request.build_type)
+        .link(&mut compiled, executable, request.build_type, &request.link)
         .map_err(|message| {
             let _ = writeln!(io.stderr, "{message}");
         })

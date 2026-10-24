@@ -66,7 +66,7 @@ b0:
     // Replacing an existing output also exercises replacement of its companion.
     for profile in [Profile::Debug, Profile::Release] {
         let mut module = parse_module(&text).unwrap();
-        build_executable(&mut module, &output, profile, &runtime).unwrap();
+        build_executable(&mut module, &output, profile, &runtime, &[]).unwrap();
         assert_eq!(Command::new(&output).status().unwrap().code(), Some(42));
         let companion = ms_clif::link::debug_companion_path(&output);
         let debug = if let Some(bundle) = &companion {

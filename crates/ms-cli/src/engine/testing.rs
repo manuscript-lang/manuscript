@@ -225,7 +225,12 @@ pub(super) fn test<L: Lower>(
         }
     };
     let executable = directory.0.join("program");
-    if let Err(message) = backend.link(&mut compiled, &executable, request.build_type) {
+    if let Err(message) = backend.link(
+        &mut compiled,
+        &executable,
+        request.build_type,
+        &request.link,
+    ) {
         return Ok(failed_early(io, &mut document, "build", &message));
     }
     let working = if compiled.project_root.is_empty() {
