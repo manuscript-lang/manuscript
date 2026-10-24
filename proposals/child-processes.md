@@ -10,7 +10,8 @@ Manuscript programs use one core. The runtime is one thread of stackful coroutin
 Today a program can start a process (`Commands.spawn`, `@std/process.ms`) and talk bytes over OS pipes, but there is no way to run *Manuscript code* in a child, pass typed values, or bind the child's lifetime to a scope. Target program:
 
 ```manuscript
-from "@std/tasks.ms" import TaskGroup, Sender, Receiver
+from "@std/processes.ms" import ProcessGroup
+from "@std/tasks.ms" import Sender, Receiver
 
 def checksum(input: Receiver[Bytes], output: Sender[Int], seed: Int) -> Int:
     var total = seed
@@ -20,14 +21,14 @@ def checksum(input: Receiver[Bytes], output: Sender[Int], seed: Int) -> Int:
     return total
 
 def main():
-    with TaskGroup[Int]() as group:
+    with ProcessGroup[Int]() as group:
         let (to_child, from_child) = group.fork(checksum, 7)
         to_child.send(read_block())
         to_child.close()
         let results = group.results()
 ```
 
-`group.fork(entry, argument)` starts the same executable running `entry`, scoped to the group; the group kills it if the scope exits early and joins it otherwise.
+`group.fork(entry, argument)` on a dedicated `ProcessGroup[T]` starts the same executable running `entry`, scoped to the group; the group kills it if the scope exits early and joins it otherwise.
 
 ## Design
 
@@ -41,8 +42,8 @@ def main():
 
 **Serialization: JSON, reusing `@std/json.ms`.** Raw memory cannot cross: strings, lists, maps and records holding them contain heap pointers, and `Map`/`Set` carry a hash index, so only plain-bits values (`KIND_POD`: scalars, records of scalars) could be copied as bytes. Everything else needs a walk driven by a type descriptor, and `TypeDesc` has none for records and alternatives (`KIND_CUSTOM` is opaque function pointers), so a binary codec is new compiler work. Decision requested by the owner: when raw memory is out, piggyback on JSON. Messages, the argument and the result use the existing typed `stringify` and `parse[T]` (length-prefixed UTF-8 frames), already implemented for records, alternatives, Optional/Result, List/Set/Map, Bytes (base64), `Int`, and `BigInt`/`Decimal`. There is **no sendable rule**: like `stringify`, nothing is rejected at compile time, and a value with no JSON form (a handle, a closure, `Shared`) fails when encoded or decoded with `InvalidData`, which faults the sender or receiver naming the type. Known losses, documented rather than patched: `NaN` and infinities become `null` and fail to decode as `Float`; `Map` keys must be of the key types JSON lists; views are copied. A `max_message_bytes` bound (default 64 MiB) reuses `JsonLimits`. Parent and child are one binary, so no version negotiation is needed beyond the entry-table build id in the handshake. If measurement later shows JSON is the bottleneck, a binary format can replace the frame body without changing the API; that is not proposed now.
 
-**Scope and lifetime.** `fork` and `process` are methods of `TaskGroup`, so a child never outlives its `with`:
-- `group.fork(entry, argument) -> (Sender[In], Receiver[Out])`; the child's return value `R` is the group's `T` and appears in `results()` in spawn order. A group mixing tasks and forks uses one `T`.
+**Scope and lifetime.** `ProcessGroup[T]` (`@std/processes.ms`) is a dedicated group type, the same shape as `TaskGroup[T]` and the `WorkerGroup[T]` of the worker-threads proposal: `fork`, `process`, `results()`, `wait()` and `close()`, used with `with`. Not methods on `TaskGroup`, so each group states what kind of child it scopes, and the child kinds do not share a result type. A child never outlives its `with`:
+- `group.fork(entry, argument) -> (Sender[In], Receiver[Out])`; the child's return value `R` is the group's `T` and appears in `results()` in spawn order. All forked children of one group return the same `T`.
 - `group.process(program, arguments) -> Subprocess` registers a plain program (not Manuscript) with the group: it is killed and joined at scope exit. It contributes no result; exit codes remain data via `Subprocess.wait()`, as today.
 - `results()`/`wait()` wait for children. `close()` (leaving the block, cancellation of the parent, or a signal) stops forked children cooperatively first: it sends a `cancel` frame, the child cancels its main task so shielded cleanups run, and after a grace period (default 5 s) the group is killed (`SIGKILL`, as `Subprocess.close` does) and joined. `Subprocess.close` alone kills immediately, so plain `process` children get no cleanup. Unix children run in their own process group, so grandchildren die too.
 - Orphans: if the parent is killed without running cleanup, the child sees socket EOF, cancels its main task (shielded cleanups run, exit), and Linux also sets `PR_SET_PDEATHSIG(SIGKILL)` as a backstop. A leaked `Sender` in the parent (TaskGroup's known gap: captures of a cancelled or faulted task are not dropped) would delay that EOF, so stage 4 depends on the TaskGroup fix or on the cancel frame above.
@@ -69,7 +70,7 @@ def main():
 - Evidence of benefit is design-level. No measurement here shows a workload that gains; the first stage that runs code must record exec-plus-startup latency of a fork child and serialization throughput of a large `List[Int]` and a `Bytes` blob against a plain pipe, and the benefit claim stands or falls on it. Static musl binaries start fast but a large binary is re-exec'd per child.
 - Plumbing that does not exist yet: `spawn::start` takes only stdin/stdout/stderr pipes (no `pre_exec`, no extra fd, no `/dev/null` stdin), `msrt_start` has no pre-`main` dispatch (the entry runs through a new path beside `run_on_big_stack`), and `Child::wait` blocks the runtime thread, so waiting must use the pidfd/poller.
 - Compiler work: entry-table emission, the call-site checks (function item, signature). Runtime: start-path hook, socket framing, parent-death handling.
-- Dependency: the `Sender`/`Receiver` types and `TaskGroup` (TaskGroup stages 3 and 4). Fork can start with its own endpoint types behind the same API, but the public names must come from TaskGroup stage 4 to avoid two channel types.
+- Dependency: the `Sender`/`Receiver` types (TaskGroup stage 4) and the `with`/group machinery of TaskGroup stage 3; `ProcessGroup` reuses them but is its own type.
 - Security: child inherits the environment; the loopback listener accepts one connection that presents a random token, then closes.
 - Interaction with `ms test`: it already runs each test in its own invocation with a selector, so the entry selector must not collide (own env var, checked first).
 
@@ -79,13 +80,13 @@ def main():
 2. Measure spawn-self latency and JSON round-trip throughput (large `List[Int]`, `Bytes`); round-trip tests for the supported types. No fork yet.
 3. Entry table and start-path hook: run an exported function in a re-exec'd same executable with an argument and result frame, no channels.
 4. IPC transport: loopback socket framing, `Sender`/`Receiver` over it, backpressure, EOF, oversize and malformed frames, parent-death cancel.
-5. `TaskGroup.fork` and `.process`: scope join/kill, fault surfacing, sibling kill.
-6. Diagnostics (a lambda or method passed to `fork`, `os.fork()`/`child_process.fork` shapes pointing to `group.fork`) and cheat sheet.
+5. `ProcessGroup` with `fork` and `process`: scope join/kill, fault surfacing, sibling kill.
+6. Diagnostics (a lambda or method passed to `fork`, `os.fork()`/`child_process.fork` shapes pointing to `ProcessGroup.fork`) and cheat sheet.
 7. Windows hardening: job object with `KILL_ON_JOB_CLOSE` assigned at creation, and CI coverage on all three platforms (this stage is part of the first release, not optional).
 
 ## Reconciling `taskgroup.md`
 
-Stage 1 updates `taskgroup.md`: the `spawn_worker("path.ms", ...)` string form is replaced by function items (as the worker-threads proposal already does), the sendable rule is dropped for processes (JSON failure at encode time instead; the worker-threads proposal decides for threads), and `crates/DESIGN.md` decision 4, `.experts/runtime.md` and VISION.md name fork. Mixed `T`: `fork` returns the endpoint pair while `R` joins the group's `results()`. `fork_catching` is deferred until the TaskGroup fault hook exists, because child faults are uncatchable in v1; the parent only sees an exit status.
+Stage 1 updates `taskgroup.md`: the `spawn_worker("path.ms", ...)` string form is replaced by function items (as the worker-threads proposal already does), the sendable rule is dropped for processes (JSON failure at encode time instead; the worker-threads proposal decides for threads), and `crates/DESIGN.md` decision 4, `.experts/runtime.md` and VISION.md name fork. `ProcessGroup` is a separate type, so `TaskGroup` gains no process or worker methods; `fork` returns the endpoint pair while `R` joins the group's `results()`. `fork_catching` is deferred until the TaskGroup fault hook exists, because child faults are uncatchable in v1; the parent only sees an exit status.
 
 ## Open questions for the owner
 
