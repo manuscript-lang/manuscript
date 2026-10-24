@@ -359,20 +359,62 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     Some(unsafe { *t.scopes.add(id as usize - 1) })
 }
 
+/// How far above a frame's stack pointer to look for its frame record, in bytes.
+#[cfg(any(windows, test))]
+const FRAME_RECORD_SCAN: usize = 4096;
+
 /// Windows native frames do not use the generated code's frame layout. Recover
 /// the first source frame with native unwind metadata, then follow only the
 /// contiguous generated caller chain. Stop at native/glue boundaries rather
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
 unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
-    let Some((pc, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
+    let Some((pc, sp, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
     else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
+    // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
+    // register pointing at a caller's record, so it finds the generated frame's own record.
+    let fp = if anchor == capture_frames as *const () as usize {
+        // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
+        unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
+    } else {
+        fp
+    };
     // SAFETY: source_frame recovered the current generated frame and stack_limits
     // bounds the live thread stack.
     unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
+}
+
+/// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
+/// return address `is_source` accepts and whose saved fp lies further up the stack.
+///
+/// # Safety
+/// `sp..hi` is live stack memory.
+#[cfg(any(windows, test))]
+unsafe fn frame_record(
+    sp: usize,
+    lo: usize,
+    hi: usize,
+    mut is_source: impl FnMut(usize) -> bool,
+) -> Option<usize> {
+    let first = sp.checked_add(7)? & !7;
+    let last = first
+        .checked_add(FRAME_RECORD_SCAN)?
+        .min(hi.checked_sub(16)?);
+    let mut at = first;
+    while at <= last {
+        if at >= lo {
+            // SAFETY: `at + 16 <= hi` within the live stack.
+            let (next, ret) = unsafe { (*(at as *const usize), *((at + 8) as *const usize)) };
+            if next > at && next.is_multiple_of(8) && next < hi && is_source(ret) {
+                return Some(at);
+            }
+        }
+        at += 8;
+    }
+    None
 }
 
 #[cfg(any(windows, test))]
@@ -1290,6 +1332,27 @@ mod tests {
         }
         assert_eq!(budget.remaining(), Some(0));
         assert!(!budget.visit(false));
+    }
+
+    #[test]
+    fn frame_record_skips_stale_slots_to_the_first_valid_record() {
+        // [junk, junk, saved fp -> slot 5, return address, caller record...]
+        let mut stack = [0usize; 8];
+        let ptr = stack.as_mut_ptr();
+        let base = ptr.expose_provenance();
+        // SAFETY: all writes are inside the array.
+        unsafe {
+            *ptr = 0x1;
+            *ptr.add(1) = 0x2;
+            *ptr.add(2) = base + 5 * 8;
+            *ptr.add(3) = 0x1010;
+        }
+        let hi = base + 8 * 8;
+        // SAFETY: the array outlives the scan and covers `base..hi`.
+        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010) };
+        assert_eq!(found, Some(base + 2 * 8));
+        // SAFETY: as above.
+        assert_eq!(unsafe { frame_record(base, base, hi, |_| false) }, None);
     }
 
     #[test]
