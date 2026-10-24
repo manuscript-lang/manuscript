@@ -186,9 +186,9 @@ IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
                 { "elif", [ "let", Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
-ForStatement  = "for", Name, "in", Expression, Suite ;
+ForStatement  = "for", [ "ref" ], Name, "in", Expression, Suite ;
 WithStatement = "with", Expression, "as", Name, Suite ;
-MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
+MatchExpression = "match", [ "ref" ], Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
 MatchArm      = "case", (CasePattern | LiteralPattern | "_"), ArmSuite ;
 LiteralPattern = [ "-" ], Number | String | "True" | "False" ;

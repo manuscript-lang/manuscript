@@ -32,4 +32,5 @@ test "addition":
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `.message()` reads any `Error`. Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` or `impl I for T:`, never in `type`; else `f(x)`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
+- A def returning part of a parameter or the receiver writes `ref` before its result type (`def name() -> ref String`); `let ref x = a.b` borrows a place; `for ref x in xs:` and `match ref v:` mark borrows.
 - Closures may change captures. `with try ... as f:` closes `f` at block end.

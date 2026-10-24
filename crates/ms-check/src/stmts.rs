@@ -123,7 +123,9 @@ impl Checker {
                 None => self.check_if(cond, body, else_body),
             },
             StmtKind::While { cond, body } => self.check_while(cond, body),
-            StmtKind::For { name, iter, body } => self.check_for(s, *name, iter, body),
+            StmtKind::For {
+                name, iter, body, ..
+            } => self.check_for(s, *name, iter, body),
             StmtKind::With { name, value, body } => self.check_with(s, *name, value, body),
         }
     }
