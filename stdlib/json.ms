@@ -61,11 +61,10 @@ export type JsonValue:
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-# - `Optional[T]` reads `null` as `none`. `List` and `Set` read arrays (a `Set` drops repeated elements).
+# - `Optional[T]` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` and `Set` read arrays (a `Set` drops repeated elements).
 # - `Map[K, V]` reads an object, converting each member name to `K` from its string form (two names that read as the same key, such as `"1"` and `"01"` for `Int`, return `InvalidData`): `String`
-#   as is, `Int`, `BigInt`, `Decimal`, `Float` and `Bool` from their text, `Timestamp` from RFC 3339,
-#   `Duration` from nanoseconds, and a payloadless case from its name. Other key types return
-#   `InvalidData`.
+#   as is, `Int` and `Bool` from their text, `Duration` from nanoseconds, and a payloadless case from
+#   its name. Other key types return `InvalidData`.
 # - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
 #   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
 #   `InvalidData`.
@@ -124,8 +123,8 @@ export interface JsonEncode:
 #   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
 #   the labeled fields under the record rules. Payload labels never collide with a discriminator.
 # - Map entries and Set elements keep insertion order. A map key becomes its string form: `String`
-#   as is, `Int`, `BigInt`, `Decimal`, `Float` and `Bool` as their text, a `Timestamp` as RFC 3339,
-#   and a case without payload as its name. Any other key type returns `InvalidData`.
+#   as is, `Int`, `Decimal` and `Bool` as their text, a `Duration` as its nanoseconds, and a case without
+#   payload as its name. Any other key type returns `InvalidData`.
 # - Int, BigInt and Decimal are exact decimal digits. Float uses the shortest decimal that parses
 #   back to the same value; NaN and infinities are `null`.
 # - `Timestamp` is an RFC 3339 string in UTC, `Duration` its integer nanoseconds, `Bytes` a standard
