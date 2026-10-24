@@ -31,6 +31,9 @@ pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
+/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 70) as for a detached
+/// task, but the task can still be joined and cancelled.
+pub const SPAWN_FATAL: u32 = 2;
 
 /// `msrt_token_new` flag: another thread will post the token, so while it is unposted the
 /// scheduler waits for it instead of reporting a deadlock.
@@ -41,6 +44,8 @@ const MIN_STACK: usize = 128 << 10;
 #[cfg(unix)]
 const GUARD: usize = 64 << 10;
 const STACK_POOL: usize = 32;
+/// Address space reserved for a task a group starts (committed lazily).
+const TASK_GROUP_STACK: usize = 16 << 20;
 const NO_DEADLINE: i64 = i64::MAX;
 const MIN_TIMER_LIMIT: usize = 1024;
 
@@ -75,6 +80,10 @@ struct Task {
     deadline: i64,
     /// The token this task is parked on, or 0.
     wait_token: u64,
+    /// Ends the process when the task faults.
+    fatal: bool,
+    /// A closure the task holds a reference to, released when the task ends however it ends.
+    owned: *mut ms_rt_abi::Obj,
 }
 
 #[derive(Clone, Copy)]
@@ -407,6 +416,8 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             wait_result: 0,
             deadline: NO_DEADLINE,
             wait_token: 0,
+            fatal: false,
+            owned: null_mut(),
         });
     }
     s.live += 1;
@@ -687,7 +698,13 @@ extern "C" fn task_main() -> ! {
         } else {
             let mut msg = crate::string::NO_STR;
             (*t).status = fault::msrt_guard_call(entry, (*t).arg, &mut msg);
+            if (*t).status == 1 && (*t).fatal {
+                fault::exit_with_report(&msg);
+            }
             (*t).msg = msg;
+        }
+        if !(*t).owned.is_null() {
+            crate::obj::msrt_release(core::mem::replace(&mut (*t).owned, null_mut()));
         }
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);
@@ -734,6 +751,7 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).entry = Some(entry);
         (*t).arg = arg;
         (*t).detached = flags & SPAWN_DETACHED != 0;
+        (*t).fatal = flags & SPAWN_FATAL != 0;
         (*t).sp = sp;
         sched().ready.push_back((*t).handle);
         (*t).handle
@@ -947,6 +965,55 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
         free_task(t);
         status
     }
+}
+
+// ---- closure tasks (`@std/tasks.ms`) ----
+
+/// Entry of a task that runs a `Callable[[], Unit]`: calls the closure with itself as its
+/// environment, as every closure call does.
+unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
+    let closure = arg as *mut ms_rt_abi::Closure;
+    // SAFETY: `arg` is the retained closure object `msrt_tasks_spawn` stored.
+    unsafe {
+        let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
+            core::mem::transmute((*closure).code);
+        code(closure);
+    }
+}
+
+/// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
+/// when it ends, by return, cancellation, or fault. A fault in the task ends the process.
+/// Returns the task handle.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_tasks_spawn(closure: *mut ms_rt_abi::Closure) -> i64 {
+    // SAFETY: single threaded scheduler; `closure` is a live closure object.
+    unsafe {
+        crate::obj::msrt_retain(closure.cast());
+        let h = msrt_task_spawn(closure_entry, closure.cast(), SPAWN_FATAL, TASK_GROUP_STACK);
+        (*lookup(h)).owned = closure.cast();
+        h as i64
+    }
+}
+
+/// Waits for a task started by `msrt_tasks_spawn`: 0 when it returned, 1 when it was cancelled.
+/// If the caller is itself cancelled while waiting, the cancellation unwinds the caller.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_tasks_join(handle: i64) -> u8 {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let status = msrt_task_join(handle as u64, null_mut());
+        if status == 2 && msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+            fault::msrt_cancelled();
+        }
+        u8::from(status != 0)
+    }
+}
+
+/// Requests cancellation of a task started by `msrt_tasks_spawn`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_tasks_cancel(handle: i64) {
+    // SAFETY: single threaded scheduler.
+    unsafe { msrt_task_cancel(handle as u64) }
 }
 
 // ---- tokens ----

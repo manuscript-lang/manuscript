@@ -34,19 +34,19 @@ def fetch_all(urls: List[String]) -> List[Int]:
 - The scope does not end until every child has finished: `close` always joins.
 - Fault in a child (revised after review): faults are not catchable and a fault ends a task at its guard with status 1, so a Manuscript wrapper cannot observe it. v1 therefore keeps decision 3's behavior: **a fault in any child ends the process** (cleanups of that task run, exit 70), exactly as an unjoined fault does today. Catching a child fault and re-raising it in the parent needs a new runtime fault hook that notifies the group and a way to raise a primary fault from the parent; that is deferred to a later stage and listed as an open design item, not assumed.
 - Parent cancelled (signal, shutdown, its own parent group): `close` cancels the children, then waits.
-- Open question for the owner: `with` cannot tell a normal end from an exit by `return`/`try`, so a block that ends without `results()`/`wait()` cancels its children. Trio waits instead. Recommend: cancel, plus a checker error when a `TaskGroup` block can reach its end with children possibly unjoined and no `results()`/`wait()` call (stage 3). The alternative (give `Closeable.close` the exit kind) changes a core contract.
+- Decided (owner, 2026-10-24): leaving the `with` block cancels tasks that are still running, then waits for them. Call `results()`/`wait()` before the block ends to collect work instead of cancelling it. A checker error for a block that can end with unjoined children is optional later work.
 
 **Ownership.** `spawn` takes an escaping closure, which owns its captures (existing rule). A `Move` value captured by a spawned lambda moves in, so the parent cannot use it afterwards; mutating a captured `var` is already rejected for escaping closures; results return by value. `let ref` borrows and lending results must not be captured by an escaping closure; this needs a test and likely a sharper diagnostic, not new rules. `Shared[T]` is the documented opt-in refcounted type and is `Copy`-class, so it can cross a spawn. With one thread and `take`/`put` having no park between them this is sound. The "no shared mutable state" claim is therefore not absolute in v1. Recommend: allow `Shared` in v1, forbid it in a future `parallel` group (non-atomic counts).
 
-**Channel.** One owner per value means a single `Channel` object cannot sit in both a producer and a consumer closure. So: `channel[T](capacity: Int) -> (Sender[T], Receiver[T])`.
-- `Sender.send(value: T) -> Unit` consumes the value, parks while full, is a cancellation point. `Sender.clone()` adds a producer.
-- `Receiver.receive() -> Optional[T]` returns an owned value, `None` once every sender is dropped and the buffer is empty. Parks while empty.
-- Each endpoint is move-only; dropping the last sender closes the channel. A receiver dropped early makes `send` return a closed result (final shape, `Result` vs `Optional`, decided in stage 4).
-- Iteration (`for item in receiver`) is deferred until the stream/iterable protocol in `stdlib/streams.ms` is checked.
+**Channel (owner direction 2026-10-24: the type is `Channel[T]`).** One type, `Channel[T](capacity: Int)`, created once and passed to producers and consumers. It is a refcounted handle like `Shared[T]` (copying it adds a holder), so it can be captured by several spawned closures; the buffered values themselves are never shared, each is moved in by `send` and out by `receive`.
+- `send(value: T) -> Unit` consumes the value, parks while the buffer is full, is a cancellation point. Faults if the channel is closed.
+- `receive() -> Optional[T]` returns an owned value, `none` once the channel is closed and drained. Parks while empty.
+- `close() -> Unit` is explicit and idempotent (an owner-less handle cannot know its last holder). Receivers wake with `none`. Closing is the sender side's job by convention; in a `TaskGroup` the usual shape is: producers send, the parent calls `close()` after `results()`.
+- Iteration (`for item in channel`) is deferred until the stream/iterable protocol in `stdlib/streams.ms` is checked.
 
 **Implementation shape (revised).** Externs cannot take closures, generics, or `var` params, and the extern rule says arguments are borrowed, so a consuming closure parameter needs an ABI rewording. Stage 2 is real compiler and runtime work, not a narrow addition: a closure-typed consuming extern parameter, a runtime trampoline that calls the closure and drops it on normal return, and a shim for `msrt_task_join` (its 0/1/2 outcome plus message does not fit the `Result` extern shape). `TaskGroup[T]` itself is Manuscript over those externs; results go through one `Shared[Optional[T]]` slot per child. Channel endpoints are runtime-owned refcounted extern types with a parked-waiter token each.
 
-Known gap: captures of a task that is cancelled or faults are not dropped (only `with` cleanups run on the guard jump). A leaked `Sender` means its `Receiver` never sees close, and a cancelled parent exits as cancelled (main task `process::exit`) rather than raising a fault. Stage 2 must either run capture drops on the guard exit or document the leak; stage 4 depends on it.
+Known gap: captures of a task that is cancelled or faults are not dropped (only `with` cleanups run on the guard jump). A cancelled parent exits as cancelled (main task `process::exit`) rather than raising a fault. Stage 2 resolves this for tasks started by a group: the runtime releases the closure when the task ends by return or cancellation (a fault ends the process).
 
 **Diagnostics (targeted, stage 5).**
 - `async`/`await`: already rejected at `crates/ms-syntax/src/parser.rs:1486` ("call the function directly"); extend the text to mention `TaskGroup`.
@@ -54,17 +54,9 @@ Known gap: captures of a task that is cancelled or faults are not dropped (only 
 - Constructing a `TaskGroup` outside `with`: error.
 - Capturing a `ref` borrow in a spawned closure: error naming the capture.
 
-**Planned path for parallelism (direction: JS `worker_threads` style, extending to processes).** v1 must not preclude it, so:
-- One `Channel[T]` API (`Sender`/`Receiver`) across tasks, workers and processes; only the transport differs. The v1 endpoints keep an API that does not depend on being in-process.
-- A "sendable" type rule decides what crosses a worker or process boundary: plain data (scalars, String, Bytes, List/Map/Set/records/alternatives of sendable types, and `Sender`/`Receiver` of sendable `T`). No handles, `ref` borrows, closures, `Shared`, or `Resource`. Same-thread tasks are not restricted by it, but channel `T` should be written as if it were sendable. Checker rule arrives with the worker stage.
-- A worker starts from an exported module function (`group.spawn_worker("path.ms", "main", args)`), never a closure, so no captured state needs serializing or sharing. Arguments and the channel endpoints are the only inputs.
-- Workers are scoped like tasks: same group contract (the group joins/cancels them on close), same fault rule at first (abort), so `TaskGroup` stays the one scope type. Process workers add transport (pipes) and exit status, not new scoping.
-- No shared memory, no Atomics, no mutexes. `Shared` is not sendable.
-- **Tier 2 (after tier 1 lands):** a worker is its own runtime thread with its own heap, scheduler and task tree. The `ms-rt` globals (allocator state, fault context, cleanup stack, cancel flag, scheduler) become per-thread. This is a large runtime change and its own proposal and review before any code; tier 1 changes nothing here.
-- Channel transport by endpoint location: a queue between tasks, a buffer move between workers (value moved, not shared), serialization between processes.
-- Child processes are scoped in a `TaskGroup` too; cancelling or closing kills the child's process group through the existing process module.
+**Relation to workers.** Worker threads and processes are a separate proposal with their own `WorkerGroup[T]`; this proposal covers single-thread tasks only. `Channel[T]` is meant to be shared with that work, so its `T` is written as if it must be sendable (plain data, no handles, `ref` borrows, closures, `Shared` or `Resource`).
 
-**Not in scope.** Workers/processes (above), detached tasks, timeouts/deadlines on groups, select over channels. `ms diagram` does not exist in `ms-cli` today; the task-tree view and "fault traces name the spawning scope" are a final stage and the second needs the trace format checked first.
+**Not in scope.** Workers and processes, detached tasks, timeouts/deadlines on groups, select over channels. `ms diagram` does not exist in `ms-cli` today; the task-tree view and "fault traces name the spawning scope" are a final stage and the second needs the trace format checked first.
 
 ## Alternatives
 
@@ -85,7 +77,7 @@ Known gap: captures of a task that is cancelled or faults are not dropped (only 
 1. Docs only: this design in canonical pages, decision 4 / VISION / expert entry updated.
 2. Closure-taking extern + task externs + trampoline; runtime tests.
 3. `TaskGroup[T]` in `@std/tasks.ms`: spawn/results/wait/close, fault and cancel propagation, conformance fixtures.
-4. `channel[T]`, `Sender`, `Receiver`.
+4. `Channel[T]`.
 5. Diagnostics and cheat sheet.
 6. `ms diagram` task tree and spawn-scope fault traces.
 

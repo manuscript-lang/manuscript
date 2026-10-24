@@ -124,6 +124,8 @@ impl FnLower<'_> {
             _ if matches!(t, MTy::INT | MTy::FLOAT | MTy::BOOL | MTy::STR) => vals.push(v),
             // A runtime handle is its own pointer.
             TyKind::Obj(..) => vals.push(v),
+            // A function value is lent as its closure object; a native that keeps it retains it.
+            TyKind::Fn(..) => vals.push(v),
             TyKind::Opt(inner) => {
                 let kind = self.b.m.types.kind(inner).clone();
                 let payload = payload_kind(&kind, inner);
