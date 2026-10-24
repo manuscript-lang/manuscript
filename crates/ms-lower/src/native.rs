@@ -140,7 +140,17 @@ impl<'a> FnLower<'a> {
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         if let Some(symbol) = native.strip_prefix("extern:") {
-            return self.extern_call(e, view, symbol, sym);
+            if !sym.module.as_str().starts_with("@std/") {
+                return self.extern_call(e, view, symbol, sym);
+            }
+            // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
+            let args = self.native_args(view)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+            let result = self.emty(e)?;
+            self.at(e.pos);
+            return self.rt_function(symbol, params, &args, result);
         }
         match native {
             "collections/range" => {

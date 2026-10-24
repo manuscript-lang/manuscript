@@ -789,7 +789,7 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(f, &s.ty());
+                        self.check_extern_signature(f, &s.ty(), d.pos());
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
@@ -996,10 +996,16 @@ impl Checker {
 
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
-    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty) {
+    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
+        }
+        if !f.type_params.is_empty() {
+            self.type_error(
+                pos,
+                "an extern fn cannot be generic; declare the concrete types the native symbol takes",
+            );
         }
         const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
         const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];

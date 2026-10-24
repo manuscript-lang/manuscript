@@ -14,15 +14,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[("normalize", "string/form_normalize")],
     ),
     (
-        "HashAlgorithm",
-        &[
-            ("digest", "crypto/hash_algorithm_digest"),
-            ("hmac", "crypto/hash_algorithm_hmac"),
-            ("hasher", "crypto/hash_algorithm_hasher"),
-            ("hmac_hasher", "crypto/hash_algorithm_hmac_hasher"),
-        ],
-    ),
-    (
         "CompressionFormat",
         &[
             ("compress", "archive/format_compress"),

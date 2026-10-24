@@ -730,12 +730,7 @@ impl FnLower<'_> {
         // A new runtime object (`BigInt`) is returned as its pointer.
         let object = sig.ret.starts_with("*mut ")
             && match self.b.m.types.kind(result) {
-                TyKind::Obj(n, _) => {
-                    matches!(
-                        n.as_str(),
-                        "BigInt" | "HttpHeaders" | "IpAddress" | "Cidr" | "LogGate" | "SplitIter"
-                    )
-                }
+                TyKind::Obj(..) => true,
                 TyKind::Iface(_) => is_handle_return(&sig.ret),
                 _ => false,
             };
