@@ -21,6 +21,7 @@ pub mod ifconv;
 pub mod inline;
 pub mod optparam;
 pub mod range;
+pub mod reserve;
 pub mod simplify;
 pub mod slotfuse;
 pub mod sortgen;
@@ -82,6 +83,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
             break;
         }
     }
+    reserve::run(m);
+    check(m, "reserve");
     simplify::run(m);
     check(m, "simplify");
 }
