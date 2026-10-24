@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n"
+    "fmt": "def work(value: Bool = active and allowed and remaining > 0) -> Bool: return value\n"
   }
 }

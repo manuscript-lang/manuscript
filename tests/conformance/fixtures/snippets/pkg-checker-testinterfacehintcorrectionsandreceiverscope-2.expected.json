@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms",
           "line": 4,
-          "column": 12,
-          "offset": 174
+          "column": 16,
+          "offset": 178
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms",
           "line": 4,
-          "column": 19,
-          "offset": 181
+          "column": 23,
+          "offset": 185
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms:4:12: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms:4:19: resolution: unknown binding Shape; did you mean 'shape'?\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-2.ms:4:23: resolution: unknown binding Shape; did you mean 'shape'?\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

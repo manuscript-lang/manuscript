@@ -9,19 +9,41 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 30,
-          "offset": 242
+          "column": 31,
+          "offset": 243
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "position": {
+          "file": "core-language-errors-faults-1.ms",
+          "line": 6,
+          "column": 49,
+          "offset": 261
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "position": {
+          "file": "core-language-errors-faults-1.ms",
+          "line": 6,
+          "column": 61,
+          "offset": 273
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:30: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:31: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-faults-1.ms:6:49: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-faults-1.ms:6:61: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

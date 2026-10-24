@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-9.ms",
           "line": 4,
-          "column": 18,
-          "offset": 172
+          "column": 19,
+          "offset": 173
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-9.ms:4:18: resolution: unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-9.ms:4:19: resolution: unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

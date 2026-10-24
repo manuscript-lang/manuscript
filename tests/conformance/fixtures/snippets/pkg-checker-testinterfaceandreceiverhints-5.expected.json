@@ -13,26 +13,26 @@
         "position": {
           "file": "pkg-checker-testinterfaceandreceiverhints-5.ms",
           "line": 4,
-          "column": 16,
-          "offset": 163
+          "column": 17,
+          "offset": 164
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...)', or import it from a module",
+        "message": "unknown binding Sq; declare it with 'let Sq = ...' before use, define 'def Sq(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-checker-testinterfaceandreceiverhints-5.ms",
           "line": 6,
-          "column": 20,
-          "offset": 208
+          "column": 24,
+          "offset": 216
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-5.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testinterfaceandreceiverhints-5.ms:6:20: resolution: unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-5.ms:4:17: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testinterfaceandreceiverhints-5.ms:6:24: resolution: unknown binding Sq; declare it with 'let Sq = ...' before use, define 'def Sq(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

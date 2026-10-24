@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "FACTORY\nRUN tests-e2e-testclitestfilefixturelistanddefaulthooks-1.ms::one\nPASS tests-e2e-testclitestfilefixturelistanddefaulthooks-1.ms::one\n1 tests, 0 failed\n",
+      "stdout": "RUN tests-e2e-testclitestfilefixturelistanddefaulthooks-1.ms::one\nFACTORY\nPASS tests-e2e-testclitestfilefixturelistanddefaulthooks-1.ms::one\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

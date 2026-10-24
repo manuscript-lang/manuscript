@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'fn tagged_detail(...)', or import it from a module",
+        "message": "unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-69.ms",
           "line": 6,
           "column": 9,
-          "offset": 197
+          "offset": 201
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'fn tagged_detail(...)', or import it from a module",
+        "message": "unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-69.ms",
           "line": 7,
           "column": 12,
-          "offset": 246
+          "offset": 250
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:6:9: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'fn tagged_detail(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:7:12: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'fn tagged_detail(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:6:9: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:7:12: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

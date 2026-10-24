@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {expect_equal} from \"@std/testing.ms\"\n\nfn selected_sum(values: List[Int]) Int:\n    var total = 0\n\n    for value in values:\n        if value == 0:\n            continue\n        if value < 0:\n            break\n\n        total += value\n\n    return total\n\ntest \"iteration control\":\n    try expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)\n    try expect_equal(selected_sum([]), 0)\n"
+    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ndef selected_sum(values: List[Int]) -> Int:\n    var total = 0\n\n    for value in values:\n        if value == 0:\n            continue\n        if value < 0:\n            break\n\n        total += value\n\n    return total\n\ntest \"iteration control\":\n    try expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)\n    try expect_equal(selected_sum([]), 0)\n"
   }
 }

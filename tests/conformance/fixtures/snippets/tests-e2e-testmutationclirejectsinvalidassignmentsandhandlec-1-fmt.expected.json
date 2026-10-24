@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import File from \"@std/io.ms\"\nimport Connection from \"@std/net.ms\"\n\ntype Val:\n    val: Int\n"
+    "fmt": "from \"@std/io.ms\" import File\nfrom \"@std/net.ms\" import Connection\n\ntype Val:\n    val: Int\n"
   }
 }

@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
         "position": {
           "file": "pkg-build-testlibraryerrordomainsaredistinct-4.ms",
           "line": 6,
-          "column": 25,
-          "offset": 247
+          "column": 29,
+          "offset": 251
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-4.ms:6:25: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-4.ms:6:29: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -3,13 +3,66 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "format": 1,
-    "diagnostics": [],
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot move `k` out: it only borrows its value (a loop variable); use `k.clone()` to get an owned copy",
+        "position": {
+          "file": "src/maps.ms",
+          "line": 26,
+          "column": 23,
+          "offset": 638
+        },
+        "fix": {
+          "position": {
+            "file": "src/maps.ms",
+            "line": 26,
+            "column": 24,
+            "offset": 639
+          },
+          "end": {
+            "file": "src/maps.ms",
+            "line": 26,
+            "column": 24,
+            "offset": 639
+          },
+          "replacement": ".clone()"
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `d`: parameter `d` is not declared var; write `var d: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "src/hostbench.ms",
+          "line": 76,
+          "column": 21,
+          "offset": 1850
+        },
+        "fix": {
+          "position": {
+            "file": "src/hostbench.ms",
+            "line": 75,
+            "column": 14,
+            "offset": 1792
+          },
+          "end": {
+            "file": "src/hostbench.ms",
+            "line": 75,
+            "column": 14,
+            "offset": 1792
+          },
+          "replacement": "var "
+        }
+      }
+    ],
     "text": {
-      "exit_code": 0,
-      "stdout": "Checked ms.toml (16 modules)\n",
-      "stderr": ""
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/src/maps.ms:26:23: type: cannot move `k` out: it only borrows its value (a loop variable); use `k.clone()` to get an owned copy\n<DIR>/src/hostbench.ms:76:21: type: cannot change `d`: parameter `d` is not declared var; write `var d: <Type>` in the signature and pass `var` at every call\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

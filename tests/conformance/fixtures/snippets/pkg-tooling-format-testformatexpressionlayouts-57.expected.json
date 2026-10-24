@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module",
+        "message": "unknown binding apply; declare it with 'let apply = ...' before use, define 'def apply(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-57.ms",
           "line": 5,
           "column": 12,
-          "offset": 200
+          "offset": 204
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-57.ms:5:12: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'fn apply(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-57.ms:5:12: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'def apply(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

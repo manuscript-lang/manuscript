@@ -3,47 +3,530 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "naming-migration.ms::all builders keep Unit mutation function types",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "naming-migration.ms::copy names preserve Bytes and collection storage",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nPASS naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nRUN naming-migration.ms::all builders keep Unit mutation function types\nPASS naming-migration.ms::all builders keep Unit mutation function types\nRUN naming-migration.ms::copy names preserve Bytes and collection storage\nPASS naming-migration.ms::copy names preserve Bytes and collection storage\n3 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `self.builder`: this method does not change its receiver; declare it `var fn` to allow that",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 20,
+            "column": 14,
+            "offset": 757
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 19,
+              "column": 6,
+              "offset": 703
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 19,
+              "column": 6,
+              "offset": 703
+            },
+            "replacement": "var "
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot use `counter.calls` while closure `create` (made at 50:18) changes it; call or drop the closure first, or copy the value before creating it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 56,
+            "column": 30,
+            "offset": 1942
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot use `counter.calls` while closure `create` (made at 50:18) changes it; call or drop the closure first, or copy the value before creating it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 59,
+            "column": 30,
+            "offset": 2036
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`values` is moved here but used again at 65:16; a value has one owner, so pass `values.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 61,
+            "column": 40,
+            "offset": 2123
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 61,
+              "column": 46,
+              "offset": 2129
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 61,
+              "column": 46,
+              "offset": 2129
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot use `counter.calls` while closure `create` (made at 50:18) changes it; call or drop the closure first, or copy the value before creating it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 69,
+            "column": 17,
+            "offset": 2378
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 79,
+            "column": 51,
+            "offset": 2786
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 5,
+              "offset": 2706
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 8,
+              "offset": 2709
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 82,
+            "column": 23,
+            "offset": 2835
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 5,
+              "offset": 2706
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 8,
+              "offset": 2709
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 84,
+            "column": 22,
+            "offset": 2896
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 5,
+              "offset": 2706
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 78,
+              "column": 8,
+              "offset": 2709
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 88,
+            "column": 54,
+            "offset": 3037
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 86,
+              "column": 5,
+              "offset": 2924
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 86,
+              "column": 8,
+              "offset": 2927
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map_alias`: `map_alias` is declared with let, which is immutable including its contents; declare it `var map_alias` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 89,
+            "column": 63,
+            "offset": 3103
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 5,
+              "offset": 2964
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 8,
+              "offset": 2967
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map_alias`: `map_alias` is declared with let, which is immutable including its contents; declare it `var map_alias` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 91,
+            "column": 5,
+            "offset": 3149
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 5,
+              "offset": 2964
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 8,
+              "offset": 2967
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `map_alias` while `legacy_map` borrows it (method value, at 89:63); finish using `legacy_map` before this, or give `legacy_map` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 91,
+            "column": 5,
+            "offset": 3149
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot use `map_alias` while closure `legacy_map` (made at 89:63) changes it; call or drop the closure first, or copy the value before creating it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 93,
+            "column": 45,
+            "offset": 3216
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 98,
+            "column": 22,
+            "offset": 3356
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 86,
+              "column": 5,
+              "offset": 2924
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 86,
+              "column": 8,
+              "offset": 2927
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map_alias`: `map_alias` is declared with let, which is immutable including its contents; declare it `var map_alias` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 101,
+            "column": 22,
+            "offset": 3504
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 5,
+              "offset": 2964
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 87,
+              "column": 8,
+              "offset": 2967
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 104,
+            "column": 46,
+            "offset": 3626
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 5,
+              "offset": 3553
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 8,
+              "offset": 3556
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 105,
+            "column": 49,
+            "offset": 3678
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 5,
+              "offset": 3553
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 8,
+              "offset": 3556
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `set` while `add_set` borrows it (method value, at 104:46); finish using `add_set` before this, or give `add_set` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 105,
+            "column": 49,
+            "offset": 3678
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 107,
+            "column": 5,
+            "offset": 3701
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 5,
+              "offset": 3553
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 8,
+              "offset": 3556
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `set` while `legacy_set` borrows it (method value, at 105:49); finish using `legacy_set` before this, or give `legacy_set` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 107,
+            "column": 5,
+            "offset": 3701
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 110,
+            "column": 22,
+            "offset": 3752
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 5,
+              "offset": 3553
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 8,
+              "offset": 3556
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 113,
+            "column": 22,
+            "offset": 3858
+          },
+          "fix": {
+            "position": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 5,
+              "offset": 3553
+            },
+            "end": {
+              "file": "naming-migration.ms",
+              "line": 103,
+              "column": 8,
+              "offset": 3556
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `bytes` while `append_byte` borrows it (method value, at 116:52); finish using `append_byte` before this, or give `append_byte` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "naming-migration.ms",
+            "line": 117,
+            "column": 55,
+            "offset": 4036
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -54,11 +537,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

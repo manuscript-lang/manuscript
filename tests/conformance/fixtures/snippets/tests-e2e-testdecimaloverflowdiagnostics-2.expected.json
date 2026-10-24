@@ -16,12 +16,23 @@
           "column": 18,
           "offset": 226
         }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"",
+        "position": {
+          "file": "tests-e2e-testdecimaloverflowdiagnostics-2.ms",
+          "line": 5,
+          "column": 23,
+          "offset": 231
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testdecimaloverflowdiagnostics-2.ms:5:18: resolution: Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testdecimaloverflowdiagnostics-2.ms:5:18: resolution: Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/tests-e2e-testdecimaloverflowdiagnostics-2.ms:5:23: resolution: Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

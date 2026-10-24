@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...)', or import it from a module",
+        "message": "unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testsuccessfulresultboundsrestoreelsescope-1.ms",
           "line": 9,
           "column": 24,
-          "offset": 283
+          "offset": 287
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrestoreelsescope-1.ms:9:24: resolution: unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrestoreelsescope-1.ms:9:24: resolution: unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

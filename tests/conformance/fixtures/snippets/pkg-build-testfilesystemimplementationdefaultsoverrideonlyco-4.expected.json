@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...)', or import it from a module",
+        "message": "unknown binding Override; declare it with 'let Override = ...' before use, define 'def Override(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms",
           "line": 5,
@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding FileSystem; add: import FileSystem from \"@std/fs.ms\"",
+        "message": "unknown binding FileSystem; add: from \"@std/fs.ms\" import FileSystem",
         "position": {
           "file": "pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms",
           "line": 6,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms:5:16: resolution: unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...)', or import it from a module\n<DIR>/pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms:6:16: resolution: unknown binding FileSystem; add: import FileSystem from \"@std/fs.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms:5:16: resolution: unknown binding Override; declare it with 'let Override = ...' before use, define 'def Override(...) -> T:', or import it from a module\n<DIR>/pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-4.ms:6:16: resolution: unknown binding FileSystem; add: from \"@std/fs.ms\" import FileSystem\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

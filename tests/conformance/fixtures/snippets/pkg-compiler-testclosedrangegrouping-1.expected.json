@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding values; add: import values from \"@std/bytes.ms\"",
+        "message": "unknown binding values; add: from \"@std/bytes.ms\" import values",
         "position": {
           "file": "pkg-compiler-testclosedrangegrouping-1.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testclosedrangegrouping-1.ms:4:13: resolution: unknown binding values; add: import values from \"@std/bytes.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testclosedrangegrouping-1.ms:4:13: resolution: unknown binding values; add: from \"@std/bytes.ms\" import values\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

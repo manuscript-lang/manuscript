@@ -3,67 +3,62 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "list-parity.ms::List count calls the predicate once per element",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "list-parity.ms::List insert mutates in place",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "list-parity.ms::List pop removes and returns the last element",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "list-parity.ms::List pop and distinct copy payloads",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "list-parity.ms::List distinct keeps the first equal element in order",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "list-parity.ms::List parity operations support generic and bound use",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "list-parity.ms::List distinct handles large Int and String lists",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN list-parity.ms::List count calls the predicate once per element\nPASS list-parity.ms::List count calls the predicate once per element\nRUN list-parity.ms::List insert mutates in place\nPASS list-parity.ms::List insert mutates in place\nRUN list-parity.ms::List pop removes and returns the last element\nPASS list-parity.ms::List pop removes and returns the last element\nRUN list-parity.ms::List pop and distinct copy payloads\nPASS list-parity.ms::List pop and distinct copy payloads\nRUN list-parity.ms::List distinct keeps the first equal element in order\nPASS list-parity.ms::List distinct keeps the first equal element in order\nRUN list-parity.ms::List parity operations support generic and bound use\nPASS list-parity.ms::List parity operations support generic and bound use\nRUN list-parity.ms::List distinct handles large Int and String lists\nPASS list-parity.ms::List distinct handles large Int and String lists\n7 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `values` while `insert` borrows it (method value, at 88:25); finish using `insert` before this, or give `insert` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "list-parity.ms",
+            "line": 89,
+            "column": 51,
+            "offset": 2903
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot use `values` while closure `insert` (made at 88:25) changes it; call or drop the closure first, or copy the value before creating it",
+          "position": {
+            "file": "list-parity.ms",
+            "line": 90,
+            "column": 17,
+            "offset": 2923
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -74,11 +69,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

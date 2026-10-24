@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding format; add: import format from \"@std/fs.ms\"",
+        "message": "unknown binding format; add: from \"@std/fs.ms\" import format",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
           "line": 6,
-          "column": 53,
-          "offset": 297
+          "column": 54,
+          "offset": 302
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...)', or import it from a module",
+        "message": "unknown binding enabled; declare it with 'let enabled = ...' before use, define 'def enabled(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
           "line": 7,
           "column": 8,
-          "offset": 381
+          "offset": 386
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:6:53: resolution: unknown binding format; add: import format from \"@std/fs.ms\"\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:7:8: resolution: unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:6:54: resolution: unknown binding format; add: from \"@std/fs.ms\" import format\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:7:8: resolution: unknown binding enabled; declare it with 'let enabled = ...' before use, define 'def enabled(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

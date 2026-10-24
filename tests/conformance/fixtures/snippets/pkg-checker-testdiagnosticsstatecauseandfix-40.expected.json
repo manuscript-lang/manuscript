@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn(value: Float) String: \"{value}\").join(separator: \",\")",
+        "message": "unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f\"{value}\").join(separator: \",\")",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-40.ms",
           "line": 5,
           "column": 18,
-          "offset": 180
+          "offset": 184
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-40.ms:5:18: resolution: unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn(value: Float) String: \"{value}\").join(separator: \",\")\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-40.ms:5:18: resolution: unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f\"{value}\").join(separator: \",\")\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

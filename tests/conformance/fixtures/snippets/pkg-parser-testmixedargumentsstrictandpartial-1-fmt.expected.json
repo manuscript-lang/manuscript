@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn run() Int:\n    return select[Int](1, last: 3, fn(value): value + 1)\n"
+    "fmt": "def run() -> Int:\n    return select[Int](1, last: 3, lambda value: value + 1)\n"
   }
 }

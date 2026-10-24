@@ -9,19 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "message": "unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes",
         "position": {
           "file": "tests-e2e-testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
           "column": 17,
-          "offset": 231
+          "offset": 235
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "position": {
+          "file": "tests-e2e-testbytessplitlimitfaultlocations-3.ms",
+          "line": 6,
+          "column": 34,
+          "offset": 252
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

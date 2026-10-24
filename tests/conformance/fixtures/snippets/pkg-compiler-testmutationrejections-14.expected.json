@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type File; add: import File from \"@std/io.ms\"",
+        "message": "unknown type File; add: from \"@std/io.ms\" import File",
         "position": {
           "file": "pkg-compiler-testmutationrejections-14.ms",
           "line": 4,
-          "column": 12,
-          "offset": 155
+          "column": 13,
+          "offset": 156
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-14.ms:4:12: resolution: unknown type File; add: import File from \"@std/io.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-14.ms:4:13: resolution: unknown type File; add: from \"@std/io.ms\" import File\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

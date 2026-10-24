@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() String: return \"a\" - \"b\"\n"
+    "fmt": "def f() -> String: return \"a\" - \"b\"\n"
   }
 }

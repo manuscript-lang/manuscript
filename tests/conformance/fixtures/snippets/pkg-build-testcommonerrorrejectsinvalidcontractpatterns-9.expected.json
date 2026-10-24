@@ -13,19 +13,19 @@
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms",
           "line": 6,
-          "column": 9,
-          "offset": 225
+          "column": 14,
+          "offset": 234
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module",
+        "message": "unknown binding value; declare it with 'let value = ...' before use, define 'def value(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms",
           "line": 7,
           "column": 20,
-          "offset": 262
+          "offset": 271
         }
       },
       {
@@ -36,14 +36,14 @@
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms",
           "line": 5,
           "column": 5,
-          "offset": 204
+          "offset": 208
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:6:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:7:20: resolution: unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:5:5: type: contract match requires a final wildcard for other implementations; add a last '_' arm\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:6:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:7:20: resolution: unknown binding value; declare it with 'let value = ...' before use, define 'def value(...) -> T:', or import it from a module\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-9.ms:5:5: type: contract match requires a final wildcard for other implementations; add a last '_' arm\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

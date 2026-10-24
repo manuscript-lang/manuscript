@@ -9,30 +9,52 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"",
+        "message": "unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-14.ms",
           "line": 5,
           "column": 13,
-          "offset": 163
+          "offset": 167
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Queue; add: import Queue from \"@std/queue.ms\"",
+        "message": "unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder",
+        "position": {
+          "file": "pkg-checker-testdiagnosticfixes-14.ms",
+          "line": 6,
+          "column": 13,
+          "offset": 197
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Queue; add: from \"@std/queue.ms\" import Queue",
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-14.ms",
           "line": 7,
           "column": 13,
-          "offset": 223
+          "offset": 227
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Queue; add: from \"@std/queue.ms\" import Queue",
+        "position": {
+          "file": "pkg-checker-testdiagnosticfixes-14.ms",
+          "line": 8,
+          "column": 13,
+          "offset": 252
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: import Queue from \"@std/queue.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:6:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:8:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

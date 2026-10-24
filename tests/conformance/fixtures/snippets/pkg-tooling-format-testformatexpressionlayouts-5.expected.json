@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding send; declare it with 'let send = ...' before use, define 'fn send(...)', or import it from a module",
+        "message": "unknown binding send; declare it with 'let send = ...' before use, define 'def send(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-5.ms",
           "line": 5,
           "column": 5,
-          "offset": 171
+          "offset": 175
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-5.ms:5:5: resolution: unknown binding send; declare it with 'let send = ...' before use, define 'fn send(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-5.ms:5:5: resolution: unknown binding send; declare it with 'let send = ...' before use, define 'def send(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

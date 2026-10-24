@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {TextError} from \"@std/core.ms\"\n\nfn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:\n    return outcome.to_optional()\n"
+    "fmt": "from \"@std/core.ms\" import TextError\n\ndef successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:\n    return outcome.to_optional()\n"
   }
 }

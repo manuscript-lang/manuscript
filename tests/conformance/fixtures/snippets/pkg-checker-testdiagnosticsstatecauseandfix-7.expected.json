@@ -14,7 +14,7 @@
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-7.ms",
           "line": 8,
           "column": 14,
-          "offset": 207
+          "offset": 215
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-7.ms",
           "line": 8,
           "column": 12,
-          "offset": 205
+          "offset": 213
         }
       }
     ],

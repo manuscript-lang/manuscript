@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) Int:\n    let message = \"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message):\n        ok(_):\n            return 0\n        error(_):\n            return 1\n"
+    "fmt": "export def render(\n    arguments: List[String],  # arguments\n    output: WriteStream,\n) -> Int:\n    let message = f\"Arguments: {arguments.join(\",\")}\\n\"\n\n    match output.write(data: message):\n        case ok(_):\n            return 0\n        case error(_):\n            return 1\n"
   }
 }

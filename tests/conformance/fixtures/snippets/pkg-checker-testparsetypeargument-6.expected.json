@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
+        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
         "position": {
           "file": "pkg-checker-testparsetypeargument-6.ms",
           "line": 4,
-          "column": 33,
-          "offset": 195
+          "column": 37,
+          "offset": 199
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
+        "message": "unknown binding parse; add: from \"@std/csv.ms\" import parse",
         "position": {
           "file": "pkg-checker-testparsetypeargument-6.ms",
           "line": 5,
           "column": 12,
-          "offset": 218
+          "offset": 222
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-6.ms:4:33: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n<DIR>/pkg-checker-testparsetypeargument-6.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-6.ms:4:37: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n<DIR>/pkg-checker-testparsetypeargument-6.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

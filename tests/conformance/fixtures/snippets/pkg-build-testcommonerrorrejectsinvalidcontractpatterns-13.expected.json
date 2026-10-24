@@ -13,19 +13,19 @@
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms",
           "line": 6,
-          "column": 9,
-          "offset": 225
+          "column": 14,
+          "offset": 234
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding first; declare it with 'let first = ...' before use, define 'fn first(...)', or import it from a module",
+        "message": "unknown binding first; declare it with 'let first = ...' before use, define 'def first(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms",
           "line": 7,
           "column": 20,
-          "offset": 262
+          "offset": 271
         }
       },
       {
@@ -35,26 +35,26 @@
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms",
           "line": 8,
-          "column": 9,
-          "offset": 286
+          "column": 14,
+          "offset": 300
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding second; declare it with 'let second = ...' before use, define 'fn second(...)', or import it from a module",
+        "message": "unknown binding second; declare it with 'let second = ...' before use, define 'def second(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms",
           "line": 9,
           "column": 20,
-          "offset": 324
+          "offset": 338
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:6:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:7:20: resolution: unknown binding first; declare it with 'let first = ...' before use, define 'fn first(...)', or import it from a module\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:8:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:9:20: resolution: unknown binding second; declare it with 'let second = ...' before use, define 'fn second(...)', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:6:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:7:20: resolution: unknown binding first; declare it with 'let first = ...' before use, define 'def first(...) -> T:', or import it from a module\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:8:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-13.ms:9:20: resolution: unknown binding second; declare it with 'let second = ...' before use, define 'def second(...) -> T:', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

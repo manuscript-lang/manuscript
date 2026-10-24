@@ -3,37 +3,78 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "cl-10b.ms::contract views and callbacks",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN cl-10b.ms::contract views and callbacks\nPASS cl-10b.ms::contract views and callbacks\n1 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot move `holder.reader` out of `holder`: only a whole variable can move; take an owned copy with `holder.reader.clone()`",
+          "position": {
+            "file": "cl-10b.ms",
+            "line": 45,
+            "column": 50,
+            "offset": 1232
+          },
+          "fix": {
+            "position": {
+              "file": "cl-10b.ms",
+              "line": 45,
+              "column": 56,
+              "offset": 1238
+            },
+            "end": {
+              "file": "cl-10b.ms",
+              "line": 45,
+              "column": 56,
+              "offset": 1238
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -44,11 +85,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

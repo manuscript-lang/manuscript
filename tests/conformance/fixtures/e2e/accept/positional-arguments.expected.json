@@ -3,62 +3,126 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "positional-arguments.ms::positional labeled mixed and identifier calls",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "positional-arguments.ms::generic calls constructors and callback inference",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "positional-arguments.ms::methods native APIs function values and contextual labels",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "positional-arguments.ms::written order before omitted defaults and body",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "positional-arguments.ms::callable expression precedes positional arguments",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "positional-arguments.ms::mutable callable value is captured before arguments",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN positional-arguments.ms::positional labeled mixed and identifier calls\nPASS positional-arguments.ms::positional labeled mixed and identifier calls\nRUN positional-arguments.ms::generic calls constructors and callback inference\nPASS positional-arguments.ms::generic calls constructors and callback inference\nRUN positional-arguments.ms::methods native APIs function values and contextual labels\nPASS positional-arguments.ms::methods native APIs function values and contextual labels\nRUN positional-arguments.ms::written order before omitted defaults and body\nPASS positional-arguments.ms::written order before omitted defaults and body\nRUN positional-arguments.ms::callable expression precedes positional arguments\nPASS positional-arguments.ms::callable expression precedes positional arguments\nRUN positional-arguments.ms::mutable callable value is captured before arguments\nPASS positional-arguments.ms::mutable callable value is captured before arguments\n6 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`copied` is moved here but used again at 118:23; a value has one owner, so pass `copied.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "positional-arguments.ms",
+            "line": 116,
+            "column": 44,
+            "offset": 3851
+          },
+          "fix": {
+            "position": {
+              "file": "positional-arguments.ms",
+              "line": 116,
+              "column": 50,
+              "offset": 3857
+            },
+            "end": {
+              "file": "positional-arguments.ms",
+              "line": 116,
+              "column": 50,
+              "offset": 3857
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`typed` is moved here but used again at 118:45; a value has one owner, so pass `typed.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "positional-arguments.ms",
+            "line": 117,
+            "column": 19,
+            "offset": 3876
+          },
+          "fix": {
+            "position": {
+              "file": "positional-arguments.ms",
+              "line": 117,
+              "column": 24,
+              "offset": 3881
+            },
+            "end": {
+              "file": "positional-arguments.ms",
+              "line": 117,
+              "column": 24,
+              "offset": 3881
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `counter` while `factory` borrows it (closure capture, at 174:19); finish using `factory` before this, or give `factory` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "positional-arguments.ms",
+            "line": 178,
+            "column": 37,
+            "offset": 5693
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `counter` while `factory` borrows it (closure capture, at 174:19); finish using `factory` before this, or give `factory` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "positional-arguments.ms",
+            "line": 178,
+            "column": 59,
+            "offset": 5715
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -69,11 +133,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

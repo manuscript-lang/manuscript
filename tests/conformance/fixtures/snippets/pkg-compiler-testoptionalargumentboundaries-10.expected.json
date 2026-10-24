@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-10.ms",
           "line": 6,
-          "column": 29,
-          "offset": 242
+          "column": 33,
+          "offset": 250
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-10.ms",
           "line": 6,
-          "column": 37,
-          "offset": 250
+          "column": 41,
+          "offset": 258
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:29: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:37: type: expected Int, found String (in argument 'second' of f)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:33: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:41: type: expected Int, found String (in argument 'second' of f)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
