@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use ms_build::Lower;
 
-use super::{RustBackend, TempDir, compile};
+use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
 use crate::diagnostic::CommandDiagnostic;
 use crate::fault::{EXIT_FAULT, Fault};
@@ -16,7 +16,7 @@ use crate::util::emit_json;
 use super::testing::pipe_reader;
 
 pub(super) fn run<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {

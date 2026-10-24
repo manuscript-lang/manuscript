@@ -21,7 +21,7 @@
 //!
 //! ## What runs
 //!
-//! 1. [`Backend::build`] builds `<out-dir>/program`.
+//! 1. the build function builds `<out-dir>/program`.
 //! 2. The program is started with the environment variable
 //!    `MS_PROFILE=<out-dir>/profile.folded`. The runtime samples the program
 //!    while it runs and, when it exits (normally, through a fault, or through
@@ -74,7 +74,7 @@ use std::process::{Command, Stdio};
 
 use ms_driver::project::gopath;
 
-use crate::backend::{Backend, BuildRequest, BuildType, Io, finish};
+use crate::backend::{BackendResult, BuildRequest, BuildType, Io, finish};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::invocation::Invocation;
 use crate::json::Json;
@@ -360,7 +360,7 @@ fn now_nanos() -> u64 {
 pub fn run_profile(
     inv: &Invocation,
     build_type: BuildType,
-    backend: &dyn Backend,
+    build: &dyn Fn(&BuildRequest, &mut Io) -> BackendResult,
     io: &mut Io,
 ) -> i32 {
     let display_output = if inv.output.is_empty() {
@@ -410,7 +410,7 @@ pub fn run_profile(
             stdout: &mut build_out,
             stderr: &mut build_err,
         };
-        finish(backend.build(&request, &mut build_io), &mut build_io)
+        finish(build(&request, &mut build_io), &mut build_io)
     };
     let _ = io.stderr.write_all(&build_err);
     if status != 0 {

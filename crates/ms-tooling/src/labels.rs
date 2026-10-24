@@ -1,6 +1,5 @@
 //! `ms fmt --drop-labels`.
 
-use crate::gosort;
 use crate::walk::walk_module;
 use ms_check::Program;
 use ms_check::types::{self, Kind, Param};
@@ -28,7 +27,7 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
     };
     walk_module(module, &mut scan);
     let mut cuts = scan.cuts;
-    gosort::slice(&mut cuts, |a, b| a.0 > b.0);
+    cuts.sort_by_key(|cut| std::cmp::Reverse(cut.0));
     let mut edited = source.to_string();
     for &(from, to) in &cuts {
         edited.replace_range(from..to, "");

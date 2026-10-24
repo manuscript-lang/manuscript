@@ -1,12 +1,14 @@
 //! `ms verify`: check, fmt --check, lint and test on one target in one result.
 //! Orchestration only; each step is this CLI run in process with its streams
-//! captured, so verify works with whatever engines the backend provides.
+//! captured, so verify works .
 
 use std::time::Instant;
 
-use crate::backend::{Backend, Io};
+use crate::backend::Io;
+use crate::engine::Engine;
 use crate::json::{self, Json};
 use crate::util::{emit_json, resolve_input};
+use ms_build::Lower;
 
 /// Findings printed per failed step in text mode (`--json` carries every one).
 const FINDING_LIMIT: usize = 8;
@@ -53,7 +55,7 @@ impl Step {
     }
 }
 
-pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
     let (mut structured, mut skip_test, mut positional) = (false, false, false);
     let mut targets: Vec<&String> = Vec::new();
     for arg in args {
@@ -109,13 +111,13 @@ pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
         step.reason = reason.to_string();
         step
     };
-    let check = run_step("check", &["check", &target, "--json"], backend, io);
+    let check = run_step("check", &["check", &target, "--json"], engine, io);
     let check_passed = check.status == "passed";
     record(io, check, &mut steps);
-    let format = run_step("fmt", &["fmt", &target, "--check", "--json"], backend, io);
+    let format = run_step("fmt", &["fmt", &target, "--check", "--json"], engine, io);
     record(io, format, &mut steps);
     if check_passed {
-        let lint = run_step("lint", &["lint", &target, "--json"], backend, io);
+        let lint = run_step("lint", &["lint", &target, "--json"], engine, io);
         record(io, lint, &mut steps);
     } else {
         record(io, skip("lint", "check failed"), &mut steps);
@@ -125,7 +127,7 @@ pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
     } else if !check_passed {
         record(io, skip("test", "check failed"), &mut steps);
     } else {
-        let test = run_step("test", &["test", &target, "--json"], backend, io);
+        let test = run_step("test", &["test", &target, "--json"], engine, io);
         record(io, test, &mut steps);
     }
     let status = i32::from(!ok);
@@ -152,7 +154,7 @@ pub fn run_verify(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
 }
 
 /// Run one command in process with stdout and stderr captured.
-fn run_step(name: &'static str, args: &[&str], backend: &dyn Backend, io: &mut Io) -> Step {
+fn run_step<L: Lower>(name: &'static str, args: &[&str], engine: &Engine<L>, io: &mut Io) -> Step {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
     let start = Instant::now();
@@ -162,7 +164,7 @@ fn run_step(name: &'static str, args: &[&str], backend: &dyn Backend, io: &mut I
             stdout: &mut out,
             stderr: &mut err,
         };
-        crate::run(&args, backend, &mut step_io)
+        crate::run(&args, engine, &mut step_io)
     };
     let mut step = Step::new(name, "failed");
     step.exit_code = code;

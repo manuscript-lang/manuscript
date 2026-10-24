@@ -1,25 +1,13 @@
-//! The engine boundary of the command line.
+//! Request types and process streams shared by the command line and the engine.
 //!
 //! `ms-cli` owns everything a user can observe about *arguments*: dispatch,
 //! option parsing and validation, help text, usage errors and exit statuses.
-//! The compiler engines (parser, checker, MIR, Cranelift, linker, runtime,
-//! tooling) plug in by implementing [`Backend`]. Every method has a default
-//! that reports "not yet implemented" and exits with
-//! [`EXIT_NOT_IMPLEMENTED`], so an engine session overrides exactly the
-//! commands it can serve and the rest keep failing loudly.
-//!
-//! A backend method receives a validated request and the process streams, does
-//! the work, writes the command's output (text or `--json`) to `io`, and
-//! returns the exit status. Rendering helpers shared with the CLI
-//! output ([`crate::diagnostic`], [`crate::json`], [`crate::util`]) are public.
+//! A command receives a validated request and the process streams, does the
+//! work, writes its output (text or `--json`) to `io`, and returns the exit
+//! status. Rendering helpers shared with the CLI output ([`crate::diagnostic`],
+//! [`crate::json`], [`crate::util`]) are public.
 
 use std::io::{Read, Write};
-
-/// Exit status for a command whose engine is not available yet. It is distinct
-/// from the statuses `ms` normally uses (0 success, 1 failure, 2 usage error) and
-/// from the 126/127 shell statuses, so scripts and the differential tests can
-/// tell "not implemented" from "failed".
-pub const EXIT_NOT_IMPLEMENTED: i32 = 70;
 
 /// The process streams a command reads and writes. Streams are injectable so
 /// `ms verify` can capture a step and tests can run the CLI in process.
@@ -29,14 +17,9 @@ pub struct Io<'a> {
     pub stderr: &'a mut dyn Write,
 }
 
-/// How a backend call ends.
+/// A command that failed; the message goes to stderr and the status is 1.
 #[derive(Debug)]
-pub enum BackendError {
-    /// The engine for this command does not exist yet.
-    NotImplemented(&'static str),
-    /// The command failed; the message goes to stderr and the status is 1.
-    Failed(String),
-}
+pub struct BackendError(pub String);
 
 /// `Ok(status)` is the exit status the command returns.
 pub type BackendResult = Result<i32, BackendError>;
@@ -193,92 +176,11 @@ pub enum FormatFailure {
     Message(String),
 }
 
-/// The engines behind the commands. All methods default to "not implemented".
-pub trait Backend {
-    /// The release version printed by `ms version`. Defaults to `.msversion`.
-    fn version(&self) -> String {
-        crate::VERSION.to_string()
-    }
-
-    fn check(&self, _request: &AnalysisRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("check")
-    }
-    fn lint(&self, _request: &AnalysisRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("lint")
-    }
-    /// Build a native executable at `request.output` (or `./program`).
-    fn build(&self, _request: &BuildRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("build")
-    }
-    /// Build a temporary executable and run it; return the program's status.
-    fn run(&self, _request: &RunRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("run")
-    }
-    fn test(&self, _request: &TestRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("test")
-    }
-    fn emit(&self, _request: &OutputRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("emit")
-    }
-    fn inspect(&self, _request: &OutputRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("inspect")
-    }
-    fn diagram(&self, _request: &DiagramRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("diagram")
-    }
-    fn review(&self, _request: &ReviewRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("review")
-    }
-    fn search_symbol(&self, _request: &SearchSymbolRequest, _io: &mut Io) -> BackendResult {
-        not_implemented("search_symbol")
-    }
-    /// Print the language cheat sheet.
-    fn guide(&self, _io: &mut Io) -> BackendResult {
-        not_implemented("guide")
-    }
-    /// Serve the language server on the given streams until the client disconnects.
-    fn lsp(&self, _io: &mut Io) -> BackendResult {
-        not_implemented("lsp")
-    }
-    /// Format one file's text. Returns the formatted text.
-    fn format_source(&self, _file: &FormatFile, _source: &str) -> Result<String, FormatFailure> {
-        Err(FormatFailure::Message(not_implemented_message("fmt")))
-    }
-    /// Apply `--drop-labels` to source that checks, before formatting.
-    fn drop_redundant_labels(
-        &self,
-        _file: &FormatFile,
-        _source: &str,
-    ) -> Result<String, FormatFailure> {
-        Err(FormatFailure::Message(not_implemented_message(
-            "fmt --drop-labels",
-        )))
-    }
-}
-
-pub fn not_implemented_message(what: &str) -> String {
-    format!("ms {what}: not yet implemented")
-}
-
-pub fn not_implemented(what: &'static str) -> BackendResult {
-    Err(BackendError::NotImplemented(what))
-}
-
-/// A backend with no engines: every command that needs one fails with
-/// [`EXIT_NOT_IMPLEMENTED`]. The `ms` binary uses it until engines are linked.
-pub struct NoEngines;
-
-impl Backend for NoEngines {}
-
-/// Report a backend outcome on stderr and turn it into an exit status.
+/// Report a command's outcome on stderr and turn it into an exit status.
 pub fn finish(result: BackendResult, io: &mut Io) -> i32 {
     match result {
         Ok(status) => status,
-        Err(BackendError::NotImplemented(what)) => {
-            let _ = writeln!(io.stderr, "{}", not_implemented_message(what));
-            EXIT_NOT_IMPLEMENTED
-        }
-        Err(BackendError::Failed(message)) => {
+        Err(BackendError(message)) => {
             let _ = writeln!(io.stderr, "{message}");
             1
         }

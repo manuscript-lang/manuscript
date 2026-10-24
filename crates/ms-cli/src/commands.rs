@@ -1,7 +1,8 @@
 //! Argument parsing for the standalone commands: `review`, `search_symbol`,
 //! `help`, `version`, `lsp` and `guide`.
 
-use crate::backend::{Backend, Io, ReviewRequest, SearchSymbolRequest, finish};
+use crate::backend::{Io, ReviewRequest, SearchSymbolRequest, finish};
+use crate::engine;
 use crate::help;
 use crate::util::{required_value, resolve_input, split_value_option, usage_error};
 
@@ -32,7 +33,7 @@ fn help_usage(io: &mut Io) -> i32 {
     2
 }
 
-pub fn run_version(command: &str, args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_version(command: &str, args: &[String], io: &mut Io) -> i32 {
     if command == "version" && args.len() == 1 && (args[0] == "--help" || args[0] == "-h") {
         let _ = write!(
             io.stdout,
@@ -48,11 +49,11 @@ pub fn run_version(command: &str, args: &[String], backend: &dyn Backend, io: &m
         );
         return 2;
     }
-    let _ = writeln!(io.stdout, "Manuscript {}", backend.version());
+    let _ = writeln!(io.stdout, "Manuscript {}", crate::VERSION);
     0
 }
 
-pub fn run_lsp(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_lsp(args: &[String], io: &mut Io) -> i32 {
     if args.len() != 1 {
         let _ = writeln!(
             io.stderr,
@@ -60,20 +61,21 @@ pub fn run_lsp(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
         );
         return 2;
     }
-    finish(backend.lsp(io), io)
+    finish(engine::lsp(io), io)
 }
 
-pub fn run_guide(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
     if args.len() > 1 {
         return usage_error(
             io,
             "ms guide takes no arguments; use 'ms search_symbol' to look symbols up",
         );
     }
-    finish(backend.guide(io), io)
+    let _ = write!(io.stdout, "{}", ms_tooling::guide::cheatsheet());
+    0
 }
 
-pub fn run_search_symbol(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_search_symbol(args: &[String], io: &mut Io) -> i32 {
     let mut names: Vec<String> = Vec::new();
     let (mut limit, mut json) = (DEFAULT_SYMBOL_LIMIT, false);
     let mut i = 1;
@@ -106,14 +108,14 @@ pub fn run_search_symbol(args: &[String], backend: &dyn Backend, io: &mut Io) ->
         i += 1;
     }
     finish(
-        backend.search_symbol(&SearchSymbolRequest { names, limit, json }, io),
+        engine::search_symbol(&SearchSymbolRequest { names, limit, json }, io),
         io,
     )
 }
 
-pub fn run_review(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_review(args: &[String], io: &mut Io) -> i32 {
     match parse_review(args, io) {
-        Ok(request) => finish(backend.review(&request, io), io),
+        Ok(request) => finish(engine::review(&request, io), io),
         Err(status) => status,
     }
 }

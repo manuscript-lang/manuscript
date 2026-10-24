@@ -13,7 +13,7 @@ use ms_driver::project::Overlay;
 use super::tooling::{
     FileState, WATCH_INTERVAL, WATCH_SETTLE, absolute, analyze_with, file_state, watched_files,
 };
-use super::{RustBackend, TempDir, compile, testing};
+use super::{Engine, TempDir, compile, testing};
 use crate::backend::{BackendResult, Io, RunRequest, TestRequest};
 use crate::process::{Stops, exit_code, interrupt};
 
@@ -94,7 +94,7 @@ impl Running {
 }
 
 pub(super) fn run<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {
@@ -170,7 +170,7 @@ pub(super) fn run<L: Lower>(
 
 /// Compile and link `request.filename` into `executable`; diagnostics are reported.
 fn build<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &RunRequest,
     executable: &Path,
     io: &mut Io,
@@ -191,7 +191,7 @@ fn build<L: Lower>(
 
 /// Run the tests again after each saved change; a failing run keeps watching.
 pub(super) fn test<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
 ) -> BackendResult {
