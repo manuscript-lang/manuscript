@@ -499,7 +499,10 @@ fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
             let info = match find_func(t, pc) {
                 Some(f) => {
                     let (l, fi, sc) = find_line(t, f, pc);
-                    format!("func={} line={l} file={fi} scope={sc}", String::from_utf8_lossy(cstr(t, f.name_off)))
+                    format!(
+                        "func={} line={l} file={fi} scope={sc}",
+                        String::from_utf8_lossy(cstr(t, f.name_off))
+                    )
                 }
                 None => "func=none".to_string(),
             };
