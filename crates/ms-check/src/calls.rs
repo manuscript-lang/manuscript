@@ -130,35 +130,11 @@ impl Checker {
                 return i;
             }
             if typ.kind == Kind::Contract {
-                typ = self.instantiate(&typ, &[], &[], expected, e.pos);
-                let value = [Param {
-                    name: n("value"),
-                    ty: invalid(),
-                }];
-                let resolved = constructor_arguments(args, &value);
-                i.arguments = slots(&resolved);
-                if resolved.len() != 1 || resolved[0].name != "value" {
-                    self.type_error(
-                        e.pos,
-                        format!("contract view requires exactly one receiver; write {typ}(x) or {typ}(value: x)"),
-                    );
-                    return i;
+                for a in args {
+                    self.expression(&a.value, None);
                 }
-                let receiver = self.expression(&args[0].value, None);
-                if !self.implements(&receiver.t(), &typ) {
-                    self.type_error(
-                        e.pos,
-                        format!(
-                            "{} does not implement {typ}; declare 'impl {typ} for {}:' with every operation of the interface",
-                            receiver.t(),
-                            receiver.t()
-                        ),
-                    );
-                }
-                i.ty = Some(typ.clone());
-                i.constructor = Some(typ);
-                i.native = Some(n("view"));
-                i.no_return = receiver.no_return;
+                let msg = self.interface_construction_message(&typ);
+                self.type_error(e.pos, msg);
                 return i;
             }
             if typ.kind == Kind::Alternative {

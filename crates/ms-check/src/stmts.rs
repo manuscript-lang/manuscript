@@ -424,7 +424,7 @@ impl Checker {
         } else if candidates.len() > 1 {
             self.type_error(
                 s.pos,
-                "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)",
+                "with cleanup operation is ambiguous; bind the value to a Closeable-typed let first, e.g. let view: Closeable = x",
             );
         }
         let old = self.scope.clone();

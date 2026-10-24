@@ -15,7 +15,7 @@ Use a record for named fields, an alternative for a fixed set of cases, an inter
 | [Optional values](optionals.md) | Represent absence explicitly with some and none. |
 | [Mutation and references](references.md) | Understand moves, borrows, reassignment, and deep copies. |
 | [Destructuring bindings](destructuring.md) | Unpack list positions and record fields. |
-| [Interfaces and implementations](contracts.md) | Implement interfaces with concrete or generic blocks and construct explicit contract views. |
+| [Interfaces and implementations](contracts.md) | Implement interfaces with concrete or generic blocks and pass concrete values where an interface is expected. |
 | [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |
 | [Generics and bounds](generics.md) | Apply parameterized types and express required properties. |
 | [Type compatibility and expected types](compatibility.md) | Check exact types, contextual constructors, and inference boundaries. |

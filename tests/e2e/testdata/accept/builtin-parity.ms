@@ -37,7 +37,7 @@ def common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
         case ok(value):
             return ok(value)
         case error(cause):
-            return error(Error(cause))
+            return error(cause)
 
 def checked_expansion() -> Result[Unit, Error]:
     (

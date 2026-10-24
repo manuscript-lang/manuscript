@@ -260,14 +260,14 @@ export def log2(value: Float) -> Float:
 
 # Returns the greater of two values, or `left` when they compare equal. Float orders NaN above every other value, so a NaN operand makes the result NaN.
 export def max[T: Comparable](left: T, right: T) -> T:
-    if right.compare(Comparable(value: left)) > 0:
+    if right.compare(left) > 0:
         return right
 
     return left
 
 # Returns the lesser of two values, or `left` when they compare equal. Float orders NaN above every other value.
 export def min[T: Comparable](left: T, right: T) -> T:
-    if right.compare(Comparable(value: left)) < 0:
+    if right.compare(left) < 0:
         return right
 
     return left
@@ -278,7 +278,7 @@ export def max_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
 
     for item in values:
         if let current = best:
-            if item.compare(Comparable(value: current)) > 0:
+            if item.compare(current) > 0:
                 best = some(item.clone())
         else:
             best = some(item.clone())
@@ -291,7 +291,7 @@ export def min_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
 
     for item in values:
         if let current = best:
-            if item.compare(Comparable(value: current)) < 0:
+            if item.compare(current) < 0:
                 best = some(item.clone())
         else:
             best = some(item.clone())

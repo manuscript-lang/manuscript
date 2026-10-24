@@ -398,7 +398,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             case InvalidData(line, column, reason):
                 (line < 1 or column < 1 or reason == "") | try expect_false
 
-                let boundary = Error(cause)
+                let boundary: Error = cause
                 ((boundary.message().starts_with("YAML ")) | try expect_true)
             case _: return fail("wrong YAML error")
 

@@ -56,7 +56,7 @@ test "one call site sees different receiver types":
 
 test "views, defaults, and reordered labels keep dispatch":
     let c = Counter(5)
-    try expect_equal(through_view(Bumper(c), 2), 7)
+    try expect_equal(through_view(c, 2), 7)
     try expect_equal(c.scale(2), 10)
     try expect_equal(c.scale(offset: some(1), factor: 2), 11)
     try expect_equal(c.scale(2, some(3)), 13)
@@ -91,7 +91,7 @@ def run_direct(chain: Chain, n: Int) -> Int:
     return chain.step(n) | code
 
 def run_view(chain: Chain, n: Int) -> Int:
-    return Step(chain).step(n) | code
+    return chain.step(n) | code
 
 def run_bound(chain: Chain, n: Int) -> Int:
     let callback = chain.step

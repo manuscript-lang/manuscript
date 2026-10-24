@@ -40,7 +40,7 @@ List equality captures both backing slices and lengths first, following the [cap
 - Structural equality terminates on cyclic data.
 - Collections and recursive types get no automatic hashing; an explicit pair may hash a stable identity.
 - Functions, resource handles, and service handles have no implicit equality.
-- Compare through an `Equal` view with `.equals`.
+- Compare through an `Equal`-typed parameter or binding with `.equals`.
 
 ## Domain identity
 

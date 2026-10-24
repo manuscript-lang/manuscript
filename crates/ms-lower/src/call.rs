@@ -786,15 +786,6 @@ impl<'a> FnLower<'a> {
         {
             return self.construct_collection(view, mt);
         }
-        if matches!(self.b.m.types.kind(mt), TyKind::Iface(_)) {
-            // `Shape(value: x)`: an explicit interface view.
-            let [a] = view.arguments.as_slice() else {
-                return Err(Error::new("an interface view takes one value"));
-            };
-            let x = self.expr(a.expr)?;
-            let from = self.ety(a.expr);
-            return self.fit_ty(x, &from, mt);
-        }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {
             Some(c) => ct::case_of(&t, c)

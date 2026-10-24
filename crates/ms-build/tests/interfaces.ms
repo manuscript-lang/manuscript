@@ -29,7 +29,7 @@ def show(n: Int) -> Result[Unit, Error]:
     return stdout().flush()
 
 export def main() -> Int:
-    show(total(Shape(value: Sq(s: 4)))).get()
+    show(total(Sq(s: 4))).get()
     show(twice(3).get()).get()
 
     let r = twice(0 - 1)

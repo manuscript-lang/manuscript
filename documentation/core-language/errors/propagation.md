@@ -48,6 +48,7 @@ def discounted_label(price: Decimal, percent: Decimal) -> Result[String, Discoun
 `try` accepts the enclosing function's error type, or a specific error implementing `Error` when the function returns `Result[U, Error]`.
 
 - `Result[T, E]` can become `Result[U, E]`; or `Result[U, Error]` if `E` implements `Error`.
+- `Error` is an ordinary interface, so the [implicit interface conversion](../types/contracts.md#interface-conversion) applies.
 - The original error, concrete type, and fields pass through unchanged.
 - An explicit `impl Error` establishes the relationship; matching method names do not. See [common error boundaries](results.md#a-common-error-boundary).
 - Unrelated error types need explicit translation with [pattern matching](../control-flow/pattern-matching.md). An `Error` cannot narrow without a type match.

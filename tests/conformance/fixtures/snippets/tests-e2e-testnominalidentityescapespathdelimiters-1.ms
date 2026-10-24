@@ -15,6 +15,6 @@ impl Read for Box[T]:
 
 test "encoded nominal identity":
     let box = Box(value: 1)
-    let view = Read(value: box)
+    let view: Read = box
     if not (view.get() == 3):
         return fail("check failed")

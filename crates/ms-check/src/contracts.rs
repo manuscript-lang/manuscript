@@ -881,6 +881,13 @@ impl Checker {
         )
     }
 
+    /// Whether a concrete `actual` converts implicitly to the interface `expected`.
+    pub(crate) fn interface_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
+        expected.kind == Kind::Contract
+            && actual.kind != Kind::Contract
+            && self.implements(actual, expected)
+    }
+
     /// Whether the Error boundary accepts `actual` where `expected` is written.
     pub(crate) fn error_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
         if expected.is_std("Error") {

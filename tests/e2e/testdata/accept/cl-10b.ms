@@ -24,10 +24,10 @@ def seven() -> Int:
     return 7
 
 def make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
-    return ReadValue[Int](source)
+    return source
 
 def forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
-    return ReadValue[Int](source)
+    return source
 
 def consume[T: ReadValue[Int]](source: T) -> Int:
     return source.get()
@@ -35,13 +35,13 @@ def consume[T: ReadValue[Int]](source: T) -> Int:
 test "contract views and callbacks":
     let box = Box[Int](7)
     let first = make_view(box)
-    let identity = ReadValue[Int](forward_view(box))
-    let copied = ReadValue[Int](forward_view(box))
+    let identity: ReadValue[Int] = forward_view(box)
+    let copied: ReadValue[Int] = forward_view(box)
     let holder = ReaderHolder(identity)
     let _readers: List[ReadValue[Int]] = [forward_view(box)]
     let _optional: Optional[ReadValue[Int]] = some(forward_view(box))
     let callback = CallbackReader(seven)
-    let callback_view = ReadValue[Int](callback)
+    let callback_view: ReadValue[Int] = callback
     try expect_equal(first.get(), 7)
     try expect_equal(copied.get(), 7)
     try expect_equal(callback_view.get(), 7)

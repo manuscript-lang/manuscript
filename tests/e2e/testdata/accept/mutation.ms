@@ -34,7 +34,7 @@ test "record fields mutate through methods views and var parameters":
     let copy = counter.clone()
     counter.increment()
 
-    var view = Counter(counter.clone())
+    var view: Counter = counter.clone()
     view.increment()
 
     let increment = counter.increment

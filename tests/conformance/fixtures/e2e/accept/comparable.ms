@@ -34,9 +34,9 @@ test "a source impl drives max, min, and generic bounds":
     try expect_true((larger(Version(5), Version(2)).major == 5))
 
 test "compare through an explicit view":
-    let left = Comparable(1)
-    try expect_true((left.compare(Comparable(2)) < 0))
-    try expect_true(((Comparable(Version(3)).compare(Comparable(Version(3))) == 0)))
+    let left: Comparable = 1
+    try expect_true((left.compare(2) < 0))
+    try expect_true(((Version(3).compare(Version(3)) == 0)))
 
 test "max_of and min_of over a list":
     let numbers = [3, 9, 2]

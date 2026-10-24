@@ -57,7 +57,7 @@ test "the variable is shared through calls and callbacks":
 
 test "an interface method value shares the underlying value":
     var counter = Counter(n: 0)
-    var view = Stepper(value: counter)
+    var view: Stepper = counter
     let step = view.step
     step()
     step()

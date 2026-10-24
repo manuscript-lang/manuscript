@@ -56,7 +56,7 @@ test "Result propagation and Error views preserve concrete causes":
     let expected: Result[Int, JsonError] = ok(4)
     try expect_equal(propagate(success), expected)
 
-    let view = Error(JsonError.InvalidData)
+    let view: Error = JsonError.InvalidData
     try expect_not_equal(view.message().byte_length(), 0)
 
     match view:

@@ -26,8 +26,8 @@ def compare[T: Equal](box: Box[T], other: T) -> Bool:
 test "generic implementations":
     let number = Box[Int](7)
     let text = Box[String]("hello")
-    let number_view = ReadValue[Int](number)
-    let text_view = ReadValue[String](text)
+    let number_view: ReadValue[Int] = number
+    let text_view: ReadValue[String] = text
     try expect_equal(number_view.get(), 7)
     try expect_equal(text_view.get(), "hello")
     try expect_false(not (compare(number, 7)))

@@ -54,7 +54,7 @@ test "explicit and bound views retain method contracts and callable field shadow
     )
     try expect_equal(adapter.replace_n("a", "b", 2), "field")
 
-    let view = CappedReplacement(adapter)
+    let view: CappedReplacement = adapter
     try expect_equal(view.replace_n("a", "b", 2), "bbaa")
 
     let bound = view.replace_n

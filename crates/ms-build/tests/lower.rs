@@ -128,7 +128,7 @@ fn maps_and_sets() {
 fn methods_that_change_self_hand_it_back() {
     let mir = lower(
         "selfmut",
-        "interface Counter:\n    var def next() -> Int\ntype C:\n    n: Int\nimpl Counter for C:\n    var def next() -> Int:\n        self.n += 1\n        return self.n\nexport def main() -> Int:\n    var c = Counter(C(0))\n    let a = c.next()\n    return a + c.next()\n",
+        "interface Counter:\n    var def next() -> Int\ntype C:\n    n: Int\nimpl Counter for C:\n    var def next() -> Int:\n        self.n += 1\n        return self.n\nexport def main() -> Int:\n    var c: Counter = C(0)\n    let a = c.next()\n    return a + c.next()\n",
     );
     assert!(mir.contains("call.method"));
     assert!(mir.contains("store "));
