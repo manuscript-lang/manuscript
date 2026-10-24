@@ -1,6 +1,7 @@
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
+import {Shared, share} from "@std/shared.ms"
 import {FileHandle, FileSystemError, filesystem} from "@std/fs.ms"
 import {stdout} from "@std/io.ms"
 import {stringify} from "@std/json.ms"
@@ -49,13 +50,13 @@ export type LogLevel:
 export interface Transport:
     # Accepts encoded record bytes; native transports serialize writes and may return the original I/O cause.
     # Errors can follow a partial external write, without rollback.
-    fn write(data: String) Result[Unit, LogError]
+    var fn write(data: String) Result[Unit, LogError]
     # Accepts encoded record bytes with the same rules as write.
-    fn write_bytes(data: Bytes) Result[Unit, LogError]
+    var fn write_bytes(data: Bytes) Result[Unit, LogError]
     # Delegates flush to the destination; persistence and buffering depend on that destination.
-    fn flush() Result[Unit, LogError]
+    var fn flush() Result[Unit, LogError]
     # Releases owned resources; native close cancels admitted operations and leaves borrowed streams open.
-    fn close() Unit
+    var fn close() Unit
 
 # A structured logger with level filtering, bound fields, and pluggable transports.
 #
@@ -129,31 +130,28 @@ type StreamTransport:
     gate: LogGate
 
 impl Transport for StreamTransport:
-    fn write(data: String) Result[Unit, LogError]:
+    var fn write(data: String) Result[Unit, LogError]:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        let written = self.stream.write(data)
-        if written.is_error(): return error(LogError.Io(written.err()))
+        match self.stream.write(data):
+            ok(_): return ok(unit)
+            error(cause): return error(LogError.Io(cause))
 
-        return ok(unit)
-
-    fn write_bytes(data: Bytes) Result[Unit, LogError]:
+    var fn write_bytes(data: Bytes) Result[Unit, LogError]:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        let written = self.stream.write_bytes(data)
-        if written.is_error(): return error(LogError.Io(written.err()))
+        match self.stream.write_bytes(data):
+            ok(_): return ok(unit)
+            error(cause): return error(LogError.Io(cause))
 
-        return ok(unit)
-
-    fn flush() Result[Unit, LogError]:
+    var fn flush() Result[Unit, LogError]:
         if self.gate.is_shut(): return error(LogError.Closed)
 
-        let flushed = self.stream.flush()
-        if flushed.is_error(): return error(LogError.Io(flushed.err()))
+        match self.stream.flush():
+            ok(_): return ok(unit)
+            error(cause): return error(LogError.Io(cause))
 
-        return ok(unit)
-
-    fn close() Unit:
+    var fn close() Unit:
         self.gate.shut()
 
 # Appends to a file the transport opened, and closes it with the transport.
@@ -162,16 +160,16 @@ type FileTransport:
     inner: StreamTransport
 
 impl Transport for FileTransport:
-    fn write(data: String) Result[Unit, LogError]:
+    var fn write(data: String) Result[Unit, LogError]:
         return self.inner.write(data)
 
-    fn write_bytes(data: Bytes) Result[Unit, LogError]:
+    var fn write_bytes(data: Bytes) Result[Unit, LogError]:
         return self.inner.write_bytes(data)
 
-    fn flush() Result[Unit, LogError]:
+    var fn flush() Result[Unit, LogError]:
         return self.inner.flush()
 
-    fn close() Unit:
+    var fn close() Unit:
         if not self.inner.gate.is_shut():
             self.inner.close()
             self.file.close()
@@ -179,7 +177,7 @@ impl Transport for FileTransport:
 # The logger behind the `Logger` interface: shared encoder state plus the transport it writes to.
 type StdLogger:
     state: LogState
-    transport: Transport
+    transport: Shared[Transport]
 
 impl StdLogger:
     fn emit(level: Int, message: String) Result[Unit, LogError]:
@@ -198,7 +196,10 @@ impl StdLogger:
     fn send(text: String) Result[Unit, LogError]:
         if text == "": return ok(unit)
 
-        return self.transport.write(text)
+        var transport = self.transport.take()
+        let written = transport.write(text)
+        self.transport.put(transport)
+        return written
 
 impl Logger for StdLogger:
     fn log(level: LogLevel, message: String) Result[Unit, LogError]:
@@ -241,7 +242,10 @@ impl Logger for StdLogger:
         self.state.set_level(level_index(level))
 
     fn flush() Result[Unit, LogError]:
-        return self.transport.flush()
+        var transport = self.transport.take()
+        let flushed = transport.flush()
+        self.transport.put(transport)
+        return flushed
 
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
 #
@@ -286,7 +290,7 @@ export fn create(
     let state = new_state(index, timestamp, max_bytes)
     if state.is_error(): return error(core_error(state.err()))
 
-    return ok(Logger(StdLogger(state.get(), transport)))
+    return ok(Logger(StdLogger(state.get(), share(transport))))
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:
@@ -298,15 +302,13 @@ export fn stdout_transport() Transport:
 
 # Appends log records to a file at `path`.
 export fn file_transport(path: String) Result[Transport, LogError]:
-    let opened = filesystem().open(path, "a", 420)
-    if opened.is_error(): return error(LogError.FileSystem(opened.err()))
+    match filesystem().open(path, "a", 420):
+        ok(file): return ok(file_stream_transport(file))
+        error(cause): return error(LogError.FileSystem(cause))
 
-    let file = opened.get()
-    return ok(
-        Transport(
-            FileTransport(file, StreamTransport(file.writer(), new_gate()))
-        )
-    )
+fn file_stream_transport(file: FileHandle) Transport:
+    let stream = StreamTransport(file.writer(), new_gate())
+    return Transport(FileTransport(file, stream))
 
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.

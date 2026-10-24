@@ -174,10 +174,7 @@ impl Ownership {
 /// Standard-library source modules not yet ownership clean. Every other module, user or
 /// standard library, is checked and lowered under the same rules. Fix a module, then delete
 /// its entry.
-const UNVETTED: &[&str] = &[
-    // A child logger shares its parent's transport, which is a stream it cannot own twice.
-    "@std/log.ms",
-];
+const UNVETTED: &[&str] = &[];
 
 /// Whether the ownership checker vets this module.
 pub fn is_vetted(file: Name) -> bool {
