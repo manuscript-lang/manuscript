@@ -1,5 +1,5 @@
 #!/bin/sh
-# Downloads the pinned static lld and the LLVM tools (opt and llc) for a platform into target/llvm-bundle/install/bin, verifying
+# Downloads the pinned static lld for a platform (`ms` fetches the LLVM tools itself on the first release build) into target/llvm-bundle/install/bin, verifying
 # its SHA-256 against scripts/lld.lock. Usage: sh scripts/fetch-lld.sh [os arch] [install-dir]
 # Defaults to this machine; MS_LLD can point the build at a different lld instead.
 set -eu
@@ -16,7 +16,7 @@ tag=$(awk '$1 == "tag" { print $2 }' "$lock")
 version=$(awk '$1 == "version" { print $2 }' "$lock")
 exe=lld
 [ "$os" = windows ] && exe=lld.exe
-assets="lld llvm-tools"
+assets="lld"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

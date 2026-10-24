@@ -1,5 +1,5 @@
 name: Native toolchain
-description: Fetch the pinned lld, and on Windows llvm-mingw, that ms links programs with.
+description: Fetch the pinned lld, and on Windows llvm-mingw, that ms links programs with, and cache the LLVM tools ms fetches on its first release build.
 
 inputs:
   os:
@@ -22,6 +22,16 @@ runs:
         sh scripts/fetch-lld.sh "${{ inputs.os }}" "${{ inputs.arch }}" "$dest"
         if [ "$RUNNER_OS" = Windows ]; then echo "MS_LLD=$(cygpath -w "$dest/bin/lld.exe")" >> "$GITHUB_ENV"
         else echo "MS_LLD=$dest/bin/lld" >> "$GITHUB_ENV"; fi
+    # `ms` fetches the pinned LLVM tools (opt, llc) into $XDG_CACHE_HOME/ms/llvm on the first release
+    # build; restoring that directory keeps CI off the network.
+    - name: Point the ms cache at a fixed directory
+      shell: bash
+      run: echo "XDG_CACHE_HOME=$RUNNER_TEMP/ms-cache" >> "$GITHUB_ENV"
+    - name: Cache the LLVM tools
+      uses: actions/cache@v6
+      with:
+        path: ${{ runner.temp }}/ms-cache/ms/llvm
+        key: ms-llvm-tools-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/lld.lock') }}
     # Windows programs link against llvm-mingw's CRT and import libraries, and the runtime is built
     # with its clang (scripts/fetch-mingw.sh).
     - name: Fetch llvm-mingw

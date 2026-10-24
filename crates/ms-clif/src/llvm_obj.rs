@@ -5,7 +5,7 @@ use crate::link::llvm_tools;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Whether release builds can use LLVM: the tools are embedded in `ms` or named by `MS_LLVM_TOOLS`.
+/// Whether release builds can use LLVM: the tools are fetched (once) or named by `MS_LLVM_TOOLS`.
 pub fn available() -> bool {
     llvm_tools().is_ok_and(|tools| tools.is_some())
 }

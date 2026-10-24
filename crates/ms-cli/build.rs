@@ -1,6 +1,7 @@
 //! Embed the release version from `.msversion` and the prebuilt native static library (`ms-native`:
 //! the runtime plus every `ms-std-*` crate) that compiled programs link.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 fn main() {
@@ -29,11 +30,17 @@ fn embed_native(crates: &Path) {
         )
     });
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
-    let embedded = out.join("libms_native.a");
-    // Written only when the content changed, so an unchanged archive keeps downstream builds cached.
-    if std::fs::read(&embedded).ok().as_deref() != Some(&bytes) {
-        std::fs::write(&embedded, &bytes).expect("write embedded archive");
+    let embedded = out.join("libms_native.a.gz");
+    // Gzipped: raw, the archive is a third of `ms`. Written only when the content changed, so an
+    // unchanged archive keeps downstream builds cached.
+    let mut packed = Vec::new();
+    let mut encoder = flate2::write::GzEncoder::new(&mut packed, flate2::Compression::new(9));
+    encoder.write_all(&bytes).expect("compress the archive");
+    encoder.finish().expect("compress the archive");
+    if std::fs::read(&embedded).ok().as_deref() != Some(&packed) {
+        std::fs::write(&embedded, &packed).expect("write embedded archive");
     }
+    println!("cargo:rustc-env=MS_NATIVE_LEN={}", bytes.len());
     println!(
         "cargo:rustc-env=MS_NATIVE_ID={:016x}-{}",
         fnv1a(&bytes),

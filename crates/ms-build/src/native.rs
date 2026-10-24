@@ -38,7 +38,7 @@ impl Profile {
     }
 }
 
-/// LLVM optimization for release builds: used when the LLVM tools are bundled in `ms` (or named by
+/// LLVM optimization for release builds: used when the LLVM tools can be fetched (or are named by
 /// `MS_LLVM_TOOLS`) and `MS_BACKEND` is not `cranelift`; otherwise release builds fall back to
 /// Cranelift.
 fn llvm_level(level: &'static str) -> Option<&'static str> {

@@ -41,13 +41,8 @@ fn main() {
     let bundle = out.join("linker");
     std::fs::create_dir_all(&bundle).expect("create the linker bundle directory");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS");
-    let exe = if target_os == "windows" {
-        "lld.exe"
-    } else {
-        "lld"
-    };
-    let mut names: Vec<String> = vec![exe.to_string()];
-    copy(&lld(), &bundle.join(exe), "lld");
+    let mut names: Vec<String> = vec!["lld.gz".to_string()];
+    compress(&lld(), &bundle.join("lld.gz"));
     if target_os == "windows" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         println!("cargo:rerun-if-env-changed=MS_MINGW");
@@ -69,21 +64,7 @@ fn main() {
         "cargo:rustc-env=MS_EXE_SUFFIX={}",
         if target_os == "windows" { ".exe" } else { "" }
     );
-    if target_os == "linux" || target_os == "macos" || target_os == "windows" {
-        // opt, llc and llvm-link sit beside lld when the LLVM tools were fetched; without them release builds
-        // keep using Cranelift. They are embedded gzipped (together about 54 MB).
-        let tools = lld().parent().map(Path::to_path_buf).unwrap_or_default();
-        for tool in ["opt", "llc", "llvm-link"] {
-            let gz = format!("{tool}.gz");
-            let file = if target_os == "windows" {
-                format!("{tool}.exe")
-            } else {
-                tool.to_string()
-            };
-            compress(&tools.join(file), &bundle.join(&gz));
-            names.push(gz);
-        }
-    }
+    pin_llvm_tools(&target_os);
     if target_os == "linux" {
         let arch = std::env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH");
         let musl = sysroot()
@@ -110,6 +91,44 @@ fn main() {
         }
     }
     println!("cargo:rustc-env=MS_LINKER_ID={id:016x}");
+}
+
+/// Pins the LLVM tools release `scripts/lld.lock` names for this target, so `ms` can fetch `opt` and
+/// `llc` on the first release build and check them. Unlisted targets get empty values: release
+/// builds there stay on Cranelift.
+fn pin_llvm_tools(target_os: &str) {
+    let lock = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/lld.lock");
+    println!("cargo:rerun-if-changed={}", lock.display());
+    let text = std::fs::read_to_string(&lock).expect("read scripts/lld.lock");
+    let field = |key: &str| {
+        text.lines()
+            .find_map(|l| l.strip_prefix(key)?.strip_prefix(' '))
+            .map(str::trim)
+            .unwrap_or_else(|| panic!("scripts/lld.lock has no {key}"))
+    };
+    let (tag, version) = (field("tag"), field("version"));
+    let os = if target_os == "macos" {
+        "darwin"
+    } else {
+        target_os
+    };
+    let arch = match std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+        Ok("x86_64") => "amd64",
+        Ok("aarch64") => "arm64",
+        _ => "",
+    };
+    let asset = format!("llvm-tools-{version}-{os}-{arch}.tar.gz");
+    let sha = text
+        .lines()
+        .find_map(|l| l.strip_suffix(asset.as_str())?.split_whitespace().next())
+        .unwrap_or("");
+    let url = if sha.is_empty() {
+        String::new()
+    } else {
+        format!("https://github.com/manuscript-lang/llvm-bundle/releases/download/{tag}/{asset}")
+    };
+    println!("cargo:rustc-env=MS_LLVM_TOOLS_URL={url}");
+    println!("cargo:rustc-env=MS_LLVM_TOOLS_SHA256={sha}");
 }
 
 /// The number of DWARF line-table sections left in `file`, or `None` when llvm-objdump cannot be run.

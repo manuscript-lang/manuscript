@@ -26,6 +26,11 @@ ms-lsp = { path = "../ms-lsp" }
 ms-tooling = { path = "../ms-tooling" }
 regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case", "unicode-gencat", "unicode-script", "unicode-bool", "unicode-age", "unicode-segment"] }
 
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
+[build-dependencies]
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
 [dev-dependencies]
 ms-clif = { path = "../ms-clif" }
 ms-rt = { path = "../ms-rt" }
