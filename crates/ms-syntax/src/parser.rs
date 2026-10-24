@@ -110,6 +110,8 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type".into()
             } else if found == Tok::LParen {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
+            } else if found_text == "_" {
+                "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
             } else if found.as_str() == found_text {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
