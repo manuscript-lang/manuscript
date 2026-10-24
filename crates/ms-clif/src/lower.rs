@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, SHARED_VALUE, leaf_type};
+use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, SHARED_VALUE, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -179,7 +179,8 @@ impl<'a, 'm> Lower<'a, 'm> {
         match l {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
-            Leaf::F64 => self.b.ins().f64const(0.0),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
+            Leaf::F64 | Leaf::F32 => self.b.ins().f64const(0.0),
         }
     }
 
@@ -251,20 +252,34 @@ impl<'a, 'm> Lower<'a, 'm> {
         leaves
             .iter()
             .zip(&lay.offsets)
-            .map(|(l, o)| {
-                self.b
-                    .ins()
-                    .load(leaf_type(*l), flags(), ptr, (base + *o as i64) as i32)
-            })
+            .map(|(l, o)| self.load_leaf(*l, ptr, (base + *o as i64) as i32))
             .collect()
+    }
+
+    /// Reads a leaf from memory into its register type, widening a packed number.
+    fn load_leaf(&mut self, l: Leaf, ptr: Value, off: i32) -> Value {
+        let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
+        match l {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
+            Leaf::F32 => self.b.ins().fpromote(types::F64, v),
+            _ => v,
+        }
+    }
+
+    /// Writes a leaf's register value to memory, narrowing a packed number.
+    fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
+        let v = match l {
+            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
+            Leaf::F32 => self.b.ins().fdemote(types::F32, v),
+            _ => v,
+        };
+        self.b.ins().store(flags(), v, ptr, off);
     }
 
     fn store_leaves(&mut self, ptr: Value, base: i64, leaves: &[Leaf], vs: &[Value]) {
         let lay = mem_layout(leaves);
-        for (v, o) in vs.iter().zip(&lay.offsets) {
-            self.b
-                .ins()
-                .store(flags(), *v, ptr, (base + *o as i64) as i32);
+        for ((l, v), o) in leaves.iter().zip(vs).zip(&lay.offsets) {
+            self.store_leaf(*l, *v, ptr, (base + *o as i64) as i32);
         }
     }
 

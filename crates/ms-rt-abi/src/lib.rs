@@ -589,6 +589,7 @@ pub mod symbols {
     pub const ISOLATE_HDR_CANCEL: i64 = 8;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
+    pub const DESC_FLOAT32: &str = "msrt_desc_float32";
     pub const DESC_BOOL: &str = "msrt_desc_bool";
     pub const DESC_STRING: &str = "msrt_desc_string";
     pub const DESC_BYTES: &str = "msrt_desc_bytes";

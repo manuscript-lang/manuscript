@@ -265,7 +265,8 @@ impl Cx {
             self.ensure_glue(m, i, scope);
         }
         // An optional scalar is a flag and a value with padding between: it compares through glue.
-        let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i) if matches!(*i, MTy::INT | MTy::FLOAT | MTy::BOOL));
+        let scalar_opt = matches!(m.types.kind(t), TyKind::Opt(i)
+            if m.types.is_int(*i) || m.types.is_float(*i) || *i == MTy::BOOL);
         if !scalar_opt && !matches!(m.types.kind(t), TyKind::Rec(_) | TyKind::Alt(_)) {
             return;
         }

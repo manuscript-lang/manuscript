@@ -26,6 +26,8 @@ pub static msrt_desc_int: TypeDesc = builtin(8, 8, KIND_INT);
 #[unsafe(no_mangle)]
 pub static msrt_desc_float: TypeDesc = builtin(8, 8, KIND_FLOAT);
 #[unsafe(no_mangle)]
+pub static msrt_desc_float32: TypeDesc = builtin(4, 4, KIND_FLOAT);
+#[unsafe(no_mangle)]
 pub static msrt_desc_bool: TypeDesc = builtin(1, 1, KIND_BOOL);
 #[unsafe(no_mangle)]
 pub static msrt_desc_string: TypeDesc = builtin(ms_rt_abi::STR_SIZE as u32, 8, KIND_STRING);
@@ -210,6 +212,7 @@ pub unsafe fn slot_eq(d: &TypeDesc, a: *const u8, b: *const u8) -> bool {
     unsafe {
         match d.kind {
             KIND_INT => *(a as *const i64) == *(b as *const i64),
+            KIND_FLOAT if d.size == 4 => *(a as *const f32) == *(b as *const f32),
             KIND_FLOAT => *(a as *const f64) == *(b as *const f64),
             KIND_BOOL => *a == *b,
             KIND_STRING => string::equal(a as *const StrVal, b as *const StrVal),

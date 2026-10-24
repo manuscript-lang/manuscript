@@ -246,7 +246,7 @@ TypeDesc { size u32 @0, align u32 @4, kind u32 @8, _ @12, inner0 @16, inner1 @24
 
 Function contracts: `drop(slot)`, `copy(src, dst)` (dst uninitialised), `eq(a, b) -> u8`,
 `hash(slot) -> i64`. Equal values hash equally. Builtin descriptors the runtime exports:
-`msrt_desc_int`, `msrt_desc_float`, `msrt_desc_bool`, `msrt_desc_string`,
+`msrt_desc_int`, `msrt_desc_float`, `msrt_desc_float32`, `msrt_desc_bool`, `msrt_desc_string`,
 `msrt_desc_bytes`. Generated `eq` of recursive types calls `msrt_eq_enter(a, b)`
 before descending (0 means the pair is already being compared: assume equal) and
 `msrt_eq_leave(a, b)` after. `msrt_hash_int`, `msrt_hash_bytes`, `msrt_hash_combine`

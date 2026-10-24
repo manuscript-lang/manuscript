@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "1 1000 1000\n300 14850 Optional.some(99)\n7 true false\n6 3\n100000 -7 0.5 true true\n7 5 0\n[Optional.some(3), Optional.none, Optional.some(-1)] false\n[-9, 1, 3, 5] [6, 4, -8, 2] 0\n",
+    "stderr": ""
+  }
+}

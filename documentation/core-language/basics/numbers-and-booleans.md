@@ -47,7 +47,7 @@ def literals() -> Unit:
 
 ## Sized numbers
 
-`Int8`, `Int16`, `Int32` and `Float32` store a value in its own width. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
+`Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, records, optionals, alternatives, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
 ```manuscript
 def sized() -> Unit:
