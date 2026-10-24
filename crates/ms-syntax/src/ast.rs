@@ -548,8 +548,8 @@ impl BinaryOp {
             | BinaryOp::Gt
             | BinaryOp::Le
             | BinaryOp::Ge => 4,
-            BinaryOp::Add | BinaryOp::Sub => 5,
-            BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => 6,
+            BinaryOp::Add | BinaryOp::Sub => 6,
+            BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => 7,
         }
     }
 }

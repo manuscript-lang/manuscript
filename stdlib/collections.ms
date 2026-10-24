@@ -349,7 +349,7 @@ export def filled[T](
     max_items: Optional[Int] = none
 ) -> Result[List[T], CollectionError]: ...
 
-# Creates the integers from `start` up to but excluding `end`, counting by one. The list is empty when `end <= start`. `for index in range(0, count):` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
+# Creates the integers from `start` up to but excluding `end`, counting by one. The list is empty when `end <= start`. `start..end` is the same call without the import. `for index in 0..count:` and `for index in range(0, count):` run as counter loops without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
 export def range(start: Int, end: Int) -> List[Int]: ...
 
 # Creates integers from `start` up to but excluding `end` using a nonzero `step`; a negative step counts down. Returns `InvalidInput` for a zero step and `LimitExceeded` when the list would exceed `max_items`.

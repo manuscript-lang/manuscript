@@ -401,6 +401,7 @@ impl Scanner<'_> {
                     continue;
                 }
                 let two = match (b, self.at(self.offset + 1)) {
+                    (b'.', Some(b'.')) => Some(Tok::DotDot),
                     (b'-', Some(b'>')) => Some(Tok::Arrow),
                     (b'=', Some(b'=')) => Some(Tok::EqEq),
                     (b'!', Some(b'=')) => Some(Tok::NotEq),
