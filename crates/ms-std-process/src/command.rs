@@ -117,6 +117,7 @@ pub fn run(
             StdStream::Pipe(out_w.0),
             StdStream::Pipe(err_w.0),
         ],
+        None,
     )?;
     let mut child = Reaper(child);
     drop((in_r, out_w, err_w));
@@ -272,7 +273,7 @@ pub fn spawn(program: &[u8], args: &[Vec<u8>], modes: [i64; 3]) -> Res<Subproces
             _ => StdStream::Null,
         };
     }
-    let child = start(program, args, streams)?;
+    let child = start(program, args, streams, None)?;
     drop(child_ends);
     let [stdin, stdout, stderr] = parent;
     Ok(Subprocess {
