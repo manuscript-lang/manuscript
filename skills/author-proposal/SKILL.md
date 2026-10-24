@@ -5,6 +5,8 @@ description: Write a Manuscript design proposal in technical language with secti
 
 # Author a proposal
 
+Structure follows common RFC practice: Rust RFCs (drawbacks, alternatives, prior art, unresolved questions), Python PEPs (motivation, rationale, rejected ideas), and Fuchsia's RFC guidance (stakeholder implications, simple language, diagrams, recorded alternatives).
+
 Use whenever you write or revise a design proposal (`proposals/*.md`), including the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) for contract tracing and [language-design-taste](../language-design-taste/SKILL.md) for design choices. Read one or two existing proposals in `proposals/` for shape before drafting. Link a proposal that is a skeptical-review target to the reviewer's findings once it has them.
 
 ## Style
@@ -13,10 +15,14 @@ Use whenever you write or revise a design proposal (`proposals/*.md`), including
 - Structure everything as headed sections with bullet lists. A paragraph is acceptable only for one connecting sentence. Prefer one fact per bullet.
 - Every claim is evidenced or labeled: measured (command, commit, number), verified in source (`file:line`), or hypothesis. State what is not yet measured.
 - No walls of text: bullets of one line (two at most), no paragraph longer than two sentences, a section the reader can scan in seconds. Lead each section with its conclusion. Put detail in a table, example, or diagram instead of prose.
+- One key idea per proposal. Split unfocused or broad ones.
+- Write for the decider: put the decision and its consequences up front, and spell out what the design means for each stakeholder (users, stdlib authors, compiler, tooling, agents).
+- Compare options objectively: same criteria for each, no subjective wording, assumptions labeled apart from verified facts.
 - Short. Cut background the reviewer already knows; link canonical docs instead of restating rules.
 
 ## Required sections
 
+0. **Summary**: 3 to 5 bullets at the top: the problem, the proposed change, the cost, and the decision requested.
 1. **Status**: proposal, approved, or implemented; date; checkout or commit verified against; the user's direction being implemented, quoted with date.
 2. **Problem**: observable failure or cost, with a minimal `.ms` repro and exact output, or a measurement. Who is affected.
 3. **Goals and non-goals**: bullets. Non-goals prevent scope creep and name what stays unchanged.
@@ -32,9 +38,15 @@ Use whenever you write or revise a design proposal (`proposals/*.md`), including
 
 6. **Examples**: at least one end-to-end program, and one rejected program with its diagnostic. Prefer realistic code over toy names.
 7. **Alternatives**: each with why it was set aside, including **do nothing** and the smallest possible version. Cite evidence, not taste.
-8. **Evidence and cost**: measurements or code removed, and what the change adds (binary size, instructions, API surface, concepts a learner must hold).
+8. **Drawbacks**: why we should not do this; implementation cost, learning cost, compatibility, and risk. Argue against your own design.
+   **Prior art**: how Rust, Go, Zig, Python, Swift, or others handle it, and where Manuscript deliberately differs. Precedent motivates but does not justify.
+   **Evidence and cost**: measurements or code removed, and what the change adds (binary size, instructions, API surface, concepts a learner must hold).
 9. **Staging and verification**: ordered stages that each land green, the check per stage (`make conform`, a benchmark, a test name), and the go/no-go gate.
-10. **Open questions**: decisions for the owner, each with options and a recommendation. Only items that change the language or user-visible behavior.
+10. **Open questions**: split into *resolve before approval* and *resolve during implementation*. Each has options and a recommendation; owner decisions only for language or user-visible changes. Name the decider.
+11. **Rejected ideas**: ideas raised in review and why they were dropped, so they are not re-argued.
+12. **Future possibilities** (optional, at most 3 bullets): keep it short so review stays on the proposal.
+
+Scale to size: a small or local change uses a mini proposal (Summary, Problem, Design, Components, Alternatives); a language, ABI, or cross-crate change uses every section. Share an early draft before polishing.
 
 Omit a section only by writing one line saying why it does not apply.
 
