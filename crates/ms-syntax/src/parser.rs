@@ -868,7 +868,7 @@ impl<'a> Parser<'a> {
                     return self.fail(t, "an extern fn cannot be generic; declare the concrete types the native symbol takes");
                 }
                 let params = self.parameters(true, false)?;
-                let result = self.result_type()?;
+                let (result_ref, result) = self.result_type()?;
                 if self.kind() == Tok::Colon {
                     let t = self.peek();
                     return self.fail(t, "an extern fn has no body; remove the ':'");
@@ -879,6 +879,7 @@ impl<'a> Parser<'a> {
                     type_params: Vec::new(),
                     params,
                     result,
+                    result_ref,
                     body: Vec::new(),
                     external: true,
                 })
