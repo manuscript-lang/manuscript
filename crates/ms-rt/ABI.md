@@ -368,6 +368,17 @@ Cancellation: `SIGINT`/`SIGTERM` wake every parked task with `16`, the main task
 and sets its cancellation request (the cancel flag is per task). When every task is parked
 with no descriptor or timer that can wake them, the runtime faults with "deadlock".
 
+Worker isolates: `msrt_worker_spawn(entry, arg, done)` starts an OS thread with an arena,
+scheduler and fault context of its own and runs `entry(arg)` as that isolate's main task. `arg` is
+null or a block from `msrt_worker_arg_new(bytes, len)`; the entry moves it into its own arena with
+`msrt_worker_arg_take` (the block is system-allocated, nothing else crosses). `done` is a remote
+token of the caller: the worker posts it (outcome plus one) when it has ended. `msrt_worker_join`
+then returns the outcome (0 returned, 1 fault with its report in `*msg_out`, 2 cancelled) and
+frees the worker; `msrt_worker_cancel` raises the worker's cancel flag and wakes its poller. At
+most 256 workers are alive at once (`msrt_worker_spawn` returns 0 beyond that). Generated code
+finds the running task's header block (recursion limit, cancel flag) by masking the stack pointer
+to the 256 MiB task-stack slot on Linux and macOS and through `msrt_isolate_hdr()` on Windows.
+
 Cost (release, x86_64): a yield-switch is about 40 ns between two tasks and about 90 ns across
 100; with 10,000 tasks it grows to about 650 ns because each task touches its own stack pages.
 Spawn is an `mmap` plus guard `mprotect` unless a pooled stack (32 kept) is available.

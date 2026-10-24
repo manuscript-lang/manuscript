@@ -192,6 +192,11 @@ msrt_bool_to_string(v: u8, out: *mut StrVal)
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_string_quote(s: *const StrVal, out: *mut StrVal)
 msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -> u64
+msrt_worker_arg_new(p: *const u8, len: usize) -> *mut u8
+msrt_worker_arg_take(block: *mut u8, out: *mut StrVal)
+msrt_worker_spawn(entry: Entry, arg: *mut u8, done: u64) -> u64
+msrt_worker_cancel(handle: u64)
+msrt_worker_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_task_yield()
 msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
