@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'await' is not a keyword; call the function directly",
+        "message": "'await' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'",
         "position": {
           "file": "foreign-await.ms",
           "line": 5,

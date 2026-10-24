@@ -54,6 +54,7 @@ These need no linker. `emit` checks and lowers the program, then prints MIR; it 
 ```sh
 ms diagram ms.toml --view effects --entity save
 ms diagram ms.toml --view errors
+ms diagram ms.toml --view tasks --entity load
 ms diagram ms.toml --view modules
 ms diagram ms.toml --view flow --entity main --depth 2
 ms diagram ms.toml --view scope --entity save
@@ -68,9 +69,10 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `modules` | Imports per module |
 | `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, `with` scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to `with` scopes and the exits inside them (needs `--entity`) |
+| `tasks` | `flow` pruned to `with` scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
 
 - `--entity name` or `file::name` roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls.
-- `--depth n` bounds expansion (default 3; 1 for `flow` and `scope`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
+- `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
 - `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. It needs `--view` or `--entity`.
 
 ## Review report

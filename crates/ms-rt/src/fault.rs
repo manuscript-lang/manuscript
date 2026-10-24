@@ -463,8 +463,46 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
     Box::into_raw(Box::new(out))
 }
 
+/// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
+pub fn capture_frames() -> Vec<usize> {
+    let mut out = Vec::new();
+    #[cfg(not(windows))]
+    // SAFETY: the frame pointer of this thread's live frame-pointer chain.
+    unsafe {
+        walk_frames(frame_pointer(), |ret| {
+            out.push(ret);
+            out.len() < 2 * MAX_FAULT_FRAMES
+        });
+    }
+    out
+}
+
+/// Appends the source frames of `captured` under a `task started by:` line.
+#[cfg(not(test))]
+fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
+    let mark = out.len();
+    out.extend_from_slice(b"\n  task started by:");
+    let header = out.len();
+    describe_with(out, |_, visit| {
+        for &ret in captured {
+            if !visit(ret) {
+                break;
+            }
+        }
+    });
+    if out.len() == header {
+        out.truncate(mark);
+    }
+}
+
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
+    // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
+    describe_with(out, |t, visit| unsafe { walk_fault_frames(fp, t, visit) });
+}
+
+/// Appends `file:line in name` lines for the source frames `drive` visits, innermost first.
+fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(usize) -> bool)) {
     // SAFETY: tables pointer is set once at start.
     let t = unsafe { *TABLES.ptr() };
     if t.is_null() {
@@ -477,9 +515,8 @@ fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
-    // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
-    unsafe {
-        walk_fault_frames(fp, t, |ret| {
+    {
+        drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
@@ -690,18 +727,19 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
 
 /// Reports a fault that left a guarded task (its cleanups already ran) and ends the process
 /// with the fault status. A no-op under the unit-test runtime, which keeps faults as panics.
-pub fn exit_with_report(msg: &ms_rt_abi::StrVal) {
+pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
     #[cfg(not(test))]
     {
         // SAFETY: `msg` is a string the guard just produced.
         let mut report = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) }.to_vec();
+        describe_started(&mut report, started);
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
         crate::process::exit(ms_rt_abi::EXIT_FAULT)
     }
     #[cfg(test)]
-    let _ = msg;
+    let _ = (msg, started);
 }
 
 /// Faults with a formatted message.
