@@ -1,4 +1,4 @@
-//! Calls into `ms-rt` driven by the declared signature of the symbol (`ms-rt/SYMBOLS.md`).
+//! Calls into `ms-rt` driven by the declared signature of the symbol (generated from the runtime sources).
 //!
 //! The runtime ABI is regular (`ms-rt/ABI.md`, section 1): optional scalars flatten into
 //! `has_x, x`, descriptors follow the receiver, constructed values and fallible results
@@ -13,7 +13,16 @@ use ms_check::types as ct;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 
-const CATALOGUE: &str = include_str!("../../ms-rt/SYMBOLS.md");
+/// Every exported runtime function with its parameters and return type, sorted by name. Generated
+/// by `build.rs` from the exported items of `ms-rt` and the `ms-std-*` crates.
+static SYMBOLS: &[RtEntry] = include!(concat!(env!("OUT_DIR"), "/rt_symbols.rs"));
+
+/// A runtime function in the generated table: name, parameters as (name, type), return type.
+type RtEntry = (
+    &'static str,
+    &'static [(&'static str, &'static str)],
+    &'static str,
+);
 
 /// One declared runtime parameter.
 pub(crate) struct RtParam {
@@ -27,90 +36,25 @@ pub(crate) struct RtSig {
     pub ret: String,
 }
 
-const RENAMED: [(&str, &str); 6] = [
-    ("collections/flatten", "msrt_list_flatten"),
-    ("http/headers", "msrt_http_headers_new"),
-    ("net/ip_text", "msrt_net_ip_address_text"),
-    ("net/ip_family", "msrt_net_ip_address_family"),
-    ("process/arguments", "msrt_args"),
-    ("collections/filled", "msrt_list_filled"),
-];
-
-/// Runtime symbols keep the names of the modules each module absorbed.
-const ABSORBED: [(&str, &[&str]); 10] = [
-    (
-        "core",
-        &[
-            "errors", "faults", "cleanup", "optional", "result", "equality",
-        ],
-    ),
-    ("math", &["numbers", "bits", "bigint"]),
-    ("io", &["terminal"]),
-    ("fs", &["path"]),
-    ("process", &["system"]),
-    ("net", &["tls", "url", "websocket"]),
-    ("collections", &["queues"]),
-    ("string", &["regex"]),
-    ("bytes", &["binary"]),
-    ("archive", &["compress"]),
-];
-
-/// The runtime symbol implementing the native function `native` (`module/name`).
+/// The runtime symbol implementing the native function `native` (`module/name`), as named by
+/// `runtime_symbols` in `stdlib/bindings.json`.
 pub(crate) fn function_symbol(native: &str) -> Option<String> {
-    // Exports whose runtime name predates the `<module>_<name>` scheme.
-    if let Some((_, sym)) = RENAMED.iter().find(|(n, _)| *n == native) {
-        return Some((*sym).to_string());
-    }
-    let (module, name) = native.split_once('/')?;
-    // The list functions of `collections` share the runtime's `list` entry points.
-    let alias = (module == "collections").then(|| format!("msrt_list_{name}"));
-    let absorbed = ABSORBED
-        .iter()
-        .find(|(m, _)| *m == module)
-        .map_or(&[][..], |(_, old)| *old);
-    std::iter::once(module)
-        .chain(absorbed.iter().copied())
-        .flat_map(|m| ["msrt", "msstd"].map(|prefix| format!("{prefix}_{m}_{name}")))
-        .chain(alias)
-        .find(|sym| rt_sig(sym).is_some())
+    ms_check::stdlib::runtime_symbol(native).filter(|sym| rt_sig(sym).is_some())
 }
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
-    for line in CATALOGUE.lines() {
-        // `msstd_math_sin (unary f64 -> f64)`: one `f64` in, one out.
-        if line.strip_prefix(sym) == Some(" (unary f64 -> f64)") {
-            return Some(RtSig {
-                params: vec![RtParam {
-                    name: "x".to_string(),
-                    ty: "f64".to_string(),
-                }],
-                ret: "f64".to_string(),
-            });
-        }
-        let Some(rest) = line.strip_prefix(sym).and_then(|r| r.strip_prefix('(')) else {
-            continue;
-        };
-        let close = rest.rfind(')')?;
-        let params = rest[..close]
-            .split(',')
-            .map(str::trim)
-            .filter(|p| !p.is_empty())
-            .filter_map(|p| {
-                let (n, t) = p.split_once(':')?;
-                Some(RtParam {
-                    name: n.trim().to_string(),
-                    ty: t.trim().to_string(),
-                })
+    let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
+    let (_, params, ret) = SYMBOLS[at];
+    Some(RtSig {
+        params: params
+            .iter()
+            .map(|(name, ty)| RtParam {
+                name: (*name).to_string(),
+                ty: (*ty).to_string(),
             })
-            .collect();
-        let ret = rest[close + 1..]
-            .trim()
-            .strip_prefix("->")
-            .map(|r| r.trim().to_string())
-            .unwrap_or_default();
-        return Some(RtSig { params, ret });
-    }
-    None
+            .collect(),
+        ret: (*ret).to_string(),
+    })
 }
 
 /// A language-level argument of the call being marshalled.
@@ -137,6 +81,11 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         "format_float" => "to_string",
         "compare_int" | "compare_float" => "compare",
         other => other,
+    };
+    let name = match (m.types.kind(recv), name) {
+        (TyKind::Str, "drop") => "drop_n",
+        (TyKind::List(elem), "join") if matches!(m.types.kind(*elem), TyKind::Int) => "join_int",
+        _ => name,
     };
     let name = name
         .strip_prefix("map_")
@@ -1189,4 +1138,40 @@ fn failure_symbol(sym: &str) -> Option<String> {
 /// Whether a runtime function returns a new runtime handle object for an interface value.
 fn is_handle_return(ret: &str) -> bool {
     ret.starts_with("*mut Handle<") || ret == "*mut HasherObj"
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn bound_runtime_symbols_are_catalogued() {
+        ms_check::stdlib::ensure_standard();
+        for path in ms_check::stdlib::standard_module_names() {
+            for (_, sym) in ms_check::stdlib::standard_exports(path) {
+                let native = sym.native.as_str();
+                let Some(bound) = ms_check::stdlib::runtime_symbol(native) else {
+                    continue;
+                };
+                assert!(
+                    super::rt_sig(&bound).is_some(),
+                    "{native} binds {bound}, which SYMBOLS.md does not list"
+                );
+            }
+        }
+    }
+
+    /// Handle-backed receivers name their operations in the native identity, which must bind.
+    #[test]
+    fn handle_receiver_operations_have_runtime_symbols() {
+        for (receiver, operations) in ms_check::receivers::RECEIVER_BINDINGS {
+            if !matches!(*receiver, "IpAddress" | "Cidr" | "HttpHeaders") {
+                continue;
+            }
+            for (name, native) in *operations {
+                assert!(
+                    super::function_symbol(native).is_some(),
+                    "{receiver}.{name} ({native}) has no runtime_symbols entry"
+                );
+            }
+        }
+    }
 }

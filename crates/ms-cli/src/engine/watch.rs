@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
 
-use ms_driver::Lower;
-use ms_project::Overlay;
+use ms_build::Lower;
+use ms_driver::project::Overlay;
 
 use super::tooling::{
     FileState, WATCH_INTERVAL, WATCH_SETTLE, absolute, analyze_with, file_state, watched_files,
@@ -175,7 +175,7 @@ fn build<L: Lower>(
     executable: &Path,
     io: &mut Io,
 ) -> Result<(), ()> {
-    let mut compiled = match compile(backend, &request.filename, request.build_type, false) {
+    let mut compiled = match compile(backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => {
             failure.report(io);

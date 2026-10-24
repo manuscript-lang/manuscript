@@ -15,7 +15,7 @@ use ms_check::editor::{MemberKind, members, prelude_type_names, standard_export_
 use ms_check::stdlib::is_prelude_symbol;
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
-use ms_project::gopath;
+use ms_driver::project::gopath;
 use ms_syntax::ast::DeclKind;
 use std::collections::{HashMap, HashSet};
 
@@ -130,9 +130,9 @@ fn standard_paths() -> Vec<String> {
     paths
 }
 
-fn editor_project(d: &Document) -> Option<ms_project::Project> {
-    let manifest = ms_project::find_manifest(&d.path())?;
-    ms_project::read_project(&manifest).ok()
+fn editor_project(d: &Document) -> Option<ms_driver::project::Project> {
+    let manifest = ms_driver::project::find_manifest(&d.path())?;
+    ms_driver::project::read_project(&manifest).ok()
 }
 
 struct Completer<'a> {
@@ -229,7 +229,7 @@ impl Completer<'_> {
                 &format!(
                     "import {} from {}\n",
                     s.name,
-                    ms_project::strconv::quote(path)
+                    ms_driver::project::strconv::quote(path)
                 ),
             )];
         }
@@ -810,7 +810,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
             && token.is_name("from")
             && rest.get(at + 1).is_some_and(|t| t.kind == EditorKind::Str)
         {
-            path = ms_project::strconv::unquote(rest[at + 1].text);
+            path = ms_driver::project::strconv::unquote(rest[at + 1].text);
             break;
         }
     }
@@ -890,7 +890,11 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
                 let text = if grouped {
                     s.name.as_str().to_string()
                 } else {
-                    format!("{} from {}", s.name, ms_project::strconv::quote(&path))
+                    format!(
+                        "{} from {}",
+                        s.name,
+                        ms_driver::project::strconv::quote(&path)
+                    )
                 };
                 items.push(simple_item(s.name.as_str(), &path, 7, range, &text));
             }

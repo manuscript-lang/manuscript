@@ -2,8 +2,8 @@
 
 use std::path::Path;
 
-use ms_driver::Lower;
-use ms_project::gopath;
+use ms_build::Lower;
+use ms_driver::project::gopath;
 
 use super::{Engine, Failure, compile};
 use crate::backend::{BackendResult, BuildRequest, Io};
@@ -87,7 +87,7 @@ pub(super) fn build<L: Lower>(
         )
     };
 
-    let mut compiled = match compile(backend, &request.filename, request.build_type, false) {
+    let mut compiled = match compile(backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(report_failure(&failure, structured, &document, io)),
     };

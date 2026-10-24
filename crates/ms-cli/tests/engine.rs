@@ -7,15 +7,15 @@ use ms_rt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use ms_build::{Lower, Module, Native};
 use ms_cli::backend::Io;
 use ms_cli::engine::Engine;
-use ms_driver::{Lower, LowerOptions, Module, Native};
 
 /// A lowering that ignores the program and returns fixed MIR.
 struct Fixed(&'static str);
 
 impl Lower for Fixed {
-    fn lower(&self, _: &ms_check::Program, _: &str, _: &LowerOptions) -> Result<Module, String> {
+    fn lower(&self, _: &ms_check::Program, _: &str) -> Result<Module, String> {
         ms_mir::parse::parse_module(self.0).map_err(|e| e.to_string())
     }
 }
@@ -158,7 +158,7 @@ fn imports_load_in_dependency_order() {
 fn unavailable_lowering_is_a_lowering_diagnostic() {
     let dir = scratch("unavailable");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = Engine::new(ms_driver::Unavailable);
+    let backend = Engine::new(ms_build::Unavailable);
     let (status, _, err) = ms(&backend, &["build", &source]);
     assert_eq!(status, 1);
     assert!(
@@ -252,6 +252,31 @@ fn native_tests_run_one_process_each() {
     let (status, json, _) = ms(&backend, &["test", &source, "--json", "--match", "passes"]);
     assert_eq!(status, 0, "{json}");
     assert!(json.contains("\"passed\": 1"), "{json}");
+}
+
+/// A runtime fault is structured data under `--json` for `ms run` and `ms test`.
+#[test]
+fn runtime_fault_is_reported_as_json() {
+    let dir = scratch("fault-json");
+    let source = write(
+        &dir,
+        "boom.ms",
+        "fn div(a: Int, b: Int) Int: a / b\n\nexport fn main() Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
+    );
+    let backend = Engine::new(Native);
+    let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
+    assert_eq!(status, 70, "{err}");
+    for needle in [
+        "\"kind\": \"division_by_zero\"",
+        "\"cleanups_ran\": true",
+        "\"function\": \"div\"",
+        "\"line\": 1",
+    ] {
+        assert!(json.contains(needle), "{needle} missing in {json}");
+    }
+    let (status, json, _) = ms(&backend, &["test", &source, "--json"]);
+    assert_eq!(status, 1, "{json}");
+    assert!(json.contains("\"kind\": \"division_by_zero\""), "{json}");
 }
 
 /// `ms test ms.toml` runs the project's `test.ms` and `*_test.ms`, not only the entry module.

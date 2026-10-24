@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use ms_project::{ProjectError, gopath, source_path};
+use ms_driver::project::{ProjectError, gopath, source_path};
 
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::util::{file_error, format_cwd, format_display};
@@ -100,7 +100,7 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
             report(&mut selection, &cwd, target, &error);
         }
         for path in paths {
-            match source_path(&root, &path, &ms_project::Overlay::new()) {
+            match source_path(&root, &path, &ms_driver::project::Overlay::new()) {
                 Ok(canonical) => add(&mut selection, &mut seen, &cwd, &canonical),
                 Err(error) => report(&mut selection, &cwd, &path, &error),
             }

@@ -94,6 +94,9 @@ struct Meta {
     is_receiver: bool,
     /// The mutable borrow this one was taken through (`var it = b.items` where `b` borrows).
     parent: Option<usize>,
+    /// For a part of a parameter matched or iterated at its last use: the scrutinee that takes
+    /// ownership of the parameter if this part is moved out.
+    deferred: Option<NodeId>,
 }
 
 /// A live borrow: until `holder` is last used, its origins stay unchanged.
@@ -467,6 +470,7 @@ impl Walker<'_> {
                 parameter,
                 is_receiver,
                 parent: None,
+                deferred: None,
             },
         );
         self.declared.push(b.uid);
@@ -541,6 +545,13 @@ impl Walker<'_> {
             pos,
             why: why.to_string(),
         });
+    }
+
+    /// Remembers the scrutinee a borrowed part would make consume its parameter.
+    fn defer(&mut self, b: &BindingRef, source: &Scrutinee) {
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.deferred = source.deferred;
+        }
     }
 
     // ------------------------------------------------------ diagnostics
@@ -909,6 +920,7 @@ impl Walker<'_> {
                     iter.pos,
                     "loop variable",
                 );
+                self.defer(&b, &source);
             }
         }
         let entry = self.active.clone();
@@ -1326,34 +1338,44 @@ impl Walker<'_> {
         if self.is_place(e) {
             let class = self.class_of(e);
             let whole = matches!(e.kind, ExprKind::Name(_));
+            let mut deferred = None;
             if whole
                 && class != Class::Copy
                 && let Resolution::Local(b) = self.cx.m.resolution(e)
-                && self.meta.get(&b.uid).is_some_and(|m| {
+                && self.is_last(e.id, &b)
+            {
+                let owned_local = self.meta.get(&b.uid).is_some_and(|m| {
                     !matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed)
                         && m.role != Role::Parameter
                         && m.role != Role::SelfValue
-                        || self.is_consumable_param(&b)
-                })
-                && self.is_last(e.id, &b)
-            {
-                self.expr(e, Demand::Consume);
-                self.facts.consumed_scrutinees.insert(stmt);
-                return Scrutinee {
-                    owned: true,
-                    origins: Vec::new(),
-                };
+                });
+                // A parameter is borrowed unless a part of it is moved out of the match or loop.
+                let param = self.is_consumable_param(&b);
+                if owned_local || param && self.escaped.contains(&e.id) {
+                    self.expr(e, Demand::Consume);
+                    self.facts.consumed_scrutinees.insert(stmt);
+                    return Scrutinee {
+                        owned: true,
+                        origins: Vec::new(),
+                        deferred: None,
+                    };
+                }
+                if param {
+                    deferred = Some(e.id);
+                }
             }
             let Some((info, _)) = self.place(e) else {
                 return Scrutinee {
                     owned: true,
                     origins: Vec::new(),
+                    deferred: None,
                 };
             };
             self.read_place(e.pos, &info);
             return Scrutinee {
                 owned: false,
                 origins: info.resolved,
+                deferred,
             };
         }
         if let Some(origins) = self.projection_origins(e) {
@@ -1361,12 +1383,14 @@ impl Walker<'_> {
             return Scrutinee {
                 owned: false,
                 origins,
+                deferred: None,
             };
         }
         self.expr(e, Demand::Consume);
         Scrutinee {
             owned: true,
             origins: Vec::new(),
+            deferred: None,
         }
     }
 
@@ -1467,6 +1491,7 @@ impl Walker<'_> {
             self.declare(b, role, perm, None, false);
         } else {
             self.declare_borrow(b, role, source.origins.clone(), pos, "pattern binding");
+            self.defer(b, source);
         }
     }
 
@@ -1661,6 +1686,11 @@ impl Walker<'_> {
             return;
         }
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
+            // Moving a part out of a parameter's match or loop makes that scrutinee consume it;
+            // the next pass of the fixpoint sees the parts as owned.
+            if let Some(scrutinee) = self.meta[&b.uid].deferred {
+                self.escaped.insert(scrutinee);
+            }
             self.error_fix(
                 e.pos,
                 format!("cannot move `{name}` out: it only borrows its value ({}); use `{name}.{COPY}()` to get an owned copy", role_text(role, perm)),
@@ -2157,6 +2187,8 @@ struct Scrutinee {
     owned: bool,
     /// Otherwise the places they borrow from.
     origins: Vec<Place>,
+    /// A parameter borrowed here that the match or loop would consume if a part moved out.
+    deferred: Option<NodeId>,
 }
 
 fn role_text(role: Role, perm: Perm) -> &'static str {

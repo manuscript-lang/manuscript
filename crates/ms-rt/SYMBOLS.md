@@ -1,6 +1,6 @@
 # ms-rt symbol catalogue
 
-Generated from the `#[unsafe(no_mangle)]` items in `crates/ms-rt/src` and `crates/ms-std-*/src` by `crates/ms-rt/gen-symbols.py`; do not edit.
+Maintained by hand, one entry per exported runtime function, and checked against the exports of the runtime archive by the `runtime_symbol_catalogue_matches_archive` test. The compiler reads it at build time (`ms-lower/build.rs`).
 
 ```text
 msrt_bits_bit_and(left: i64, right: i64) -> i64
@@ -32,7 +32,6 @@ msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64
 msrt_hash_int(v: i64) -> i64
 msrt_hash_bytes(p: *const u8, len: usize) -> i64
 msrt_hash_combine(a: i64, b: i64) -> i64
-msrt_call_depth (data)
 msrt_cancel_flag (data)
 msrt_fault(msg: *const u8, len: usize) -> !
 msrt_fault_string(s: *const StrVal) -> !
@@ -169,6 +168,8 @@ msrt_string_replace_n(s: *const StrVal, old: *const StrVal, new: *const StrVal, 
 msrt_string_replace_all( s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_pad_start( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_pad_end( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
+msrt_string_take( s: *const StrVal, count: i64, out: *mut StrVal, )
+msrt_string_drop_n( s: *const StrVal, count: i64, out: *mut StrVal, )
 msrt_string_slice_scalars( s: *const StrVal, start: i64, end: i64, out: *mut StrVal, ) -> u8
 msrt_string_slice( s: *const StrVal, start: i64, end: i64, out: *mut StrVal, ) -> u8
 msrt_string_chars(s: *const StrVal, out: *mut VecVal)
@@ -233,6 +234,7 @@ msrt_list_flatten( lists: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_distinct( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_keys(v: *const VecVal, out: *mut VecVal)
 msrt_list_join( v: *const VecVal, sep: *const StrVal, out: *mut StrVal, )
+msrt_list_join_int( v: *const VecVal, sep: *const StrVal, out: *mut StrVal, )
 msrt_list_sort_in_place( v: *mut VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, )
 msrt_list_sorted( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, out: *mut VecVal, )
 msrt_list_filled( value: *const u8, d: *const TypeDesc, count: i64, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
@@ -805,4 +807,26 @@ msrt_url_resolve( base: *const UrlRec, reference: *const StrVal, out: *mut UrlRe
 msrt_url_format(value: *const UrlRec, out: *mut StrVal) -> u8
 msrt_url_parse_query( text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msrt_url_format_query(entries: *const VecVal, out: *mut StrVal)
+msrt_list_sort_ints(v: *mut VecVal, desc: i64)
+msrt_list_sorted_by_difference( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, desc: i64, out: *mut VecVal, )
+msrt_shield_enter()
+msrt_shield_exit()
+msrt_stack_limit (data)
+msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal)
+msrt_string_char_width(s: *const StrVal, at: i64) -> i64
+msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64
+msrt_task_forget_fd(fd: i32)
+msrt_token_free(id: u64)
+msrt_token_new(flags: u32) -> u64
+msrt_token_park( id: u64, timeout_ns: i64, value_out: *mut u64, ) -> u32
+msrt_token_post(id: u64, value: u64)
+msrt_token_post_remote(id: u64, value: u64)
+msrt_ascii_chars (data)
+msrt_guard_enter(jmp: *mut usize, code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8) -> usize
+msrt_guard_jump(jmp: *mut usize, status: usize) -> !
+msrt_ctx_switch(save: *mut usize, next: usize)
+msrt_task_tramp()
+msstd_decimal_add(a: *const Dec, b: *const Dec, out: *mut Dec)
+msstd_decimal_subtract(a: *const Dec, b: *const Dec, out: *mut Dec)
+msstd_decimal_multiply(a: *const Dec, b: *const Dec, out: *mut Dec)
 ```

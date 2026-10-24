@@ -13,6 +13,7 @@ mod commands;
 pub mod diagnostic;
 mod duration;
 pub mod engine;
+pub mod fault;
 pub mod fmt;
 pub mod help;
 mod help_text;
@@ -25,7 +26,7 @@ mod regexp;
 pub mod util;
 pub mod verify;
 
-pub use ms_project::strconv::quote;
+pub use ms_driver::project::strconv::quote;
 
 use backend::{
     AnalysisCommand, AnalysisRequest, BuildRequest, DiagramRequest, Io, OutputRequest, RunRequest,
@@ -33,7 +34,7 @@ use backend::{
 };
 use engine::Engine;
 use invocation::{parse_invocation, requests_help, validate};
-use ms_driver::Lower;
+use ms_build::Lower;
 
 /// The release version, from `.msversion`.
 pub const VERSION: &str = env!("MS_VERSION");
@@ -153,6 +154,7 @@ fn run_source_command<L: Lower>(
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
                 watch: inv.watch,
+                json: inv.structured,
                 arguments: inv.arguments.clone(),
             },
             io,

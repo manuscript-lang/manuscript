@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use ms_linker::{FILES, LINKER_ID};
+use super::bundled::{FILES, LINKER_ID};
 
 #[cfg(windows)]
 const LLD: &str = "lld.exe";
@@ -23,7 +23,7 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     if let Some(dir) = std::env::var_os("MS_LLVM_TOOLS").filter(|v| !v.is_empty()) {
         return Ok(Some(PathBuf::from(dir)));
     }
-    if ms_linker::TOOLS.iter().any(|(_, gz)| gz.is_empty()) {
+    if super::bundled::TOOLS.iter().any(|(_, gz)| gz.is_empty()) {
         return Ok(None);
     }
     let dir = cache_root().join("ms").join("llvm").join(LINKER_ID);
@@ -35,7 +35,7 @@ pub fn llvm_tools() -> Result<Option<PathBuf>, Error> {
     };
     static STAGED: AtomicUsize = AtomicUsize::new(0);
     std::fs::create_dir_all(&dir).map_err(failed)?;
-    for (name, gz) in ms_linker::TOOLS {
+    for (name, gz) in super::bundled::TOOLS {
         // The marker file records that the unpacked tool is complete.
         let done = dir.join(format!("{name}.ok"));
         if done.is_file() && dir.join(name).is_file() {

@@ -8,7 +8,7 @@ use crate::backend::Io;
 use crate::engine::Engine;
 use crate::json::{self, Json};
 use crate::util::{emit_json, resolve_input};
-use ms_driver::Lower;
+use ms_build::Lower;
 
 /// Findings printed per failed step in text mode (`--json` carries every one).
 const FINDING_LIMIT: usize = 8;

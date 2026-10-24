@@ -6,8 +6,8 @@ use crate::lint::LintFinding;
 use crate::uri;
 use ms_check::syntax::ModRef;
 use ms_check::{Program, stdlib};
+use ms_driver::project::Overlay;
 use ms_driver::{CheckRequest, EditorOptions, Graph, LoadOptions};
-use ms_project::Overlay;
 use ms_syntax::{Diagnostic, Phase};
 use std::cell::OnceCell;
 use std::collections::HashMap;
@@ -107,10 +107,10 @@ impl Analysis {
 
     /// The absolute path of a logical module file.
     pub fn module_path(&self, file: &str) -> String {
-        if ms_project::gopath::is_abs(file) {
+        if ms_driver::project::gopath::is_abs(file) {
             return file.to_string();
         }
-        ms_project::gopath::join(&[self.root(), file])
+        ms_driver::project::gopath::join(&[self.root(), file])
     }
 
     /// The URI of a module's source.
@@ -146,7 +146,7 @@ impl Analysis {
             return Some(m);
         }
         let mut path = d.path();
-        if let Ok(canonical) = ms_project::gopath::eval_symlinks(&path) {
+        if let Ok(canonical) = ms_driver::project::gopath::eval_symlinks(&path) {
             path = canonical;
         }
         program
@@ -174,7 +174,7 @@ pub fn standard_library_document(d: &Document) -> Option<ModRef> {
     if url.scheme != "file" || url.query || url.fragment {
         return None;
     }
-    let base = ms_project::gopath::base(&d.path());
+    let base = ms_driver::project::gopath::base(&d.path());
     stdlib::standard_modules().into_iter().find(|m| {
         m.file.as_str().strip_prefix("@std/") == Some(base.as_str()) && *m.source == *d.text
     })
@@ -301,7 +301,7 @@ pub fn analyze_with(
     }
     overlay.insert(path.clone(), d.text.clone());
     options.overlay = overlay;
-    let target = ms_project::find_manifest(&path).unwrap_or_else(|| path.clone());
+    let target = ms_driver::project::find_manifest(&path).unwrap_or_else(|| path.clone());
     if options.scope_marker.is_some() && target != path {
         options.module = Some(path.clone());
     }

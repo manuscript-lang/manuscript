@@ -4,7 +4,9 @@
 use ms_rt as _;
 use std::path::{Path, PathBuf};
 
-use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};
+use ms_driver::{
+    CheckRequest, EditorOptions, LoadOptions, check_graph, load_editor_file, load_file,
+};
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("ms-driver-{name}-{}", std::process::id()));
@@ -60,6 +62,31 @@ fn cycles_are_reported_at_the_closing_import() {
             .starts_with("cyclic module dependency at a.ms;"),
         "{issue}"
     );
+}
+
+#[test]
+fn imported_parse_diagnostics_keep_their_source_in_strict_and_recovery_loads() {
+    let dir = scratch("import-diagnostic");
+    write(&dir, "broken.ms", "\n\nfn broken(:\n");
+    let entry = write(&dir, "main.ms", "import broken from \"./broken.ms\"\n");
+    let strict = load_file(&entry, LoadOptions::default());
+    let recovered = load_editor_file(
+        &entry,
+        LoadOptions::default(),
+        &EditorOptions {
+            recover: true,
+            ..EditorOptions::default()
+        },
+    );
+    assert!(strict.modules.is_empty());
+    assert!(!recovered.modules.is_empty());
+    assert_eq!(strict.diagnostics.len(), 1);
+    assert_eq!(recovered.diagnostics.len(), 1);
+    let issue = &strict.diagnostics[0];
+    assert_eq!(&*issue.file, "broken.ms");
+    assert!(issue.pos.line >= 3);
+    assert_eq!(issue.phase, ms_syntax::Phase::Parse);
+    assert_eq!(strict.diagnostics, recovered.diagnostics);
 }
 
 #[test]

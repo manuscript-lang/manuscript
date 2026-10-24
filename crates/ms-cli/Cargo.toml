@@ -18,11 +18,10 @@ path = "src/main.rs"
 [dependencies]
 ms-check = { path = "../ms-check" }
 ms-json = { path = "../ms-json" }
-ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
+ms-build = { path = "../ms-build" }
 ms-mir = { path = "../ms-mir" }
 ms-syntax = { path = "../ms-syntax" }
-ms-guide = { path = "../ms-guide" }
 ms-lsp = { path = "../ms-lsp" }
 ms-tooling = { path = "../ms-tooling" }
 regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case", "unicode-gencat", "unicode-script", "unicode-bool", "unicode-age", "unicode-segment"] }
@@ -30,6 +29,7 @@ regex = { version = "1", default-features = false, features = ["std", "unicode-p
 [dev-dependencies]
 ms-clif = { path = "../ms-clif" }
 ms-rt = { path = "../ms-rt" }
+object = { version = "0.40", default-features = false, features = ["read_core", "archive", "elf", "macho", "coff"] }
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = { version = "0.2", default-features = false }

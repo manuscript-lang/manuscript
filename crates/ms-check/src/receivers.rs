@@ -249,6 +249,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("scalar_values", "string/scalar_values"),
             ("slice_scalars", "string/slice_scalars"),
             ("split", "string/split"),
+            ("take", "string/take"),
+            ("drop", "string/drop"),
             ("starts_with", "string/starts_with"),
             ("trim", "string/trim"),
             ("upper", "string/upper"),

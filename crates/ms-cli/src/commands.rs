@@ -71,7 +71,7 @@ pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
             "ms guide takes no arguments; use 'ms search_symbol' to look symbols up",
         );
     }
-    let _ = write!(io.stdout, "{}", ms_guide::cheatsheet());
+    let _ = write!(io.stdout, "{}", ms_tooling::guide::cheatsheet());
     0
 }
 
@@ -201,7 +201,7 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             io,
             format!(
                 "unknown --format {} for ms review; use ascii or markdown (--json for JSON)",
-                ms_project::strconv::quote(&format)
+                ms_driver::project::strconv::quote(&format)
             ),
         ));
     }

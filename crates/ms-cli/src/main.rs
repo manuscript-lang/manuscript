@@ -7,9 +7,9 @@
 use ms_rt as _;
 use std::io::Write;
 
+use ms_build::Native;
 use ms_cli::backend::Io;
 use ms_cli::engine::Engine;
-use ms_driver::Native;
 
 /// The checker and lowerer recurse over the syntax tree, and the parser admits
 /// expression chains and nesting deeper than the default 8 MiB main stack holds.
