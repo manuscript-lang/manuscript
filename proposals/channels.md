@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans `channel[T]() -> (Sender[T], Receiver[T])`; `proposals/child-processes.md` stage 3 plans `fork` with an entry `def f(input: Receiver[In], output: Sender[Out], argument: A)`. That is two endpoint types, two entry parameters, and a pair of channels per conversation.
-- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is the free function `channel[A, B](capacity)` returning `(Channel[A, B], Channel[B, A])`; the two ends have the type arguments swapped.
+- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is `Channel[A, B](capacity)`, which creates a connected pair and returns one end; `ch.peer()` takes the other end, `Channel[B, A]`, once. The two ends have the type arguments swapped.
 - Entry rule: a worker or process entry takes **one** parameter, the child's end of the channel: `def f(ch: Channel[In, Out]) -> R`. `spawn(entry)` creates the pair, passes one end, returns the other.
 - Transport follows where the peer lives: queue between tasks, moved values between workers, JSON frames between processes. The API is identical.
 - Cost: no new syntax; one runtime endpoint type; deletes `Sender`, `Receiver` and the `clone` fan-in from the TaskGroup plan. Decision requested: sign-off on the type shape, the entry rule, and the open questions below.
@@ -43,7 +43,8 @@
 from "@std/channels.ms" import Channel
 
 # Channel[Send, Receive]
-channel[A, B](capacity: Int) -> (Channel[A, B], Channel[B, A])   # free generic function, not a static method
+Channel[A, B](capacity: Int) -> Channel[A, B]   # constructor: creates a connected pair, returns one end
+ch.peer() -> Channel[B, A]                       # takes the other end; a second call faults
 
 ch.send(value: Send) -> Result[Unit, Closed]   # consumes value; parks while full; cancellation point
 ch.receive() -> Optional[Receive]              # owned value; none when peer closed and drained; parks while empty
@@ -83,7 +84,7 @@ def run(frames: List[Frame]) -> Result[Int, TaskError]:
 ```
 
 - `spawn(entry)` accepts `entry: def(Channel[S, R]) -> T` and returns `Channel[R, S]` (the parent end). The pair is created by `spawn`, so its transport is chosen by the group.
-- The same call on `ProcessGroup` or `TaskGroup` compiles unchanged; only the import differs. For `TaskGroup`, `entry` may also be a lambda that captures its end: `group.spawn(lambda: pump(ch_child))` with `channel[A, B]` called in the parent.
+- The same call on `ProcessGroup` or `TaskGroup` compiles unchanged; only the import differs. For `TaskGroup`, `entry` may also be a lambda that captures its end: `group.spawn(lambda: pump(ch_child))` with `Channel[A, B](n)` and `peer()` called in the parent.
 - No argument form: the entry's only input is its channel; initial data is the first message (a record or alternative if several values are needed). This removes the "channel or plain argument" overload from `spawn` and the second input path.
 - Checker shape: an explicit `spawn[S, R](entry: def(Channel[S, R]) -> T) -> Channel[R, S]` on a concrete generic group. Whether the checker can infer `S`, `R` from a function item is unproven; stage 0 is a spike.
 - Bindings that call `close()` must be `var` (`Closeable.close` is `var def`, `stdlib/core.ms:64`); examples use `var ch`.
@@ -109,18 +110,18 @@ def run(frames: List[Frame]) -> Result[Int, TaskError]:
 
 | Peer location | Created by | Transport | Backpressure |
 | --- | --- | --- | --- |
-| Same thread (tasks) | `channel[A, B]` | in-runtime queue, value moved | park on full/empty via task tokens |
+| Same thread (tasks) | `Channel[A, B](n)` + `peer()` | in-runtime queue, value moved | park on full/empty via task tokens |
 | Other thread | `WorkerGroup.spawn` | bounded mutex queue, value moved (no copy, no codec); needs the per-thread runtime of `worker-threads.md`, so not before it | park on target isolate's wake fd |
 | Other process | `ProcessGroup.spawn` | length-prefixed JSON frames on the IPC connection, frame carries a close marker | OS socket buffer only |
 
-- `channel` is only for peers on the same thread. A worker or process end cannot be built by hand; this keeps transport selection out of user code and means one pair is never split across locations.
+- `Channel(n)` and `peer()` are only for peers on the same thread. A worker or process end cannot be built by hand; this keeps transport selection out of user code and means one pair is never split across locations.
 - IPC frame (processes): 4-byte little-endian length, UTF-8 JSON of the message; a zero-length frame is the close marker. One channel per child, so no channel id (the earlier "channel id" in `child-processes.md` stage 3 is deleted).
 
 ## Components touched
 
 | Component | Change | Risk / test |
 | --- | --- | --- |
-| `stdlib/channels.ms` (new) | `Channel[S, R]`, `channel`, `send`, `receive`, `close`; `Closed`. Externs are not generic and `extern type` is "planned, not shipped" (`skills/runtime/SKILL.md:18`): either a generic runtime-owned type with per-`T` drop/move through `TypeDesc`, or `Channel` written in Manuscript over a non-generic byte-queue extern (decided by the stage 0 spike) | conformance: order, close, drain, closed send |
+| `stdlib/channels.ms` (new) | `Channel[S, R]`, constructor, `peer`, `send`, `receive`, `close`; `Closed`. Externs are not generic and `extern type` is "planned, not shipped" (`skills/runtime/SKILL.md:18`): either a generic runtime-owned type with per-`T` drop/move through `TypeDesc`, or `Channel` written in Manuscript over a non-generic byte-queue extern (decided by the stage 0 spike) | conformance: order, close, drain, closed send |
 | `crates/ms-rt` | refcounted endpoint pair, waiter tokens, close flags; no sender-count (each end is single owner) | runtime unit tests; cancel while parked |
 | `crates/ms-check` | worker/process boundary payload check on `spawn`; `spawn` accepts a `Channel`-parameter entry | reject cases: `Shared`, closure payload |
 | `crates/ms-lower`, codegen | depends on the stage 0 choice; unknown until the spike | spike result recorded here |
@@ -141,7 +142,8 @@ from "@std/tasks.ms" import TaskGroup
 from "@std/channels.ms" import Channel
 
 def squares() -> List[Int]:
-    var (mine, theirs) = channel[Int, Int](4)
+    var mine = Channel[Int, Int](4)
+    var theirs = mine.peer()
     with TaskGroup[Unit]() as group:
         group.spawn(lambda: serve(theirs))
         var out: List[Int] = []
@@ -176,16 +178,17 @@ with WorkerGroup[Unit]() as group:
 - **Do nothing / keep `Sender`+`Receiver`.** Cheapest; TaskGroup stage 4 is already written. Costs: two endpoint types, entries take two channel parameters, request/response needs two pairs. Process IPC still needs different types per direction, which one-way endpoints express as two channels per child.
 - **`Port[Send, Receive]` placeholder name.** Same shape; `Channel` is the owner's name.
 - **`Channel[T]` same type both ways.** Smaller, but a process child that receives `Bytes` and replies `String` would need a wrapping alternative on both sides. Rejected on child-processes evidence.
-- **Static method `Channel[A, B].pair(n)`.** Rejected: the language has no static methods (contracts forbid "static operations", `documentation/core-language/types/contracts.md:76`) and stdlib factories are free generic functions (`filled[T]`, `map_from_entries`, `stdlib/collections.ms:346,364`). A constructor `Channel[A, B](n)` cannot return a tuple.
+- **Pair-returning function or static method.** Rejected: the language has no tuples (`documentation/core-language/basics/expressions.md:158`), no `let (a, b)` pattern (`types/destructuring.md`), no static methods (`types/contracts.md:76`), and Chinmay keeps `Channel` uppercase (no lowercase `channel(...)`). A record result (`ChannelPair`) needs a non-literal constructor and field destructuring of move-only values; unverified.
+- **`peer()` that faults on the second call.** The cost of one-constructor-two-ends; the alternative is `peer()` returning `Optional[Channel[B, A]]`. Open question.
 - **One-way channels, entry takes a pair.** Entry `def f(ch: Pair[In, Out])` holding two one-way ends gets the single-parameter win without bidirectional types. Set aside: it keeps two endpoint types and still needs two handles per conversation; not measured, a taste call for Chinmay.
-- **Smallest version:** tasks only, `channel[S, R]`, no group integration. Proves the type and close semantics, leaves the entry rule unproven; it is stage 1 below.
+- **Smallest version:** tasks only, `Channel[S, R](n)`, no group integration. Proves the type and close semantics, leaves the entry rule unproven; it is stage 1 below.
 - **Node model (`postMessage` + events + `workerData`).** Rejected: multiple inputs to a child.
 
 ## Simplification pass
 
 - Removed: `Sender`, `Receiver`, `Sender.clone`, sender refcount, `fork` as a separate method, the channel id in IPC frames, the second entry parameter, the argument form, half-close, rendezvous capacity.
 - Kept: one type, three methods, one entry rule.
-- A user learns it from one example: channel, send, receive, close.
+- A user learns it from one example: construct, peer, send, receive, close.
 
 ## Drawbacks
 
@@ -199,7 +202,7 @@ with WorkerGroup[Unit]() as group:
 
 0. Spike (no merge): can `Channel[S, R]` be a generic runtime-owned type or a Manuscript type over a byte-queue extern, and can `spawn[S, R]` infer from a function item? Go/no-go for the rest.
 1. Docs: this design in canonical pages; edit the three sibling proposals. `make repo-check`.
-2. `Channel` for tasks (needs TaskGroup stages 2-3 and the capture-drop fix): `channel`, `send`, `receive`, `close`, conformance fixtures (order, drain-then-none, closed send, cancel while parked, drop closes). Go/no-go: `make conform` passes on Linux, macOS, Windows.
+2. `Channel` for tasks (needs TaskGroup stages 2-3 and the capture-drop fix): constructor, `peer`, `send`, `receive`, `close`, conformance fixtures (order, drain-then-none, closed send, cancel while parked, drop closes). Go/no-go: `make conform` passes on Linux, macOS, Windows.
 3. `TaskGroup.spawn(entry)` returning the parent end.
 4. Worker transport (after `worker-threads.md` stage for isolates): same fixture bodies as stage 2 run against `WorkerGroup`.
 5. Process transport (after `child-processes.md` stage 1-2): same fixture bodies against `ProcessGroup`, including payload round-trip.
@@ -211,8 +214,9 @@ The same fixture body running against all three groups is the parity gate. No te
 
 - Resolve before approval (decider: Chinmay):
   1. Accept bidirectional `Channel[Send, Receive]` over one-way ends plus a pair-typed entry parameter (recommend: bidirectional, per your direction), and accept losing fan-in in v1.
-  2. Half-close. Recommend: none in v1.
-  3. Accept the stage 0 spike result as the gate for the type's implementation.
+  2. `peer()` second call: fault (recommended) vs `Optional`.
+  3. Half-close. Recommend: none in v1.
+  4. Accept the stage 0 spike result as the gate for the type's implementation.
 - Resolve during implementation:
   - Whether `capacity` is a required argument or defaulted.
   - Iteration (`for m in ch`) once `streams.ms` is checked.
