@@ -33,7 +33,7 @@
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "\\b(def|lambda|type|interface|impl|import|from|as|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(def|lambda|type|interface|impl|import|as|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
