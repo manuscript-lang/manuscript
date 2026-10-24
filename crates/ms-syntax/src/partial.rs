@@ -177,6 +177,7 @@ fn partial_root_start(source: &str) -> bool {
     for keyword in [
         "import",
         "export",
+        "extern",
         "fn",
         "type",
         "interface",

@@ -3,18 +3,14 @@ name = "ms-driver"
 version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript build driver: module graph loading, checking, lowering seam, optimization, native codegen and linking"
+description = "Manuscript front-end driver: module graph loading and checking"
 
 [lints]
 workspace = true
 
 [dependencies]
-ms-project = { path = "../ms-project" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
-ms-mir = { path = "../ms-mir" }
-ms-clif = { path = "../ms-clif" }
-ms-lower = { path = "../ms-lower" }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt" }

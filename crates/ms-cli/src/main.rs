@@ -1,5 +1,4 @@
-//! The `ms` executable. Engines are linked in here; a command whose engine
-//! does not exist yet reports "not yet implemented" and exits with 70.
+//! The `ms` executable.
 //!
 //! Native builds (`build`, `run`, `test`, `profile`) run on the Rust pipeline.
 
@@ -8,9 +7,9 @@
 use ms_rt as _;
 use std::io::Write;
 
+use ms_build::Native;
 use ms_cli::backend::Io;
-use ms_cli::engine::RustBackend;
-use ms_driver::Native;
+use ms_cli::engine::Engine;
 
 /// The checker and lowerer recurse over the syntax tree, and the parser admits
 /// expression chains and nesting deeper than the default 8 MiB main stack holds.
@@ -44,7 +43,7 @@ fn real_main() -> i32 {
             stdout: &mut stdout,
             stderr: &mut stderr,
         };
-        ms_cli::run(&args, &RustBackend::new(Native), &mut io)
+        ms_cli::run(&args, &Engine::new(Native), &mut io)
     };
     let _ = stdout.flush();
     drop(stdout);

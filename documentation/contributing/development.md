@@ -36,6 +36,8 @@ It adds `make conform` (the conformance corpus), `make e2e` (every `tests/e2e/te
 
 `make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 
+`python3 scripts/extern-parity.py` (read-only; `-v` lists every entry) reports how many bodiless standard functions derive their runtime signature from their declaration under the ABI conventions, and which are mismatched, use types outside the scalar/`String`/`Bytes` set, or have no runtime symbol. It measures how much of the native table a signature-driven `extern` could cover.
+
 `make leak-check` builds the runtime with allocation counters (`ms-rt` feature `stats`, via `MS_RT_LIB`) and runs the corpus programs that finish normally, failing when any leaves live heap blocks at exit. Pass files to sweep instead (`sh scripts/leak-check.sh path.ms`). Run it after changing lowering, ownership, or runtime code; valgrind covers the native `ms-std-*` crates that use the system allocator.
 
 Write source assertions with `@std/testing.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
@@ -75,7 +77,7 @@ Release tags package through [`rust-dist.yml`](https://github.com/manuscript-lan
 
 ## Generate the standard library reference
 
-`ms-docgen` (`crates/ms-guide`) reads the checker's registry from `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
+`ms-docgen` (`crates/ms-tooling/src/guide`) reads the checker's registry from `stdlib/*.ms`, so signatures, bounds, fields, cases, and operations have one authority. Integration tests compare native conventions against it.
 
 Generated references live in `.artifacts/docs/documentation/standard-library/reference/` and are mounted by Hugo. `website/static/stdlib.md` and `stdlib.json` (versioned, sorted schema) are generated and ignored by Git; `website/static/llms.txt` points to the plain-text API. Change source or generators, then run `make docs` and the book checks; never hand-edit generated output.
 

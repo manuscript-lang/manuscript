@@ -1436,6 +1436,37 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
     }
 }
 
+/// Faults on a negative `count`, else clamps it to the scalar length.
+unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
+    if count < 0 {
+        fault::fault_fmt(format_args!(
+            "String.{name}: count must be nonnegative, found {count}"
+        ));
+    }
+    // SAFETY: caller passes a live string.
+    (count as usize).min(unsafe { scalar_count(s) })
+}
+
+/// `take(count)`: the first `count` scalars, clamped to the string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        let n = scalar_count_arg("take", s, count);
+        *out = sub_scalars(s, 0, n);
+    }
+}
+
+/// `drop(count)` (named `drop_n` because `msrt_string_drop` releases a value).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64, out: *mut StrVal) {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe {
+        let n = scalar_count_arg("drop", s, count);
+        *out = sub_scalars(s, n, scalar_count(s));
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_slice(
     s: *const StrVal,

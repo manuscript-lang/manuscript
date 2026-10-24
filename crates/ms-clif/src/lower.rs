@@ -2257,6 +2257,15 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Whether the second word of a string has the inline tag.
+    /// The byte length of a string from its `tagged` word.
+    fn str_byte_len(&mut self, tagged: Value) -> Value {
+        let inline = self.str_is_inline(tagged);
+        let short = self.b.ins().ushr_imm_u(tagged, STR_INLINE_LEN_SHIFT as i64);
+        let short = self.b.ins().band_imm_s(short, 15);
+        let long = self.b.ins().band_imm_s(tagged, STR_LEN_MASK as i64);
+        self.b.ins().select(inline, short, long)
+    }
+
     fn str_is_inline(&mut self, tagged: Value) -> Value {
         let tag = self.b.ins().ushr_imm_u(tagged, 62);
         self.b.ins().icmp_imm_s(IntCC::Equal, tag, 1)
@@ -2626,29 +2635,45 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// a call; only same-length distinct blocks reach the runtime.
     fn string_eq_inline(&mut self, f: &Func, inst: &Inst) -> Vs {
         let (a, b) = (self.a(inst, 0), self.a(inst, 1));
-        // Equal lengths with any tags: the tag sits in the top two bits.
-        let diff = self.b.ins().bxor(a[1], b[1]);
-        let diff = self.b.ins().ishl_imm_u(diff, 2);
-        let same_len = self.b.ins().icmp_imm_s(IntCC::Equal, diff, 0);
-        // An inline string's length is not in the low bits, so different words prove nothing
-        // when one side is inline: the runtime compares those.
-        let (ia, ib) = (self.str_is_inline(a[1]), self.str_is_inline(b[1]));
-        let some_inline = self.b.ins().bor(ia, ib);
-        let maybe = self.b.ins().bor(same_len, some_inline);
-        let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
-        let same_ptr = self.b.ins().band(same_ptr, same_len);
         let join = self.b.create_block();
         self.b.append_block_param(join, types::I8);
-        let (check, slow) = (self.b.create_block(), self.b.create_block());
         let no = self.b.ins().iconst(types::I8, 0);
+        let (same_hi, other_kind, slow) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        // `x = a.tagged ^ b.tagged`. With `0 < x < 1 << 62` both have one kind and the low bits
+        // differ: different lengths, or for inline strings different bytes. Either way unequal.
+        let x = self.b.ins().bxor(a[1], b[1]);
+        let below = self.b.ins().iadd_imm_s(x, -1);
+        let differ =
+            self.b
+                .ins()
+                .icmp_imm_u(IntCC::UnsignedLessThan, below, (STR_INLINE - 1) as i64);
+        let undecided = self.b.create_block();
         self.b
             .ins()
-            .brif(maybe, check, &[], join, &[BlockArg::Value(no)]);
-        self.b.switch_to_block(check);
-        let yes = self.b.ins().iconst(types::I8, 1);
+            .brif(differ, join, &[BlockArg::Value(no)], undecided, &[]);
+        self.b.switch_to_block(undecided);
+        let is_same = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
+        self.b.ins().brif(is_same, same_hi, &[], other_kind, &[]);
+        // Same second word: the same first word is the same string. Otherwise inline strings
+        // differ, and other kinds of one length compare their bytes.
+        self.b.switch_to_block(same_hi);
+        let same_ptr = self.b.ins().icmp(IntCC::Equal, a[0], b[0]);
+        let inline = self.str_is_inline(a[1]);
+        let known = self.b.ins().bor(same_ptr, inline);
         self.b
             .ins()
-            .brif(same_ptr, join, &[BlockArg::Value(yes)], slow, &[]);
+            .brif(known, join, &[BlockArg::Value(same_ptr)], slow, &[]);
+        // Different kinds are equal only with the same byte length; the runtime compares bytes.
+        self.b.switch_to_block(other_kind);
+        let (la, lb) = (self.str_byte_len(a[1]), self.str_byte_len(b[1]));
+        let same_len = self.b.ins().icmp(IntCC::Equal, la, lb);
+        self.b
+            .ins()
+            .brif(same_len, slow, &[], join, &[BlockArg::Value(no)]);
         self.b.switch_to_block(slow);
         let r = self.call_extern_plain(f, inst);
         self.b.ins().jump(join, &[BlockArg::Value(r[0])]);

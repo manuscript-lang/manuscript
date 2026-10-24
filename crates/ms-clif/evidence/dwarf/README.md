@@ -53,7 +53,7 @@ The portable tests use LLVM `llvm-dwarfdump` and `llvm-symbolizer` without platf
 skips. Linux x86_64 with LLVM 19 passes both optimization levels on objects and
 linked executables, including unknown intervals and actual source-file paths.
 `final_build_keeps_source_lines_after_staging_and_object_cleanup` also passes
-Debug and Release through `ms_driver::build_executable`, replaces an existing
+Debug and Release through `ms_build::build_executable`, replaces an existing
 output, and queries the final executable after its staged object is deleted.
 Consumer tests use ordinary adjacent dSYM discovery without a hint. Publication
 normalizes the inner DWARF filename to the final executable's basename, as required
@@ -84,7 +84,7 @@ These are metadata checks with a stub runtime, not native execution coverage.
 
 Passed: full `cargo test -p ms-mir -p ms-clif` (76 tests, including real runtime
 faults, six kernels, random-program differential tests, and new regressions);
-`cargo test -p ms-driver` (4 tests); fmt; clippy with warnings denied;
+`cargo test -p ms-build` (4 tests); fmt; clippy with warnings denied;
 `make repo-check`. An independent Sol reviewer approved the implementation after
 checking file identity, symbol/section relocation, span gaps, optimized mapping,
 runtime-table isolation, and the added internal-gap regression.

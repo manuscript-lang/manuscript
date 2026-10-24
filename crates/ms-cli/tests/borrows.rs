@@ -125,3 +125,9 @@ fn borrow_identities_are_unique_across_the_standard_library() {
     assert_eq!(status, Some(0), "{text}");
     assert_eq!(text, "Optional.some(3) 25 Optional.some(hello!)\n");
 }
+
+#[test]
+fn looping_or_matching_a_parameter_borrows_it() {
+    let (status, text) = run_ms(&["run", &fixture("param_scrutinee.ms")]);
+    assert_eq!(status, Some(0), "{text}");
+}

@@ -51,7 +51,6 @@ fn repository_sources() -> Vec<PathBuf> {
                         "vendor"
                             | "toolchain"
                             | "node_modules"
-                            | "experiments"
                             | "crates"
                             | "bench"
                             | "conformance"

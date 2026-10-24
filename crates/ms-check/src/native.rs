@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 impl Checker {
     /// Applies explicit requirements on the checked receiver. For example,
-    /// equality search requires Equal, join requires List[String], and to_set
+    /// equality search requires Equal, join requires List[String] or List[Int], and to_set
     /// requires Hashable, without strengthening List's element requirements.
     pub(crate) fn native_receiver_available(&self, receiver: &Ty, name: Name) -> bool {
         let s = substitution(receiver);
@@ -20,11 +20,14 @@ impl Checker {
             let Some(actual) = s.get(&requirement.variable.id) else {
                 return false;
             };
-            if requirement.constraint.kind == Kind::Contract {
-                if !self.satisfies(actual, &requirement.constraint) {
-                    return false;
+            let met = requirement.constraints.iter().any(|constraint| {
+                if constraint.kind == Kind::Contract {
+                    self.satisfies(actual, constraint)
+                } else {
+                    same(actual, constraint)
                 }
-            } else if !same(actual, &requirement.constraint) {
+            });
+            if !met {
                 return false;
             }
         }

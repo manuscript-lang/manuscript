@@ -5,7 +5,7 @@ description: Change Manuscript formatting, lint, inspection, LSP features, VS Co
 
 # Tooling
 
-Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `ms-guide`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../../.experts/tooling-and-docs.md).
+Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../../.experts/tooling-and-docs.md).
 
 - Derive semantics from checked symbols/types and shared traversal. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.
 - Formatting preserves semantics and is idempotent for inline/indented suites, defaults, closures, interpolation, and multiline parameters. Use [compiler](../compiler/SKILL.md) for changed syntax/recovery.

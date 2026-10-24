@@ -97,3 +97,41 @@ fn map_index_points_to_get_and_add() {
     assert_eq!(read.len(), 1, "{read:?}");
     assert!(read[0].contains("m.get(key)"), "{read:?}");
 }
+
+#[test]
+fn foreign_idioms_name_the_replacement() {
+    let cases = [
+        ("let a = [1].first().unwrap()", "x.get(default)"),
+        ("let a = [1].first().unwrap_or(0)", "x.get(default)"),
+        ("let a = [1].includes(1)", "did you mean 'contains'?"),
+        (
+            "let a = [1].reduce(0, fn(a: Int, b: Int) Int: a + b)",
+            "did you mean 'fold'?",
+        ),
+        ("let a = \"x\".toUpperCase()", "did you mean 'upper'?"),
+        (
+            "let a = \"x\".startsWith(\"x\")",
+            "did you mean 'starts_with'?",
+        ),
+        ("let a = Some(1)", "write the lowercase some(value)"),
+        ("let a = Err(1)", "write error(cause)"),
+        ("let a = len([1])", "xs.length()"),
+        ("let a = Object.keys(1)", "m.keys()"),
+        ("let a = Int(\"1\")", "text.parse_int()"),
+        ("let a = String(1)", "interpolation"),
+        ("let a = 1.0 * 2", "value.to_float()"),
+    ];
+    for (line, want) in cases {
+        let got = first_message(&format!(
+            "export fn main() Int:\n    {line}\n    return 0\n"
+        ));
+        assert!(
+            got.contains(want),
+            "{line}: {got}\n  does not contain\n{want}"
+        );
+    }
+    let got = first_message(
+        "fn f() Result[Int, Error]:\n    return ok(1)\nexport fn main() Int:\n    let x = f().unwrap()\n    return 0\n",
+    );
+    assert!(got.contains("try x"), "{got}");
+}

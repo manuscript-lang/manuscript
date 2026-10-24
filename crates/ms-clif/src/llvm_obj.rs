@@ -115,7 +115,7 @@ fn hot_library(dir: &Path, tools: &Path, program: &str) -> Option<PathBuf> {
     let custom = std::env::var_os("MS_RT_HOT")
         .filter(|v| v != "0" && v != "1")
         .and_then(|path| std::fs::read_to_string(path).ok());
-    let ir = custom.as_deref().unwrap_or(ms_linker::RUNTIME_HOT_IR);
+    let ir = custom.as_deref().unwrap_or(crate::link::RUNTIME_HOT_IR);
     let linker = tools.join(format!("llvm-link{}", std::env::consts::EXE_SUFFIX));
     if ir.is_empty()
         || std::env::var_os("MS_RT_HOT").is_some_and(|v| v == "0")

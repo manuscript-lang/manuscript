@@ -1,12 +1,15 @@
 //! `ms fmt`: target resolution, de-duplication, reporting and in-place writes.
-//! The formatter itself is the backend's [`Backend::format_source`].
+//! The formatter itself is [`engine::format_source`].
 
 use std::collections::BTreeMap;
 
-use ms_project::{Project, ProjectError, discover_modules, gopath, read_project, source_path};
+use ms_driver::project::{
+    Project, ProjectError, discover_modules, gopath, read_project, source_path,
+};
 
-use crate::backend::{Backend, FormatFailure, FormatFile, Io};
+use crate::backend::{FormatFailure, FormatFile, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
+use crate::engine;
 use crate::json::Json;
 use crate::util::{emit_json, file_error, format_cwd, format_display};
 
@@ -23,7 +26,7 @@ enum FmtError {
     Plain(String),
 }
 
-pub fn run_format(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_format(args: &[String], io: &mut Io) -> i32 {
     let (mut check, mut structured, mut positional, mut drop_labels) = (false, false, false, false);
     let mut targets: Vec<String> = Vec::new();
     for arg in args {
@@ -104,7 +107,7 @@ pub fn run_format(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
             path: path.clone(),
             display: display.clone(),
         };
-        let (state, error) = format_file(backend, &file, check, drop_labels);
+        let (state, error) = format_file(&file, check, drop_labels);
         files_report.push((display, state));
         if let Some(error) = error {
             report(io, &path, error);
@@ -179,15 +182,19 @@ fn format_paths(target: &str) -> Result<Vec<String>, ProjectError> {
     }
     // A discovered file symlink must stay inside the selected project/directory.
     // Explicit files remain independently selectable, including through symlinks.
-    let none = ms_project::Overlay::new();
+    let none = ms_driver::project::Overlay::new();
     paths
         .into_iter()
         .map(|path| source_path(&config.root, &path, &none))
         .collect()
 }
 
-fn path_error(op: &'static str, path: &str, error: &std::io::Error) -> ms_project::PathError {
-    ms_project::PathError {
+fn path_error(
+    op: &'static str,
+    path: &str,
+    error: &std::io::Error,
+) -> ms_driver::project::PathError {
+    ms_driver::project::PathError {
         op,
         path: path.to_string(),
         errno: error.raw_os_error().unwrap_or(0),
@@ -195,7 +202,6 @@ fn path_error(op: &'static str, path: &str, error: &std::io::Error) -> ms_projec
 }
 
 fn format_file(
-    backend: &dyn Backend,
     file: &FormatFile,
     check: bool,
     drop_labels: bool,
@@ -233,12 +239,12 @@ fn format_file(
     };
     let mut text = source.clone();
     if drop_labels {
-        match backend.drop_redundant_labels(file, &text) {
+        match engine::drop_redundant_labels(file, &text) {
             Ok(changed) => text = changed,
             Err(failure) => return ("error", Some(failure_error(failure, file))),
         }
     }
-    let formatted = match backend.format_source(file, &text) {
+    let formatted = match engine::format_source(file, &text) {
         Ok(formatted) => formatted,
         Err(failure) => return ("error", Some(failure_error(failure, file))),
     };
@@ -329,7 +335,7 @@ fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic,
         }
         FmtError::Project(ProjectError::Path(path_error)) => {
             let shown = format_display(cwd, &path_error.path);
-            message = file_error(&ProjectError::Path(ms_project::PathError {
+            message = file_error(&ProjectError::Path(ms_driver::project::PathError {
                 path: shown.clone(),
                 ..path_error
             }));

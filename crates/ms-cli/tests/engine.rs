@@ -7,15 +7,15 @@ use ms_rt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use ms_build::{Lower, Module, Native};
 use ms_cli::backend::Io;
-use ms_cli::engine::RustBackend;
-use ms_driver::{Lower, LowerOptions, Module, Native};
+use ms_cli::engine::Engine;
 
 /// A lowering that ignores the program and returns fixed MIR.
 struct Fixed(&'static str);
 
 impl Lower for Fixed {
-    fn lower(&self, _: &ms_check::Program, _: &str, _: &LowerOptions) -> Result<Module, String> {
+    fn lower(&self, _: &ms_check::Program, _: &str) -> Result<Module, String> {
         ms_mir::parse::parse_module(self.0).map_err(|e| e.to_string())
     }
 }
@@ -30,7 +30,7 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
-fn ms<L: Lower>(backend: &RustBackend<L>, args: &[&str]) -> (i32, String, String) {
+fn ms<L: Lower>(backend: &Engine<L>, args: &[&str]) -> (i32, String, String) {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err) = (Vec::new(), Vec::new());
     let status = {
@@ -61,7 +61,7 @@ const MAIN: &str = "export fn main() Int:\n    return 0\n";
 fn run_returns_the_program_status() {
     let dir = scratch("run");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (7, ""));
 }
@@ -71,7 +71,7 @@ fn build_writes_an_executable_and_reports_it() {
     let dir = scratch("build");
     let source = write(&dir, "main.ms", MAIN);
     let out = dir.join("prog");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, stdout, err) = ms(&backend, &["build", &source, "-o", out.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     assert!(stdout.starts_with("Built "), "{stdout}");
@@ -97,7 +97,7 @@ fn build_writes_an_executable_and_reports_it() {
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
     let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);
     assert!(err.contains(": type: "), "{err}");
@@ -112,7 +112,7 @@ fn checker_diagnostics_stop_before_lowering() {
 #[test]
 fn entry_must_be_an_exported_main() {
     let dir = scratch("entry");
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     for (text, expected) in [
         ("fn main() Int:\n    return 0\n", "main is not exported"),
         (
@@ -141,7 +141,7 @@ fn imports_load_in_dependency_order() {
         "main.ms",
         "import { one } from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     assert_eq!(ms(&backend, &["run", &source]).0, 7);
 
     let missing = write(
@@ -158,7 +158,7 @@ fn imports_load_in_dependency_order() {
 fn unavailable_lowering_is_a_lowering_diagnostic() {
     let dir = scratch("unavailable");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(ms_driver::Unavailable);
+    let backend = Engine::new(ms_build::Unavailable);
     let (status, _, err) = ms(&backend, &["build", &source]);
     assert_eq!(status, 1);
     assert!(
@@ -171,7 +171,7 @@ fn unavailable_lowering_is_a_lowering_diagnostic() {
 fn build_refuses_to_overwrite_source_and_directories() {
     let dir = scratch("protected");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["build", &source, "-o", &source]);
     assert_eq!(status, 2);
     assert!(err.contains("would overwrite main.ms"), "{err}");
@@ -194,7 +194,7 @@ fn library_projects_have_no_executable_entry() {
         "lib.ms",
         "export fn one() Int:\n    return 1\n",
     );
-    let backend = RustBackend::new(Fixed(EXIT_SEVEN));
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
     let manifest = dir.join("ms.toml");
     let (status, _, err) = ms(&backend, &["build", manifest.to_str().unwrap()]);
     assert_eq!(status, 1);
@@ -215,7 +215,7 @@ fn native_lowering_runs_real_programs() {
         "main.ms",
         "export fn main() Int:\n    return 6 * 7 - 40\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (2, ""));
 }
@@ -229,7 +229,7 @@ fn native_programs_link_every_standard_library_crate() {
         "main.ms",
         "import {parse, format} from \"@std/semver.ms\"\n\nexport fn main() Int:\n    let v = parse(\"1.2.3\").get()\n    if format(v) == \"1.2.3\":\n        return 0\n    return 1\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
@@ -238,7 +238,7 @@ fn native_programs_link_every_standard_library_crate() {
 fn native_tests_run_one_process_each() {
     let dir = scratch("native-test");
     let source = write(&dir, "sample_test.ms", TESTS);
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, stdout, err) = ms(&backend, &["test", &source]);
     assert_eq!(status, 1, "{err}");
     for line in [
@@ -252,6 +252,31 @@ fn native_tests_run_one_process_each() {
     let (status, json, _) = ms(&backend, &["test", &source, "--json", "--match", "passes"]);
     assert_eq!(status, 0, "{json}");
     assert!(json.contains("\"passed\": 1"), "{json}");
+}
+
+/// A runtime fault is structured data under `--json` for `ms run` and `ms test`.
+#[test]
+fn runtime_fault_is_reported_as_json() {
+    let dir = scratch("fault-json");
+    let source = write(
+        &dir,
+        "boom.ms",
+        "fn div(a: Int, b: Int) Int: a / b\n\nexport fn main() Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
+    );
+    let backend = Engine::new(Native);
+    let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
+    assert_eq!(status, 70, "{err}");
+    for needle in [
+        "\"kind\": \"division_by_zero\"",
+        "\"cleanups_ran\": true",
+        "\"function\": \"div\"",
+        "\"line\": 1",
+    ] {
+        assert!(json.contains(needle), "{needle} missing in {json}");
+    }
+    let (status, json, _) = ms(&backend, &["test", &source, "--json"]);
+    assert_eq!(status, 1, "{json}");
+    assert!(json.contains("\"kind\": \"division_by_zero\""), "{json}");
 }
 
 /// `ms test ms.toml` runs the project's `test.ms` and `*_test.ms`, not only the entry module.
@@ -275,7 +300,7 @@ fn project_test_runs_test_files() {
         "extra_test.ms",
         "test \"more\":\n    if 1 + 1 != 2:\n        return\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let manifest = dir.join("ms.toml").to_string_lossy().into_owned();
     let (status, stdout, err) = ms(&backend, &["test", &manifest]);
     assert_eq!(status, 0, "{stdout}{err}");
@@ -290,7 +315,7 @@ fn build_creates_missing_output_directories() {
     let dir = scratch("build-parents");
     let source = write(&dir, "main.ms", MAIN);
     let output = dir.join("out/nested/app");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(
         &backend,
         &["build", &source, "-o", &output.to_string_lossy()],
@@ -304,7 +329,7 @@ fn build_creates_missing_output_directories() {
 fn emit_prints_the_lowered_program() {
     let dir = scratch("emit");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, stdout, err) = ms(&backend, &["emit", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
     assert!(stdout.contains("fn @main"), "{stdout}");
@@ -320,7 +345,7 @@ fn native_chains_copy_and_drop_iteratively() {
         "main.ms",
         "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\nfn build(n: Int) Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\nfn sum(l: Link, acc: Int) Int:\n    match l:\n        End:\n            return acc\n        More(r):\n            return sum(r, acc)\n        Tag(n, r):\n            return sum(r, acc + n)\n\nexport fn main() Int:\n    let a = build(100000)\n    let b = a.clone()\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
@@ -335,7 +360,7 @@ fn native_list_element_places_update_the_list() {
         "main.ms",
         "type Cell:\n    n: Int\n    tag: String\n\nexport fn main() Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells.clone()\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
@@ -349,7 +374,7 @@ fn native_method_labels_bind_by_name() {
         "main.ms",
         "export fn main() Int:\n    var items = [1, 2, 3]\n    items.set(value: 8, 0)\n    items.insert(value: 5, 1)\n    if items[0] != 8 or items[1] != 5 or items.length() != 4:\n        return 1\n    return 0\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
 }
@@ -365,7 +390,7 @@ fn native_json_parse_of_deep_nesting_is_linear() {
         "main.ms",
         "import {parse, JsonValue, JsonError} from \"@std/json.ms\"\n\nexport fn main() Int:\n    let n = 50000\n    let text = \"{\"[\".repeat(n).get()}1{\"]\".repeat(n).get()}\"\n    let r: Result[JsonValue, JsonError] = parse(text)\n    if r.is_error():\n        return 1\n    return 0\n",
     );
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let started = std::time::Instant::now();
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!((status, err.as_str()), (0, ""));
@@ -393,7 +418,7 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
         "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
@@ -450,7 +475,7 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
         "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {commands} from \"@std/process.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    if request.path == \"/slow\":\n        let _out = commands().run(\"sleep\", [\"0.5\"])\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
@@ -507,7 +532,7 @@ fn native_http_handler_faults_do_not_leak_per_request() {
         "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), \"{xs[i]}\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe)
@@ -565,7 +590,7 @@ fn native_stdout_flush_reaches_a_pipe_immediately() {
         "import stdout from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nexport fn main() Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(duration(3000000000))\n    return 0\n",
     );
     let exe = dir.join("flush");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     let started = Instant::now();
@@ -592,7 +617,7 @@ fn native_programs_using_tls_and_http_link() {
         "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            return 0\n    return 1\n",
     );
     let exe = dir.join("net");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!((status, err.as_str()), (0, ""));
     assert_eq!(Command::new(&exe).status().unwrap().code(), Some(0));
@@ -616,7 +641,7 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
         "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, grace: duration(10000000000)):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
-    let backend = RustBackend::new(Native);
+    let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["build", &source, "-o", exe.to_str().unwrap()]);
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();

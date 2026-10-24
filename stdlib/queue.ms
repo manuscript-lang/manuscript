@@ -3,7 +3,7 @@ import {range} from "@std/collections.ms"
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
-export type Queue[T]:
+export type Queue[T: Clonable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
@@ -27,7 +27,7 @@ impl Queue[T]:
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
             for index in range(self.head, count):
-                live.append(self.items.get(index))
+                live.append(self.items.get(index).clone())
             self.items = live
             self.head = 0
 
@@ -39,7 +39,7 @@ impl Queue[T]:
         if self.head >= self.items.length():
             return none
 
-        let value = self.items.get(self.head)
+        let value = self.items.get(self.head).clone()
         self.items.set(self.head, none)
         self.head += 1
 
@@ -66,7 +66,7 @@ impl Queue[T]:
 
 # Negative compare results put left before right; equal priorities remain FIFO.
 # A priority queue is an owned value: a copy is an independent queue.
-export type PriorityQueue[T]:
+export type PriorityQueue[T: Clonable]:
     # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
     # Comparisons must stay consistent.
     compare: fn(left: T, right: T) Int
@@ -87,8 +87,8 @@ impl PriorityQueue[T]:
 
     # Exchanges two heap entries.
     var fn swap(a: Int, b: Int) Unit:
-        let left = self.heap.get(a)
-        self.heap.set(a, self.heap.get(b))
+        let left = self.heap.get(a).clone()
+        self.heap.set(a, self.heap.get(b).clone())
         self.heap.set(b, left)
 
         let left_order = self.orders.get(a)
@@ -127,7 +127,7 @@ impl PriorityQueue[T]:
         if count == 0:
             return none
 
-        let top = self.heap.get(0)
+        let top = self.heap.get(0).clone()
         let last = self.heap.pop()
         let last_order = self.orders.pop()
         if count == 1:
@@ -161,7 +161,7 @@ impl PriorityQueue[T]:
         if self.heap.length() == 0:
             return none
 
-        return some(self.heap.get(0))
+        return some(self.heap.get(0).clone())
 
     # Returns the number of enqueued values, independent of their priorities.
     fn length() Int:

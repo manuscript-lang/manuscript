@@ -967,6 +967,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-build"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-clif",
+ "ms-driver",
+ "ms-lower",
+ "ms-mir",
+ "ms-rt",
+]
+
+[[package]]
 name = "ms-check"
 version = "0.0.0"
 dependencies = [
@@ -978,17 +990,17 @@ name = "ms-cli"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "ms-build",
  "ms-check",
  "ms-clif",
  "ms-driver",
- "ms-guide",
  "ms-json",
  "ms-lsp",
  "ms-mir",
- "ms-project",
  "ms-rt",
  "ms-syntax",
  "ms-tooling",
+ "object",
  "regex",
 ]
 
@@ -1003,7 +1015,6 @@ dependencies = [
  "cranelift-object",
  "flate2",
  "gimli",
- "ms-linker",
  "ms-mir",
  "ms-rt-abi",
  "object",
@@ -1022,33 +1033,13 @@ name = "ms-driver"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-clif",
- "ms-lower",
- "ms-mir",
- "ms-project",
  "ms-rt",
- "ms-syntax",
-]
-
-[[package]]
-name = "ms-guide"
-version = "0.1.0"
-dependencies = [
- "ms-check",
- "ms-json",
  "ms-syntax",
 ]
 
 [[package]]
 name = "ms-json"
 version = "0.1.0"
-
-[[package]]
-name = "ms-linker"
-version = "0.0.0"
-dependencies = [
- "flate2",
-]
 
 [[package]]
 name = "ms-lower"
@@ -1068,7 +1059,6 @@ dependencies = [
  "ms-check",
  "ms-driver",
  "ms-json",
- "ms-project",
  "ms-rt",
  "ms-syntax",
  "ms-tooling",
@@ -1107,10 +1097,6 @@ dependencies = [
  "ms-std-time",
  "ms-std-url",
 ]
-
-[[package]]
-name = "ms-project"
-version = "0.1.0"
 
 [[package]]
 name = "ms-repo-check"

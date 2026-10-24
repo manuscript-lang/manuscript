@@ -3,7 +3,7 @@
 //! `runtime` builds `ms-native` (the runtime plus every `ms-std-*` crate) once and leaves the stripped
 //! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it. It also
 //! writes `target/ms-native/ms_rt_hot.ll`, the LLVM IR of the pure `ms-rt-hot` helpers that release
-//! builds link into the program so they inline (see `crates/DESIGN.md`); `ms-linker` embeds it.
+//! builds link into the program so they inline (see `crates/DESIGN.md`); `ms-clif`'s build script embeds it.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};

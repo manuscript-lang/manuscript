@@ -222,7 +222,7 @@ jobs:
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
       - name: Native Windows project paths
         if: runner.os == 'Windows'
-        run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+        run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
         run: |
           set -euo pipefail
@@ -265,8 +265,8 @@ jobs:
           llvm-dwarfdump --version
           llvm-symbolizer --version
           cargo test --locked -p ms-clif --test dwarf -- --nocapture
-          cargo test --locked -p ms-driver --test debug_artifacts -- --nocapture
-          cargo test --locked -p ms-driver --lib -- --nocapture
+          cargo test --locked -p ms-build --test debug_artifacts -- --nocapture
+          cargo test --locked -p ms-build --lib -- --nocapture
       - name: Rust ms replays the corpus
         if: matrix.corpus
         run: sh scripts/conform.sh
@@ -310,7 +310,7 @@ jobs:
             ${{ runner.temp }}/ms-clif-tests-*
             ${{ runner.temp }}/ms-native-conformance/
             ${{ runner.temp }}/ms-dwarf-*
-            ${{ runner.temp }}/ms-driver-debug-*
+            ${{ runner.temp }}/ms-build-debug-*
           if-no-files-found: ignore
 
   # Keep one stable required check; every Rust job must pass before merging.

@@ -4,7 +4,9 @@
 use crate::Error;
 use std::path::{Path, PathBuf};
 
+mod bundled;
 mod lld;
+pub(crate) use bundled::RUNTIME_HOT_IR;
 pub(crate) use lld::llvm_tools;
 
 /// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.

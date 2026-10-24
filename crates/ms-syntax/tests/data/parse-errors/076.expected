@@ -1,0 +1,1 @@
+error parse 2:9:30 "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \x22@std/collections.ms\x22"

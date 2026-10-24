@@ -170,6 +170,7 @@ impl ModuleHir {
         let mut out = Vec::new();
         for d in &self.data.decls {
             match &d.decl().kind {
+                DeclKind::Fn(f) if f.external => {}
                 DeclKind::Fn(f) => out.push(self.callable(
                     CallableKind::Function,
                     f.name,

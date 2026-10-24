@@ -39,7 +39,6 @@ const SKIP_DIRS: &[&str] = &[
     "toolchain",
     "target",
     "node_modules",
-    "experiments",
     "website",
     ".ms-cache",
     "dist",

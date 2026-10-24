@@ -3,7 +3,7 @@ name = "ms-tooling"
 version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
-description = "Manuscript developer tooling over checked programs: review, diagrams, inspection"
+description = "Manuscript developer tooling over checked programs: review, diagrams, inspection, agent guide, standard-library search and API documentation"
 
 [lints]
 workspace = true
@@ -16,3 +16,7 @@ ms-check = { path = "../ms-check" }
 [[bin]]
 name = "ms-tooling-dev"
 path = "src/bin/ms-tooling-dev.rs"
+
+[[bin]]
+name = "ms-docgen"
+path = "src/bin/ms-docgen.rs"
