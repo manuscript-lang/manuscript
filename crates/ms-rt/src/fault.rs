@@ -196,7 +196,7 @@ crate::isolate_static! {
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
-    PENDING_SIGNAL.load(Ordering::Relaxed).max(task)
+    crate::isolate::pending_cancel().max(task)
 }
 
 /// Records a stop request aimed at the running task.
@@ -323,6 +323,8 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         );
         if crate::isolate::is_main() {
             MAIN_CUR.store(cur_hdr(), Ordering::Release);
+        } else {
+            crate::isolate::publish_hdr(cur_hdr());
         }
     }
 }
@@ -952,7 +954,7 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
-    let sig = PENDING_SIGNAL.load(core::sync::atomic::Ordering::Relaxed);
+    let sig = crate::isolate::pending_cancel();
     while run_one_cleanup() {}
     #[cfg(test)]
     {

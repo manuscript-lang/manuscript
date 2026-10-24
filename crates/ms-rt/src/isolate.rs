@@ -3,7 +3,8 @@
 //! Each isolate (one OS thread with its own arena and scheduler) has an [`Inbox`] in a
 //! process-wide registry. A park token's id carries the owning isolate's registry slot, so a
 //! post from any thread reaches the right scheduler and kicks only that isolate's poller.
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::fault::Hdr;
+use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Isolates addressable by a token id (12 bits).
@@ -17,6 +18,10 @@ pub struct Inbox {
     /// Whether `posts` may hold entries; spares the scheduler the lock when nothing was posted.
     full: AtomicBool,
     wake: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
+    /// A stop request aimed at this (worker) isolate; 0 when none.
+    cancel: AtomicU8,
+    /// The running task's header block, for a parent that cancels this isolate.
+    cur: AtomicPtr<Hdr>,
 }
 
 static REGISTRY: Mutex<Vec<Option<Arc<Inbox>>>> = Mutex::new(Vec::new());
@@ -35,7 +40,7 @@ pub fn set_main() {
 /// Whether signal handlers should wake the calling isolate's poller.
 pub fn is_main() -> bool {
     // SAFETY: this isolate's state.
-    cfg!(test) || unsafe { *MAIN.ptr() }
+    unsafe { *MAIN.ptr() }
 }
 
 /// The calling isolate's registry slot, registering it on first use.
@@ -51,6 +56,8 @@ fn current() -> &'static (usize, Arc<Inbox>) {
             posts: Mutex::new(Vec::new()),
             full: AtomicBool::new(false),
             wake: Mutex::new(None),
+            cancel: AtomicU8::new(0),
+            cur: AtomicPtr::new(core::ptr::null_mut()),
         });
         let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
         let slot = match reg.iter().position(Option::is_none) {
@@ -112,8 +119,7 @@ pub fn take_posts() -> Vec<(u64, u64)> {
     std::mem::take(&mut *inbox.posts.lock().unwrap_or_else(|e| e.into_inner()))
 }
 
-/// Drops queued posts (test reset).
-#[cfg(any(test, feature = "stats"))]
+/// Drops queued posts (isolate teardown).
 pub fn clear_posts() {
     let (_, inbox) = current();
     inbox.full.store(false, Ordering::Relaxed);
@@ -122,4 +128,43 @@ pub fn clear_posts() {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .clear();
+}
+
+/// The stop request pending for the calling isolate: the process-wide signal on the main
+/// isolate, the parent's request on a worker.
+pub fn pending_cancel() -> u8 {
+    if is_main() {
+        return crate::fault::PENDING_SIGNAL.load(Ordering::Relaxed);
+    }
+    current().1.cancel.load(Ordering::Relaxed)
+}
+
+/// Records the running task's block so a cancel aimed at this isolate can reach its flag.
+pub fn publish_hdr(hdr: *mut Hdr) {
+    current().1.cur.store(hdr, Ordering::Release);
+}
+
+/// Asks the isolate in registry slot `slot` to stop: raises the flag of its running task unless
+/// shielded, remembers the request for its scheduler, and wakes its poller.
+pub fn raise_cancel(slot: usize, sig: u8) {
+    let inbox = {
+        let reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+        match reg.get(slot) {
+            Some(Some(i)) => i.clone(),
+            _ => return,
+        }
+    };
+    inbox.cancel.store(sig, Ordering::Relaxed);
+    let hdr = inbox.cur.load(Ordering::Acquire);
+    if !hdr.is_null() {
+        // SAFETY: a task block outlives its stack's use; `shield` is read as one word.
+        unsafe {
+            if core::ptr::read_volatile((*hdr).shield.as_ptr()) == 0 {
+                (*hdr).cancel.store(sig, Ordering::Relaxed);
+            }
+        }
+    }
+    if let Some(wake) = &*inbox.wake.lock().unwrap_or_else(|e| e.into_inner()) {
+        wake();
+    }
 }

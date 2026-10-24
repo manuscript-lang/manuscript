@@ -10,7 +10,7 @@
 //! A task can also park on a token (`msrt_token_park`): a one-shot slot that code on the runtime
 //! thread posts to with `msrt_token_post`, and any other thread with `msrt_token_post_remote`.
 use crate::alloc;
-use crate::fault::{self, Ctx, PENDING_SIGNAL, cancel_flag};
+use crate::fault::{self, Ctx, cancel_flag};
 use crate::isolate;
 use crate::sys;
 use core::cmp::Reverse;
@@ -630,7 +630,7 @@ unsafe fn reactor_wait() {
     unsafe {
         loop {
             // Tasks in a shielded cleanup keep waiting; they see the stop request afterwards.
-            if PENDING_SIGNAL.load(Ordering::Relaxed) != 0 && cancel_all_waiters() {
+            if crate::isolate::pending_cancel() != 0 && cancel_all_waiters() {
                 return;
             }
             deliver_remote_posts();
@@ -805,6 +805,31 @@ pub unsafe fn run_main_task(entry: Entry) {
         while msrt_token_park(done, -1, &mut value) != 0 {}
         fault::msrt_shield_exit();
         msrt_token_free(done);
+    }
+}
+
+/// Runs `entry(arg)` as a worker isolate's main task and returns its outcome (0 returned,
+/// 1 fault, 2 cancelled) with the fault report. The caller's own flow only waits, shielded.
+///
+/// # Safety
+/// `entry` must be safe to call with `arg` on a task stack of this isolate.
+pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        let h = msrt_task_spawn(entry, arg, 0, 0);
+        sched().main = lookup(h);
+        fault::msrt_shield_enter();
+        let mut msg = crate::string::NO_STR;
+        let status = msrt_task_join(h, &mut msg);
+        fault::msrt_shield_exit();
+        let report = if msg.len() == 0 {
+            Vec::new()
+        } else {
+            crate::string::bytes(&msg).to_vec()
+        };
+        crate::string::release_opt(&msg);
+        (status, report)
     }
 }
 
@@ -1210,10 +1235,10 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
     }
 }
 
-/// Drops all scheduler state (unit tests run several scenarios in one process; the leak sweep
-/// calls it at exit so only real leaks remain in the live-block count).
-#[cfg(any(test, feature = "stats"))]
-pub fn reset_for_tests() {
+/// Drops all scheduler state: a worker isolate calls it as it ends; unit tests run several
+/// scenarios in one process; the leak sweep calls it at exit so only real leaks remain in the
+/// live-block count.
+pub fn teardown() {
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
@@ -1305,7 +1330,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn tasks_interleave_sleep_and_join() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock; every handle is joined once.
         unsafe {
             *LOG_N.ptr() = 0;
@@ -1323,7 +1348,7 @@ mod tests {
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[5, 20]);
             assert_eq!(msrt_task_count(), 1);
         }
-        reset_for_tests();
+        teardown();
     }
 
     unsafe extern "C-unwind" fn hook() {
@@ -1334,7 +1359,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn the_prepark_hook_runs_before_each_park_and_only_then() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock; every handle is joined once.
         unsafe {
             *LOG_N.ptr() = 0;
@@ -1358,7 +1383,7 @@ mod tests {
                 &[7, 10, 11, 12, 7, 7, 1, 20, 21, 22]
             );
         }
-        reset_for_tests();
+        teardown();
     }
 
     static TOKEN: Process<u64> = Process::new(0);
@@ -1381,7 +1406,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn tokens_deliver_posts_made_before_and_during_a_park() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock; every handle is joined once.
         unsafe {
             let id = msrt_token_new(0);
@@ -1406,14 +1431,14 @@ mod tests {
             assert_eq!(*GOT.ptr(), (0, 9));
             msrt_token_free(id);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_timed_out_park_keeps_the_token_and_the_late_post() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock.
         unsafe {
             let id = msrt_token_new(0);
@@ -1424,14 +1449,14 @@ mod tests {
             assert_eq!(v, 3);
             msrt_token_free(id);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn cancelling_a_task_parked_on_a_token_releases_the_token() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock; the handle is joined once.
         unsafe {
             let id = msrt_token_new(0);
@@ -1449,14 +1474,14 @@ mod tests {
             // Nobody waits any more, so the token can be freed.
             msrt_token_free(id);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn posts_to_a_freed_token_do_not_reach_its_reused_slot() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock.
         unsafe {
             let old = msrt_token_new(0);
@@ -1470,14 +1495,14 @@ mod tests {
             assert_eq!(msrt_token_park(new, 1_000_000, &mut v), WAIT_TIMEOUT);
             msrt_token_free(new);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_remote_post_wakes_a_parked_scheduler() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock.
         unsafe {
             let id = msrt_token_new(TOKEN_REMOTE);
@@ -1494,14 +1519,14 @@ mod tests {
             poster.join().unwrap();
             msrt_token_free(id);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn freeing_an_unposted_remote_token_stops_counting_it() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock.
         unsafe {
             let id = msrt_token_new(TOKEN_REMOTE);
@@ -1513,7 +1538,7 @@ mod tests {
             deliver_remote_posts();
             assert_eq!(sched().remote_tokens, 0);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[cfg(unix)]
@@ -1558,7 +1583,7 @@ mod tests {
         #[test]
         fn timers_of_woken_waits_do_not_pile_up() {
             let _g = lock();
-            reset_for_tests();
+            teardown();
             let fds = pipe();
             put(fds[1]);
             // SAFETY: tests hold the global lock; the descriptor stays open.
@@ -1575,13 +1600,13 @@ mod tests {
                 assert!(sched().timers.len() <= 2 * MIN_TIMER_LIMIT);
             }
             close_all(fds);
-            reset_for_tests();
+            teardown();
         }
 
         #[test]
         fn wakes_on_readable_then_stays_ready() {
             let _g = lock();
-            reset_for_tests();
+            teardown();
             let fds = pipe();
             // SAFETY: tests hold the global lock; every handle is joined once.
             unsafe {
@@ -1608,31 +1633,31 @@ mod tests {
                 );
             }
             close_all(fds);
-            reset_for_tests();
+            teardown();
         }
 
         #[test]
         fn times_out_when_nothing_arrives() {
             let _g = lock();
-            reset_for_tests();
+            teardown();
             let fds = pipe();
             // SAFETY: tests hold the global lock.
             let got = unsafe { msrt_task_wait_fd(fds[0], WAIT_READ, 10_000_000) };
             assert_eq!(got, WAIT_TIMEOUT);
             close_all(fds);
-            reset_for_tests();
+            teardown();
         }
 
         #[test]
         fn writable_end_is_ready() {
             let _g = lock();
-            reset_for_tests();
+            teardown();
             let fds = pipe();
             // SAFETY: tests hold the global lock.
             let got = unsafe { msrt_task_wait_fd(fds[1], WAIT_WRITE, 1_000_000_000) };
             assert_eq!(got & WAIT_WRITE, WAIT_WRITE);
             close_all(fds);
-            reset_for_tests();
+            teardown();
         }
     }
 
@@ -1661,14 +1686,14 @@ mod tests {
 
     impl StopRequest {
         fn raise() -> Self {
-            PENDING_SIGNAL.store(2, Ordering::Relaxed);
+            fault::PENDING_SIGNAL.store(2, Ordering::Relaxed);
             StopRequest
         }
     }
 
     impl Drop for StopRequest {
         fn drop(&mut self) {
-            PENDING_SIGNAL.store(0, Ordering::Relaxed);
+            fault::PENDING_SIGNAL.store(0, Ordering::Relaxed);
         }
     }
 
@@ -1676,7 +1701,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "parks on the poller")]
     fn stop_request_does_not_interrupt_a_shielded_wait() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         let _stop = StopRequest::raise();
         // SAFETY: tests hold the global lock; the sleeps run on the test's own task.
         unsafe {
@@ -1686,14 +1711,14 @@ mod tests {
             let r = shielded_call(|| msrt_task_sleep(3_000_000));
             assert_eq!(r, WAIT_TIMEOUT);
         }
-        reset_for_tests();
+        teardown();
     }
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn cancelling_a_task_does_not_interrupt_its_shielded_wait() {
         let _g = lock();
-        reset_for_tests();
+        teardown();
         // SAFETY: tests hold the global lock; every handle is joined once.
         unsafe {
             *LOG_N.ptr() = 0;
@@ -1703,6 +1728,6 @@ mod tests {
             assert_eq!(msrt_task_join(t, null_mut()), 0);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1]);
         }
-        reset_for_tests();
+        teardown();
     }
 }

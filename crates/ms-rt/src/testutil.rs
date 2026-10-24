@@ -5,6 +5,8 @@ static LOCK: Mutex<()> = Mutex::new(());
 
 /// Serializes tests that touch runtime globals (allocator, cleanup stack...).
 pub fn lock() -> MutexGuard<'static, ()> {
+    // The test thread plays the main isolate: stop signals and the process-wide flags are its.
+    crate::isolate::set_main();
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 

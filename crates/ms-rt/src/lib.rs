@@ -58,6 +58,7 @@ pub mod trap;
 pub mod trap;
 pub mod utf8;
 pub mod vec;
+pub mod worker;
 
 #[cfg(test)]
 mod model_tests;

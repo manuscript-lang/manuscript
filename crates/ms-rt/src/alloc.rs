@@ -193,6 +193,46 @@ pub fn claim_arena(main: bool) {
     s.main = main;
 }
 
+/// Returns the calling thread's arena to the system as its isolate ends. Blocks still live in
+/// it are gone; the owner registry forgets the arena first, so a late free of one of its blocks
+/// falls through to the system allocator's path and must not happen (isolates copy what they
+/// hand out).
+pub fn release_arena() {
+    // SAFETY: this isolate's allocator state; nothing allocates from it afterwards.
+    let s = unsafe { &mut *STATE.ptr() };
+    if s.base != 0 {
+        let a = &ARENAS[s.slot];
+        a.base.store(0, Ordering::Release);
+        a.remote.store(null_mut(), Ordering::Relaxed);
+        let size = s.end - s.base;
+        // SAFETY: the mappings were made by `init` and are no longer reachable.
+        unsafe {
+            sys::unmap(s.base as *mut u8, size);
+            sys::unmap(s.page_class, size >> PAGE_SHIFT);
+        }
+    }
+    for class in 0..NUM_LARGE {
+        let mut p = s.large_free[class];
+        while !p.is_null() {
+            // SAFETY: cached large blocks are live system blocks linked through word 0.
+            unsafe {
+                let next = *(p as *mut *mut u8);
+                sys::free(p.cast());
+                p = next;
+            }
+        }
+        s.large_free[class] = null_mut();
+    }
+    s.large_cached = 0;
+    s.free = [null_mut(); NUM_CLASSES];
+    s.bump = [null_mut(); NUM_CLASSES];
+    s.bump_end = [null_mut(); NUM_CLASSES];
+    s.base = 0;
+    s.end = 0;
+    s.initialized = true;
+    s.claimed = false;
+}
+
 /// Whether the calling thread has an arena (or will map one on its first small allocation).
 #[inline(always)]
 pub fn has_arena() -> bool {

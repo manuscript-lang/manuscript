@@ -95,7 +95,7 @@ unsafe fn run_main() {
 /// Runs on the isolate's own thread, whose allocator and task state it reads.
 #[cfg(feature = "stats")]
 fn report_leaks() {
-    crate::task::reset_for_tests();
+    crate::task::teardown();
     {
         eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
         // SAFETY: the counters belong to this isolate.
@@ -158,7 +158,7 @@ mod os {
 
     /// Reports a stack overflow by name instead of dying from a bare SIGSEGV. Must run on the
     /// thread that runs `main`, whose alternate stack the handler needs.
-    fn install_overflow_handler() {
+    pub fn install_overflow_handler() {
         // SAFETY: the alternate stack is never freed; the handler only makes async-signal-safe
         // calls before exiting.
         unsafe {
@@ -270,6 +270,12 @@ mod os {
 }
 
 use os::{arm_grace_timer, install_stop_handlers, run_on_big_stack};
+
+/// Gives the calling thread, a worker isolate's, the per-thread fault handling `main` has.
+pub fn install_thread_fault_handler() {
+    #[cfg(unix)]
+    os::install_overflow_handler();
+}
 
 /// Runtime entry called from the `main` the compiler emits. Returns the exit status.
 ///
