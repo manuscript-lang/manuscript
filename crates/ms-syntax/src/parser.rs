@@ -170,6 +170,9 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
     ))
 }
 
+/// Precedence of `..`: above comparisons, below `+` and `-`.
+const RANGE_LEVEL: u8 = 5;
+
 fn binary_op(kind: Tok) -> Option<BinaryOp> {
     Some(match kind {
         Tok::Or => BinaryOp::Or,
@@ -1763,7 +1766,7 @@ impl<'a> Parser<'a> {
                 Tok::Minus => UnaryOp::Neg,
                 _ => UnaryOp::Try,
             };
-            let operand = self.expression(7)?;
+            let operand = self.expression(8)?;
             e = self.mk(
                 t.pos,
                 ExprKind::Unary {
@@ -1796,6 +1799,19 @@ impl<'a> Parser<'a> {
                     let t = self.peek();
                     return self.fail(t, "a pipe has the lowest precedence; parenthesize it to use its result in an operator, e.g. (x | f) == y");
                 }
+                continue;
+            }
+            if op.kind == Tok::DotDot {
+                if min > RANGE_LEVEL {
+                    break;
+                }
+                self.at += 1;
+                let right = self.expression(RANGE_LEVEL + 1)?;
+                if self.kind() == Tok::DotDot {
+                    let t = self.peek();
+                    return self.fail(t, "a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections.ms\"");
+                }
+                e = self.range(e, right);
                 continue;
             }
             let Some(bop) = binary_op(op.kind) else { break };
@@ -1840,6 +1856,28 @@ impl<'a> Parser<'a> {
             e = self.conditional(e)?;
         }
         Ok(e)
+    }
+
+    /// `start..end` as the call `range(start, end)`; `..` names the standard `range`.
+    fn range(&mut self, start: Expr, end: Expr) -> Expr {
+        let pos = start.pos;
+        let callee = self.mk(pos, ExprKind::Name(Symbol::from("..")));
+        let args = [start, end]
+            .into_iter()
+            .map(|value| Argument {
+                pos: value.pos,
+                name: None,
+                value,
+                mutable: false,
+            })
+            .collect();
+        self.mk(
+            pos,
+            ExprKind::Call {
+                callee: Box::new(callee),
+                args,
+            },
+        )
     }
 
     /// `a if c else b` as a match over the Bool `c`; the else branch may nest.
@@ -2158,10 +2196,6 @@ impl<'a> Parser<'a> {
         loop {
             if self.take(Tok::Dot) {
                 self.link(&mut links)?;
-                if self.kind() == Tok::Dot {
-                    let t = self.peek();
-                    return self.fail(t, "Manuscript has no '..' range; to count, `for i in range(0, 10):` with range from \"@std/collections.ms\" (range_by adds a step and returns a Result)");
-                }
                 if self.kind() == Tok::Number {
                     let t = self.peek();
                     return self.fail(t, "a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2");

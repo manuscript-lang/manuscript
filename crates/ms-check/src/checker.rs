@@ -1385,6 +1385,10 @@ impl Checker {
                 }
             }
         }
+        // `a..b` is parsed as a call of `..`, which is always the standard `range`.
+        if let Some(range) = stdlib::standard_module_symbol(n("@std/collections.ms"), n("range")) {
+            self.names.borrow_mut().insert(n(".."), range);
+        }
         for name in stdlib::STANDARD_PRELUDE_NAMES {
             let nm = n(name);
             let Some(symbol) = stdlib::standard_symbol(name) else {

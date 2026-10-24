@@ -5,7 +5,7 @@ weight = 2
 
 # Loops
 
-`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Loops are statements: no labels, result values, range syntax, or custom iteration protocol.
+`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Loops are statements: no labels, result values, or custom iteration protocol.
 
 ## Traversing a list
 
@@ -20,16 +20,15 @@ def sum(values: List[Int]) -> Int:
 
 ## Counting loops
 
-`range(start, end)` from `@std/collections.ms` includes `start`, excludes `end`, and counts up by one. A `for` over a direct `range` call is a counter loop that allocates no list.
+`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the call `range(start, end)` from `@std/collections.ms`, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 
 test "sum indexes":
     var total = 0
-    for index in range(0, 5):
+    for index in 0..5:
         total += index
     if total != 10:
         return panic(f"Expected 10, got {total}")
@@ -72,7 +71,7 @@ test "sum even indexes":
     try expect_equal(total, 6)
 ```
 
-`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. `for index in 0..5:` is unsupported. See the [range declarations](../../standard-library/reference/collections.md#range).
+`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [range declarations](../../standard-library/reference/collections.md#range).
 
 ## Iterable types and binding
 
