@@ -228,11 +228,19 @@ mod imp {
     //! lends the raw `SOCKET` to a short-lived [`TcpStream`] view that is registered and, when
     //! the wait ends, deregistered and turned back into the raw handle without closing it.
     //! A handle that is not a socket cannot be registered and counts as ready at once.
+    //!
+    //! An overlapped named pipe adopted with [`pipe_adopt`] stays registered, as a mio
+    //! `NamedPipe`, until [`pipe_drop`]; its reads and writes go through mio's overlapped buffers.
+    //! A task waits on the handle to read and on the handle plus one to write (handles are
+    //! multiples of four), so one task can read while another writes.
 
     use super::*;
     use mio::net::TcpStream;
+    use mio::windows::NamedPipe;
     use mio::{Events, Poll, Token, Waker};
     use std::collections::HashMap;
+    use std::io::{Read, Write};
+    use std::os::windows::io::{FromRawHandle, RawHandle};
     use std::os::windows::io::{FromRawSocket, IntoRawSocket};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -244,6 +252,8 @@ mod imp {
         events: Events,
         /// The registered views, by socket.
         views: HashMap<usize, TcpStream>,
+        /// Adopted named pipes, by handle; registered until dropped.
+        pipes: HashMap<usize, NamedPipe>,
     }
 
     crate::isolate_static! {
@@ -265,8 +275,10 @@ mod imp {
             let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
             let state = State {
                 poll,
-                events: Events::with_capacity(64),
+                // Half the 64 ready slots: a pipe event can wake a reader and a writer.
+                events: Events::with_capacity(32),
                 views: HashMap::new(),
+                pipes: HashMap::new(),
             };
             Ok((state, waker))
         };
@@ -319,6 +331,9 @@ mod imp {
 
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
+        if s.pipes.contains_key(&(sock & !3)) {
+            return Watch::Armed;
+        }
         release(s, sock);
         let interest = interest(events);
         // SAFETY: the view never closes the socket: it ends in `into_raw_socket`.
@@ -336,6 +351,55 @@ mod imp {
         }
     }
 
+    /// Registers the overlapped named pipe `handle` for reads and writes; it is closed by
+    /// [`pipe_drop`]. False when it cannot be registered (not opened for overlapped I/O).
+    ///
+    /// # Safety
+    /// `handle` is an open named-pipe handle opened with `FILE_FLAG_OVERLAPPED`, owned from now
+    /// on by the poller.
+    pub unsafe fn pipe_adopt(handle: usize) -> bool {
+        let s = state();
+        // SAFETY: the caller hands over an open overlapped pipe handle.
+        let mut pipe = unsafe { NamedPipe::from_raw_handle(handle as RawHandle) };
+        let interest = mio::Interest::READABLE | mio::Interest::WRITABLE;
+        if s.poll
+            .registry()
+            .register(&mut pipe, Token(handle), interest)
+            .is_err()
+        {
+            // Hand the handle back to the caller unclosed.
+            core::mem::forget(pipe);
+            return false;
+        }
+        s.pipes.insert(handle, pipe);
+        true
+    }
+
+    /// One non-blocking read from an adopted pipe; `WouldBlock` until data arrives.
+    pub fn pipe_read(handle: usize, buf: &mut [u8]) -> std::io::Result<usize> {
+        match state().pipes.get(&handle) {
+            Some(mut pipe) => pipe.read(buf),
+            None => Err(std::io::ErrorKind::NotFound.into()),
+        }
+    }
+
+    /// One non-blocking write to an adopted pipe; `WouldBlock` while an earlier write is in
+    /// flight.
+    pub fn pipe_write(handle: usize, buf: &[u8]) -> std::io::Result<usize> {
+        match state().pipes.get(&handle) {
+            Some(mut pipe) => pipe.write(buf),
+            None => Err(std::io::ErrorKind::NotFound.into()),
+        }
+    }
+
+    /// Deregisters and closes an adopted pipe.
+    pub fn pipe_drop(handle: usize) {
+        let s = state();
+        if let Some(mut pipe) = s.pipes.remove(&handle) {
+            let _ = s.poll.registry().deregister(&mut pipe);
+        }
+    }
+
     pub unsafe fn wait(_: i32, timeout_ms: i32, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
         let timeout = (timeout_ms >= 0).then(|| Duration::from_millis(timeout_ms as u64));
@@ -343,12 +407,23 @@ mod imp {
             fault::fault(b"I/O poller failed");
         }
         let mut count = 0;
-        let ready: Vec<(usize, u32)> = s
-            .events
-            .iter()
-            .filter(|ev| ev.token() != WAKE_TOKEN)
-            .map(|ev| (ev.token().0, bits(ev)))
-            .collect();
+        let mut ready: Vec<(usize, u32)> = Vec::new();
+        for ev in s.events.iter().filter(|ev| ev.token() != WAKE_TOKEN) {
+            let (fd, bits) = (ev.token().0, bits(ev));
+            if !s.pipes.contains_key(&fd) {
+                ready.push((fd, bits));
+                continue;
+            }
+            // A pipe stays registered: wake its reader and its writer separately.
+            if bits & (WAIT_READ | WAIT_HUP) != 0 {
+                out[count] = Ready { fd, bits };
+                count += 1;
+            }
+            if bits & (WAIT_WRITE | WAIT_HUP) != 0 {
+                out[count] = Ready { fd: fd + 1, bits };
+                count += 1;
+            }
+        }
         for (sock, bits) in ready {
             // One-shot: the task registers again when it waits again.
             release(s, sock);
@@ -360,3 +435,5 @@ mod imp {
 }
 
 pub use imp::{close, create, forget, kick, unwatch, wait, watch};
+#[cfg(windows)]
+pub use imp::{pipe_adopt, pipe_drop, pipe_read, pipe_write};

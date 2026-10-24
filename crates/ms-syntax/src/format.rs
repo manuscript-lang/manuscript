@@ -178,6 +178,9 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::Dot && matches!(previous, Tok::Pipe | Tok::Try) {
         return true;
     }
+    if current == Tok::DotDot || previous == Tok::DotDot {
+        return false;
+    }
     if matches!(
         current,
         Tok::RParen | Tok::RBracket | Tok::RBrace | Tok::Comma | Tok::Dot | Tok::Colon

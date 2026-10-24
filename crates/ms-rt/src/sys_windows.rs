@@ -463,12 +463,12 @@ struct Context([u8; ctx::SIZE]);
 /// Recovers the first generated source frame through the native fault-reporting
 /// prefix. Missing native unwind metadata ends the search: generated glue also
 /// lacks it, and must never be mistaken for a native leaf function.
-/// Returns `(pc, fp, remaining raw-frame budget)`. Accounting begins with callers
+/// Returns `(pc, sp, fp, remaining raw-frame budget)`. Accounting begins with callers
 /// of `anchor_pc`; walker-internal frames below that function do not consume it.
 pub fn source_frame(
     anchor_pc: usize,
     mut is_source: impl FnMut(usize) -> bool,
-) -> Option<(usize, usize, usize)> {
+) -> Option<(usize, usize, usize, usize)> {
     let mut c = Context([0; ctx::SIZE]);
     let (lo, hi) = stack_limits();
     // SAFETY: aligned, correctly sized architecture-specific CONTEXT. Native
@@ -490,7 +490,7 @@ pub fn source_frame(
             if is_source(pc) {
                 // The generated walker consumes this first source frame. A
                 // missing anchor must never grant it a fresh/full budget.
-                return Some((pc, fp, budget.remaining()?));
+                return Some((pc, sp, fp, budget.remaining()?));
             }
             let mut image = 0;
             let entry = RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut());

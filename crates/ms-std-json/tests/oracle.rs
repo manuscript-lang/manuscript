@@ -24,18 +24,18 @@ fn dump(doc: &Doc, id: NodeId, out: &mut String) {
     match &doc.nodes[id as usize] {
         Node::Null => out.push('N'),
         Node::Bool(b) => out.push(if *b { 'T' } else { 'F' }),
-        Node::Number(t) => *out += &format!("#{t};"),
-        Node::Str(s) => *out += &format!("s{};", hex(s.as_bytes())),
-        Node::Array(items) => {
+        Node::Num(_) | Node::RawNum(_) => *out += &format!("#{};", doc.text_of(id)),
+        Node::Str(_) => *out += &format!("s{};", hex(doc.text_of(id).as_bytes())),
+        Node::Arr { .. } | Node::ArrB(_) => {
             out.push('[');
-            items.iter().for_each(|&i| dump(doc, i, out));
+            doc.items(id).iter().for_each(|&i| dump(doc, i, out));
             out.push(']');
         }
-        Node::Object(entries) => {
+        Node::Obj { .. } | Node::ObjB(_) => {
             out.push('{');
-            for (k, v) in entries {
-                *out += &format!("{}:", hex(k.as_bytes()));
-                dump(doc, *v, out);
+            for m in doc.members(id) {
+                *out += &format!("{}:", hex(doc.slice(m.key).as_bytes()));
+                dump(doc, m.val, out);
             }
             out.push('}');
         }
@@ -47,20 +47,20 @@ fn load(doc: &mut Doc, s: &[u8], pos: &mut usize) -> NodeId {
     let c = s[*pos];
     let until =
         |s: &[u8], from: usize, end: u8| from + s[from..].iter().position(|&b| b == end).unwrap();
-    let node = match c {
+    match c {
         b'N' => {
             *pos += 1;
-            Node::Null
+            doc.add(Node::Null)
         }
         b'T' | b'F' => {
             *pos += 1;
-            Node::Bool(c == b'T')
+            doc.add(Node::Bool(c == b'T'))
         }
         b'#' => {
             let e = until(s, *pos, b';');
             let t = String::from_utf8(s[*pos + 1..e].to_vec()).unwrap();
             *pos = e + 1;
-            Node::Number(t)
+            doc.add_raw_number(&t)
         }
         b's' => {
             let e = until(s, *pos, b';');
@@ -69,7 +69,7 @@ fn load(doc: &mut Doc, s: &[u8], pos: &mut usize) -> NodeId {
                 std::str::from_utf8(&s[*pos + 1..e]).unwrap()
             ));
             *pos = e + 1;
-            Node::Str(String::from_utf8(t).unwrap())
+            doc.add_str(&String::from_utf8(t).unwrap())
         }
         b'[' => {
             *pos += 1;
@@ -78,24 +78,23 @@ fn load(doc: &mut Doc, s: &[u8], pos: &mut usize) -> NodeId {
                 items.push(load(doc, s, pos));
             }
             *pos += 1;
-            Node::Array(items)
+            doc.add_array(items)
         }
         b'{' => {
             *pos += 1;
-            let mut entries = vec![];
+            let obj = doc.add_object();
             while s[*pos] != b'}' {
                 let e = until(s, *pos, b':');
                 let k = bytes(&format!("x{}", std::str::from_utf8(&s[*pos..e]).unwrap()));
                 *pos = e + 1;
                 let v = load(doc, s, pos);
-                entries.push((String::from_utf8(k).unwrap(), v));
+                doc.object_put(obj, &String::from_utf8(k).unwrap(), v);
             }
             *pos += 1;
-            Node::Object(entries)
+            obj
         }
         _ => panic!("bad dump"),
-    };
-    doc.add(node)
+    }
 }
 
 fn result<T>(r: Result<T, Fail>, ok: impl FnOnce(T) -> String) -> String {

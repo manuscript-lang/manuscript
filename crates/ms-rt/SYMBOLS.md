@@ -65,6 +65,7 @@ msrt_map_new(out: *mut MapVal)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc)
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
+msrt_map_reserve(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, n: i64)
 msrt_map_add( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_add_w8( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_add_sw8( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
@@ -458,27 +459,28 @@ msrt_json_text(d: *const DocObj, id: u32, out: *mut StrVal)
 msrt_json_len(d: *const DocObj, id: u32) -> i64
 msrt_json_item(d: *const DocObj, id: u32, i: i64) -> u32
 msrt_json_key(d: *const DocObj, id: u32, i: i64, out: *mut StrVal)
-msrt_json_builder_new() -> *mut DocObj
-msrt_json_add_null(d: *mut DocObj) -> u32
-msrt_json_add_bool(d: *mut DocObj, v: u8) -> u32
-msrt_json_add_number(d: *mut DocObj, text: *const StrVal) -> u32
-msrt_json_add_string(d: *mut DocObj, text: *const StrVal) -> u32
-msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32
-msrt_json_add_object( d: *mut DocObj, keys: *const *const StrVal, ids: *const u32, n: i64, ) -> u32
-msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut StrVal, ) -> u8
+msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, ) -> *mut WriterObj
+msrt_json_w_item(w: *mut WriterObj)
+msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
+msrt_json_w_undo(w: *mut WriterObj)
+msrt_json_w_begin_array(w: *mut WriterObj)
+msrt_json_w_end_array(w: *mut WriterObj)
+msrt_json_w_begin_object(w: *mut WriterObj)
+msrt_json_w_end_object(w: *mut WriterObj)
+msrt_json_w_null(w: *mut WriterObj)
+msrt_json_w_bool(w: *mut WriterObj, v: u8)
+msrt_json_w_int(w: *mut WriterObj, v: i64)
+msrt_json_w_float(w: *mut WriterObj, v: f64)
+msrt_json_w_number(w: *mut WriterObj, text: *const StrVal)
+msrt_json_w_string(w: *mut WriterObj, text: *const StrVal)
+msrt_json_w_finish(w: *mut WriterObj, out: *mut StrVal) -> u8
 msrt_json_dec_ip(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_cidr(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_int(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrVal, out: *mut f64) -> u8
-msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
-msrt_json_add_empty_array(d: *mut DocObj) -> u32
-msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
-msrt_json_add_empty_object(d: *mut DocObj) -> u32
-msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrVal, item: u32, )
 msrt_json_find(d: *const DocObj, id: u32, key: *const StrVal) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
-msrt_json_enc_float(v: f64, out: *mut StrVal)
 msrt_logcore_new_state( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
 msrt_logcore_child( l: *const LoggerObj, fields: *const StrVal, out: *mut *mut LoggerObj, ) -> u8
 msrt_logcore_enabled(l: *const LoggerObj, level: i64) -> u8
@@ -674,6 +676,15 @@ msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns:
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
 msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
+msstd_process_fork( runner: *mut Closure, stdin: i64, stdout: i64, stderr: i64, out: *mut *mut Handle<Forked>, ) -> u8
+msstd_process_forked_link(h: *mut Handle<Forked>) -> *mut Handle<IpcLink>
+msstd_process_forked_wait(h: *mut Handle<Forked>, timeout_ns: i64, out: *mut i64) -> u8
+msstd_process_forked_signal(h: *mut Handle<Forked>, force: u8)
+msstd_process_forked_close(h: *mut Handle<Forked>)
+msstd_process_ipc_child() -> *mut Handle<IpcLink>
+msstd_process_ipc_read(h: *mut Handle<IpcLink>, max: i64, out: *mut VecVal)
+msstd_process_ipc_write(h: *mut Handle<IpcLink>, data: *const VecVal) -> u8
+msstd_process_ipc_close(h: *mut Handle<IpcLink>)
 msstd_process_elapsed(out: *mut i64) -> u8
 msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8
 msstd_process_info_pid() -> i64

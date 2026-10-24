@@ -474,43 +474,74 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     Some(unsafe { *t.scopes.add(id as usize - 1) })
 }
 
+/// How far above a frame's stack pointer to look for its frame record, in bytes.
+#[cfg(any(windows, test))]
+const FRAME_RECORD_SCAN: usize = 4096;
+
 /// Windows native frames do not use the generated code's frame layout. Recover
 /// the first source frame with native unwind metadata, then follow only the
 /// contiguous generated caller chain. Stop at native/glue boundaries rather
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
-unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
+unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
     #[cfg(target_arch = "x86_64")]
     // SAFETY: written once by the depth-fault shim on this thread, before any report is built.
     let site = unsafe { core::ptr::replace(core::ptr::addr_of_mut!(DEPTH_SITE), [0; 2]) };
     #[cfg(target_arch = "x86_64")]
-    let recovered = if site[0] != 0 {
+    let recovered = if site[0] != 0 && anchor == fault_vec as *const () as usize {
         // The depth limit was hit: the shim saved the generated frame, which a diverging Rust
         // function between here and there may have clobbered in the register the unwinder reads.
-        Some((site[0], site[1], MAX_STACK_WALK_FRAMES - 2))
+        Some((site[0], 0, site[1], MAX_STACK_WALK_FRAMES - 2))
     } else {
-        sys::source_frame(fault_vec as *const () as usize, |pc| {
-            find_func(t, pc).is_some()
-        })
+        sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
     };
     #[cfg(not(target_arch = "x86_64"))]
-    let recovered = sys::source_frame(fault_vec as *const () as usize, |pc| {
-        find_func(t, pc).is_some()
-    });
-    let Some((pc, fp, remaining)) = recovered else {
+    let recovered = sys::source_frame(anchor, |pc| find_func(t, pc).is_some());
+    let Some((pc, sp, fp, remaining)) = recovered else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    if site[0] != 0 {
-        let (n, r) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
-        let n2 = unsafe { *(n as *const usize) };
-        let r2 = unsafe { *((n + 8) as *const usize) };
-        let m = format!("WALKDBG pc={pc:x} fp={fp:x} lo={lo:x} hi={hi:x} next={n:x} ret={r:x} infn={} next2={n2:x} ret2={r2:x} infn2={}\n", find_func(t, r).is_some(), find_func(t, r2).is_some());
-        sys::write_all(sys::STDERR, m.as_bytes());
-    }
+    // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
+    // register pointing at a caller's record, so it finds the generated frame's own record.
+    let fp = if anchor == capture_frames as *const () as usize {
+        // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
+        unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
+    } else {
+        fp
+    };
     // SAFETY: source_frame recovered the current generated frame and stack_limits
     // bounds the live thread stack.
     unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
+}
+
+/// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
+/// return address `is_source` accepts and whose saved fp lies further up the stack.
+///
+/// # Safety
+/// `sp..hi` is live stack memory.
+#[cfg(any(windows, test))]
+unsafe fn frame_record(
+    sp: usize,
+    lo: usize,
+    hi: usize,
+    mut is_source: impl FnMut(usize) -> bool,
+) -> Option<usize> {
+    let first = sp.checked_add(7)? & !7;
+    let last = first
+        .checked_add(FRAME_RECORD_SCAN)?
+        .min(hi.checked_sub(16)?);
+    let mut at = first;
+    while at <= last {
+        if at >= lo {
+            // SAFETY: `at + 16 <= hi` within the live stack.
+            let (next, ret) = unsafe { (*(at as *const usize), *((at + 8) as *const usize)) };
+            if next > at && next.is_multiple_of(8) && next < hi && is_source(ret) {
+                return Some(at);
+            }
+        }
+        at += 8;
+    }
+    None
 }
 
 #[cfg(any(windows, test))]
@@ -545,7 +576,7 @@ unsafe fn walk_source_frames(
 }
 
 #[cfg(not(windows))]
-unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
+unsafe fn walk_fault_frames(fp: usize, _anchor: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
     // SAFETY: forwarded live frame-pointer chain.
     unsafe { walk_frames(fp, f) }
 }
@@ -601,15 +632,26 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
 }
 
 /// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
+#[inline(never)]
 pub fn capture_frames() -> Vec<usize> {
     let mut out = Vec::new();
-    #[cfg(not(windows))]
-    // SAFETY: the frame pointer of this thread's live frame-pointer chain.
+    // SAFETY: tables pointer is set once at start.
+    let t = unsafe { *TABLES.ptr() };
+    if t.is_null() {
+        return out;
+    }
+    // SAFETY: non-null table installed by `msrt_start`; the frame pointer is this thread's live
+    // chain, and on Windows the anchor is this function, as `fault_vec` is for a fault.
     unsafe {
-        walk_frames(frame_pointer(), |ret| {
-            out.push(ret);
-            out.len() < 2 * MAX_FAULT_FRAMES
-        });
+        walk_fault_frames(
+            frame_pointer(),
+            capture_frames as *const () as usize,
+            &*t,
+            |ret| {
+                out.push(ret);
+                out.len() < 2 * MAX_FAULT_FRAMES
+            },
+        );
     }
     out
 }
@@ -635,7 +677,9 @@ fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
-    describe_with(out, |t, visit| unsafe { walk_fault_frames(fp, t, visit) });
+    describe_with(out, |t, visit| unsafe {
+        walk_fault_frames(fp, fault_vec as *const () as usize, t, visit)
+    });
 }
 
 /// Appends `file:line in name` lines for the source frames `drive` visits, innermost first.
@@ -1448,6 +1492,27 @@ mod tests {
         }
         assert_eq!(budget.remaining(), Some(0));
         assert!(!budget.visit(false));
+    }
+
+    #[test]
+    fn frame_record_skips_stale_slots_to_the_first_valid_record() {
+        // [junk, junk, saved fp -> slot 5, return address, caller record...]
+        let mut stack = [0usize; 8];
+        let ptr = stack.as_mut_ptr();
+        let base = ptr.expose_provenance();
+        // SAFETY: all writes are inside the array.
+        unsafe {
+            *ptr = 0x1;
+            *ptr.add(1) = 0x2;
+            *ptr.add(2) = base + 5 * 8;
+            *ptr.add(3) = 0x1010;
+        }
+        let hi = base + 8 * 8;
+        // SAFETY: the array outlives the scan and covers `base..hi`.
+        let found = unsafe { frame_record(base, base, hi, |pc| pc == 0x1010) };
+        assert_eq!(found, Some(base + 2 * 8));
+        // SAFETY: as above.
+        assert_eq!(unsafe { frame_record(base, base, hi, |_| false) }, None);
     }
 
     #[test]

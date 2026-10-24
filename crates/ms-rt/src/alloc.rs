@@ -803,6 +803,11 @@ mod std_heap {
             if owns(p) {
                 // SAFETY: an arena block; `free` routes it to its owner.
                 unsafe { super::free(p) };
+            } else if layout.size() > MAX_SMALL && arena_ok(layout) {
+                // SAFETY: a large block is a system block either way; the runtime keeps
+                // freed ones for reuse, where the system allocator would unmap them and
+                // fault the next block in again.
+                unsafe { super::free(p) };
             } else {
                 // SAFETY: not an arena block, so the system allocator produced it.
                 unsafe { System.dealloc(p, layout) };

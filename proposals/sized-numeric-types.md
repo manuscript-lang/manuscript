@@ -10,7 +10,7 @@
 
 ## Status
 
-- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stage 1 implemented 2026-10-24 (PR for this branch); stages 2 to 5 pending. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
+- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stages 1 to 4 implemented 2026-10-24. Stage 5 (the default flip) dropped by the owner 2026-10-24 (card answer "Keep Int as Int64"): `Int` stays `Int64`, sized types are explicit. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
 - Direction (Chinmay, 2026-10-24): "lets add specific number types in the stdlib, we need to have 8, 16, 32, 64 style numeric types so we can reduce memory usage, default to 32 for Int/Float".
 
 ## Problem
@@ -134,7 +134,7 @@ let d = b + c
 1. **Types, no layout change (implemented).** Checker names, ranges, contextual literals (including the other operand of an operator), `narrow.chk` and `f32.round`, `Float32` printing (`msrt_float32_to_string`), `msrt_fault_int_range`; conversions are not part of it. Six primitives and aliases (`Int = Int64`, `Float = Float64`). Existing programs behave identically. Gate: `make conform` new accept/reject cases.
 2. **Conversions and receivers (implemented).** New MIR ops `conv` (widen int, or float rounding to nearest-even, infallible) and `inarrow.opt` (narrowing int to `Optional[Target]`). `Int.to_int64()` is an identity for the alias. `to_int8()` ... `to_float64()`, `compare`, `to_string_radix`, `to_decimal` on every width via `bindings.json` and `intrinsics.ms`. Native codegen needs no stage of its own (see Types).
 3. **Packed storage (implemented).** Memory leaves `N8/N16/N32/F32` in `ms-clif/src/layout.rs`; `Int8..Int32` descriptors are `POD`, `Float32` is `msrt_desc_float32`; number literals also take a sized constructor-field or `Optional.get` default type. Measured on 50M appends, release: `List[Int8]` 49 MB 0.04 s, `List[Int32]` 195 MB 0.12 s, `List[Int]` 391 MB 0.21 s. Lists, records, maps, optionals use the width; runtime sort, hash, equality per width. Gate: runtime unit tests per width, leak check, and a measurement of `List[Int8]` against `List[Int]` for memory and time.
-4. **Stdlib and docs.** Math conversions, `Int64` where quantities need it, generated reference. Gate: `make docs`, `make verify`.
+4. **Stdlib and docs (`abs()`/`sign()` methods implemented; `Int64` retyping moves to stage 5, where it first changes behavior).** Math conversions, `Int64` where quantities need it, generated reference. Gate: `make docs`, `make verify`.
 5. **Default flip.** Prerequisite: a `bench/` run of flipped programs against stage 4. Alias `Int` to `Int32` (`Float` stays `Float64`), update stdlib signatures and literal ranges, migrate tests and benchmarks. Gate: `make verify-full`, `bench` comparison against stage 4, explicit owner approval after reading that comparison.
 
 ## Open questions

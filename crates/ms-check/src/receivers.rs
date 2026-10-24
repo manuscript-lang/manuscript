@@ -191,6 +191,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("to_string_radix", "math/format_int"),
             ("compare", "math/compare_int"),
+            ("abs", "math/abs_int"),
+            ("sign", "math/sign_int"),
         ],
     ),
     (
@@ -198,6 +200,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("to_string_radix", "math/format_int"),
             ("compare", "math/compare_int"),
+            ("abs", "math/abs_int"),
+            ("sign", "math/sign_int"),
         ],
     ),
     (
@@ -205,6 +209,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("to_string_radix", "math/format_int"),
             ("compare", "math/compare_int"),
+            ("abs", "math/abs_int"),
+            ("sign", "math/sign_int"),
         ],
     ),
     (
@@ -212,6 +218,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("to_string_radix", "math/format_int"),
             ("compare", "math/compare_int"),
+            ("abs", "math/abs_int"),
+            ("sign", "math/sign_int"),
         ],
     ),
     (
@@ -220,6 +228,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("is_nan", "math/is_nan"),
             ("is_finite", "math/is_finite"),
             ("compare", "math/compare_float"),
+            ("abs", "math/abs_float"),
+            ("sign", "math/sign_float"),
         ],
     ),
     (
@@ -232,6 +242,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("is_nan", "math/is_nan"),
             ("is_finite", "math/is_finite"),
             ("compare", "math/compare_float"),
+            ("abs", "math/abs_float"),
+            ("sign", "math/sign_float"),
         ],
     ),
     (

@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "processes.ms::a child process answers each message in order",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "processes.ms::records cross in both directions",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "processes.ms::the parent reads what a finished child sent, then the end",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "processes.ms::results come back in start order",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "processes.ms::a Unit result crosses",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "processes.ms::a child that faults is data, not a parent fault",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "processes.ms::a piped standard stream is not offered",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "processes.ms::process errors describe themselves",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN processes.ms::a child process answers each message in order\nPASS processes.ms::a child process answers each message in order\nRUN processes.ms::records cross in both directions\nPASS processes.ms::records cross in both directions\nRUN processes.ms::the parent reads what a finished child sent, then the end\nPASS processes.ms::the parent reads what a finished child sent, then the end\nRUN processes.ms::results come back in start order\nPASS processes.ms::results come back in start order\nRUN processes.ms::a Unit result crosses\nPASS processes.ms::a Unit result crosses\nRUN processes.ms::a child that faults is data, not a parent fault\nPASS processes.ms::a child that faults is data, not a parent fault\nRUN processes.ms::a piped standard stream is not offered\nPASS processes.ms::a piped standard stream is not offered\nRUN processes.ms::process errors describe themselves\nPASS processes.ms::process errors describe themselves\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

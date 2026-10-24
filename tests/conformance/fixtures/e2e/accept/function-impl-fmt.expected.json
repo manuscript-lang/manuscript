@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ninterface Apply[T]:\n    def apply(value: Int) -> T\n\ntype Box[T]:\n    value: T\n\nimpl Apply[T] for Box[Callable[[Int], T]]:\n    def apply(value: Int) -> T:\n        return self.value(value)\n\ndef render(value: Int) -> String:\n    return f\"{value}\"\n\ntest \"implementation variables inside function signatures\":\n    let box = Box(render)\n    try expect_equal(box.apply(3), \"3\")\n\n    let operation = Apply[String](box)\n    try expect_equal(operation.apply(4), \"4\")\n"
+    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ninterface Apply[T]:\n    def apply(value: Int) -> T\n\ntype Box[T]:\n    value: T\n\nimpl Apply[T] for Box[Callable[[Int], T]]:\n    def apply(value: Int) -> T:\n        return self.value(value)\n\ndef render(value: Int) -> String:\n    return f\"{value}\"\n\ntest \"implementation variables inside function signatures\":\n    let box = Box(render)\n    try expect_equal(box.apply(3), \"3\")\n\n    let operation: Apply[String] = box\n    try expect_equal(operation.apply(4), \"4\")\n"
   }
 }

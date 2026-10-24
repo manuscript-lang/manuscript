@@ -565,6 +565,13 @@ unsafe fn reap() {
 
 pub use crate::poller::kick;
 
+/// Opens the poller if no wait has yet (the Windows pipe registry lives in it).
+#[cfg(windows)]
+pub(crate) fn ensure_poller() {
+    // SAFETY: single threaded scheduler.
+    unsafe { poller_fd() };
+}
+
 unsafe fn poller_fd() -> i32 {
     let mut s = sched();
     if s.epfd < 0 {

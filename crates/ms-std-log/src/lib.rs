@@ -18,7 +18,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use ms_rt::ffi::Fail;
-use ms_std_json::{Doc, Limits, Node, NodeId};
+use ms_std_json::{Doc, Limits, NodeId};
 
 /// Levels from Trace (0) to Silent (6); only 0 through 5 can label a record.
 pub const SILENT: usize = 6;
@@ -57,12 +57,9 @@ pub fn object_text(text: &str) -> String {
 fn parse_fields(text: &str) -> Result<(Doc, Vec<(String, NodeId)>), LogFail> {
     let (doc, root) =
         ms_std_json::parse(text, Limits::default()).map_err(|_| LogFail::InvalidData)?;
-    match doc.nodes.get(root as usize) {
-        Some(Node::Object(members)) => {
-            let members = members.clone();
-            Ok((doc, members))
-        }
-        _ => Err(LogFail::InvalidData),
+    match doc.object_entries(root) {
+        Some(members) => Ok((doc, members)),
+        None => Err(LogFail::InvalidData),
     }
 }
 
@@ -74,19 +71,6 @@ fn merge(into: &mut Vec<(String, NodeId)>, members: &[(String, NodeId)]) {
             None => into.push((k.clone(), *v)),
         }
     }
-}
-
-/// Appends `other`'s nodes to `doc`, returning the offset to add to its node ids.
-fn absorb(doc: &mut Doc, other: Doc) -> NodeId {
-    let base = doc.nodes.len() as NodeId;
-    for node in other.nodes {
-        doc.nodes.push(match node {
-            Node::Array(ids) => Node::Array(ids.into_iter().map(|i| i + base).collect()),
-            Node::Object(m) => Node::Object(m.into_iter().map(|(k, i)| (k, i + base)).collect()),
-            n => n,
-        });
-    }
-    base
 }
 
 pub struct Logger {
@@ -138,10 +122,8 @@ impl Logger {
     /// `ChildJson`: a logger adding the members of the object text `fields` to each record.
     pub fn child(&self, fields: &str) -> Result<Logger, LogFail> {
         let (other, members) = parse_fields(fields)?;
-        let mut doc = Doc {
-            nodes: self.doc.nodes.clone(),
-        };
-        let base = absorb(&mut doc, other);
+        let mut doc = self.doc.clone();
+        let base = doc.append(&other);
         let mut bindings = self.bindings.clone();
         let shifted: Vec<_> = members.into_iter().map(|(k, i)| (k, i + base)).collect();
         merge(&mut bindings, &shifted);
@@ -190,26 +172,21 @@ impl Logger {
         if (level as usize) < self.level() {
             return Ok(None);
         }
-        let mut doc = Doc {
-            nodes: self.doc.nodes.clone(),
-        };
+        let mut doc = self.doc.clone();
         let mut merged = self.bindings.clone();
         if let Some((other, members)) = fields {
-            let base = absorb(&mut doc, other);
+            let base = doc.append(&other);
             let shifted: Vec<_> = members.into_iter().map(|(k, i)| (k, i + base)).collect();
             merge(&mut merged, &shifted);
         }
         let mut record = Vec::with_capacity(merged.len() + 3);
         record.push((
             "level".to_string(),
-            doc.add(Node::Number(((level + 1) * 10).to_string())),
+            doc.add_raw_number(&((level + 1) * 10).to_string()),
         ));
-        record.push(("msg".to_string(), doc.add(Node::Str(message.to_string()))));
+        record.push(("msg".to_string(), doc.add_str(message)));
         if self.timestamp {
-            record.push((
-                "time".to_string(),
-                doc.add(Node::Number(now_ms.to_string())),
-            ));
+            record.push(("time".to_string(), doc.add_raw_number(&now_ms.to_string())));
         }
         // These keys belong to the record envelope even when time is disabled.
         record.extend(
@@ -222,7 +199,10 @@ impl Logger {
             Some(n) => Some(i64::try_from(n - 1).unwrap_or(i64::MAX)),
             None => None,
         };
-        let root = doc.add(Node::Object(record));
+        let root = doc.add_object();
+        for (k, id) in record {
+            doc.object_put(root, &k, id);
+        }
         let line = doc.stringify(root, max, None).map_err(|e| match e {
             Fail::LimitExceeded => LogFail::LimitExceeded,
             _ => LogFail::InvalidData,

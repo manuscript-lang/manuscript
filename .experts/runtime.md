@@ -204,3 +204,11 @@ Decision (owner, 2026-10-24): workers follow the `worker_threads` model: an OS t
 Apply when: adding a process-wide `static`, a cache, or a standard-library feature that keeps state outside the isolate.
 Evidence: `proposals/worker-threads.md`; measured scaling 1.8x on two workers and 3.0x on four (`fib(38)` x8); allocator thread-local state cost +0.04% instructions on the program suite.
 Verify: every runtime `static` is an atomic, a `Process` cell (main isolate only), or an `isolate_static!`. Rust code in a worker uses the system allocator, because an arena ends with its worker and Rust code can keep an allocation in a cache another isolate reads (a `Vec` in a worker arena behind a process-wide `OnceLock` was a use-after-free). `Global<T>` in `ms-std-*` faults in a worker. Worker stdout writes bypass the main isolate's buffer. Windows reaches the task header through `msrt_isolate_hdr`, a call, because fibers cannot be aligned.
+
+### A process entry is found by code offset, so it must capture nothing
+
+Decided: `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fork`, which reads the runner's and the entry's code and drop words and sends them as offsets from `msrt_start` in `MS_ENTRY`. The child rebuilds both closures before `main`. This needs no entry table in the compiler, but only a closure without captures can be rebuilt, so the checker requires the entry to name a top-level `def`. Values cross inside an `Envelope[T]` record because `Unit` has no JSON form: decoding restores an absent `Unit` member.
+
+Apply when: changing closure layout, `ProcessGroup.spawn`, the runner, or the JSON handling of `Unit`.
+Evidence: [start hook](../crates/ms-rt/src/start.rs), [fork natives](../crates/ms-std-process/src/fork.rs), [processes module](../stdlib/processes.ms), [fixture](../tests/conformance/fixtures/e2e/stdlib/processes.ms), [reject fixture](../tests/conformance/fixtures/e2e/reject/process-entry-lambda.ms).
+Verify: the processes fixture passes under `ms test`; a lambda entry is rejected by `ms check`.
