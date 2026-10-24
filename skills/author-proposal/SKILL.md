@@ -7,7 +7,9 @@ description: Write a Manuscript design proposal in technical language with secti
 
 Structure follows common RFC practice: Rust RFCs (drawbacks, alternatives, prior art, unresolved questions), Python PEPs (motivation, rationale, rejected ideas), and Fuchsia's RFC guidance (stakeholder implications, simple language, diagrams, recorded alternatives).
 
-Use whenever you write or revise a design proposal (`proposals/*.md`), including the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) for contract tracing and [language-design-taste](../language-design-taste/SKILL.md) for design choices. Read one or two existing proposals in `proposals/` for shape before drafting. Link a proposal that is a skeptical-review target to the reviewer's findings once it has them.
+Use whenever you write or revise a design proposal. Store every proposal in the repo as `proposals/<kebab-name>.md` and commit it with the change or in its own PR; do not leave it only in chat, a doc, or project files. Update the file in place as the design changes and record the decision in Status.
+
+This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) for contract tracing and [language-design-taste](../language-design-taste/SKILL.md) for design choices. Read one or two existing proposals in `proposals/` for shape before drafting. Link a proposal that is a skeptical-review target to the reviewer's findings once it has them.
 
 ## Style
 
