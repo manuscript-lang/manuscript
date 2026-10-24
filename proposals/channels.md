@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans `channel[T]() -> (Sender[T], Receiver[T])`; `proposals/child-processes.md` stage 3 plans `fork` with an entry `def f(input: Receiver[In], output: Sender[Out], argument: A)`. That is two endpoint types, two entry parameters, and a pair of channels per conversation.
-- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is `channel_pair[A, B](capacity)`, which returns a `ChannelPair[A, B]` with fields `near: Channel[A, B]` and `far: Channel[B, A]`; each end is moved out by destructuring (`var {near, far} = ...`), so ownership enforces one owner per end. The two ends have the type arguments swapped.
+- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is `channel_pair[A, B](capacity)`, which returns a `ChannelPair[A, B]` with fields `first: Channel[A, B]` and `second: Channel[B, A]`; each end is moved out by destructuring (`var {first: mine, second: theirs} = ...`), so ownership enforces one owner per end. The two ends have the type arguments swapped.
 - Entry rule: a worker or process entry takes **one** parameter, the child's end of the channel: `def f(ch: Channel[In, Out]) -> R`. `spawn(entry)` creates the pair, passes one end, returns the other.
 - Transport follows where the peer lives: queue between tasks, moved values between workers, JSON frames between processes. The API is identical.
 - Cost: no new syntax; one runtime endpoint type; deletes `Sender`, `Receiver` and the `clone` fan-in from the TaskGroup plan. Decision requested: sign-off on the type shape, the entry rule, and the open questions below.
@@ -44,8 +44,8 @@ from "@std/channels.ms" import Channel
 
 # Channel[Send, Receive]: one end of a connected pair
 type ChannelPair[A, B]:                          # ordinary type, two fields
-    near: Channel[A, B]
-    far: Channel[B, A]
+    first: Channel[A, B]
+    second: Channel[B, A]
 
 channel_pair[A, B](capacity: Int) -> ChannelPair[A, B]   # creates a connected pair
 
@@ -54,7 +54,8 @@ var def receive() -> Optional[Receive]              # owned value; none when pee
 var def close() -> Unit                              # Closeable; idempotent; drop does the same
 ```
 
-- Ownership does the one-time guarantee: `var {near, far} = channel_pair[A, B](n)` moves each end out of the temporary pair once, so no "already taken" state, flag or `Optional` exists. Destructuring a temporary whose fields are move-only was checked with `ms check` on a stub (see Verification of examples).
+- `channel_pair` returns two channels as a two-field type because the language has no tuples or multiple returns; callers rename in the pattern (`var {first: mine, second: theirs} = ...`).
+- Ownership does the one-time guarantee: `var {first, second} = channel_pair[A, B](n)` moves each end out of the temporary pair once, so no "already taken" state, flag or `Optional` exists. Destructuring a temporary whose fields are move-only was checked with `ms check` on a stub (see Verification of examples).
 - The two ends of a pair are symmetric: what one sends the other receives. Mnemonic: `Channel[Send, Receive]` reads from the holder's side.
 - One-way use is the same type with the unused direction ignored: `Channel[Job, Unit]` and its peer `Channel[Unit, Job]`. No second type, no `Never`.
 - Same-type duplex is `Channel[T, T]`.
@@ -156,15 +157,15 @@ def serve(var ch: Channel[Int, Int]) -> Unit:
             open = False
 
 def squares() -> List[Int]:
-    var {near, far} = channel_pair[Int, Int](4)
+    var {first: mine, second: theirs} = channel_pair[Int, Int](4)
     var out: List[Int] = []
     with TaskGroup[Unit]() as group:
-        group.spawn(lambda: serve(var far))
+        group.spawn(lambda: serve(var theirs))
         for n in range(0, 5):
-            near.send(n)
-            if let square = near.receive():
+            mine.send(n)
+            if let square = mine.receive():
                 out.append(square)
-        near.close()
+        mine.close()
         group.wait()
     return out
 ```
@@ -182,7 +183,7 @@ with WorkerGroup[Unit]() as group:
 ## Verification of examples
 
 - Checked with `ms check` (built from `6361798f`) against a stub file that declares `Channel`, `ChannelPair`, `channel_pair`, `Closed`, `WorkerGroup` and `TaskGroup` with fake bodies. The stub is not in the repo.
-- Passing: the `render`/`run` and `serve`/`squares` examples above, including `var {near, far} = channel_pair[Int, Int](4)` destructuring and `lambda: serve(var far)`.
+- Passing: the `render`/`run` and `serve`/`squares` examples above, including `var {first: mine, second: theirs} = channel_pair[Int, Int](4)` destructuring and `lambda: serve(var theirs)`.
 - Found by the check and folded in: entry parameters must be `var` to send or receive; `record` is `type`; no `guard`, no tuples; methods cannot declare their own type parameters, so `spawn` is checked as a free function `spawn_channel(group, entry)`; the stub's group methods are plain `def` because `with ... as group` binds immutably.
 - Proposed, not verified: the `Channel`/`channel_pair` runtime types and their declaration in `stdlib/channels.ms`; `spawn(entry)` inference; the "cannot cross a thread" diagnostic text; whether an escaping closure may capture a `var` end (the stub's `Callable` accepts it, the real escaping-closure rule was not exercised).
 
