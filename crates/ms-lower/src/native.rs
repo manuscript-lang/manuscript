@@ -143,6 +143,45 @@ impl<'a> FnLower<'a> {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
+            // Time values are plain words: reading one is not a runtime call.
+            if let Some(field) = match symbol {
+                "msstd_time_duration_to_nanoseconds" => Some(None),
+                "msstd_time_timestamp_unix_seconds" => Some(Some(0)),
+                "msstd_time_timestamp_nanoseconds" => Some(Some(1)),
+                _ => None,
+            } {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let value = self.borrow(args[0].val);
+                self.at(e.pos);
+                let v = match field {
+                    None => value,
+                    Some(index) => {
+                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(value)).clone()
+                        else {
+                            return Err(Error::new("Timestamp is not a record"));
+                        };
+                        self.b.rec_get(rid, index, value)
+                    }
+                };
+                return Ok(Val { v, own: false });
+            }
+            // Codec streams are built by the compiler: the format name, the input, and the limit.
+            if matches!(
+                symbol,
+                "msstd_archive_compress_stream" | "msstd_archive_decompress_stream"
+            ) {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                let decode = symbol == "msstd_archive_decompress_stream";
+                return self.codec_stream(args[0].val, &args[1..], decode, result);
+            }
             // A symbol that still has a hand-lowered native identity keeps it.
             if let Some(legacy) = ms_check::stdlib::native_for_symbol(symbol) {
                 return self.native_function(e, view, &legacy, params, sym);

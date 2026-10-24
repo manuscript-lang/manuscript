@@ -1,6 +1,43 @@
 import Bytes from "@std/bytes.ms"
 import {ReadStream} from "@std/io.ms"
 
+extern fn msrt_archive_pack(
+    entries: List[ArchiveEntry],
+    format: String,
+    max_bytes: Optional[Int]
+) Result[Bytes, ArchiveError]
+
+extern fn msrt_archive_unpack(
+    data: Bytes,
+    format: String,
+    limits: Optional[ArchiveLimits]
+) Result[List[ArchiveEntry], ArchiveError]
+
+extern fn msrt_compress_compress(
+    data: Bytes,
+    format: String,
+    level: Int,
+    max_bytes: Optional[Int]
+) Result[Bytes, CompressionError]
+
+extern fn msstd_archive_compress_stream(
+    format: String,
+    input: ReadStream,
+    level: Int
+) ReadStream
+
+extern fn msstd_archive_decompress_stream(
+    format: String,
+    input: ReadStream,
+    max_bytes: Optional[Int]
+) ReadStream
+
+extern fn msrt_compress_decompress(
+    data: Bytes,
+    format: String,
+    max_bytes: Optional[Int]
+) Result[Bytes, CompressionError]
+
 # Errors returned when an archive cannot be read or written.
 export type ArchiveError:
     # A format argument's entry paths, directory payloads or supplied output/unpack limits are invalid.
@@ -41,6 +78,7 @@ export fn pack(
     format: String,
     max_bytes: Optional[Int] = none
 ) Result[Bytes, ArchiveError]:
+    return msrt_archive_pack(entries, format, max_bytes)
 
 # Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
 # Applies each supplied entry and total-size limit.
@@ -49,10 +87,17 @@ export fn unpack(
     format: String,
     limits: Optional[ArchiveLimits] = none
 ) Result[List[ArchiveEntry], ArchiveError]:
+    return msrt_archive_unpack(data, format, limits)
 
 impl Error for ArchiveError:
     # Returns original Failed text, or an archive-prefixed diagnostic for other cases.
     fn message() String:
+        match self:
+            InvalidInput: return "archive: invalid input"
+            InvalidData: return "archive: invalid data"
+            LimitExceeded: return "archive: limit exceeded"
+            Unsupported: return "archive: operation not supported"
+            Failed(message): return message.clone()
 
 # Selects a supported archive format without a runtime string spelling check.
 # Existing pack/unpack format: String calls remain available.
@@ -62,18 +107,25 @@ export type ArchiveFormat:
     # TAR files and directories.
     case Tar
 
+fn archive_format_name(format: ArchiveFormat) String:
+    match format:
+        Zip: return "zip"
+        Tar: return "tar"
+
 impl ArchiveFormat:
     # Packs entries with the same optional output budget and path validation as pack.
     fn pack(
         entries: List[ArchiveEntry],
         max_bytes: Optional[Int] = none
     ) Result[Bytes, ArchiveError]:
+        return pack(entries, archive_format_name(self), max_bytes)
 
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
     fn unpack(
         data: Bytes,
         limits: Optional[ArchiveLimits] = none
     ) Result[List[ArchiveEntry], ArchiveError]:
+        return unpack(data, archive_format_name(self), limits)
 
 # Errors returned when compressed data is unsupported, invalid, or exceeds a limit.
 export type CompressionError:
@@ -101,6 +153,7 @@ export fn compress(
     level: Int = 6,
     max_bytes: Optional[Int] = none
 ) Result[Bytes, CompressionError]:
+    return msrt_compress_compress(data, format, level, max_bytes)
 
 # Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
 # Stops when the supplied output limit is reached.
@@ -109,10 +162,17 @@ export fn decompress(
     format: String,
     max_bytes: Optional[Int] = none
 ) Result[Bytes, CompressionError]:
+    return msrt_compress_decompress(data, format, max_bytes)
 
 impl Error for CompressionError:
     # Returns original Failed text, or a compression-prefixed diagnostic for other cases.
     fn message() String:
+        match self:
+            InvalidInput: return "compression: invalid input"
+            InvalidData: return "compression: invalid data"
+            LimitExceeded: return "compression: limit exceeded"
+            Unsupported: return "compression: operation not supported"
+            Failed(message): return message.clone()
 
 # Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 # Existing compress/decompress format: String calls remain available.
@@ -124,6 +184,12 @@ export type CompressionFormat:
     # Raw DEFLATE without framing.
     case Deflate
 
+fn compression_format_name(format: CompressionFormat) String:
+    match format:
+        Gzip: return "gzip"
+        Zlib: return "zlib"
+        Deflate: return "deflate"
+
 impl CompressionFormat:
     # Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
     # Uses the same optional output budget/domain errors as compress.
@@ -132,19 +198,27 @@ impl CompressionFormat:
         level: Int = 6,
         max_bytes: Optional[Int] = none
     ) Result[Bytes, CompressionError]:
+        return compress(data, compression_format_name(self), level, max_bytes)
 
     # Decompresses with the same cumulative output limit and validation as decompress.
     fn decompress(
         data: Bytes,
         max_bytes: Optional[Int] = none
     ) Result[Bytes, CompressionError]:
+        return decompress(data, compression_format_name(self), max_bytes)
 
     # Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.
     # Level defaults to 6 and must be 0..9, otherwise reads fail with InvalidInput.
     # Closing the result closes `input`.
     fn compress_stream(input: ReadStream, level: Int = 6) ReadStream:
+        return msstd_archive_compress_stream(
+            compression_format_name(self), input, level
+        )
 
     # Returns a stream of decompressed bytes, reading `input` chunk by chunk.
     # Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
     # Closing the result closes `input`.
     fn decompress_stream(input: ReadStream, max_bytes: Optional[Int] = none) ReadStream:
+        return msstd_archive_decompress_stream(
+            compression_format_name(self), input, max_bytes
+        )

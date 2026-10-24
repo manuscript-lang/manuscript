@@ -771,7 +771,9 @@ impl Checker {
                         self.expression(default, Some(&typ));
                         let is_none =
                             matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
-                        if typ.id != "@std/Optional" || !is_none {
+                        // Bundled interfaces are implemented by the runtime, which fills any default.
+                        let bundled = stdlib::is_source_module(module);
+                        if !bundled && (typ.id != "@std/Optional" || !is_none) {
                             self.type_error(
                                 param.pos,
                                 "interface defaults must be Optional.none; write '= none' or remove the default",

@@ -14,22 +14,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[("normalize", "string/form_normalize")],
     ),
     (
-        "CompressionFormat",
-        &[
-            ("compress", "archive/format_compress"),
-            ("decompress", "archive/format_decompress"),
-            ("compress_stream", "archive/format_compress_stream"),
-            ("decompress_stream", "archive/format_decompress_stream"),
-        ],
-    ),
-    (
-        "ArchiveFormat",
-        &[
-            ("pack", "archive/format_pack"),
-            ("unpack", "archive/format_unpack"),
-        ],
-    ),
-    (
         "HttpHeaders",
         &[
             ("append", "http/headers_append"),
@@ -45,43 +29,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[("metadata", "http/client_response_metadata")],
     ),
     ("HttpMethod", &[("text", "http/method_text")]),
-    (
-        "Duration",
-        &[
-            ("add", "time/duration_add"),
-            ("subtract", "time/duration_subtract"),
-            ("multiply", "time/duration_multiply"),
-            ("divide", "time/duration_divide"),
-            ("negate", "time/duration_negate"),
-            ("abs", "time/duration_abs"),
-            ("compare", "time/duration_compare"),
-            ("to_nanoseconds", "time/duration_nanoseconds"),
-            ("to_microseconds", "time/duration_microseconds"),
-            ("to_milliseconds", "time/duration_milliseconds"),
-            ("to_seconds", "time/duration_seconds"),
-            ("to_minutes", "time/duration_minutes"),
-            ("to_hours", "time/duration_hours"),
-        ],
-    ),
-    (
-        "Instant",
-        &[
-            ("shift", "time/instant_shift"),
-            ("difference", "time/instant_difference"),
-            ("compare", "time/instant_compare"),
-        ],
-    ),
-    (
-        "Timestamp",
-        &[
-            ("to_string", "time/format_timestamp"),
-            ("unix_seconds", "time/unix_seconds"),
-            ("nanoseconds", "time/nanoseconds"),
-            ("shift", "time/shift"),
-            ("difference", "time/difference"),
-            ("compare", "time/timestamp_compare"),
-        ],
-    ),
     (
         "Optional",
         &[

@@ -25,10 +25,7 @@
     "@std/shared.ms/Shared": "native",
     "@std/net.ms/IpAddress": "native",
     "@std/string.ms/Regex": "native",
-    "@std/string.ms/StringBuilder": "native",
-    "@std/time.ms/Duration": "native",
-    "@std/time.ms/Instant": "native",
-    "@std/time.ms/Timestamp": "native"
+    "@std/string.ms/StringBuilder": "native"
   },
   "receiver_requirements": {
     "@std/collections.ms/List/contains": {
@@ -131,6 +128,13 @@
     "io/stdout": "msstd_io_stdout",
     "io/stderr": "msstd_io_stderr",
     "io/files": "msstd_io_files",
-    "io/terminal": "msstd_io_terminal"
+    "io/terminal": "msstd_io_terminal",
+    "process/commands": "msstd_process_commands",
+    "process/control": "msstd_process_control",
+    "process/system": "msstd_process_system",
+    "time/duration": "msstd_time_duration",
+    "time/sleep": "msstd_time_sleep",
+    "time/clock": "msstd_time_clock",
+    "time/wall_clock": "msstd_time_wall_clock"
   }
 }

@@ -4,6 +4,24 @@ import IpFamily from "@std/net.ms"
 import ReadStream from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 
+extern fn msstd_process_commands() Commands
+
+extern fn msrt_args() List[String]
+
+extern fn msstd_process_control() ProcessControl
+
+extern fn msstd_system_endianness() String
+
+extern fn msstd_system_end_of_line() String
+
+extern fn msstd_system_dev_null() String
+
+extern fn msstd_system_os_type() String
+
+extern fn msstd_system_constants() Map[String, Int]
+
+extern fn msstd_process_system() System
+
 # Errors returned when a process cannot start, times out, or exceeds an output bound.
 export type CommandError:
     # The program name is empty, or the program, an argument, or a limit holds a NUL byte or is negative.
@@ -246,20 +264,39 @@ export type ProcessError:
 impl Error for ProcessError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `process: <reason>`.
     fn message() String:
+        match self:
+            InvalidInput: return "process: invalid input"
+            InvalidData: return "process: invalid data"
+            LimitExceeded: return "process: limit exceeded"
+            NotFound: return "process: not found"
+            AlreadyExists: return "process: already exists"
+            PermissionDenied: return "process: permission denied"
+            Unsupported: return "process: operation not supported"
+            Closed: return "process: resource is closed"
+            Failed(message): return message.clone()
 
 impl Error for CommandError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `command: <reason>`, such as `command: operation timed out`.
     fn message() String:
+        match self:
+            InvalidInput: return "command: invalid input"
+            Unavailable: return "command: service unavailable"
+            Timeout: return "command: operation timed out"
+            OutputLimit: return "command: output limit exceeded"
+            Failed(message): return message.clone()
 
 # Returns child-process operations for the current host.
 export fn commands() Commands:
+    return msstd_process_commands()
 
 # Returns the host-supplied startup arguments, excluding the executable path.
 # Each call returns an owned list; mutations do not change later calls or native argv.
 export fn arguments() List[String]:
+    return msrt_args()
 
 # Returns controls and process information for the current process.
 export fn control() ProcessControl:
+    return msstd_process_control()
 
 # Canonical standard-library declarations. Implementations are native.
 # Read-only host details and selected controls for the current operating system.
@@ -376,19 +413,24 @@ export type SystemMetrics:
 
 # Returns exactly `LE` or `BE` for the host's native byte order.
 export fn endianness() String:
+    return msstd_system_endianness()
 
 # Returns the host's line-ending sequence.
 export fn end_of_line() String:
+    return msstd_system_end_of_line()
 
 # Returns the conventional null-device path for the host.
 export fn dev_null() String:
+    return msstd_system_dev_null()
 
 # Returns Linux, Darwin, or Windows_NT on the supported hosts; other hosts use their operating system name.
 export fn os_type() String:
+    return msstd_system_os_type()
 
 # Returns native signal/error/loader/priority constants by name.
 # Names and values vary by host; missing entries do not imply a portable numeric default.
 export fn constants() Map[String, Int]:
+    return msstd_system_constants()
 
 # Errors returned when a requested host operation is unavailable or denied.
 export type SystemError:
@@ -417,6 +459,17 @@ export type SystemError:
 impl Error for SystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `system: <reason>`.
     fn message() String:
+        match self:
+            InvalidInput: return "system: invalid input"
+            InvalidData: return "system: invalid data"
+            LimitExceeded: return "system: limit exceeded"
+            NotFound: return "system: not found"
+            AlreadyExists: return "system: already exists"
+            PermissionDenied: return "system: permission denied"
+            Unsupported: return "system: operation not supported"
+            Closed: return "system: resource is closed"
+            Failed(message): return message.clone()
 
 # Returns system information and controls for the current host.
 export fn system() System:
+    return msstd_process_system()
