@@ -2093,6 +2093,12 @@ unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float32_to_string(v: f64, out: *mut StrVal) {
+    // SAFETY: caller passes a writable `out` and live arguments.
+    unsafe { from_buf(crate::num::float32_to_string(v)).write_to(out) }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_float_to_string(v: f64, out: *mut StrVal) {
     // SAFETY: caller passes a writable `out` and live arguments.
     unsafe { (msrt_float_to_string_val(v)).write_to(out) }

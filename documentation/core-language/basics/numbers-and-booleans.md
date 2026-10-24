@@ -19,7 +19,9 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 | Type | Representation |
 | --- | --- |
 | `Int` | Platform-sized signed integer (64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
-| `Float` | IEEE 754 binary64 |
+| `Int8`, `Int16`, `Int32` | Signed integers of that width with checked arithmetic; `Int64` is another name for `Int` |
+| `Float` | IEEE 754 binary64; `Float64` is another name for it |
+| `Float32` | IEEE 754 binary32; every operation rounds to binary32 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
 | `Bool` | `True` or `False` |
 
@@ -31,6 +33,7 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 - Conversions use the [methods below](#numeric-conversion). Expected types never change a literal's type.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
+- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). A literal never changes kind: `let x: Float32 = 1` is rejected.
 - This guide assumes 64-bit `Int`; 32-bit targets narrow the range.
 
 ```manuscript
@@ -41,6 +44,23 @@ def literals() -> Unit:
     # Rejected: an Int token does not become Float from context.
     let mismatch: Float = 1
 ```
+
+## Sized numbers
+
+`Int8`, `Int16`, `Int32` and `Float32` store a value in its own width. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
+
+```manuscript
+def sized() -> Unit:
+    let a: Int8 = 100
+    let wide: Int32 = 2000000000
+    let ratio: Float32 = 0.1
+    # Faults: 200 does not fit Int8.
+    let b = a + a
+    # Rejected: operand types differ.
+    let c = a + wide
+```
+
+`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values, and values of different widths cannot be converted yet; see the [sized numeric types proposal](https://github.com/manuscript-lang/manuscript/blob/main/proposals/sized-numeric-types.md) for the staged plan.
 
 ## Numeric conversion
 

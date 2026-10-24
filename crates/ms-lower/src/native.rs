@@ -491,9 +491,9 @@ impl<'a> FnLower<'a> {
     fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
         use ms_mir::ir::{Cc, Op};
         let t = self.ty_of(a);
-        let above = if t == MTy::INT {
+        let above = if self.b.m.types.is_int(t) {
             self.b.icmp(Cc::Gt, a, b)
-        } else if t == MTy::FLOAT {
+        } else if self.b.m.types.is_float(t) {
             let gt = self.b.fcmp(Cc::Gt, a, b);
             let a_nan = self.b.fcmp(Cc::Ne, a, a);
             let b_num = self.b.fcmp(Cc::Eq, b, b);

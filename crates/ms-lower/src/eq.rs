@@ -62,10 +62,10 @@ pub(crate) fn element_eq(
     x: Value,
     y: Value,
 ) -> Result<Value, Error> {
-    if t == MTy::INT || t == MTy::BOOL {
+    if b.m.types.is_int(t) || t == MTy::BOOL {
         return Ok(b.icmp(Cc::Eq, x, y));
     }
-    if t == MTy::FLOAT {
+    if b.m.types.is_float(t) {
         return Ok(b.fcmp(Cc::Eq, x, y));
     }
     if t == MTy::UNIT {
@@ -332,8 +332,8 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
         let ext = runtime_fn(b.m, "msrt_hash_combine", &[MTy::INT, MTy::INT], MTy::INT);
         b.call_rt(ext, &[acc, leaf])
     };
-    if t == MTy::INT {
-        let ext = runtime_fn(b.m, "msrt_hash_int", &[MTy::INT], MTy::INT);
+    if b.m.types.is_int(t) {
+        let ext = runtime_fn(b.m, "msrt_hash_int", &[t], MTy::INT);
         let leaf = b.call_rt(ext, &[v]);
         return combine(b, acc, leaf);
     }
@@ -368,7 +368,7 @@ fn hash_into(b: &mut FuncBuilder<'_>, t: MTy, v: Value, acc: Value) -> Value {
                 .emit(Op::B2I, &[some], Imm::None, Some(MTy::INT))
                 .expect("b2i");
             let acc = combine(b, acc, flag);
-            if inner != MTy::INT && inner != MTy::BOOL {
+            if !b.m.types.is_int(inner) && inner != MTy::BOOL {
                 return acc;
             }
             let x = b.opt_get(v);

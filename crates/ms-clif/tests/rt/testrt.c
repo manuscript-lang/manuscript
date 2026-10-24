@@ -128,6 +128,7 @@ static void die(const char *msg, size_t len) {
 }
 void msrt_fault(const char *msg, size_t len) { die(msg, len); }
 void msrt_fault_int_overflow(void) { die("integer overflow", 16); }
+void msrt_fault_int_range(void) { die("integer range", 16); }
 void msrt_fault_div_zero(void) { die("division by zero", 16); }
 void msrt_fault_rem_zero(void) { die("remainder by zero", 17); }
 void msrt_fault_div_overflow(int64_t a, int64_t b) { (void)a; (void)b; die("integer overflow", 16); }

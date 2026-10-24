@@ -263,6 +263,8 @@ pub enum Op {
     IConst, FConst, BConst, UnitConst, StrLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
+    // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
+    NarrowChk, F32Round,
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
     And, Or, Xor, Shl, Sshr, Not,
     // Comparisons.
@@ -384,7 +386,7 @@ impl Op {
     pub const ALL: &'static [Op] = &[
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
-        Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem,
+        Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
@@ -418,6 +420,8 @@ impl Op {
             Op::IAddOverflow => ("iadd.overflow", K::None, true, effects!()),
             Op::IMulOverflow => ("imul.overflow", K::None, true, effects!()),
             Op::IntOverflowIf => ("int_overflow.if", K::None, false, effects!(faults)),
+            Op::NarrowChk => ("narrow.chk", K::None, true, effects!(faults)),
+            Op::F32Round => ("f32.round", K::None, true, effects!()),
             Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
             Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
             Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
@@ -1179,7 +1183,15 @@ impl Module {
 
     fn needs_drop_in(&self, ty: Ty, seen: &mut Vec<Ty>) -> bool {
         match self.types.kind(ty) {
-            TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr => false,
+            TyKind::Unit
+            | TyKind::Bool
+            | TyKind::Int
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::Float
+            | TyKind::Float32
+            | TyKind::Ptr => false,
             TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
             TyKind::Rec(r) => {
                 if seen.contains(&ty) {

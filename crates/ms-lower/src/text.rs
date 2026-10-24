@@ -52,8 +52,10 @@ pub(crate) fn scalar_text(
     v: Value,
     repr: bool,
 ) -> Option<(Value, bool)> {
-    let sym = if t == MTy::INT {
+    let sym = if b.m.types.is_int(t) {
         "msrt_int_to_string"
+    } else if t == MTy::FLOAT32 {
+        "msrt_float32_to_string"
     } else if t == MTy::FLOAT {
         "msrt_float_to_string"
     } else if t == MTy::BOOL {

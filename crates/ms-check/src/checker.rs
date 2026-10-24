@@ -205,7 +205,7 @@ pub struct Checker {
 }
 
 /// Maximum identity serial reservation per standard module check.
-const PRIMITIVE_NAMES: [&str; 6] = ["Bool", "Int", "Float", "String", "Unit", "Never"];
+use crate::stdlib::PRIMITIVE_NAMES;
 
 impl Checker {
     /// A fresh checker.
@@ -457,12 +457,12 @@ impl Checker {
             let nm = n(name);
             let s = Rc::new(Sym {
                 name: nm,
-                id: nm,
+                id: n(primitive_id(name)),
                 kind: SymKind::Type,
                 module: n(""),
                 native: n(""),
                 export: true,
-                ty: RefCell::new(Some(primitive(name))),
+                ty: RefCell::new(Some(primitive(primitive_id(name)))),
                 variables: RefCell::new(Vec::new()),
                 decl: None,
             });
@@ -503,12 +503,12 @@ impl Checker {
                 let nm = n(name);
                 let s = Rc::new(Sym {
                     name: nm,
-                    id: nm,
+                    id: n(primitive_id(name)),
                     kind: SymKind::Type,
                     module: n(""),
                     native: n(""),
                     export: true,
-                    ty: RefCell::new(Some(primitive(name))),
+                    ty: RefCell::new(Some(primitive(primitive_id(name)))),
                     variables: RefCell::new(Vec::new()),
                     decl: None,
                 });

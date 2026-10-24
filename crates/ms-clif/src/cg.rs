@@ -65,6 +65,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_str_copy", "iii", ""),
     ("msrt_fault", "ii", ""),
     ("msrt_fault_int_overflow", "", ""),
+    ("msrt_fault_int_range", "", ""),
     ("msrt_fault_div_zero", "", ""),
     ("msrt_fault_rem_zero", "", ""),
     ("msrt_fault_div_overflow", "ii", ""),
@@ -396,8 +397,9 @@ impl<'m> Gen<'m> {
         let (key, scope) = (ty, ty.scope());
         let ty = ty.unscoped();
         let builtin = match m.types.kind(ty) {
-            TyKind::Int => Some("msrt_desc_int"),
-            TyKind::Float => Some("msrt_desc_float"),
+            // Sized numbers keep a 64-bit slot (and the `Int`/`Float` glue) until storage is packed.
+            TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => Some("msrt_desc_int"),
+            TyKind::Float | TyKind::Float32 => Some("msrt_desc_float"),
             TyKind::Bool => Some("msrt_desc_bool"),
             TyKind::Str => Some("msrt_desc_string"),
             TyKind::Bytes => Some("msrt_desc_bytes"),

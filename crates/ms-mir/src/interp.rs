@@ -294,8 +294,8 @@ impl<'m> Interp<'m> {
     pub fn default_val(&self, t: Ty) -> Val {
         match self.m.types.kind(t) {
             TyKind::Bool => Val::Bool(false),
-            TyKind::Int => Val::Int(0),
-            TyKind::Float => Val::Float(0.0),
+            TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => Val::Int(0),
+            TyKind::Float | TyKind::Float32 => Val::Float(0.0),
             TyKind::Str => Val::str(""),
             TyKind::Ptr => Val::Ptr(0),
             TyKind::List(_) => Val::List(Rc::new(Vec::new())),
@@ -540,6 +540,16 @@ impl<'m> Interp<'m> {
                     return Err(overflow());
                 }
             }
+            Op::NarrowChk => {
+                let bits = m.types.int_bits(f.values[a[0].index()]).unwrap_or(64);
+                let v = int!(0);
+                let half = 1i64 << (bits - 1);
+                if !(-half..half).contains(&v) {
+                    return Err(overflow());
+                }
+                set!(Val::Int(v));
+            }
+            Op::F32Round => set!(Val::Float(flt!(0) as f32 as f64)),
             Op::IAddChk => set!(Val::Int(int!(0).checked_add(int!(1)).ok_or_else(overflow)?)),
             Op::ISubChk => set!(Val::Int(int!(0).checked_sub(int!(1)).ok_or_else(overflow)?)),
             Op::IMulChk => set!(Val::Int(int!(0).checked_mul(int!(1)).ok_or_else(overflow)?)),
