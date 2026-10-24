@@ -940,6 +940,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     fault_depth_body()
 }
 
+#[inline(always)]
 extern "C-unwind" fn fault_depth_body() -> ! {
     lower_depth_limit();
     fault(
