@@ -610,8 +610,15 @@ mod std_heap {
         #[inline]
         unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
             if !owns(p) {
-                // SAFETY: not an arena block, so the system allocator produced it.
-                unsafe { System.dealloc(p, layout) };
+                if layout.size() > MAX_SMALL && owner::is_current() {
+                    // SAFETY: a large block is a system block either way; the runtime keeps
+                    // freed ones for reuse, where the system allocator would unmap them and
+                    // fault the next block in again.
+                    unsafe { super::free(p) };
+                } else {
+                    // SAFETY: not an arena block, so the system allocator produced it.
+                    unsafe { System.dealloc(p, layout) };
+                }
             } else if owner::is_current() {
                 // SAFETY: an arena block freed on the arena's thread.
                 unsafe { super::free(p) };

@@ -6,6 +6,10 @@
 //! parser builds a [`Doc`], the generated typed decoders read it through node ids, and typed
 //! encoders build a [`Doc`] that [`Doc::stringify`] serializes. Both walks are iterative, so
 //! nesting up to the 100 000 level ceiling cannot overflow the native stack.
+//!
+//! A [`Doc`] allocates a handful of vectors however large the document is: strings and numbers
+//! are [`Span`]s into one text buffer (the parsed source, followed by decoded escapes), and
+//! parsed containers are ranges of two shared pools.
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -16,7 +20,6 @@ extern crate alloc;
 
 pub mod ffi;
 
-use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::Fail;
@@ -28,16 +31,43 @@ pub const INDENT_CEILING: usize = 10;
 
 pub type NodeId = u32;
 
-#[derive(Clone)]
+/// A byte range of [`Doc::text`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Span {
+    pub off: u32,
+    pub len: u32,
+}
+
+/// An object member: its key and value node.
+#[derive(Clone, Copy, Debug)]
+pub struct Member {
+    pub key: Span,
+    pub val: NodeId,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub enum Node {
     Null,
     Bool(bool),
-    /// Exact number text.
-    Number(String),
-    Str(String),
-    Array(Vec<NodeId>),
-    /// Members in insertion order, keys unique.
-    Object(Vec<(String, NodeId)>),
+    /// Exact number text that is known to be a JSON number.
+    Num(Span),
+    /// Number text from a caller; `stringify` checks it.
+    RawNum(Span),
+    Str(Span),
+    /// A parsed array: `len` items from `Doc::items[start..]`.
+    Arr {
+        start: u32,
+        len: u32,
+    },
+    /// A parsed object: `len` members from `Doc::members[start..]`, keys unique.
+    Obj {
+        start: u32,
+        len: u32,
+    },
+    /// A built array, an index into `Doc::arrays`.
+    ArrB(u32),
+    /// A built object in insertion order with unique keys, an index into `Doc::objects`.
+    ObjB(u32),
 }
 
 #[derive(Clone, Copy, Default)]
@@ -47,15 +77,205 @@ pub struct Limits {
     pub max_values: Option<i64>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Doc {
     pub nodes: Vec<Node>,
+    text: String,
+    items: Vec<NodeId>,
+    members: Vec<Member>,
+    arrays: Vec<Vec<NodeId>>,
+    objects: Vec<Vec<Member>>,
 }
 
 fn budget(o: Option<i64>) -> Result<usize, Fail> {
     match o {
         None => Ok(usize::MAX),
         Some(n) => usize::try_from(n).map_err(|_| Fail::InvalidInput),
+    }
+}
+
+impl Doc {
+    pub fn node(&self, id: NodeId) -> Option<&Node> {
+        self.nodes.get(id as usize)
+    }
+
+    /// The text of `span`.
+    pub fn slice(&self, span: Span) -> &str {
+        let start = span.off as usize;
+        self.text
+            .get(start..start + span.len as usize)
+            .unwrap_or("")
+    }
+
+    /// The text of a string or number node, else `""`.
+    pub fn text_of(&self, id: NodeId) -> &str {
+        match self.node(id) {
+            Some(Node::Num(s) | Node::RawNum(s) | Node::Str(s)) => self.slice(*s),
+            _ => "",
+        }
+    }
+
+    /// The items of an array node, else none.
+    pub fn items(&self, id: NodeId) -> &[NodeId] {
+        match self.node(id) {
+            Some(&Node::Arr { start, len }) => self
+                .items
+                .get(start as usize..(start + len) as usize)
+                .unwrap_or(&[]),
+            Some(&Node::ArrB(i)) => self.arrays.get(i as usize).map_or(&[], Vec::as_slice),
+            _ => &[],
+        }
+    }
+
+    /// The members of an object node, else none.
+    pub fn members(&self, id: NodeId) -> &[Member] {
+        match self.node(id) {
+            Some(&Node::Obj { start, len }) => self
+                .members
+                .get(start as usize..(start + len) as usize)
+                .unwrap_or(&[]),
+            Some(&Node::ObjB(i)) => self.objects.get(i as usize).map_or(&[], Vec::as_slice),
+            _ => &[],
+        }
+    }
+
+    /// The members of an object node as owned key and value pairs; none for another node.
+    pub fn object_entries(&self, id: NodeId) -> Option<Vec<(String, NodeId)>> {
+        matches!(self.node(id), Some(Node::Obj { .. } | Node::ObjB(_))).then(|| {
+            self.members(id)
+                .iter()
+                .map(|m| (String::from(self.slice(m.key)), m.val))
+                .collect()
+        })
+    }
+
+    pub fn add(&mut self, node: Node) -> NodeId {
+        self.nodes.push(node);
+        (self.nodes.len() - 1) as NodeId
+    }
+
+    fn put_text(&mut self, s: &str) -> Span {
+        let off = self.text.len();
+        self.text.push_str(s);
+        Span {
+            off: off as u32,
+            len: s.len() as u32,
+        }
+    }
+
+    pub fn add_str(&mut self, s: &str) -> NodeId {
+        let span = self.put_text(s);
+        self.add(Node::Str(span))
+    }
+
+    /// A number whose text `stringify` still has to check.
+    pub fn add_raw_number(&mut self, s: &str) -> NodeId {
+        let span = self.put_text(s);
+        self.add(Node::RawNum(span))
+    }
+
+    pub fn add_array(&mut self, ids: Vec<NodeId>) -> NodeId {
+        self.arrays.push(ids);
+        let i = (self.arrays.len() - 1) as u32;
+        self.add(Node::ArrB(i))
+    }
+
+    /// An object from members in order; a repeated key keeps its first position and last value.
+    pub fn add_object(&mut self) -> NodeId {
+        self.objects.push(Vec::new());
+        let i = (self.objects.len() - 1) as u32;
+        self.add(Node::ObjB(i))
+    }
+
+    /// An empty built array with room for `n` items.
+    pub fn add_array_with_capacity(&mut self, n: usize) -> NodeId {
+        self.add_array(Vec::with_capacity(n))
+    }
+
+    /// An empty built object with room for `n` members.
+    pub fn add_object_with_capacity(&mut self, n: usize) -> NodeId {
+        self.objects.push(Vec::with_capacity(n));
+        let i = (self.objects.len() - 1) as u32;
+        self.add(Node::ObjB(i))
+    }
+
+    /// Appends a member to a built object whose keys the caller keeps distinct.
+    pub fn object_add(&mut self, obj: NodeId, key: &str, item: NodeId) {
+        let Some(&Node::ObjB(i)) = self.node(obj) else {
+            return;
+        };
+        let key = self.put_text(key);
+        self.objects[i as usize].push(Member { key, val: item });
+    }
+
+    /// Appends an item to a built array; other nodes are left alone.
+    pub fn array_push(&mut self, arr: NodeId, item: NodeId) {
+        if let Some(&Node::ArrB(i)) = self.node(arr) {
+            self.arrays[i as usize].push(item);
+        }
+    }
+
+    /// Sets a member of a built object, replacing the value of an existing key.
+    pub fn object_put(&mut self, obj: NodeId, key: &str, item: NodeId) {
+        let Some(&Node::ObjB(i)) = self.node(obj) else {
+            return;
+        };
+        let existing = self.objects[i as usize]
+            .iter()
+            .position(|m| self.slice(m.key) == key);
+        match existing {
+            Some(at) => self.objects[i as usize][at].val = item,
+            None => {
+                let key = self.put_text(key);
+                self.objects[i as usize].push(Member { key, val: item });
+            }
+        }
+    }
+
+    /// Copies every node of `other` into this document, returning the offset to add to its ids.
+    pub fn append(&mut self, other: &Doc) -> NodeId {
+        let base = self.nodes.len() as NodeId;
+        let text = self.text.len() as u32;
+        let items = self.items.len() as u32;
+        let members = self.members.len() as u32;
+        let arrays = self.arrays.len() as u32;
+        let objects = self.objects.len() as u32;
+        let span = |s: Span| Span {
+            off: s.off + text,
+            len: s.len,
+        };
+        let member = |m: &Member| Member {
+            key: span(m.key),
+            val: m.val + base,
+        };
+        self.text.push_str(&other.text);
+        self.items.extend(other.items.iter().map(|i| i + base));
+        self.members.extend(other.members.iter().map(member));
+        self.arrays.extend(
+            other
+                .arrays
+                .iter()
+                .map(|a| a.iter().map(|i| i + base).collect()),
+        );
+        self.objects
+            .extend(other.objects.iter().map(|o| o.iter().map(member).collect()));
+        self.nodes.extend(other.nodes.iter().map(|n| match *n {
+            Node::Num(s) => Node::Num(span(s)),
+            Node::RawNum(s) => Node::RawNum(span(s)),
+            Node::Str(s) => Node::Str(span(s)),
+            Node::Arr { start, len } => Node::Arr {
+                start: start + items,
+                len,
+            },
+            Node::Obj { start, len } => Node::Obj {
+                start: start + members,
+                len,
+            },
+            Node::ArrB(i) => Node::ArrB(i + arrays),
+            Node::ObjB(i) => Node::ObjB(i + objects),
+            n => n,
+        }));
+        base
     }
 }
 
@@ -105,38 +325,53 @@ fn unicode_valid(s: &[u8]) -> bool {
     true
 }
 
-enum Frame {
-    Array(Vec<NodeId>),
-    Object {
-        entries: Vec<(String, NodeId)>,
-        /// Every key so far, built once the object outgrows [`LINEAR_KEYS`] members.
-        keys: Option<BTreeSet<String>>,
-        pending: String,
-    },
+const ONES: u64 = 0x0101_0101_0101_0101;
+const HIGHS: u64 = 0x8080_8080_8080_8080;
+
+/// The index of the first byte at or after `i` that a JSON string must escape (`"`, `\` or a
+/// control character), eight bytes at a time.
+fn find_special(b: &[u8], mut i: usize) -> Option<usize> {
+    while let Some(chunk) = b.get(i..i + 8) {
+        let w = u64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+        ]);
+        let zero = |x: u64| x.wrapping_sub(ONES) & !x & HIGHS;
+        let m = zero(w ^ (ONES * 0x22))
+            | zero(w ^ (ONES * 0x5c))
+            | (w.wrapping_sub(ONES * 0x20) & !w & HIGHS);
+        if m != 0 {
+            return Some(i + (m.trailing_zeros() / 8) as usize);
+        }
+        i += 8;
+    }
+    while let Some(&c) = b.get(i) {
+        if c == b'"' || c == b'\\' || c < 0x20 {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
 }
 
-/// Objects up to this many members detect duplicate keys by comparing against the earlier
-/// members; larger ones keep a set so the check stays logarithmic.
-const LINEAR_KEYS: usize = 16;
+enum Frame {
+    /// An array whose items so far are `vals[start..]`.
+    Array { start: usize },
+    /// An object whose members so far are `mem[start..]`; the last one awaits its value.
+    Object { start: usize },
+}
 
-/// Whether `key` repeats a member of `entries`, the members stored so far.
-fn duplicate_key(
-    entries: &[(String, NodeId)],
-    keys: &mut Option<BTreeSet<String>>,
-    key: &str,
-) -> bool {
-    if let Some(set) = keys {
-        return !set.insert(String::from(key));
+/// Objects up to this many members detect duplicate keys by pairwise comparison; larger ones
+/// hash their keys.
+const LINEAR_KEYS: usize = 12;
+
+fn hash_key(k: &[u8]) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ k.len() as u64;
+    for c in k.chunks(8) {
+        let mut w = [0u8; 8];
+        w[..c.len()].copy_from_slice(c);
+        h = (h.rotate_left(5) ^ u64::from_le_bytes(w)).wrapping_mul(0x517c_c1b7_2722_0a95);
     }
-    if entries.iter().any(|e| e.0 == key) {
-        return true;
-    }
-    if entries.len() >= LINEAR_KEYS {
-        let mut set: BTreeSet<String> = entries.iter().map(|e| e.0.clone()).collect();
-        set.insert(String::from(key));
-        *keys = Some(set);
-    }
-    false
+    h ^ (h >> 29)
 }
 
 struct Scanner<'a> {
@@ -148,11 +383,17 @@ struct Scanner<'a> {
     max_values: usize,
     limit_hit: bool,
     doc: Doc,
+    /// Open-addressing scratch table for [`Scanner::has_duplicate`].
+    table: Vec<u32>,
 }
 
 impl Scanner<'_> {
     fn skip_space(&mut self) {
-        while matches!(self.text.get(self.pos), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+        // Compact documents have no space; indented ones have a newline and runs of spaces.
+        while let Some(&c) = self.text.get(self.pos) {
+            if c > b' ' || !matches!(c, b' ' | b'\t' | b'\n' | b'\r') {
+                return;
+            }
             self.pos += 1;
         }
     }
@@ -168,6 +409,18 @@ impl Scanner<'_> {
 
     fn digits(&mut self) -> bool {
         let start = self.pos;
+        // Eight digits at a time: a byte is a digit when `b ^ 0x30` is below ten.
+        while let Some(chunk) = self.text.get(self.pos..self.pos + 8) {
+            let w = u64::from_le_bytes([
+                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+            ]) ^ (ONES * 0x30);
+            let non_digit = (w.wrapping_add(ONES * 0x76) | w) & HIGHS;
+            if non_digit != 0 {
+                self.pos += (non_digit.trailing_zeros() / 8) as usize;
+                return self.pos > start;
+            }
+            self.pos += 8;
+        }
         while self.text.get(self.pos).is_some_and(u8::is_ascii_digit) {
             self.pos += 1;
         }
@@ -204,83 +457,86 @@ impl Scanner<'_> {
         true
     }
 
-    fn hex4(&self, at: usize) -> Option<i32> {
+    fn hex4(&self, at: usize) -> Option<u32> {
         let d = self.text.get(at..at + 4)?;
-        d.iter().try_fold(0i32, |acc, &c| {
-            Some(acc << 4 | char::from(c).to_digit(16)? as i32)
-        })
+        d.iter()
+            .try_fold(0u32, |acc, &c| Some(acc << 4 | char::from(c).to_digit(16)?))
     }
 
-    /// Reads a quoted string starting at the opening quote.
-    fn string(&mut self) -> Option<String> {
-        self.pos += 1;
-        // Most strings have no escapes: copy the run up to the closing quote in one piece.
-        let run = self.text[self.pos..]
-            .iter()
-            .position(|&c| c == b'"' || c == b'\\' || c < 0x20);
-        if let Some(n) = run
-            && self.text[self.pos + n] == b'"'
-        {
-            // `src` is valid UTF-8 and the run ends at an ASCII quote, so only the start needs
-            // checking to be a character boundary.
-            let s = self.src.get(self.pos..self.pos + n)?;
-            self.pos += n + 1;
-            return Some(String::from(s));
+    /// Reads a quoted string starting at the opening quote. A string without escapes is a span
+    /// of the source; otherwise its decoded text is appended to the document's text.
+    fn string(&mut self) -> Option<Span> {
+        let start = self.pos + 1;
+        let end = find_special(self.text, start)?;
+        if self.text[end] == b'"' {
+            self.pos = end + 1;
+            return Some(Span {
+                off: start as u32,
+                len: (end - start) as u32,
+            });
         }
-        let mut out: Vec<u8> = Vec::new();
-        while let Some(&c) = self.text.get(self.pos) {
-            match c {
+        self.escaped_string(start, end)
+    }
+
+    /// The rest of a string whose first escape or control character is at `at`.
+    fn escaped_string(&mut self, start: usize, mut at: usize) -> Option<Span> {
+        let off = self.doc.text.len();
+        // `src` is valid UTF-8 and runs end at ASCII bytes, so they are character boundaries.
+        self.doc.text.push_str(self.src.get(start..at)?);
+        loop {
+            match *self.text.get(at)? {
                 b'"' => {
-                    self.pos += 1;
-                    return String::from_utf8(out).ok();
+                    self.pos = at + 1;
+                    return Some(Span {
+                        off: off as u32,
+                        len: (self.doc.text.len() - off) as u32,
+                    });
                 }
-                c if c < 0x20 => return None,
                 b'\\' => {
-                    self.pos += 1;
+                    self.pos = at + 1;
                     let e = *self.text.get(self.pos)?;
-                    match e {
-                        b'"' | b'\\' | b'/' => out.push(e),
-                        b'b' => out.push(8),
-                        b'f' => out.push(12),
-                        b'n' => out.push(b'\n'),
-                        b'r' => out.push(b'\r'),
-                        b't' => out.push(b'\t'),
+                    let ch = match e {
+                        b'"' | b'\\' | b'/' => char::from(e),
+                        b'b' => '\u{8}',
+                        b'f' => '\u{c}',
+                        b'n' => '\n',
+                        b'r' => '\r',
+                        b't' => '\t',
                         b'u' => {
                             let mut r = self.hex4(self.pos + 1)?;
                             self.pos += 4;
+                            if (0xDC00..=0xDFFF).contains(&r) {
+                                return None;
+                            }
                             if (0xD800..=0xDBFF).contains(&r) {
                                 let lo = self.hex4(self.pos + 3);
-                                let lo = lo.filter(|_| {
-                                    self.text.get(self.pos + 1) == Some(&b'\\')
+                                let lo = lo.filter(|lo| {
+                                    (0xDC00..=0xDFFF).contains(lo)
+                                        && self.text.get(self.pos + 1) == Some(&b'\\')
                                         && self.text.get(self.pos + 2) == Some(&b'u')
                                 })?;
                                 r = 0x10000 + ((r - 0xD800) << 10) + (lo - 0xDC00);
                                 self.pos += 6;
                             }
-                            let ch = char::from_u32(r as u32).unwrap_or('\u{FFFD}');
-                            let mut buf = [0u8; 4];
-                            out.extend_from_slice(ch.encode_utf8(&mut buf).as_bytes());
+                            char::from_u32(r)?
                         }
                         _ => return None,
-                    }
+                    };
+                    self.doc.text.push(ch);
                     self.pos += 1;
+                    at = self.pos;
                 }
-                c => {
-                    out.push(c);
-                    self.pos += 1;
-                }
+                _ => return None,
             }
+            // Copy the plain run up to the next escape, quote or control character.
+            let next = find_special(self.text, at)?;
+            self.doc.text.push_str(self.src.get(at..next)?);
+            at = next;
         }
-        None
-    }
-
-    fn push(&mut self, node: Node) -> NodeId {
-        self.doc.nodes.push(node);
-        (self.doc.nodes.len() - 1) as NodeId
     }
 
     /// Parses the member key and colon at an object member position.
-    fn member_key(&mut self) -> Option<String> {
+    fn member_key(&mut self) -> Option<Span> {
         self.skip_space();
         if self.text.get(self.pos) != Some(&b'"') {
             return None;
@@ -294,8 +550,43 @@ impl Scanner<'_> {
         Some(key)
     }
 
+    /// Whether two members of `members` share a key.
+    fn has_duplicate(&mut self, members: &[Member]) -> bool {
+        let doc = &self.doc;
+        let key = |m: &Member| doc.slice(m.key).as_bytes();
+        if members.len() <= LINEAR_KEYS {
+            return members.iter().enumerate().any(|(i, m)| {
+                let k = key(m);
+                members[..i].iter().any(|e| key(e) == k)
+            });
+        }
+        let size = (members.len() * 2).next_power_of_two();
+        self.table.clear();
+        self.table.resize(size, 0);
+        let mask = size - 1;
+        for (i, m) in members.iter().enumerate() {
+            let k = key(m);
+            let mut slot = hash_key(k) as usize & mask;
+            loop {
+                let e = self.table[slot];
+                if e == 0 {
+                    self.table[slot] = i as u32 + 1;
+                    break;
+                }
+                if key(&members[e as usize - 1]) == k {
+                    return true;
+                }
+                slot = (slot + 1) & mask;
+            }
+        }
+        false
+    }
+
     fn parse(&mut self) -> Option<NodeId> {
         let mut stack: Vec<Frame> = Vec::new();
+        // Completed children of the open arrays and members of the open objects.
+        let mut vals: Vec<NodeId> = Vec::new();
+        let mut mem: Vec<Member> = Vec::new();
         'value: loop {
             // value(depth)
             self.count += 1;
@@ -308,27 +599,29 @@ impl Scanner<'_> {
             let mut done = match c {
                 b'n' => {
                     let ok = self.literal(b"null");
-                    ok.then(|| self.push(Node::Null))?
+                    ok.then(|| self.doc.add(Node::Null))?
                 }
                 b't' => {
                     let ok = self.literal(b"true");
-                    ok.then(|| self.push(Node::Bool(true)))?
+                    ok.then(|| self.doc.add(Node::Bool(true)))?
                 }
                 b'f' => {
                     let ok = self.literal(b"false");
-                    ok.then(|| self.push(Node::Bool(false)))?
+                    ok.then(|| self.doc.add(Node::Bool(false)))?
                 }
                 b'"' => {
                     let s = self.string()?;
-                    self.push(Node::Str(s))
+                    self.doc.add(Node::Str(s))
                 }
                 b'-' | b'0'..=b'9' => {
                     let start = self.pos;
                     if !self.number() {
                         return None;
                     }
-                    let text = String::from(self.src.get(start..self.pos)?);
-                    self.push(Node::Number(text))
+                    self.doc.add(Node::Num(Span {
+                        off: start as u32,
+                        len: (self.pos - start) as u32,
+                    }))
                 }
                 b'[' | b'{' => {
                     if stack.len() + 1 > self.max_depth {
@@ -340,21 +633,18 @@ impl Scanner<'_> {
                     let close = if c == b'[' { b']' } else { b'}' };
                     if self.text.get(self.pos) == Some(&close) {
                         self.pos += 1;
-                        self.push(if c == b'[' {
-                            Node::Array(Vec::new())
+                        self.doc.add(if c == b'[' {
+                            Node::Arr { start: 0, len: 0 }
                         } else {
-                            Node::Object(Vec::new())
+                            Node::Obj { start: 0, len: 0 }
                         })
                     } else if c == b'[' {
-                        stack.push(Frame::Array(Vec::new()));
+                        stack.push(Frame::Array { start: vals.len() });
                         continue 'value;
                     } else {
-                        let pending = self.member_key()?;
-                        stack.push(Frame::Object {
-                            entries: Vec::new(),
-                            keys: None,
-                            pending,
-                        });
+                        let key = self.member_key()?;
+                        stack.push(Frame::Object { start: mem.len() });
+                        mem.push(Member { key, val: 0 });
                         continue 'value;
                     }
                 }
@@ -362,18 +652,16 @@ impl Scanner<'_> {
             };
             // The value `done` is complete: attach it to its container, closing containers.
             loop {
-                let Some(top) = stack.last_mut() else {
+                let Some(top) = stack.last() else {
                     return Some(done);
                 };
                 let closer = match top {
-                    Frame::Array(items) => {
-                        items.push(done);
+                    Frame::Array { .. } => {
+                        vals.push(done);
                         b']'
                     }
-                    Frame::Object {
-                        entries, pending, ..
-                    } => {
-                        entries.push((core::mem::take(pending), done));
+                    Frame::Object { .. } => {
+                        mem.last_mut()?.val = done;
                         b'}'
                     }
                 };
@@ -382,10 +670,25 @@ impl Scanner<'_> {
                 self.pos += 1;
                 if sep == closer {
                     let node = match stack.pop()? {
-                        Frame::Array(items) => Node::Array(items),
-                        Frame::Object { entries, .. } => Node::Object(entries),
+                        Frame::Array { start } => {
+                            let at = self.doc.items.len() as u32;
+                            self.doc.items.extend_from_slice(&vals[start..]);
+                            let len = (vals.len() - start) as u32;
+                            vals.truncate(start);
+                            Node::Arr { start: at, len }
+                        }
+                        Frame::Object { start } => {
+                            if self.has_duplicate(&mem[start..]) {
+                                return None;
+                            }
+                            let at = self.doc.members.len() as u32;
+                            self.doc.members.extend_from_slice(&mem[start..]);
+                            let len = (mem.len() - start) as u32;
+                            mem.truncate(start);
+                            Node::Obj { start: at, len }
+                        }
                     };
-                    done = self.push(node);
+                    done = self.doc.add(node);
                     continue;
                 }
                 if sep != b',' {
@@ -393,18 +696,7 @@ impl Scanner<'_> {
                 }
                 if matches!(stack.last(), Some(Frame::Object { .. })) {
                     let key = self.member_key()?;
-                    if let Some(Frame::Object {
-                        entries,
-                        keys,
-                        pending,
-                    }) = stack.last_mut()
-                    {
-                        // The previous member was just stored, so `entries` holds every earlier key.
-                        if duplicate_key(entries, keys, &key) {
-                            return None;
-                        }
-                        *pending = key;
-                    }
+                    mem.push(Member { key, val: 0 });
                 }
                 continue 'value;
             }
@@ -422,10 +714,17 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
     if text.len() > max_bytes {
         return Err(Fail::LimitExceeded);
     }
-    // Surrogate escapes only exist in text that has a backslash.
-    if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) {
-        return Err(Fail::InvalidData);
+    // Spans are 32-bit offsets.
+    if u32::try_from(text.len()).is_err() {
+        return Err(Fail::LimitExceeded);
     }
+    let mut doc = Doc::default();
+    doc.text.reserve(text.len() + text.len() / 16);
+    doc.text.push_str(text);
+    // About one node per eight bytes of typical documents.
+    doc.nodes.reserve(text.len() / 8);
+    doc.items.reserve(text.len() / 16);
+    doc.members.reserve(text.len() / 32);
     let mut p = Scanner {
         src: text,
         text: text.as_bytes(),
@@ -434,7 +733,8 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
         max_depth: max_depth.min(DEPTH_CEILING),
         max_values,
         limit_hit: false,
-        doc: Doc::default(),
+        doc,
+        table: Vec::new(),
     };
     let root = p.parse();
     let ok = root.is_some_and(|_| {
@@ -442,7 +742,13 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
         p.pos == text.len()
     });
     match (ok, root) {
+        // Decoded escapes grew the text past what a span can address.
+        (true, Some(_)) if u32::try_from(p.doc.text.len()).is_err() => Err(Fail::LimitExceeded),
         (true, Some(root)) => Ok((p.doc, root)),
+        // Go's decoder would replace what the escape scan rejects, which outranks a limit.
+        _ if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) => {
+            Err(Fail::InvalidData)
+        }
         _ if p.limit_hit => Err(Fail::LimitExceeded),
         _ => Err(Fail::InvalidData),
     }
@@ -462,6 +768,7 @@ pub fn number_text_valid(s: &str) -> bool {
         max_values: 0,
         limit_hit: false,
         doc: Doc::default(),
+        table: Vec::new(),
     };
     p.number() && p.pos == s.len()
 }
@@ -475,57 +782,63 @@ struct Out {
 }
 
 impl Out {
-    fn write(&mut self, s: &[u8]) -> Result<(), ()> {
-        if s.len() > self.max - self.buf.len() {
+    fn check(&mut self) -> Result<(), ()> {
+        if self.buf.len() > self.max {
             self.overflow = true;
             return Err(());
         }
-        self.buf.extend_from_slice(s);
         Ok(())
+    }
+
+    fn write(&mut self, s: &[u8]) -> Result<(), ()> {
+        self.buf.extend_from_slice(s);
+        self.check()
     }
 
     /// Encodes a string, escaping only quotes, backslashes and control characters.
     fn string(&mut self, s: &str) -> Result<(), ()> {
-        if s.len() > self.max - self.buf.len() {
-            self.overflow = true;
-            return Err(());
-        }
-        let mut enc: Vec<u8> = Vec::with_capacity(s.len() + 2);
-        enc.push(b'"');
-        for c in s.chars() {
-            match c {
-                '"' => enc.extend_from_slice(b"\\\""),
-                '\\' => enc.extend_from_slice(b"\\\\"),
-                '\u{8}' => enc.extend_from_slice(b"\\b"),
-                '\u{c}' => enc.extend_from_slice(b"\\f"),
-                '\n' => enc.extend_from_slice(b"\\n"),
-                '\r' => enc.extend_from_slice(b"\\r"),
-                '\t' => enc.extend_from_slice(b"\\t"),
-                c if (c as u32) < 0x20 => {
-                    const HEX: &[u8; 16] = b"0123456789abcdef";
-                    let v = c as u32;
-                    enc.extend_from_slice(b"\\u");
-                    for shift in [12, 8, 4, 0] {
-                        enc.push(HEX[(v >> shift & 0xf) as usize]);
-                    }
-                }
-                c => {
-                    let mut buf = [0u8; 4];
-                    enc.extend_from_slice(c.encode_utf8(&mut buf).as_bytes());
-                }
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let b = s.as_bytes();
+        self.buf.reserve(b.len() + 2);
+        self.buf.push(b'"');
+        let mut at = 0;
+        while let Some(i) = find_special(b, at) {
+            self.buf.extend_from_slice(&b[at..i]);
+            match b[i] {
+                b'"' => self.buf.extend_from_slice(b"\\\""),
+                b'\\' => self.buf.extend_from_slice(b"\\\\"),
+                8 => self.buf.extend_from_slice(b"\\b"),
+                12 => self.buf.extend_from_slice(b"\\f"),
+                b'\n' => self.buf.extend_from_slice(b"\\n"),
+                b'\r' => self.buf.extend_from_slice(b"\\r"),
+                b'\t' => self.buf.extend_from_slice(b"\\t"),
+                c => self.buf.extend_from_slice(&[
+                    b'\\',
+                    b'u',
+                    b'0',
+                    b'0',
+                    HEX[usize::from(c >> 4)],
+                    HEX[usize::from(c & 0xf)],
+                ]),
             }
+            at = i + 1;
         }
-        enc.push(b'"');
-        self.write(&enc)
+        self.buf.extend_from_slice(&b[at..]);
+        self.buf.push(b'"');
+        self.check()
+    }
+
+    fn newline(&mut self, width: usize, level: usize) -> Result<(), ()> {
+        if width == 0 {
+            return Ok(());
+        }
+        self.buf.push(b'\n');
+        self.buf.resize(self.buf.len() + width * level, b' ');
+        self.check()
     }
 }
 
 impl Doc {
-    pub fn add(&mut self, node: Node) -> NodeId {
-        self.nodes.push(node);
-        (self.nodes.len() - 1) as NodeId
-    }
-
     /// Serializes `root`. `Err(InvalidData)` for an invalid number text or a dangling node,
     /// `Err(LimitExceeded)` when the output would exceed `max_bytes`.
     pub fn stringify(
@@ -541,7 +854,7 @@ impl Doc {
         }
         .min(INDENT_CEILING);
         let mut out = Out {
-            buf: Vec::new(),
+            buf: Vec::with_capacity(self.text.len().min(max)),
             max,
             overflow: false,
         };
@@ -555,8 +868,8 @@ impl Doc {
     /// A container child under `parents` containers must stay within what `parse` accepts.
     fn check_depth(&self, child: NodeId, parents: usize) -> Result<(), ()> {
         let container = matches!(
-            self.nodes.get(child as usize),
-            Some(Node::Array(_) | Node::Object(_))
+            self.node(child),
+            Some(Node::Arr { .. } | Node::Obj { .. } | Node::ArrB(_) | Node::ObjB(_))
         );
         if container && parents >= DEPTH_CEILING {
             return Err(());
@@ -565,30 +878,24 @@ impl Doc {
     }
 
     fn emit(&self, root: NodeId, width: usize, out: &mut Out) -> Result<(), ()> {
-        let newline = |out: &mut Out, level: usize| -> Result<(), ()> {
-            if width == 0 {
-                return Ok(());
-            }
-            let mut s = alloc::vec![b'\n'];
-            s.resize(1 + width * level, b' ');
-            out.write(&s)
-        };
         // (node, next child index)
         let mut stack: Vec<(NodeId, usize)> = alloc::vec![(root, 0)];
-        let node_at = |id: NodeId| self.nodes.get(id as usize).ok_or(());
         while let Some(&(id, next)) = stack.last() {
             let level = stack.len() - 1;
-            match node_at(id)? {
+            match self.node(id).ok_or(())? {
                 Node::Null => out.write(b"null")?,
                 Node::Bool(b) => out.write(if *b { b"true" } else { b"false" })?,
-                Node::Str(s) => out.string(s)?,
-                Node::Number(t) => {
+                Node::Str(s) => out.string(self.slice(*s))?,
+                Node::Num(t) => out.write(self.slice(*t).as_bytes())?,
+                Node::RawNum(t) => {
+                    let t = self.slice(*t);
                     if !number_text_valid(t) {
                         return Err(());
                     }
                     out.write(t.as_bytes())?
                 }
-                Node::Array(items) => {
+                Node::Arr { .. } | Node::ArrB(_) => {
+                    let items = self.items(id);
                     if items.is_empty() {
                         out.write(b"[]")?;
                     } else {
@@ -599,38 +906,39 @@ impl Doc {
                             if next > 0 {
                                 out.write(b",")?;
                             }
-                            newline(out, level + 1)?;
+                            out.newline(width, level + 1)?;
                             let last = stack.len() - 1;
                             stack[last].1 = next + 1;
                             self.check_depth(items[next], stack.len())?;
                             stack.push((items[next], 0));
                             continue;
                         }
-                        newline(out, level)?;
+                        out.newline(width, level)?;
                         out.write(b"]")?;
                     }
                 }
-                Node::Object(entries) => {
-                    if entries.is_empty() {
+                Node::Obj { .. } | Node::ObjB(_) => {
+                    let members = self.members(id);
+                    if members.is_empty() {
                         out.write(b"{}")?;
                     } else {
                         if next == 0 {
                             out.write(b"{")?;
                         }
-                        if next < entries.len() {
+                        if next < members.len() {
                             if next > 0 {
                                 out.write(b",")?;
                             }
-                            newline(out, level + 1)?;
-                            out.string(&entries[next].0)?;
+                            out.newline(width, level + 1)?;
+                            out.string(self.slice(members[next].key))?;
                             out.write(if width > 0 { b": " } else { b":" })?;
                             let last = stack.len() - 1;
                             stack[last].1 = next + 1;
-                            self.check_depth(entries[next].1, stack.len())?;
-                            stack.push((entries[next].1, 0));
+                            self.check_depth(members[next].val, stack.len())?;
+                            stack.push((members[next].val, 0));
                             continue;
                         }
-                        newline(out, level)?;
+                        out.newline(width, level)?;
                         out.write(b"}")?;
                     }
                 }
