@@ -52,8 +52,8 @@ pub struct Graph {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// A loading failure that is not yet a diagnostic: diagnostics, which pass through import edges unchanged, from plain errors,
-/// which each edge wraps with its own position.
+/// Diagnostics pass through import edges unchanged; plain errors and cycles
+/// acquire the position of the edge that encountered them.
 enum Failure {
     Diagnostic(Box<Diagnostic>),
     Error(ProjectError),
@@ -61,6 +61,14 @@ enum Failure {
 }
 
 impl Failure {
+    fn into_diagnostic(self, file: &Arc<str>, cycle_pos: Pos) -> Diagnostic {
+        match self {
+            Failure::Diagnostic(d) => *d,
+            Failure::Error(e) => from_error(file, &e),
+            Failure::Cycle(m) => resolution(file, cycle_pos, m),
+        }
+    }
+
     fn message(&self) -> String {
         match self {
             Failure::Diagnostic(d) => d.message.clone(),
@@ -146,12 +154,10 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
             Err(failure) => {
                 // An incomplete strict graph cannot be checked.
                 loader.graph.modules.clear();
-                let d = match failure {
-                    Failure::Diagnostic(d) => *d,
-                    Failure::Error(e) => from_error(&file, &e),
-                    Failure::Cycle(m) => resolution(&file, start(), m),
-                };
-                loader.graph.diagnostics.push(d);
+                loader
+                    .graph
+                    .diagnostics
+                    .push(failure.into_diagnostic(&file, start()));
                 return graph;
             }
         }
@@ -276,12 +282,9 @@ impl Loader<'_> {
                 .and_then(|canonical| self.visit(&canonical));
             if let Err(failure) = result {
                 let logical: Arc<str> = Arc::from(file.as_str());
-                let d = match failure {
-                    Failure::Diagnostic(d) => *d,
-                    Failure::Error(e) => from_error(&logical, &e),
-                    Failure::Cycle(m) => resolution(&logical, start(), m),
-                };
-                self.graph.diagnostics.push(d);
+                self.graph
+                    .diagnostics
+                    .push(failure.into_diagnostic(&logical, start()));
             }
         }
     }
@@ -347,12 +350,9 @@ impl Loader<'_> {
             match self.import_module(canonical, file, item) {
                 Ok(target) => resolved.push((item.id, target)),
                 Err(failure) if self.recover => {
-                    let d = match failure {
-                        Failure::Diagnostic(d) => *d,
-                        Failure::Error(e) => from_error(file, &e),
-                        Failure::Cycle(m) => resolution(file, item.pos, m),
-                    };
-                    self.graph.diagnostics.push(d);
+                    self.graph
+                        .diagnostics
+                        .push(failure.into_diagnostic(file, item.pos));
                 }
                 Err(failure) => return Err(failure),
             }
