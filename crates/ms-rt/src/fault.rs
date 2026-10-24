@@ -486,7 +486,7 @@ unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    {
+    if DEPTHDBG.load(Ordering::Relaxed) {
         let sp: usize = 0;
         let m = format!("WALKDBG pc={pc:x} fp={fp:x} remaining={remaining} lo={lo:x} hi={hi:x} lo0={:x} hi0={:x} local={:x}\n", unsafe { *STACK_LO.ptr() }, unsafe { *STACK_HI.ptr() }, &sp as *const usize as usize);
         sys::write_all(sys::STDERR, m.as_bytes());
@@ -897,8 +897,10 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -
 /// Lowers the recursion limit so cleanups can run calls in the reserve. A function of its own that
 /// returns: the Windows frame walk recovers the faulting frame's `rbp` by unwinding, and a
 /// diverging function is free to leave a register it used (here the new limit) unrestored.
+static DEPTHDBG: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 #[inline(never)]
 fn lower_depth_limit() {
+    DEPTHDBG.store(true, Ordering::Relaxed);
     // SAFETY: single threaded limit change.
     unsafe {
         let lo = *STACK_LO.ptr();
