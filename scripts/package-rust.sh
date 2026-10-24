@@ -32,7 +32,8 @@ esac
 executable=ms
 if [ "$target_os" = windows ]; then executable=ms.exe; fi
 
-# `ms-cli`'s build script builds ms-native in release mode and embeds it.
+# ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
+cargo xtask runtime
 # Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
 # the profiler); they made it about 130 MB.
 CARGO_PROFILE_RELEASE_STRIP=debuginfo cargo build --release --locked -p ms-cli
