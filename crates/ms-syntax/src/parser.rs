@@ -636,7 +636,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the type that follows a parameter list, rejecting the removed
     /// `->` and a missing type with the form to write instead.
-    fn result_type(&mut self) -> PResult<TypeRef> {
+    fn result_type(&mut self) -> PResult<(bool, TypeRef)> {
         let t = self.peek();
         if t.kind != Tok::Arrow {
             if self.speculative > 0 {
@@ -648,7 +648,8 @@ impl<'a> Parser<'a> {
             );
         }
         self.at += 1;
-        self.typ()
+        let by_ref = self.take(Tok::Ref);
+        Ok((by_ref, self.typ()?))
     }
 
     fn typ(&mut self) -> PResult<TypeRef> {
@@ -829,7 +830,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let params = self.parameters(true, false)?;
-        let result = self.result_type()?;
+        let (result_ref, result) = self.result_type()?;
         let body = if body {
             self.statement_suite(false, true)?
         } else {
@@ -844,7 +845,9 @@ impl<'a> Parser<'a> {
                 type_params,
                 params,
                 result,
+                result_ref,
                 body,
+                external: false,
             },
             mutating,
         })
@@ -860,14 +863,41 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let result = self.result_type()?;
+                let (result_ref, result) = self.result_type()?;
                 let body = self.statement_suite(false, true)?;
                 DeclKind::Fn(Func {
                     name: self.sym(name),
                     type_params,
                     params,
                     result,
+                    result_ref,
                     body,
+                    external: false,
+                })
+            }
+            Tok::Extern => {
+                self.at += 1;
+                self.need(Tok::Def)?;
+                let name = self.need(Tok::Name)?;
+                if self.kind() == Tok::LBracket {
+                    let t = self.peek();
+                    return self.fail(t, "an extern def cannot be generic; declare the concrete types the native symbol takes");
+                }
+                let params = self.parameters(true, false)?;
+                let (result_ref, result) = self.result_type()?;
+                if self.kind() == Tok::Colon {
+                    let t = self.peek();
+                    return self.fail(t, "an extern def has no body; remove the ':'");
+                }
+                self.end()?;
+                DeclKind::Fn(Func {
+                    name: self.sym(name),
+                    type_params: Vec::new(),
+                    params,
+                    result,
+                    result_ref,
+                    body: Vec::new(),
+                    external: true,
                 })
             }
             Tok::Let => {
@@ -1174,7 +1204,12 @@ impl<'a> Parser<'a> {
 
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
+        let by_ref = self.take(Tok::Ref);
+        let at = self.peek();
         let pattern = self.pattern()?;
+        if by_ref && !matches!(pattern.kind, PatternKind::Name(_)) {
+            return self.fail(at, "`ref` binds a single name, e.g. `let ref x = a.b`");
+        }
         let mut ty = None;
         if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
             ty = Some(self.typ()?);
@@ -1187,6 +1222,7 @@ impl<'a> Parser<'a> {
             pos,
             kind: StmtKind::Bind {
                 mutable,
+                by_ref,
                 pattern,
                 ty,
                 value,
@@ -1235,7 +1271,15 @@ impl<'a> Parser<'a> {
                     return self.fail(b, "a local def cannot take type parameters; declare a generic function at module level");
                 }
                 let params = self.parameters(true, false)?;
-                let result = Box::new(self.result_type()?);
+                let at = self.peek();
+                let (by_ref, result) = self.result_type()?;
+                if by_ref {
+                    return self.fail(
+                        at,
+                        "a local def cannot return a 'ref'; only a declared def or method can lend",
+                    );
+                }
+                let result = Box::new(result);
                 let body = self.statement_suite(true, false)?;
                 let pid = self.id();
                 let value = self.mk(
@@ -1248,6 +1292,7 @@ impl<'a> Parser<'a> {
                 );
                 StmtKind::Bind {
                     mutable: false,
+                    by_ref: false,
                     pattern: Pattern {
                         id: pid,
                         pos: name.pos,

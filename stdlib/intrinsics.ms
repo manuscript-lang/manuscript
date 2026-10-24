@@ -84,7 +84,7 @@ interface StringOperations:
     # Tests whether the receiver begins with this exact prefix.
     def starts_with(prefix: String) -> Bool
     # Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
-    def trim() -> String
+    def trim() -> ref String
     # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     def upper() -> String
     # Returns a one-scalar String; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
@@ -96,9 +96,9 @@ interface StringOperations:
     # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
     def last_index_of(value: String) -> Optional[Int]
     # Removes Unicode whitespace at the start.
-    def trim_start() -> String
+    def trim_start() -> ref String
     # Removes Unicode whitespace at the end.
-    def trim_end() -> String
+    def trim_end() -> ref String
     # Pads on the left until the scalar length reaches `target_length`.
     # Empty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output.
     def pad_start(

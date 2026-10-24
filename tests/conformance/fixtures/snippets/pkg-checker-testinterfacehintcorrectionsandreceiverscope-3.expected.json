@@ -26,6 +26,21 @@
           "line": 4,
           "column": 23,
           "offset": 185
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms",
+            "line": 4,
+            "column": 23,
+            "offset": 185
+          },
+          "end": {
+            "file": "pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms",
+            "line": 4,
+            "column": 28,
+            "offset": 190
+          },
+          "replacement": "shape"
         }
       }
     ],

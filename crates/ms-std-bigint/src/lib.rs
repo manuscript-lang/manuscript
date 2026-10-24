@@ -12,9 +12,9 @@ use ms_rt as _;
 extern crate alloc;
 
 use alloc::string::String;
+use ms_rt::ffi::{ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::glue::{fault_fmt, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
-use ms_std_core::{ObjRef, Object, Out, Status, abi_handle, native};
-use ms_std_rt::{fault_fmt, poll_cancel};
 use num_bigint::{BigInt, Sign};
 use num_traits::{Signed, ToPrimitive, Zero};
 
@@ -254,8 +254,8 @@ native! {
 mod tests {
     use super::*;
     use ms_rt as _; // links the msrt_* runtime symbols
+    use ms_rt::ffi::{FromAbi, ObjCell};
     use ms_rt_abi::STATUS_OK;
-    use ms_std_core::{FromAbi, ObjCell};
 
     fn big(text: &str) -> BigInt {
         parse(text.as_bytes(), 10, None).expect("parse")

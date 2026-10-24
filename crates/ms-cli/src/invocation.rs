@@ -26,6 +26,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--depth",
     "--diff",
     "--top",
+    "--link",
 ];
 
 /// The `--view` names of `ms diagram`.
@@ -55,9 +56,12 @@ pub struct Invocation {
     pub analysis: bool,
     pub targets: Vec<String>,
     pub output: String,
+    /// `--link`: extra objects and static libraries for `extern fn` symbols.
+    pub link: Vec<String>,
     pub format_check: bool,
     pub structured: bool,
     pub watch: bool,
+    pub fix: bool,
     pub build_type_name: String,
     pub build_type_set: bool,
     pub test_timeout: String,
@@ -161,6 +165,7 @@ fn parse_options(
                 return Ok(());
             }
             "--watch" => inv.watch = true,
+            "--fix" => inv.fix = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -271,6 +276,15 @@ fn parse_options(
                         }
                     },
                 }
+            }
+            "--link" => {
+                let Some(value) = required_value(args, &mut i, value, inline) else {
+                    return Err(usage_error(
+                        io,
+                        "--link requires a path argument, e.g. --link native/libgreet.a",
+                    ));
+                };
+                inv.link.push(value.to_string());
             }
             "-o" | "--output" | "--out-dir" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
@@ -469,6 +483,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             "--json cannot be combined with --watch; remove --watch for one versioned result",
         ));
     }
+    if inv.fix && (!inv.is_one_of(&["check", "lint"]) || inv.watch) {
+        return Err(usage_error(
+            io,
+            format!(
+                "--fix requires check or lint without --watch, not {command}; use ms check <file> --fix"
+            ),
+        ));
+    }
     if inv.watch && !inv.is_one_of(&["check", "lint", "run", "test"]) {
         return Err(usage_error(
             io,
@@ -493,6 +515,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             return Err(2);
         }
     };
+    if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test"]) {
+        return Err(usage_error(
+            io,
+            format!("--link requires build, run, or test, not {command}; remove the flag"),
+        ));
+    }
     if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "profile"]) {
         return Err(usage_error(
             io,
@@ -520,6 +548,7 @@ pub fn requests_help(args: &[String]) -> bool {
         "--repeat",
         "--shuffle",
         "--top",
+        "--link",
     ];
     let mut i = 0;
     while i < args.len() {

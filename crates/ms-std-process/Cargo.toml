@@ -10,9 +10,8 @@ crate-type = ["rlib"]
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-rt = { path = "../ms-std-rt" }
+ms-rt = { path = "../ms-rt" }
 ms-std-fs = { path = "../ms-std-fs" }
-ms-std-core = { path = "../ms-std-core" }
 ms-std-io = { path = "../ms-std-io" }
 
 [target.'cfg(unix)'.dependencies]
@@ -36,5 +35,3 @@ windows-sys = { version = "0.61", features = [
 [lints]
 workspace = true
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }

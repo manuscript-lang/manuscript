@@ -26,6 +26,21 @@
           "line": 4,
           "column": 46,
           "offset": 223
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
+            "line": 4,
+            "column": 46,
+            "offset": 223
+          },
+          "end": {
+            "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
+            "line": 4,
+            "column": 53,
+            "offset": 230
+          },
+          "replacement": "failed"
         }
       },
       {

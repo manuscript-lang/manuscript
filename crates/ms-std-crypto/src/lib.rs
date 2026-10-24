@@ -16,7 +16,7 @@ use alloc::vec::Vec;
 use cipher::block::{BlockModeDecrypt, BlockModeEncrypt};
 use cipher::{KeyIvInit, StreamCipher};
 use digest::block_api::BlockSizeUser;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 use sha2::Digest;
 
 /// HMAC (RFC 2104) over any digest; RustCrypto's `hmac` does not cover SHA-3.
@@ -245,8 +245,8 @@ impl CryptoFail {
     /// `CryptoError` case index in declaration order: InvalidInput, Unsupported, AuthenticationFailed.
     pub fn status(self) -> u8 {
         match self {
-            CryptoFail::InvalidInput => ms_std_core::STATUS_INVALID_INPUT,
-            CryptoFail::Unsupported => ms_std_core::STATUS_UNSUPPORTED,
+            CryptoFail::InvalidInput => ms_rt::ffi::STATUS_INVALID_INPUT,
+            CryptoFail::Unsupported => ms_rt::ffi::STATUS_UNSUPPORTED,
             CryptoFail::AuthenticationFailed => STATUS_AUTHENTICATION_FAILED,
         }
     }

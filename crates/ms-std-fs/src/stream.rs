@@ -9,11 +9,11 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
 use core::sync::atomic::{AtomicU8, Ordering};
+use ms_rt::glue::{poll_cancel, stash_stdin_pending, take_stdin_pending};
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_NONE, STATUS_UNAVAILABLE,
 };
-use ms_std_rt::{poll_cancel, stash_stdin_pending, take_stdin_pending};
 
 /// The `IoError` outcome of an operation: a status and, for `STATUS_FAILED`, its text.
 #[derive(Debug, PartialEq, Eq)]
@@ -46,12 +46,9 @@ impl IoFail {
     }
 }
 
-unsafe extern "C-unwind" {
-    /// Writes out the runtime's buffered standard output (`print`), so streams keep program order.
-    fn msrt_io_flush();
-}
+use ms_rt::io::msrt_io_flush;
 
-ms_std_core::abi_handle!(Stream);
+ms_rt::ffi::abi_handle!(Stream);
 
 pub struct Stream {
     pub(crate) fd: sys::Fd,
@@ -214,11 +211,11 @@ impl Stream {
         #[cfg(all(unix, not(test)))]
         {
             let events = match interest {
-                Interest::Read => ms_std_rt::WAIT_READ,
-                Interest::Write => ms_std_rt::WAIT_WRITE,
+                Interest::Read => ms_rt::glue::WAIT_READ,
+                Interest::Write => ms_rt::glue::WAIT_WRITE,
             };
             // Ready, hung up, or failed: the next read or write reports the details.
-            ms_std_rt::task_wait_fd(self.fd, events, -1);
+            ms_rt::glue::task_wait_fd(self.fd, events, -1);
         }
         // Tests run on many threads, which the runtime's scheduler does not support; Windows
         // pipes and consoles cannot be polled, so they are checked between short task sleeps.
@@ -278,8 +275,7 @@ impl Stream {
         }
         self.rewind();
         if self.shares_output {
-            // SAFETY: provided by `ms-rt`.
-            unsafe { msrt_io_flush() };
+            msrt_io_flush();
         }
         while !data.is_empty() {
             self.wait_write();

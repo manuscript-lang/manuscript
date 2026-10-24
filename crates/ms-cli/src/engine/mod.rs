@@ -61,6 +61,7 @@ impl<L: Lower> Engine<L> {
         compiled: &mut Compiled,
         output: &Path,
         kind: BuildType,
+        link: &[String],
     ) -> Result<(), String> {
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
@@ -69,7 +70,14 @@ impl<L: Lower> Engine<L> {
                 None => runtime::embedded()?,
             },
         };
-        ms_build::build_executable(&mut compiled.module, output, profile(kind), &runtime)?;
+        let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
+        ms_build::build_executable(
+            &mut compiled.module,
+            output,
+            profile(kind),
+            &runtime,
+            &extra,
+        )?;
         write_metadata(output, kind);
         Ok(())
     }

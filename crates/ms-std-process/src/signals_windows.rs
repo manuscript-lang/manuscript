@@ -5,10 +5,10 @@
 //! counts each event for every observer of that signal, then returns `FALSE` so the handler that
 //! was installed before (the runtime's cancellation) still runs.
 use core::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::sys;
-use ms_std_rt::poll_cancel;
 use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
 
 const SLOTS: usize = 32;
@@ -50,7 +50,7 @@ unsafe extern "system" fn on_event(kind: u32) -> i32 {
     0
 }
 
-ms_std_core::abi_handle!(Watcher);
+ms_rt::ffi::abi_handle!(Watcher);
 
 /// One `SignalStream`.
 pub struct Watcher {
@@ -146,7 +146,7 @@ impl Watcher {
                 return Ok(sig);
             }
             poll_cancel();
-            ms_std_rt::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+            ms_rt::glue::task_sleep(i64::from(SLICE_MS) * 1_000_000);
         }
     }
 

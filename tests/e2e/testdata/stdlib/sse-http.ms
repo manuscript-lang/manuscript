@@ -7,7 +7,7 @@ from "@std/http.ms" import (
     HttpMethod,
     HttpServerOptions
 )
-from "@std/sse.ms" import borrow_body, reader, next_event
+from "@std/sse.ms" import body_stream, reader, next_event
 from "@std/net.ms" import network
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
@@ -21,19 +21,21 @@ def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
     return ok(())
 
-test "HTTP response bodies decode as SSE without being closed by the reader":
+test "HTTP response bodies decode as SSE and close with the reader":
     with try network().serve_stream("127.0.0.1:0", stream_events, HttpServerOptions()) as server:
         with try network().http_client(HttpClientOptions()) as client:
-            with try client.request(
+            let response = try client.request(
                 HttpMethod.Get, f"http://{server.address()}/", headers()
-            ) as response:
-                var events = try reader(borrow_body(response))
-                let first = (try next_event(var events)).get()
-                let second = (try next_event(var events)).get()
-                if first.event != "greet" or first.data != f"h\u{e9}!": return fail(
-                    f"first event {first.data}"
-                )
+            )
+            let status = response.metadata().status
+            var events = try reader(body_stream(response))
+            let first = (try next_event(var events)).get()
+            let second = (try next_event(var events)).get()
+            if first.event != "greet" or first.data != f"h\u{e9}!": return fail(
+                f"first event {first.data}"
+            )
 
-                try expect_false(second.event != "message" or second.data != "second")
-                try expect_false((try next_event(var events)).is_some())
-                try expect_equal(response.metadata().status, 200)
+            try expect_false(second.event != "message" or second.data != "second")
+            try expect_false((try next_event(var events)).is_some())
+            events.close()
+            try expect_equal(status, 200)

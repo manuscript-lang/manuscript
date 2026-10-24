@@ -468,7 +468,16 @@ impl Completer<'_> {
                 "break", "continue",
             ];
             if line_start == c.start {
-                words = vec!["def", "type", "interface", "impl", "from", "export", "test"];
+                words = vec![
+                    "def",
+                    "type",
+                    "interface",
+                    "impl",
+                    "from",
+                    "export",
+                    "extern",
+                    "test",
+                ];
             }
             for word in words {
                 let mut insert = format!("{word} ");

@@ -12,8 +12,8 @@ use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ops::Deref;
+use ms_rt::ffi::Global;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK};
-use ms_std_core::Global;
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
 use rustix::io::{Errno, read, write};
@@ -23,12 +23,10 @@ use rustix::termios::{
 };
 use rustix::time::{ClockId, Timespec, clock_gettime};
 
-unsafe extern "C-unwind" {
-    fn msrt_io_flush();
-    #[cfg(not(test))]
-    fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32;
-    fn msrt_process_on_exit(hook: extern "C" fn());
-}
+use ms_rt::io::msrt_io_flush;
+use ms_rt::process::msrt_process_on_exit;
+#[cfg(not(test))]
+use ms_rt::task::msrt_task_wait_fd;
 
 #[cfg(not(test))]
 const WAIT_READ: u32 = 1;
@@ -147,7 +145,7 @@ fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
             )
         };
         if woke & WAIT_CANCELLED != 0 {
-            ms_std_rt::cancelled();
+            ms_rt::glue::cancelled();
         }
         // Readable or hung up; a read then reports which.
         woke & 0b101 != 0
@@ -162,12 +160,10 @@ fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
 fn pause(ns: i64) {
     #[cfg(not(test))]
     {
-        unsafe extern "C-unwind" {
-            fn msrt_task_sleep(ns: i64) -> u32;
-        }
+        use ms_rt::task::msrt_task_sleep;
         // SAFETY: provided by `ms-rt`.
         if unsafe { msrt_task_sleep(ns) } & WAIT_CANCELLED != 0 {
-            ms_std_rt::cancelled();
+            ms_rt::glue::cancelled();
         }
     }
     #[cfg(test)]
@@ -197,7 +193,7 @@ impl Raw {
             return Err(ms_rt_abi::STATUS_BUSY);
         }
         let Ok(saved) = tcgetattr(input) else {
-            return Err(ms_std_rt::failed(b"cannot read terminal settings"));
+            return Err(ms_rt::glue::failed(b"cannot read terminal settings"));
         };
         let mut raw = saved.clone();
         raw.input_modes.remove(
@@ -223,7 +219,7 @@ impl Raw {
         raw.special_codes[SpecialCodeIndex::VMIN] = 1;
         raw.special_codes[SpecialCodeIndex::VTIME] = 0;
         if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
-            return Err(ms_std_rt::failed(b"cannot enter raw mode"));
+            return Err(ms_rt::glue::failed(b"cannot enter raw mode"));
         }
         let terminal = State {
             input,
@@ -244,8 +240,7 @@ impl Raw {
         let terminal = Rc::new(terminal);
         *ACTIVE.get().borrow_mut() = Rc::downgrade(&terminal);
         if !HOOKED.get().replace(true) {
-            // SAFETY: provided by `ms-rt`.
-            unsafe { msrt_process_on_exit(restore_at_exit) };
+            msrt_process_on_exit(restore_at_exit);
         }
         Ok(Raw(terminal))
     }
@@ -277,15 +272,14 @@ impl State {
 
     fn write(&self, bytes: &[u8]) -> Result<(), u8> {
         // Text the program printed earlier must reach the terminal before the control sequence.
-        // SAFETY: provided by `ms-rt`.
-        unsafe { msrt_io_flush() };
+        msrt_io_flush();
         let mut rest = bytes;
         while !rest.is_empty() {
             match write(self.output, rest) {
                 Ok(n) => rest = &rest[n..],
                 Err(Errno::INTR) => {}
                 Err(Errno::AGAIN) => pause(NS_PER_MS),
-                Err(_) => return Err(ms_std_rt::failed(b"cannot write to the terminal")),
+                Err(_) => return Err(ms_rt::glue::failed(b"cannot write to the terminal")),
             }
         }
         Ok(())
@@ -359,7 +353,7 @@ impl State {
         self.reading.set(true);
         let _reading = Reading(&self.reading);
         loop {
-            ms_std_rt::poll_cancel();
+            ms_rt::glue::poll_cancel();
             if self.closed.get() {
                 return STATUS_CLOSED;
             }

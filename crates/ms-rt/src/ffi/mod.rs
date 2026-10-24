@@ -6,14 +6,12 @@
 //! The crate is `no_std` + `alloc`: allocation of Rust values goes through the global allocator
 //! of the final program (`ms-rt` installs its own); values handed back to generated code are
 //! allocated with `msrt_alloc` so that the runtime can free them.
-#![no_std]
 #![allow(unsafe_code)]
 // Unit tests drive the C ABI directly.
 #![cfg_attr(test, allow(clippy::undocumented_unsafe_blocks))]
 
-extern crate alloc;
-
 mod native;
+pub use crate::{abi_handle, abi_record, native};
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesArray, BytesList, EntryFilter, ErrOut,
     FromAbi, Global, Handed, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell,
@@ -22,29 +20,20 @@ pub use native::{
     TextList, argv, start_nanos,
 };
 
-use alloc::vec::Vec;
 use ms_rt_abi::KIND_LIST;
 pub use ms_rt_abi::{
     KIND_CUSTOM, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK,
     STATUS_OUT_OF_RANGE, STATUS_UNSUPPORTED, StrVal, TypeDesc, VecVal,
 };
+use std::vec::Vec;
 
-unsafe extern "C" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
-    fn msrt_string_clone(s: *const StrVal, out: *mut StrVal);
-    fn msrt_string_free(s: *const StrVal);
-    fn msrt_list_new(out: *mut VecVal);
-    fn msrt_list_push(v: *mut VecVal, d: *const TypeDesc, e: *const u8);
-    static msrt_desc_string: TypeDesc;
-    static msrt_desc_bytes: TypeDesc;
-}
+use crate::desc::{msrt_desc_bytes, msrt_desc_string};
+use crate::obj::msrt_alloc;
+use crate::string::{msrt_string_clone, msrt_string_free, msrt_string_from_bytes};
+use crate::vec::{msrt_list_new, msrt_list_push};
 
 // Faults unwind through the natives that raise them.
-unsafe extern "C-unwind" {
-    fn msrt_fault(msg: *const u8, len: usize) -> !;
-    fn msrt_fault_int_overflow() -> !;
-}
+use crate::fault::{msrt_fault, msrt_fault_int_overflow};
 
 /// Error cases shared by the std error types (`InvalidInput`, `InvalidData`, `LimitExceeded`).
 ///
@@ -91,8 +80,7 @@ pub fn fault(msg: &str) -> ! {
 
 /// Raises the integer-overflow runtime fault; never returns.
 pub fn int_overflow() -> ! {
-    // SAFETY: provided by `ms-rt`; takes no arguments.
-    unsafe { msrt_fault_int_overflow() }
+    msrt_fault_int_overflow()
 }
 
 /// Borrows the text of a runtime string.
@@ -146,13 +134,13 @@ pub fn new_string_bytes(s: &[u8]) -> StrVal {
 ///
 /// # Safety
 /// `write` initialises its argument with an owned string.
-pub unsafe fn take_string(write: impl FnOnce(*mut StrVal)) -> alloc::string::String {
+pub unsafe fn take_string(write: impl FnOnce(*mut StrVal)) -> std::string::String {
     let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
     write(out.as_mut_ptr());
     // SAFETY: caller contract; the string is owned and released once.
     unsafe {
         let s = out.assume_init();
-        let text = alloc::string::String::from(str_ref(&s));
+        let text = std::string::String::from(str_ref(&s));
         str_release(&s);
         text
     }
@@ -324,7 +312,7 @@ mod tests {
         unsafe {
             write_bytes(v.as_mut_ptr(), b"abc");
             assert_eq!(bytes_ref(v.as_ptr()), b"abc");
-            ms_rt::vec::msrt_bytes_drop(v.as_mut_ptr());
+            crate::vec::msrt_bytes_drop(v.as_mut_ptr());
             write_bytes(v.as_mut_ptr(), b"");
             assert_eq!(bytes_ref(v.as_ptr()), b"");
         }
@@ -336,15 +324,12 @@ mod tests {
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: `v` is writable; every read borrows the live value.
         unsafe {
-            write_string_matrix(
-                v.as_mut_ptr(),
-                alloc::vec![alloc::vec!["a", "b"], alloc::vec![]],
-            );
+            write_string_matrix(v.as_mut_ptr(), std::vec![std::vec!["a", "b"], std::vec![]]);
             assert_eq!(
                 read_string_matrix(v.as_ptr()),
-                alloc::vec![alloc::vec!["a", "b"], alloc::vec![]]
+                std::vec![std::vec!["a", "b"], std::vec![]]
             );
-            ms_rt::vec::msrt_list_drop(v.as_mut_ptr(), &DESC_LIST_STRING);
+            crate::vec::msrt_list_drop(v.as_mut_ptr(), &DESC_LIST_STRING);
         }
     }
 

@@ -4,7 +4,7 @@
 use crate::Regex;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Fail, IntList, ObjRef, Object, Out, StrMap, abi_handle, native};
+use ms_rt::ffi::{Fail, IntList, ObjRef, Object, Out, StrMap, abi_handle, native};
 
 abi_handle!(Regex);
 
@@ -85,7 +85,7 @@ native! {
 #[allow(unsafe_code)]
 mod tests {
     use super::*;
-    use ms_std_core::{VecVal, new_string};
+    use ms_rt::ffi::{VecVal, new_string};
 
     #[test]
     fn compile_match_release() {
@@ -103,12 +103,12 @@ mod tests {
             let mut none = core::ptr::null_mut();
             assert_eq!(
                 msrt_regex_compile(&bad, &mut none),
-                ms_std_core::STATUS_INVALID_DATA
+                ms_rt::ffi::STATUS_INVALID_DATA
             );
             ms_rt::obj::msrt_release(re.cast());
-            ms_std_core::str_release(&pat);
-            ms_std_core::str_release(&hay);
-            ms_std_core::str_release(&bad);
+            ms_rt::ffi::str_release(&pat);
+            ms_rt::ffi::str_release(&hay);
+            ms_rt::ffi::str_release(&bad);
         }
     }
 }

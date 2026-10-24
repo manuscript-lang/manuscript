@@ -17,7 +17,7 @@ pub mod ffi;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 use ms_std_json::{Doc, Limits, Node, NodeId};
 
 /// Levels from Trace (0) to Silent (6); only 0 through 5 can label a record.

@@ -6,10 +6,10 @@
 //! checks in short slices that park the task. Either way other tasks run and a pending
 //! cancellation kills the tree and unwinds.
 use alloc::vec::Vec;
+use ms_rt::glue::{cancel_pending, cancelled};
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
 use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
-use ms_std_rt::{cancel_pending, cancelled};
 
 /// How long a waiting task parks between checks of the child and its pipes when it cannot park
 /// on the child's exit.
@@ -42,7 +42,7 @@ use plat::{Waiter, set_nonblocking, wait_io, would_block};
 
 /// Parks the task `ms` milliseconds so other tasks run meanwhile.
 fn sleep_ms(ms: i64) {
-    ms_std_rt::task_sleep(ms.max(0) * 1_000_000);
+    ms_rt::glue::task_sleep(ms.max(0) * 1_000_000);
 }
 
 /// A descriptor closed on drop.
@@ -253,7 +253,7 @@ impl Subprocess {
     pub fn wait(&mut self, timeout_ns: Option<i64>) -> Res<i64> {
         let deadline = timeout_ns.map(|t| now_ns().saturating_add(t));
         loop {
-            ms_std_rt::poll_cancel();
+            ms_rt::glue::poll_cancel();
             if self.child.poll() {
                 return Ok(self.child.code.unwrap_or(-1));
             }

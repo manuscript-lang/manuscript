@@ -14,7 +14,7 @@ use miniz_oxide::inflate::TINFLStatus;
 use miniz_oxide::inflate::core::{
     DecompressorOxide, TINFL_LZ_DICT_SIZE, decompress, inflate_flags,
 };
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 const _: () = assert!(TINFL_LZ_DICT_SIZE.is_power_of_two());
 

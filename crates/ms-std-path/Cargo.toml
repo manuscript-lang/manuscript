@@ -7,10 +7,8 @@ description = "Native implementation of @std/fs.ms and the glob matcher shared w
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-core = { path = "../ms-std-core" }
-
-[dev-dependencies]
 ms-rt = { path = "../ms-rt" }
+
 
 [lints]
 workspace = true

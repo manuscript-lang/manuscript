@@ -16,19 +16,10 @@ use ms_rt_abi::{
     Obj, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_OK, STATUS_OUT_OF_RANGE,
     STR_INLINE_MAX, STR_LEN_MASK, StrVal, VecVal,
 };
+pub use ms_rt_hot::{bytes, bytes_eq, equal, hash_bytes, hash_int, mix};
 
 /// Native allocation ceiling for built strings.
 pub const MAX_BYTES: usize = 1 << 30;
-
-/// Bytes of a string.
-///
-/// # Safety
-/// `s` must be a live string for the lifetime `'a`.
-#[inline(always)]
-pub unsafe fn bytes<'a>(s: *const StrVal) -> &'a [u8] {
-    // SAFETY: `ptr..ptr+len` holds the text.
-    unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
-}
 
 /// A copy of `s` that the caller owns: a static or inline string is the same two words, an owned
 /// one or a view is duplicated.
@@ -217,16 +208,6 @@ pub fn from_buf(b: Vec<u8>) -> StrVal {
     from_bytes(b.as_slice())
 }
 
-/// Hash of a string's bytes (equal strings hash equally).
-///
-/// # Safety
-/// `s` must be live.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_hash(s: *const StrVal) -> i64 {
-    // SAFETY: caller contract.
-    hash_bytes(unsafe { bytes(s) }) as i64
-}
-
 /// New string from raw bytes. Exported for literals built at startup and for the Rust stdlib crates.
 ///
 /// # Safety
@@ -361,18 +342,6 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_length(s: *const StrVal) -> i
     unsafe { scalar_count(s) as i64 }
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: *const StrVal) -> i64 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).len() as i64 }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: *const StrVal) -> u8 {
-    // SAFETY: caller passes a live string.
-    unsafe { (*s).is_empty() as u8 }
-}
-
 /// Resolves a possibly negative index against `count`; `None` when out of range.
 fn relative(count: usize, index: i64) -> Option<usize> {
     let i = if index < 0 {
@@ -456,122 +425,6 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 // ---------------------------------------------------------------------------
 // Comparison, hashing
 // ---------------------------------------------------------------------------
-
-/// Content equality.
-///
-/// # Safety
-/// Both strings live.
-#[inline]
-pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
-    // SAFETY: caller contract.
-    unsafe { ((*a).ptr_word == (*b).ptr_word && (*a).tagged == (*b).tagged) || bytes_eq(a, b) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8 {
-    // SAFETY: caller passes live strings.
-    unsafe { equal(a, b) as u8 }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_compare(a: *const StrVal, b: *const StrVal) -> i64 {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        match bytes(a).cmp(bytes(b)) {
-            core::cmp::Ordering::Less => -1,
-            core::cmp::Ordering::Equal => 0,
-            core::cmp::Ordering::Greater => 1,
-        }
-    }
-}
-
-/// Whether two strings hold the same bytes: overlapping word compares for up to 16 bytes, so short
-/// keys need no `memcmp` call.
-///
-/// # Safety
-/// Both must be live strings.
-#[inline(always)]
-pub unsafe fn bytes_eq(a: *const StrVal, b: *const StrVal) -> bool {
-    // SAFETY: the bytes of a live string are `len` readable bytes.
-    unsafe {
-        let n = (*a).len();
-        if n != (*b).len() {
-            return false;
-        }
-        let (p, q) = ((*a).data(), (*b).data());
-        let word = |x: *const u8, at: usize| (x.add(at) as *const u64).read_unaligned();
-        let half = |x: *const u8, at: usize| (x.add(at) as *const u32).read_unaligned();
-        if (8..=16).contains(&n) {
-            return word(p, 0) == word(q, 0) && word(p, n - 8) == word(q, n - 8);
-        }
-        if (4..8).contains(&n) {
-            return half(p, 0) == half(q, 0) && half(p, n - 4) == half(q, n - 4);
-        }
-        if n < 4 {
-            // The first, middle and last bytes cover every byte of a string of up to three.
-            return n == 0
-                || (*p == *q
-                    && *p.add(n >> 1) == *q.add(n >> 1)
-                    && *p.add(n - 1) == *q.add(n - 1));
-        }
-        core::slice::from_raw_parts(p, n) == core::slice::from_raw_parts(q, n)
-    }
-}
-
-/// Deterministic 64-bit hash of bytes: eight bytes per multiply-fold step, with the tail read as
-/// one overlapping word, then a final avalanche. Hashes are lookup aids, not stable identifiers.
-pub fn hash_bytes(b: &[u8]) -> u64 {
-    const K0: u64 = 0x9e37_79b9_7f4a_7c15;
-    const K1: u64 = 0xff51_afd7_ed55_8ccd;
-    #[inline(always)]
-    fn fold(a: u64, b: u64) -> u64 {
-        let m = u128::from(a) * u128::from(b);
-        (m as u64) ^ ((m >> 64) as u64)
-    }
-    #[inline(always)]
-    fn word(b: &[u8], at: usize) -> u64 {
-        let mut w = [0u8; 8];
-        w.copy_from_slice(&b[at..at + 8]);
-        u64::from_le_bytes(w)
-    }
-    #[inline(always)]
-    fn half(b: &[u8], at: usize) -> u64 {
-        let mut w = [0u8; 4];
-        w.copy_from_slice(&b[at..at + 4]);
-        u64::from(u32::from_le_bytes(w))
-    }
-    let n = b.len();
-    let mut h = K0 ^ (n as u64).wrapping_mul(K1);
-    let mut i = 0;
-    while i + 8 <= n {
-        h = fold(h ^ word(b, i), K1);
-        i += 8;
-    }
-    let tail = if n >= 8 {
-        word(b, n - 8)
-    } else if n >= 4 {
-        half(b, 0) << 32 | half(b, n - 4)
-    } else if n > 0 {
-        u64::from(b[0]) << 16 | u64::from(b[n >> 1]) << 8 | u64::from(b[n - 1])
-    } else {
-        0
-    };
-    fold(h ^ tail, K0)
-}
-
-/// Hash of an `Int` key: one widening multiply folded to 64 bits.
-#[inline(always)]
-pub fn hash_int(x: u64) -> u64 {
-    let m = u128::from(x ^ 0x9e37_79b9_7f4a_7c15) * 0xff51_afd7_ed55_8ccd;
-    (m as u64) ^ ((m >> 64) as u64)
-}
-
-#[inline]
-pub fn mix(mut h: u64) -> u64 {
-    h ^= h >> 32;
-    h = h.wrapping_mul(0x9e37_79b9_7f4a_7c15);
-    h ^ (h >> 29)
-}
 
 // ---------------------------------------------------------------------------
 // Searching
@@ -2559,7 +2412,7 @@ mod tests {
         unsafe {
             let s = st("héllo");
             assert_eq!(msrt_string_length(s), 5);
-            assert_eq!(msrt_string_byte_length(s), 6);
+            assert_eq!(crate::testutil::hot::msrt_string_byte_length(s), 6);
             assert_eq!(ret(|o| msrt_string_get(s, 1, 0, st(""), o)), "é");
             assert_eq!(ret(|o| msrt_string_get(s, -1, 0, st(""), o)), "o");
             assert_eq!(msrt_string_scalar_at(s, 1, 0, 0), 0xE9);

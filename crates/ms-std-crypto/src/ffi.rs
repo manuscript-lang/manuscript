@@ -3,7 +3,7 @@
 //! and write the ok value through `out` only on success. `alg` is the `HashAlgorithm` case index.
 use crate::{Alg, CryptoFail, Hasher, asym};
 use alloc::vec::Vec;
-use ms_std_core::{Fail, ObjMut, Object, Status, abi_handle, native};
+use ms_rt::ffi::{Fail, ObjMut, Object, Status, abi_handle, native};
 
 abi_handle!(Hasher);
 
@@ -46,7 +46,7 @@ fn alg(index: i64) -> Result<Alg, CryptoFail> {
 
 /// An unknown algorithm index here is a compiler bug, not a user error.
 fn alg_or_fault(index: i64) -> Alg {
-    Alg::from_index(index).unwrap_or_else(|| ms_std_core::fault("invalid HashAlgorithm"))
+    Alg::from_index(index).unwrap_or_else(|| ms_rt::ffi::fault("invalid HashAlgorithm"))
 }
 
 native! {
@@ -243,7 +243,7 @@ native! {
 mod tests {
     use super::*;
     use ms_rt as _;
-    use ms_std_core::{VecVal, bytes_ref, write_bytes}; // links the msrt_* runtime symbols
+    use ms_rt::ffi::{VecVal, bytes_ref, write_bytes}; // links the msrt_* runtime symbols
     extern crate std;
     use std::sync::Mutex;
 

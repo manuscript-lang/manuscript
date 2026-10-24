@@ -129,8 +129,12 @@ pub struct Func {
     pub params: Vec<Param>,
     /// Declared result type (mandatory in source).
     pub result: TypeRef,
+    /// Written `ref T`: the result lends part of a borrowed parameter or receiver.
+    pub result_ref: bool,
     /// Body statements; may be empty for an empty declaration suite.
     pub body: Vec<Stmt>,
+    /// `extern fn`: a native symbol with no body, named after the function.
+    pub external: bool,
 }
 
 /// A module-level constant.
@@ -638,6 +642,8 @@ pub enum StmtKind {
     Bind {
         /// `var` rather than `let`.
         mutable: bool,
+        /// Written `let ref` / `var ref`: borrows the place instead of copying it.
+        by_ref: bool,
         /// Bound pattern.
         pattern: Pattern,
         /// Annotation (only for a plain name pattern).

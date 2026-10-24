@@ -2,6 +2,7 @@
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/io.ms" import IoError, ReadStream
 from "@std/http.ms" import ResponseBody
+from "@std/core.ms" import Closeable
 
 # Errors returned for invalid input, malformed or oversized event streams, and failed reads.
 export type SseError:
@@ -119,7 +120,7 @@ def exceeds(value: Int, limit: Optional[Int]) -> Bool:
 impl SseDecoder for Decoder:
     var def feed(chunk: Bytes) -> Result[List[SseEvent], SseError]:
         var events = List[SseEvent]()
-        if let failure = self.failure: return error(failure)
+        if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
         var index = 0
@@ -130,14 +131,14 @@ impl SseDecoder for Decoder:
             index += 1
 
             if step.is_error():
-                let failure = step.err()
-                self.failure = some(failure)
+                let failure = step.err().clone()
+                self.failure = some(failure.clone())
                 return error(failure)
 
         return ok(events)
 
     var def finish() -> Result[Unit, SseError]:
-        if let failure = self.failure: return error(failure)
+        if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
         self.closed = True
@@ -200,7 +201,7 @@ def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, S
     return ok(())
 
 def apply(var decoder: Decoder, line: String) -> Unit:
-    var name = line
+    var name = line.clone()
     var value = ""
     let colon = line.index_of(":")
 
@@ -229,35 +230,33 @@ def reconnect(var decoder: Decoder, value: String) -> Unit:
 
 def dispatch(var decoder: Decoder, var events: List[SseEvent]) -> Unit:
     if decoder.data.length() > 0:
-        let current = decoder.event_type
-        var name = current
+        var name = decoder.event_type.clone()
         if name == "": name = "message"
-        events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id))
+        events.append(SseEvent(name, decoder.data.join("\n"), decoder.last_id.clone()))
 
     decoder.event_type = ""
     decoder.data = List[String]()
     decoder.event_bytes = 0
     decoder.open_block = False
 
-type BorrowedBody:
+type OwnedBody:
     body: ResponseBody
 
-impl ReadStream for BorrowedBody:
-    def close() -> Unit:
-        return ()
+impl ReadStream for OwnedBody:
+    var def close() -> Unit:
+        self.body.close()
 
-    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
         return self.body.read(max_bytes)
 
-# Views an HTTP response body as a ReadStream that the response keeps owning.
-# Closing the view does nothing, so close the body itself, usually with `with`.
-export def borrow_body(body: ResponseBody) -> ReadStream:
-    return ReadStream(value: BorrowedBody(body))
+# Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
+export def body_stream(body: ResponseBody) -> ReadStream:
+    return ReadStream(value: OwnedBody(body))
 
-# Pulls events from a borrowed ReadStream. The reader never closes the stream:
-# its owner closes it, and closing it makes a blocked read fail with ReadFailed.
+# Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
+# makes a blocked read fail with ReadFailed.
 export type SseReader:
-    # The borrowed stream, such as an HTTP response body.
+    # The stream, such as an HTTP response body made by `body_stream`.
     input: ReadStream
     # The decoder, whose `retry()` is readable between events.
     decoder: SseDecoder
@@ -270,7 +269,7 @@ export type SseReader:
     # Internal: True after a clean end of stream.
     finished: Bool
 
-# Wraps a stream in an event reader. Supplied limits and chunk size must be positive.
+# Takes a stream and wraps it in an event reader. Supplied limits and chunk size must be positive.
 export def reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
@@ -286,6 +285,11 @@ export def reader(
         )
     )
 
+impl Closeable for SseReader:
+    # Closes the stream the reader owns; reads after a close fail with ReadFailed.
+    var def close() -> Unit:
+        self.input.close()
+
 # Returns the next event, or none after a clean end of stream.
 # A read failure, malformed line, exceeded limit or truncated event is an error.
 export def next_event(var reader: SseReader) -> Result[Optional[SseEvent], SseError]:
@@ -293,17 +297,18 @@ export def next_event(var reader: SseReader) -> Result[Optional[SseEvent], SseEr
         if reader.next < reader.ready.length():
             let event = reader.ready.get(reader.next)
             reader.next += 1
-            return ok(some(event))
+            return ok(some(event.clone()))
 
         if reader.finished: return ok(none)
 
         reader.ready = List[SseEvent]()
         reader.next = 0
 
-        let read = reader.input.read(reader.chunk_bytes)
-        if read.is_error(): return error(SseError.ReadFailed(cause: read.err()))
+        var chunk: Optional[Bytes] = none
 
-        let chunk = read.get()
+        match reader.input.read(reader.chunk_bytes):
+            case ok(value): chunk = value
+            case error(cause): return error(SseError.ReadFailed(cause: cause))
 
         if let bytes = chunk:
             reader.ready = try reader.decoder.feed(bytes)

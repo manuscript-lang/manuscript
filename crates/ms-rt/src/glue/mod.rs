@@ -1,31 +1,19 @@
-//! What the `ms-std-*` crates borrow from `ms-rt`: reading and building strings, raising faults and
-//! polling cancellation. Everything resolves at the final link against `libms_rt.a`.
-#![no_std]
-// This crate is the C ABI boundary of the standard-library natives.
+//! What the `ms-std-*` crates borrow from the runtime: reading and building strings, raising faults,
+//! polling cancellation, task waits and the blocking pool.
+// This module is the C ABI boundary of the standard-library natives.
 #![allow(unsafe_code)]
-
-// Links the msrt_* runtime symbols into this crate's test binaries.
-#[cfg(test)]
-use ms_rt as _;
-
-extern crate alloc;
 
 pub mod pool;
 
-use alloc::vec::Vec;
 use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
-use core::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::Ordering;
 use ms_rt_abi::{STATUS_FAILED, StrVal};
+use std::vec::Vec;
 
-unsafe extern "C-unwind" {
-    fn msrt_string_from_bytes(ptr: *const u8, len: usize, out: *mut StrVal);
-    fn msrt_retain(o: *mut ms_rt_abi::Obj);
-    fn msrt_release(o: *mut ms_rt_abi::Obj);
-    fn msrt_fault(msg: *const u8, len: usize) -> !;
-    fn msrt_cancelled() -> !;
-    static msrt_cancel_flag: AtomicU8;
-}
+use crate::fault::{msrt_cancel_flag, msrt_cancelled, msrt_fault};
+use crate::obj::{msrt_release, msrt_retain};
+use crate::string::msrt_string_from_bytes;
 
 /// The bytes of a live string.
 ///
@@ -79,37 +67,27 @@ pub fn fault_fmt(args: fmt::Arguments<'_>) -> ! {
 
 /// Whether a stop request (SIGINT or SIGTERM) is pending.
 pub fn cancel_pending() -> bool {
-    // SAFETY: a plain byte load of the runtime's flag.
-    unsafe { msrt_cancel_flag.load(Ordering::Relaxed) != 0 }
+    msrt_cancel_flag.load(Ordering::Relaxed) != 0
 }
 
 /// Unwinds the program after a stop request; never returns.
 pub fn cancelled() -> ! {
-    // SAFETY: provided by `ms-rt`.
-    unsafe { msrt_cancelled() }
+    msrt_cancelled()
 }
 
-unsafe extern "C-unwind" {
-    fn msrt_alloc(size: usize) -> *mut u8;
-    fn msrt_free(ptr: *mut u8);
-}
+use crate::obj::{msrt_alloc, msrt_free};
 
-unsafe extern "C-unwind" {
-    fn msrt_process_on_exit(hook: extern "C" fn());
-}
+use crate::process::msrt_process_on_exit;
 
 /// Runs `hook` once when the program ends, after output is flushed, whether `main` returns or
 /// the program exits.
 pub fn on_exit(hook: extern "C" fn()) {
-    // SAFETY: provided by `ms-rt`; registering takes no other state.
-    unsafe { msrt_process_on_exit(hook) }
+    msrt_process_on_exit(hook)
 }
 
-unsafe extern "C-unwind" {
-    fn msrt_task_sleep(ns: i64) -> u32;
-    #[cfg(unix)]
-    fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32;
-}
+use crate::task::msrt_task_sleep;
+#[cfg(unix)]
+use crate::task::msrt_task_wait_fd;
 
 /// `task_wait_fd` interest and result bits (the runtime's `WAIT_*`).
 pub const WAIT_READ: u32 = 1;
@@ -272,18 +250,8 @@ pub unsafe fn write_string_list(items: &[StrVal], out: *mut ms_rt_abi::VecVal) {
     }
 }
 
-unsafe extern "C-unwind" {
-    fn msrt_map_new(out: *mut ms_rt_abi::MapVal);
-    fn msrt_map_add(
-        m: *mut ms_rt_abi::MapVal,
-        kd: *const ms_rt_abi::TypeDesc,
-        vd: *const ms_rt_abi::TypeDesc,
-        key: *mut u8,
-        val: *mut u8,
-    );
-    static msrt_desc_string: ms_rt_abi::TypeDesc;
-    static msrt_desc_int: ms_rt_abi::TypeDesc;
-}
+use crate::desc::{msrt_desc_int, msrt_desc_string};
+use crate::map::{msrt_map_add, msrt_map_new};
 
 /// A value of a `Map[String, _]` built by [`write_string_map`].
 pub enum MapValue<'a> {

@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 use miniz_oxide::deflate::compress_to_vec;
 use miniz_oxide::inflate::TINFLStatus;
 use miniz_oxide::inflate::core::{DecompressorOxide, decompress, inflate_flags};
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Format {

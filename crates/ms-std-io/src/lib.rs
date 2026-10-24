@@ -15,9 +15,9 @@ mod accumulate;
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
+use ms_rt::ffi::{Global, Handed, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native};
+use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
-use ms_std_core::{Global, Handed, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native};
-use ms_std_rt::{fault, record_failure};
 use stream::{IoFail, IoRes, Stream};
 
 /// A stream result as a status: a failure records its text for `msstd_io_failure_message`.
@@ -54,7 +54,7 @@ fn standard_input() -> Handed<Stream> {
     }
     // Dropping a closed handle stashes its read-ahead for the new one.
     if slot.take().is_none() {
-        ms_std_rt::on_exit(release_standard_input);
+        ms_rt::glue::on_exit(release_standard_input);
     }
     Handed::Shared(slot.insert(ObjBox::new(Stream::standard(0))).share())
 }
@@ -72,7 +72,7 @@ fn optional(has: bool, v: i64) -> Option<i64> {
 native! {
     /// The text of the last `FAILED` stream result.
     fn msstd_io_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     /// `which`: 0 standard input, 1 standard output, 2 standard error. The descriptor stays open.
@@ -133,20 +133,4 @@ native! {
     fn msstd_io_is_closed(h: ObjRef<Stream>) -> bool {
         h.is_closed()
     }
-}
-
-/// Stand-ins for the runtime symbols `ms-std-rt` links against, so the crate's unit tests link alone.
-#[cfg(test)]
-#[allow(unsafe_code)]
-mod runtime_stubs {
-    #[unsafe(no_mangle)]
-    pub static msrt_cancel_flag: u8 = 0;
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn msrt_cancelled() -> ! {
-        panic!("cancelled")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_io_flush() {}
 }

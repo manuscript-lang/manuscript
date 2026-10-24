@@ -16,7 +16,7 @@ The reserved words are:
 
 ```manuscript
 and break case continue def elif else export False fixture for if
-impl in interface lambda let match not or return self test True try type
+impl in interface lambda let match not or ref return self test True try type
 var while with
 ```
 
@@ -109,7 +109,7 @@ Import        = "from", PlainStringLiteral, "import",
                 | "(", NEWLINE, INDENT, ImportNames, DEDENT, ")", NEWLINE ) ;
 ImportNames   = Name, { ",", Name }, [ "," ] ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
-              | ConstantDeclaration)
+              | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration ;
 ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
 ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
@@ -123,13 +123,16 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "def", Name, "(", [ FunctionParameters ], ")", "->", Type, NEWLINE ;
+OperationSignature = "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE ;
 FunctionDeclaration = "def", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", Type, FunctionSuite ;
+                      "->", ResultType, FunctionSuite ;
+ResultType    = [ "ref" ], Type ;
+(* `ref` marks a result that lends part of a borrowed parameter or the receiver; see ownership. A function type has no `ref`. *)
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = [ "var" ], "def", Name, "(", [ FunctionParameters ], ")", "->", Type, FunctionSuite ;
+MethodDeclaration = [ "var" ], "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, FunctionSuite ;
+ExternDeclaration = "extern", "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return ()` succeeds; try or return error(...) fails it. *)
@@ -171,7 +174,7 @@ Statement     = SimpleStatement, NEWLINE
               | WithStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
-Binding       = ("let" | "var"), ( BindingEntry
+Binding       = ("let" | "var"), [ "ref" ], ( BindingEntry
               | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
 BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;

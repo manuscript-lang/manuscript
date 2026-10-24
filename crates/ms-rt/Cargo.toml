@@ -6,7 +6,7 @@ publish.workspace = true
 description = "Manuscript native runtime: allocator, reference counting, strings, collections, faults, profiler"
 
 [lib]
-crate-type = ["staticlib", "rlib"]
+crate-type = ["rlib"]
 
 [features]
 # Allocation counters (always on in unit tests).
@@ -15,15 +15,12 @@ stats = []
 [dependencies]
 memchr = "2.8.3"
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-rt = { path = "../ms-std-rt" }
-ms-std-math = { path = "../ms-std-math" }
-ms-std-time = { path = "../ms-std-time" }
-ms-std-fs = { path = "../ms-std-fs" }
-ms-std-core = { path = "../ms-std-core" }
-ms-std-io = { path = "../ms-std-io" }
-ms-std-process = { path = "../ms-std-process" }
+ms-rt-hot = { path = "../ms-rt-hot" }
 mio = { version = "1", default-features = false, features = ["os-poll", "os-ext", "net"] }
 unicode-normalization = { version = "0.1.24", default-features = false }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", default-features = false }
 
 [lints]
 workspace = true

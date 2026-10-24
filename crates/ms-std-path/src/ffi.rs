@@ -5,7 +5,7 @@
 use crate::{InvalidInput, Parts, Rules};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Status, native};
+use ms_rt::ffi::{Status, native};
 
 /// `PathParts` is a record of five strings in field order (`root, directory, base, extension,
 /// name`) at its natural layout.
@@ -29,7 +29,7 @@ fn parts_to(p: Parts) -> PartsRec<String> {
 /// `PathError.InvalidInput` is the only error case.
 impl Status for InvalidInput {
     fn status(self) -> u8 {
-        ms_std_core::STATUS_INVALID_INPUT
+        ms_rt::ffi::STATUS_INVALID_INPUT
     }
 }
 

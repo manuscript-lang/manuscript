@@ -25,6 +25,7 @@ pub mod receivers;
 pub mod recursion;
 pub mod stdlib;
 pub mod stmts;
+pub mod suggestions;
 pub mod syntax;
 pub mod types;
 

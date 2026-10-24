@@ -239,7 +239,7 @@ fn is_console(handle: RawHandle) -> bool {
 /// Lets other tasks run for 2 ms between checks of a handle that cannot be polled.
 fn pause_2ms() {
     #[cfg(not(test))]
-    ms_std_rt::task_sleep(2_000_000);
+    ms_rt::glue::task_sleep(2_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     std::thread::sleep(std::time::Duration::from_millis(2));

@@ -22,13 +22,13 @@ use crate::error::Status;
 /// Records the `Failed` message of `r`'s error and turns it into its status byte.
 pub fn report<T, E: Status>(
     r: Result<T, E>,
-    err: &ms_std_core::ErrOut,
-) -> Result<T, ms_std_core::StatusCode> {
+    err: &ms_rt::ffi::ErrOut,
+) -> Result<T, ms_rt::ffi::StatusCode> {
     r.map_err(|e| {
         if let Some(m) = e.failed_message() {
             err.set(m);
         }
-        ms_std_core::StatusCode(e.code())
+        ms_rt::ffi::StatusCode(e.code())
     })
 }
 
@@ -38,8 +38,8 @@ fn opt(has: bool, v: i64) -> Option<i64> {
 }
 
 /// The status byte of a std error.
-pub fn code<E: Status>(e: E) -> ms_std_core::StatusCode {
-    ms_std_core::StatusCode(e.code())
+pub fn code<E: Status>(e: E) -> ms_rt::ffi::StatusCode {
+    ms_rt::ffi::StatusCode(e.code())
 }
 
 macro_rules! handle_newtype {
@@ -47,7 +47,7 @@ macro_rules! handle_newtype {
         $(#[$m])*
         #[repr(transparent)]
         pub struct $name(pub $t);
-        ms_std_core::abi_handle!($name);
+        ms_rt::ffi::abi_handle!($name);
         impl std::ops::Deref for $name {
             type Target = $t;
             fn deref(&self) -> &$t {

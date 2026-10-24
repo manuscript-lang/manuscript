@@ -8,10 +8,8 @@ description = "Native implementation of @std/archive.ms (gzip, zlib, raw deflate
 [dependencies]
 miniz_oxide = { version = "0.9", default-features = false, features = ["with-alloc"] }
 ms-rt-abi = { path = "../ms-rt-abi" }
-ms-std-core = { path = "../ms-std-core" }
-
-[dev-dependencies]
 ms-rt = { path = "../ms-rt" }
+
 
 [lints]
 workspace = true

@@ -133,6 +133,7 @@ fn run_source_command<L: Lower>(
                 targets: inv.targets.clone(),
                 json: inv.structured,
                 watch: inv.watch,
+                fix: inv.fix,
             };
             engine::analysis(&request, io)
         }
@@ -146,6 +147,7 @@ fn run_source_command<L: Lower>(
                 output: inv.output.clone(),
                 build_type: plan.build_type,
                 json: inv.structured,
+                link: inv.link.clone(),
             },
             io,
         ),
@@ -153,6 +155,7 @@ fn run_source_command<L: Lower>(
             &RunRequest {
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
+                link: inv.link.clone(),
                 watch: inv.watch,
                 json: inv.structured,
                 arguments: inv.arguments.clone(),
@@ -163,6 +166,7 @@ fn run_source_command<L: Lower>(
             &TestRequest {
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
+                link: inv.link.clone(),
                 json: inv.structured,
                 watch: inv.watch,
                 arguments: inv.arguments.clone(),

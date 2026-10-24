@@ -155,7 +155,7 @@ impl Draw {
         }
         if data.len() as i64 != want {
             self.status = ms_rt_abi::STATUS_FAILED;
-            ms_std_rt::record_failure(b"entropy source returned incorrect length".to_vec());
+            ms_rt::glue::record_failure(b"entropy source returned incorrect length".to_vec());
             return false;
         }
         let Some(range) = self.range else {

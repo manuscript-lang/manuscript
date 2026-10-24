@@ -180,6 +180,7 @@ fn partial_root_start(source: &str) -> bool {
         "from",
         "export",
         "def",
+        "extern",
         "type",
         "interface",
         "impl",

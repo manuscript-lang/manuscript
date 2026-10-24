@@ -7,7 +7,7 @@ use crate::{LogFail, Logger};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_std_core::{ObjRef, Object, Status, abi_handle, native};
+use ms_rt::ffi::{ObjRef, Object, Status, abi_handle, native};
 
 abi_handle!(Logger);
 
@@ -64,7 +64,7 @@ native! {
 
     fn msrt_logcore_set_level(l: ObjRef<Logger>, level: i64) -> () {
         let Some(level) = level_index(level) else {
-            ms_std_core::fault("invalid LogLevel");
+            ms_rt::ffi::fault("invalid LogLevel");
         };
         l.set_level(level);
     }
@@ -113,7 +113,7 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _; // links the msrt_* runtime symbols
-    use ms_std_core::{ObjCell, StrVal, new_string};
+    use ms_rt::ffi::{ObjCell, StrVal, new_string};
 
     #[test]
     fn line_roundtrip() {
@@ -126,11 +126,11 @@ mod tests {
             let mut out = MaybeUninit::<StrVal>::uninit();
             assert_eq!(msrt_logcore_line(l, 2, &msg, 5, out.as_mut_ptr()), 0);
             assert_eq!(
-                ms_std_core::str_ref(out.assume_init_ref()),
+                ms_rt::ffi::str_ref(out.assume_init_ref()),
                 "{\"level\":30,\"msg\":\"hi\"}\n"
             );
             assert_eq!(msrt_logcore_line(l, 0, &msg, 5, out.as_mut_ptr()), 0);
-            assert_eq!(ms_std_core::str_ref(out.assume_init_ref()), "");
+            assert_eq!(ms_rt::ffi::str_ref(out.assume_init_ref()), "");
             assert_eq!(msrt_logcore_line(l, 6, &msg, 5, out.as_mut_ptr()), 1);
         }
     }
