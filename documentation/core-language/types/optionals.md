@@ -62,14 +62,14 @@ Receiver methods:
 Fallback for routine absence:
 
 ```manuscript
-fn display_name(name: Optional[String]) String:
+fn display_name(name: Optional[String]) ref String:
     return name.get("Anonymous")
 ```
 
 `get(default)` always evaluates its argument. Use `or_else` with `get()` when the fallback costs work:
 
 ```manuscript
-fn display_name(name: Optional[String], create: fn() Optional[String]) String:
+fn display_name(name: Optional[String], create: fn() Optional[String]) ref String:
     return name.or_else(create).get()
 ```
 
@@ -94,7 +94,7 @@ fn first_number(text: Optional[String]) Optional[Int]:
 [`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
 ```manuscript
-fn display_name(name: Optional[String]) String:
+fn display_name(name: Optional[String]) ref String:
     if let value = name:
         return value
     return "Anonymous"

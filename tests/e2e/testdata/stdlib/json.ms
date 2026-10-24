@@ -237,13 +237,13 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
     try expect_equal(stringify(1, indent: -1), negative)
 
 interface Named:
-    fn label() String
+    fn label() ref String
 
 type Person:
     name: String
 
 impl Named for Person:
-    fn label() String:
+    fn label() ref String:
         return self.name
 
 type Holder:

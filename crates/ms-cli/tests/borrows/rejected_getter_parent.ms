@@ -4,7 +4,7 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
 fn main_body(var b: Box) Int:
