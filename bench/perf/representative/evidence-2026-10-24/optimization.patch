@@ -1,0 +1,51 @@
+diff --git a/.experts/compiler.md b/.experts/compiler.md
+index 04f617e0e..2e186b5cb 100644
+--- a/.experts/compiler.md
++++ b/.experts/compiler.md
+@@ -116,0 +117,4 @@ Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies
++Verified: collecting all caller constants at every inline candidate repeatedly scans a growing function. Index the caller once and extend the index with the appended callee blocks; the continuation contains old instructions and must not be scanned again. Keep the constant-argument bonus, growth budget and inlining decisions unchanged.
++Evidence: [inliner](../crates/ms-mir/src/opt/inline.rs), [constant-bonus regression](../crates/ms-mir/tests/opt_inline.rs), [representative measurement harness](../bench/perf/representative/README.md).
++Verify: compare optimized MIR and native binaries before/after on real programs, and measure the entire build as well as the inline pass at N/2N/4N. A compiler-only improvement does not imply faster generated programs.
++
+diff --git a/crates/ms-mir/src/opt/inline.rs b/crates/ms-mir/src/opt/inline.rs
+index a794a66e3..d16f9b96f 100644
+--- a/crates/ms-mir/src/opt/inline.rs
++++ b/crates/ms-mir/src/opt/inline.rs
+@@ -259,2 +259,2 @@ fn blocks_in_loops(f: &Func) -> Vec<bool> {
+-fn const_values(f: &Func) -> HashSet<Value> {
+-    f.blocks
++fn const_values(blocks: &[BlockData]) -> impl Iterator<Item = Value> + '_ {
++    blocks
+@@ -265 +264,0 @@ fn const_values(f: &Func) -> HashSet<Value> {
+-        .collect()
+@@ -269,0 +269 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
++    let mut consts: HashSet<Value> = const_values(&m.funcs[fi].blocks).collect();
+@@ -295 +294,0 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
+-                    let consts = const_values(&m.funcs[fi]);
+@@ -307,0 +307,3 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
++            // Inlining only moves existing instructions and appends the callee's blocks after
++            // the continuation. Index those new definitions, not the growing caller or its tail.
++            consts.extend(const_values(&m.funcs[fi].blocks[cont + 1..]));
+diff --git a/crates/ms-mir/tests/opt_inline.rs b/crates/ms-mir/tests/opt_inline.rs
+index 3433f4603..47e8e5215 100644
+--- a/crates/ms-mir/tests/opt_inline.rs
++++ b/crates/ms-mir/tests/opt_inline.rs
+@@ -285,0 +286,18 @@ fn growth_budget_limits_auto_inlining() {
++#[test]
++fn constant_bonus_survives_continuation_splits_without_marking_call_results_constant() {
++    let mut src = String::from("module \"constant-bonus\"\nentry @main\n");
++    src.push_str("fn @bump(%x: int) -> int {\nb0:\n  %one: int = iconst 1\n  %r: int = iadd %x, %one\n  ret %r\n}\n");
++    src.push_str("fn @threshold(%x: int) -> int {\nb0:\n  %v0: int = iadd %x, %x\n");
++    // One instruction above the ordinary limit; multiple call sites prevent the single-use bonus.
++    for i in 1..=opt::inline::BASE_THRESHOLD {
++        src.push_str(&format!("  %v{i}: int = iadd %v{}, %x\n", i - 1));
++    }
++    src.push_str(&format!("  ret %v{}\n}}\n", opt::inline::BASE_THRESHOLD));
++    src.push_str("fn @main() -> int {\nb0:\n  %early: int = iconst 1\n  %result: int = call @bump (%early)\n  %late: int = iconst 2\n  %a: int = call @threshold (%early)\n  %b: int = call @threshold (%late)\n  %c: int = call @threshold (%result)\n  %ab: int = iadd %a, %b\n  %abc: int = iadd %ab, %c\n  ret %abc\n}\n");
++    let before = module(&src);
++    let after = inlined(&src);
++    assert_eq!(calls_to(&after, "bump"), 0);
++    assert_eq!(calls_to(&after, "threshold"), 1);
++    assert_eq!(outcome(&before), outcome(&after));
++}
++

@@ -1,0 +1,89 @@
+{
+  "baseline": "414d66451b1efe8acde9cd31097dcb456ee62b0b",
+  "optimization_commit": "f24a068e88a827e4ae10956b84b3c546a0cc819e",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "hashes": {
+    "rust-toolchain.toml": {
+      "sha256": "7f5140056a968f51f7a91e1d73fd6b8c226054ecb5c6d39e791de484f9616457",
+      "bytes": 267
+    },
+    "Cargo.lock": {
+      "sha256": "e39f0969191148b34b81bd1d12013336fb6ad36a0ded7df9aea83763d07ce530",
+      "bytes": 52767
+    },
+    "scripts/lld.lock": {
+      "sha256": "6026878d9013e192ec3d1fc384691808383f0593d386d52b5faa2ca2d903fa41",
+      "bytes": 1428
+    },
+    "target/ms-native/libms_native.a": {
+      "sha256": "f26e72ee27fb4820cd37d68403e058ee0a98ff3269af685a9ba8f38f8f7af32a",
+      "bytes": 45795694
+    },
+    ".artifacts/representative/binaries/ms-after": {
+      "sha256": "ecc453e0591496767f8f2b3c7da21591bd22807bd7f74a82e5bfd30f3d204633",
+      "bytes": 262822936
+    },
+    ".artifacts/representative/binaries/ms-before": {
+      "sha256": "395cdefac11616dceae23e95f6a0037e3b6c7f60bfc0dd983df3711206359962",
+      "bytes": 262821800
+    },
+    ".artifacts/representative/binaries/rss": {
+      "sha256": "09441b9246dd4d6a5b1454b9d3652f8a8b3dc1b1f925218d00fa91d3fdc98347",
+      "bytes": 16312
+    },
+    ".artifacts/representative/binaries/stages-after": {
+      "sha256": "2c8cc288e1b7aa97628e771262579d7465072c707ae2b99844d85e20179ec34c",
+      "bytes": 196084944
+    },
+    ".artifacts/representative/binaries/stages-before": {
+      "sha256": "791bf8e1542c92b9d524387149b056201057cfa3e911667e5d5157ac1e281d40",
+      "bytes": 196074040
+    },
+    "target/llvm-bundle/install/bin/llvm-split": {
+      "sha256": "bb240a0575b9d43e74c58d4f6892cd0c1714a6b90edb3f669f58f6c69e77aa26",
+      "bytes": 33209408
+    },
+    "target/llvm-bundle/install/bin/llc": {
+      "sha256": "ef1446c1d441a945afdd7a616339e2b6d93b1e5fb73b4f7f455750e838ec2ed3",
+      "bytes": 61857800
+    },
+    "target/llvm-bundle/install/bin/lld": {
+      "sha256": "ffdd6999b32d1070e35a8499e8b281b1ee8abe2c717e24968bfe16f43dd5f6f5",
+      "bytes": 68873288
+    },
+    "target/llvm-bundle/install/bin/llvm-link": {
+      "sha256": "e3f840362a9cf05fe2017f7e650e947feea8d3afe11888ab7367e7c8c60c5f4c",
+      "bytes": 6149792
+    },
+    "target/llvm-bundle/install/bin/llvm-dis": {
+      "sha256": "a1fb4b7d8eefdfdde70869a7754f393ffe81ef79edfa9d8b5f725ba6a02fbbbd",
+      "bytes": 3695928
+    },
+    "target/llvm-bundle/install/bin/opt": {
+      "sha256": "a149a1dd4d8886da19acdefecb181cc30c1006982c4c20ec13f50b44afd9748a",
+      "bytes": 65474600
+    },
+    ".artifacts/representative/comparison/cache/ms/llvm/02bd635653232874/opt.ok": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    ".artifacts/representative/comparison/cache/ms/llvm/02bd635653232874/llc": {
+      "sha256": "ef1446c1d441a945afdd7a616339e2b6d93b1e5fb73b4f7f455750e838ec2ed3",
+      "bytes": 61857800
+    },
+    ".artifacts/representative/comparison/cache/ms/llvm/02bd635653232874/llc.ok": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    ".artifacts/representative/comparison/cache/ms/llvm/02bd635653232874/opt": {
+      "sha256": "a149a1dd4d8886da19acdefecb181cc30c1006982c4c20ec13f50b44afd9748a",
+      "bytes": 65474600
+    }
+  },
+  "compiler_flags": "cargo build --release --locked -p ms-cli; .cargo/config.toml force-frame-pointers=yes",
+  "manuscript_flags": "--build-type Release; embedded LLVM default<O3>, llc -O3",
+  "rust_reference_flags": "rustc --edition 2021 --target x86_64-unknown-linux-musl -C opt-level=3 -C overflow-checks=on -C force-frame-pointers=yes -C panic=abort -C codegen-units=1",
+  "cpu": "AMD EPYC 9V74, 5 visible CPUs, KVM",
+  "gcc": "14.2.0",
+  "memory_gib": 18
+}
