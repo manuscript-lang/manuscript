@@ -10,7 +10,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    fn message() ref String: self.detail
 
 fn relay[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
     let value = try result

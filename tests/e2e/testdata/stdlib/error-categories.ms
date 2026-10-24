@@ -27,7 +27,7 @@ impl Error for PathError:
         return "path: invalid input"
 
 impl Error for CustomError:
-    fn message() String:
+    fn message() ref String:
         panic("classification must not call user code")
         return self.message
 

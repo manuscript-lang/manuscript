@@ -150,6 +150,12 @@ fn print_summary(cases: &[runner::Case]) {
     }
     for c in cases
         .iter()
+        .filter(|c| c.outcome == runner::Outcome::UnexpectedPass)
+    {
+        println!("UNEXPECTED PASS {}: remove from the expect-fail file", c.id);
+    }
+    for c in cases
+        .iter()
         .filter(|c| {
             matches!(
                 c.outcome,

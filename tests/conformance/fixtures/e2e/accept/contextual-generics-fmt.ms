@@ -20,7 +20,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    fn message() ref String: self.detail
 
 fn first() Result[List[Int], TextError]: fail("empty")
 

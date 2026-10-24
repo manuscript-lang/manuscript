@@ -325,23 +325,12 @@ fn native_method_modes(
         })
         .collect();
     let result = method.ty.result_ty();
-    let element = |t: &Ty| receiver.args.iter().any(|a| same(a, t));
-    // `join` builds a new String even though its result type is the element type; `clone` copies.
-    // A native declares in the standard library source that its result lends (`ref`); the
-    // shape test below still covers lending natives that do not declare it yet.
-    let lending = method
+    // A native lends exactly when its standard-library declaration says so (`ref`).
+    let accessor = method
         .decl
         .as_ref()
         .and_then(|d| d.func())
         .is_some_and(|f| f.result_ref);
-    let accessor = lending
-        || (!mutator
-            && method
-                .name()
-                .is_none_or(|n| !matches!(n.as_str(), "join" | "clone" | "take"))
-            && receiver.kind != Kind::Primitive
-            && (element(&result)
-                || (result.is_std("Optional") && result.args.iter().any(element))));
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate

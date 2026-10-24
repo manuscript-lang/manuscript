@@ -2,19 +2,19 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-    fn pick(first: Bool) List[Int]:
+    fn pick(first: Bool) ref List[Int]:
         if first:
             return self.items
 
         return [1]
 
-fn first_of[T](xs: List[T]) T:
+fn first_of[T](xs: List[T]) ref T:
     return xs[0]
 
-fn forward(b: Box) List[Int]:
+fn forward(b: Box) ref List[Int]:
     return b.list()
 
 fn read(b: Box) Int:

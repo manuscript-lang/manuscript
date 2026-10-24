@@ -12,7 +12,7 @@ fn delta() Int:
     return 20
 
 impl Read[T] for Box[T]:
-    fn get() T:
+    fn get() ref T:
         return self.value
 
 impl Read[Int] for Choice:

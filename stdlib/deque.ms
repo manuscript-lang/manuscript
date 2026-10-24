@@ -87,14 +87,14 @@ impl Deque[T]:
         return value
 
     # Returns the first value without removing it, or `none` when empty.
-    fn front() Optional[T]:
+    fn front() ref Optional[T]:
         if self.size == 0:
             return none
 
         return self.slots.get(self.start)
 
     # Returns the last value without removing it, or `none` when empty.
-    fn back() Optional[T]:
+    fn back() ref Optional[T]:
         if self.size == 0:
             return none
 
@@ -102,7 +102,7 @@ impl Deque[T]:
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
     # Negative indexes are out of range.
-    fn at(index: Int) Optional[T]:
+    fn at(index: Int) ref Optional[T]:
         if index < 0 or index >= self.size:
             return none
 

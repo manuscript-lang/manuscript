@@ -392,7 +392,8 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-interface Read[V]:
+type	11	14	239	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
+type	13	27	294	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -407,7 +408,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-interface Read[V]:
+type	7	14	120	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -911,7 +912,7 @@ impl Error for Failure:
     fn message() String: self.detail
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
-fn from_callback[T](factory: fn() T) T: factory()
+type	4	18	74	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     let callback: fn(value: Int) Int = from_callback(fn(): fn(value: Int = 4): value)
 import {TextError} from "@std/errors.ms"
@@ -1512,7 +1513,7 @@ resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
 impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
-fn identity(this: Int) Int: this
+type	4	18	60	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; declare it with 'let this = ...' before use, define 'fn this(...)', or import it from a moduleexport type Sq:
     s: Int
@@ -2908,7 +2909,7 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     let value = try wrapped(n)
     return ok(value)
-let alias = affine
+type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`let alias = affine
     resolution	1	13	12	unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...)', or import it from a modulefn probe(value: Int) Int:
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2945,7 +2946,7 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
     text: String
 impl Error for Cause:
     fn message() String: self.text
-fn probe() Int:
+type	4	18	68	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -3505,7 +3506,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type Read:
+type	6	14	112	`get` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`type Read:
     fn get() Int
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -5076,7 +5077,8 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-fn answer() Int:
+type	6	15	102	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
+type	8	27	162	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`fn answer() Int:
     let number = 42
     return number
 fn later() Int:
@@ -6242,7 +6244,7 @@ export fn main() Int:
     return value.get()
 export fn main() Int:
     return extract[Int](none)
-interface Crash:
+type	1	35	34	`extract` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`interface Crash:
     fn run() Int
 type Item:
     value: Int

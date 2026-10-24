@@ -1,5 +1,5 @@
 # conform: tags=faults,formatter,optional,parser,strings,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/optionals.md:63
-fn display_name(name: Optional[String]) String:
+fn display_name(name: Optional[String]) ref String:
     return name.get("Anonymous")

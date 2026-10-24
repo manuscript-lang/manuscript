@@ -5,7 +5,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    fn message() ref String: self.detail
 
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 

@@ -4,7 +4,7 @@ type Failure:
     message_text: String
 
 impl Error for Failure:
-    fn message() String:
+    fn message() ref String:
         return self.message_text
 
 fn success() Result[Optional[Int], Error]:
