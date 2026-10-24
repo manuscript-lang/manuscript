@@ -81,6 +81,10 @@ fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
     }
 }
 
+/// Held while a child starts, so an IPC end made inheritable reaches only its own child.
+#[cfg(windows)]
+static INHERIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Starts `program` with `args` and the given standard streams, and with the child's end of `ipc`
 /// as described in `crate::ipc`; `Unavailable` when it is missing.
 pub fn start(
@@ -143,7 +147,20 @@ pub fn start(
         // Suspended until `Child::new` has put it in its job.
         cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED);
     }
-    match cmd.spawn() {
+    // The child's IPC end is inheritable only while this child starts, and every start holds
+    // the lock, so no other child started here inherits it.
+    #[cfg(windows)]
+    let _held = INHERIT.lock().unwrap_or_else(|e| e.into_inner());
+    #[cfg(windows)]
+    if let Some(end) = ipc {
+        end.end.inherit(true).map_err(failed)?;
+    }
+    let spawned = cmd.spawn();
+    #[cfg(windows)]
+    if let Some(end) = ipc {
+        let _ = end.end.inherit(false);
+    }
+    match spawned {
         Ok(inner) => Ok(Child::new(inner)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),

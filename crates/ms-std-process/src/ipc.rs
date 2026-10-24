@@ -1,17 +1,19 @@
 //! The IPC pipe between a parent and a child it starts (`proposals/child-processes.md`): a
 //! dedicated duplex byte stream beside the standard streams, as Node's `NODE_CHANNEL_FD`, so the
 //! child's own output never mixes with messages. Framing and encoding live in Manuscript
-//! (`@std/channels.ms`); this module only makes the pipe, hands the child its end, and gives each
-//! side a readable and a writable descriptor for an ordinary `Stream`.
+//! (`@std/channels.ms`); this module only makes the pipe, hands the child its end, and reads and
+//! writes bytes.
 //!
-//! Unix uses a `socketpair`; the child's end becomes descriptor [`CHILD_FD`]. Windows uses a
-//! named pipe with a random name that only the current user can open; the child opens it by name,
-//! so no handle is inherited. Either way the child finds its end through [`ENV`].
+//! Unix uses a `socketpair`; the child's end becomes descriptor [`CHILD_FD`]. Windows uses an
+//! overlapped named pipe with a random name that only the current user can open: the parent
+//! opens both ends and the child inherits its end by handle. Either way the child finds its end
+//! through [`ENV`]. Reads and writes park the task until the pipe is ready (the poller on both
+//! platforms), with no polling.
+use alloc::vec::Vec;
 use ms_rt_abi::STATUS_FAILED;
 use ms_std_fs::err::{Fail, Res, describe};
-use ms_std_fs::sys;
 
-/// The environment variable that names the child's end: a descriptor number or a pipe name.
+/// The environment variable that names the child's end: a descriptor or handle number.
 pub const ENV: &str = "MS_IPC";
 /// The descriptor the child's end is moved to on Unix.
 #[cfg(unix)]
@@ -27,7 +29,7 @@ fn os_failure(op: &str, e: i32) -> Fail {
     }
 }
 
-/// One end of the pipe.
+/// One end of the pipe, before it is split into a reader and a writer.
 pub struct Link(plat::Link);
 
 /// The child's end before the child starts, held by the parent until `spawn::start` has passed
@@ -38,7 +40,7 @@ pub struct ChildEnd {
 
 impl ChildEnd {
     /// The value of [`ENV`] in the child.
-    pub fn env_value(&self) -> alloc::vec::Vec<u8> {
+    pub fn env_value(&self) -> Vec<u8> {
         self.end.env_value()
     }
 }
@@ -48,6 +50,12 @@ pub fn pair() -> Res<(Link, ChildEnd)> {
     let (link, end) = plat::pair().map_err(|e| os_failure("ipc", e))?;
     Ok((Link(link), ChildEnd { end }))
 }
+
+/// The reading half of an end.
+pub struct Reader(plat::Reader);
+
+/// The writing half of an end.
+pub struct Writer(plat::Writer);
 
 impl Link {
     /// The child's end named by [`ENV`] in this process, or none when this process was not
@@ -63,26 +71,26 @@ impl Link {
         Ok(Some(Link(link)))
     }
 
-    /// Waits until the child has opened its end (Windows; immediate on Unix). `Failed` when the
-    /// child exits first.
-    pub fn accept(&mut self, child: &mut crate::spawn::Child) -> Res<()> {
-        loop {
-            match self.0.try_accept() {
-                Ok(true) => return Ok(()),
-                Ok(false) => {}
-                Err(e) => return Err(os_failure("ipc connect", e)),
-            }
-            if child.poll() {
-                return Err(os_failure("ipc connect", 0));
-            }
-            ms_rt::glue::task_sleep(2_000_000);
-        }
+    /// Splits the end into halves that a reading task and a writing task use at the same time.
+    pub fn split(self) -> Res<(Reader, Writer)> {
+        let (r, w) = self.0.split().map_err(|e| os_failure("ipc", e))?;
+        Ok((Reader(r), Writer(w)))
     }
+}
 
-    /// A descriptor to read from and one to write to, each owned by the caller (two handles on
-    /// the same pipe, so a reader and a writer stream close independently).
-    pub fn into_fds(self) -> Res<(sys::Fd, sys::Fd)> {
-        self.0.into_fds().map_err(|e| os_failure("ipc", e))
+impl Reader {
+    /// Up to `buf.len()` bytes, parking until some arrive; 0 once the other process is gone and
+    /// everything it sent was read.
+    pub fn read(&mut self, buf: &mut [u8]) -> Res<usize> {
+        self.0.read(buf).map_err(|e| os_failure("ipc read", e))
+    }
+}
+
+impl Writer {
+    /// Writes all of `data`, parking while the pipe is full. `Failed` once the other process is
+    /// gone.
+    pub fn write(&mut self, data: &[u8]) -> Res<()> {
+        self.0.write(data).map_err(|e| os_failure("ipc write", e))
     }
 }
 
@@ -90,12 +98,17 @@ impl Link {
 mod plat {
     use super::CHILD_FD;
     use alloc::vec::Vec;
+    use ms_rt::glue::{WAIT_READ, WAIT_WRITE, poll_cancel, task_wait_fd};
 
     /// An open socket, closed on drop.
     pub struct Link(i32);
 
     /// The child's socket in the parent, closed once the child has its copy.
     pub struct ChildLink(pub(crate) i32);
+
+    /// A reader and a writer hold separate descriptors on one socket, so each parks on its own.
+    pub struct Reader(Link);
+    pub struct Writer(Link);
 
     impl ChildLink {
         pub fn env_value(&self) -> Vec<u8> {
@@ -112,10 +125,8 @@ mod plat {
 
     impl Drop for Link {
         fn drop(&mut self) {
-            if self.0 >= 0 {
-                // SAFETY: the descriptor is ours and closed once.
-                unsafe { libc::close(self.0) };
-            }
+            // SAFETY: the descriptor is ours and closed once.
+            unsafe { libc::close(self.0) };
         }
     }
 
@@ -126,6 +137,27 @@ mod plat {
     fn cloexec(fd: i32) {
         // SAFETY: plain fcntl call on an open descriptor.
         unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) };
+    }
+
+    /// Non-blocking mode, so reads and writes park the task instead of the thread; on Apple
+    /// platforms (no `MSG_NOSIGNAL`) a write to a gone peer is `EPIPE`, not SIGPIPE.
+    fn nonblocking(fd: i32) {
+        // SAFETY: plain fcntl and setsockopt calls on an open descriptor.
+        unsafe {
+            let flags = libc::fcntl(fd, libc::F_GETFL);
+            libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK);
+            #[cfg(target_vendor = "apple")]
+            {
+                let on: libc::c_int = 1;
+                libc::setsockopt(
+                    fd,
+                    libc::SOL_SOCKET,
+                    libc::SO_NOSIGPIPE,
+                    (&on as *const libc::c_int).cast(),
+                    core::mem::size_of::<libc::c_int>() as libc::socklen_t,
+                );
+            }
+        }
     }
 
     pub fn pair() -> Result<(Link, ChildLink), i32> {
@@ -156,68 +188,126 @@ mod plat {
     }
 
     impl Link {
-        pub fn try_accept(&mut self) -> Result<bool, i32> {
-            Ok(true)
-        }
-
-        pub fn into_fds(mut self) -> Result<(i32, i32), i32> {
+        pub fn split(self) -> Result<(Reader, Writer), i32> {
             // SAFETY: plain system call on an open descriptor.
             let second = unsafe { libc::fcntl(self.0, libc::F_DUPFD_CLOEXEC, 0) };
             if second < 0 {
                 return Err(errno());
             }
-            let first = core::mem::replace(&mut self.0, -1);
-            Ok((first, second))
+            nonblocking(self.0);
+            Ok((Reader(self), Writer(Link(second))))
+        }
+    }
+
+    impl Reader {
+        pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+            loop {
+                poll_cancel();
+                // SAFETY: `buf` is writable for its length.
+                let n = unsafe { libc::read((self.0).0, buf.as_mut_ptr().cast(), buf.len()) };
+                if n >= 0 {
+                    return Ok(n as usize);
+                }
+                match errno() {
+                    libc::EAGAIN | libc::EINTR => {
+                        task_wait_fd((self.0).0, WAIT_READ, -1);
+                    }
+                    libc::ECONNRESET => return Ok(0),
+                    e => return Err(e),
+                }
+            }
+        }
+    }
+
+    impl Writer {
+        pub fn write(&mut self, mut data: &[u8]) -> Result<(), i32> {
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            let flags = libc::MSG_NOSIGNAL;
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
+            let flags = 0;
+            while !data.is_empty() {
+                poll_cancel();
+                // SAFETY: `data` is readable for its length.
+                let n = unsafe { libc::send((self.0).0, data.as_ptr().cast(), data.len(), flags) };
+                if n >= 0 {
+                    data = &data[n as usize..];
+                    continue;
+                }
+                match errno() {
+                    libc::EAGAIN | libc::EINTR => {
+                        task_wait_fd((self.0).0, WAIT_WRITE, -1);
+                    }
+                    e => return Err(e),
+                }
+            }
+            Ok(())
         }
     }
 }
 
 #[cfg(windows)]
 mod plat {
+    use alloc::rc::Rc;
     use alloc::vec::Vec;
     use core::ptr::{null, null_mut};
+    use ms_rt::glue::pipe;
     use windows_sys::Win32::Foundation::{
-        CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, ERROR_NO_DATA, ERROR_PIPE_CONNECTED,
-        ERROR_PIPE_LISTENING, GENERIC_READ, GENERIC_WRITE, GetLastError, HANDLE,
-        INVALID_HANDLE_VALUE, LocalFree,
+        CloseHandle, GENERIC_READ, GENERIC_WRITE, GetLastError, HANDLE, HANDLE_FLAG_INHERIT,
+        INVALID_HANDLE_VALUE, LocalFree, SetHandleInformation,
     };
     use windows_sys::Win32::Security::Authorization::{
         ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
     };
     use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
     use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, FILE_FLAG_FIRST_PIPE_INSTANCE, OPEN_EXISTING, PIPE_ACCESS_DUPLEX,
+        CreateFileW, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, OPEN_EXISTING,
+        PIPE_ACCESS_DUPLEX,
     };
     use windows_sys::Win32::System::Pipes::{
-        ConnectNamedPipe, CreateNamedPipeW, PIPE_NOWAIT, PIPE_READMODE_BYTE,
-        PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_WAIT, SetNamedPipeHandleState,
+        CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_WAIT,
     };
-    use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
     const BUFFER: u32 = 64 * 1024;
 
-    /// An open pipe handle, closed on drop. The parent's end is the server, created in
-    /// non-blocking mode so `try_accept` answers at once; it is blocking once connected, as the
-    /// standard-stream pipes are.
-    pub struct Link {
-        handle: HANDLE,
-        connected: bool,
-    }
+    /// An overlapped pipe handle, closed on drop until it is handed to the runtime poller.
+    pub struct Link(HANDLE);
 
-    /// The pipe's name; the parent's server end already exists.
-    pub struct ChildLink(Vec<u16>);
+    /// The child's end, opened by the parent; `start` lets the child inherit it.
+    pub struct ChildLink(pub(crate) Link);
+
+    /// Both halves share the handle the poller adopted; the last one closes it.
+    struct Adopted(isize);
+    pub struct Reader(Rc<Adopted>);
+    pub struct Writer(Rc<Adopted>);
+
+    impl Drop for Adopted {
+        fn drop(&mut self) {
+            pipe::close(self.0);
+        }
+    }
 
     impl ChildLink {
         pub fn env_value(&self) -> Vec<u8> {
-            alloc::string::String::from_utf16_lossy(&self.0[..self.0.len() - 1]).into_bytes()
+            alloc::format!("{}", (self.0).0 as usize).into_bytes()
+        }
+
+        /// Lets the next child started inherit the handle, at the same value; `start` turns it
+        /// off again once the child started.
+        pub fn inherit(&self, on: bool) -> Result<(), i32> {
+            let flag = if on { HANDLE_FLAG_INHERIT } else { 0 };
+            // SAFETY: plain call on our open handle.
+            if unsafe { SetHandleInformation(self.0.0, HANDLE_FLAG_INHERIT, flag) } == 0 {
+                return Err(last_error());
+            }
+            Ok(())
         }
     }
 
     impl Drop for Link {
         fn drop(&mut self) {
-            if !self.handle.is_null() {
+            if !self.0.is_null() {
                 // SAFETY: the handle is ours and closed once.
-                unsafe { CloseHandle(self.handle) };
+                unsafe { CloseHandle(self.0) };
             }
         }
     }
@@ -267,11 +357,11 @@ mod plat {
             bInheritHandle: 0,
         };
         // SAFETY: `wname` is NUL-terminated and `attributes` outlives the call.
-        let handle = unsafe {
+        let server = unsafe {
             CreateNamedPipeW(
                 wname.as_ptr(),
-                PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE,
-                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_NOWAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
                 1,
                 BUFFER,
                 BUFFER,
@@ -282,83 +372,69 @@ mod plat {
         let error = last_error();
         // SAFETY: allocated by the conversion above.
         unsafe { LocalFree(sd) };
-        if handle == INVALID_HANDLE_VALUE {
+        if server == INVALID_HANDLE_VALUE {
             return Err(error);
         }
-        Ok((
-            Link {
-                handle,
-                connected: false,
-            },
-            ChildLink(wname),
-        ))
-    }
-
-    pub fn adopt(value: &[u8]) -> Result<Link, i32> {
-        let name = core::str::from_utf8(value).map_err(|_| ERROR_NO_DATA as i32)?;
-        let wname = wide(name);
+        let server = Link(server);
+        // The parent opens the child's end itself, so the pipe is connected before the child
+        // runs and a child that dies at once still closes it.
         // SAFETY: `wname` is NUL-terminated.
-        let handle = unsafe {
+        let client = unsafe {
             CreateFileW(
                 wname.as_ptr(),
                 GENERIC_READ | GENERIC_WRITE,
                 0,
                 null(),
                 OPEN_EXISTING,
-                0,
+                FILE_FLAG_OVERLAPPED,
                 null_mut(),
             )
         };
-        if handle == INVALID_HANDLE_VALUE {
+        if client == INVALID_HANDLE_VALUE {
             return Err(last_error());
         }
-        Ok(Link {
-            handle,
-            connected: true,
-        })
+        Ok((server, ChildLink(Link(client))))
+    }
+
+    pub fn adopt(value: &[u8]) -> Result<Link, i32> {
+        let handle = core::str::from_utf8(value)
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .ok_or(6)? as HANDLE;
+        // So the child's own children do not inherit the pipe.
+        // SAFETY: plain call; it fails on a handle that is not open.
+        if unsafe { SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0) } == 0 {
+            return Err(last_error());
+        }
+        Ok(Link(handle))
     }
 
     impl Link {
-        pub fn try_accept(&mut self) -> Result<bool, i32> {
-            if self.connected {
-                return Ok(true);
-            }
-            // SAFETY: `handle` is an open server end in non-blocking mode.
-            let done = unsafe { ConnectNamedPipe(self.handle, null_mut()) } != 0;
-            if !done {
-                match last_error() as u32 {
-                    ERROR_PIPE_CONNECTED => {}
-                    ERROR_PIPE_LISTENING => return Ok(false),
-                    e => return Err(e as i32),
-                }
-            }
-            self.connected = true;
-            let mode = PIPE_READMODE_BYTE | PIPE_WAIT;
-            // SAFETY: `handle` is open and `mode` is readable.
-            unsafe { SetNamedPipeHandleState(self.handle, &mode, null(), null()) };
-            Ok(true)
-        }
-
-        pub fn into_fds(mut self) -> Result<(isize, isize), i32> {
-            let mut second: HANDLE = null_mut();
-            // SAFETY: duplicates our own open handle into this process.
-            let ok = unsafe {
-                let me = GetCurrentProcess();
-                DuplicateHandle(
-                    me,
-                    self.handle,
-                    me,
-                    &mut second,
-                    0,
-                    0,
-                    DUPLICATE_SAME_ACCESS,
-                )
-            };
-            if ok == 0 {
+        pub fn split(mut self) -> Result<(Reader, Writer), i32> {
+            let handle = core::mem::replace(&mut self.0, null_mut());
+            // SAFETY: an open overlapped pipe handle, owned by the poller from here on.
+            if !unsafe { pipe::adopt(handle as isize) } {
+                self.0 = handle;
                 return Err(last_error());
             }
-            let first = core::mem::replace(&mut self.handle, null_mut());
-            Ok((first as isize, second as isize))
+            let adopted = Rc::new(Adopted(handle as isize));
+            Ok((Reader(adopted.clone()), Writer(adopted)))
+        }
+    }
+
+    fn os_error(e: std::io::Error) -> i32 {
+        e.raw_os_error().unwrap_or(0)
+    }
+
+    impl Reader {
+        pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+            pipe::read(self.0.0, buf).map_err(os_error)
+        }
+    }
+
+    impl Writer {
+        pub fn write(&mut self, data: &[u8]) -> Result<(), i32> {
+            pipe::write(self.0.0, data).map_err(os_error)
         }
     }
 }
@@ -368,10 +444,9 @@ mod tests {
     use super::*;
     use crate::command::StdStream;
     use crate::spawn::start;
-    use ms_std_fs::stream::Stream;
 
     /// The test binary started again runs only this test, which echoes what it reads back
-    /// reversed per chunk until the parent closes its end.
+    /// reversed per chunk until the parent's end is gone.
     #[test]
     #[ignore = "run as a child by `bytes_cross_both_ways`"]
     fn ipc_child() {
@@ -379,11 +454,15 @@ mod tests {
             return;
         };
         assert!(std::env::var_os(ENV).is_none());
-        let (r, w) = link.into_fds().unwrap();
-        let (mut input, mut output) = (Stream::new(r, true, b"ipc"), Stream::new(w, true, b"ipc"));
-        while let Some(mut chunk) = input.read(None).unwrap() {
-            chunk.reverse();
-            output.write(&chunk).unwrap();
+        let (mut input, mut output) = link.split().unwrap();
+        let mut buf = [0u8; 4096];
+        loop {
+            let n = input.read(&mut buf).unwrap();
+            if n == 0 {
+                break;
+            }
+            buf[..n].reverse();
+            output.write(&buf[..n]).unwrap();
         }
     }
 
@@ -392,7 +471,7 @@ mod tests {
         #[cfg(unix)]
         let _guard = crate::environment_guard();
         let exe = std::env::current_exe().unwrap();
-        let args: alloc::vec::Vec<alloc::vec::Vec<u8>> = [
+        let args: Vec<Vec<u8>> = [
             "ipc::tests::ipc_child",
             "--exact",
             "--ignored",
@@ -401,7 +480,7 @@ mod tests {
         .iter()
         .map(|s| s.as_bytes().to_vec())
         .collect();
-        let (mut link, end) = pair().unwrap();
+        let (link, end) = pair().unwrap();
         let mut child = start(
             exe.as_os_str().as_encoded_bytes(),
             &args,
@@ -410,14 +489,13 @@ mod tests {
         )
         .unwrap();
         drop(end);
-        link.accept(&mut child).unwrap();
-        let (r, w) = link.into_fds().unwrap();
-        let (mut input, mut output) = (Stream::new(r, true, b"ipc"), Stream::new(w, true, b"ipc"));
+        let (mut input, mut output) = link.split().unwrap();
         output.write(b"ping").unwrap();
-        assert_eq!(input.read(None).unwrap().unwrap(), b"gnip");
-        // Both handles are one pipe: the child sees end of file once both are closed.
-        output.close().unwrap();
-        input.close().unwrap();
+        let mut buf = [0u8; 16];
+        let n = input.read(&mut buf).unwrap();
+        assert_eq!(&buf[..n], b"gnip");
+        // The child sees end of stream once both halves are closed.
+        drop((input, output));
         assert_eq!(child.wait(), 0);
     }
 }
