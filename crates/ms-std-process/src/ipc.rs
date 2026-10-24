@@ -494,8 +494,13 @@ mod tests {
         let mut buf = [0u8; 16];
         let n = input.read(&mut buf).unwrap();
         assert_eq!(&buf[..n], b"gnip");
-        // The child sees end of stream once both halves are closed.
+        // The child sees end of stream once both halves are closed. On Windows the handle closes
+        // when the poller next collects the cancelled read, so wait as a task does, letting the
+        // reactor run, rather than blocking the thread.
         drop((input, output));
+        while !child.poll() {
+            ms_rt::glue::task_sleep(2_000_000);
+        }
         assert_eq!(child.wait(), 0);
     }
 }

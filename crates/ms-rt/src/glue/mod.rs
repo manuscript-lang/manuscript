@@ -220,7 +220,8 @@ pub mod pipe {
         Ok(())
     }
 
-    /// Closes an adopted pipe.
+    /// Closes an adopted pipe. A read still pending is cancelled, and the handle itself closes
+    /// once the poller collects that cancellation, on the next wait of any task.
     pub fn close(handle: isize) {
         crate::poller::pipe_drop(handle as usize);
     }
