@@ -171,9 +171,29 @@ impl Ownership {
     }
 }
 
-/// Modules the user wrote: not the embedded standard library.
-pub fn is_user_module(file: Name) -> bool {
-    !file.as_str().starts_with("@std/")
+/// Standard-library source modules not yet ownership clean. Every other module, user or
+/// standard library, is checked and lowered under the same rules. Fix a module, then delete
+/// its entry.
+const UNVETTED: &[&str] = &[
+    // Vetting infers owning parameters for their public functions (a loop or match over a
+    // parameter at its last use consumes it), which breaks callers that reuse the argument;
+    // each needs its API mode settled before it can be vetted.
+    "@std/csv.ms",
+    "@std/sse.ms",
+    "@std/streams.ms",
+    "@std/toml.ms",
+    "@std/yaml.ms",
+    // Generic containers: ownership needs `.clone()` on an unconstrained type parameter.
+    "@std/deque.ms",
+    "@std/queue.ms",
+    "@std/sorted.ms",
+    // Transports share one stream handle through non-`var` methods.
+    "@std/log.ms",
+];
+
+/// Whether the ownership checker vets this module.
+pub fn is_vetted(file: Name) -> bool {
+    !UNVETTED.contains(&file.as_str())
 }
 
 impl Hir<'_> {
@@ -208,7 +228,7 @@ impl Hir<'_> {
         let classes = Classifier::new(self.program());
         let modules: HashMap<Name, ModuleHir> = self
             .modules()
-            .filter(|m| is_user_module(m.data.file))
+            .filter(|m| is_vetted(m.data.file))
             .map(|m| (m.data.file, m))
             .collect();
         let callables: Vec<Callable> = self

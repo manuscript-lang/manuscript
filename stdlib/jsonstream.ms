@@ -162,7 +162,7 @@ impl JsonDecoder for Decoder:
             let stepped = step(var self, byte)
             if stepped.is_error(): return fail(var self, stepped.err())
 
-            if let found = stepped.get(): values.append(found)
+            if let found = stepped.get(): values.append(found.clone())
 
         return ok(values)
 
@@ -179,5 +179,5 @@ impl JsonDecoder for Decoder:
         let completed = complete(var self)
         if completed.is_error(): return fail(var self, completed.err())
 
-        values.append(completed.get())
+        values.append(completed.get().clone())
         return ok(values)
