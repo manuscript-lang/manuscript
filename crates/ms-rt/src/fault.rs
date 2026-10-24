@@ -484,6 +484,18 @@ pub fn capture_frames() -> Vec<usize> {
             },
         );
     }
+    #[cfg(windows)]
+    // TEMP-DEBUG
+    unsafe {
+        let t = &*t;
+        if let Some((pc, fp, rem)) = sys::source_frame(capture_frames as *const () as usize, |pc| {
+            find_func(t, pc).is_some()
+        }) {
+            let (lo, hi) = sys::stack_limits();
+            let (next, ret) = (*(fp as *const usize), *((fp + 8) as *const usize));
+            out.extend([0xdb9, pc, fp, rem, lo, hi, next, ret, fp % 8]);
+        }
+    }
     out
 }
 
