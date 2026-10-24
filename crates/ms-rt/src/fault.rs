@@ -504,36 +504,18 @@ unsafe fn walk_source_frames(
     // Each link must advance within the stack, so the stack bounds terminate
     // even a malformed chain. Apply the shared raw-frame work budget after the
     // native prefix, rather than imposing a separate Windows source-frame cap.
-    let mut n = 0usize;
-    let dbg = |why: &str, n: usize, pc: usize, fp: usize| {
-        if hi.saturating_sub(fp) < (1 << 20) && why == "nofunc" {
-            return;
-        }
-        let m = std::format!(
-            "WALKDBG {why} n={n} pc={pc:#x} fp={fp:#x} lo={lo:#x} hi={hi:#x} remaining={remaining}\n"
-        );
-        sys::write_all(sys::STDERR, m.as_bytes());
-    };
     for _ in 0..remaining {
-        if find_func(t, pc).is_none() {
-            dbg("nofunc", n, pc, fp);
+        if find_func(t, pc).is_none() || !f(pc) {
             break;
         }
-        if !f(pc) {
-            dbg("visitor", n, pc, fp);
-            break;
-        }
-        n += 1;
         let Some(end) = fp.checked_add(16) else { break };
         if !fp.is_multiple_of(8) || fp < lo || end > hi {
-            dbg("bounds", n, pc, fp);
             break;
         }
         // SAFETY: the first frame came from the native CONTEXT; subsequent
         // frames belong to registered generated callers and stay in this stack.
         let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
         if next <= fp {
-            dbg("chain", n, pc, fp);
             break;
         }
         (pc, fp) = (ret, next);
@@ -904,9 +886,12 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -
     fault(unsafe { crate::string::bytes(s) })
 }
 
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_fault_depth() -> ! {
-    // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
+/// Lowers the recursion limit so cleanups can run calls in the reserve. A function of its own that
+/// returns: the Windows frame walk recovers the faulting frame's `rbp` by unwinding, and a
+/// diverging function is free to leave a register it used (here the new limit) unrestored.
+#[inline(never)]
+fn lower_depth_limit() {
+    // SAFETY: single threaded limit change.
     unsafe {
         let lo = *STACK_LO.ptr();
         (*cur_hdr()).limit = if lo == 0 {
@@ -915,6 +900,11 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
             lo + STACK_CLEANUP_RESERVE
         };
     }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_fault_depth() -> ! {
+    lower_depth_limit();
     fault(
         b"stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead",
     )
