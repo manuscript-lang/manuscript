@@ -486,7 +486,7 @@ const FRAME_RECORD_SCAN: usize = 4096;
 unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
     #[cfg(target_arch = "x86_64")]
     // SAFETY: written once by the depth-fault shim on this thread, before any report is built.
-    let site = unsafe { core::ptr::replace(core::ptr::addr_of_mut!(DEPTH_SITE), [0; 2]) };
+    let site = unsafe { core::ptr::replace(core::ptr::addr_of_mut!(DEPTH_SITE), [0; 3]) };
     #[cfg(target_arch = "x86_64")]
     let recovered = if site[0] != 0 && anchor == fault_vec as *const () as usize {
         // The depth limit was hit: the shim saved the generated frame, which a diverging Rust
@@ -501,6 +501,15 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
         return;
     };
     let (lo, hi) = sys::stack_limits();
+    #[cfg(target_arch = "x86_64")]
+    if site[0] != 0 {
+        let mut m = format!("WALKDBG ret={:x} rbp={:x} rsp={:x} lo={lo:x} hi={hi:x}\n", site[0], site[1], site[2]);
+        for i in 0..16usize {
+            let w = unsafe { *((site[2] + i * 8) as *const usize) };
+            m.push_str(&format!("  [rsp+{:x}]={w:x}\n", i * 8));
+        }
+        sys::write_all(sys::STDERR, m.as_bytes());
+    }
     // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
     // register pointing at a caller's record, so it finds the generated frame's own record.
     let fp = if anchor == capture_frames as *const () as usize {
@@ -971,7 +980,7 @@ fn lower_depth_limit() {
 /// Where the generated code was when it hit the depth limit: the return address into it and its
 /// `rbp`, saved by the entry shim before any Rust code can reuse the register.
 #[cfg(all(windows, target_arch = "x86_64"))]
-static mut DEPTH_SITE: [usize; 2] = [0; 2];
+static mut DEPTH_SITE: [usize; 3] = [0; 3];
 
 #[cfg(all(windows, target_arch = "x86_64", not(test)))]
 core::arch::global_asm!(
@@ -980,6 +989,7 @@ core::arch::global_asm!(
     "mov rax, [rsp]",
     "mov [rip + {site}], rax",
     "mov [rip + {site} + 8], rbp",
+    "mov [rip + {site} + 16], rsp",
     "jmp {body}",
     site = sym DEPTH_SITE,
     body = sym fault_depth_body,
