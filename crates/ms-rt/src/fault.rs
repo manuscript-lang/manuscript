@@ -364,10 +364,9 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 /// contiguous generated caller chain. Stop at native/glue boundaries rather
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
-unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
-    let Some((pc, fp, remaining)) = sys::source_frame(fault_vec as *const () as usize, |pc| {
-        find_func(t, pc).is_some()
-    }) else {
+unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
+    let Some((pc, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
+    else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
@@ -408,7 +407,7 @@ unsafe fn walk_source_frames(
 }
 
 #[cfg(not(windows))]
-unsafe fn walk_fault_frames(fp: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
+unsafe fn walk_fault_frames(fp: usize, _anchor: usize, _t: &Tables, f: impl FnMut(usize) -> bool) {
     // SAFETY: forwarded live frame-pointer chain.
     unsafe { walk_frames(fp, f) }
 }
@@ -464,15 +463,38 @@ pub unsafe fn address_ordered_tables(t: *const Tables) -> *const Tables {
 }
 
 /// Return addresses of the calling frames, innermost first, for a later [`describe_started`].
+#[inline(never)]
 pub fn capture_frames() -> Vec<usize> {
     let mut out = Vec::new();
-    #[cfg(not(windows))]
-    // SAFETY: the frame pointer of this thread's live frame-pointer chain.
+    // SAFETY: tables pointer is set once at start.
+    let t = unsafe { *TABLES.ptr() };
+    if t.is_null() {
+        return out;
+    }
+    // SAFETY: non-null table installed by `msrt_start`; the frame pointer is this thread's live
+    // chain, and on Windows the anchor is this function, as `fault_vec` is for a fault.
     unsafe {
-        walk_frames(frame_pointer(), |ret| {
-            out.push(ret);
-            out.len() < 2 * MAX_FAULT_FRAMES
-        });
+        walk_fault_frames(
+            frame_pointer(),
+            capture_frames as *const () as usize,
+            &*t,
+            |ret| {
+                out.push(ret);
+                out.len() < 2 * MAX_FAULT_FRAMES
+            },
+        );
+    }
+    #[cfg(windows)]
+    // TEMP-DEBUG
+    unsafe {
+        let t = &*t;
+        if let Some((pc, fp, rem)) = sys::source_frame(capture_frames as *const () as usize, |pc| {
+            find_func(t, pc).is_some()
+        }) {
+            let (lo, hi) = sys::stack_limits();
+            let (next, ret) = (*(fp as *const usize), *((fp + 8) as *const usize));
+            out.extend([0xdb9, pc, fp, rem, lo, hi, next, ret, fp % 8]);
+        }
     }
     out
 }
@@ -481,6 +503,24 @@ pub fn capture_frames() -> Vec<usize> {
 #[cfg(not(test))]
 fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
     let mark = out.len();
+    #[cfg(windows)]
+    {
+        // TEMP-DEBUG
+        let t = unsafe { &**TABLES.ptr() };
+        for &pc in captured {
+            let info = match find_func(t, pc) {
+                Some(f) => {
+                    let (l, fi, sc) = find_line(t, f, pc);
+                    format!(
+                        "func={} line={l} file={fi} scope={sc}",
+                        String::from_utf8_lossy(cstr(t, f.name_off))
+                    )
+                }
+                None => "func=none".to_string(),
+            };
+            out.extend_from_slice(format!("\n  DBG pc={pc:x} {info}").as_bytes());
+        }
+    }
     out.extend_from_slice(b"\n  task started by:");
     let header = out.len();
     describe_with(out, |_, visit| {
@@ -498,7 +538,9 @@ fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
-    describe_with(out, |t, visit| unsafe { walk_fault_frames(fp, t, visit) });
+    describe_with(out, |t, visit| unsafe {
+        walk_fault_frames(fp, fault_vec as *const () as usize, t, visit)
+    });
 }
 
 /// Appends `file:line in name` lines for the source frames `drive` visits, innermost first.
