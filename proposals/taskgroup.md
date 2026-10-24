@@ -1,91 +1,82 @@
-# TaskGroup: structured concurrency (design proposal)
+# TaskGroup: scoped concurrent tasks
 
-Status: **approved by the owner on 2026-10-24 for staged implementation; nothing here is implemented yet.** Revised after a skeptic review.
-Direction (Chinmay, 2026-10-24): tasks approach, type named `TaskGroup`, no async/await, `Channel[T]` with moving send/receive, single-threaded first.
+Status: **approved by the owner on 2026-10-24.** Stages 1 to 3 are implemented (PR #1160, PR #1166); the rest is planned.
+Direction (Chinmay, 2026-10-24): the tasks approach, type named `TaskGroup`, no async/await, timeouts required but opt-in, `Channel[T]` for passing values.
+Worker threads and processes are a separate proposal (`WorkerGroup`); nothing here depends on it.
 
 ## Problem
 
-User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`: `msrt_task_spawn/join/cancel/yield/sleep/current`, tokens), but only the stdlib I/O uses them. `crates/DESIGN.md` decision 4 (2026-10-19, owner direction) says the language has no `spawn`. This proposal reverses that decision for scoped tasks only. DESIGN.md decision 4, `.experts/runtime.md` ("the language has no concurrency runtime") and VISION.md must change with it.
+User code cannot run two things at once. The runtime already has stackful coroutines (`crates/ms-rt/src/task.rs`), but only the standard-library I/O uses them. `crates/DESIGN.md` decision 4 said the language has no `spawn`; this proposal reverses that for scoped tasks only, and DESIGN.md, VISION.md and `.experts/runtime.md` say so.
 
-Target program (fan-out, fail together, results owned):
+## What is included
+
+| Item | Stage | Status |
+| --- | --- | --- |
+| `TaskGroup[T]` in `@std/tasks.ms`, used with `with`; leaving the block cancels unfinished tasks and waits for them | 3 | built |
+| `spawn(work, timeout:) -> Task[T]` and `Task[T].result() -> Result[T, TaskError]` | 3 | built |
+| `results()` (all results in start order) and `wait()` | 3 | built |
+| Opt-in timeouts: per task and per group, `TaskError.TimedOut` / `Cancelled` | 3 | built |
+| Runtime support: `msrt_tasks_spawn/join/cancel`, closure-typed `extern` parameters, task-owned closures released on return or cancellation | 2 | built |
+| Docs chapter, conformance fixture, LSP snapshots | 1 to 3 | built |
+| `Channel[T]`: `send` moves a value in, `receive` returns an owned value, `close`; single thread | 4 | planned |
+| Diagnostics: `go f()`, `spawn(...)` as a free function, `Promise`, `setTimeout`, a `TaskGroup` outside `with`, a `ref` borrow captured by a spawned closure; `async`/`await` text mentions `TaskGroup` | 5 | planned |
+| Cheat sheet (`ms guide`) entry; `ms diagram` task tree and spawn-scope fault traces | 5, 6 | planned |
+| Catching a child fault in the parent instead of ending the program | later | open item |
+
+## What is excluded
+
+- Worker threads, processes, `WorkerGroup`, any sendable-type rule beyond writing `Channel[T]`'s `T` as if it must be sendable.
+- Detached tasks, `async`/`await`, callbacks as a concurrency primitive, shared mutable state between tasks, mutexes.
+- A default timeout. A task has no limit unless one is given.
+- Select over channels, deadlines that move, retry policies.
+- An untyped group with mixed result types: needs generic methods on source types, which the compiler does not support yet. Today a group has one result type `T` (`Unit` for effect-only work, an alternative for mixed results).
+
+## Design
+
+**Surface.**
 
 ```manuscript
 from "@std/tasks.ms" import TaskGroup
 
-def fetch_all(urls: List[String]) -> List[Int]:
-    with TaskGroup[Int]() as group:
+def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
+    with TaskGroup[Int](timeout: some(duration(5000000000))) as group:
         for url in urls:
             group.spawn(lambda: fetch_size(url.clone()))
         return group.results()
 ```
 
-## Design
+- `TaskGroup[T](timeout: Optional[Duration] = none)`: a `Closeable` scope. `timeout` limits every task in the group, counted from the group's creation.
+- `spawn(work: Callable[[], T], timeout: Optional[Duration] = none) -> Task[T]`: starts a task. It first runs when the caller waits. A task takes the shorter of its own limit and the group's remaining time.
+- `Task[T].result() -> Result[T, TaskError]`: waits for the task. Takes the result, so call it once (a second call faults).
+- `results() -> Result[List[T], TaskError]`: waits for every task, results in start order, or the first task's error. `wait() -> Result[Unit, TaskError]` waits for all and reports an error if any ended without a result.
+- `TaskError` is `TimedOut | Cancelled`; it implements `Error`.
 
-**Type.** `TaskGroup[T]`: every child returns the same `T` (`Unit` for effect-only work; use an alternative for mixed results). It is a `Closeable` resource, so it is used with `with`. No handle type in v1: results come back in spawn order.
+**Scope.** `close` (run by `with` on every exit) cancels tasks not yet collected, then waits for them, so no task outlives its block. To keep the work, call `results()`, `wait()` or `result()` before the block ends. This is the owner's decision (2026-10-24).
 
-**API as built (supersedes the list below where they differ; owner direction 2026-10-24: timeouts are required, opt-in only).** `TaskGroup[T](timeout: Optional[Duration] = none)`; `spawn(work, timeout: Optional[Duration] = none) -> Task[T]`; `Task[T].result() -> Result[T, TaskError]` (once); `results() -> Result[List[T], TaskError]`; `wait() -> Result[Unit, TaskError]`; `TaskError` is `TimedOut | Cancelled`. A timeout is a watcher task that sleeps then cancels the target; the group limit counts from creation and a task uses the shorter limit. The group stays typed (`TaskGroup[T]`) because source methods cannot declare their own type parameters yet; an untyped group with `Worker[R]`-style handles needs that compiler support first.
+**Timeouts.** Opt-in only. A limited task gets a watcher task that sleeps for the limit, marks the task timed out, and cancels it; collecting the task cancels its watcher. A cancelled task has no result: `result()` returns `TimedOut` if the limit fired, otherwise `Cancelled`. A negative timeout faults. A task that finishes just as its limit fires keeps its result.
 
-**API (original, all in `@std/tasks.ms`):**
-- `TaskGroup[T]()` creates a group bound to the current task.
-- `spawn(work: Callable[[], T]) -> Unit`. Starts a child task; it first runs when the parent parks or yields (existing `msrt_task_spawn` behavior).
-- `results() -> List[T]`. Waits for every child, returns owned results in spawn order. Faults if any child faulted.
-- `wait() -> Unit` for `T = Unit`.
-- `close()`. Cancels unfinished children, waits for all of them, then raises a pending child fault. Idempotent, may suspend (matches `Closeable`).
+**Cancellation and faults.** Cancelling the waiting task unwinds it and `close` cancels its tasks, through the existing per-task cancel flag. Faults cannot be caught, so a fault in any task ends the program (exit 70) after that task's cleanups, as an unjoined fault does today. Catching a child fault in the parent needs a runtime hook and is an open item.
 
-**Semantics.**
-- The scope does not end until every child has finished: `close` always joins.
-- Fault in a child (revised after review): faults are not catchable and a fault ends a task at its guard with status 1, so a Manuscript wrapper cannot observe it. v1 therefore keeps decision 3's behavior: **a fault in any child ends the process** (cleanups of that task run, exit 70), exactly as an unjoined fault does today. Catching a child fault and re-raising it in the parent needs a new runtime fault hook that notifies the group and a way to raise a primary fault from the parent; that is deferred to a later stage and listed as an open design item, not assumed.
-- Parent cancelled (signal, shutdown, its own parent group): `close` cancels the children, then waits.
-- Decided (owner, 2026-10-24): leaving the `with` block cancels tasks that are still running, then waits for them. Call `results()`/`wait()` before the block ends to collect work instead of cancelling it. A checker error for a block that can end with unjoined children is optional later work.
+**Ownership.** `spawn` takes a function value that outlives the call, so the closure owns its captures: a captured value moves in and the caller cannot use it afterwards; mutating a captured `var` is already rejected for such closures; results come back by value. Borrows (`let ref`, lending results) must not be captured; the diagnostic for that is stage 5. `Shared[T]` can cross a spawn on one thread (take/put have no wait between them); it is not part of any future sendable rule.
 
-**Ownership.** `spawn` takes an escaping closure, which owns its captures (existing rule). A `Move` value captured by a spawned lambda moves in, so the parent cannot use it afterwards; mutating a captured `var` is already rejected for escaping closures; results return by value. `let ref` borrows and lending results must not be captured by an escaping closure; this needs a test and likely a sharper diagnostic, not new rules. `Shared[T]` is the documented opt-in refcounted type and is `Copy`-class, so it can cross a spawn. With one thread and `take`/`put` having no park between them this is sound. The "no shared mutable state" claim is therefore not absolute in v1. Recommend: allow `Shared` in v1, forbid it in a future `parallel` group (non-atomic counts).
+**Channel (stage 4).** `Channel[T](capacity: Int)` is a refcounted handle like `Shared[T]`, so several closures can hold it; the buffered values are never shared. `send(value: T)` consumes the value and waits while the buffer is full; `receive() -> Optional[T]` returns an owned value, `none` once the channel is closed and drained; `close()` is explicit and idempotent.
 
-**Channel (owner direction 2026-10-24: the type is `Channel[T]`).** One type, `Channel[T](capacity: Int)`, created once and passed to producers and consumers. It is a refcounted handle like `Shared[T]` (copying it adds a holder), so it can be captured by several spawned closures; the buffered values themselves are never shared, each is moved in by `send` and out by `receive`.
-- `send(value: T) -> Unit` consumes the value, parks while the buffer is full, is a cancellation point. Faults if the channel is closed.
-- `receive() -> Optional[T]` returns an owned value, `none` once the channel is closed and drained. Parks while empty.
-- `close() -> Unit` is explicit and idempotent (an owner-less handle cannot know its last holder). Receivers wake with `none`. Closing is the sender side's job by convention; in a `TaskGroup` the usual shape is: producers send, the parent calls `close()` after `results()`.
-- Iteration (`for item in channel`) is deferred until the stream/iterable protocol in `stdlib/streams.ms` is checked.
+## Implementation
 
-**Implementation shape (revised).** Externs cannot take closures, generics, or `var` params, and the extern rule says arguments are borrowed, so a consuming closure parameter needs an ABI rewording. Stage 2 is real compiler and runtime work, not a narrow addition: a closure-typed consuming extern parameter, a runtime trampoline that calls the closure and drops it on normal return, and a shim for `msrt_task_join` (its 0/1/2 outcome plus message does not fit the `Result` extern shape). `TaskGroup[T]` itself is Manuscript over those externs; results go through one `Shared[Optional[T]]` slot per child. Channel endpoints are runtime-owned refcounted extern types with a parked-waiter token each.
-
-Known gap: captures of a task that is cancelled or faults are not dropped (only `with` cleanups run on the guard jump). A cancelled parent exits as cancelled (main task `process::exit`) rather than raising a fault. Stage 2 resolves this for tasks started by a group: the runtime releases the closure when the task ends by return or cancellation (a fault ends the process).
-
-**Diagnostics (targeted, stage 5).**
-- `async`/`await`: already rejected at `crates/ms-syntax/src/parser.rs:1486` ("call the function directly"); extend the text to mention `TaskGroup`.
-- `go f()`, `spawn(...)` as a free function, `Promise`, `setTimeout`, `Thread`: a "use `TaskGroup.spawn` inside `with TaskGroup[T]() as group`" diagnostic. These are ordinary identifiers, so match only the foreign statement shapes, never reserve the words.
-- Constructing a `TaskGroup` outside `with`: error.
-- Capturing a `ref` borrow in a spawned closure: error naming the capture.
-
-**Relation to workers.** Worker threads and processes are a separate proposal with their own `WorkerGroup[T]`; this proposal covers single-thread tasks only. `Channel[T]` is meant to be shared with that work, so its `T` is written as if it must be sendable (plain data, no handles, `ref` borrows, closures, `Shared` or `Resource`).
-
-**Not in scope.** Workers and processes, detached tasks, timeouts/deadlines on groups, select over channels. `ms diagram` does not exist in `ms-cli` today; the task-tree view and "fault traces name the spawning scope" are a final stage and the second needs the trace format checked first.
+- Runtime (`ms-rt`): `msrt_tasks_spawn(closure)` retains the closure, starts a task with the new `SPAWN_FATAL` flag, and releases the closure when the task ends by return or cancellation. `msrt_tasks_join` returns 0 (done or already collected) or 1 (cancelled) and unwinds the caller if the caller is cancelled. `msrt_tasks_cancel`.
+- Compiler: an `extern def` parameter of function type passes the closure object, lent (the native retains what it keeps). Ownership already treats native function arguments as consumed. A `with` binding whose `close` is in a generic `impl` now binds the impl's type variables.
+- Library: `@std/tasks.ms` is Manuscript over three externs. Results travel in a `Shared[List[T]]` slot the task fills with a freshly built list.
 
 ## Alternatives
 
-1. **Do nothing.** User code stays sequential; agents fan out via processes or not at all. Cheapest. Loses the concurrent server/fetch cases the owner wants.
-2. **`List.parallel_map(f)` only.** Covers fan-out/join with no new type, no channel, no `with` generics, and 'any fault aborts' is already today's behavior. Still needs the trampoline and closure extern. Does not cover producer/consumer or long-lived workers. Reviewer judged this stronger than TaskGroup for v1; it is stage 2's natural first consumer.
-3. **Go-style unscoped `spawn`.** Rejected: leaked tasks, no cleanup order, cannot be reconciled with `with`.
+1. **Do nothing.** Code stays sequential. Cheapest; loses concurrent fetches and servers.
+2. **`List.parallel_map(f)` only.** Smaller (no `with`, no handles), but no timeouts per task, no producer/consumer, and it still needs the closure extern.
+3. **Unscoped `spawn`.** Rejected: leaked tasks and no cleanup order.
 4. **async/await.** Rejected: function coloring; the runtime is already stackful.
 
-## Cost and risks
+## Risks and known gaps
 
-- Evidence of benefit is design-level (no measurements): no benchmark here shows agent programs failing for lack of concurrency. Stage 3 should ship with a small agent-written example set to check first-try success.
-- Real compiler work: closure-typed extern parameter (checker, lowering, ABI doc), new diagnostics, `with`/Resource interaction for a generic type.
-- Runtime risks to verify before stage 3: faulting a task while the parent is parked in `join`; that an escaping closure's captures drop when a cancelled task unwinds; 256 MiB default stack address space per child (pass a smaller `stack_bytes` for group children).
-- Docs surface: new `documentation/core-language/` page, cheat sheet (`ms guide`), conformance fixtures (spawn/join order, fault, cancel, channel close, ownership rejections), DESIGN.md decision 4, VISION.md, `.experts/runtime.md`.
-
-## Stages (each its own PR, auto-merge)
-
-1. Docs only: this design in canonical pages, decision 4 / VISION / expert entry updated.
-2. Closure-taking extern + task externs + trampoline; runtime tests.
-3. `TaskGroup[T]` in `@std/tasks.ms`: spawn/results/wait/close, fault and cancel propagation, conformance fixtures.
-4. `Channel[T]`.
-5. Diagnostics and cheat sheet.
-6. `ms diagram` task tree and spawn-scope fault traces.
-
-## Skeptical review findings (folded in above)
-
-- Fault propagation as first written was unimplementable (no group notification, parent parked on one child, uncatchable faults, cancel exits main). Replaced with abort-on-fault v1.
-- Capture drops on cancel/fault do not run; recorded as a known gap.
-- Headline example needed `url.clone()` (loop variable borrows `urls`); fixed. Not run: no `ms` binary built.
-- Evidence for the benefit remains design-level; decision 4 was deliberate owner direction.
+- The benefit is design-level; no benchmark shows programs failing for lack of concurrency. Examples to check first-try success by agents are planned with stage 5.
+- Two pre-existing compiler bugs were hit and worked around: issue #1167 (`Shared[List]` append-after-take frees the buffer; `Shared[Optional[Int]]` misreads) and source methods cannot declare type parameters.
+- Each task reserves 16 MiB of address space for its stack (committed lazily).
+- A deadlock where every task waits ends the program (exit 70), as it does for the existing runtime.
