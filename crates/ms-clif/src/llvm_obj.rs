@@ -5,7 +5,7 @@ use crate::link::llvm_tools;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Whether release builds can use LLVM: the tools are embedded in `ms` or named by `MS_LLVM_TOOLS`.
+/// Whether release builds can use LLVM: the tools are fetched (once) or named by `MS_LLVM_TOOLS`.
 pub fn available() -> bool {
     llvm_tools().is_ok_and(|tools| tools.is_some())
 }
@@ -59,7 +59,7 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     }
     let tools = llvm_tools()?.ok_or_else(|| {
         Error(
-            "this ms was built without the LLVM tools (opt, llc); see scripts/fetch-lld.sh".into(),
+            "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt, llc and llvm-link".into(),
         )
     })?;
     // What `clang -O<level>` does for IR input: the default pipeline, then code generation.

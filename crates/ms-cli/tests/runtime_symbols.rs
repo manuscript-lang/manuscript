@@ -4,8 +4,9 @@
 use object::read::archive::ArchiveFile;
 use object::{Object as _, ObjectSymbol as _};
 use std::collections::BTreeSet;
+use std::io::Read as _;
 
-const ARCHIVE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a"));
+const ARCHIVE_GZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a.gz"));
 const CATALOGUE: &str = include_str!("../../ms-rt/SYMBOLS.md");
 
 /// Runtime prefixes the compiler calls; other exports (libc shims, Rust internals) are not catalogued.
@@ -14,11 +15,15 @@ fn runtime_name(name: &str) -> bool {
 }
 
 fn exported() -> BTreeSet<String> {
-    let archive = ArchiveFile::parse(ARCHIVE).expect("archive");
+    let mut bytes = Vec::new();
+    flate2::read::GzDecoder::new(ARCHIVE_GZ)
+        .read_to_end(&mut bytes)
+        .expect("gunzip the archive");
+    let archive = ArchiveFile::parse(bytes.as_slice()).expect("archive");
     let mut names = BTreeSet::new();
     for member in archive.members() {
         let member = member.expect("member");
-        let Ok(data) = member.data(ARCHIVE) else {
+        let Ok(data) = member.data(bytes.as_slice()) else {
             continue;
         };
         let Ok(file) = object::File::parse(data) else {

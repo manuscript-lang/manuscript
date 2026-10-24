@@ -5,9 +5,6 @@ edition.workspace = true
 publish.workspace = true
 description = "Manuscript native backend: lowers MIR to Cranelift, emits an object file, links it (the bundled lld on Linux and macOS, the system toolchain on Windows)"
 
-[build-dependencies]
-flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
-
 [dependencies]
 ms-mir = { path = "../ms-mir" }
 ms-rt-abi = { path = "../ms-rt-abi" }
@@ -27,8 +24,12 @@ cranelift-codegen = { version = "=0.136.0", features = ["x86", "arm64"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 object = { version = "0.40", default-features = false, features = ["read_core", "archive", "macho"] }
 
-# The LLVM tools (opt, llc) are embedded gzipped and unpacked on first use.
+# lld and the LLVM tools are downloaded on first use rather than embedded.
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+sha2 = { version = "0.11", default-features = false }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+rustls-native-certs = "0.8"
+httparse = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
 [lints]

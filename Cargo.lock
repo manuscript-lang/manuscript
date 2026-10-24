@@ -989,6 +989,7 @@ dependencies = [
 name = "ms-cli"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "libc",
  "ms-build",
  "ms-check",
@@ -1015,9 +1016,13 @@ dependencies = [
  "cranelift-object",
  "flate2",
  "gimli",
+ "httparse",
  "ms-mir",
  "ms-rt-abi",
  "object",
+ "rustls",
+ "rustls-native-certs",
+ "sha2",
  "target-lexicon",
 ]
 
