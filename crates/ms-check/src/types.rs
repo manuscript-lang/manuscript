@@ -825,8 +825,6 @@ fn write_type_key(key: &mut String, t: &Ty) {
     if t.kind == Kind::Function {
         for p in &t.params {
             key.push('[');
-            key.push_str(p.name.as_str());
-            key.push(':');
             write_type_key(key, &p.ty);
             key.push(']');
         }

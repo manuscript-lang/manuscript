@@ -118,7 +118,7 @@ test "methods native APIs function values and contextual labels":
     try expect_false(
         (
             copied(10, 3) != 7
-            or typed(deduction: 3, 10) != 7
+            or typed(10, 3) != 7
             or mutable(10, 3) != 7
         )
     )
@@ -127,7 +127,7 @@ test "methods native APIs function values and contextual labels":
     try expect_false(
         (
             contextual(10, 3) != 7
-            or contextual(right: 3, 10) != 7
+            or contextual(10, 3) != 7
             or apply(lambda x, y: x - y, 10) != 8
         )
     )

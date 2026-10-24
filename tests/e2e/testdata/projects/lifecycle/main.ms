@@ -50,8 +50,8 @@ def exercise() -> Result[Int, Error]:
     var second_out = stdout()
     var first_out = stdout()
     let total = select(output: var chosen)(
-        second: report(output: var second_out, label: "second", value: 2),
-        first: report(output: var first_out, label: "first", value: 1)
+        report(output: var second_out, label: "second", value: 2),
+        report(output: var first_out, label: "first", value: 1)
     )
     total | try expect_equal(3)
 

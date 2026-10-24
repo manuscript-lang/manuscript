@@ -8,26 +8,26 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const PROGRAM: &str = r#"import {terminal, TerminalEvent, EraseRegion} from "@std/io.ms"
-import {stdout} from "@std/io.ms"
-import {duration} from "@std/time.ms"
+const PROGRAM: &str = r#"from "@std/io.ms" import terminal, TerminalEvent, EraseRegion
+from "@std/io.ms" import stdout
+from "@std/time.ms" import duration
 
-fn describe(e: TerminalEvent) String:
+def describe(e: TerminalEvent) -> String:
     match e:
-        Text(t): return "text:" + t
-        Key(n, c, a, s): return "key:" + n + " ctrl={c} alt={a} shift={s}"
-        Resize(c, r): return "resize:{c}x{r}"
+        case Text(t): return "text:" + t
+        case Key(n, c, a, s): return "key:" + n + f" ctrl={c} alt={a} shift={s}"
+        case Resize(c, r): return f"resize:{c}x{r}"
 
-export fn main() Int:
-    let raw = terminal().raw_mode(alternate_screen: false)
+export def main() -> Int:
+    let raw = terminal().raw_mode(alternate_screen: False)
     if let t = raw:
-        with term = t:
+        with t as term:
             term.move_cursor(1, 2)
-            term.show_cursor(false)
+            term.show_cursor(False)
             term.erase(EraseRegion.LineEnd)
             if let size = term.size():
-                stdout().write("size {size.columns}x{size.rows}\r\n")
-            var done = false
+                stdout().write(f"size {size.columns}x{size.rows}\r\n")
+            var done = False
             while not done:
                 let next = term.next_event(duration(5000000000))
                 if let maybe = next:
@@ -36,10 +36,10 @@ export fn main() Int:
                         done = describe(e) == "text:q"
                     else:
                         stdout().write("timeout\r\n")
-                        done = true
+                        done = True
                 else:
                     stdout().write("error\r\n")
-                    done = true
+                    done = True
         return 0
     stdout().write("no raw mode\n")
     return 1

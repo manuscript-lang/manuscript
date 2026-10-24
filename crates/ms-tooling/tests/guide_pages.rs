@@ -150,7 +150,7 @@ fn std_pages_resolve_forms() {
     assert!(
         page("json")
             .unwrap()
-            .contains("import Name from \"@std/json.ms\"")
+            .contains("from \"@std/json.ms\" import Name")
     );
     for path in ["nope", "json.nope", "prelude.List.nope"] {
         let error = page(path).unwrap_err();

@@ -100,7 +100,7 @@ fn run_restarts_after_each_change_and_survives_a_broken_edit() {
     watch.until("ms: started run");
     watch.until("ms: exited with status 3; waiting for changes");
 
-    save(&source, "export fn main() Int:\n    return \"x\"\n");
+    save(&source, "export def main() -> Int:\n    return \"x\"\n");
     watch.until("expected Int, found String");
     watch.until("ms: waiting for changes");
 

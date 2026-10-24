@@ -37,11 +37,11 @@ fn parse_diff_and_reverse_apply() {
     assert_eq!(files.len(), 2);
     assert_eq!(files[0].path(), "src/a.ms");
     assert!(files[1].old.is_empty() && files[1].new == "new.ms");
-    let head = "fn one() Int:\n    let x = 1\n    return x\n\nfn two() Int:\n    return 2\n";
+    let head = "def one() -> Int:\n    let x = 1\n    return x\n\ndef two() -> Int:\n    return 2\n";
     let base = reverse_apply(head, &files[0].hunks).unwrap();
     assert_eq!(
         base,
-        "fn one() Int:\n    return 1\n\nfn two() Int:\n    return 2\n"
+        "def one() -> Int:\n    return 1\n\ndef two() -> Int:\n    return 2\n"
     );
     assert_eq!(files[0].touched_lines(), vec![2, 2, 3]);
     let wrong = head.replacen("let x = 1", "let x = 9", 1);
@@ -65,7 +65,7 @@ fn removed_content_is_base_text() {
     assert!(files[0].new.is_empty());
     assert_eq!(
         removed_content(&files[0].hunks),
-        "fn a() Int:\n    return 0\n"
+        "def a() -> Int:\n    return 0\n"
     );
 }
 

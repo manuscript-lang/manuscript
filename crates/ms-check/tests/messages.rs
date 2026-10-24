@@ -18,19 +18,19 @@ fn first_message(source: &str) -> String {
 fn mismatch_names_its_use_site() {
     let cases = [
         (
-            "fn f(a: Int) Int:\n    return a\nexport fn main() Int:\n    return f(\"s\")\n",
+            "def f(a: Int) -> Int:\n    return a\nexport def main() -> Int:\n    return f(\"s\")\n",
             "expected Int, found String (in argument 'a' of f)",
         ),
         (
-            "export fn main() Int:\n    let x: String = 1\n    return 0\n",
+            "export def main() -> Int:\n    let x: String = 1\n    return 0\n",
             "expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it",
         ),
         (
-            "fn f() Result[Int, Error]:\n    return 1\nexport fn main() Int:\n    return 0\n",
+            "def f() -> Result[Int, Error]:\n    return 1\nexport def main() -> Int:\n    return 0\n",
             "expected Result[Int, Error], found Int (in the return value); wrap the value in ok(",
         ),
         (
-            "export fn main() Int:\n    let l = [1, \"a\"]\n    return 0\n",
+            "export def main() -> Int:\n    let l = [1, \"a\"]\n    return 0\n",
             "expected Int, found String (in entry 2 of the literal",
         ),
     ];
@@ -46,18 +46,18 @@ fn mismatch_names_its_use_site() {
 #[test]
 fn match_and_member_errors_list_the_fix() {
     let got = first_message(
-        "type S:\n    case A\n    case B(x: Int)\nfn f(s: S) Int:\n    match s:\n        A:\n            return 1\nexport fn main() Int:\n    return 0\n",
+        "type S:\n    case A\n    case B(x: Int)\ndef f(s: S) -> Int:\n    match s:\n        case A:\n            return 1\nexport def main() -> Int:\n    return 0\n",
     );
     assert!(got.ends_with("add the arms 'B(x):'"), "{got}");
     let got = first_message(
-        "export fn main() Int:\n    let m = Map[String, Int]()\n    m.set(1, 2)\n    return 0\n",
+        "export def main() -> Int:\n    let m = Map[String, Int]()\n    m.set(1, 2)\n    return 0\n",
     );
     assert!(got.contains("available: add,"), "{got}");
 }
 
 #[test]
 fn impl_cannot_mutate_what_the_interface_does_not() {
-    let source = "interface Sink:\n    fn put(x: Int) Unit\ntype Buf:\n    n: Int\nimpl Sink for Buf:\n    var fn put(x: Int) Unit:\n        self.n = x\nexport fn main() Int:\n    return 0\n";
+    let source = "interface Sink:\n    def put(x: Int) -> Unit\ntype Buf:\n    n: Int\nimpl Sink for Buf:\n    var def put(x: Int) -> Unit:\n        self.n = x\nexport def main() -> Int:\n    return 0\n";
     let got = first_message(source);
     assert!(
         got.starts_with("implementation of put is declared var fn but Sink declares it fn"),
@@ -68,7 +68,7 @@ fn impl_cannot_mutate_what_the_interface_does_not() {
 #[test]
 fn comparing_with_none_points_to_is_none() {
     let got = first_message(
-        "export fn main() Int:\n    let r: Optional[Int] = some(1)\n    if r == none:\n        return 1\n    return 0\n",
+        "export def main() -> Int:\n    let r: Optional[Int] = some(1)\n    if r == none:\n        return 1\n    return 0\n",
     );
     assert!(got.starts_with("none has no type of its own here"), "{got}");
 }
@@ -89,11 +89,11 @@ fn map_index_points_to_get_and_add() {
         .collect::<Vec<_>>()
     };
     let write = all(
-        "export fn main() Int:\n    var m = Map[String, Int]()\n    m[\"a\"] = 1\n    return 0\n",
+        "export def main() -> Int:\n    var m = Map[String, Int]()\n    m[\"a\"] = 1\n    return 0\n",
     );
     assert_eq!(write.len(), 1, "{write:?}");
     assert!(write[0].contains("m.add(key, value)"), "{write:?}");
-    let read = all("export fn main() Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
+    let read = all("export def main() -> Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
     assert_eq!(read.len(), 1, "{read:?}");
     assert!(read[0].contains("m.get(key)"), "{read:?}");
 }
@@ -105,7 +105,7 @@ fn foreign_idioms_name_the_replacement() {
         ("let a = [1].first().unwrap_or(0)", "x.get(default)"),
         ("let a = [1].includes(1)", "did you mean 'contains'?"),
         (
-            "let a = [1].reduce(0, fn(a: Int, b: Int) Int: a + b)",
+            "let a = [1].reduce(0, lambda (a: Int, b: Int) -> Int: a + b)",
             "did you mean 'fold'?",
         ),
         ("let a = \"x\".toUpperCase()", "did you mean 'upper'?"),
@@ -131,7 +131,7 @@ fn foreign_idioms_name_the_replacement() {
         );
     }
     let got = first_message(
-        "fn f() Result[Int, Error]:\n    return ok(1)\nexport fn main() Int:\n    let x = f().unwrap()\n    return 0\n",
+        "def f() -> Result[Int, Error]:\n    return ok(1)\nexport def main() -> Int:\n    let x = f().unwrap()\n    return 0\n",
     );
     assert!(got.contains("try x"), "{got}");
 }

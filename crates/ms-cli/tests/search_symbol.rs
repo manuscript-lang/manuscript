@@ -22,7 +22,7 @@ fn search_symbol_describes_project_and_standard_symbols() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("a.ms"),
-        "fn parse_config(text: String) Int:\n    return 1\n\nfn main() Int:\n    return parse_config(\"x\")\n",
+        "def parse_config(text: String) -> Int:\n    return 1\n\ndef main() -> Int:\n    return parse_config(\"x\")\n",
     )
     .unwrap();
 

@@ -55,7 +55,7 @@ fn write(dir: &Path, name: &str, text: &str) -> String {
     path.to_string_lossy().into_owned()
 }
 
-const MAIN: &str = "export fn main() Int:\n    return 0\n";
+const MAIN: &str = "export def main() -> Int:\n    return 0\n";
 
 #[test]
 fn run_returns_the_program_status() {
@@ -96,7 +96,7 @@ fn build_writes_an_executable_and_reports_it() {
 #[test]
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
-    let source = write(&dir, "main.ms", "export fn main() Int:\n    return \"x\"\n");
+    let source = write(&dir, "main.ms", "export def main() -> Int:\n    return \"x\"\n");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     let (status, _, err) = ms(&backend, &["run", &source]);
     assert_eq!(status, 1);
@@ -114,13 +114,13 @@ fn entry_must_be_an_exported_main() {
     let dir = scratch("entry");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     for (text, expected) in [
-        ("fn main() Int:\n    return 0\n", "main is not exported"),
+        ("def main() -> Int:\n    return 0\n", "main is not exported"),
         (
-            "export fn other() Int:\n    return 0\n",
+            "export def other() -> Int:\n    return 0\n",
             "no main function is declared",
         ),
         (
-            "export fn main(x: Int) Int:\n    return x\n",
+            "export def main(x: Int) -> Int:\n    return x\n",
             "main takes no parameters",
         ),
     ] {
@@ -135,11 +135,11 @@ fn entry_must_be_an_exported_main() {
 #[test]
 fn imports_load_in_dependency_order() {
     let dir = scratch("imports");
-    write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");
+    write(&dir, "lib.ms", "export def one() -> Int:\n    return 1\n");
     let source = write(
         &dir,
         "main.ms",
-        "import { one } from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
+        "from \"./lib.ms\" import one\n\nexport def main() -> Int:\n    return one()\n",
     );
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     assert_eq!(ms(&backend, &["run", &source]).0, 7);
@@ -147,7 +147,7 @@ fn imports_load_in_dependency_order() {
     let missing = write(
         &dir,
         "main.ms",
-        "import { one } from \"./nope.ms\"\n\nexport fn main() Int:\n    return 0\n",
+        "from \"./nope.ms\" import one\n\nexport def main() -> Int:\n    return 0\n",
     );
     let (status, _, err) = ms(&backend, &["run", &missing]);
     assert_eq!(status, 1);
@@ -192,7 +192,7 @@ fn library_projects_have_no_executable_entry() {
     write(
         &dir.join("src"),
         "lib.ms",
-        "export fn one() Int:\n    return 1\n",
+        "export def one() -> Int:\n    return 1\n",
     );
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     let manifest = dir.join("ms.toml");
@@ -205,7 +205,7 @@ fn library_projects_have_no_executable_entry() {
     assert!(!err.contains("lock"), "{err}");
 }
 
-const TESTS: &str = "import {expect_equal} from \"@std/testing.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
+const TESTS: &str = "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
 
 #[test]
 fn native_lowering_runs_real_programs() {
@@ -213,7 +213,7 @@ fn native_lowering_runs_real_programs() {
     let source = write(
         &dir,
         "main.ms",
-        "export fn main() Int:\n    return 6 * 7 - 40\n",
+        "export def main() -> Int:\n    return 6 * 7 - 40\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -227,7 +227,7 @@ fn native_programs_link_every_standard_library_crate() {
     let source = write(
         &dir,
         "main.ms",
-        "import {parse, format} from \"@std/semver.ms\"\n\nexport fn main() Int:\n    let v = parse(\"1.2.3\").get()\n    if format(v) == \"1.2.3\":\n        return 0\n    return 1\n",
+        "from \"@std/semver.ms\" import parse, format\n\nexport def main() -> Int:\n    let v = parse(\"1.2.3\").get()\n    if format(v) == \"1.2.3\":\n        return 0\n    return 1\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -261,7 +261,7 @@ fn runtime_fault_is_reported_as_json() {
     let source = write(
         &dir,
         "boom.ms",
-        "fn div(a: Int, b: Int) Int: a / b\n\nexport fn main() Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
+        "def div(a: Int, b: Int) -> Int: a / b\n\nexport def main() -> Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
     );
     let backend = Engine::new(Native);
     let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
@@ -343,7 +343,7 @@ fn native_chains_copy_and_drop_iteratively() {
     let source = write(
         &dir,
         "main.ms",
-        "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\nfn build(n: Int) Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\nfn sum(l: Link, acc: Int) Int:\n    match l:\n        End:\n            return acc\n        More(r):\n            return sum(r, acc)\n        Tag(n, r):\n            return sum(r, acc + n)\n\nexport fn main() Int:\n    let a = build(100000)\n    let b = a.clone()\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
+        "type Link:\n    case End\n    case More(next: Link)\n    case Tag(n: Int, rest: Link)\n\ndef build(n: Int) -> Link:\n    if n == 0:\n        return End\n    if n % 2 == 0:\n        return More(build(n - 1))\n    return Tag(n, build(n - 1))\n\ndef sum(l: Link, acc: Int) -> Int:\n    match l:\n        case End:\n            return acc\n        case More(r):\n            return sum(r, acc)\n        case Tag(n, r):\n            return sum(r, acc + n)\n\nexport def main() -> Int:\n    let a = build(100000)\n    let b = a.clone()\n    if sum(a, 0) != 2500000000:\n        return 1\n    if sum(b, 0) != 2500000000:\n        return 2\n    return 0\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -358,7 +358,7 @@ fn native_list_element_places_update_the_list() {
     let source = write(
         &dir,
         "main.ms",
-        "type Cell:\n    n: Int\n    tag: String\n\nexport fn main() Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells.clone()\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
+        "type Cell:\n    n: Int\n    tag: String\n\nexport def main() -> Int:\n    var cells = [Cell(n: 1, tag: \"a\"), Cell(n: 2, tag: \"b\")]\n    let before = cells.clone()\n    cells[1].n = 9\n    cells[0].tag = \"z\"\n    var grid = [[1], [2]]\n    grid[1].append(3)\n    if cells[1].n != 9 or cells[0].tag != \"z\":\n        return 1\n    if before[1].n != 2 or before[0].tag != \"a\":\n        return 2\n    if grid[1].length() != 2:\n        return 3\n    return 0\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -372,7 +372,7 @@ fn native_method_labels_bind_by_name() {
     let source = write(
         &dir,
         "main.ms",
-        "export fn main() Int:\n    var items = [1, 2, 3]\n    items.set(value: 8, 0)\n    items.insert(value: 5, 1)\n    if items[0] != 8 or items[1] != 5 or items.length() != 4:\n        return 1\n    return 0\n",
+        "export def main() -> Int:\n    var items = [1, 2, 3]\n    items.set(value: 8, 0)\n    items.insert(value: 5, 1)\n    if items[0] != 8 or items[1] != 5 or items.length() != 4:\n        return 1\n    return 0\n",
     );
     let backend = Engine::new(Native);
     let (status, _, err) = ms(&backend, &["run", &source]);
@@ -388,7 +388,7 @@ fn native_json_parse_of_deep_nesting_is_linear() {
     let source = write(
         &dir,
         "main.ms",
-        "import {parse, JsonValue, JsonError} from \"@std/json.ms\"\n\nexport fn main() Int:\n    let n = 50000\n    let text = \"{\"[\".repeat(n).get()}1{\"]\".repeat(n).get()}\"\n    let r: Result[JsonValue, JsonError] = parse(text)\n    if r.is_error():\n        return 1\n    return 0\n",
+        "from \"@std/json.ms\" import parse, JsonValue, JsonError\n\nexport def main() -> Int:\n    let n = 50000\n    let text = f\"{\"[\".repeat(n).get()}1{\"]\".repeat(n).get()}\"\n    let r: Result[JsonValue, JsonError] = parse(text)\n    if r.is_error():\n        return 1\n    return 0\n",
     );
     let backend = Engine::new(Native);
     let started = std::time::Instant::now();
@@ -415,7 +415,7 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     let source = write(
         &dir,
         "main.ms",
-        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -472,7 +472,7 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     let source = write(
         &dir,
         "main.ms",
-        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {commands} from \"@std/process.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    if request.path == \"/slow\":\n        let _out = commands().run(\"sleep\", [\"0.5\"])\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/process.ms\" import commands\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        let _out = commands().run(\"sleep\", [\"0.5\"])\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -529,7 +529,7 @@ fn native_http_handler_faults_do_not_leak_per_request() {
     let source = write(
         &dir,
         "main.ms",
-        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), \"{xs[i]}\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), f\"{xs[i]}\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -587,7 +587,7 @@ fn native_stdout_flush_reaches_a_pipe_immediately() {
     let source = write(
         &dir,
         "main.ms",
-        "import stdout from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nexport fn main() Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(duration(3000000000))\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\nexport def main() -> Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(duration(3000000000))\n    return 0\n",
     );
     let exe = dir.join("flush");
     let backend = Engine::new(Native);
@@ -614,7 +614,7 @@ fn native_programs_using_tls_and_http_link() {
     let source = write(
         &dir,
         "main.ms",
-        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with server = acquired:\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            return 0\n    return 1\n",
     );
     let exe = dir.join("net");
     let backend = Engine::new(Native);
@@ -638,7 +638,7 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     let source = write(
         &dir,
         "main.ms",
-        "import {headers, HttpRequest, HttpResponse} from \"@std/http.ms\"\nimport network from \"@std/net.ms\"\nimport {stdout} from \"@std/io.ms\"\nimport {sleep, duration} from \"@std/time.ms\"\n\nfn handle(request: HttpRequest) HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport fn main() Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, grace: duration(10000000000)):\n        with server = acquired:\n            stdout().write(\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, grace: duration(10000000000)):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);

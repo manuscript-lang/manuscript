@@ -80,11 +80,11 @@ test "contextual callbacks and inline returns":
     try expect_equal(failed, Result[Int, TextError].error(TextError("expected")))
 
     let subtract: Callable[[Int, Int], Int] = lambda a, b: a - b
-    try expect_equal(subtract(right: 2, left: 7), 5)
+    try expect_equal(subtract(7, 2), 5)
 
     let defaulted: Callable[[Int], Int] = lambda (item: Int = 4): item + 1
-    try expect_equal(defaulted(value: 8), 9)
+    try expect_equal(defaulted(8), 9)
 
     let outer: Callable[[Int], Callable[[Int], Int]] = lambda base:
         return lambda extra: base + extra
-    try expect_equal(outer(value: 3)(input: 4), 7)
+    try expect_equal(outer(3)(4), 7)

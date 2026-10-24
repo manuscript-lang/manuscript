@@ -29,7 +29,7 @@ test "callback inference retains captures and contextual metadata":
     let callable: Callable[[Int], Callable[[Int], Int]] = apply(
         value: 1, transform: lambda base: lambda item: lambda extra: item + extra + base
     )
-    try expect_equal(callable(value: 3)(input: 4), 8)
+    try expect_equal(callable(3)(4), 8)
 
     let callback = Callback(lambda (item: Int = 4): item + offset)
     try expect_equal(callback.transform(3), 10)

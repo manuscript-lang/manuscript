@@ -50,8 +50,8 @@ def iterable(output: WriteStream) -> List[Int]:
 
 def exercise() -> Result[Int, Error]:
     let total = select(output: stdout())(
-        second: report(output: stdout(), label: "second", value: 2),
-        first: report(output: stdout(), label: "first", value: 1)
+        report(output: stdout(), label: "second", value: 2),
+        report(output: stdout(), label: "first", value: 1)
     )
     total | try expect_equal(3)
 

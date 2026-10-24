@@ -43,7 +43,7 @@ fn lifecycle_and_diagnostics() {
     let broken = ws.uri("broken.ms");
     s.open(
         &broken,
-        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
+        "def broken() -> Int:\n    let x: String = 1\n    return missing\n",
         1,
     );
     let syntax = ws.uri("syntax.ms");
@@ -161,13 +161,13 @@ fn completion_in_unfinished_code() {
         ("string-member", "fn main() Int:\n    let w = \"a\"."),
         (
             "member-prefix",
-            "fn main() Int:\n    let p = Point(x: 1)\n    return p.no",
+            "def main() -> Int:\n    let p = Point(x: 1)\n    return p.no",
         ),
         ("call", "fn main() Int:\n    return add("),
         ("call-second", "fn main() Int:\n    return add(1, "),
         ("call-label", "fn main() Int:\n    return add(a: 1, b"),
         ("constructor", "fn main() Int:\n    let p = Point("),
-        ("case", "fn main() Int:\n    let s = Shape.C"),
+        ("case", "def main() -> Int:\n    let s = Shape.C"),
         ("type", "fn main() Int:\n    let z: In"),
         ("param-type", "fn run(shape: Sh"),
         ("import-name", "import {st"),
@@ -184,7 +184,7 @@ fn completion_in_unfinished_code() {
             "fn area(shape: Shape) Int:\n    match shape:\n        Ci",
         ),
         ("string", "fn main() String:\n    return \"abc"),
-        ("comment", "fn main() Int:\n    # note"),
+        ("comment", "def main() -> Int: ...\n    # note"),
     ];
     let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
     for (index, (name, tail)) in cases.iter().enumerate() {
@@ -273,7 +273,7 @@ fn rename_actions_and_formatting() {
     let messy = ws.uri("messy.ms");
     s.open(
         &messy,
-        "import {expect_equal} from \"@std/testing.ms\"   \nimport stdout from \"@std/io.ms\"\nimport unused from \"@std/json.ms\"\nfn  main( )  Int:\n    return 0",
+        "from \"@std/testing.ms\" import expect_equal   \nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\ndef  main( ) -> Int:\n    return 0",
         1,
     );
     let all = obj([
@@ -536,13 +536,13 @@ fn broken_documents() {
     let ws = Workspace::new("broken");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
-        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
+        "def broken() -> Int:\n    let x: String = 1\n    return missing\n",
         "fn (:\nfn ok() Int:\n    return 1\n",
         "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
         "fn f(a: Int) Int:\n  return a\n",
         "\u{feff}fn f() Int:\n    return 1\n",
         "fn f() String:\n    return \"héllo 😀 {1 +\n",
-        "import nothing from \"./nowhere.ms\"\nfn f() Int:\n    return nothing()\n",
+        "from \"./nowhere.ms\" import nothing\ndef f() -> Int:\n    return nothing()\n",
         "",
     ];
     for (index, source) in sources.iter().enumerate() {
@@ -578,7 +578,7 @@ fn batched_changes_publish_once() {
     let ws = Workspace::new("batched");
     let main = ws.uri("main.ms");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
-    s.open(&main, "fn f() Int:\n    return 1\n", 1);
+    s.open(&main, "def f() -> Int:\n    return 1\n", 1);
     for version in 2..7 {
         let range = obj([
             (

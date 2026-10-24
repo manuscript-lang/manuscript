@@ -4,7 +4,7 @@
 from "@std/testing.ms" import expect_equal
 
 def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
-    return transform(value: value)
+    return transform(value)
 
 test "function suite boundaries":
     var calls: List[Int] = []
