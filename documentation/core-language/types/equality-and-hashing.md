@@ -14,10 +14,10 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 ```manuscript
 interface Equal:
-    fn equals(other: Equal) Bool
+    def equals(other: Equal) -> Bool
 
 interface Hashable:
-    fn hash() Int
+    def hash() -> Int
 ```
 
 `==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
@@ -52,13 +52,13 @@ type CustomerKey:
     label: String
 
 impl Equal for CustomerKey:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            CustomerKey(value): return self.id == value.id
-            _: return false
+            case CustomerKey(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for CustomerKey:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 ```
 
 These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).

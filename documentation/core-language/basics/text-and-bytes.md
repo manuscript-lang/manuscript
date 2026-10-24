@@ -18,14 +18,14 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 | `\n` | LF, U+000A |
 | `\r` | CR, U+000D |
 | `\t` | Tab, U+0009 |
-| `\{`, `\}` | Literal opening/closing brace |
+| `\{`, `\}` | Literal opening/closing brace; valid only in f-strings, where plain braces are interpolation |
 | `\u{H}` | Unicode scalar with one to six hexadecimal digits H |
 
-Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
+Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in an f-string, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
 let quote = "She said \"hello\"."
-let template = "Literal braces: \{name\}"
+let template = "Literal braces: {name}"
 let lines = "first\nsecond"
 let symbol = "\u{1F642}"
 ```
@@ -34,31 +34,31 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-An unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
+A plain `"..."` literal has no interpolation: braces are ordinary characters. An f-string `f"..."` is the same literal with a prefix, and an unescaped `{` in it opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `f"\{\"a\": 1\}"`, or use a plain literal, which needs no escape: `"{\"a\": 1}"`.
 
 ```manuscript
 let name = "Ada"
 let count = 3
-let greeting = "Welcome, {name}!"
-let calculated = "Next: {count + 1}"
+let greeting = f"Welcome, {name}!"
+let calculated = f"Next: {count + 1}"
 ```
 
 Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
 
 ## Converting values to String
 
-Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
+Every value has a built-in `to_string() -> String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
-fn text[T](value: T) String:
+def text[T](value: T) -> String:
     return value.to_string()
 
 test "string conversion":
     let count = 3
-    let convert: fn() String = count.to_string
+    let convert: Callable[[], String] = count.to_string
     let direct = count.to_string()
     let bound = convert()
-    let embedded = "{count}"
+    let embedded = f"{count}"
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -95,11 +95,11 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Optional[Int]` |
+| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() Int`; `get(index: Int, default: Optional[Int] = none) Int`; `concat(values: Bytes) Bytes` |
-| `Bytes` | `to_string() Optional[String]` |
-| `Bytes` | `values() List[Int]`; a fresh mutable list of unsigned byte values |
+| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `to_string() -> Optional[String]` |
+| `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
 `to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` returns the unsigned byte as Int.
 
@@ -108,9 +108,9 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 `parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
-import Bytes from "@std/bytes.ms"
+from "@std/bytes.ms" import Bytes
 
 test "explicit byte conversion":
     if not ("é".byte_length() == 2):
@@ -131,8 +131,8 @@ Formatting never depends on locale or host settings.
 | Type | Formatting |
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
-| Bool | `true` or `false` |
-| Unit | `unit` |
+| Bool | `True` or `False` |
+| Unit | `()` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |

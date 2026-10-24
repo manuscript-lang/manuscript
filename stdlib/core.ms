@@ -74,7 +74,7 @@ export type Optional[T]:
     case none
 
 impl Optional[T]:
-    # Returns true for some(value), and false for none.
+    # Returns True for some(value), and False for none.
     def is_some() -> Bool: ...
 
     # Reports whether this value is absent.

@@ -12,7 +12,7 @@ export type Queue[T: Clonable]:
     head: Int = 0
 
 impl Queue[T]:
-    # Adds a value, returning false when a bounded queue is full. A non-positive capacity faults.
+    # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var def enqueue(value: T) -> Bool:
         if let limit = self.capacity:
             if limit <= 0:
@@ -95,7 +95,7 @@ impl PriorityQueue[T]:
         self.orders.set(a, self.orders.get(b))
         self.orders.set(b, left_order)
 
-    # Adds a value, returning false when a bounded queue is full. A non-positive capacity faults.
+    # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var def enqueue(value: T) -> Bool:
         if let limit = self.capacity:
             if limit <= 0:

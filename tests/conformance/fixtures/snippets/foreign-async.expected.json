@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'async' is not a keyword; call the function directly",
+        "position": {
+          "file": "foreign-async.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 134
+        },
+        "end": {
+          "file": "foreign-async.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 139
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

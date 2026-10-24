@@ -199,7 +199,7 @@ fn text_between(source: &str, from: usize, to: usize) -> String {
 }
 
 fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
-    if at > 0 && tokens[at - 1].text == "def" {
+    if at > 0 && matches!(tokens[at - 1].text, "def" | "lambda") {
         return true;
     }
     let mut previous = at as isize - 1;

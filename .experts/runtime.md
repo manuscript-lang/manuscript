@@ -77,7 +77,7 @@ Verify: bracket raw monotonic readings against elapsed nanoseconds; check multi-
 
 ### Native constructor arguments need not be readable fields
 
-Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Keep the constructor signature separate from the native `values() List[Int]` operation, and keep editor constructor parameters (signature help) separate from receiver declarations. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
+Verified: `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field. Keep the constructor signature separate from the native `values() -> List[Int]` operation, and keep editor constructor parameters (signature help) separate from receiver declarations. Constructor inputs and extracted lists copy byte values, preserving Bytes immutability.
 
 Apply when: describing native schemas or replacing bogus native fields with operations.
 Evidence: [byte declarations](../stdlib/bytes.ms), [called extraction and constructor regressions](../tests/e2e/testdata/stdlib/string-bytes.ms).
@@ -153,7 +153,7 @@ Verify: a record with a function field and a `none` field encodes without them; 
 
 ### Write operations take String; `_bytes` siblings take Bytes
 
-Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: false)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
+Decision: write APIs (`write`, `write_file`, `append_file`, `write_at`, on streams, files, connections, transports) accept `String`; raw bytes use a sibling named `<name>_bytes` (`write_bytes`, `write_file_bytes`). Network sends follow the same shape: `DatagramSocket.send`/`send_bytes`, `WebSocket.send`/`send_bytes(data, text: False)`, `ping`/`ping_bytes`, and `request`/`request_bytes` for the body. Interface operations cannot be generic or overloaded, so two names express the choice. Any source `impl` of `WriteStream` or `Transport` must declare both; implementing `write` as `self.write_bytes(data.to_bytes())` keeps one body.
 
 Apply when: adding or changing a write-like standard operation, or implementing `WriteStream`/`Transport` in source.
 Evidence: user request in the project thread; [io](../stdlib/io.ms), [fs](../stdlib/fs.ms), [stream support](../tests/e2e/testdata/stdlib/support/streams.ms).

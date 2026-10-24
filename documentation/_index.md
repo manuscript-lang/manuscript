@@ -8,12 +8,12 @@ description = "Agents write. Humans understand."
 {{< docs-home >}}
 <!-- manuscript-example: {"mode":"run","args":["Ada"],"stdout":"Hello, Ada!\n","cases":[{"stdout":"Hello, world!\n"}]} -->
 ```manuscript {filename="hello.ms"}
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-export fn main() Int:
+export def main() -> Int:
     let name = arguments().get(0, default: "world")
-    let message = "Hello, {name}!\n"
+    let message = f"Hello, {name}!\n"
     if stdout().write(message).is_error():
         return 1
     return 0

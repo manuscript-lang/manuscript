@@ -31,11 +31,11 @@ Open `examples/hello/src/main.ms`:
 
 <!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript {filename="src/main.ms"}
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-export fn main() Int:
-    let message = "Arguments: {arguments().length()}\n"
+export def main() -> Int:
+    let message = f"Arguments: {arguments().length()}\n"
     if stdout().write(message).is_error():
         return 1
     return 0
@@ -52,7 +52,7 @@ export fn main() Int:
 Replace the `let message` line with:
 
 ```manuscript
-    let message = "Hello! You passed {arguments().length()} arguments.\n"
+    let message = f"Hello! You passed {arguments().length()} arguments.\n"
 ```
 
 Save the file and run the same command again:

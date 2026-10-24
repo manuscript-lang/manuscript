@@ -15,7 +15,7 @@ export type FileSystemError:
     case LimitExceeded
     # The path, or a parent directory it needs, does not exist.
     case NotFound
-    # The destination exists and the operation refuses to replace it, such as exclusive creation with `replace: false`.
+    # The destination exists and the operation refuses to replace it, such as exclusive creation with `replace: False`.
     case AlreadyExists
     # Removal failed because the directory still contains entries.
     case NotEmpty
@@ -125,14 +125,14 @@ export interface FileSystem:
     ) -> Result[FileWatcher, FileSystemError]
     # Resolves symlinks and returns the canonical absolute path.
     def canonicalize(path: String) -> Result[String, FileSystemError]
-    # Copies one file; replace defaults to false, refusing an existing destination.
+    # Copies one file; replace defaults to False, refusing an existing destination.
     def copy_file(
         source: String,
         destination: String,
         replace: Bool = False,
         max_bytes: Optional[Int] = none
     ) -> Result[Unit, FileSystemError]
-    # Creates one directory; recursive defaults to false, requiring its parent to exist.
+    # Creates one directory; recursive defaults to False, requiring its parent to exist.
     def create_directory(
         path: String,
         recursive: Bool = False
@@ -152,25 +152,25 @@ export interface FileSystem:
     # Returns the target text stored in the symbolic link at `path`, without resolving it.
     # A path that is not a link returns InvalidInput.
     def read_link(path: String) -> Result[String, FileSystemError]
-    # Removes a file or empty directory; recursive defaults to false, retaining nonempty trees.
+    # Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
     def remove(path: String, recursive: Bool = False) -> Result[Unit, FileSystemError]
     # Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
     # It never falls back to copying, so a move across devices returns an error.
     def rename(source: String, destination: String) -> Result[Unit, FileSystemError]
-    # Returns metadata for `path`. `follow_links` true describes the link target and false describes the link itself.
+    # Returns metadata for `path`. `follow_links` True describes the link target and False describes the link itself.
     def stat(path: String, follow_links: Bool) -> Result[FileInfo, FileSystemError]
     # Queries the host temp root without creating or checking a directory.
     def temporary_root() -> Result[String, FileSystemError]
     # Creates a new directory under the host temp root; the caller must remove it.
     # Prefix must be nonempty and contain no slash, backslash, or NUL.
     def temporary_directory(prefix: String) -> Result[String, FileSystemError]
-    # Creates a file exclusively; replace defaults to false, retaining an existing file.
+    # Creates a file exclusively; replace defaults to False, retaining an existing file.
     def write_file(
         path: String,
         data: String,
         replace: Bool = False
     ) -> Result[Unit, FileSystemError]
-    # Creates a file exclusively from raw bytes; replace defaults to false, retaining an existing file.
+    # Creates a file exclusively from raw bytes; replace defaults to False, retaining an existing file.
     def write_file_bytes(
         path: String,
         data: Bytes,
@@ -186,7 +186,7 @@ export interface FileSystem:
     # Changes target permissions with mode 0..4095; follows a final symbolic link.
     def chmod(path: String, mode: Int) -> Result[Unit, FileSystemError]
     # Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
-    # `follow_links` chooses the link target (true) or the link itself (false). Usually needs privilege, and Windows returns Unsupported.
+    # `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
     def chown(
         path: String,
         uid: Int,
@@ -196,7 +196,7 @@ export interface FileSystem:
     # Sets the target size in bytes; follows a final symbolic link.
     def truncate(path: String, size: Int) -> Result[Unit, FileSystemError]
     # Sets the access and modification times of `path`.
-    # `follow_links` chooses the link target (true) or the link itself (false); no-follow updates return Unsupported where the host lacks them, such as Windows.
+    # `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
     def set_times(
         path: String,
         accessed: Timestamp,
@@ -216,7 +216,7 @@ export interface FileSystem:
     # Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
     # A path that is not a directory returns InvalidInput.
     def open_directory(path: String) -> Result[Directory, FileSystemError]
-    # Copies a tree; replace defaults to false, refusing existing destinations.
+    # Copies a tree; replace defaults to False, refusing existing destinations.
     # Entry and byte limits remain separate and apply cumulatively across the copy.
     def copy_tree(
         source: String,
@@ -380,17 +380,17 @@ export def constants() -> Map[String, Int]: ...
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
-    # When true, directories are copied with their contents; when false, a directory source returns InvalidInput.
+    # When True, directories are copied with their contents; when False, a directory source returns InvalidInput.
     recursive: Bool
-    # When true, an existing destination file or link is replaced; when false, it is kept, or reported when `error_on_exists` is true.
+    # When True, an existing destination file or link is replaced; when False, it is kept, or reported when `error_on_exists` is True.
     replace: Bool
-    # When true and `replace` is false, an existing destination file returns AlreadyExists instead of being skipped silently.
+    # When True and `replace` is False, an existing destination file returns AlreadyExists instead of being skipped silently.
     error_on_exists: Bool
-    # When true, symbolic links are followed and their targets copied; when false, links are recreated as links.
+    # When True, symbolic links are followed and their targets copied; when False, links are recreated as links.
     dereference: Bool
-    # When true, copied files and directories keep the source's access and modification times.
+    # When True, copied files and directories keep the source's access and modification times.
     preserve_timestamps: Bool
-    # When true, a copied link keeps its target text unchanged. When false, a relative target is rewritten relative to the source directory so it still reaches the original file.
+    # When True, a copied link keeps its target text unchanged. When False, a relative target is rewritten relative to the source directory so it still reaches the original file.
     verbatim_symlinks: Bool
     # Exactly `none`, `try`, or `force`; other strings return InvalidInput.
     # try falls back to byte copying; force requires a native clone operation.
@@ -413,7 +413,7 @@ export type GlobOptions:
     patterns: List[String]
     # Glob patterns for entries to skip; a match is neither returned nor searched further.
     exclude: List[String]
-    # When true, symbolic links to directories are traversed, with cycles detected; when false, links are reported but not entered.
+    # When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
     follow_links: Bool
     # Most filesystem entries visited while searching. Exceeding it returns LimitExceeded. none sets no limit.
     max_entries: Optional[Int] = none

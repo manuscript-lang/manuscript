@@ -22,7 +22,7 @@ impl List[T]:
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
     def get(index: Int, default: Optional[T] = none) -> T: ...
 
-    # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns false.
+    # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
     def contains(value: T) -> Bool: ...
 
     # Returns the first equal element's zero-based index, or none; elements require Equal.
@@ -83,13 +83,13 @@ impl List[T]:
     # Keeps matching values in their original order.
     def filter(predicate: Callable[[T], Bool]) -> List[T]: ...
 
-    # Returns the first element for which `predicate` is true, or none; later elements are not tested after a match.
+    # Returns the first element for which `predicate` is True, or none; later elements are not tested after a match.
     def find(predicate: Callable[[T], Bool]) -> Optional[T]: ...
 
-    # Searches from the end and returns the last element for which `predicate` is true, or none.
+    # Searches from the end and returns the last element for which `predicate` is True, or none.
     def find_last(predicate: Callable[[T], Bool]) -> Optional[T]: ...
 
-    # Returns the zero-based index of the first element for which `predicate` is true, or none.
+    # Returns the zero-based index of the first element for which `predicate` is True, or none.
     def find_index(predicate: Callable[[T], Bool]) -> Optional[Int]: ...
 
     # Searches from the end and returns the last matching zero-based index, or none.
@@ -101,10 +101,10 @@ impl List[T]:
     # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal.
     def distinct() -> List[T]: ...
 
-    # Returns true when at least one value satisfies the predicate.
+    # Returns True when at least one value satisfies the predicate.
     def some(predicate: Callable[[T], Bool]) -> Bool: ...
 
-    # Returns true when every value satisfies the predicate; empty lists return true.
+    # Returns True when every value satisfies the predicate; empty lists return True.
     def every(predicate: Callable[[T], Bool]) -> Bool: ...
 
     # Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
@@ -199,10 +199,10 @@ impl Map[T, U]:
     # Returns a fresh entry record containing copies of its key and value.
     def find_last(predicate: Callable[[T, U], Bool]) -> Optional[MapEntry[T, U]]: ...
 
-    # Stops at the first matching entry; empty maps return false.
+    # Stops at the first matching entry; empty maps return False.
     def some(predicate: Callable[[T, U], Bool]) -> Bool: ...
 
-    # Stops at the first nonmatching entry; empty maps return true.
+    # Stops at the first nonmatching entry; empty maps return True.
     def every(predicate: Callable[[T, U], Bool]) -> Bool: ...
 
     # Inserts a default only when the key is absent.
@@ -284,10 +284,10 @@ impl Set[T]:
     # Searches from the end, returning the original last matching element.
     def find_last(predicate: Callable[[T], Bool]) -> Optional[T]: ...
 
-    # Stops at the first matching element; empty sets return false.
+    # Stops at the first matching element; empty sets return False.
     def some(predicate: Callable[[T], Bool]) -> Bool: ...
 
-    # Stops at the first nonmatching element; empty sets return true.
+    # Stops at the first nonmatching element; empty sets return True.
     def every(predicate: Callable[[T], Bool]) -> Bool: ...
 
     # Returns a new set with receiver values followed by right-only values in insertion order.

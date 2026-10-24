@@ -10,9 +10,9 @@ weight = 2
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+def discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     let value = try discount(price, percent)
-    return ok("Discounted price: {value}")
+    return ok(f"Discounted price: {value}")
 ```
 
 ## Success and failure paths
@@ -22,10 +22,10 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 `Result[Unit, E]` can be propagated as a statement:
 
 ```manuscript
-import {TextError} from "@std/core.ms"
-fn prepare() Result[Unit, TextError]: ok(unit)
+from "@std/core.ms" import TextError
+def prepare() -> Result[Unit, TextError]: ok(())
 
-fn ready_label() Result[String, TextError]:
+def ready_label() -> Result[String, TextError]:
     try prepare()
     return ok("ready")
 ```
@@ -36,10 +36,10 @@ Omitting `try` discards the Result and triggers lint `MSL104`. To ignore it deli
 
 ## Try in a pipe flow
 
-`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
+`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `def label(value: Decimal) -> String`, this equals `let value = try discount(...)` then `label(value)`:
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+def discounted_label(price: Decimal, percent: Decimal) -> Result[String, DiscountError]:
     return ok(try discount(price, percent) | label)
 ```
 
