@@ -688,6 +688,22 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
     }
 }
 
+/// Reports a fault that left a guarded task (its cleanups already ran) and ends the process
+/// with the fault status. A no-op under the unit-test runtime, which keeps faults as panics.
+pub fn exit_with_report(msg: &ms_rt_abi::StrVal) {
+    #[cfg(not(test))]
+    {
+        // SAFETY: `msg` is a string the guard just produced.
+        let mut report = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) }.to_vec();
+        report.push(b'\n');
+        crate::io::flush_stdout();
+        sys::write_all(sys::STDERR, report.as_slice());
+        crate::process::exit(ms_rt_abi::EXIT_FAULT)
+    }
+    #[cfg(test)]
+    let _ = msg;
+}
+
 /// Faults with a formatted message.
 #[cold]
 pub fn fault_fmt(args: fmt::Arguments) -> ! {

@@ -1,0 +1,180 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "tasks.ms::results come back in the order the tasks started",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "tasks.ms::results do not depend on which task finishes first",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "tasks.ms::a task handle returns its own result",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "tasks.ms::tasks switch while one waits",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "tasks.ms::a task owns the values its closure captures",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "tasks.ms::leaving the block cancels tasks that are still running",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "tasks.ms::an empty group has no results",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "tasks.ms::a task that passes its timeout is cancelled",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "tasks.ms::a group timeout limits every task started in it",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "tasks.ms::a task shorter than its group limit uses its own limit",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "tasks.ms::wait reports a task that timed out",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "tasks.ms::a task without a timeout runs to its end",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "tasks.ms::wait leaves every outcome readable through its handle",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "tasks.ms::results reports the first task that has no result",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "tasks.ms::a zero timeout times the task out",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "tasks.ms::a group whose time has passed times new tasks out",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "tasks.ms::a task that never ran releases what it captured",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "tasks.ms::many tasks run and keep their order",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "tasks.ms::an early exit from the block cancels the tasks",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "tasks.ms::groups nest and close independently",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "tasks.ms::a task can wait for another task's value",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "tasks.ms::a task cancelled before it first ran never starts",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "tasks.ms::closing a group twice leaves a later group alone",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "tasks.ms::more sleeping tasks than the timer heap keeps all finish",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "tasks.ms::using a task after its group closed gives Closed",
+          "status": "passed"
+        },
+        {
+          "index": 25,
+          "name": "tasks.ms::a second result call gives Closed",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 26,
+        "selected": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN tasks.ms::results come back in the order the tasks started\nPASS tasks.ms::results come back in the order the tasks started\nRUN tasks.ms::results do not depend on which task finishes first\nPASS tasks.ms::results do not depend on which task finishes first\nRUN tasks.ms::a task handle returns its own result\nPASS tasks.ms::a task handle returns its own result\nRUN tasks.ms::tasks switch while one waits\nPASS tasks.ms::tasks switch while one waits\nRUN tasks.ms::a task owns the values its closure captures\nPASS tasks.ms::a task owns the values its closure captures\nRUN tasks.ms::leaving the block cancels tasks that are still running\nPASS tasks.ms::leaving the block cancels tasks that are still running\nRUN tasks.ms::an empty group has no results\nPASS tasks.ms::an empty group has no results\nRUN tasks.ms::a task that passes its timeout is cancelled\nPASS tasks.ms::a task that passes its timeout is cancelled\nRUN tasks.ms::a group timeout limits every task started in it\nPASS tasks.ms::a group timeout limits every task started in it\nRUN tasks.ms::a task shorter than its group limit uses its own limit\nPASS tasks.ms::a task shorter than its group limit uses its own limit\nRUN tasks.ms::wait reports a task that timed out\nPASS tasks.ms::wait reports a task that timed out\nRUN tasks.ms::a task without a timeout runs to its end\nPASS tasks.ms::a task without a timeout runs to its end\nRUN tasks.ms::wait leaves every outcome readable through its handle\nPASS tasks.ms::wait leaves every outcome readable through its handle\nRUN tasks.ms::results reports the first task that has no result\nPASS tasks.ms::results reports the first task that has no result\nRUN tasks.ms::a zero timeout times the task out\nPASS tasks.ms::a zero timeout times the task out\nRUN tasks.ms::a group whose time has passed times new tasks out\nPASS tasks.ms::a group whose time has passed times new tasks out\nRUN tasks.ms::a task that never ran releases what it captured\nPASS tasks.ms::a task that never ran releases what it captured\nRUN tasks.ms::many tasks run and keep their order\nPASS tasks.ms::many tasks run and keep their order\nRUN tasks.ms::an early exit from the block cancels the tasks\nPASS tasks.ms::an early exit from the block cancels the tasks\nRUN tasks.ms::groups nest and close independently\nPASS tasks.ms::groups nest and close independently\nRUN tasks.ms::a task can wait for another task's value\nPASS tasks.ms::a task can wait for another task's value\nRUN tasks.ms::a task cancelled before it first ran never starts\nPASS tasks.ms::a task cancelled before it first ran never starts\nRUN tasks.ms::closing a group twice leaves a later group alone\nPASS tasks.ms::closing a group twice leaves a later group alone\nRUN tasks.ms::more sleeping tasks than the timer heap keeps all finish\nPASS tasks.ms::more sleeping tasks than the timer heap keeps all finish\nRUN tasks.ms::using a task after its group closed gives Closed\nPASS tasks.ms::using a task after its group closed gives Closed\nRUN tasks.ms::a second result call gives Closed\nPASS tasks.ms::a second result call gives Closed\n26 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
