@@ -4,8 +4,8 @@
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction.
 - Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end; `spawn` returns the handle of the spawned child (`Task`, `Worker`, `Process`), whose `channel` field is the other end. No constructor, no `create_mirror`, no tuples, no hidden state.
-- Layout: one Manuscript type over one runtime endpoint object with three transports (same-thread queue, cross-thread queue, process socket). Each group's `spawn` picks the transport; user code never sees it.
-- Cost: a runtime endpoint (`crates/ms-rt/src/channel.rs`), two lowering intrinsics for moving a generic value through it, and one checker gap (methods cannot declare their own type parameters).
+- Layout: written in Manuscript except the cross-thread transport. One `Channel` type over three transports (same-thread queue and process framing in Manuscript; cross-thread queue in `ms-rt`). Each group's `spawn` picks the transport; user code never sees it.
+- Cost: token externs for park/wake; a Rust cross-thread queue with one move intrinsic (worker stage only); one checker gap (methods cannot declare their own type parameters).
 - Decision requested: sign-off on the API and the layering below.
 
 ## Status
@@ -69,52 +69,44 @@ def main() -> Int:
 
 ## Structure
 
+Rule: write it in Manuscript unless it cannot be. Only the cross-thread transport is in Rust.
+
 ```mermaid
 flowchart TB
-  U["user code: Channel[In, Out].send / receive / close"]
-  W["@std/channels.ms: Channel[In, Out] wraps one Endpoint handle"]
-  I["lowering intrinsics: channel_send[T] / channel_receive[T]"]
-  E["ms-rt channel.rs: Endpoint (shared state of a pair, close flags, wait tokens)"]
-  L["Local: VecDeque of values, msrt_token_post"]
-  T["Thread: Mutex VecDeque of values, msrt_token_post_remote"]
-  P["Process: framed JSON on the IPC channel (socketpair / named pipe)"]
-  G["TaskGroup / WorkerGroup / ProcessGroup .spawn: create the pair, pick the transport"]
-  U --> W --> I --> E
-  E --> L
-  E --> T
-  E --> P
-  G -- "creates Endpoint pair" --> E
+  U["user code: channel.send / receive / close"]
+  C["@std/channels.ms (Manuscript): Channel[In, Out] = one of three transports"]
+  L["Local (Manuscript): Shared state, two bounded queues, closed flags"]
+  P["Process (Manuscript): frames over ReadStream / WriteStream, stringify / parse"]
+  T["Thread (Rust, ms-rt): mutex queue, value moved between isolates"]
+  K["park tokens (existing ms-rt, plain Int externs)"]
+  G["group spawn (Manuscript): create the ends, call entry, return handle"]
+  U --> C
+  C --> L
+  C --> P
+  C --> T
+  L --> K
+  T --> K
+  G --> C
 ```
 
-### Layer 1: `@std/channels.ms` (Manuscript)
+| Piece | Written in | Why |
+| --- | --- | --- |
+| `Channel[In, Out]` type, `send` / `receive` / `close`, close and drain rules, `Closed` | Manuscript | source types and methods can be generic; only externs cannot (`documentation/core-language/functions/native-functions.md:23`) |
+| Local transport (tasks) | Manuscript | state is a `Shared` record of two bounded queues and two closed flags; `stdlib/queue.ms` is already a Manuscript queue; one thread, so a non-atomic `Shared` is sound |
+| Waiting and waking | existing Rust, new externs | `msrt_token_new/park/post/free` (`crates/ms-rt/src/task.rs:1003-1126`) take and return integers, so they can be plain non-generic externs in `stdlib/channels.ms` |
+| Process transport | Manuscript | frame encode/decode (4-byte LE length, kind byte message/close/result, UTF-8 JSON body) over the existing `ReadStream`/`WriteStream` (`stdlib/io.ms`) with `stringify`/`parse` |
+| Process IPC setup | Rust (child-processes proposal) | socketpair on Unix (fd 3, env `MS_IPC`), owner-only named pipe on Windows; readiness via the poller on Unix, 2 ms slices on Windows |
+| Thread transport | Rust (`crates/ms-rt/src/channel.rs`, new) | `Shared` is non-atomic and values move between two isolates' heaps: needs a mutex queue, `msrt_token_post_remote` (`task.rs:1114`), and one move intrinsic for a generic `T` in `crates/ms-lower` |
+| Group `spawn` wiring | Manuscript | create the two ends, call the entry with one, return the handle with the other |
 
-- `Channel[In, Out]` is a Manuscript type with one field: an opaque `Endpoint` handle. `send`/`receive`/`close` call the intrinsics below and map runtime status to `Closed`/`none`.
-- No transport logic here; one code path for all three locations.
+- `Channel[In, Out]` holds one of `Local`, `Thread` or `Process` state; `send`/`receive` dispatch on it. One public type; the transport is never visible.
+- Open: `Queue[T]` requires `T: Clonable` (`stdlib/queue.ms`); channel payloads would inherit that bound unless the local transport uses a move-only queue. Verify in stage 0.
 
-### Layer 2: lowering intrinsics (`crates/ms-lower`)
-
-- Externs cannot be generic (`documentation/core-language/functions/native-functions.md:23`), so moving a `T` through the runtime needs two intrinsics, instantiated per type like the existing `json/stringify` and `json/parse` (`crates/ms-lower/src/native.rs:208`):
-  - `channel_send[T](endpoint, value: T)`: for an in-process endpoint, hands the runtime an owned value pointer plus its `TypeDesc` (drop if never received); for a process endpoint, encodes with the same code as `stringify[T]` and passes bytes.
-  - `channel_receive[T](endpoint) -> Optional[T]`: the reverse; `parse[T]` for process endpoints.
-- The endpoint reports its transport, so the intrinsic chooses move vs encode at run time; the type check for each boundary (JSON-encodable for processes, no `Shared`/handles for threads) is done statically at `spawn` in the group proposals.
-
-### Layer 3: runtime endpoint (`crates/ms-rt/src/channel.rs`, new)
-
-- `Endpoint`: a refcount-free pair object, two ends, each end single-owner. Per direction: a bounded queue (`capacity`), a closed flag, a waiter token.
-- Waiting uses the existing park tokens: `msrt_token_new/park/post/free` (`crates/ms-rt/src/task.rs:1003-1126`). Cross-thread wake uses `msrt_token_post_remote` (`task.rs:1114`), which already exists for posts from other threads.
-- Transports, one enum inside `Endpoint`:
-
-| Transport | Queue | Wake | Close |
-| --- | --- | --- | --- |
-| `Local` (tasks) | `VecDeque<value ptr>` | `msrt_token_post` | flag; peer's park returns |
-| `Thread` (workers) | `Mutex<VecDeque<value ptr>>`, value moved (no copy) | `msrt_token_post_remote` | atomic flag |
-| `Process` | frames: 4-byte LE length, 1 kind byte (message / close / result), UTF-8 JSON body; over an inherited socketpair on Unix (fd 3, env `MS_IPC`) or an owner-only named pipe on Windows | poller readiness on Unix; 2 ms polling slices on Windows | close frame or EOF (crash, kill) |
-
-### Layer 4: groups wire the pair in `spawn`
+### Groups wire the ends in `spawn`
 
 - `TaskGroup.spawn(entry)`: creates a `Local` pair; the task's closure calls `entry(child_end)`; returns a `Task` handle holding the parent end.
 - `WorkerGroup.spawn(entry)`: creates a `Thread` pair; the child end moves to the worker isolate with the entry; returns a `Worker` handle holding the parent end. Needs the per-thread runtime of `proposals/worker-threads.md`; nothing here changes how worker groups behave.
-- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (socketpair or named pipe, `MS_ENTRY`; no ports); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Process` handle holding the parent end. One channel per child, so frames carry no channel id; the result frame is distinct from `Out` messages by its kind byte. A child that dies without a result frame makes `result()` return an error carrying the exit status; the parent does not fault.
+- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (socketpair or named pipe, `MS_ENTRY`; no ports); the child builds its end on the same connection at start and calls the entry; returns a `Process` handle holding the parent end. One channel per child, so frames carry no channel id; the result frame is distinct from `Out` messages by its kind byte. A child that dies without a result frame makes `result()` return an error carrying the exit status; the parent does not fault.
 
 ## Semantics
 
@@ -130,8 +122,8 @@ flowchart TB
 | Component | Change | Test |
 | --- | --- | --- |
 | `stdlib/channels.ms` (new) | `Channel[In, Out]`, `Closed` | conformance: order, drain-then-none, closed send, drop closes |
-| `crates/ms-lower` | `channel_send[T]`, `channel_receive[T]` intrinsics | per-type fixtures incl. records and alternatives |
-| `crates/ms-rt` | `channel.rs` endpoint, three transports | runtime tests: cancel while parked, cross-thread wake, EOF close |
+| `crates/ms-lower` | one move intrinsic for the thread transport only (worker stage) | per-type fixtures incl. records and alternatives |
+| `crates/ms-rt` | `channel.rs` cross-thread queue only; token externs exposed | runtime tests: cross-thread wake, cancel while parked |
 | `crates/ms-check` | method type parameters, or none with a free `spawn` | accept/reject fixtures |
 | group stdlib modules | `spawn(entry)` returns the child handle with a `channel` field; handle `close()` closes the channel first | one fixture body run against all three groups |
 | syntax, formatter, LSP, CLI | unchanged | none |
@@ -154,14 +146,14 @@ flowchart TB
 
 ## Drawbacks
 
-- Two lowering intrinsics are compiler work for one stdlib type.
+- The thread transport still needs Rust and a move intrinsic; the Manuscript transports cost an extra dispatch per call versus a native queue (unmeasured).
 - No direct sibling channels and no fan-in until `select`.
 - The process transport serializes while the others move; observable only in cost (and JSON limits on `T`).
 - Prior art: Unix pipes and sockets (two ends, created together); Go channels (shared, one-way typed); Rust `mpsc` (one-way, cloneable sender); Node `MessagePort` (two ends, event-driven). Manuscript keeps two ends, typed per direction, created only by `spawn`. Benefit is design-level; nothing measured.
 
 ## Staging and verification
 
-0. Spike (no merge): intrinsic move of a generic value through an opaque endpoint; method type parameters vs free `spawn`.
+0. Spike (no merge): local transport in Manuscript over `Shared` + token externs (incl. the `Clonable` bound); method type parameters vs free `spawn`.
 1. Docs.
 2. `Local` transport + `TaskGroup.spawn(entry)` (after TaskGroup stages 2-3 and the capture-drop fix).
 3. `Thread` transport with the worker-threads stages.
