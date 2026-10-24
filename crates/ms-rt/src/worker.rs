@@ -237,7 +237,7 @@ mod tests {
             msrt_token_free(done);
             let mut msg = crate::string::NO_STR;
             let status = msrt_worker_join(h, &mut msg);
-            let report = if msg.len() == 0 {
+            let report = if msg.is_empty() {
                 Vec::new()
             } else {
                 crate::string::bytes(&msg).to_vec()

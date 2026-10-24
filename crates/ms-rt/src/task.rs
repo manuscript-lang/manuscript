@@ -881,7 +881,7 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         let mut msg = crate::string::NO_STR;
         let status = msrt_task_join(h, &mut msg);
         fault::msrt_shield_exit();
-        let report = if msg.len() == 0 {
+        let report = if msg.is_empty() {
             Vec::new()
         } else {
             crate::string::bytes(&msg).to_vec()
