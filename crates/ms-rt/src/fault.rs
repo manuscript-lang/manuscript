@@ -504,18 +504,31 @@ unsafe fn walk_source_frames(
     // Each link must advance within the stack, so the stack bounds terminate
     // even a malformed chain. Apply the shared raw-frame work budget after the
     // native prefix, rather than imposing a separate Windows source-frame cap.
+    let mut n = 0usize;
+    let dbg = |why: &str, n: usize, pc: usize, fp: usize| {
+        let m = std::format!("WALKDBG {why} n={n} pc={pc:#x} fp={fp:#x} lo={lo:#x} hi={hi:#x} remaining={remaining}\n");
+        sys::write_all(sys::STDERR, m.as_bytes());
+    };
     for _ in 0..remaining {
-        if find_func(t, pc).is_none() || !f(pc) {
+        if find_func(t, pc).is_none() {
+            dbg("nofunc", n, pc, fp);
             break;
         }
+        if !f(pc) {
+            dbg("visitor", n, pc, fp);
+            break;
+        }
+        n += 1;
         let Some(end) = fp.checked_add(16) else { break };
         if !fp.is_multiple_of(8) || fp < lo || end > hi {
+            dbg("bounds", n, pc, fp);
             break;
         }
         // SAFETY: the first frame came from the native CONTEXT; subsequent
         // frames belong to registered generated callers and stay in this stack.
         let (next, ret) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
         if next <= fp {
+            dbg("chain", n, pc, fp);
             break;
         }
         (pc, fp) = (ret, next);
