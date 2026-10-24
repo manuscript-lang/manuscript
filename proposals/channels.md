@@ -4,14 +4,14 @@
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction.
 - Change: `Channel[In, Out]` (sends `In`, receives `Out`) is a Manuscript type with one field, `transport: Transport[In, Out]`. Each level of concurrency instantiates its own transport: task (Manuscript), worker (small Rust core), process (Manuscript framing over an OS pipe).
-- Only a group creates channels: `connect(entry)` gives the child one end and returns the child's handle, whose `channel` field is the other end.
+- Only a group creates channels: `spawn(entry)` always gives the child one end and returns the child's handle, whose `channel` field is the other end. Entries are full `def`s.
 - Rust only where Manuscript cannot: park/wake for tasks, cross-isolate moves for workers, the OS pipe for processes.
-- Decision requested: sign-off on the transport design and the three open questions.
+- Decision requested: sign-off on the transport design.
 
 ## Status
 
 - Proposal, 2026-10-24, against `main` at `6361798f`. Nothing implemented.
-- Direction (Chinmay, 2026-10-24): bidirectional; `Channel` uppercase; spawn creates the ends; "spawn should return the handle ... Channel can be a field on that return type"; "i want majority of things in ms"; "tasks and workers should be just in memory, no socket, use socket pair only for processes"; "channel should have a dedicated transport field ... instantiate a different transport for different levels ... only use Rust for things that are not feasible".
+- Direction (Chinmay, 2026-10-24): bidirectional; `Channel` uppercase; spawn creates the ends; "spawn should return the handle ... Channel can be a field on that return type"; "i want majority of things in ms"; "tasks and workers should be just in memory, no socket, use socket pair only for processes"; "channel should have a dedicated transport field ... instantiate a different transport for different levels ... only use Rust for things that are not feasible"; "a full result, no connect. let's do full def if needed".
 - Superseded drafts (git history): tuple `channel_pair`, `peer()`/`create_mirror`, `AtomicWords` ring, JSON over a pipe at every level.
 - Reviews: two skeptical subagent reviews; the second (2026-10-24, against source with `ms build`) is folded in below and listed in Review outcome.
 
@@ -26,54 +26,58 @@
 # @std/channels.ms
 interface Transport[In, Out]:
     var def send(value: In) -> Result[Unit, ChannelError]
-    var def receive() -> Optional[Out]          # none: closed and drained, or broken (see error())
+    var def receive() -> Result[Optional[Out], ChannelError]   # ok(none): closed and drained
     var def close() -> Unit
-    def error() -> Optional[ChannelError]       # why the channel stopped, if not a clean close
 
 type Channel[In, Out]:
     transport: Transport[In, Out]
 
 impl Channel[In, Out]:                           # thin delegation, same names
     var def send(value: In) -> Result[Unit, ChannelError]: self.transport.send(value)
-    var def receive() -> Optional[Out]: self.transport.receive()
+    var def receive() -> Result[Optional[Out], ChannelError]: self.transport.receive()
     var def close() -> Unit: self.transport.close()
-    def error() -> Optional[ChannelError]: self.transport.error()
 
 type ChannelError:
-    case Closed                                  # the other end closed
+    case Closed                                  # send after the other end closed
     case Broken(reason: String)                  # peer died, malformed or oversize frame, decode failure
 ```
 
-Groups (names: open question 1):
+Groups (one form for all three):
 
 ```manuscript
-var def spawn(work: Callable[[], T]) -> Task[T]                                  # unchanged, no channel
-var def connect(entry: Callable[[Channel[Out, In]], T]) -> Task[T, In, Out]      # handle.channel: Channel[In, Out]
+var def spawn(entry: Callable[[Channel[Out, In]], T]) -> Task[T, In, Out]   # Worker / Process likewise; handle.channel: Channel[In, Out]
 ```
 
 ```manuscript
-def square_all(ch: Channel[Int, Int]) -> Unit:
-    var c = ch                       # see issue #1191: a var parameter cannot be a Callable today
+def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
+    var c = ch                       # issue #1191: a var parameter cannot be a Callable today
     var open = True
     while open:
-        if let n = c.receive():
-            c.send(n * n)
+        if let n = try c.receive():
+            try c.send(n * n)
         else:
             open = False
+    return ok(())
+
+def fetch_size(ch: Channel[Unit, Unit]) -> Int:   # no messages: Unit both ways
+    return 42
 
 def main() -> Int:
-    with WorkerGroup[Unit]() as group:      # or TaskGroup / ProcessGroup
-        var worker = group.connect(square_all)
-        worker.channel.send(3)
-        if let square = worker.channel.receive():
+    with WorkerGroup[Result[Unit, ChannelError]]() as group:      # or TaskGroup / ProcessGroup
+        var worker = group.spawn(square_all)
+        if worker.channel.send(3).is_error():
+            return 1
+        if let reply = worker.channel.receive():
             ...
-        worker.channel.close()              # child's receive() returns none, child returns
-        worker.result()
+        worker.channel.close()       # child's receive() returns ok(none), child returns
     return 0
 ```
 
-- Worker and process entries are named top-level `def`s; `TaskGroup` also accepts a typed lambda (`lambda (ch: Channel[Int, Int]): ...`); untyped lambdas do not infer `In`/`Out` (tested).
-- Receive returns `Optional` for an easy loop; `error()` after `none` says whether it was a clean close. Open question 2.
+- Built and run with `ms build` on a stub (2026-10-24), including `if let n = try c.receive():`.
+- Every entry is a full `def` (or a lambda with typed parameters for tasks); untyped lambdas do not infer `In`/`Out`. An entry with no messages takes `Channel[Unit, Unit]` and ignores it.
+
+- Worker and process entries are named top-level `def`s.
+- `receive` returns `Result`: `ok(some(v))` a message, `ok(none)` a clean close after draining, `error(Broken(..))` a broken channel.
 
 ## Transports
 
@@ -96,7 +100,7 @@ def main() -> Int:
 
 ## Semantics
 
-- Close: `close()` by either end; the other end drains, then `receive()` returns `none` and `send` returns `Closed`.
+- Close: `close()` by either end; the other end drains, then `receive()` returns `ok(none)` and `send` returns `error(Closed)`.
 - Process close order: `Process.close()` closes the channel, which the child sees as cancel (`proposals/child-processes.md:85`); call `result()` before `close()` to wait for a result.
 - Faults: unchanged per group (tasks and workers abort the process; processes per their proposal). The shared fixture body covers messages and close, not faults.
 - Deadlocks: two peers that both send into full queues park forever; with `TOKEN_REMOTE` the scheduler cannot report it (`task.rs:610`). Documented, not detected.
@@ -106,10 +110,10 @@ def main() -> Int:
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/channels.ms` (new) | `Transport`, `Channel`, `ChannelError`, `TaskTransport`, `ProcessTransport` | order, drain-then-none, closed send, error(), malformed/oversize frame, `Unit` round trip |
+| `stdlib/channels.ms` (new) | `Transport`, `Channel`, `ChannelError`, `TaskTransport`, `ProcessTransport` | order, drain-then-none, closed send, broken channel, malformed/oversize frame, `Unit` round trip |
 | `crates/ms-rt` | token externs; worker queue (with PR #1181) | cross-isolate wake, exit closes ends |
 | `crates/ms-check` | process payload rule; issue #1191 (var-parameter `Callable`) | accept/reject fixtures |
-| group stdlib modules | `connect(entry)` with a handle `channel` field | one fixture body per group, built with `ms build` |
+| group stdlib modules | `spawn(entry)` takes a channel entry and returns a handle with a `channel` field; replaces `spawn(Callable[[], T])` from the TaskGroup plan | one fixture body per group, built with `ms build` |
 | syntax, formatter, LSP, CLI | unchanged | none |
 | docs, `ms guide` | channel section | docs build |
 
@@ -124,19 +128,20 @@ def main() -> Int:
 - **Do nothing (one-way `Sender`/`Receiver`).** Two types per conversation.
 - **JSON over a pipe at every level.** One code path, but copies and JSON limits for tasks and workers; rejected by the owner.
 - **Atomics and word intrinsics.** Too complex for the gain.
-- **One `spawn` that always takes a channel.** Breaks `spawn(lambda: work(x))` fan-out (no inference) and TaskGroup's handle-free v1.
+- **A separate `connect(entry)` beside `spawn(work)`.** Keeps `spawn(lambda: work(x))`; rejected by the owner in favor of one form with full `def` entries.
+- **`receive() -> Optional[Out]` plus `error()`.** Simpler loops; rejected by the owner for a full `Result`.
 
 ## Drawbacks
 
 - Three transports to test instead of one.
 - A new checker rule for process payloads.
-- `Optional` receive hides the error until `error()` is called.
+- Fan-out without messages now needs a `def` taking `Channel[Unit, Unit]`; `spawn(lambda: f(x))` no longer works. Changes `proposals/taskgroup.md` (handle-free v1, `spawn(Callable[[], T])`).
 
 ## Staging
 
-0. Spike: issue #1191; `connect` typing (method type parameters or free function).
+0. Spike: issue #1191; `spawn` typing (method type parameters or free function).
 1. Docs.
-2. `TaskTransport` + `TaskGroup.connect` (after TaskGroup stages 2-3).
+2. `TaskTransport` + `TaskGroup.spawn(entry)` (after TaskGroup stages 2-3).
 3. `ProcessTransport` with the child-processes stages.
 4. `WorkerTransport` with the worker-threads stages.
 
@@ -144,9 +149,13 @@ Gate: `make conform`, `make verify` on Linux, macOS and Windows with `ms build`,
 
 ## Open questions (decider: Chinmay)
 
-1. Keep `spawn(work)` and add `connect(entry)` for channel children (recommended), or one `spawn` that always takes a channel?
-2. `receive() -> Optional[Out]` plus `error()` (recommended, simple loops), or `Result[Optional[Out], ChannelError]`?
-3. Windows process pipe: overlapped I/O or loopback socket (child-processes thread).
+1. Windows process pipe: overlapped I/O or loopback socket (child-processes thread).
+2. `spawn` typing: method type parameters in the checker, or a free `spawn(group, entry)`.
+
+## Decided (Chinmay, 2026-10-24)
+
+- One `spawn(entry)` form with full `def` entries; no `connect`.
+- `receive() -> Result[Optional[Out], ChannelError]`.
 
 ## Review outcome (2026-10-24, second review)
 
