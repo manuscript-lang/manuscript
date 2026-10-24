@@ -390,6 +390,7 @@ impl Checker {
                                 args: Vec::new(),
                             },
                         },
+                        result_ref: false,
                         body: Vec::new(),
                         external: false,
                     }),
