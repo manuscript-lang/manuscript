@@ -5,7 +5,9 @@
 use crate::fault;
 #[cfg(unix)]
 use crate::sys;
-use crate::task::{WAIT_HUP, WAIT_KEEP, WAIT_READ, WAIT_WRITE};
+#[cfg(unix)]
+use crate::task::WAIT_KEEP;
+use crate::task::{WAIT_HUP, WAIT_READ, WAIT_WRITE};
 #[cfg(unix)]
 use core::sync::atomic::AtomicI32;
 #[cfg(unix)]

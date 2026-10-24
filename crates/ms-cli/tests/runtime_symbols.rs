@@ -14,6 +14,17 @@ fn runtime_name(name: &str) -> bool {
     name.starts_with("msrt_") || name.starts_with("msstd_")
 }
 
+/// Assembly entry points that exist on one platform family only. Windows has no context-switch
+/// task stacks and uses a setjmp-style trap restore instead of fork.
+#[cfg(windows)]
+const UNIX_ONLY: &[&str] = &["msrt_ctx_switch", "msrt_task_tramp"];
+#[cfg(windows)]
+const WINDOWS_ONLY: &[&str] = &["msrt_trap_restore"];
+#[cfg(not(windows))]
+const UNIX_ONLY: &[&str] = &[];
+#[cfg(not(windows))]
+const WINDOWS_ONLY: &[&str] = &[];
+
 fn exported() -> BTreeSet<String> {
     let mut bytes = Vec::new();
     flate2::read::GzDecoder::new(ARCHIVE_GZ)
@@ -51,7 +62,13 @@ fn catalogued() -> BTreeSet<String> {
 
 #[test]
 fn runtime_symbol_catalogue_matches_archive() {
-    let (exported, catalogued) = (exported(), catalogued());
+    let (mut exported, mut catalogued) = (exported(), catalogued());
+    for name in WINDOWS_ONLY {
+        exported.remove(*name);
+    }
+    for name in UNIX_ONLY {
+        catalogued.remove(*name);
+    }
     let unlisted: Vec<_> = exported.difference(&catalogued).collect();
     let stale: Vec<_> = catalogued.difference(&exported).collect();
     assert!(

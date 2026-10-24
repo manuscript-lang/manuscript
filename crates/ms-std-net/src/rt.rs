@@ -10,10 +10,11 @@ use ms_rt::fault::{
     msrt_cancel_flag, msrt_cancelled, msrt_cleanup_discard, msrt_cleanup_push, msrt_shield_enter,
     msrt_shield_exit,
 };
+#[cfg(unix)]
+use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
-    msrt_task_current, msrt_task_forget_fd, msrt_task_set_prepark, msrt_task_sleep,
-    msrt_task_spawn, msrt_task_wait_fd, msrt_token_free, msrt_token_new, msrt_token_park,
-    msrt_token_post,
+    msrt_task_current, msrt_task_set_prepark, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd,
+    msrt_token_free, msrt_token_new, msrt_token_park, msrt_token_post,
 };
 
 /// Registers `f(arg)` on the running task's cleanup stack: it runs if a fault or cancellation

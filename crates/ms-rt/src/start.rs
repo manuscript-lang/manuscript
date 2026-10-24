@@ -1,6 +1,8 @@
 //! Process entry: tables, signals, the main thread with its large stack, exit status.
 use crate::alloc;
-use crate::fault::{self, PENDING_SIGNAL, STACK_LO, TABLES};
+#[cfg(unix)]
+use crate::fault::STACK_LO;
+use crate::fault::{self, PENDING_SIGNAL, TABLES};
 use crate::global::Global;
 use crate::string;
 use crate::sys;
