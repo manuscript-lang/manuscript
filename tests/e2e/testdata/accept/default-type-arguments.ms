@@ -1,16 +1,16 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Box[T, U = T]:
     first: T
     second: U
 
-fn pick[T = Int](values: List[T]) Int:
+def pick[T = Int](values: List[T]) -> Int:
     return values.length()
 
-fn make[T = String]() Optional[T]:
+def make[T = String]() -> Optional[T]:
     return none
 
-fn pair[A, B = A](first: A, second: B) Box[A, B]:
+def pair[A, B = A](first: A, second: B) -> Box[A, B]:
     return Box[A, B](first, second)
 
 test "omitted trailing type arguments use their defaults":

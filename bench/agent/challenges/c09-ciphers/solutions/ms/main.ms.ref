@@ -1,14 +1,14 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
-import from_scalars from "@std/string.ms"
+from "@std/io.ms" import stdin, stdout, read_line
+from "@std/string.ms" import from_scalars
 
-fn is_upper(c: Int) Bool:
+def is_upper(c: Int) -> Bool:
     return c >= 65 and c <= 90
 
-fn is_lower(c: Int) Bool:
+def is_lower(c: Int) -> Bool:
     return c >= 97 and c <= 122
 
 # Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
-fn transform(text: String, keys: List[Int], sign: Int) String:
+def transform(text: String, keys: List[Int], sign: Int) -> String:
     var out = List[Int]()
     var i = 0
 
@@ -17,6 +17,7 @@ fn transform(text: String, keys: List[Int], sign: Int) String:
             var base = 97
             if is_upper(c):
                 base = 65
+
             let k = keys.get(i % keys.length())
             let v = ((c - base + sign * k) % 26 + 26) % 26
             out.append(v + base)
@@ -26,13 +27,13 @@ fn transform(text: String, keys: List[Int], sign: Int) String:
 
     return from_scalars(out).get()
 
-fn parse_caesar_key(key: String) Optional[Int]:
+def parse_caesar_key(key: String) -> Optional[Int]:
     let codes = key.scalar_values()
     var start = 0
-    var negative = false
+    var negative = False
 
     if codes.length() > 0 and codes.get(0) == 45:
-        negative = true
+        negative = True
         start = 1
 
     let digits = codes.length() - start
@@ -54,7 +55,7 @@ fn parse_caesar_key(key: String) Optional[Int]:
         k = 0 - k
     return some(k)
 
-fn solve_line(line: String) String:
+def solve_line(line: String) -> String:
     var parts = List[String]()
     var rest = line
 
@@ -96,15 +97,15 @@ fn solve_line(line: String) String:
     for c in key.scalar_values():
         if is_upper(c):
             keys.append(c - 65)
-        else if is_lower(c):
+        elif is_lower(c):
             keys.append(c - 97)
         else:
             return "error: bad key"
 
     return transform(rest, keys, sign)
 
-fn run() Result[Unit, Error]:
-    while true:
+def run() -> Result[Unit, Error]:
+    while True:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -113,11 +114,11 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        try stdout().write("{solve_line(line.clone())}\n")
+        try stdout().write(f"{solve_line(line.clone())}\n")
 
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

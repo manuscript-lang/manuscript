@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn alone() Int: 3\n"
+    "fmt": "export def alone() -> Int: 3\n"
   }
 }

@@ -1,19 +1,19 @@
 # conform: tags=closures,control-flow,diagnostics,interfaces,match,modules,sets,tier-core
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/preferred_names/first.ms
-import Key from "./domain.ms"
-import {add_generic, remove_generic} from "./helpers.ms"
+from "./domain.ms" import Key
+from "./helpers.ms" import add_generic, remove_generic
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
-export fn first_run() Set[Key]:
+export def first_run() -> Set[Key]:
     var items = Set[Key]([Key(1, "original")])
     let add = items.add
     let remove = items.remove
@@ -23,8 +23,8 @@ export fn first_run() Set[Key]:
     remove_generic(var items, Key(8, "absent"))
     return items
 
-export fn first_add(items: Set[Key]) fn(value: Key) Unit:
+export def first_add(items: Set[Key]) -> Callable[[Key], Unit]:
     return items.add
 
-export fn first_remove(items: Set[Key]) fn(value: Key) Unit:
+export def first_remove(items: Set[Key]) -> Callable[[Key], Unit]:
     return items.remove

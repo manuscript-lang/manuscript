@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,parser,tier-core,with-cleanup
 # conform: phase=parse
 # conform: origin=pkg/parser/parser_test.go:204 TestInlineSuites
-fn f() Unit:
-    while true: break
+def f() -> Unit:
+    while True: break
     for x in values: consume(x)
-    with x = resource(): consume(x)
+    with resource() as x: consume(x)

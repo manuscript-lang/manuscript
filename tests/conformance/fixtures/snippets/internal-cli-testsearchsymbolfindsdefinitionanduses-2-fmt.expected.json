@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {double} from \"./main.ms\"\n\nfn quad(v: Int) Int:\n    return double(double(v))\n"
+    "fmt": "from \"./main.ms\" import double\n\ndef quad(v: Int) -> Int:\n    return double(double(v))\n"
   }
 }

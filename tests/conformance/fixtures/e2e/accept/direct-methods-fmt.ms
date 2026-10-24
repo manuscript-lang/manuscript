@@ -1,8 +1,8 @@
 # conform: tags=alternatives,control-flow,faults,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-methods.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal
 
 type Counter:
     n: Int
@@ -12,30 +12,30 @@ type Shape:
     case Square(side: Int)
 
 interface Bumper:
-    fn bump(by: Int) Int
+    def bump(by: Int) -> Int
 
 interface Scaler:
-    fn scale(factor: Int, offset: Optional[Int] = none) Int
+    def scale(factor: Int, offset: Optional[Int] = none) -> Int
 
 impl Bumper for Counter:
-    fn bump(by: Int) Int: self.n + by
+    def bump(by: Int) -> Int: self.n + by
 
 impl Scaler for Counter:
-    fn scale(factor: Int, offset: Optional[Int] = none) Int: (
+    def scale(factor: Int, offset: Optional[Int] = none) -> Int: (
         self.n * factor
         + offset.get(0)
     )
 
 impl Bumper for Shape:
-    fn bump(by: Int) Int:
+    def bump(by: Int) -> Int:
         match self:
-            Circle(r): return r + by
-            Square(side): return side * by
+            case Circle(r): return r + by
+            case Square(side): return side * by
 
-fn through_view(b: Bumper, by: Int) Int:
+def through_view(b: Bumper, by: Int) -> Int:
     return b.bump(by)
 
-fn guarded(c: Counter, by: Int) Int:
+def guarded(c: Counter, by: Int) -> Int:
     if by < 0:
         return 0
 
@@ -65,10 +65,10 @@ type Parser:
     base: Int
 
 interface Parse:
-    fn parse(n: Int) Result[Int, TextError]
+    def parse(n: Int) -> Result[Int, TextError]
 
 impl Parse for Parser:
-    fn parse(n: Int) Result[Int, TextError]:
+    def parse(n: Int) -> Result[Int, TextError]:
         if n < 0:
             return error(TextError("negative"))
 
@@ -78,22 +78,22 @@ type Chain:
     parser: Parser
 
 interface Step:
-    fn step(n: Int) Result[Int, TextError]
+    def step(n: Int) -> Result[Int, TextError]
 
 impl Step for Chain:
-    fn step(n: Int) Result[Int, TextError]:
+    def step(n: Int) -> Result[Int, TextError]:
         return ok((try self.parser.parse(n)) + 1)
 
-fn code(r: Result[Int, TextError]) Int:
+def code(r: Result[Int, TextError]) -> Int:
     return r.get(-1)
 
-fn run_direct(chain: Chain, n: Int) Int:
+def run_direct(chain: Chain, n: Int) -> Int:
     return chain.step(n) | code
 
-fn run_view(chain: Chain, n: Int) Int:
+def run_view(chain: Chain, n: Int) -> Int:
     return Step(chain).step(n) | code
 
-fn run_bound(chain: Chain, n: Int) Int:
+def run_bound(chain: Chain, n: Int) -> Int:
     let callback = chain.step
     return callback(n) | code
 

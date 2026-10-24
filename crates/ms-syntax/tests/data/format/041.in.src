@@ -1,34 +1,34 @@
-fn example() Unit:
+def example() -> Unit:
     queue.enqueue(
-        fn():
+        lambda:
             return 7
     )
     consume(
-        fn():
+        lambda:
             return nested(
-                fn():
+                lambda:
                     return 8
             )
         ,
         9
     )
     consume(
-        fn():
+        lambda:
             # Keep the explanation.
             return 7
     )
     consume(
-        fn():
+        lambda:
             let result = 7
             return result
     )
     consume(
-        fn():
+        lambda:
             work()
     )
     consume(
-        fn():
+        lambda:
             return match value:
-                some(number): number
-                none: 0
+                case some(number): number
+                case none: 0
     )

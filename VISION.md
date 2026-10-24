@@ -20,7 +20,7 @@ The language and toolchain are being shaped through realistic work with frontier
 
 Version 0.1 already delivers the core of this premise. The vision below is still the direction; this is what exists today, verified against the checkout rather than assumed:
 
-- **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. Result types follow the parameter list with no arrow (`fn add(a: Int, b: Int) Int:`).
+- **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. The surface is Python-aligned (`def add(a: Int, b: Int) -> Int:`, `lambda`, `elif`, `from "p" import A`).
 - **Scoped cleanup.** `with` closes resources at block end, and cancellation and shutdown run cleanup deterministically.
 - **No concurrency yet.** Concurrency is intentionally absent until it can be designed from the ground up.
 - **One self-contained binary.** `ms` checks, formats, lints, tests, builds, and profiles. The Rust compiler lowers checked source to MIR and emits native object code through Cranelift, or through LLVM for Linux and macOS release builds; the runtime and standard library are embedded in `ms`. Linking uses host tools; see the [toolchain requirements](documentation/contributing/rust-toolchain.md#build-and-run).

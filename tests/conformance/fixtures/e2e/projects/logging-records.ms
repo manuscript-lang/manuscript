@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,lists,modules,optional,records,stdlib-log,strings,tier-io,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/logging/records.ms
-import {Logger, LogError, LogLevel, record} from "@std/log.ms"
+from "@std/log.ms" import Logger, LogError, LogLevel, record
 
 type Request:
     request: String
@@ -15,10 +15,10 @@ type Payload:
     msg: String
     time: Int
 
-export fn emit(logger: Logger) Result[Unit, LogError]:
-    let child = try logger.child_json("\{\"request\":\"req-1\"\}")
+export def emit(logger: Logger) -> Result[Unit, LogError]:
+    let child = try logger.child_json("{\"request\":\"req-1\"}")
     let fields = Payload(
-        count: 9007199254740993, ok: true, nested: [none, some(false)],
+        count: 9007199254740993, ok: True, nested: [none, some(False)],
         service: "worker", level: 0, msg: "spoofed", time: 0
     )
     try child.debug("filtered")
@@ -27,4 +27,4 @@ export fn emit(logger: Logger) Result[Unit, LogError]:
         fields
     )
     try logger.warn("complete")
-    return ok(unit)
+    return ok(())

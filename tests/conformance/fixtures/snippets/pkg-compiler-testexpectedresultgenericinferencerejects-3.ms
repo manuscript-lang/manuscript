@@ -1,6 +1,8 @@
 # conform: tags=closures,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/contextual_generics_test.go:90 TestExpectedResultGenericInferenceRejects
-fn first() Unit:
-    let callback: fn(value: Int) Int = from_callback(fn(): fn(value: Int = 4): value)
+def first() -> Unit:
+    let callback: Callable[[Int], Int] = from_callback(
+        lambda: lambda (value: Int = 4): value
+    )
     callback()

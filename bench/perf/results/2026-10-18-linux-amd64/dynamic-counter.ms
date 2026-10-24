@@ -1,7 +1,7 @@
-import {clock, Instant} from "@std/time.ms"
-import stdout from "@std/io.ms"
+from "@std/time.ms" import clock, Instant
+from "@std/io.ms" import stdout
 
-fn measure(start: Int) Int:
+def measure(start: Int) -> Int:
     let t = clock().now()
     var i = start
     var hits = 0
@@ -11,11 +11,11 @@ fn measure(start: Int) Int:
         i += 1
 
     let elapsed = clock().now().difference(t).to_nanoseconds()
-    let line = "{start} {elapsed} {hits}\n"
+    let line = f"{start} {elapsed} {hits}\n"
     let ignored = stdout().write(line.to_bytes())
     return hits
 
-export fn main() Int:
+export def main() -> Int:
     measure(-137)
     measure(0)
     measure(5)

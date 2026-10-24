@@ -1,7 +1,7 @@
 //! Machine-applicable fixes for diagnostics whose message names one concrete edit.
 //!
 //! A misspelled name carries `; did you mean 'x'?` and an unresolved standard
-//! name carries `; add: import x from "module"`. When exactly one edit is named,
+//! name carries `; add: from "module" import x`. When exactly one edit is named,
 //! the diagnostic also carries it as a `DiagnosticFix`.
 
 use crate::checker::Checker;
@@ -14,12 +14,12 @@ fn single_suggestion(message: &str) -> Option<&str> {
     (tail == "?" && !name.is_empty()).then_some(name)
 }
 
-/// The import statement an `add: import` hint names.
+/// The import statement an `add: from` hint names.
 fn import_statement(message: &str) -> Option<&str> {
     let rest = message.split_once("; add: ")?.1;
     let end = rest.find('\n').unwrap_or(rest.len());
     let statement = rest[..end].trim_end();
-    statement.starts_with("import ").then_some(statement)
+    statement.starts_with("from ").then_some(statement)
 }
 
 /// The fix for a diagnostic at `pos` whose offending name has `len` bytes.
@@ -80,9 +80,9 @@ mod tests {
 
     #[test]
     fn import_hint_inserts_at_file_start() {
-        let message = "unknown binding stdout; add: import stdout from \"@std/io\"";
+        let message = "unknown binding stdout; add: from \"@std/io\" import stdout";
         let fix = fix_for(message, Pos::new(40, 3, 1), 6).unwrap();
         assert_eq!(fix.pos.offset, 0);
-        assert_eq!(fix.replacement, "import stdout from \"@std/io\"\n");
+        assert_eq!(fix.replacement, "from \"@std/io\" import stdout\n");
     }
 }

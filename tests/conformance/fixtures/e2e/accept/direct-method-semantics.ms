@@ -1,14 +1,14 @@
 # conform: tags=alternatives,control-flow,interfaces,lists,match,modules,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
-import {TextError} from "@std/core.ms"
-import {expect_true, fail} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_true, fail
 
 interface Shape:
-    fn area() Int
-    fn scaled(by: Int) Int
-    fn checked(limit: Int) Result[Int, TextError]
-    fn grow(depth: Int) Int
+    def area() -> Int
+    def scaled(by: Int) -> Int
+    def checked(limit: Int) -> Result[Int, TextError]
+    def grow(depth: Int) -> Int
 
 type Rect:
     w: Int
@@ -19,51 +19,51 @@ type Sign:
     case Minus(n: Int)
 
 impl Shape for Rect:
-    fn area() Int:
+    def area() -> Int:
         return self.w * self.h
 
-    fn scaled(by: Int) Int:
+    def scaled(by: Int) -> Int:
         return self.area() * by
 
-    fn checked(limit: Int) Result[Int, TextError]:
+    def checked(limit: Int) -> Result[Int, TextError]:
         if self.area() > limit:
             return error(cause: TextError("too big"))
 
         return ok(value: self.area())
 
-    fn grow(depth: Int) Int:
+    def grow(depth: Int) -> Int:
         if depth == 0:
             return self.w
 
         return self.grow(depth: depth - 1) + 1
 
 impl Shape for Sign:
-    fn area() Int:
+    def area() -> Int:
         match self:
-            Plus(n): return n
-            Minus(n): return 0 - n
+            case Plus(n): return n
+            case Minus(n): return 0 - n
 
-    fn scaled(by: Int) Int:
+    def scaled(by: Int) -> Int:
         return self.area() * by
 
-    fn checked(limit: Int) Result[Int, TextError]:
+    def checked(limit: Int) -> Result[Int, TextError]:
         return ok(value: self.area())
 
-    fn grow(depth: Int) Int:
+    def grow(depth: Int) -> Int:
         return depth
 
-fn through(shape: Shape) Int:
+def through(shape: Shape) -> Int:
     return shape.scaled(by: 2)
 
-fn tried(rect: Rect, limit: Int) Result[Int, TextError]:
+def tried(rect: Rect, limit: Int) -> Result[Int, TextError]:
     let first = try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
-fn order(rect: Rect, var log: List[String]) Int:
+def order(rect: Rect, var log: List[String]) -> Int:
     log.append(value: "receiver")
     return rect.scaled(by: id(log: var log))
 
-fn id(var log: List[String]) Int:
+def id(var log: List[String]) -> Int:
     log.append(value: "argument")
     return 1
 
@@ -77,12 +77,12 @@ test "direct methods":
     (rect.grow(depth: 10) == 13) | try expect_true
 
     match tried(rect: rect, limit: 12):
-        ok(value): (value == 24) | try expect_true
-        error(cause): return fail(cause.message())
+        case ok(value): (value == 24) | try expect_true
+        case error(cause): return fail(cause.message())
 
     match tried(rect: rect, limit: 11):
-        ok(value): return fail("expected failure")
-        error(cause): (cause.message() == "too big") | try expect_true
+        case ok(value): return fail("expected failure")
+        case error(cause): (cause.message() == "too big") | try expect_true
 
     var log = List[String]()
     (order(rect: rect, log: var log) == 12) | try expect_true

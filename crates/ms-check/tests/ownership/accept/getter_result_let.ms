@@ -2,33 +2,33 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() ref List[Int]:
+    def list() -> ref List[Int]:
         return self.items
 
-    fn pick(first: Bool) ref List[Int]:
+    def pick(first: Bool) -> ref List[Int]:
         if first:
             return self.items
 
         return [1]
 
-fn first_of[T](xs: List[T]) ref T:
+def first_of[T](xs: List[T]) -> ref T:
     return xs[0]
 
-fn forward(b: Box) ref List[Int]:
+def forward(b: Box) -> ref List[Int]:
     return b.list()
 
-fn read(b: Box) Int:
+def read(b: Box) -> Int:
     let xs = b.list()
-    let ys = b.pick(true)
+    let ys = b.pick(True)
     return xs.length() + ys.length()
 
-fn temp(b: Box) Int:
+def temp(b: Box) -> Int:
     return b.list().length()
 
-fn generic(rows: List[List[Int]]) Int:
+def generic(rows: List[List[Int]]) -> Int:
     let row = first_of(rows)
     return row.length()
 
-fn chain(b: Box) Int:
+def chain(b: Box) -> Int:
     let xs = forward(b)
     return xs.length()

@@ -1,6 +1,6 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
-fn count_up(limit: Int) Int:
+def count_up(limit: Int) -> Int:
     var i = limit - 3
     var steps = 0
 
@@ -10,7 +10,7 @@ fn count_up(limit: Int) Int:
 
     return steps
 
-fn count_down(limit: Int) Int:
+def count_down(limit: Int) -> Int:
     var i = limit + 3
     var steps = 0
 
@@ -20,7 +20,7 @@ fn count_down(limit: Int) Int:
 
     return steps
 
-fn reset_then_step() Int:
+def reset_then_step() -> Int:
     var i = 0
 
     while i < 1:
@@ -29,7 +29,7 @@ fn reset_then_step() Int:
 
     return i
 
-fn nested_reset(flag: Bool) Int:
+def nested_reset(flag: Bool) -> Int:
     var i = 0
 
     while i < 1:
@@ -45,14 +45,14 @@ test "counts reach the extreme without a fault":
 
 test "reassigned counter still faults":
     let message = try expect_fault(
-        fn():
+        lambda:
             let ignored = reset_then_step()
     )
     message | try expect_contains("Int overflow;")
 
 test "conditionally reassigned counter still faults":
     let message = try expect_fault(
-        fn():
-            let ignored = nested_reset(flag: true)
+        lambda:
+            let ignored = nested_reset(flag: True)
     )
     message | try expect_contains("Int overflow;")

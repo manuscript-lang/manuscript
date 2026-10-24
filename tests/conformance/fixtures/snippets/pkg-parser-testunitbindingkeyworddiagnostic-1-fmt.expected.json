@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn before() Unit: unit\n\nfn broken() Unit:\n"
+    "fmt": "def before() -> Unit: ()\n\ndef broken() -> Unit: ...\n"
   }
 }

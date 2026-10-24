@@ -217,7 +217,10 @@ impl<'a> FnLower<'a> {
 
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
-            Resolution::Local(b) => self.read_local(&b),
+            Resolution::Local(b) => {
+                let x = self.read_local(&b)?;
+                self.fit_function_value(e, x)
+            }
             Resolution::Constant(_) => self.call_expr(e),
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
             Resolution::Function(sym) if sym.native.as_str().is_empty() => {

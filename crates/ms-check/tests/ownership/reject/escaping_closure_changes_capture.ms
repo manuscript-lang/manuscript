@@ -1,4 +1,4 @@
-fn make() fn() Unit:
+def make() -> Callable[[], Unit]:
     var xs = [0]
-    return fn() Unit:  # error: cannot be returned
+    return lambda () -> Unit:  # error: cannot be returned
         xs.append(1)

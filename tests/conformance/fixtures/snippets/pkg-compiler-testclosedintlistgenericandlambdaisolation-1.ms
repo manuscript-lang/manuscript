@@ -1,9 +1,9 @@
 # conform: tags=control-flow,diagnostics,generics,lists,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/list_bounds_test.go:64 TestClosedIntListGenericAndLambdaIsolation
-fn count[T](values: List[T]) Int: return values.length()
+def count[T](values: List[T]) -> Int: return values.length()
 
-fn probe() Int:
+def probe() -> Int:
     let values = [1, 2, 3]
     var sum = 0
     var i = 0

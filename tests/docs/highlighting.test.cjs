@@ -5,9 +5,10 @@ const grammar = require('../../extensions/vscode/syntaxes/manuscript.tmLanguage.
 const tokenize = source => tokenizeWithGrammar(source, grammar);
 
 test('Manuscript examples receive keyword, type, function, string, and number tokens', () => {
-  const source = 'import arguments from "@std/process.ms"\nexport fn main() Int:\n    return 0\n';
+  const source = 'from "@std/process.ms" import arguments\nexport def main() -> Int:\n    return 0\n';
   const tokens = tokenize(source);
   const has = (text, kind) => tokens.some(token => token.text === text && token.kind === kind);
+  assert.ok(has('from', 'k'));
   assert.ok(has('import', 'k'));
   assert.ok(has('Int', 'nc'));
   assert.ok(has('main', 'nf'));
@@ -17,15 +18,15 @@ test('Manuscript examples receive keyword, type, function, string, and number to
 });
 
 test('comments and strings do not highlight their contents as executable code', () => {
-  const source = 'let message = "# return true"\n# fn ignored() Int: return 123\n';
+  const source = 'let message = "# return true"\n# def ignored() -> Int: return 123\n';
   const tokens = tokenize(source);
   assert.ok(tokens.some(token => token.kind === 's' && token.text === '"# return true"'));
-  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '# fn ignored() Int: return 123'));
+  assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '# def ignored() -> Int: return 123'));
   assert.equal(tokens.filter(token => token.kind === 'k').map(token => token.text).join(''), 'let');
 });
 
 test('shared grammar keyword rules do not match inside longer or Unicode identifiers', () => {
-  const tokens = tokenize('fnord trueish unit_value café fné\n');
+  const tokens = tokenize('defer trueish unit_value café défé\n');
   assert.equal(tokens.filter(token => ['k', 'kc'].includes(token.kind)).length, 0);
 });
 
@@ -48,6 +49,6 @@ test('highlighting preserves Unicode, HTML-like strings, decimals, and scientifi
 
 test('from is a keyword only on import lines', () => {
   const keywords = source => tokenize(source).filter(token => token.kind === 'k').map(token => token.text);
-  assert.deepEqual(keywords('import {a, b} from "x.ms"\n'), ['import', 'from']);
+  assert.deepEqual(keywords('from "x.ms" import a, b\n'), ['from', 'import']);
   assert.deepEqual(keywords('let from = 2\n'), ['let']);
 });

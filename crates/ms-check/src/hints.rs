@@ -143,7 +143,7 @@ pub fn import_hint(name: &str) -> String {
     }
     for module in stdlib::standard_module_names() {
         if stdlib::standard_exports(module).contains_key(&n(name)) {
-            return format!("; add: import {name} from \"{module}\"");
+            return format!("; add: from \"{module}\" import {name}");
         }
     }
     String::new()
@@ -235,7 +235,7 @@ pub fn signature_text(t: &Ty) -> String {
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    format!("({}) {}", parts.join(", "), t.result_ty())
+    format!("({}) -> {}", parts.join(", "), t.result_ty())
 }
 
 /// Explains a function passed where names differ.
@@ -250,7 +250,7 @@ pub fn label_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
         if p.name != expected.params[i].name {
             let want = expected.params[i].name;
             return format!(
-                "the function's parameter is named {} but this position expects {}; rename the parameter to {}, or wrap the function in a lambda: fn({}: ...) ...: f({}: {})",
+                "the function's parameter is named {} but this position expects {}; rename the parameter to {}, or wrap the function in a lambda: lambda {}: f({}: {})",
                 p.name, want, want, want, p.name, want
             );
         }
@@ -282,7 +282,7 @@ pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
         ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
-            "{actual} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
+            "{actual} does not convert to String implicitly; interpolate it into text, e.g. f\"{{value}}\""
         ),
         _ => String::new(),
     }
@@ -413,9 +413,14 @@ impl Checker {
                 "{message}; the receiver in an impl method is 'self'; write self instead of this"
             );
         }
+        if name == "this" {
+            return format!(
+                "{message}; there is no 'this'; inside an impl method the receiver is 'self'"
+            );
+        }
         if name == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write '()' for an empty block or match arm"
             );
         }
         match name.as_str() {
@@ -447,7 +452,7 @@ impl Checker {
             }
             "str" | "toString" | "repr" | "sprintf" => {
                 return format!(
-                    "{message}; to make text, interpolate: \"{{value}}\", or call value.to_string()"
+                    "{message}; to make text, interpolate: f\"{{value}}\", or call value.to_string()"
                 );
             }
             "int" | "parseInt" | "atoi" | "Number" | "parse_int" => {
@@ -457,7 +462,7 @@ impl Checker {
             }
             "float" | "parseFloat" | "parse_float" => {
                 return format!(
-                    "{message}; parse text with parse_float from \"@std/math.ms\", which returns a Result; an Int converts with value.to_float()"
+                    "{message}; parse text with parse_float (from \"@std/math.ms\" import parse_float), which returns a Result; an Int converts with value.to_float()"
                 );
             }
             "Object" | "Array" | "dict" | "list" => {
@@ -491,7 +496,7 @@ impl Checker {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'let {name} = ...' before use, define 'fn {name}(...)', or import it from a module"
+            "{message}; declare it with 'let {name} = ...' before use, define 'def {name}(...) -> T:', or import it from a module"
         )
     }
 
@@ -614,7 +619,7 @@ impl Checker {
         }
         if receiver.is_std("List") && name == "join" {
             return format!(
-                "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn(value: Float) String: \"{{value}}\").join(separator: \",\")"
+                "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f\"{{value}}\").join(separator: \",\")"
             );
         }
         let hint = synonym_hint(name.as_str(), &available);
@@ -717,7 +722,7 @@ impl Checker {
             );
         }
         format!(
-            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'import {{ Name, OtherName }} from \"{path}\"'",
+            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'from \"{path}\" import Name, OtherName'",
             list(&exports, 12)
         )
     }
@@ -779,9 +784,9 @@ pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
 /// Names the real conversion for a built-in type called like a constructor.
 pub fn builtin_constructor_hint(typ: &Ty) -> String {
     match typ.to_string().as_str() {
-        "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
+        "String" => "; make text with interpolation f\"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()".to_string(),
-        "Float" => "; convert an Int with value.to_float(); parse text with parse_float from \"@std/math.ms\"".to_string(),
+        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (from \"@std/math.ms\" import parse_float)".to_string(),
         _ => String::new(),
     }
 }

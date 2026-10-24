@@ -1,4 +1,4 @@
-extern fn identity[T](value: T) T
+extern def identity[T](value: T) -> T
 
-export fn main() Int:
+export def main() -> Int:
     return 0

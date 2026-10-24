@@ -1,14 +1,14 @@
-import range from "@std/collections.ms"
-import {bench} from "./harness.ms"
-import {basename, join, normalize} from "@std/fs.ms"
-import {parse, encode_component} from "@std/net.ms"
-import {sqrt, sin} from "@std/math.ms"
+from "@std/collections.ms" import range
+from "./harness.ms" import bench
+from "@std/fs.ms" import basename, join, normalize
+from "@std/net.ms" import parse, encode_component
+from "@std/math.ms" import sqrt, sin
 
-export fn bench_path_url_math() Unit:
+export def bench_path_url_math() -> Unit:
     bench(
         "path.join_normalize",
         50000,
-        fn() Int:
+        lambda () -> Int:
             var n = 0
             for i in range(0, 50000):
                 n += (join(["/a", "b/../c", "d.txt"]) | normalize | .length())
@@ -18,7 +18,7 @@ export fn bench_path_url_math() Unit:
     bench(
         "path.basename",
         100000,
-        fn() Int:
+        lambda () -> Int:
             var n = 0
             for i in range(0, 100000):
                 n += basename("/a/b/c/file.txt").length()
@@ -28,7 +28,7 @@ export fn bench_path_url_math() Unit:
     bench(
         "url.parse",
         20000,
-        fn() Int:
+        lambda () -> Int:
             let address = "https://example.com:8080/a/b?x=1&y=2#frag"
             var n = 0
             for i in range(0, 20000):
@@ -39,7 +39,7 @@ export fn bench_path_url_math() Unit:
     bench(
         "url.encode_component",
         50000,
-        fn() Int:
+        lambda () -> Int:
             var n = 0
             for i in range(0, 50000):
                 n += encode_component("a b&c=d/é").length()
@@ -49,7 +49,7 @@ export fn bench_path_url_math() Unit:
     bench(
         "math.sqrt_sin",
         1000000,
-        fn() Int:
+        lambda () -> Int:
             var acc = 0.0
             for i in range(0, 1000000):
                 acc += sqrt(2.0) + sin(1.0)

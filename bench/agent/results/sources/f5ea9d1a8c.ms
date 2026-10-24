@@ -1,15 +1,15 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+from "@std/io.ms" import stdin
+from "@std/io.ms" import stdout
+from "@std/streams.ms" import read_lines
+from "@std/collections.ms" import range
 
 # Formats a hunk range: `start`, `start,length`, or `start,0`.
-fn span(start: Int, length: Int) String:
-    if length == 1: return "{start}"
+def span(start: Int, length: Int) -> String:
+    if length == 1: return f"{start}"
 
-    return "{start},{length}"
+    return f"{start},{length}"
 
-export fn main() Int:
+export def main() -> Int:
     let lines = read_lines(stdin()).get()
     let header = lines[0].split(" ")
     let name_a = header[0]
@@ -96,8 +96,8 @@ export fn main() Int:
         b_before.append(b_before[k] + db)
 
     var out = List[String]()
-    out.append("--- {name_a}")
-    out.append("+++ {name_b}")
+    out.append(f"--- {name_a}")
+    out.append(f"+++ {name_b}")
 
     var g = 0
 
@@ -127,31 +127,31 @@ export fn main() Int:
             sa += 1
         if lb > 0:
             sb += 1
-        out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
+        out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for k in range(start, end + 1):
             let text = texts[k]
 
             if kinds[k] == 0:
-                out.append(" {text}")
+                out.append(f" {text}")
             else:
                 if kinds[k] == 1:
-                    out.append("-{text}")
+                    out.append(f"-{text}")
                 else:
-                    out.append("+{text}")
+                    out.append(f"+{text}")
 
         g = h
 
     let body = out.join("\n")
-    stdout().write("{body}\n").get()
+    stdout().write(f"{body}\n").get()
     return 0
 
-fn max_of_two(a: Int, b: Int) Int:
+def max_of_two(a: Int, b: Int) -> Int:
     if a >= b: return a
 
     return b
 
-fn min_of_two(a: Int, b: Int) Int:
+def min_of_two(a: Int, b: Int) -> Int:
     if a <= b: return a
 
     return b

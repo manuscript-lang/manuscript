@@ -1,17 +1,17 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
+from "@std/io.ms" import stdin, stdout, read_line
 
 # True when s is a non-empty run of ASCII digits.
-fn all_digits(s: String) Bool:
+def all_digits(s: String) -> Bool:
     if s.is_empty():
-        return false
+        return False
 
     for c in s.scalar_values():
         if c < 48 or c > 57:
-            return false
-    return true
+            return False
+    return True
 
 # Parses digits with an optional one- or two-digit fraction into cents.
-fn parse_amount(s: String) Optional[Int]:
+def parse_amount(s: String) -> Optional[Int]:
     let parts = s.split(".")
     if parts.length() > 2:
         return none
@@ -40,7 +40,7 @@ type Record:
     category: String
     cents: Int
 
-fn parse_line(line: String) Optional[Record]:
+def parse_line(line: String) -> Optional[Record]:
     var category = ""
     var amount = ""
 
@@ -52,6 +52,7 @@ fn parse_line(line: String) Optional[Record]:
 
         let at = close.get()
         category = rest.slice(0, at).get()
+
         let after = rest.slice(at + 1, rest.length()).get()
         if not after.starts_with(","):
             return none
@@ -74,17 +75,17 @@ fn parse_line(line: String) Optional[Record]:
 
     return some(Record(category: category, cents: cents.get()))
 
-fn two_digits(n: Int) String:
+def two_digits(n: Int) -> String:
     if n < 10:
-        return "0{n}"
+        return f"0{n}"
 
-    return "{n}"
+    return f"{n}"
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     var totals = Map[String, Int]()
     var bad = 0
 
-    while true:
+    while True:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -111,22 +112,19 @@ fn run() Result[Unit, Error]:
         totals
         .entries()
         .sorted(
-            compare: fn(
+            compare: lambda (
                 left: MapEntry[String, Int],
                 right: MapEntry[String, Int]
-            ) Int:
-                return left.key.compare(right.key)
+            ) -> Int: return left.key.compare(right.key)
         )
     )
     for e in rows:
-        try stdout().write(
-            "{e.key}: {e.value / 100}.{two_digits(e.value % 100)}\n"
-        )
+        try stdout().write(f"{e.key}: {e.value / 100}.{two_digits(e.value % 100)}\n")
     if bad > 0:
-        try stdout().write("skipped: {bad}\n")
+        try stdout().write(f"skipped: {bad}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

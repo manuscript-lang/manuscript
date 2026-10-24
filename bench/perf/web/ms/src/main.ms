@@ -1,18 +1,18 @@
 # Benchmark server: main <port> <data-dir>. The Go server in ../go answers the same requests.
-import Bytes from "@std/bytes.ms"
-import filesystem from "@std/fs.ms"
-import {headers, HttpRequest, HttpResponse} from "@std/http.ms"
-import network from "@std/net.ms"
-import {arguments} from "@std/process.ms"
+from "@std/bytes.ms" import Bytes
+from "@std/fs.ms" import filesystem
+from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/net.ms" import network
+from "@std/process.ms" import arguments
 
-fn score(id: Int) Int:
+def score(id: Int) -> Int:
     return id * 7919 % 1000
 
-fn reply(status: Int, text: String) HttpResponse:
+def reply(status: Int, text: String) -> HttpResponse:
     return HttpResponse(status, headers(), text.to_bytes())
 
 # Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
-fn pick_after(prev_id: Int, prev_score: Int) Int:
+def pick_after(prev_id: Int, prev_score: Int) -> Int:
     var best = -1
     var best_score = -1
     var id = 0
@@ -29,7 +29,7 @@ fn pick_after(prev_id: Int, prev_score: Int) Int:
 
     return best
 
-fn top(k: Int) String:
+def top(k: Int) -> String:
     var out = "["
     var n = 0
     var prev_id = -1
@@ -38,15 +38,15 @@ fn top(k: Int) String:
     while n < k:
         let best = pick_after(prev_id, prev_score)
         if n > 0:
-            out = "{out},"
-        out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
+            out = f"{out},"
+        out = f"{out}\{\"id\":{best},\"score\":{score(best)}\}"
         prev_id = best
         prev_score = score(best)
         n += 1
 
-    return "{out}]\n"
+    return f"{out}]\n"
 
-fn top_reply(query: String) HttpResponse:
+def top_reply(query: String) -> HttpResponse:
     let parts = query.split("=")
     if parts.length() != 2 or parts.get(0) != "n":
         return reply(400, "bad n\n")
@@ -56,7 +56,7 @@ fn top_reply(query: String) HttpResponse:
             return reply(200, top(k))
     return reply(400, "bad n\n")
 
-fn user_reply(path: String) HttpResponse:
+def user_reply(path: String) -> HttpResponse:
     let parts = path.split("/")
     if parts.length() != 3:
         return reply(404, "not found\n")
@@ -64,27 +64,27 @@ fn user_reply(path: String) HttpResponse:
     if let id = parts.get(2).parse_int():
         if id >= 0 and id < 1000:
             return reply(
-                200, "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
+                200, f"\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
             )
     return reply(404, "not found\n")
 
 # Resolve localhost, write 1 MiB to the connection's own file, read it back.
-fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
+def io_reply(dir: String, slot: String, payload: Bytes) -> HttpResponse:
     if let addresses = network().lookup("localhost"):
-        let path = "{dir}/m{slot}.bin"
+        let path = f"{dir}/m{slot}.bin"
         if let got = write_and_read(path, payload):
-            return reply(200, "{addresses.length()} {got.length()}\n")
+            return reply(200, f"{addresses.length()} {got.length()}\n")
 
         return reply(500, "file failed\n")
 
     return reply(500, "lookup failed\n")
 
-fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
+def write_and_read(path: String, payload: Bytes) -> Result[Bytes, Error]:
     let fs = filesystem()
-    try fs.write_file_bytes(path, payload, replace: true)
+    try fs.write_file_bytes(path, payload, replace: True)
     return ok(try fs.read_file(path))
 
-export fn main() Int:
+export def main() -> Int:
     let args = arguments()
     if args.length() != 2:
         return 2
@@ -94,12 +94,12 @@ export fn main() Int:
     var i = 0
 
     while i < 16:
-        text = "{text}{text}"
+        text = f"{text}{text}"
         i += 1
 
     let payload = text.to_bytes()
 
-    let handler = fn(request: HttpRequest) HttpResponse:
+    let handler = lambda (request: HttpRequest) -> HttpResponse:
         if request.path == "/health":
             return reply(200, "ok\n")
         if request.path == "/top":
@@ -112,9 +112,9 @@ export fn main() Int:
         return reply(404, "not found\n")
 
     if let acquired = network().serve(
-        address: "127.0.0.1:{args.get(0)}", handler: handler
+        address: f"127.0.0.1:{args.get(0)}", handler: handler
     ):
-        with server = acquired:
+        with acquired as server:
             let _ignored = server.wait()
             return 0
 

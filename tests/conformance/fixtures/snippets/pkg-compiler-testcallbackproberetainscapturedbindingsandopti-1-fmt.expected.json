@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrap[T](callback: Optional[fn(value: Int) T]) Unit: return\n\nfn apply[T, U](value: T, transform: fn(value: T) U) U: transform(value)\n\nfn first() Unit:\n    let offset = 7\n    let result = apply(\n        value: 1,\n        transform: fn(outer): apply(\n            value: 2, transform: fn(inner): (outer + inner + offset)\n        )\n    )\n    wrap(fn(item: Int = 4): item + offset)\n"
+    "fmt": "def wrap[T](callback: Optional[Callable[[Int], T]]) -> Unit: return\n\ndef apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)\n\ndef first() -> Unit:\n    let offset = 7\n    let result = apply(\n        value: 1,\n        transform: lambda outer: apply(\n            value: 2, transform: lambda inner: (outer + inner + offset)\n        )\n    )\n    wrap(lambda (item: Int = 4): item + offset)\n"
   }
 }

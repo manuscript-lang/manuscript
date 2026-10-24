@@ -1,15 +1,22 @@
 # conform: tags=aliasing,control-flow,faults,formatter,interpolation,match,modules,optional,parser,records,stdlib-bytes,stdlib-http,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
-import {
-    headers, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpExchange,
-    HttpError, HttpClientOptions, HttpServerOptions
-} from "@std/http.ms"
-import network from "@std/net.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/http.ms" import (
+    headers,
+    HttpHeaders,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpExchange,
+    HttpError,
+    HttpClientOptions,
+    HttpServerOptions
+)
+from "@std/net.ms" import network
+from "@std/bytes.ms" import Bytes
 
-fn repeated_headers() Result[HttpHeaders, Error]:
+def repeated_headers() -> Result[HttpHeaders, Error]:
     let fields = headers()
     let first = (fields.append("x-dup", "first".to_bytes()) | try expect_ok)
     let second = (fields.append("X-Dup", "second".to_bytes()) | try expect_ok)
@@ -21,35 +28,35 @@ fn repeated_headers() Result[HttpHeaders, Error]:
     let other = (fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok)
     return ok(fields)
 
-fn header_failure(message: String) HttpResponse:
+def header_failure(message: String) -> HttpResponse:
     return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
 
-fn handle_headers(request: HttpRequest) HttpResponse:
+def handle_headers(request: HttpRequest) -> HttpResponse:
     if request.method != HttpMethod.Get: return header_failure("typed request method")
 
     let received = match request.headers.text("X-DUP"):
-        ok(found): found
-        error(cause): return header_failure(cause.message())
+        case ok(found): found
+        case error(cause): return header_failure(cause.message())
 
     if received != some(["first", "second"]): return header_failure(
         "case-insensitive received fields"
     )
 
     let fields = match repeated_headers():
-        ok(found): found
-        error(cause): return header_failure(cause.message())
+        case ok(found): found
+        case error(cause): return header_failure(cause.message())
 
     return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
-    with server = (
+    with (
         network().serve(
             address: "127.0.0.1:0", handler: handle_headers, max_requests: 2
         ) | try expect_ok
-    ):
+    ) as server:
         let response = (
             network().request(
-                method: HttpMethod.Get, url: "http://{server.address()}/",
+                method: HttpMethod.Get, url: f"http://{server.address()}/",
                 headers: (try repeated_headers()), body: ""
             ) | try expect_ok
         )
@@ -88,7 +95,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         )
 
-fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
+def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let received = exchange.headers()
     if (try received.text("X-DUP")) != some(["first", "second"]): return error(
         HttpError.InvalidData
@@ -100,15 +107,15 @@ fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
-    with server = (
+    with (
         network().serve_stream(
             address: "127.0.0.1:0", handler: echo_headers,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
-    ):
+    ) as server:
         let response = (
             network().request(
-                method: HttpMethod.Get, url: "http://{server.address()}/",
+                method: HttpMethod.Get, url: f"http://{server.address()}/",
                 headers: (try repeated_headers()), body: ""
             ) | try expect_ok
         )
@@ -147,33 +154,29 @@ test "explicit text extraction fails with typed UTF8 error":
     let invalid = (fields.append("raw", Bytes(values: [255])) | try expect_ok)
 
     match fields.text("RAW"):
-        ok(_): return fail("invalid UTF8 accepted")
-        error(cause):
+        case ok(_): return fail("invalid UTF8 accepted")
+        case error(cause):
             try expect_equal(cause, HttpError.InvalidData)
 
     match fields.append("bad name", "value".to_bytes()):
-        ok(_): return fail("malformed name accepted")
-        error(cause):
+        case ok(_): return fail("malformed name accepted")
+        case error(cause):
             try expect_equal(cause, HttpError.InvalidInput)
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()
     (client_options.decompress or client_options.cookies) | try expect_false
     (HttpServerOptions().tls.is_none()) | try expect_true
-    with server = (
+    with (
         network().serve_stream(
             address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
         ) | try expect_ok
-    ):
-        with client = (
-            network().http_client(
-                options: HttpClientOptions()
-            ) | try expect_ok
-        ):
-            with response = (
+    ) as server:
+        with (network().http_client(options: HttpClientOptions()) | try expect_ok) as client:
+            with (
                 client.request(
-                    method: HttpMethod.Get, url: "http://{server.address()}/",
+                    method: HttpMethod.Get, url: f"http://{server.address()}/",
                     headers: (try repeated_headers())
                 ) | try expect_ok
-            ):
+            ) as response:
                 response.metadata().status | try expect_equal(200)

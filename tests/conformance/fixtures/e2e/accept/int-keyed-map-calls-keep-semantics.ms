@@ -1,13 +1,13 @@
 # conform: tags=control-flow,faults,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/int-keyed-map-calls-keep-semantics.ms
-import {expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_true
 
-fn lookup(m: Map[Int, String], key: Int) String:
+def lookup(m: Map[Int, String], key: Int) -> String:
     match m.get(key: key):
-        some(v):
+        case some(v):
             return v.clone()
-        none:
+        case none:
             return "missing"
 
 test "int map":

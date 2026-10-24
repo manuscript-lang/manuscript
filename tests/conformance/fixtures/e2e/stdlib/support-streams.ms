@@ -1,8 +1,8 @@
 # conform: tags=control-flow,diagnostics,faults,interfaces,modules,mutation,optional,records,stdlib-bytes,stdlib-io,strings,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/support/streams.ms
-import {ReadStream, WriteStream, IoError} from "@std/io.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/io.ms" import ReadStream, WriteStream, IoError
+from "@std/bytes.ms" import Bytes
 
 export type MemoryStream:
     data: Bytes
@@ -10,7 +10,7 @@ export type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
@@ -24,21 +24,21 @@ impl ReadStream for MemoryStream:
         self.offset = end
         return ok(chunk)
 
-    var fn close() Unit: self.closed = true
+    var def close() -> Unit: self.closed = True
 
 impl WriteStream for MemoryStream:
-    var fn write(data: String) Result[Unit, IoError]:
+    var def write(data: String) -> Result[Unit, IoError]:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
         if self.closed: return error(IoError.Closed)
 
         self.data = self.data.concat(data)
-        return ok(unit)
+        return ok(())
 
-    fn flush() Result[Unit, IoError]:
+    def flush() -> Result[Unit, IoError]:
         if self.closed: return error(IoError.Closed)
 
-        return ok(unit)
+        return ok(())
 
-    var fn close() Unit: self.closed = true
+    var def close() -> Unit: self.closed = True

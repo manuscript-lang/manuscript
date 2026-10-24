@@ -1,0 +1,43 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'",
+        "position": {
+          "file": "foreign-fn.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 113
+        },
+        "end": {
+          "file": "foreign-fn.ms",
+          "line": 4,
+          "column": 3,
+          "offset": 115
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-fn.ms",
+            "line": 4,
+            "column": 1,
+            "offset": 113
+          },
+          "end": {
+            "file": "foreign-fn.ms",
+            "line": 4,
+            "column": 3,
+            "offset": 115
+          },
+          "replacement": "def"
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

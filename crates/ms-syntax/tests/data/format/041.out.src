@@ -1,30 +1,30 @@
-fn example() Unit:
-    queue.enqueue(fn(): return 7)
+def example() -> Unit:
+    queue.enqueue(lambda: return 7)
     consume(
-        fn():
-            return nested(fn(): return 8)
+        lambda:
+            return nested(lambda: return 8)
         ,
         9
     )
     consume(
-        fn():
+        lambda:
             # Keep the explanation.
             return 7
     )
 
     consume(
-        fn():
+        lambda:
             let result = 7
             return result
     )
 
     consume(
-        fn():
+        lambda:
             work()
     )
     consume(
-        fn():
+        lambda:
             return match value:
-                some(number): number
-                none: 0
+                case some(number): number
+                case none: 0
     )

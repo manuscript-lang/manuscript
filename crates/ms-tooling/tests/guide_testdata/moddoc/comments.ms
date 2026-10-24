@@ -1,15 +1,15 @@
 # Adds two numbers.
 # Never rounds.
-export fn add(a: Int, b: Int) Int:
+export def add(a: Int, b: Int) -> Int:
     return a + b
 
 # Detached by a blank line.
-export fn sub(a: Int, b: Int) Int:
+export def sub(a: Int, b: Int) -> Int:
     return a - b
 
 # Not a doc comment: private declaration.
-fn helper() Int:
+def helper() -> Int:
     return 1
 
-export fn bare() Int:
+export def bare() -> Int:
     return 0

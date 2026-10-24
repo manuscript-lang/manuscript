@@ -1,11 +1,11 @@
-import range from "@std/collections.ms"
-import {bench} from "./harness.ms"
-import {Queue, PriorityQueue} from "@std/queue.ms"
-import {Deque} from "@std/deque.ms"
-import {BitSet} from "@std/bitset.ms"
-import {SortedMap} from "@std/sorted.ms"
+from "@std/collections.ms" import range
+from "./harness.ms" import bench
+from "@std/queue.ms" import Queue, PriorityQueue
+from "@std/deque.ms" import Deque
+from "@std/bitset.ms" import BitSet
+from "@std/sorted.ms" import SortedMap
 
-fn ascending(left: Int, right: Int) Int:
+def ascending(left: Int, right: Int) -> Int:
     if left < right:
         return -1
     if left > right:
@@ -14,12 +14,12 @@ fn ascending(left: Int, right: Int) Int:
     return 0
 
 # Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
-export fn bench_structures() Unit:
+export def bench_structures() -> Unit:
     for n in [100000, 400000]:
         bench(
-            "queue.enqueue_dequeue_{n}",
+            f"queue.enqueue_dequeue_{n}",
             n * 2,
-            fn() Int:
+            lambda () -> Int:
                 var queue = Queue[Int]()
                 for i in range(0, n):
                     queue.enqueue(i)
@@ -31,9 +31,9 @@ export fn bench_structures() Unit:
         )
 
         bench(
-            "priority_queue.enqueue_dequeue_{n}",
+            f"priority_queue.enqueue_dequeue_{n}",
             n * 2,
-            fn() Int:
+            lambda () -> Int:
                 var queue = PriorityQueue[Int](ascending)
                 for i in range(0, n):
                     queue.enqueue((i * 7919) % 100003)
@@ -45,9 +45,9 @@ export fn bench_structures() Unit:
         )
 
         bench(
-            "deque.push_pop_both_ends_{n}",
+            f"deque.push_pop_both_ends_{n}",
             n * 4,
-            fn() Int:
+            lambda () -> Int:
                 var deque = Deque[Int]()
 
                 for i in range(0, n):
@@ -61,9 +61,9 @@ export fn bench_structures() Unit:
         )
 
         bench(
-            "bitset.add_contains_{n}",
+            f"bitset.add_contains_{n}",
             n * 2,
-            fn() Int:
+            lambda () -> Int:
                 var set = BitSet()
                 for i in range(0, n):
                     set.add((i * 7919) % 1000003)
@@ -76,9 +76,9 @@ export fn bench_structures() Unit:
         )
 
         bench(
-            "sorted_map.add_contains_{n}",
+            f"sorted_map.add_contains_{n}",
             n * 2,
-            fn() Int:
+            lambda () -> Int:
                 var map = SortedMap[Int, Int]()
                 var x = 1
 
@@ -97,9 +97,9 @@ export fn bench_structures() Unit:
         )
 
         bench(
-            "list.insert_remove_middle_{n}",
+            f"list.insert_remove_middle_{n}",
             2000,
-            fn() Int:
+            lambda () -> Int:
                 var list = range(0, n)
 
                 for i in range(0, 1000):

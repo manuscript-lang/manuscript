@@ -18,18 +18,18 @@ const DECLARATIONS: &str = "type Point:
     x: Int
     y: Int
 
-fn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step
+def bump(map: Int, key: Int, step: Int = 1) -> Int: map + key + step
 
 type Counter:
     total: Int
 
 interface Adder:
-    fn add(amount: Int, extra: Int) Int
+    def add(amount: Int, extra: Int) -> Int
 
 impl Adder for Counter:
-    fn add(amount: Int, extra: Int) Int: self.total + amount + extra
+    def add(amount: Int, extra: Int) -> Int: self.total + amount + extra
 
-fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int:
+def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int:
 ";
 
 #[test]
@@ -108,7 +108,7 @@ fn drops_only_labels_that_bind_the_same_parameter() {
 
 #[test]
 fn skips_broken_source() {
-    let source = "fn f(a: Int) Int:\n    return g(a: a)\n";
+    let source = "def f(a: Int) -> Int:\n    return g(a: a)\n";
     let program = check(source);
     assert_eq!(
         drop_redundant_labels(&program, source),

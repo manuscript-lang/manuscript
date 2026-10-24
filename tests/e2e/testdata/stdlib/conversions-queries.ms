@@ -1,52 +1,55 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
 
 type Counter:
     calls: Int
 
 impl Error for Counter:
-    fn message() String: "counter"
+    def message() -> String: "counter"
 
 type Pending:
     values: List[Int]
 
 impl Error for Pending:
-    fn message() String: "pending"
+    def message() -> String: "pending"
 
-fn counted(var counter: Counter) Counter:
+def counted(var counter: Counter) -> Counter:
     counter.calls = counter.calls + 1
     return counter
 
-fn require_value[T, E: Error](value: Optional[T], cause: E) Result[T, E]:
+def require_value[T, E: Error](value: Optional[T], cause: E) -> Result[T, E]:
     return value.ok_or(cause)
 
-fn require_lazy[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:
+def require_lazy[T, E: Error](
+    value: Optional[T],
+    create: Callable[[], E]
+) -> Result[T, E]:
     return value.ok_or_else[E](create)
 
-fn success_only[T, E: Error](value: Result[T, E]) Optional[T]:
+def success_only[T, E: Error](value: Result[T, E]) -> Optional[T]:
     if let item = value:
         return some(item)
 
     return none
 
-fn reduce_map[K: Hashable, V, A](
+def reduce_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) A
-) A:
+    step: Callable[[A, K, V], A]
+) -> A:
     return values.fold[A](initial, step)
 
-fn reduce_set[T: Hashable, A](
+def reduce_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) A
-) A:
+    step: Callable[[A, T], A]
+) -> A:
     return values.fold(initial, step)
 
-fn locate[K: Hashable, V](
+def locate[K: Hashable, V](
     values: Map[K, V],
-    predicate: fn(key: K, value: V) Bool
-) Optional[MapEntry[K, V]]:
+    predicate: Callable[[K, V], Bool]
+) -> Optional[MapEntry[K, V]]:
     return values.find(predicate)
 
 test "conversions and collection queries are callable":
@@ -54,23 +57,23 @@ test "conversions and collection queries are callable":
     let missing: Optional[Int] = none
     present.ok_or(TextError("absent")).get() | try expect_equal(2)
     try expect_equal(
-        missing.ok_or_else(fn(): TextError("absent")).err().message(), "absent"
+        missing.ok_or_else(lambda: TextError("absent")).err().message(), "absent"
     )
 
     let failed: Result[Int, TextError] = error(TextError("failed"))
     (failed.to_optional().is_none()) | try expect_true
 
     let entries: Map[String, Int] = {"b": 2, "a": 1}
-    try expect_equal(entries.fold(0, fn(acc, k, v): acc + v), 3)
-    try expect_equal(entries.find(fn(k, v): v == 1).get().key, "a")
-    try expect_true((entries.some(fn(k, v): v == 1)))
-    try expect_true((entries.every(fn(k, v): v > 0)))
+    try expect_equal(entries.fold(0, lambda acc, k, v: acc + v), 3)
+    try expect_equal(entries.find(lambda k, v: v == 1).get().key, "a")
+    try expect_true((entries.some(lambda k, v: v == 1)))
+    try expect_true((entries.every(lambda k, v: v > 0)))
 
     let values = Set[Int]([2, 1])
-    try expect_equal(values.fold(0, fn(acc, n): acc + n), 3)
-    try expect_equal(values.find(fn(n): n == 1).get(), 1)
-    try expect_true((values.some(fn(n): n == 1)))
-    try expect_true((values.every(fn(n): n > 0)))
+    try expect_equal(values.fold(0, lambda acc, n: acc + n), 3)
+    try expect_equal(values.find(lambda n: n == 1).get(), 1)
+    try expect_true((values.some(lambda n: n == 1)))
+    try expect_true((values.every(lambda n: n > 0)))
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
     var counter = Counter(0)
@@ -82,7 +85,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     cause.calls = 2
     counter.calls | try expect_equal(1)
 
-    let create = fn() Counter: Counter(10)
+    let create = lambda () -> Counter: Counter(10)
     (require_lazy(present, create).get() != 0 or counter.calls != 1) | try expect_false
 
     let error_result = require_lazy(missing, create)
@@ -113,10 +116,10 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let converted = nested.ok_or(TextError("absent"))
     (not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
-    let false_value: Optional[Bool] = some(false)
+    let false_value: Optional[Bool] = some(False)
     false_value.ok_or(TextError("absent")).to_optional().get() | try expect_false
 
-    let unit_value: Optional[Unit] = some(unit)
+    let unit_value: Optional[Unit] = some(())
     (unit_value.ok_or(TextError("absent")).to_optional().is_some()) | try expect_true
 
     let nested_result: Optional[Result[Int, TextError]] = some(
@@ -138,7 +141,9 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
     var visits = reduce_map(
         values.clone(),
         initial.clone(),
-        fn(acc, k, v):
+        lambda acc,
+        k,
+        v:
             var next = acc
             next.append(k + v.calls.to_string())
             return next
@@ -153,7 +158,9 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 
     var untouched = fold(
         step: (
-            fn(acc, k, v):
+            lambda acc,
+            k,
+            v:
                 empty_calls.append(1)
                 return acc
         ),
@@ -168,7 +175,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
     var chain_1 = Map[String, Int]()
     chain_1.add("a", 3)
 
-    let nested = (chain_1.fold(success, fn(acc, k, v): acc.map(fn(n): (n + v))))
+    let nested = (chain_1.fold(success, lambda acc, k, v: acc.map(lambda n: (n + v))))
     nested.get() | try expect_equal(5)
     empty_calls.is_empty() | try expect_true
 
@@ -181,7 +188,8 @@ test "Map find returns fresh entry shells with copied payloads":
     var visits: List[String] = []
     let found = locate(
         values.clone(),
-        fn(k, v):
+        lambda k,
+        v:
             visits.append(k.clone())
             return k == "a"
     ).get()
@@ -191,15 +199,15 @@ test "Map find returns fresh entry shells with copied payloads":
     source.add("b", counter.clone())
 
     let find = source.clone().find
-    var original = find(fn(k, v): true).get().clone()
+    var original = find(lambda k, v: True).get().clone()
     var edited = original.value.clone()
     edited.calls = 5
     counter.calls | try expect_equal(2)
     original.key = "other"
     original.value = Counter(9)
     (not (source.contains("b")) or source.get("b").get().calls != 2) | try expect_false
-    try expect_equal(source.find(fn(k, v): true).get().key, "b")
-    try expect_true((source.find(fn(k, v): false).is_none()))
+    try expect_equal(source.find(lambda k, v: True).get().key, "b")
+    try expect_true((source.find(lambda k, v: False).is_none()))
 
     let empty = Map[String, Counter]()
     try expect_false(
@@ -207,9 +215,10 @@ test "Map find returns fresh entry shells with copied payloads":
             empty
             .find(
                 (
-                    fn(k, v):
+                    lambda k,
+                    v:
                         empty_calls.append(1)
-                        return false
+                        return False
                 )
             )
             .is_none()
@@ -226,7 +235,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
         (
             not (
                 some(
-                    fn(k, v):
+                    lambda k,
+                    v:
                         seen.append(k)
                         values.remove("a")
                         values.add("c", 99)
@@ -247,7 +257,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
     try expect_false(
         (
             every(
-                predicate: fn(k, v):
+                predicate: lambda k,
+                v:
                     seen.append(k)
                     values.remove("a")
                     values.add("c", 99)
@@ -261,9 +272,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
     try expect_false(
         values.some(
             (
-                fn(k, v):
+                lambda k,
+                v:
                     empty_calls.append(1)
-                    return false
+                    return False
             )
         )
     )
@@ -271,9 +283,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
         (
             values.every(
                 (
-                    fn(k, v):
+                    lambda k,
+                    v:
                         empty_calls.append(1)
-                        return true
+                        return True
                 )
             )
         )
@@ -281,7 +294,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
 
     let complete: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     try expect_false(
-        (complete.some(fn(k, v): false) or not (complete.every(fn(k, v): true)))
+        (
+            complete.some(lambda k, v: False)
+            or not (complete.every(lambda k, v: True))
+        )
     )
     empty_calls.is_empty() | try expect_true
 
@@ -290,13 +306,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: 0
+    def hash() -> Int: 0
 
 test "Set fold and find preserve ordered snapshots and copied payloads":
     var empty_calls: List[Int] = []
@@ -309,7 +325,8 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
     var visits = reduce_set(
         values.clone(),
         initial.clone(),
-        fn(acc, v):
+        lambda acc,
+        v:
             var next = acc
             next.append(v.label.clone())
             return next
@@ -324,7 +341,8 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
     var empty_result = bound_empty(
         initial.clone(),
         (
-            fn(acc, v):
+            lambda acc,
+            v:
                 empty_calls.append(1)
                 return acc
         )
@@ -340,7 +358,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
     var seen: List[Int] = []
     let find = values.clone().find
     var found = find(
-        fn(v):
+        lambda v:
             seen.append(v.id)
             return v.id == 1
     ).get().clone()
@@ -353,17 +371,17 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
             values
             .find(
                 (
-                    fn(v):
+                    lambda v:
                         empty_calls.append(1)
-                        return false
+                        return False
                 )
             )
             .is_none()
         )
     )
 
-    let flags = Set[Bool]([false])
-    try expect_false(flags.find(fn(v): true).get())
+    let flags = Set[Bool]([False])
+    try expect_false(flags.find(lambda v: True).get())
     empty_calls.is_empty() | try expect_true
 
 test "Set predicates short circuit over snapshots and keep empty identities":
@@ -375,7 +393,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
         (
             not (
                 some(
-                    fn(v):
+                    lambda v:
                         seen.append(v)
                         values.remove(1)
                         values.add(4)
@@ -395,7 +413,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     try expect_false(
         (
             every(
-                fn(v):
+                lambda v:
                     seen.append(v)
                     values.remove(1)
                     values.add(4)
@@ -408,9 +426,9 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     try expect_false(
         values.some(
             (
-                fn(v):
+                lambda v:
                     empty_calls.append(1)
-                    return false
+                    return False
             )
         )
     )
@@ -418,17 +436,19 @@ test "Set predicates short circuit over snapshots and keep empty identities":
         (
             values.every(
                 (
-                    fn(v):
+                    lambda v:
                         empty_calls.append(1)
-                        return true
+                        return True
                 )
             )
         )
     )
 
     let complete = Set[Int]([2, 1])
-    try expect_false(complete.some(fn(v): false) or not (complete.every(fn(v): true)))
-    try expect_true((complete.find(fn(v): false).is_none()))
+    try expect_false(
+        complete.some(lambda v: False) or not (complete.every(lambda v: True))
+    )
+    try expect_true((complete.find(lambda v: False).is_none()))
     empty_calls.is_empty() | try expect_true
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
@@ -437,9 +457,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             map.some(
-                fn(k, v):
+                lambda k,
+                v:
                     map_visits.append(k)
-                    return false
+                    return False
             )
             or map_visits != ["b", "a", "c"]
         )
@@ -449,9 +470,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         (
             not (
                 map.every(
-                    fn(k, v):
+                    lambda k,
+                    v:
                         map_visits.append(k)
-                        return true
+                        return True
                 )
             )
             or map_visits != ["b", "a", "c"]
@@ -463,9 +485,10 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             not (
                 map
                 .find(
-                    fn(k, v):
+                    lambda k,
+                    v:
                         map_visits.append(k)
-                        return false
+                        return False
                 )
                 .is_none()
             )
@@ -478,9 +501,9 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             set.some(
-                fn(v):
+                lambda v:
                     set_visits.append(v)
-                    return false
+                    return False
             )
             or set_visits != [2, 1, 3]
         )
@@ -490,9 +513,9 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         (
             not (
                 set.every(
-                    fn(v):
+                    lambda v:
                         set_visits.append(v)
-                        return true
+                        return True
                 )
             )
             or set_visits != [2, 1, 3]
@@ -504,9 +527,9 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             not (
                 set
                 .find(
-                    fn(v):
+                    lambda v:
                         set_visits.append(v)
-                        return false
+                        return False
                 )
                 .is_none()
             )
@@ -514,7 +537,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         )
     )
 
-fn find_port(port: Optional[Int]) Result[Int, Error]:
+def find_port(port: Optional[Int]) -> Result[Int, Error]:
     let value = try port.ok_or()
     return ok(value)
 
@@ -533,5 +556,5 @@ test "ok_or without a cause records the calling file and line":
     let missing_port = find_port(none)
 
     match missing_port.err():
-        MissingValue(found): unit
-        _: return fail("default cause is not MissingValue")
+        case MissingValue(found): ()
+        case _: return fail("default cause is not MissingValue")

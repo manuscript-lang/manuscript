@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,formatter,interfaces,interpolation,modules,parser,records,stdlib-io,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/test_fixture_test.go:106 TestCLITestFileFixtureListAndDefaultHooks
-import {TestHooks, expect_equal} from "@std/testing.ms"
-import stdout from "@std/io.ms"
+from "@std/testing.ms" import TestHooks, expect_equal
+from "@std/io.ms" import stdout
 
-fn println(message: String) Unit:
-    let written = stdout().write("{message}\n").get()
+def println(message: String) -> Unit:
+    let written = stdout().write(f"{message}\n").get()
 
 type State:
     value: Int
 
-fn make_fixture() State:
+def make_fixture() -> State:
     println("FACTORY")
     return State(7)
 

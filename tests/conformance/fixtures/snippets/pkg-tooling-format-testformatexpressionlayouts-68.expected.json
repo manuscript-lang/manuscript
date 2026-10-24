@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding CommandError; add: import CommandError from \"@std/process.ms\"",
+        "message": "unknown binding CommandError; add: from \"@std/process.ms\" import CommandError",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-68.ms",
           "line": 7,
           "column": 20,
-          "offset": 215
+          "offset": 219
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import CommandError from \"@std/process.ms\"\n"
+          "replacement": "from \"@std/process.ms\" import CommandError\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:7:20: resolution: unknown binding CommandError; add: import CommandError from \"@std/process.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:7:20: resolution: unknown binding CommandError; add: from \"@std/process.ms\" import CommandError\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

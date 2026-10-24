@@ -1,9 +1,9 @@
 # conform: tags=diagnostics,match,strings,tier-core
 # conform: phase=check
 # conform: origin=pkg/build/library_test.go:118 TestCommonErrorRejectsInvalidContractPatterns
-fn wrong(cause: Error) String:
+def wrong(cause: Error) -> String:
     match cause:
-        JsonError:
+        case JsonError:
             return "invalid"
-        _:
+        case _:
             return cause.message()

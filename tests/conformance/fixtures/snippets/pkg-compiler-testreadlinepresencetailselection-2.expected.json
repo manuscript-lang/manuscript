@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type ReadStream; add: import ReadStream from \"@std/io.ms\"",
+        "message": "unknown type ReadStream; add: from \"@std/io.ms\" import ReadStream",
         "position": {
           "file": "pkg-compiler-testreadlinepresencetailselection-2.ms",
           "line": 4,
-          "column": 17,
-          "offset": 174
+          "column": 18,
+          "offset": 175
         },
         "fix": {
           "position": {
@@ -29,7 +29,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import ReadStream from \"@std/io.ms\"\n"
+          "replacement": "from \"@std/io.ms\" import ReadStream\n"
         }
       },
       {
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testreadlinepresencetailselection-2.ms:4:17: resolution: unknown type ReadStream; add: import ReadStream from \"@std/io.ms\"\n<DIR>/pkg-compiler-testreadlinepresencetailselection-2.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testreadlinepresencetailselection-2.ms:4:18: resolution: unknown type ReadStream; add: from \"@std/io.ms\" import ReadStream\n<DIR>/pkg-compiler-testreadlinepresencetailselection-2.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

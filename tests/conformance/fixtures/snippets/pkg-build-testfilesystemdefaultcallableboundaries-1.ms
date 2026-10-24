@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-fs,tier-io
 # conform: phase=check
 # conform: origin=pkg/build/filesystem_defaults_test.go:17 TestFilesystemDefaultCallableBoundaries
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/bytes.ms" import Bytes
 
-fn forward[T](item: T) T: item
+def forward[T](item: T) -> T: item

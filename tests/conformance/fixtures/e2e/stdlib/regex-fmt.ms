@@ -1,8 +1,8 @@
 # conform: tags=formatter,lists,modules,parser,stdlib-regex,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/regex.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {compile, RegexError} from "@std/string.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/string.ms" import compile, RegexError
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")

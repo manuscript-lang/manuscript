@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/tour.md:91
-import range from "@std/collections.ms"
-import expect_equal from "@std/testing.ms"
+from "@std/collections.ms" import range
+from "@std/testing.ms" import expect_equal
 
 test "count five iterations":
     var total = 0

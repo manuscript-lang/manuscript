@@ -2,9 +2,9 @@
 # conform: phase=parse
 # conform: origin=pkg/lexer/lexer_test.go:14 TestLayoutAndLineEndings
 # module
-fn value() Int:
+def value() -> Int:
     # comment
-    if true:
+    if True:
         return 3
     else:
         return 4

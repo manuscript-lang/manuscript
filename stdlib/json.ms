@@ -57,7 +57,7 @@ export type JsonValue:
 # - A record is an object. Members may appear in any order. An absent member takes the field's default,
 #   else `none` for an `Optional` field; an absent required field returns `InvalidData`, so a field
 #   with no JSON form (a function, say) needs a default to be readable. A member that is not a field
-#   is ignored, unless `ignore_unknown_fields` is `false`, which makes it return `InvalidData`.
+#   is ignored, unless `ignore_unknown_fields` is `False`, which makes it return `InvalidData`.
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
@@ -75,11 +75,11 @@ export type JsonValue:
 #
 # The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 # record and `parse[Map[String, Int]]` reads the same object as a map.
-export fn parse[T = JsonValue](
+export def parse[T = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
-    ignore_unknown_fields: Bool = true
-) Result[T, JsonError]:
+    ignore_unknown_fields: Bool = True
+) -> Result[T, JsonError]: ...
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
 # structural encoding for every record and alternative, so it is the way to choose a tagged or
@@ -99,18 +99,18 @@ export fn parse[T = JsonValue](
 #     case Deleted(id: Int)
 #
 # impl JsonEncode for Event:
-#     fn to_json() JsonValue:
+#     def to_json() -> JsonValue:
 #         match self:
-#             Created(id): return tagged("created", id)
-#             Deleted(id): return tagged("deleted", id)
+#             case Created(id): return tagged("created", id)
+#             case Deleted(id): return tagged("deleted", id)
 #
-# fn tagged(kind: String, id: Int) JsonValue:
+# def tagged(kind: String, id: Int) -> JsonValue:
 #     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
-#     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue("{id}")))
+#     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue(f"{id}")))
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.
-    fn to_json() JsonValue
+    def to_json() -> JsonValue
 
 # Encodes any value as JSON text. Every type is accepted;
 # a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
@@ -148,14 +148,14 @@ export interface JsonEncode:
 #     stream: Bool
 #     user: Optional[String]
 #
-# stringify(value: Request(model: "example", stream: true, user: none))
+# stringify(value: Request(model: "example", stream: True, user: none))
 # ```
-export fn stringify[T](
+export def stringify[T](
     value: T,
     max_bytes: Optional[Int] = none,
     indent: Optional[Int] = none
-) Result[String, JsonError]:
+) -> Result[String, JsonError]: ...
 
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
-    fn message() String:
+    def message() -> String: ...

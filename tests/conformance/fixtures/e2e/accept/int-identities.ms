@@ -1,9 +1,9 @@
 # conform: tags=control-flow,lists,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/int-identities.ms
-import {expect_equal, expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_true
 
-fn touch(var log: List[Int], value: Int) Int:
+def touch(var log: List[Int], value: Int) -> Int:
     log.append(value)
     return value
 

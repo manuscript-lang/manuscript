@@ -1,15 +1,15 @@
 # conform: tags=control-flow,formatter,match,modules,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/result_argument_scope/conformance_test.ms
-import {first, first_generic} from "./first.ms"
-import {second, second_generic} from "./second.ms"
-import Cause from "./domain.ms"
-import {expect_true, fail} from "@std/testing.ms"
+from "./first.ms" import first, first_generic
+from "./second.ms" import second, second_generic
+from "./domain.ms" import Cause
+from "@std/testing.ms" import expect_true, fail
 
-fn describe(r: Result[Int, Error]) String:
+def describe(r: Result[Int, Error]) -> String:
     match r:
-        ok(_): return "unexpected success"
-        error(cause):
+        case ok(_): return "unexpected success"
+        case error(cause):
             return cause.message()
 
 test "local implementations remain selected after inference and forwarding":

@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lint_program_test.go:51 TestImportUsesStayWithinTheirModule
-import value from "./value.ms"
+from "./value.ms" import value
 
-export fn helper() Int:
+export def helper() -> Int:
     return 2

@@ -1,15 +1,15 @@
-import stdout from "@std/io.ms"
+from "@std/io.ms" import stdout
 
 type Box:
     n: Int
     xs: List[Int]
 
-fn bump(var b: Box) Unit:
+def bump(var b: Box) -> Unit:
     var n = b.n
     n += 1
     n = n * 2
 
-export fn main() Int:
+export def main() -> Int:
     var b = Box(n: 1, xs: [1])
     bump(var b)
 
@@ -25,5 +25,5 @@ export fn main() Int:
     let before = b.n
     var scratch = before
     scratch += 100
-    stdout().write("{b.n} {m.get("a")} {cs} {scratch}\n")
+    stdout().write(f"{b.n} {m.get("a")} {cs} {scratch}\n")
     return 0

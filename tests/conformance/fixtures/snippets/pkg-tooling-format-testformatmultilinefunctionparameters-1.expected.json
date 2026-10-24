@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"",
+        "message": "unknown type WriteStream; add: from \"@std/io.ms\" import WriteStream",
         "position": {
           "file": "pkg-tooling-format-testformatmultilinefunctionparameters-1.ms",
           "line": 6,
           "column": 13,
-          "offset": 261
+          "offset": 262
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import WriteStream from \"@std/io.ms\"\n"
+          "replacement": "from \"@std/io.ms\" import WriteStream\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatmultilinefunctionparameters-1.ms:6:13: resolution: unknown type WriteStream; add: import WriteStream from \"@std/io.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatmultilinefunctionparameters-1.ms:6:13: resolution: unknown type WriteStream; add: from \"@std/io.ms\" import WriteStream\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

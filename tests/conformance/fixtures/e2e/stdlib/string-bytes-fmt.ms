@@ -1,10 +1,10 @@
 # conform: tags=alternatives,closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/string-bytes.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import range from "@std/collections.ms"
-import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
-import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/collections.ms" import range
+from "@std/string.ms" import from_scalars, StringError, StringBuilder
+from "@std/bytes.ms" import Bytes, BytesBuilder, values
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
@@ -64,7 +64,7 @@ test "Bytes values direct bound and free calls return independent lists":
     let data = Bytes(input.clone())
     input.set(0, 42)
 
-    let extract: fn() List[Int] = data.values
+    let extract: Callable[[], List[Int]] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
     var direct = data.values()
@@ -117,7 +117,7 @@ test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("ß".upper(), "SS")
     try expect_equal("ﬁ".upper(), "FI")
     try expect_equal("ΑΣ".lower(), "ας")
-    try expect_equal("İ".lower(), "i\u{307}")
+    try expect_equal("İ".lower(), f"i\u{307}")
     try expect_equal("Maße".upper(), "MASSE")
 
 test "indexing and slicing long mixed-width text matches scalar positions":

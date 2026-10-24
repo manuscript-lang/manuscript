@@ -1,49 +1,49 @@
 # conform: tags=control-flow,faults,generics,interfaces,interpolation,lists,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/result-argument-inference.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
 
 type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() String: self.code.to_string()
+    def message() -> String: self.code.to_string()
 
 type Tagged[T]:
     value: T
 
 impl Error for Tagged[T]:
-    fn message() String: "tagged {self.value}"
+    def message() -> String: f"tagged {self.value}"
 
-fn erase[T](r: Result[T, Error]) Result[T, Error]: r
+def erase[T](r: Result[T, Error]) -> Result[T, Error]: r
 
-fn forward[T, E: Error](r: Result[T, E]) Result[T, Error]: erase(r)
+def forward[T, E: Error](r: Result[T, E]) -> Result[T, Error]: erase(r)
 
-fn optional[T](r: Optional[Result[T, Error]]) Result[T, Error]: r.get().clone()
+def optional[T](r: Optional[Result[T, Error]]) -> Result[T, Error]: r.get().clone()
 
-fn same[T, E: Error](r: Result[T, E]) Result[T, E]: r
+def same[T, E: Error](r: Result[T, E]) -> Result[T, E]: r
 
-fn both[T, E: Error](cause: E, r: Result[T, E]) Result[T, E]: r
+def both[T, E: Error](cause: E, r: Result[T, E]) -> Result[T, E]: r
 
-fn number() Result[Int, Failure]: ok(7)
+def number() -> Result[Int, Failure]: ok(7)
 
 type Events:
     values: List[Int]
 
-fn record(var events: Events, value: Int) Result[Int, Failure]:
+def record(var events: Events, value: Int) -> Result[Int, Failure]:
     events.values.append(value)
     return ok(value)
 
-fn default_value(var events: Events) Int:
+def default_value(var events: Events) -> Int:
     events.values.append(3)
     return 3
 
-fn ordered[T](
+def ordered[T](
     first: Result[T, Error],
     second: Result[T, Error],
     var events: Events,
     last: Int = default_value(events)
-) Result[T, Error]:
+) -> Result[T, Error]:
     events.values.append(4)
     return first
 
@@ -64,9 +64,9 @@ test "infer success and preserve concrete error identity":
         try expect_equal(view.message(), "11")
 
         match view:
-            Failure(original):
+            case Failure(original):
                 try expect_equal(original.code, 11)
-            _: return fail("lost concrete error identity")
+            case _: return fail("lost concrete error identity")
 
     let generic: Result[Int, Tagged[Int]] = error(Tagged(31))
     let failed = erase(generic)
@@ -76,9 +76,9 @@ test "infer success and preserve concrete error identity":
     try expect_equal(view.message(), "tagged 31")
 
     match view:
-        Tagged[Int](original):
+        case Tagged[Int](original):
             try expect_equal(original.value, 31)
-        _: return fail("lost generic identity")
+        case _: return fail("lost generic identity")
 
 test "nested success preserves its domain and inferred errors remain exact":
     let inner: Result[Int, Failure] = error(Failure(41))

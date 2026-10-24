@@ -1,27 +1,27 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/try-result-payloads.ms
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
-import TextError from "@std/core.ms"
-import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/core.ms" import TextError
+from "@std/core.ms" import Closeable
+from "@std/fs.ms" import filesystem
 
 type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() ref String: self.detail
+    def message() -> ref String: self.detail
 
-fn relay[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+def relay[T, E: Error](result: Result[T, E], var visits: List[Int]) -> Result[T, E]:
     let value = try result
     visits.append(1)
     return ok(value)
 
-fn text(result: Result[Int, TextError]) Result[String, TextError]:
+def text(result: Result[Int, TextError]) -> Result[String, TextError]:
     let value = try result
     return ok(value.to_string())
 
-fn widened(result: Result[Int, Failure]) Result[Int, Error]:
+def widened(result: Result[Int, Failure]) -> Result[Int, Error]:
     let value = try result
     return ok(value)
 
@@ -49,11 +49,11 @@ test "try retains aliases and error views":
     abstract.err().message() | try expect_equal("before")
     widened(Result[Int, Failure].ok(7)).get() | try expect_equal(7)
 
-fn visit[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+def visit[T, E: Error](result: Result[T, E], var visits: List[Int]) -> Result[T, E]:
     visits.append(1)
     return result
 
-fn tail[T, E: Error](result: Result[T, E], var visits: List[Int]) Result[T, E]:
+def tail[T, E: Error](result: Result[T, E], var visits: List[Int]) -> Result[T, E]:
     let value = try visit(result, var visits)
     return ok(value)
 
@@ -62,19 +62,21 @@ type TailCleanup:
 
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
-    var fn close() Unit:
-        let written = filesystem().write_file(self.marker, "closed", true)
+    var def close() -> Unit:
+        let written = filesystem().write_file(self.marker, "closed", True)
 
-fn tail_cleanup(
+def tail_cleanup(
     result: Result[Int, TextError],
     var visits: List[Int],
     marker: String
-) Result[Int, TextError]:
-    with resource = TailCleanup(marker):
+) -> Result[Int, TextError]:
+    with TailCleanup(marker) as resource:
         let value = try visit(result, var visits)
         return ok(value)
 
-fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError]:
+def function_tail(
+    result: Result[Callable[[], Int], TextError]
+) -> Result[Callable[[], Int], TextError]:
     let value = try result
     return ok(value)
 
@@ -91,9 +93,9 @@ test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
-        let first = "{temporary.path()}/first"
-        let second = "{temporary.path()}/second"
+    with (fs.temporary("manuscript-tail-") | try expect_ok) as temporary:
+        let first = f"{temporary.path()}/first"
+        let second = f"{temporary.path()}/second"
         tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(
             42
         )
@@ -105,7 +107,7 @@ test "tail Results preserve cleanup on success and failure":
         fs.read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
-    let original = fn() Int: 42
-    let result = function_tail(Result[fn() Int, TextError].ok(original))
+    let original = lambda () -> Int: 42
+    let result = function_tail(Result[Callable[[], Int], TextError].ok(original))
     let value = result.get()
     value() | try expect_equal(42)

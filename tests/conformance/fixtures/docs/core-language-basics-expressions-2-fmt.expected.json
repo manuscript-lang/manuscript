@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn calculated(value: Int, active: Bool) Int:\n    let product = 1 + 2 * 3  # 7\n    let same = not value == product  # not (value == product)\n    if active and same:\n        return product\n\n    return value\n"
+    "fmt": "def calculated(value: Int, active: Bool) -> Int:\n    let product = 1 + 2 * 3  # 7\n    let same = not value == product  # not (value == product)\n    if active and same:\n        return product\n\n    return value\n"
   }
 }

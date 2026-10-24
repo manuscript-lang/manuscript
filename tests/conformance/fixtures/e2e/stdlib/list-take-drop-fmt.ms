@@ -1,8 +1,8 @@
 # conform: tags=closures,faults,formatter,generics,lists,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/list-take-drop.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false
 
 test "List take and drop copy prefix and remainder":
     let values = [1, 2, 3]
@@ -63,7 +63,7 @@ test "List take and drop copy payloads before changing them":
     copied.set(0, inner)
     try expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])
 
-fn copy_window[T](values: List[T], first: Int, skip: Int) List[T]:
+def copy_window[T](values: List[T], first: Int, skip: Int) -> List[T]:
     return values.take(first).drop(skip)
 
 test "List take and drop support generic and nested values":
@@ -74,13 +74,13 @@ test "List take and drop support generic and nested values":
     ]
     try expect_equal(copy_window(values, 2, 1).get(0).err().message(), "cause")
 
-    let callbacks = [fn(value: Int) Int: value + 1]
+    let callbacks = [lambda (value: Int) -> Int: value + 1]
     try expect_equal(callbacks.take(1).drop(0).get(0)(1), 2)
 
 test "List take and drop bound methods read the retained receiver":
     var values = [1, 2, 3, 4]
     let take = values.take
-    let drop: fn(count: Int) List[Int] = values.drop
+    let drop: Callable[[Int], List[Int]] = values.drop
     try expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])
 
     var first = take(2)

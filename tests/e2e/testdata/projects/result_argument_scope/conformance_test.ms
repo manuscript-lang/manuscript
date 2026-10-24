@@ -1,12 +1,12 @@
-import {first, first_generic} from "./first.ms"
-import {second, second_generic} from "./second.ms"
-import Cause from "./domain.ms"
-import {expect_true, fail} from "@std/testing.ms"
+from "./first.ms" import first, first_generic
+from "./second.ms" import second, second_generic
+from "./domain.ms" import Cause
+from "@std/testing.ms" import expect_true, fail
 
-fn describe(r: Result[Int, Error]) String:
+def describe(r: Result[Int, Error]) -> String:
     match r:
-        ok(_): return "unexpected success"
-        error(cause):
+        case ok(_): return "unexpected success"
+        case error(cause):
             return cause.message()
 
 test "local implementations remain selected after inference and forwarding":

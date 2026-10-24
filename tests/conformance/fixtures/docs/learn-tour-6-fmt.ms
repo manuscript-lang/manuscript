@@ -1,10 +1,10 @@
 # conform: tags=formatter,interpolation,parser,strings,tier-core
 # conform: phase=parse
 # conform: origin=documentation/learn/tour.md:106
-fn greeting(name: String = "world") String:
-    return "Hello, {name}!"
+def greeting(name: String = "world") -> String:
+    return f"Hello, {name}!"
 
-fn line_total(price: Int, quantity: Int) Int:
+def line_total(price: Int, quantity: Int) -> Int:
     return price * quantity
 
 let welcome = greeting("Sam")

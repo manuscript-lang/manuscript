@@ -1,14 +1,14 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type Outcome:
     case Ready(value: Int)
     case Failed(reason: String)
 
-fn score(outcome: Outcome) Int:
+def score(outcome: Outcome) -> Int:
     match outcome:
-        Ready(value):
+        case Ready(value):
             return value
-        Failed(_):
+        case Failed(_):
             return 0
 
 test "alternative result":

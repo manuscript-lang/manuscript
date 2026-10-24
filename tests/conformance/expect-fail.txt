@@ -1,4 +1,3 @@
 # Frozen contracts still requiring fixes. Remove entries only after exact corpus replay passes.
 # File fixtures promise one shared instance and before_all/after_all per file, but the
 # process-isolated runner constructs the fixture for each test, after printing RUN.
-snippets/tests-e2e-testclitestfilefixturelistanddefaulthooks-1

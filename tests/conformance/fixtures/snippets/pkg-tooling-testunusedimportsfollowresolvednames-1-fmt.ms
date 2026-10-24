@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-json,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lint_program_test.go:28 TestUnusedImportsFollowResolvedNames
-import parse from "@std/json.ms"
+from "@std/json.ms" import parse
 
-fn answer(parse: Int) Int:
+def answer(parse: Int) -> Int:
     return parse

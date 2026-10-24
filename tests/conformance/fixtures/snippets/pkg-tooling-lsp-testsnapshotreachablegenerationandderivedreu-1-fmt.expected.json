@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import value from \"./dep.ms\"\n\nexport fn main() Int: value()\n"
+    "fmt": "from \"./dep.ms\" import value\n\nexport def main() -> Int: value()\n"
   }
 }

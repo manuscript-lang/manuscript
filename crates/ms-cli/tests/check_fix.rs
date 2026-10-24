@@ -21,8 +21,8 @@ fn fix_renames_misspellings_and_adds_imports() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "fn total(items: List[Int]) Int:\n    let sum = 0\n    return sumn\n\n\
-        fn main() Int:\n    stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
+    let source = "def total(items: List[Int]) -> Int:\n    let sum = 0\n    return sumn\n\n\
+        def main() -> Int:\n    stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
@@ -34,7 +34,7 @@ fn fix_renames_misspellings_and_adds_imports() {
     assert!(text.contains("applied 3 fixes in 1 file"), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(
-        fixed.starts_with("import stdout from \"@std/io.ms\"\n"),
+        fixed.starts_with("from \"@std/io.ms\" import stdout\n"),
         "{fixed}"
     );
     assert!(fixed.contains("return sum\n"), "{fixed}");

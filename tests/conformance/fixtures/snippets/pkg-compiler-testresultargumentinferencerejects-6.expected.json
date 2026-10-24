@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-6.ms",
           "line": 6,
-          "column": 32,
-          "offset": 279
+          "column": 33,
+          "offset": 284
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-6.ms",
           "line": 6,
-          "column": 37,
-          "offset": 284
+          "column": 38,
+          "offset": 289
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-6.ms:6:32: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-6.ms:6:37: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-6.ms:6:33: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testresultargumentinferencerejects-6.ms:6:38: resolution: unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

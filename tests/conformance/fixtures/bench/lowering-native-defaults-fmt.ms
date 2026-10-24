@@ -1,55 +1,52 @@
 # conform: tags=closures,formatter,lists,modules,optional,parser,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
 # conform: phase=parse
 # conform: origin=bench/lowering/native-defaults.ms
-import base64_encode from "@std/encoding.ms"
-import CsvOptions from "@std/csv.ms"
-import Bytes from "@std/bytes.ms"
-import {commands, CommandOutput, CommandError} from "@std/process.ms"
-import Duration from "@std/time.ms"
-import {filesystem, FileSystem, FileSystemError} from "@std/fs.ms"
+from "@std/encoding.ms" import base64_encode
+from "@std/csv.ms" import CsvOptions
+from "@std/bytes.ms" import Bytes
+from "@std/process.ms" import commands, CommandOutput, CommandError
+from "@std/time.ms" import Duration
+from "@std/fs.ms" import filesystem, FileSystem, FileSystemError
 
-fn direct_explicit(data: Bytes) String: base64_encode(data, false)
+def direct_explicit(data: Bytes) -> String: base64_encode(data, False)
 
-fn direct_omitted(data: Bytes) String: base64_encode(data)
+def direct_omitted(data: Bytes) -> String: base64_encode(data)
 
-fn bound_explicit(data: Bytes) String:
+def bound_explicit(data: Bytes) -> String:
     let encode = base64_encode
-    return encode(data, false)
+    return encode(data, False)
 
-fn bound_omitted(data: Bytes) String:
+def bound_omitted(data: Bytes) -> String:
     let encode = base64_encode
     return encode(data)
 
-fn encode_bind() fn(data: Bytes, url_safe: Bool) String: base64_encode
+def encode_bind() -> Callable[[Bytes, Bool], String]: base64_encode
 
-fn csv_explicit() CsvOptions: CsvOptions(",", "\n")
+def csv_explicit() -> CsvOptions: CsvOptions(",", "\n")
 
-fn csv_omitted() CsvOptions: CsvOptions()
+def csv_omitted() -> CsvOptions: CsvOptions()
 
-fn command_explicit() Result[CommandOutput, CommandError]:
+def command_explicit() -> Result[CommandOutput, CommandError]:
     return commands().run(program: "", arguments: [], input: "".to_bytes())
 
-fn command_omitted() Result[CommandOutput, CommandError]:
+def command_omitted() -> Result[CommandOutput, CommandError]:
     return commands().run(program: "", arguments: [])
 
-fn command_bind() fn(
-    program: String,
-    arguments: List[String],
-    input: Bytes,
-    max_output_bytes: Optional[Int],
-    timeout: Optional[Duration]
-) Result[CommandOutput, CommandError]:
+def command_bind() -> Callable[
+    [String, List[String], Bytes, Optional[Int], Optional[Duration]],
+    Result[CommandOutput, CommandError]
+]:
     return commands().run
 
-fn filesystem_setup() FileSystem: filesystem()
+def filesystem_setup() -> FileSystem: filesystem()
 
-fn filesystem_explicit(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
-    return fs.write_file_bytes("", data, false)
+def filesystem_explicit(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemError]:
+    return fs.write_file_bytes("", data, False)
 
-fn filesystem_omitted(fs: FileSystem, data: Bytes) Result[Unit, FileSystemError]:
+def filesystem_omitted(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemError]:
     return fs.write_file_bytes("", data)
 
-fn filesystem_bind(
+def filesystem_bind(
     fs: FileSystem
-) fn(path: String, data: Bytes, replace: Bool) Result[Unit, FileSystemError]:
+) -> Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]]:
     return fs.write_file

@@ -1,8 +1,8 @@
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-export fn main() Int:
-    let message = "Arguments: {arguments().length()}\n"
+export def main() -> Int:
+    let message = f"Arguments: {arguments().length()}\n"
     if stdout().write(message).is_error():
         return 1
 

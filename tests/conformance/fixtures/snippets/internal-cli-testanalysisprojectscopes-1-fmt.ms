@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/analysis_test.go:167 TestAnalysisProjectScopes
-import value from "@lib"
+from "@lib" import value
 
-export fn main() Int:
+export def main() -> Int:
     return value()

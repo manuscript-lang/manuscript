@@ -1,8 +1,8 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal
+from "@std/decimal.ms" import Decimal
 
-fn amount() Result[Decimal, TextError]:
+def amount() -> Result[Decimal, TextError]:
     return ok(12.50d)
 
 test "explicit standard imports":

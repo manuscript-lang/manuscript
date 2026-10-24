@@ -1,7 +1,7 @@
-fn keep(xs: List[Int]) List[Int]:
+def keep(xs: List[Int]) -> List[Int]:
     return xs
 
-fn f() Int:
+def f() -> Int:
     let a = [1]
     var i = 0
 

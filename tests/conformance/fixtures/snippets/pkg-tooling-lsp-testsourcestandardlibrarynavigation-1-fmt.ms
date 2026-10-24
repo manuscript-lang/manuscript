@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-toml,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/navigation_test.go:163 TestSourceStandardLibraryNavigation
-import {parse, TomlValue} from "@std/toml.ms"
+from "@std/toml.ms" import parse, TomlValue
 
-fn read() Unit:
+def read() -> Unit:
     let result = parse(text: "a=1")

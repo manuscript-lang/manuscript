@@ -4,6 +4,6 @@
 type Node:
     next: Optional[Node]
 
-export fn main() Int:
+export def main() -> Int:
     let node = Node(node)
     return 0

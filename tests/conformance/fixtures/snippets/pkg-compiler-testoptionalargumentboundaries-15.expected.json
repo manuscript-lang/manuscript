@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-15.ms",
           "line": 6,
-          "column": 19,
-          "offset": 211
+          "column": 23,
+          "offset": 219
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-15.ms",
           "line": 6,
-          "column": 17,
-          "offset": 209
+          "column": 21,
+          "offset": 217
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:19: type: unknown argument other; parameters of f: value\n<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:17: type: missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:23: type: unknown argument other; parameters of f: value\n<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:21: type: missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

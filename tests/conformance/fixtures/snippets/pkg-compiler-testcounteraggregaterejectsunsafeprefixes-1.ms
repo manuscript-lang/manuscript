@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/counter_aggregate_test.go:44 TestCounterAggregateRejectsUnsafePrefixes
-fn probe() Int:
+def probe() -> Int:
     var sum = 9223372036854775807
     var i = 0
 

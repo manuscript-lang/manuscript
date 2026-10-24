@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected fn(path: String, data: Bytes, replace: Bool) Result[Unit, FileSystemError], found fn(path: String, data: String, replace: Bool = ...) Result[Unit, FileSystemError] (in the return value)",
+        "message": "expected Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]], found Callable[[String, String, Bool], Result[Unit, FileSystemError]] (in the return value); the function's parameter is named path but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(path: _0)",
         "position": {
           "file": "lowering-native-defaults.ms",
-          "line": 55,
+          "line": 52,
           "column": 15,
-          "offset": 1930
+          "offset": 1906
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lowering-native-defaults.ms:55:15: type: expected fn(path: String, data: Bytes, replace: Bool) Result[Unit, FileSystemError], found fn(path: String, data: String, replace: Bool = ...) Result[Unit, FileSystemError] (in the return value)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lowering-native-defaults.ms:52:15: type: expected Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]], found Callable[[String, String, Bool], Result[Unit, FileSystemError]] (in the return value); the function's parameter is named path but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(path: _0)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

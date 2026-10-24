@@ -1,12 +1,12 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn identity[T](value: T) T: value
+def identity[T](value: T) -> T: value
 
-fn first[T](left: T, right: T) T: left
+def first[T](left: T, right: T) -> T: left
 
-fn optional[T](value: Optional[T], fallback: T) T: value.get(fallback)
+def optional[T](value: Optional[T], fallback: T) -> T: value.get(fallback)
 
-fn describe[T](value: T, cause: Error) String: cause.message()
+def describe[T](value: T, cause: Error) -> String: cause.message()
 
 type Events:
     values: List[Int]
@@ -15,15 +15,15 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    def message() -> String: self.detail
 
 type GenericFailure[T]:
     detail: T
 
 impl Error for GenericFailure[T]:
-    fn message() String: self.detail.to_string()
+    def message() -> String: self.detail.to_string()
 
-fn record(events: Events, value: Int) Int:
+def record(events: Events, value: Int) -> Int:
     events.values = events.values.append(value)
     return value
 
@@ -47,5 +47,5 @@ test "reused inference preserves evaluation and argument conversions":
     try expect_equal(generic_message, "4")
 
     let offset = 7
-    let callback = identity(identity(fn(value: Int): offset + value))
+    let callback = identity(identity(lambda (value: Int): offset + value))
     try expect_equal(callback(3), 10)

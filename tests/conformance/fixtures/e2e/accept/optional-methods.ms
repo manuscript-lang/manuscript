@@ -1,23 +1,23 @@
 # conform: tags=aliasing,closures,faults,generics,modules,optional,records,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-methods.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import JsonLimits from "@std/json.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/json.ms" import JsonLimits
 
 type Counter:
     calls: Int
 
-fn fallback(var counter: Counter) Int:
+def fallback(var counter: Counter) -> Int:
     counter.calls += 1
     return 42
 
-fn value_or[T](value: Optional[T], fallback: T) T:
+def value_or[T](value: Optional[T], fallback: T) -> T:
     if let inner = value:
         return inner
 
     return fallback
 
-fn increment(value: Int) Int: value + 1
+def increment(value: Int) -> Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
     let present: Optional[Int] = some(0)
@@ -28,7 +28,7 @@ test "Optional presence and extraction preserve false and zero":
     try expect_false(not (missing.is_none()))
     try expect_equal(present.get(), 0)
 
-    let flag: Optional[Bool] = some(false)
+    let flag: Optional[Bool] = some(False)
     try expect_false(flag.get())
     try expect_equal(value_or(missing, 7), 7)
     try expect_equal(value_or(present, 7), 0)
@@ -41,7 +41,7 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
     try expect_equal(present.get(fallback(var counter)), 0)
     try expect_equal(counter.calls, 1)
 
-    let create = fn(): some(42)
+    let create = lambda: some(42)
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
@@ -58,7 +58,7 @@ test "Optional methods retain generic payload and receiver identity":
     let extract = record.get
     try expect_equal(extract().calls, 3)
 
-    let callback: Optional[fn(value: Int) Int] = some(increment)
+    let callback: Optional[Callable[[Int], Int]] = some(increment)
     try expect_equal(callback.get()(2), 3)
 
     let snapshot = outer.clone()

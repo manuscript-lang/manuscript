@@ -1,16 +1,16 @@
-import {expect_not_equal, fail} from "@std/testing.ms"
-import range from "@std/collections.ms"
-import {parse, stringify, YamlValue} from "@std/yaml.ms"
-import {Rng, next, text, mutate} from "./support/generator.ms"
+from "@std/testing.ms" import expect_not_equal, fail
+from "@std/collections.ms" import range
+from "@std/yaml.ms" import parse, stringify, YamlValue
+from "./support/generator.ms" import Rng, next, text, mutate
 
-fn generated(var rng: Rng, depth: Int) YamlValue:
+def generated(var rng: Rng, depth: Int) -> YamlValue:
     var choices = 6
     if depth > 2: choices = 4
 
     let kind = next(var rng, choices)
     if kind == 0: return YamlValue.Null
     if kind == 1: return YamlValue.BoolValue(next(var rng, 2) == 0)
-    if kind == 2: return YamlValue.NumberValue("{next(var rng, 2000) - 1000}")
+    if kind == 2: return YamlValue.NumberValue(f"{next(var rng, 2000) - 1000}")
     if kind == 3: return YamlValue.StringValue(text(var rng))
 
     if kind == 4:
@@ -24,21 +24,21 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
         entries.add(text(var rng), generated(var rng, depth + 1))
     return YamlValue.ObjectValue(entries)
 
-fn check_round_trip(seed: Int, original: YamlValue) Result[Unit, Error]:
+def check_round_trip(seed: Int, original: YamlValue) -> Result[Unit, Error]:
     let rendered = try stringify(original)
     if (try parse(rendered)) != original: return fail(
-        "seed {seed}: changed\n{rendered}"
+        f"seed {seed}: changed\n{rendered}"
     )
 
-    return ok(unit)
+    return ok(())
 
-fn check_stable(seed: Int, mutated: String, first: YamlValue) Result[Unit, Error]:
+def check_stable(seed: Int, mutated: String, first: YamlValue) -> Result[Unit, Error]:
     let again = try stringify(first)
     if (try parse(again)) != first: return fail(
-        "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
+        f"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
 
-    return ok(unit)
+    return ok(())
 
 test "YAML stringify then parse preserves generated documents":
     for seed in range(1, 301):

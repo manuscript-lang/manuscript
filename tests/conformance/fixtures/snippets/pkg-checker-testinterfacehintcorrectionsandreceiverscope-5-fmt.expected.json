@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn identity(this: Int) Int: this\n"
+    "fmt": "def identity(this: Int) -> Int: this\n"
   }
 }

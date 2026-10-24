@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=documentation/core-language/types/equality-and-hashing.md:15
 interface Equal:
-    fn equals(other: Equal) Bool
+    def equals(other: Equal) -> Bool
 
 interface Hashable:
-    fn hash() Int
+    def hash() -> Int

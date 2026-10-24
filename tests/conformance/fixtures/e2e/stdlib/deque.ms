@@ -1,8 +1,8 @@
 # conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal, expect_true} from "@std/testing.ms"
-import {Deque} from "@std/deque.ms"
-import {range} from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_true
+from "@std/deque.ms" import Deque
+from "@std/collections.ms" import range
 
 test "both ends push and pop":
     var d = Deque[Int]()

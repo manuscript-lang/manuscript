@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {Cause, make} from \"./domain.ms\"\nimport {erase, forward} from \"./helper.ms\"\n\nimpl Error for Cause[T]:\n    fn message() String: \"first {self.value}\"\n\nexport fn first() Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))\n\nexport fn first_generic() Result[Int, Error]: forward(\n    Result[Int, Cause[Int]].error(make())\n)\n"
+    "fmt": "from \"./domain.ms\" import Cause, make\nfrom \"./helper.ms\" import erase, forward\n\nimpl Error for Cause[T]:\n    def message() -> String: f\"first {self.value}\"\n\nexport def first() -> Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))\n\nexport def first_generic() -> Result[Int, Error]: forward(\n    Result[Int, Cause[Int]].error(make())\n)\n"
   }
 }

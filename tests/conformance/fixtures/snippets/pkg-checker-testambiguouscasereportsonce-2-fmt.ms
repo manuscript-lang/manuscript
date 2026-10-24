@@ -7,6 +7,6 @@ type A:
 type B:
     case X(n: Int)
 
-fn f() Int:
+def f() -> Int:
     let a = X(n: 1)
     return 1

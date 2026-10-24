@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/match_bounds_test.go:57 TestBoundedMatchSelection
-fn unknown(s: Shape) Int: return area(s)
+def unknown(s: Shape) -> Int: return area(s)

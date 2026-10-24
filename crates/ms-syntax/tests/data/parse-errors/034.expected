@@ -1,1 +1,1 @@
-error parse 39:19:964 "expected end of statement, found text \x22idle\x22; put one statement per line, and join operands with an operator or a comma inside brackets"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

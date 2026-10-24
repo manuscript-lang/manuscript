@@ -1,10 +1,10 @@
-import stdout from "@std/io.ms"
-import stdin from "@std/io.ms"
-import read_all from "@std/io.ms"
-import {range} from "@std/collections.ms"
-import {parse_float} from "@std/numbers.ms"
-import {abs, ceil, floor, infinity, pow, sqrt} from "@std/math.ms"
-import {from_int} from "@std/bigint.ms"
+from "@std/io.ms" import stdout
+from "@std/io.ms" import stdin
+from "@std/io.ms" import read_all
+from "@std/collections.ms" import range
+from "@std/numbers.ms" import parse_float
+from "@std/math.ms" import abs, ceil, floor, infinity, pow, sqrt
+from "@std/bigint.ms" import from_int
 
 let UPPER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let LOWER_LETTERS = "abcdefghijklmnopqrstuvwxyz"
@@ -93,65 +93,65 @@ type Sheet:
     tarjan_counter: Int
 
 # ---------- small helpers ----------
-fn emit(text: String) Unit:
+def emit(text: String) -> Unit:
     stdout().write(text.concat("\n")).get()
 
-fn char_at(chars: List[String], index: Int) String:
+def char_at(chars: List[String], index: Int) -> String:
     if index >= 0 and index < chars.length():
         return chars.get(index)
 
     return ""
 
-fn join_range(chars: List[String], start: Int, end: Int) String:
+def join_range(chars: List[String], start: Int, end: Int) -> String:
     var text = ""
     let stop = higher_of(0, lower_of(end, chars.length()))
     for i in range(start, stop):
         text = text.concat(chars.get(i))
     return text
 
-fn lower_of(a: Int, b: Int) Int:
+def lower_of(a: Int, b: Int) -> Int:
     if a < b:
         return a
 
     return b
 
-fn higher_of(a: Int, b: Int) Int:
+def higher_of(a: Int, b: Int) -> Int:
     if a > b:
         return a
 
     return b
 
-fn is_letter(c: String) Bool:
+def is_letter(c: String) -> Bool:
     return not c.is_empty() and ASCII_LETTERS.contains(c)
 
-fn is_digit(c: String) Bool:
+def is_digit(c: String) -> Bool:
     return not c.is_empty() and DIGITS.contains(c)
 
-fn is_identifier_char(c: String) Bool:
+def is_identifier_char(c: String) -> Bool:
     return is_letter(c) or is_digit(c) or c == "_" or c == "."
 
-fn is_space(c: String) Bool:
+def is_space(c: String) -> Bool:
     return c == " " or c == "\t"
 
-fn key_of(col: Int, row: Int) Int:
+def key_of(col: Int, row: Int) -> Int:
     return col * 1000 + row
 
-fn column_name(col: Int) String:
+def column_name(col: Int) -> String:
     return UPPER_LETTERS.chars().get(col - 1)
 
-fn letter_index(c: String) Int:
+def letter_index(c: String) -> Int:
     return UPPER_LETTERS.index_of(c.upper()).get(0) + 1
 
-fn cell_name(key: Int) String:
-    return column_name(key / 1000).concat("{key % 1000}")
+def cell_name(key: Int) -> String:
+    return column_name(key / 1000).concat(f"{key % 1000}")
 
-fn order_key(key: Int) Int:
+def order_key(key: Int) -> Int:
     return (key % 1000) * 100 + key / 1000
 
-fn text_after(text: String, count: Int) String:
+def text_after(text: String, count: Int) -> String:
     return text.chars().drop(count).join("")
 
-fn split_words(text: String) List[String]:
+def split_words(text: String) -> List[String]:
     var words: List[String] = []
     var current = ""
 
@@ -167,15 +167,15 @@ fn split_words(text: String) List[String]:
         words.append(current)
     return words
 
-fn split_head(text: String) Split:
+def split_head(text: String) -> Split:
     var head = ""
     var rest: List[String] = []
-    var seen_space = false
+    var seen_space = False
 
     for c in text.chars():
         if not seen_space and is_space(c):
-            seen_space = true
-        else if seen_space:
+            seen_space = True
+        elif seen_space:
             rest.append(c)
         else:
             head = head.concat(c)
@@ -183,62 +183,62 @@ fn split_head(text: String) Split:
     return Split(head: head, rest: rest.join("").trim())
 
 # ---------- values ----------
-fn rank_of(v: Value) Int:
+def rank_of(v: Value) -> Int:
     match v:
-        Empty:
+        case Empty:
             return 0
-        Number(x):
+        case Number(x):
             return 1
-        Text(s):
+        case Text(s):
             return 2
-        Boolean(f):
+        case Boolean(f):
             return 3
-        Failure(code):
+        case Failure(code):
             return 4
 
-fn is_failure(v: Value) Bool:
+def is_failure(v: Value) -> Bool:
     match v:
-        Failure(code):
-            return true
-        _:
-            return false
+        case Failure(code):
+            return True
+        case _:
+            return False
 
-fn is_blank(v: Value) Bool:
+def is_blank(v: Value) -> Bool:
     match v:
-        Empty:
-            return true
-        _:
-            return false
+        case Empty:
+            return True
+        case _:
+            return False
 
-fn is_number(v: Value) Bool:
+def is_number(v: Value) -> Bool:
     match v:
-        Number(x):
-            return true
-        _:
-            return false
+        case Number(x):
+            return True
+        case _:
+            return False
 
-fn is_text(v: Value) Bool:
+def is_text(v: Value) -> Bool:
     match v:
-        Text(s):
-            return true
-        _:
-            return false
+        case Text(s):
+            return True
+        case _:
+            return False
 
-fn is_true(v: Value) Bool:
+def is_true(v: Value) -> Bool:
     match v:
-        Boolean(f):
+        case Boolean(f):
             return f
-        _:
-            return false
+        case _:
+            return False
 
-fn number_of(v: Value) Float:
+def number_of(v: Value) -> Float:
     match v:
-        Number(x):
+        case Number(x):
             return x
-        _:
+        case _:
             return 0.0
 
-fn finite_result(r: Float) Value:
+def finite_result(r: Float) -> Value:
     if r.is_finite():
         return Number(value: r)
 
@@ -246,7 +246,7 @@ fn finite_result(r: Float) Value:
 
 # Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
 # and returns the value only when it is finite.
-fn number_text(text: String) Optional[Float]:
+def number_text(text: String) -> Optional[Float]:
     let chars = text.chars()
     var i = 0
     var sign = ""
@@ -314,68 +314,68 @@ fn number_text(text: String) Optional[Float]:
 
     return some(value)
 
-fn if_empty(text: String, fallback: String) String:
+def if_empty(text: String, fallback: String) -> String:
     if text.is_empty():
         return fallback
 
     return text
 
-fn to_number(v: Value) Value:
+def to_number(v: Value) -> Value:
     match v:
-        Empty:
+        case Empty:
             return Number(value: 0.0)
-        Number(x):
+        case Number(x):
             return Number(value: x)
-        Boolean(f):
+        case Boolean(f):
             if f:
                 return Number(value: 1.0)
 
             return Number(value: 0.0)
-        Text(s):
+        case Text(s):
             let parsed = number_text(s.trim())
             if parsed.is_some():
                 return Number(value: parsed.get(0.0))
 
             return Failure(code: "#VALUE!")
-        Failure(code):
+        case Failure(code):
             return Failure(code: code)
 
-fn truth_value(v: Value) Value:
+def truth_value(v: Value) -> Value:
     match v:
-        Empty:
-            return Boolean(flag: false)
-        Number(x):
+        case Empty:
+            return Boolean(flag: False)
+        case Number(x):
             return Boolean(flag: x != 0.0)
-        Boolean(f):
+        case Boolean(f):
             return Boolean(flag: f)
-        Text(s):
+        case Text(s):
             if s.upper() == "TRUE":
-                return Boolean(flag: true)
+                return Boolean(flag: True)
             if s.upper() == "FALSE":
-                return Boolean(flag: false)
+                return Boolean(flag: False)
 
             return Failure(code: "#VALUE!")
-        Failure(code):
+        case Failure(code):
             return Failure(code: code)
 
 # Display text of a value (also the string form used by &).
-fn text_of(v: Value) String:
+def text_of(v: Value) -> String:
     match v:
-        Empty:
+        case Empty:
             return ""
-        Number(x):
+        case Number(x):
             return format_number(x)
-        Text(s):
+        case Text(s):
             return s
-        Boolean(f):
+        case Boolean(f):
             if f:
                 return "TRUE"
 
             return "FALSE"
-        Failure(code):
+        case Failure(code):
             return code
 
-fn format_number(x: Float) String:
+def format_number(x: Float) -> String:
     if not x.is_finite():
         return "#NUM!"
     if abs(x) >= 1e21:
@@ -396,7 +396,7 @@ fn format_number(x: Float) String:
     return text
 
 # Exact decimal text of a large integer-valued double.
-fn integer_text(x: Float) String:
+def integer_text(x: Float) -> String:
     var y = abs(x)
     var shift = 0
 
@@ -413,18 +413,18 @@ fn integer_text(x: Float) String:
 
     return digits
 
-fn zero_like(v: Value) Value:
+def zero_like(v: Value) -> Value:
     match v:
-        Number(x):
+        case Number(x):
             return Number(value: 0.0)
-        Text(s):
+        case Text(s):
             return Text(value: "")
-        Boolean(f):
-            return Boolean(flag: false)
-        _:
+        case Boolean(f):
+            return Boolean(flag: False)
+        case _:
             return Empty
 
-fn order_of(a: Value, b: Value) Int:
+def order_of(a: Value, b: Value) -> Int:
     let ra = rank_of(a)
     let rb = rank_of(b)
     if ra < rb:
@@ -433,11 +433,11 @@ fn order_of(a: Value, b: Value) Int:
         return 1
 
     match a:
-        Number(x):
+        case Number(x):
             return x.compare(number_of(b))
-        Text(s):
+        case Text(s):
             return sign_of(s.compare(text_of(b)))
-        Boolean(f):
+        case Boolean(f):
             let other = is_true(b)
             if f == other:
                 return 0
@@ -445,10 +445,10 @@ fn order_of(a: Value, b: Value) Int:
                 return 1
 
             return -1
-        _:
+        case _:
             return 0
 
-fn sign_of(n: Int) Int:
+def sign_of(n: Int) -> Int:
     if n < 0:
         return -1
     if n > 0:
@@ -456,7 +456,7 @@ fn sign_of(n: Int) Int:
 
     return 0
 
-fn holds(op: String, c: Int) Bool:
+def holds(op: String, c: Int) -> Bool:
     if op == "=":
         return c == 0
     if op == "<>":
@@ -470,16 +470,16 @@ fn holds(op: String, c: Int) Bool:
 
     return c >= 0
 
-fn is_comparison(op: String) Bool:
+def is_comparison(op: String) -> Bool:
     return op == "=" or op == "<>" or op == "<" or op == "<=" or op == ">" or op == ">="
 
-fn normalize_against(v: Value, other: Value) Value:
+def normalize_against(v: Value, other: Value) -> Value:
     if is_blank(v) and not is_blank(other):
         return zero_like(other)
 
     return v
 
-fn compare_values(op: String, a: Value, b: Value) Value:
+def compare_values(op: String, a: Value, b: Value) -> Value:
     if is_failure(a):
         return a
     if is_failure(b):
@@ -489,7 +489,7 @@ fn compare_values(op: String, a: Value, b: Value) Value:
     let right = normalize_against(b, a)
     return Boolean(flag: holds(op, order_of(left, right)))
 
-fn arithmetic(op: String, x: Float, y: Float) Value:
+def arithmetic(op: String, x: Float, y: Float) -> Value:
     if op == "+":
         return finite_result(x + y)
     if op == "-":
@@ -505,7 +505,7 @@ fn arithmetic(op: String, x: Float, y: Float) Value:
 
     return finite_result(pow(x, y))
 
-fn round_half_away(v: Float) Float:
+def round_half_away(v: Float) -> Float:
     let magnitude = abs(v)
     var whole = floor(magnitude)
     if magnitude - whole >= 0.5:
@@ -515,19 +515,19 @@ fn round_half_away(v: Float) Float:
 
     return whole
 
-fn truncate_toward_zero(v: Float) Float:
+def truncate_toward_zero(v: Float) -> Float:
     if v < 0.0:
         return ceil(v)
 
     return floor(v)
 
-fn clamp_count(amount: Float, limit: Int) Int:
+def clamp_count(amount: Float, limit: Int) -> Int:
     if amount >= limit.to_float():
         return limit
 
     return amount.truncate_to_int().get(0)
 
-fn map_ascii(text: String, to_upper: Bool) String:
+def map_ascii(text: String, to_upper: Bool) -> String:
     var result = ""
 
     for c in text.chars():
@@ -535,50 +535,50 @@ fn map_ascii(text: String, to_upper: Bool) String:
 
         if to_upper and LOWER_LETTERS.contains(c) and not c.is_empty():
             mapped = UPPER_LETTERS.chars().get(LOWER_LETTERS.index_of(c).get(0))
-        else if not to_upper and UPPER_LETTERS.contains(c) and not c.is_empty():
+        elif not to_upper and UPPER_LETTERS.contains(c) and not c.is_empty():
             mapped = LOWER_LETTERS.chars().get(UPPER_LETTERS.index_of(c).get(0))
 
         result = result.concat(mapped)
 
     return result
 
-fn collapse_spaces(text: String) String:
+def collapse_spaces(text: String) -> String:
     var result = ""
-    var pending = false
+    var pending = False
 
     for c in text.chars():
-        if is_space(c) or c == "\n" or c == "\r" or c == "\u{C}" or c == "\u{B}":
-            pending = true
+        if is_space(c) or c == "\n" or c == "\r" or c == f"\u{C}" or c == f"\u{B}":
+            pending = True
         else:
             if pending and not result.is_empty():
                 result = result.concat(" ")
-            pending = false
+            pending = False
             result = result.concat(c)
 
     return result
 
-fn criterion_of(v: Value) Criterion:
+def criterion_of(v: Value) -> Criterion:
     match v:
-        Text(s):
+        case Text(s):
             var op = "="
             var operand_text = s
 
             if s.starts_with(">="):
                 op = ">="
                 operand_text = text_after(s, 2)
-            else if s.starts_with("<="):
+            elif s.starts_with("<="):
                 op = "<="
                 operand_text = text_after(s, 2)
-            else if s.starts_with("<>"):
+            elif s.starts_with("<>"):
                 op = "<>"
                 operand_text = text_after(s, 2)
-            else if s.starts_with(">"):
+            elif s.starts_with(">"):
                 op = ">"
                 operand_text = text_after(s, 1)
-            else if s.starts_with("<"):
+            elif s.starts_with("<"):
                 op = "<"
                 operand_text = text_after(s, 1)
-            else if s.starts_with("="):
+            elif s.starts_with("="):
                 operand_text = text_after(s, 1)
 
             let parsed = number_text(operand_text)
@@ -586,18 +586,18 @@ fn criterion_of(v: Value) Criterion:
                 return Criterion(op: op, operand: Number(value: parsed.get(0.0)))
 
             return Criterion(op: op, operand: Text(value: operand_text))
-        _:
+        case _:
             return Criterion(op: "=", operand: v)
 
 # ---------- addresses and references ----------
-fn parse_address(text: String) Address:
+def parse_address(text: String) -> Address:
     let chars = text.chars()
     var i = 0
-    var col_absolute = false
-    var row_absolute = false
+    var col_absolute = False
+    var row_absolute = False
 
     if char_at(chars, 0) == "$":
-        col_absolute = true
+        col_absolute = True
         i = 1
 
     let letter_start = i
@@ -607,7 +607,7 @@ fn parse_address(text: String) Address:
     let letter_count = i - letter_start
 
     if char_at(chars, i) == "$":
-        row_absolute = true
+        row_absolute = True
         i += 1
 
     let digit_start = i
@@ -624,19 +624,19 @@ fn parse_address(text: String) Address:
     )
     if not valid:
         return Address(
-            col: 0, row: 0, valid: false, col_absolute: false, row_absolute: false
+            col: 0, row: 0, valid: False, col_absolute: False, row_absolute: False
         )
 
     var row = 0
     for j in range(digit_start, i):
         row = row * 10 + DIGITS.index_of(char_at(chars, j)).get(0)
     return Address(
-        col: letter_index(char_at(chars, letter_start)), row: row, valid: true,
+        col: letter_index(char_at(chars, letter_start)), row: row, valid: True,
         col_absolute: col_absolute, row_absolute: row_absolute
     )
 
 # Key of a plain cell argument (no $ markers); 0 when invalid.
-fn cell_key(text: String) Int:
+def cell_key(text: String) -> Int:
     if text.contains("$"):
         return 0
 
@@ -646,14 +646,14 @@ fn cell_key(text: String) Int:
 
     return key_of(address.col, address.row)
 
-fn rect_of(a: Int, b: Int) Rect:
+def rect_of(a: Int, b: Int) -> Rect:
     return Rect(
         left: lower_of(a / 1000, b / 1000), top: lower_of(a % 1000, b % 1000),
         right: higher_of(a / 1000, b / 1000), bottom: higher_of(a % 1000, b % 1000)
     )
 
 # Range argument: one cell or two cells joined by a colon.
-fn range_arg(text: String) Optional[Rect]:
+def range_arg(text: String) -> Optional[Rect]:
     let parts = text.split(":")
 
     if parts.length() == 1:
@@ -674,7 +674,7 @@ fn range_arg(text: String) Optional[Rect]:
     return none
 
 # ---------- tokenizer ----------
-fn reference_end(chars: List[String], start: Int) Int:
+def reference_end(chars: List[String], start: Int) -> Int:
     var i = start
     if char_at(chars, i) == "$":
         i += 1
@@ -700,7 +700,7 @@ fn reference_end(chars: List[String], start: Int) Int:
 
     return i
 
-fn number_end(chars: List[String], start: Int) Int:
+def number_end(chars: List[String], start: Int) -> Int:
     var i = start
     while is_digit(char_at(chars, i)):
         i += 1
@@ -726,7 +726,7 @@ fn number_end(chars: List[String], start: Int) Int:
     return i
 
 # Returns None when the source contains a character that cannot be tokenized.
-fn tokenize(chars: List[String]) Optional[List[Token]]:
+def tokenize(chars: List[String]) -> Optional[List[Token]]:
     var tokens: List[Token] = []
     let n = chars.length()
     var i = 0
@@ -736,7 +736,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
 
         if is_space(c):
             i += 1
-        else if is_digit(c) or (c == "." and is_digit(char_at(chars, i + 1))):
+        elif is_digit(c) or (c == "." and is_digit(char_at(chars, i + 1))):
             let end = number_end(chars, i)
             tokens.append(
                 Token(
@@ -744,10 +744,10 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
                 )
             )
             i = end
-        else if c == "\"":
+        elif c == "\"":
             var end = i + 1
             var content = ""
-            var closed = false
+            var closed = False
 
             while end < n and not closed:
                 let d = chars.get(end)
@@ -757,7 +757,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
                         content = content.concat("\"")
                         end += 2
                     else:
-                        closed = true
+                        closed = True
                         end += 1
                 else:
                     content = content.concat(d)
@@ -768,7 +768,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
 
             tokens.append(Token(kind: "string", text: content, start: i, end: end))
             i = end
-        else if is_letter(c) or c == "_" or c == "$":
+        elif is_letter(c) or c == "_" or c == "$":
             let first_end = reference_end(chars, i)
 
             if first_end > 0:
@@ -788,7 +788,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
                     )
                 )
                 i = end
-            else if is_letter(c) or c == "_":
+            elif is_letter(c) or c == "_":
                 var end = i + 1
                 while is_identifier_char(char_at(chars, end)):
                     end += 1
@@ -801,7 +801,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
                 i = end
             else:
                 return none
-        else if c == "#" and join_range(chars, i, i + 5) == "#REF!":
+        elif c == "#" and join_range(chars, i, i + 5) == "#REF!":
             tokens.append(Token(kind: "error", text: "#REF!", start: i, end: i + 5))
             i += 5
         else:
@@ -810,7 +810,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
             if two == "<>" or two == "<=" or two == ">=":
                 tokens.append(Token(kind: "op", text: two, start: i, end: i + 2))
                 i += 2
-            else if OPERATOR_CHARS.contains(c):
+            elif OPERATOR_CHARS.contains(c):
                 tokens.append(Token(kind: "op", text: c, start: i, end: i + 1))
                 i += 1
             else:
@@ -819,20 +819,20 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
     return some(tokens)
 
 # ---------- parser ----------
-fn span_node(text: String) Node:
+def span_node(text: String) -> Node:
     let parts = text.split(":")
     let a = parse_address(parts.get(0))
     let b = parse_address(parts.get(1))
     if not (a.valid and b.valid):
-        return SpanNode(left: 0, top: 0, right: 0, bottom: 0, valid: false)
+        return SpanNode(left: 0, top: 0, right: 0, bottom: 0, valid: False)
 
     return SpanNode(
         left: lower_of(a.col, b.col), top: lower_of(a.row, b.row),
-        right: higher_of(a.col, b.col), bottom: higher_of(a.row, b.row), valid: true
+        right: higher_of(a.col, b.col), bottom: higher_of(a.row, b.row), valid: True
     )
 
 impl Parser:
-    fn current_op() String:
+    def current_op() -> String:
         if self.pos >= self.tokens.length():
             return ""
 
@@ -842,13 +842,13 @@ impl Parser:
 
         return ""
 
-    fn at_end() Bool:
+    def at_end() -> Bool:
         return self.pos >= self.tokens.length()
 
-    var fn advance() Unit:
+    var def advance() -> Unit:
         self.pos += 1
 
-    var fn parse_comparison() Node:
+    var def parse_comparison() -> Node:
         var left = self.parse_concat()
 
         while is_comparison(self.current_op()):
@@ -860,7 +860,7 @@ impl Parser:
 
         return left
 
-    var fn parse_concat() Node:
+    var def parse_concat() -> Node:
         var left = self.parse_additive()
 
         while self.current_op() == "&":
@@ -871,7 +871,7 @@ impl Parser:
 
         return left
 
-    var fn parse_additive() Node:
+    var def parse_additive() -> Node:
         var left = self.parse_multiplicative()
 
         while self.current_op() == "+" or self.current_op() == "-":
@@ -883,7 +883,7 @@ impl Parser:
 
         return left
 
-    var fn parse_multiplicative() Node:
+    var def parse_multiplicative() -> Node:
         var left = self.parse_unary()
 
         while self.current_op() == "*" or self.current_op() == "/":
@@ -895,7 +895,7 @@ impl Parser:
 
         return left
 
-    var fn parse_unary() Node:
+    var def parse_unary() -> Node:
         let op = self.current_op()
 
         if op == "+" or op == "-":
@@ -906,7 +906,7 @@ impl Parser:
 
         return self.parse_power()
 
-    var fn parse_power() Node:
+    var def parse_power() -> Node:
         let base = self.parse_primary()
 
         if self.current_op() == "^":
@@ -917,7 +917,7 @@ impl Parser:
 
         return base
 
-    var fn parse_exponent() Node:
+    var def parse_exponent() -> Node:
         let op = self.current_op()
 
         if op == "+" or op == "-":
@@ -928,9 +928,9 @@ impl Parser:
 
         return self.parse_power()
 
-    var fn parse_primary() Node:
+    var def parse_primary() -> Node:
         if self.at_end():
-            self.failed = true
+            self.failed = True
             return NumberLit(value: 0.0)
 
         let token = self.tokens.get(self.pos)
@@ -962,9 +962,9 @@ impl Parser:
 
             let upper = token.text.upper()
             if upper == "TRUE":
-                return BoolLit(flag: true)
+                return BoolLit(flag: True)
             if upper == "FALSE":
-                return BoolLit(flag: false)
+                return BoolLit(flag: False)
 
             return UnknownName
 
@@ -974,40 +974,40 @@ impl Parser:
             if self.current_op() == ")":
                 self.advance()
             else:
-                self.failed = true
+                self.failed = True
 
             return inner
 
-        self.failed = true
+        self.failed = True
         return NumberLit(value: 0.0)
 
-    var fn parse_call(name: String) Node:
+    var def parse_call(name: String) -> Node:
         var args: List[Node] = []
 
         if self.current_op() == ")":
             self.advance()
             return CallNode(name: name, args: args)
 
-        var more = true
+        var more = True
 
         while more and not self.failed:
             args.append(self.parse_comparison())
 
             if self.current_op() == ",":
                 self.advance()
-            else if self.current_op() == ")":
+            elif self.current_op() == ")":
                 self.advance()
-                more = false
+                more = False
             else:
-                self.failed = true
-                more = false
+                self.failed = True
+                more = False
 
         return CallNode(name: name, args: args)
 
 # Parses formula source (the text after '='); None means #PARSE!.
-fn parse_formula(source: List[String]) Optional[Node]:
+def parse_formula(source: List[String]) -> Optional[Node]:
     if let tokens = tokenize(source):
-        var parser = Parser(tokens: tokens, pos: 0, failed: false)
+        var parser = Parser(tokens: tokens, pos: 0, failed: False)
         let node = parser.parse_comparison()
         if parser.failed or parser.pos != parser.tokens.length():
             return none
@@ -1018,36 +1018,36 @@ fn parse_formula(source: List[String]) Optional[Node]:
 
 impl Collector:
     # Gathers the cells a formula depends on; ROW and COLUMN arguments are not dependencies.
-    var fn visit(node: Node) Unit:
+    var def visit(node: Node) -> Unit:
         match node:
-            RefNode(col, row, valid):
+            case RefNode(col, row, valid):
                 if valid:
                     self.keys.add(key_of(col, row))
-            SpanNode(left, top, right, bottom, valid):
+            case SpanNode(left, top, right, bottom, valid):
                 if valid:
                     for r in range(top, bottom + 1):
                         for c in range(left, right + 1):
                             self.keys.add(key_of(c, r))
-            UnaryNode(op, operand):
+            case UnaryNode(op, operand):
                 self.visit(operand)
-            BinaryNode(op, left, right):
+            case BinaryNode(op, left, right):
                 self.visit(left)
                 self.visit(right)
-            CallNode(name, args):
+            case CallNode(name, args):
                 let upper = name.upper()
                 if upper != "ROW" and upper != "COLUMN":
                     for arg in args:
                         self.visit(arg)
-            _:
+            case _:
                 return
 
-fn precedents_of(node: Node) List[Int]:
+def precedents_of(node: Node) -> List[Int]:
     var collector = Collector(keys: Set[Int]())
     collector.visit(node)
     return collector.keys.values()
 
 # Shifts a formula (raw text starting with '=') for copy; tokens keep their text.
-fn shift_formula(raw: String, column_shift: Int, row_shift: Int) String:
+def shift_formula(raw: String, column_shift: Int, row_shift: Int) -> String:
     let source = raw.chars().drop(1)
 
     if let tokens = tokenize(source):
@@ -1059,7 +1059,7 @@ fn shift_formula(raw: String, column_shift: Int, row_shift: Int) String:
 
             if token.kind == "reference":
                 out = out.concat(shift_reference(token.text, column_shift, row_shift))
-            else if token.kind == "span":
+            elif token.kind == "span":
                 out = out.concat(shift_span(token.text, column_shift, row_shift))
             else:
                 out = out.concat(join_range(source, token.start, token.end))
@@ -1071,7 +1071,11 @@ fn shift_formula(raw: String, column_shift: Int, row_shift: Int) String:
 
     return raw
 
-fn shift_address(address: Address, column_shift: Int, row_shift: Int) Optional[String]:
+def shift_address(
+    address: Address,
+    column_shift: Int,
+    row_shift: Int
+) -> Optional[String]:
     var col = address.col
     if not address.col_absolute:
         col = address.col + column_shift
@@ -1088,9 +1092,9 @@ fn shift_address(address: Address, column_shift: Int, row_shift: Int) Optional[S
     text = text.concat(column_name(col))
     if address.row_absolute:
         text = text.concat("$")
-    return some(text.concat("{row}"))
+    return some(text.concat(f"{row}"))
 
-fn shift_reference(text: String, column_shift: Int, row_shift: Int) String:
+def shift_reference(text: String, column_shift: Int, row_shift: Int) -> String:
     let address = parse_address(text)
     if not address.valid:
         return text
@@ -1101,7 +1105,7 @@ fn shift_reference(text: String, column_shift: Int, row_shift: Int) String:
 
     return moved.get("")
 
-fn shift_span(text: String, column_shift: Int, row_shift: Int) String:
+def shift_span(text: String, column_shift: Int, row_shift: Int) -> String:
     let parts = text.split(":")
     var first = parts.get(0)
     var second = parts.get(1)
@@ -1126,13 +1130,13 @@ fn shift_span(text: String, column_shift: Int, row_shift: Int) String:
     return first.concat(":").concat(second)
 
 # ---------- CSV ----------
-fn parse_csv(block: List[String]) List[List[String]]:
+def parse_csv(block: List[String]) -> List[List[String]]:
     var records: List[List[String]] = []
     var fields: List[String] = []
     var field = ""
-    var quoted = false
-    var has_chars = false
-    var skip_next = false
+    var quoted = False
+    var has_chars = False
+    var skip_next = False
     let chars = block.join("\n").chars()
     let n = chars.length()
 
@@ -1140,30 +1144,30 @@ fn parse_csv(block: List[String]) List[List[String]]:
         let c = chars.get(i)
 
         if skip_next:
-            skip_next = false
-        else if quoted:
+            skip_next = False
+        elif quoted:
             if c == "\"":
                 if char_at(chars, i + 1) == "\"":
                     field = field.concat("\"")
-                    skip_next = true
+                    skip_next = True
                 else:
-                    quoted = false
+                    quoted = False
             else:
                 field = field.concat(c)
-        else if c == "\n":
+        elif c == "\n":
             if has_chars:
                 fields.append(field)
                 records.append(fields)
 
             fields = []
             field = ""
-            has_chars = false
-        else if c != "\r":
-            has_chars = true
+            has_chars = False
+        elif c != "\r":
+            has_chars = True
 
             if c == "\"":
-                quoted = true
-            else if c == ",":
+                quoted = True
+            elif c == ",":
                 fields.append(field)
                 field = ""
             else:
@@ -1175,10 +1179,10 @@ fn parse_csv(block: List[String]) List[List[String]]:
 
     return records
 
-fn blank_cell() Cell:
-    return Cell(raw: "", value: Empty, ast: none, is_formula: false, precedents: [])
+def blank_cell() -> Cell:
+    return Cell(raw: "", value: Empty, ast: none, is_formula: False, precedents: [])
 
-fn with_value(cell: Cell, value: Value) Cell:
+def with_value(cell: Cell, value: Value) -> Cell:
     let ast = cell.ast.clone().clone()
     let precedents = cell.precedents.clone()
     return Cell(
@@ -1187,7 +1191,7 @@ fn with_value(cell: Cell, value: Value) Cell:
     )
 
 # Value of a constant cell, from its trimmed raw text.
-fn constant_value(text: String) Value:
+def constant_value(text: String) -> Value:
     if text.starts_with("'"):
         return Text(value: text_after(text, 1))
 
@@ -1195,13 +1199,13 @@ fn constant_value(text: String) Value:
     if parsed.is_some():
         return Number(value: parsed.get(0.0))
     if text.upper() == "TRUE":
-        return Boolean(flag: true)
+        return Boolean(flag: True)
     if text.upper() == "FALSE":
-        return Boolean(flag: false)
+        return Boolean(flag: False)
 
     return Text(value: text)
 
-fn csv_field(text: String) String:
+def csv_field(text: String) -> String:
     if (
         text.contains(",")
         or text.contains("\"")
@@ -1216,36 +1220,36 @@ fn csv_field(text: String) String:
 
 # ---------- sheet ----------
 impl Sheet:
-    fn value_at(key: Int) Value:
+    def value_at(key: Int) -> Value:
         if let cell = self.cells.get(key):
             return cell.value
 
         return Empty
 
-    fn raw_at(key: Int) String:
+    def raw_at(key: Int) -> String:
         if let cell = self.cells.get(key):
             return cell.raw
 
         return ""
 
-    fn display_at(key: Int) String:
+    def display_at(key: Int) -> String:
         return text_of(self.value_at(key))
 
-    fn is_formula_at(key: Int) Bool:
+    def is_formula_at(key: Int) -> Bool:
         if let cell = self.cells.get(key):
             return cell.is_formula
 
-        return false
+        return False
 
-    fn dependents_of(key: Int) Set[Int]:
+    def dependents_of(key: Int) -> Set[Int]:
         return self.dependents.get(key).get(Set[Int]())
 
-    var fn link(from: Int, to: Int) Unit:
+    var def link(from: Int, to: Int) -> Unit:
         var deps = self.dependents_of(from)
         deps.add(to)
         self.dependents.add(from, deps)
 
-    var fn unlink(key: Int) Unit:
+    var def unlink(key: Int) -> Unit:
         if let old = self.cells.get(key):
             if old.is_formula:
                 for p in old.precedents:
@@ -1254,7 +1258,7 @@ impl Sheet:
                     self.dependents.add(p, deps)
 
     # Stores a cell from its raw VALUE text without recalculating.
-    var fn assign(key: Int, raw: String) Unit:
+    var def assign(key: Int, raw: String) -> Unit:
         self.unlink(key)
 
         let text = raw.trim()
@@ -1274,7 +1278,7 @@ impl Sheet:
                 self.cells.add(
                     key,
                     Cell(
-                        raw: text, value: Empty, ast: parsed, is_formula: true,
+                        raw: text, value: Empty, ast: parsed, is_formula: True,
                         precedents: precedents
                     )
                 )
@@ -1287,41 +1291,41 @@ impl Sheet:
                     key,
                     Cell(
                         raw: text, value: constant_value(text), ast: none,
-                        is_formula: false, precedents: []
+                        is_formula: False, precedents: []
                     )
                 )
             )
 
-    fn eval(node: Node) Value:
+    def eval(node: Node) -> Value:
         match node:
-            NumberLit(value):
+            case NumberLit(value):
                 if value.is_finite():
                     return Number(value: value)
 
                 return Failure(code: "#NUM!")
-            TextLit(text):
+            case TextLit(text):
                 return Text(value: text)
-            BoolLit(flag):
+            case BoolLit(flag):
                 return Boolean(flag: flag)
-            ErrorLit(code):
+            case ErrorLit(code):
                 return Failure(code: code)
-            RefNode(col, row, valid):
+            case RefNode(col, row, valid):
                 if valid:
                     return self.value_at(key_of(col, row))
 
                 return Failure(code: "#REF!")
-            SpanNode(left, top, right, bottom, valid):
+            case SpanNode(left, top, right, bottom, valid):
                 return Failure(code: "#VALUE!")
-            UnknownName:
+            case UnknownName:
                 return Failure(code: "#NAME?")
-            UnaryNode(op, operand):
+            case UnaryNode(op, operand):
                 return self.unary(op, operand)
-            BinaryNode(op, left, right):
+            case BinaryNode(op, left, right):
                 return self.binary(op, left, right)
-            CallNode(name, args):
+            case CallNode(name, args):
                 return self.call(name, args)
 
-    fn unary(op: String, operand: Node) Value:
+    def unary(op: String, operand: Node) -> Value:
         let x = to_number(self.eval(operand))
         if is_failure(x):
             return x
@@ -1330,7 +1334,7 @@ impl Sheet:
 
         return x
 
-    fn binary(op: String, left: Node, right: Node) Value:
+    def binary(op: String, left: Node, right: Node) -> Value:
         let a = self.eval(left)
         let b = self.eval(right)
 
@@ -1356,16 +1360,16 @@ impl Sheet:
         return arithmetic(op, number_of(x), number_of(y))
 
     # Items of the aggregate arguments: range cells are ranged items, anything else is a direct item.
-    fn items_of(args: List[Node]) List[Item]:
+    def items_of(args: List[Node]) -> List[Item]:
         var items: List[Item] = []
 
         for arg in args:
             let info = span_info(arg.clone())
 
             if info.state == 0:
-                items.append(Item(value: self.eval(arg), ranged: false))
-            else if info.state == 1:
-                items.append(Item(value: Failure(code: "#REF!"), ranged: false))
+                items.append(Item(value: self.eval(arg), ranged: False))
+            elif info.state == 1:
+                items.append(Item(value: Failure(code: "#REF!"), ranged: False))
             else:
                 for r in range(info.rect.top, info.rect.bottom + 1):
                     for c in range(info.rect.left, info.rect.right + 1):
@@ -1374,13 +1378,13 @@ impl Sheet:
                                 value: self.value_at(
                                     key_of(c, r)
                                 ),
-                                ranged: true
+                                ranged: True
                             )
                         )
 
         return items
 
-    fn aggregate(kind: String, args: List[Node]) Value:
+    def aggregate(kind: String, args: List[Node]) -> Value:
         if args.is_empty():
             return Failure(code: "#VALUE!")
 
@@ -1440,14 +1444,16 @@ impl Sheet:
 
             return Number(value: best)
 
-        let sorted = numbers.sorted(fn(a: Float, b: Float) Int: return a.compare(b))
+        let sorted = numbers.sorted(
+            lambda (a: Float, b: Float) -> Int: return a.compare(b)
+        )
         let count = sorted.length()
         if count % 2 == 1:
             return Number(value: sorted.get(count / 2))
 
         return finite_result((sorted.get(count / 2 - 1) + sorted.get(count / 2)) / 2.0)
 
-    fn count_items(kind: String, args: List[Node]) Value:
+    def count_items(kind: String, args: List[Node]) -> Value:
         if args.is_empty():
             return Failure(code: "#VALUE!")
 
@@ -1457,12 +1463,12 @@ impl Sheet:
             if kind == "COUNT":
                 if is_number(item.value):
                     count += 1
-            else if not is_blank(item.value):
+            elif not is_blank(item.value):
                 count += 1
 
         return Number(value: count.to_float())
 
-    fn logic(is_and: Bool, args: List[Node]) Value:
+    def logic(is_and: Bool, args: List[Node]) -> Value:
         if args.is_empty():
             return Failure(code: "#VALUE!")
 
@@ -1473,7 +1479,7 @@ impl Sheet:
             if is_failure(item.value):
                 return item.value
 
-            var skip = false
+            var skip = False
             if item.ranged:
                 skip = is_text(item.value) or is_blank(item.value)
 
@@ -1494,26 +1500,26 @@ impl Sheet:
 
         return Boolean(flag: result)
 
-    fn row_or_column(by_row: Bool, node: Node) Value:
+    def row_or_column(by_row: Bool, node: Node) -> Value:
         match node:
-            RefNode(col, row, valid):
+            case RefNode(col, row, valid):
                 if not valid:
                     return Failure(code: "#REF!")
                 if by_row:
                     return Number(value: row.to_float())
 
                 return Number(value: col.to_float())
-            SpanNode(left, top, right, bottom, valid):
+            case SpanNode(left, top, right, bottom, valid):
                 if not valid:
                     return Failure(code: "#REF!")
                 if by_row:
                     return Number(value: top.to_float())
 
                 return Number(value: left.to_float())
-            _:
+            case _:
                 return Failure(code: "#VALUE!")
 
-    fn index_call(args: List[Node]) Value:
+    def index_call(args: List[Node]) -> Value:
         if args.length() < 2 or args.length() > 3:
             return Failure(code: "#VALUE!")
 
@@ -1539,7 +1545,7 @@ impl Sheet:
                 return second
 
             col_index = floor(number_of(second))
-        else if height == 1:
+        elif height == 1:
             col_index = row_index
             row_index = 1.0
 
@@ -1555,7 +1561,7 @@ impl Sheet:
         let col = rect.left + col_index.truncate_to_int().get(0) - 1
         return self.value_at(key_of(col, row))
 
-    fn countif_call(args: List[Node]) Value:
+    def countif_call(args: List[Node]) -> Value:
         if args.length() != 2:
             return Failure(code: "#VALUE!")
 
@@ -1579,12 +1585,12 @@ impl Sheet:
                 if rank_of(v) == rank_of(criterion.operand):
                     if holds(criterion.op, order_of(v, criterion.operand)):
                         count += 1
-                else if criterion.op == "<>" and not is_blank(v):
+                elif criterion.op == "<>" and not is_blank(v):
                     count += 1
 
         return Number(value: count.to_float())
 
-    fn call(name: String, args: List[Node]) Value:
+    def call(name: String, args: List[Node]) -> Value:
         let fname = name.upper()
         if (
             fname == "SUM"
@@ -1622,7 +1628,7 @@ impl Sheet:
             if args.length() == 3:
                 return self.eval(args.get(2).clone())
 
-            return Boolean(flag: false)
+            return Boolean(flag: False)
 
         if fname == "IFERROR":
             if args.length() != 2:
@@ -1734,9 +1740,9 @@ impl Sheet:
             if fname == "LEN":
                 return Number(value: text.scalar_length().to_float())
             if fname == "UPPER":
-                return Text(value: map_ascii(text, true))
+                return Text(value: map_ascii(text, True))
             if fname == "LOWER":
-                return Text(value: map_ascii(text, false))
+                return Text(value: map_ascii(text, False))
 
             return Text(value: collapse_spaces(text))
 
@@ -1864,7 +1870,7 @@ impl Sheet:
 
         return Failure(code: "#NAME?")
 
-    fn compute(key: Int) Value:
+    def compute(key: Int) -> Value:
         if let cell = self.cells.get(key):
             if let ast = cell.ast.clone():
                 let v = self.eval(ast.clone())
@@ -1877,12 +1883,12 @@ impl Sheet:
 
         return Empty
 
-    var fn store_value(key: Int, value: Value) Unit:
+    var def store_value(key: Int, value: Value) -> Unit:
         if self.cells.contains(key):
             let cell = self.cells.get(key).get(blank_cell()).clone()
             self.cells.add(key, with_value(cell, value))
 
-    fn successors(key: Int) List[Int]:
+    def successors(key: Int) -> List[Int]:
         var result: List[Int] = []
         if let cell = self.cells.get(key):
             for p in cell.precedents:
@@ -1890,19 +1896,19 @@ impl Sheet:
                     result.append(p)
         return result
 
-    fn has_self_loop(key: Int) Bool:
+    def has_self_loop(key: Int) -> Bool:
         if let cell = self.cells.get(key):
             return cell.precedents.contains(key)
 
-        return false
+        return False
 
-    fn low_of(key: Int) Int:
+    def low_of(key: Int) -> Int:
         return self.tarjan_low.get(key).get(0)
 
-    fn index_of_node(key: Int) Int:
+    def index_of_node(key: Int) -> Int:
         return self.tarjan_index.get(key).get(0)
 
-    var fn strong_connect(key: Int) Unit:
+    var def strong_connect(key: Int) -> Unit:
         self.tarjan_index.add(key, self.tarjan_counter)
         self.tarjan_low.add(key, self.tarjan_counter)
         self.tarjan_counter += 1
@@ -1913,7 +1919,7 @@ impl Sheet:
             if not self.tarjan_index.contains(w):
                 self.strong_connect(w)
                 self.tarjan_low.add(key, lower_of(self.low_of(key), self.low_of(w)))
-            else if self.tarjan_on.contains(w):
+            elif self.tarjan_on.contains(w):
                 (
                     self
                     .tarjan_low
@@ -1929,7 +1935,7 @@ impl Sheet:
             self.emit_component(key)
 
     # Tarjan emits components after their precedents, so evaluation order is correct.
-    var fn emit_component(key: Int) Unit:
+    var def emit_component(key: Int) -> Unit:
         let position = self.tarjan_stack.index_of(key).get(0)
         let members = self.tarjan_stack.drop(position)
         self.tarjan_stack = self.tarjan_stack.take(position)
@@ -1943,7 +1949,7 @@ impl Sheet:
             self.store_value(key, self.compute(key))
 
     # Recalculates everything affected by the changed cells; returns the number of affected formulas.
-    var fn recalc(changed: List[Int]) Int:
+    var def recalc(changed: List[Int]) -> Int:
         var visited = Set[Int]()
         var queue: List[Int] = []
 
@@ -1981,33 +1987,33 @@ impl Sheet:
         self.evals += count
         return count
 
-    var fn execute(command: String, rest: String, block: List[String]) Unit:
+    var def execute(command: String, rest: String, block: List[String]) -> Unit:
         if command == "set":
             self.set_command(rest)
-        else if command == "clear":
+        elif command == "clear":
             self.clear_command(rest)
-        else if command == "get":
+        elif command == "get":
             self.get_command(rest)
-        else if command == "show":
+        elif command == "show":
             self.show_command(rest)
-        else if command == "print":
+        elif command == "print":
             self.print_command(rest)
-        else if command == "export":
+        elif command == "export":
             self.export_command(rest)
-        else if command == "copy":
+        elif command == "copy":
             self.copy_command(rest)
-        else if command == "import":
+        elif command == "import":
             self.import_command(rest, block)
-        else if command == "precedents":
+        elif command == "precedents":
             self.precedents_command(rest)
-        else if command == "dependents":
+        elif command == "dependents":
             self.dependents_command(rest)
-        else if command == "stats":
+        elif command == "stats":
             self.stats_command()
         else:
-            emit("error: unknown command '{command}'")
+            emit(f"error: unknown command '{command}'")
 
-    var fn set_command(rest: String) Unit:
+    var def set_command(rest: String) -> Unit:
         if rest.is_empty():
             emit("error: usage: set CELL VALUE")
             return
@@ -2016,13 +2022,13 @@ impl Sheet:
         let key = cell_key(split.head)
 
         if key == 0:
-            emit("error: bad cell reference '{split.head}'")
+            emit(f"error: bad cell reference '{split.head}'")
             return
 
         self.assign(key, split.rest)
-        emit("recalc {self.recalc([key])}")
+        emit(f"recalc {self.recalc([key])}")
 
-    var fn clear_command(rest: String) Unit:
+    var def clear_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2032,13 +2038,13 @@ impl Sheet:
         let key = cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         self.assign(key, "")
-        emit("recalc {self.recalc([key])}")
+        emit(f"recalc {self.recalc([key])}")
 
-    fn get_command(rest: String) Unit:
+    def get_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2048,7 +2054,7 @@ impl Sheet:
         let key = cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         if self.cells.contains(key):
@@ -2056,7 +2062,7 @@ impl Sheet:
         else:
             emit("(empty)")
 
-    fn show_command(rest: String) Unit:
+    def show_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2066,21 +2072,21 @@ impl Sheet:
         let key = cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         let name = cell_name(key)
 
         if let cell = self.cells.get(key):
             if cell.is_formula:
-                emit("{name}: {cell.raw} => {self.display_at(key)}")
+                emit(f"{name}: {cell.raw} => {self.display_at(key)}")
             else:
-                emit("{name}: {cell.raw}")
+                emit(f"{name}: {cell.raw}")
         else:
-            emit("{name}: (empty)")
+            emit(f"{name}: (empty)")
 
     # Bounding rectangle of the non-empty cells; None when the sheet is empty.
-    fn used_rect() Optional[Rect]:
+    def used_rect() -> Optional[Rect]:
         var max_col = 0
         var max_row = 0
 
@@ -2093,7 +2099,7 @@ impl Sheet:
 
         return some(Rect(left: 1, top: 1, right: max_col, bottom: max_row))
 
-    fn print_command(rest: String) Unit:
+    def print_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() > 1 or (words.length() == 1 and words.get(0) == "formulas"):
@@ -2106,7 +2112,7 @@ impl Sheet:
             rect = range_arg(words.get(0))
 
             if rect.is_none():
-                emit("error: bad range '{words.get(0)}'")
+                emit(f"error: bad range '{words.get(0)}'")
                 return
 
         if rect.is_none():
@@ -2121,12 +2127,12 @@ impl Sheet:
                 fields.append(self.display_at(key_of(c, r)))
             emit(fields.join(" | "))
 
-    fn export_command(rest: String) Unit:
+    def export_command(rest: String) -> Unit:
         let words = split_words(rest)
-        var formulas = false
-        var mode_seen = false
+        var formulas = False
+        var mode_seen = False
         var range_text = ""
-        var range_seen = false
+        var range_seen = False
 
         if words.length() > 2:
             emit("error: usage: export [formulas] [RANGE]")
@@ -2138,14 +2144,14 @@ impl Sheet:
                     emit("error: usage: export [formulas] [RANGE]")
                     return
 
-                mode_seen = true
+                mode_seen = True
                 formulas = word == "formulas"
             else:
                 if range_seen:
                     emit("error: usage: export [formulas] [RANGE]")
                     return
 
-                range_seen = true
+                range_seen = True
                 range_text = word
 
         var rect = self.used_rect()
@@ -2154,7 +2160,7 @@ impl Sheet:
             rect = range_arg(range_text)
 
             if rect.is_none():
-                emit("error: bad range '{range_text}'")
+                emit(f"error: bad range '{range_text}'")
                 return
 
         if rect.is_none():
@@ -2176,7 +2182,7 @@ impl Sheet:
 
             emit(fields.join(","))
 
-    var fn copy_command(rest: String) Unit:
+    var def copy_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 2:
@@ -2186,13 +2192,13 @@ impl Sheet:
         let source = cell_key(words.get(0))
 
         if source == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         let target = range_arg(words.get(1))
 
         if target.is_none():
-            emit("error: bad range '{words.get(1)}'")
+            emit(f"error: bad range '{words.get(1)}'")
             return
 
         let area = target.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
@@ -2211,9 +2217,9 @@ impl Sheet:
                 self.assign(destination, text)
                 keys.append(destination)
 
-        emit("recalc {self.recalc(keys)}")
+        emit(f"recalc {self.recalc(keys)}")
 
-    var fn import_command(rest: String, block: List[String]) Unit:
+    var def import_command(rest: String, block: List[String]) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2223,7 +2229,7 @@ impl Sheet:
         let origin = cell_key(words.get(0))
 
         if origin == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         let records = parse_csv(block)
@@ -2250,9 +2256,9 @@ impl Sheet:
                 keys.append(destination)
 
         let count = self.recalc(keys)
-        emit("imported {rows} rows, {columns} columns; recalc {count}")
+        emit(f"imported {rows} rows, {columns} columns; recalc {count}")
 
-    fn precedents_command(rest: String) Unit:
+    def precedents_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2262,7 +2268,7 @@ impl Sheet:
         let key = cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         var found: List[Int] = []
@@ -2271,7 +2277,7 @@ impl Sheet:
                 found = cell.precedents.clone()
         emit(self.names_or_none(found))
 
-    fn dependents_command(rest: String) Unit:
+    def dependents_command(rest: String) -> Unit:
         let words = split_words(rest)
 
         if words.length() != 1:
@@ -2281,7 +2287,7 @@ impl Sheet:
         let key = cell_key(words.get(0))
 
         if key == 0:
-            emit("error: bad cell reference '{words.get(0)}'")
+            emit(f"error: bad cell reference '{words.get(0)}'")
             return
 
         var seen = Set[Int]()
@@ -2299,12 +2305,12 @@ impl Sheet:
 
         emit(self.names_or_none(seen.values()))
 
-    fn names_or_none(keys: List[Int]) String:
+    def names_or_none(keys: List[Int]) -> String:
         if keys.is_empty():
             return "(none)"
 
         let sorted = keys.sorted(
-            fn(a: Int, b: Int) Int: return order_key(a).compare(
+            lambda (a: Int, b: Int) -> Int: return order_key(a).compare(
                 order_key(b)
             )
         )
@@ -2313,17 +2319,17 @@ impl Sheet:
             names.append(cell_name(k))
         return names.join(" ")
 
-    fn stats_command() Unit:
+    def stats_command() -> Unit:
         var formulas = 0
         for k in self.cells.keys():
             if self.is_formula_at(k):
                 formulas += 1
-        emit("cells {self.cells.length()} formulas {formulas} evals {self.evals}")
+        emit(f"cells {self.cells.length()} formulas {formulas} evals {self.evals}")
 
 # Classifies a function argument: 0 not a range, 1 range with an invalid corner, 2 valid range.
-fn span_info(node: Node) SpanInfo:
+def span_info(node: Node) -> SpanInfo:
     match node:
-        SpanNode(left, top, right, bottom, valid):
+        case SpanNode(left, top, right, bottom, valid):
             if valid:
                 return SpanInfo(
                     state: 2,
@@ -2333,10 +2339,10 @@ fn span_info(node: Node) SpanInfo:
                 )
 
             return SpanInfo(state: 1, rect: Rect(left: 0, top: 0, right: 0, bottom: 0))
-        _:
+        case _:
             return SpanInfo(state: 0, rect: Rect(left: 0, top: 0, right: 0, bottom: 0))
 
-export fn main() Int:
+export def main() -> Int:
     let data = read_all(stdin(), none).get()
     let lines = data.decode_utf8().get("").lines()
     var sheet = Sheet(
@@ -2354,7 +2360,7 @@ export fn main() Int:
         let trimmed = line.trim()
 
         if not trimmed.is_empty() and not trimmed.starts_with("#"):
-            emit("> {line.trim_end()}")
+            emit(f"> {line.trim_end()}")
 
             let split = split_head(trimmed)
             var block: List[String] = []

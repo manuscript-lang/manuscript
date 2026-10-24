@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Failure:\n    case NotFound\n    case Denied(reason: String)\n\nimpl Error for Failure:\n    fn message() String: \"f\"\n\nfn failure_code(cause: Failure) Int:\n    match cause:\n        NotFound: return 1\n        Denied(_): return 2\n\nfn classify(result: Result[Int, Failure]) Int:\n    match result:\n        error(cause): return failure_code(cause)\n        ok(value): return value\n"
+    "fmt": "type Failure:\n    case NotFound\n    case Denied(reason: String)\n\nimpl Error for Failure:\n    def message() -> String: \"f\"\n\ndef failure_code(cause: Failure) -> Int:\n    match cause:\n        case NotFound: return 1\n        case Denied(_): return 2\n\ndef classify(result: Result[Int, Failure]) -> Int:\n    match result:\n        case error(cause): return failure_code(cause)\n        case ok(value): return value\n"
   }
 }

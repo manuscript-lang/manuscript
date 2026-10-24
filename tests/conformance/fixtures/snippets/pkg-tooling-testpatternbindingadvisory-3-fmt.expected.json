@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(value: Optional[Int]) Int:\n    match value:\n        some(Int): return Int\n        none: return 0\n"
+    "fmt": "def use(value: Optional[Int]) -> Int:\n    match value:\n        case some(Int): return Int\n        case none: return 0\n"
   }
 }

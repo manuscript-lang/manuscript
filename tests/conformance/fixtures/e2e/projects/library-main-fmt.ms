@@ -1,30 +1,30 @@
 # conform: tags=control-flow,faults,formatter,generics,match,modules,parser,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import control from "@std/process.ms"
-import arguments from "@std/process.ms"
-import entropy from "@std/random.ms"
-import filesystem from "@std/fs.ms"
-import system from "@std/process.ms"
-import wall_clock from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
-import secure_int from "@std/random.ms"
-import parse_timestamp from "@std/time.ms"
-import posix from "@std/fs.ms"
-import win32 from "@std/fs.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/process.ms" import control
+from "@std/process.ms" import arguments
+from "@std/random.ms" import entropy
+from "@std/fs.ms" import filesystem
+from "@std/process.ms" import system
+from "@std/time.ms" import wall_clock
+from "@std/random.ms" import uuid_v4
+from "@std/random.ms" import secure_int
+from "@std/time.ms" import parse_timestamp
+from "@std/fs.ms" import posix
+from "@std/fs.ms" import win32
 
-fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
+def common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
     match result:
-        ok(value):
+        case ok(value):
             return ok(value)
-        error(cause):
+        case error(cause):
             return error(Error(cause))
 
-fn exercise(path: String) Result[Unit, Error]:
+def exercise(path: String) -> Result[Unit, Error]:
     let written = try common_result(
         result: filesystem().write_file(
-            path: path, data: "hello", replace: false
+            path: path, data: "hello", replace: False
         )
     )
     try expect_false(
@@ -36,7 +36,7 @@ fn exercise(path: String) Result[Unit, Error]:
     )
 
     let info = try common_result(
-        result: filesystem().stat(path: path, follow_links: true)
+        result: filesystem().stat(path: path, follow_links: True)
     )
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
@@ -58,9 +58,9 @@ fn exercise(path: String) Result[Unit, Error]:
     )
     (system().info().cpu_count > 0) | try expect_true
 
-    with file = try common_result(
+    with try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
-    ):
+    ) as file:
         let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
         try expect_false(
             not (
@@ -74,12 +74,12 @@ fn exercise(path: String) Result[Unit, Error]:
         let resized = try common_result(result: file.truncate(size: 3))
         (try common_result(result: file.stat())).size | try expect_equal(3)
 
-    with watcher = try common_result(
+    with try common_result(
         result: filesystem().watch_native(
-            path: path, recursive: false, max_entries: 4, max_events: 16,
+            path: path, recursive: False, max_entries: 4, max_events: 16,
             overflow: "error"
         )
-    ):
+    ) as watcher:
         let appended = try common_result(
             result: filesystem().append_file(path: path, data: "!")
         )
@@ -107,16 +107,16 @@ fn exercise(path: String) Result[Unit, Error]:
     (memory.heap_system > 0) | try expect_true
 
     let removed = try common_result(
-        result: filesystem().remove(path: path, recursive: false)
+        result: filesystem().remove(path: path, recursive: False)
     )
-    return ok(unit)
+    return ok(())
 
-export fn main() Int:
+export def main() -> Int:
     let path = arguments().get(index: 0, default: "")
     if path == "": return 2
 
     match exercise(path: path):
-        ok(_):
+        case ok(_):
             return 0
-        error(_):
+        case error(_):
             return 1

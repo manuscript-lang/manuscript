@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_layout_test.go:448 TestFormatExpressionLayouts
-fn work(value: Bool = active and allowed and remaining > 0) Bool: return value
+def work(value: Bool = active and allowed and remaining > 0) -> Bool: return value

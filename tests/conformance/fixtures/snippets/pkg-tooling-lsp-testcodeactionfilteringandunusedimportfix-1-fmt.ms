@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/features_test.go:160 TestCodeActionFilteringAndUnusedImportFix
-import ListBuilder from "@std/collections.ms"
+from "@std/collections.ms" import ListBuilder
 
-fn answer() Int:
+def answer() -> Int:
     return 42

@@ -3,92 +3,312 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "collections.ms::list search callbacks empty identities and folding",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "collections.ms::list mutation and clone keep separate storage",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "collections.ms::maps preserve insertion order and overwrite duplicate keys",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "collections.ms::set algebra removes duplicates and preserves values",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "collections.ms::collection constructors validate bounds and exact limits",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "collections.ms::stepped ranges handle full-width spans and minimum negative steps",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "collections.ms::range counts up by one",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "collections.ms::for over range counts without a list",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "collections.ms::huge sizes return LimitExceeded instead of exhausting memory",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "collections.ms::collection builders freeze all accumulated values",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "collections.ms::imported map add interoperates with with_entry",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "collections.ms::flatten concatenates lists",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 12,
-        "selected": 12,
-        "passed": 12,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN collections.ms::list search callbacks empty identities and folding\nPASS collections.ms::list search callbacks empty identities and folding\nRUN collections.ms::list mutation and clone keep separate storage\nPASS collections.ms::list mutation and clone keep separate storage\nRUN collections.ms::maps preserve insertion order and overwrite duplicate keys\nPASS collections.ms::maps preserve insertion order and overwrite duplicate keys\nRUN collections.ms::set algebra removes duplicates and preserves values\nPASS collections.ms::set algebra removes duplicates and preserves values\nRUN collections.ms::collection constructors validate bounds and exact limits\nPASS collections.ms::collection constructors validate bounds and exact limits\nRUN collections.ms::stepped ranges handle full-width spans and minimum negative steps\nPASS collections.ms::stepped ranges handle full-width spans and minimum negative steps\nRUN collections.ms::range counts up by one\nPASS collections.ms::range counts up by one\nRUN collections.ms::for over range counts without a list\nPASS collections.ms::for over range counts without a list\nRUN collections.ms::huge sizes return LimitExceeded instead of exhausting memory\nPASS collections.ms::huge sizes return LimitExceeded instead of exhausting memory\nRUN collections.ms::collection builders freeze all accumulated values\nPASS collections.ms::collection builders freeze all accumulated values\nRUN collections.ms::imported map add interoperates with with_entry\nPASS collections.ms::imported map add interoperates with with_entry\nRUN collections.ms::flatten concatenates lists\nPASS collections.ms::flatten concatenates lists\n12 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 169,
+            "column": 5,
+            "offset": 5794
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 5,
+              "offset": 5760
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 8,
+              "offset": 5763
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 170,
+            "column": 5,
+            "offset": 5813
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 5,
+              "offset": 5760
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 8,
+              "offset": 5763
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 171,
+            "column": 22,
+            "offset": 5849
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 5,
+              "offset": 5760
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 8,
+              "offset": 5763
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 171,
+            "column": 49,
+            "offset": 5876
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 5,
+              "offset": 5760
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 168,
+              "column": 8,
+              "offset": 5763
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 174,
+            "column": 5,
+            "offset": 5946
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 5,
+              "offset": 5906
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 8,
+              "offset": 5909
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 175,
+            "column": 5,
+            "offset": 5966
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 5,
+              "offset": 5906
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 8,
+              "offset": 5909
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 176,
+            "column": 22,
+            "offset": 6003
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 5,
+              "offset": 5906
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 173,
+              "column": 8,
+              "offset": 5909
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 179,
+            "column": 5,
+            "offset": 6072
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 5,
+              "offset": 6040
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 8,
+              "offset": 6043
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 180,
+            "column": 5,
+            "offset": 6087
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 5,
+              "offset": 6040
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 8,
+              "offset": 6043
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 181,
+            "column": 22,
+            "offset": 6119
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 5,
+              "offset": 6040
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 178,
+              "column": 8,
+              "offset": 6043
+            },
+            "replacement": "var"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -99,11 +319,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

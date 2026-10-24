@@ -1,12 +1,12 @@
 # conform: tags=diagnostics,match,optional,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/defaults_test.go:89 TestUnknownTypeDoesNotCascade
-fn peek() Missing:
+def peek() -> Missing:
     return 0
 
-fn f() Int:
+def f() -> Int:
     match peek():
-        some(x):
+        case some(x):
             return x
-        none:
+        case none:
             return 0

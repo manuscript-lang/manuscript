@@ -9,51 +9,51 @@ export type LogCoreError:
     case LimitExceeded
 
 # A logger's threshold, bound fields, and record settings.
-export type LogState:
+export type LogState: ...
 
 impl LogState:
     # Returns state that adds the members of the JSON object text `fields` to each record.
-    fn child(fields: String) Result[LogState, LogCoreError]:
+    def child(fields: String) -> Result[LogState, LogCoreError]: ...
 
     # Tests whether a record at the level index would be written.
-    fn enabled(level: Int) Bool:
+    def enabled(level: Int) -> Bool: ...
 
     # Returns the threshold as a level index.
-    fn level() Int:
+    def level() -> Int: ...
 
     # Replaces the threshold with a level index.
-    fn set_level(level: Int) Unit:
+    def set_level(level: Int) -> Unit: ...
 
     # Encodes a record line, or returns empty text when the level is below the threshold.
-    fn line(level: Int, message: String, now_ms: Int) Result[String, LogCoreError]:
+    def line(level: Int, message: String, now_ms: Int) -> Result[String, LogCoreError]: ...
 
     # Encodes a record line with the members of the JSON object text `fields` added.
-    fn line_json(
+    def line_json(
         level: Int,
         message: String,
         fields: String,
         now_ms: Int
-    ) Result[String, LogCoreError]:
+    ) -> Result[String, LogCoreError]: ...
 
 # Creates state from optional level index, timestamp setting, and record byte limit.
-export fn new_state(
+export def new_state(
     level: Optional[Int],
     timestamp: Optional[Bool],
     max_bytes: Optional[Int]
-) Result[LogState, LogCoreError]:
+) -> Result[LogState, LogCoreError]: ...
 
 # A flag every copy of a transport shares; once shut it stays shut.
-export type LogGate:
+export type LogGate: ...
 
 impl LogGate:
     # Marks the gate shut for every copy of the transport; shutting it again changes nothing.
-    fn shut() Unit:
+    def shut() -> Unit: ...
 
     # Tells whether the gate is shut.
-    fn is_shut() Bool:
+    def is_shut() -> Bool: ...
 
 # Creates an open gate.
-export fn new_gate() LogGate:
+export def new_gate() -> LogGate: ...
 
 # Returns stringified JSON as an object text: an object is unchanged, anything else sits under `data`.
-export fn object_text(text: String) String:
+export def object_text(text: String) -> String: ...

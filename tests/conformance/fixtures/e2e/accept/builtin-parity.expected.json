@@ -3,82 +3,104 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "builtin-parity.ms::list methods mutate explicit clones and remain typed",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "builtin-parity.ms::map enumeration, merge, and clear preserve insertion order",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "builtin-parity.ms::set algebra and enumeration preserve source values",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "builtin-parity.ms::string methods use Unicode scalars",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "builtin-parity.ms::bytes have analogous immutable operations",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "builtin-parity.ms::growth limits and invalid inputs return values",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "builtin-parity.ms::grouping and lazy map defaults",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "builtin-parity.ms::normalization, empty separators, and precision formatting",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "builtin-parity.ms::BigInt and Regex share function implementations with methods",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "builtin-parity.ms::generic native methods accept omitted single-parameter labels",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 10,
-        "selected": 10,
-        "passed": 10,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN builtin-parity.ms::list methods mutate explicit clones and remain typed\nPASS builtin-parity.ms::list methods mutate explicit clones and remain typed\nRUN builtin-parity.ms::map enumeration, merge, and clear preserve insertion order\nPASS builtin-parity.ms::map enumeration, merge, and clear preserve insertion order\nRUN builtin-parity.ms::set algebra and enumeration preserve source values\nPASS builtin-parity.ms::set algebra and enumeration preserve source values\nRUN builtin-parity.ms::string methods use Unicode scalars\nPASS builtin-parity.ms::string methods use Unicode scalars\nRUN builtin-parity.ms::bytes have analogous immutable operations\nPASS builtin-parity.ms::bytes have analogous immutable operations\nRUN builtin-parity.ms::growth limits and invalid inputs return values\nPASS builtin-parity.ms::growth limits and invalid inputs return values\nRUN builtin-parity.ms::grouping and lazy map defaults\nPASS builtin-parity.ms::grouping and lazy map defaults\nRUN builtin-parity.ms::normalization, empty separators, and precision formatting\nPASS builtin-parity.ms::normalization, empty separators, and precision formatting\nRUN builtin-parity.ms::BigInt and Regex share function implementations with methods\nPASS builtin-parity.ms::BigInt and Regex share function implementations with methods\nRUN builtin-parity.ms::generic native methods accept omitted single-parameter labels\nPASS builtin-parity.ms::generic native methods accept omitted single-parameter labels\n10 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`original` is moved here but used again at 118:5; a value has one owner, so pass `original.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "builtin-parity.ms",
+            "line": 117,
+            "column": 17,
+            "offset": 3465
+          },
+          "fix": {
+            "position": {
+              "file": "builtin-parity.ms",
+              "line": 117,
+              "column": 25,
+              "offset": 3473
+            },
+            "end": {
+              "file": "builtin-parity.ms",
+              "line": 117,
+              "column": 25,
+              "offset": 3473
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`other` is moved here but used again at 277:5; a value has one owner, so pass `other.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "builtin-parity.ms",
+            "line": 235,
+            "column": 25,
+            "offset": 8257
+          },
+          "fix": {
+            "position": {
+              "file": "builtin-parity.ms",
+              "line": 235,
+              "column": 30,
+              "offset": 8262
+            },
+            "end": {
+              "file": "builtin-parity.ms",
+              "line": 235,
+              "column": 30,
+              "offset": 8262
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -89,11 +111,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

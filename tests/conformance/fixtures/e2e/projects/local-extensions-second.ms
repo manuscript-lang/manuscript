@@ -1,46 +1,46 @@
 # conform: tags=closures,control-flow,diagnostics,faults,generics,interfaces,match,modules,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/second.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {Item, Box, Holder, Choice} from "./domain.ms"
-import {Read, invoke, relay, as_view} from "./contracts.ms"
-import Closeable from "@std/core.ms"
-import ListBuilder from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "./domain.ms" import Item, Box, Holder, Choice
+from "./contracts.ms" import Read, invoke, relay, as_view
+from "@std/core.ms" import Closeable
+from "@std/collections.ms" import ListBuilder
 
 impl Read[Int] for Item:
-    fn get() Int:
+    def get() -> Int:
         return self.original() + delta()
 
-fn delta() Int:
+def delta() -> Int:
     return 20
 
 impl Read[T] for Box[T]:
-    fn get() T:
+    def get() -> T:
         return self.value
 
 impl Read[Int] for Choice:
-    fn get() Int:
+    def get() -> Int:
         match self:
-            Some(value):
+            case Some(value):
                 return value + delta()
-            Empty:
+            case Empty:
                 return delta()
 
 # A local interface can use the receiver's inherited bound.
 interface Extract:
-    fn extract() Int
+    def extract() -> Int
 
 impl Extract for Holder[T]:
-    fn extract() Int:
+    def extract() -> Int:
         return self.value.get()
 
-export fn second_view(value: Item) Read[Int]:
+export def second_view(value: Item) -> Read[Int]:
     return Read[Int](value)
 
-export fn second_method(value: Item) fn() Int:
+export def second_method(value: Item) -> Callable[[], Int]:
     return value.get
 
-export fn second_generic() fn(value: Item) Int:
+export def second_generic() -> Callable[[Item], Int]:
     return relay[Item]
 
 test "second local extensions":
@@ -53,17 +53,17 @@ test "second local extensions":
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(22)
 
-import Resource from "./domain.ms"
+from "./domain.ms" import Resource
 
 impl Closeable for Resource:
-    fn close() Unit:
+    def close() -> Unit:
         self.events.append(value: 20)
 
-fn leave(resource: Resource) Unit:
-    with local = resource:
+def leave(resource: Resource) -> Unit:
+    with resource as local:
         return
 
-export fn second_resource(resource: Resource) Closeable:
+export def second_resource(resource: Resource) -> Closeable:
     return Closeable(resource)
 
 test "second local cleanup":
@@ -71,7 +71,7 @@ test "second local cleanup":
     leave(Resource(events))
     events.freeze().get(index: 0) | try expect_equal(20)
 
-import mixed from "./first.ms"
+from "./first.ms" import mixed
 
 test "generic evidence does not change concrete lexical dispatch":
     let item = Item(2)

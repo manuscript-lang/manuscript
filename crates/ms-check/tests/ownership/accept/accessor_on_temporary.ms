@@ -1,5 +1,5 @@
-fn make() List[String]:
+def make() -> List[String]:
     return ["a", "b"]
 
-fn first_of() String:
+def first_of() -> String:
     return make().get(0)

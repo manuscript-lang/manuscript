@@ -35,6 +35,8 @@ pub enum JobKind {
     DefaultThunk(Rc<DefaultThunkJob>),
     /// An interface method used as a value whose function type takes optionals.
     IfaceThunk(Rc<IfaceThunkJob>),
+    /// A function value viewed with its omittable parameters as plain values.
+    FnAdapt(Rc<FnAdaptJob>),
     /// A JSON decoder or encoder of a type.
     Json(Rc<crate::json::JsonJob>),
     /// The shared category of a standard error value.
@@ -58,6 +60,14 @@ pub struct IfaceThunkJob {
     pub hir: Rc<ModuleHir>,
     /// The closure holds the address of the variable it changes.
     pub shared: bool,
+}
+
+/// A function value whose omittable parameters are optionals, passed where plain ones are taken.
+pub struct FnAdaptJob {
+    /// Module the use is written in.
+    pub hir: Rc<ModuleHir>,
+    /// The held function type.
+    pub have: MTy,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
@@ -229,7 +239,7 @@ impl Cx {
             }
             _ => {}
         }
-        let key = ct::type_key(t);
+        let key = ct::lowering_key(t);
         if let Some(found) = self.tycache.get(&key) {
             return Ok(*found);
         }
@@ -251,7 +261,7 @@ impl Cx {
                 for p in &t.params {
                     let pt = self.lower_ty(m, &p.ty)?;
                     // A parameter that may be omitted crosses a function value as an optional.
-                    let lifted = t.is_default(p.name) && !p.ty.is_std("Optional");
+                    let lifted = t.is_lifted(p.name) && !p.ty.is_std("Optional");
                     params.push(if lifted { m.types.opt(pt) } else { pt });
                 }
                 let ret = self.lower_ty(m, &t.result_ty())?;

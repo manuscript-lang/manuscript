@@ -1,14 +1,14 @@
-import stdout from "@std/io.ms"
-import Queue from "@std/queue.ms"
-import total from "@math"
-import compute from "@math"
+from "@std/io.ms" import stdout
+from "@std/queue.ms" import Queue
+from "@math" import total
+from "@math" import compute
 
 type Package:
     title: String
     count: Int
 
 # A real entry point: records, generics, a local queue, and a native workload.
-export fn main() Int:
+export def main() -> Int:
     let package = Package("Manuscript", 42)
     let values = [10, 20, 30]
     let optional = Optional[Int].some(5)
@@ -25,7 +25,7 @@ export fn main() Int:
         return 1
 
     let checksum = compute(3000000)
-    let output = "{package.title}: {sum}; checksum {checksum}\n"
+    let output = f"{package.title}: {sum}; checksum {checksum}\n"
     if stdout().write(output).is_error():
         return 1
 

@@ -14,7 +14,7 @@
           "file": "pkg-build-testimplementationdeclarationparameters-6.ms",
           "line": 10,
           "column": 11,
-          "offset": 263
+          "offset": 267
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-build-testimplementationdeclarationparameters-6.ms",
           "line": 11,
-          "column": 14,
-          "offset": 293
+          "column": 18,
+          "offset": 301
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-6.ms:10:11: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n<DIR>/pkg-build-testimplementationdeclarationparameters-6.ms:11:14: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-6.ms:10:11: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n<DIR>/pkg-build-testimplementationdeclarationparameters-6.ms:11:18: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

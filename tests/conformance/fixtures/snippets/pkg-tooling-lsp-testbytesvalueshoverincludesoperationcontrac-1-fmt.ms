@@ -1,8 +1,8 @@
 # conform: tags=closures,formatter,lists,modules,parser,stdlib-bytes,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/features_test.go:242 TestBytesValuesHoverIncludesOperationContract
-import Bytes from "@std/bytes.ms"
+from "@std/bytes.ms" import Bytes
 
-fn extract(data: Bytes) List[Int]:
-    let bound: fn() List[Int] = data.values
+def extract(data: Bytes) -> List[Int]:
+    let bound: Callable[[], List[Int]] = data.values
     return data.values()

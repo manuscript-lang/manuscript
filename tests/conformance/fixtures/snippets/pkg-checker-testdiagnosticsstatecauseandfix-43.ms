@@ -5,9 +5,9 @@ type S:
     case A
     case B
 
-fn f(s: S) Int:
+def f(s: S) -> Int:
     match s:
-        A:
+        case A:
             return 1
-        other:
+        case other:
             return 2

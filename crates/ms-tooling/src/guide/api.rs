@@ -222,8 +222,8 @@ fn document_operation_name(receiver: &Ty, name: &str) -> String {
 
 fn fn_declaration(name: &str, f: &Func, mutating: bool, source: Option<&Source>) -> String {
     format!(
-        "{}{name}{}{} {}:\n",
-        if mutating { "var fn " } else { "fn " },
+        "{}{name}{}{} -> {}:\n",
+        if mutating { "var def " } else { "def " },
         render::type_parameters(&f.type_params),
         render::parameters(&f.params, source),
         render::type_text(&f.result)

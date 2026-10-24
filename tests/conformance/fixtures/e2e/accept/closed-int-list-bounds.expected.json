@@ -3,77 +3,100 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "closed-int-list-bounds.ms::closed list scalar summaries preserve sums and lengths",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "closed-int-list-bounds.ms::closed list reads preserve defaults and evaluation order",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "closed-int-list-bounds.ms::recursive appends keep overflow checks",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "closed-int-list-bounds.ms::list prefixes and Optional defaults keep overflow checks",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "closed-int-list-bounds.ms::aliased mutation keeps overflow checks",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "closed-int-list-bounds.ms::append during traversal retains initial-length semantics",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "closed-int-list-bounds.ms::reordered defaults and scalar append dependencies keep overflow checks",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "closed-int-list-bounds.ms::hidden match and default mutations invalidate lengths",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "closed-int-list-bounds.ms::constant length keeps its local valid through partial polling chunks",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 9,
-        "selected": 9,
-        "passed": 9,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN closed-int-list-bounds.ms::closed list scalar summaries preserve sums and lengths\nPASS closed-int-list-bounds.ms::closed list scalar summaries preserve sums and lengths\nRUN closed-int-list-bounds.ms::closed list reads preserve defaults and evaluation order\nPASS closed-int-list-bounds.ms::closed list reads preserve defaults and evaluation order\nRUN closed-int-list-bounds.ms::recursive appends keep overflow checks\nPASS closed-int-list-bounds.ms::recursive appends keep overflow checks\nRUN closed-int-list-bounds.ms::list prefixes and Optional defaults keep overflow checks\nPASS closed-int-list-bounds.ms::list prefixes and Optional defaults keep overflow checks\nRUN closed-int-list-bounds.ms::aliased mutation keeps overflow checks\nPASS closed-int-list-bounds.ms::aliased mutation keeps overflow checks\nRUN closed-int-list-bounds.ms::append during traversal retains initial-length semantics\nPASS closed-int-list-bounds.ms::append during traversal retains initial-length semantics\nRUN closed-int-list-bounds.ms::reordered defaults and scalar append dependencies keep overflow checks\nPASS closed-int-list-bounds.ms::reordered defaults and scalar append dependencies keep overflow checks\nRUN closed-int-list-bounds.ms::hidden match and default mutations invalidate lengths\nPASS closed-int-list-bounds.ms::hidden match and default mutations invalidate lengths\nRUN closed-int-list-bounds.ms::constant length keeps its local valid through partial polling chunks\nPASS closed-int-list-bounds.ms::constant length keeps its local valid through partial polling chunks\n9 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`values` is moved here but used again at 76:18; a value has one owner, so pass `values.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "closed-int-list-bounds.ms",
+            "line": 72,
+            "column": 17,
+            "offset": 1637
+          },
+          "fix": {
+            "position": {
+              "file": "closed-int-list-bounds.ms",
+              "line": 72,
+              "column": 23,
+              "offset": 1643
+            },
+            "end": {
+              "file": "closed-int-list-bounds.ms",
+              "line": 72,
+              "column": 23,
+              "offset": 1643
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `values` while `for` borrows it (the loop is iterating it, at 130:18); finish using `for` before this, iterate over a copy instead: `for ... in values.clone()`",
+          "position": {
+            "file": "closed-int-list-bounds.ms",
+            "line": 132,
+            "column": 9,
+            "offset": 3596
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot move `values` out of the function: the caller keeps ownership of a var parameter; return `values.clone()` or change the value in place",
+          "position": {
+            "file": "closed-int-list-bounds.ms",
+            "line": 172,
+            "column": 12,
+            "offset": 4447
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -84,11 +107,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

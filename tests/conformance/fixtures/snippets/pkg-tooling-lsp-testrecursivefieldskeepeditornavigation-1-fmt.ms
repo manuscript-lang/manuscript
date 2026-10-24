@@ -5,5 +5,5 @@ type Node:
     value: Int
     next: Optional[Node]
 
-fn read(node: Node) Int:
+def read(node: Node) -> Int:
     return node.next.get().value

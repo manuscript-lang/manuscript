@@ -4,7 +4,7 @@
 type Flag:
     case Ready
 
-fn use(value: Optional[Int]) Int:
+def use(value: Optional[Int]) -> Int:
     match value:
-        some(Ready): return Ready
-        none: return 0
+        case some(Ready): return Ready
+        case none: return 0
