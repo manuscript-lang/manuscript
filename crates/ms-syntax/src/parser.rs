@@ -1313,6 +1313,7 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \"@std/collections.ms\"");
                 }
+                let by_ref = self.take(Tok::Ref);
                 let name = self.need(Tok::Name)?;
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
@@ -1326,6 +1327,7 @@ impl<'a> Parser<'a> {
                 let iter = self.expression(0)?;
                 let body = self.suite()?;
                 StmtKind::For {
+                    by_ref,
                     name: self.sym(name),
                     iter,
                     body,
@@ -1911,6 +1913,9 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
+                // `match ref v:` documents that the arms' payloads borrow `v`, which they do by
+                // default; the marker has no other effect.
+                self.take(Tok::Ref);
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(
