@@ -541,6 +541,20 @@ impl Checker {
                 }
                 continue;
             }
+            if matches!(
+                d.decl().kind,
+                DeclKind::Record(_) | DeclKind::Alternative(_)
+            ) {
+                // A bundled module's exported types were declared when it was registered.
+                let predeclared = stdlib::is_source_module(module)
+                    .then(|| stdlib::source_type(module.file, name))
+                    .flatten()
+                    .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
+                if let Some(s) = predeclared {
+                    self.add_symbol(name, s, d.pos());
+                    continue;
+                }
+            }
             let id = self.unique("symbol");
             let kind = match &d.decl().kind {
                 DeclKind::Fn(_) | DeclKind::Const(_) => None,
@@ -1306,7 +1320,7 @@ impl Checker {
     }
 }
 
-fn hex(s: &str) -> String {
+pub(crate) fn hex(s: &str) -> String {
     let mut out = String::with_capacity(s.len() * 2);
     for b in s.bytes() {
         out.push_str(&format!("{b:02x}"));
