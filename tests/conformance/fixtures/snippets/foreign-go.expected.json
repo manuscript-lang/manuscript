@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with TaskGroup[T]() as group: group.spawn(lambda: work())",
+        "message": "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with TaskGroup[T]() as group: group.spawn(lambda ch: work())",
         "position": {
           "file": "foreign-go.ms",
           "line": 5,

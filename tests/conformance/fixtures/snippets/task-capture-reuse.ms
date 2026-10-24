@@ -5,6 +5,6 @@ from "@std/tasks.ms" import TaskGroup
 
 def show(xs: List[Int]) -> Int:
     with TaskGroup[Int]() as group:
-        group.spawn(lambda: xs.length())
-        group.spawn(lambda: xs.length())
+        group.spawn(lambda ch: xs.length())
+        group.spawn(lambda ch: xs.length())
     return 0

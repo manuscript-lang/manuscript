@@ -186,3 +186,13 @@ Apply when: changing fault assertions, fork boundaries or cleanup contexts.
 Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
 Verify: child faults leave parent cleanup pending, child cleanup runs LIFO, nested assertions
 and assertions during fault cleanup retain their own report and cleanup boundaries.
+
+### Task time limits must not depend on the scheduler going idle
+
+Verified: task kill deadlines expired only in `reactor_wait`, which runs when no task is ready.
+Two tasks that keep waking each other through a channel never let it run, so a task's timeout
+never fired. `switch_away` now expires kills on every switch while any are pending.
+
+Apply when: adding a wake path that makes a task ready without the reactor, or moving deadline checks.
+Evidence: [scheduler](../crates/ms-rt/src/task.rs), [channel fixture](../tests/conformance/fixtures/e2e/stdlib/channels.ms) ("a task cancelled before it first ran closes its end").
+Verify: a zero-timeout task that only sends on a channel times out instead of running to its end.

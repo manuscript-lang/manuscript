@@ -28,6 +28,7 @@ macro_rules! sym_prefix {
 
 pub mod alloc;
 pub mod bits;
+pub mod channel;
 pub mod desc;
 pub mod fault;
 pub mod ffi;

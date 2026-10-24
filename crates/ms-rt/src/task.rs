@@ -552,8 +552,8 @@ unsafe fn wake(t: *mut Task, result: u32) {
     }
 }
 
-/// Wakes timers that have expired.
-unsafe fn expire_timers(now: i64) {
+/// Cancels tasks whose time limit has passed.
+unsafe fn expire_kills(now: i64) {
     let mut s = sched();
     while let Some(&Reverse((deadline, h))) = s.kills.peek()
         && deadline <= now
@@ -568,6 +568,13 @@ unsafe fn expire_timers(now: i64) {
             }
         }
     }
+}
+
+/// Wakes timers that have expired.
+unsafe fn expire_timers(now: i64) {
+    // SAFETY: forwarded contract.
+    unsafe { expire_kills(now) };
+    let mut s = sched();
     while let Some(&Reverse((deadline, h))) = s.timers.peek()
         && deadline <= now
     {
@@ -694,6 +701,10 @@ unsafe fn switch_away() {
     // SAFETY: single threaded scheduler; stacks and records outlive the switch.
     unsafe {
         let cur = s.cur;
+        // Tasks that keep each other ready never reach `reactor_wait`, so time limits are checked here too.
+        if !s.kills.is_empty() {
+            expire_kills(clock_ns());
+        }
         loop {
             if let Some(h) = s.ready.pop_front() {
                 let next = lookup(h);
@@ -1036,13 +1047,18 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;
     // SAFETY: `arg` is the retained closure object `spawn_closure` stored.
     unsafe {
-        // A task cancelled before it first ran never starts.
-        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
-            fault::msrt_cancelled();
-        }
+        // The closure itself checks for a cancellation that came before it first ran
+        // (`msrt_scope_started`), once it has registered the cleanup that closes its channel end.
         let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
             core::mem::transmute((*closure).code);
         code(closure);
+    }
+}
+
+/// Unwinds the current task if it was cancelled before it got here.
+pub(crate) unsafe fn unwind_if_cancelled() {
+    if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+        fault::msrt_cancelled();
     }
 }
 
