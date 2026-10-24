@@ -15,6 +15,21 @@
           "line": 4,
           "column": 13,
           "offset": 153
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testclosedrangegrouping-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testclosedrangegrouping-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import values from \"@std/bytes.ms\"\n"
         }
       }
     ],

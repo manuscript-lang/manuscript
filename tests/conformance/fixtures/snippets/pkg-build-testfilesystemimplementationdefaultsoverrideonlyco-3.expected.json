@@ -15,6 +15,21 @@
           "line": 9,
           "column": 6,
           "offset": 319
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-build-testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import FileSystem from \"@std/fs.ms\"\n"
         }
       }
     ],

@@ -121,12 +121,16 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         }
     };
     let mut files = Vec::new();
+    let mut fixes: Vec<(String, ms_driver::DiagnosticFix)> = Vec::new();
     let mut diagnostics = selection.diagnostics.clone();
     let mut findings = Vec::new();
     let mut summaries = Vec::new();
     let mut root = String::new();
     for input in &selection.inputs {
         let checked = analyze_with(&input.path, &Overlay::new(), check, check);
+        if request.fix {
+            fixes.extend(source_fixes(&checked));
+        }
         files.extend(watched_files(&input.path, &checked));
         for issue in &checked.diagnostics {
             diagnostics.push(placed(&selection, &checked.source_root, issue));
@@ -156,6 +160,22 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 position: selection.position(&checked.source_root, &at),
                 ..CommandDiagnostic::default()
             });
+        }
+    }
+    if request.fix {
+        let (applied, edited) = apply_fixes(fixes, io);
+        if applied > 0 {
+            let _ = writeln!(
+                io.stderr,
+                "ms: applied {applied} {} in {edited} {}",
+                plural(applied, "fix", "fixes"),
+                plural(edited, "file", "files")
+            );
+            let rerun = AnalysisRequest {
+                fix: false,
+                ..request.clone()
+            };
+            return analysis_once(&rerun, io);
         }
     }
     // Keep compiler diagnostics ahead of lint findings and defer output until
@@ -199,6 +219,72 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         );
     }
     (status, files)
+}
+
+/// Each fixable diagnostic of `checked` with the path of the file it edits.
+fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
+    let mut fixes = Vec::new();
+    for issue in &checked.diagnostics {
+        let Some(fix) = &issue.fix else { continue };
+        let file = issue.file.as_ref();
+        if file.starts_with("@std/") {
+            continue;
+        }
+        let path = if gopath::is_abs(file) || checked.source_root.is_empty() {
+            file.to_string()
+        } else {
+            gopath::join(&[&checked.source_root, file])
+        };
+        fixes.push((path, fix.clone()));
+    }
+    fixes
+}
+
+/// Applies the fixes in place, last edit first so offsets stay valid. A fix
+/// that is repeated or overlaps an earlier one waits for the next run.
+/// Returns the fixes applied and the files changed.
+fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (usize, usize) {
+    let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
+    for (path, fix) in fixes {
+        by_file.entry(path).or_default().push(fix);
+    }
+    let (mut applied, mut edited) = (0, 0);
+    for (path, mut file_fixes) in by_file {
+        file_fixes.sort_by_key(|f| (f.pos.offset, f.end.offset));
+        file_fixes.dedup();
+        let Ok(mut text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let mut chosen: Vec<&ms_driver::DiagnosticFix> = Vec::new();
+        let mut last_end = 0;
+        for fix in &file_fixes {
+            let (start, end) = (fix.pos.offset as usize, fix.end.offset as usize);
+            let valid = start <= end
+                && end <= text.len()
+                && text.is_char_boundary(start)
+                && text.is_char_boundary(end);
+            if valid && (chosen.is_empty() || start >= last_end) {
+                last_end = end;
+                chosen.push(fix);
+            }
+        }
+        if chosen.is_empty() {
+            continue;
+        }
+        for fix in chosen.iter().rev() {
+            text.replace_range(
+                fix.pos.offset as usize..fix.end.offset as usize,
+                &fix.replacement,
+            );
+        }
+        if let Err(error) = std::fs::write(&path, &text) {
+            let _ = writeln!(io.stderr, "ms: cannot write {path}: {error}");
+            continue;
+        }
+        applied += chosen.len();
+        edited += 1;
+    }
+    (applied, edited)
 }
 
 /// The check summary for one input that passed.

@@ -913,7 +913,7 @@ impl Checker {
                     s.ty()
                 } else {
                     let msg = self.unknown_type_message(name);
-                    self.res_error(t.pos, msg);
+                    self.res_error_name(t.pos, name.len(), msg);
                     self.unknown_type = true;
                     return invalid();
                 };

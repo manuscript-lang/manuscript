@@ -59,6 +59,21 @@
           "line": 9,
           "column": 20,
           "offset": 296
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testboundedmatchnative-3.ms",
+            "line": 9,
+            "column": 20,
+            "offset": 296
+          },
+          "end": {
+            "file": "tests-e2e-testboundedmatchnative-3.ms",
+            "line": 9,
+            "column": 25,
+            "offset": 301
+          },
+          "replacement": "shapes"
         }
       }
     ],
