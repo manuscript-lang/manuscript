@@ -10,7 +10,7 @@
 
 ## Status
 
-- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stage 1 implemented 2026-10-24 (PR for this branch); stages 2 to 5 pending. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
+- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stages 1 to 4 implemented 2026-10-24. Stage 5 (the default flip) dropped by the owner 2026-10-24 (card answer "Keep Int as Int64"): `Int` stays `Int64`, sized types are explicit. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
 - Direction (Chinmay, 2026-10-24): "lets add specific number types in the stdlib, we need to have 8, 16, 32, 64 style numeric types so we can reduce memory usage, default to 32 for Int/Float".
 
 ## Problem
