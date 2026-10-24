@@ -104,7 +104,7 @@ def main() -> Int:
 - Process close order: `Process.close()` closes the channel, which the child sees as cancel (`proposals/child-processes.md:85`); call `result()` before `close()` to wait for a result.
 - Faults: unchanged per group (tasks and workers abort the process; processes per their proposal). The shared fixture body covers messages and close, not faults.
 - Deadlocks: two peers that both send into full queues park forever; with `TOKEN_REMOTE` the scheduler cannot report it (`task.rs:610`). Documented, not detected.
-- Windows: no polling. The channel pipe is an owner-only named pipe opened for overlapped I/O and registered with the runtime poller through `mio::windows::NamedPipe` (`mio` already builds with `os-ext`, `crates/ms-rt/Cargo.toml:19`), so reads and writes park and wake like sockets on Unix, with backpressure. The 1 ms polling in `crates/ms-std-process/src/plat/windows.rs:29-55` is only today's anonymous stdio pipes and is not used for channels (Chinmay, 2026-10-24: "i don't want random polling").
+- Windows: no polling. The channel pipe is an owner-only named pipe opened for overlapped I/O and registered with the runtime poller through `mio::windows::NamedPipe` (`mio` already builds with `os-ext`, `crates/ms-rt/Cargo.toml:19`), so reads and writes park and wake like sockets on Unix, with backpressure. On Unix the socketpair is waited on with epoll/kqueue through the same poller; both park the task with real backpressure. The 1 ms polling in `crates/ms-std-process/src/plat/windows.rs:29-55` (today's anonymous stdio pipes) is not used for channels; the child-processes thread moves those stdio pipes onto the same named-pipe readiness path first (Chinmay, 2026-10-24: "i don't want random polling").
 
 ## Components touched
 
