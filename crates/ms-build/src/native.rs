@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn publication_without_debug_lines_retires_old_companion() {
         let root =
-            std::env::temp_dir().join(format!("ms-driver-debug-retire-{}", std::process::id()));
+            std::env::temp_dir().join(format!("ms-build-debug-retire-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let staged = root.join("stage");
         let output = root.join("output");
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn failed_binary_publication_restores_debug_companion() {
         let root =
-            std::env::temp_dir().join(format!("ms-driver-debug-rollback-{}", std::process::id()));
+            std::env::temp_dir().join(format!("ms-build-debug-rollback-{}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
         let staged = root.join("stage");
         let output = root.join("output");

@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-use ms_driver::Lower;
+use ms_build::Lower;
 
 use super::{RustBackend, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
@@ -13,7 +13,7 @@ pub(super) fn run<L: Lower>(
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {
-    let mut compiled = match compile(backend, &request.filename, request.build_type, false) {
+    let mut compiled = match compile(backend, &request.filename, false) {
         Ok(compiled) => compiled,
         Err(failure) => return Ok(failure.report(io)),
     };

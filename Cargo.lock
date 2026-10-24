@@ -967,6 +967,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-build"
+version = "0.0.0"
+dependencies = [
+ "ms-check",
+ "ms-clif",
+ "ms-driver",
+ "ms-lower",
+ "ms-mir",
+ "ms-rt",
+]
+
+[[package]]
 name = "ms-check"
 version = "0.0.0"
 dependencies = [
@@ -978,6 +990,7 @@ name = "ms-cli"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "ms-build",
  "ms-check",
  "ms-clif",
  "ms-driver",
@@ -1022,9 +1035,6 @@ name = "ms-driver"
 version = "0.0.0"
 dependencies = [
  "ms-check",
- "ms-clif",
- "ms-lower",
- "ms-mir",
  "ms-project",
  "ms-rt",
  "ms-syntax",
