@@ -463,12 +463,23 @@ struct Context([u8; ctx::SIZE]);
 /// Recovers the first generated source frame through the native fault-reporting
 /// prefix. Missing native unwind metadata ends the search: generated glue also
 /// lacks it, and must never be mistaken for a native leaf function.
-pub fn source_frame(mut is_source: impl FnMut(usize) -> bool) -> Option<(usize, usize)> {
+/// Returns `(pc, fp, remaining raw-frame budget)`. Accounting begins with callers
+/// of `anchor_pc`; walker-internal frames below that function do not consume it.
+pub fn source_frame(
+    anchor_pc: usize,
+    mut is_source: impl FnMut(usize) -> bool,
+) -> Option<(usize, usize, usize)> {
     let mut c = Context([0; ctx::SIZE]);
     let (lo, hi) = stack_limits();
     // SAFETY: aligned, correctly sized architecture-specific CONTEXT. Native
     // unwind records restore all nonvolatile registers; no handlers are invoked.
     unsafe {
+        let mut anchor_image = 0;
+        let anchor = RtlLookupFunctionEntry(anchor_pc, &mut anchor_image, core::ptr::null_mut());
+        if anchor.is_null() {
+            return None;
+        }
+        let mut budget = crate::fault::NativeFrameBudget::default();
         RtlCaptureContext(c.0.as_mut_ptr().cast());
         for _ in 0..256 {
             let word = |off: usize| c.0.as_ptr().add(off).cast::<usize>().read_unaligned();
@@ -477,11 +488,18 @@ pub fn source_frame(mut is_source: impl FnMut(usize) -> bool) -> Option<(usize, 
                 return None;
             }
             if is_source(pc) {
-                return Some((pc, fp));
+                // The generated walker consumes this first source frame. A
+                // missing anchor must never grant it a fresh/full budget.
+                return Some((pc, fp, budget.remaining()?));
             }
             let mut image = 0;
             let entry = RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut());
             if entry.is_null() {
+                return None;
+            }
+            // Start at fault_vec, as the Unix frame-pointer walker does. Do not
+            // charge the anchor itself: only its recovered callers are visited.
+            if !budget.visit(entry == anchor) {
                 return None;
             }
             let mut handler = core::ptr::null_mut();
