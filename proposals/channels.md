@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction.
-- Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end; `spawn` returns the handle of the spawned child (`Task`, `Worker`, `Child`), whose `channel` field is the other end. No constructor, no `create_mirror`, no tuples, no hidden state.
+- Change: one type `Channel[In, Out]` (sends `In`, receives `Out`) with `send`, `receive`, `close`. A channel always has exactly two ends, and **only `spawn` creates them**: the child's entry receives one end; `spawn` returns the handle of the spawned child (`Task`, `Worker`, `Process`), whose `channel` field is the other end. No constructor, no `create_mirror`, no tuples, no hidden state.
 - Layout: one Manuscript type over one runtime endpoint object with three transports (same-thread queue, cross-thread queue, process socket). Each group's `spawn` picks the transport; user code never sees it.
 - Cost: a runtime endpoint (`crates/ms-rt/src/channel.rs`), two lowering intrinsics for moving a generic value through it, and one checker gap (methods cannot declare their own type parameters).
 - Decision requested: sign-off on the API and the layering below.
@@ -31,7 +31,7 @@ impl Channel[In, Out]:
     var def receive() -> Optional[Out]                # owned value; none once the other end closed and drained
     var def close() -> Unit                           # Closeable; idempotent; also on drop
 
-# handle of one spawned child: Task (TaskGroup), Worker (WorkerGroup), Child (ProcessGroup)
+# handle of one spawned child: Task (TaskGroup), Worker (WorkerGroup), Process (ProcessGroup)
 type Worker[T, In, Out]:
     channel: Channel[In, Out]                 # the parent's end
 
@@ -114,7 +114,7 @@ flowchart TB
 
 - `TaskGroup.spawn(entry)`: creates a `Local` pair; the task's closure calls `entry(child_end)`; returns a `Task` handle holding the parent end.
 - `WorkerGroup.spawn(entry)`: creates a `Thread` pair; the child end moves to the worker isolate with the entry; returns a `Worker` handle holding the parent end. Needs the per-thread runtime of `proposals/worker-threads.md`; nothing here changes how worker groups behave.
-- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (loopback socket, `MS_ENTRY`); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Child` handle holding the parent end. One channel per child, so frames carry no channel id.
+- `ProcessGroup.spawn(entry)`: the parent end is bound to the IPC connection from `proposals/child-processes.md` (loopback socket, `MS_ENTRY`); the child runtime builds its end on the same connection at start (`crates/ms-rt/src/start.rs`) and calls the entry; returns a `Process` handle holding the parent end. One channel per child, so frames carry no channel id.
 
 ## Semantics
 
