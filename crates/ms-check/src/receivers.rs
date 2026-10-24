@@ -194,6 +194,35 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     (
+        "Int8",
+        &[
+            ("to_string_radix", "math/format_int"),
+            ("compare", "math/compare_int"),
+        ],
+    ),
+    (
+        "Int16",
+        &[
+            ("to_string_radix", "math/format_int"),
+            ("compare", "math/compare_int"),
+        ],
+    ),
+    (
+        "Int32",
+        &[
+            ("to_string_radix", "math/format_int"),
+            ("compare", "math/compare_int"),
+        ],
+    ),
+    (
+        "Float32",
+        &[
+            ("is_nan", "math/is_nan"),
+            ("is_finite", "math/is_finite"),
+            ("compare", "math/compare_float"),
+        ],
+    ),
+    (
         "Float",
         &[
             ("to_precision", "math/format_precision"),

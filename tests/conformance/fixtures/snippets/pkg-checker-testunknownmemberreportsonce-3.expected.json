@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_string_radix",
+        "message": "unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radix",
         "position": {
           "file": "pkg-checker-testunknownmemberreportsonce-3.ms",
           "line": 9,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknownmemberreportsonce-3.ms:9:19: resolution: unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_string_radix\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknownmemberreportsonce-3.ms:9:19: resolution: unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radix\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

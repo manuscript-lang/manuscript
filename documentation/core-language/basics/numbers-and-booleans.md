@@ -60,7 +60,7 @@ def sized() -> Unit:
     let c = a + wide
 ```
 
-`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values, and values of different widths cannot be converted yet; see the [sized numeric types proposal](https://github.com/manuscript-lang/manuscript/blob/main/proposals/sized-numeric-types.md) for the staged plan.
+`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values; see the [sized numeric types proposal](https://github.com/manuscript-lang/manuscript/blob/main/proposals/sized-numeric-types.md) for the staged plan.
 
 ## Numeric conversion
 
@@ -68,9 +68,11 @@ def sized() -> Unit:
 | --- | --- |
 | `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
 | `Float` | `truncate_to_int() -> Optional[Int]` |
+| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
+| `Float`, `Float32` | `to_float32()`, `to_float64()`, `truncate_to_int() -> Optional[Int]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
-Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+`to_intN()` returns the narrower or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
 ## Runtime numeric outcomes
 
