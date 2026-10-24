@@ -12,6 +12,30 @@ import WebSocket from "@std/net.ms"
 import WebSocketError from "@std/net.ms"
 import WebSocketOptions from "@std/net.ms"
 
+extern fn msrt_http_headers_append(
+    headers: HttpHeaders,
+    name: String,
+    value: Bytes
+) Result[Unit, HttpError]
+
+extern fn msrt_http_headers_values(
+    value: HttpHeaders,
+    name: String
+) Optional[List[Bytes]]
+
+extern fn msrt_http_headers_text(
+    value: HttpHeaders,
+    name: String
+) Result[Optional[List[String]], HttpError]
+
+extern fn msrt_http_headers_names(value: HttpHeaders) List[String]
+
+extern fn msrt_http_headers_remove(value: HttpHeaders, name: String) Bool
+
+extern fn msrt_http_headers_clone(value: HttpHeaders) HttpHeaders
+
+extern fn msrt_http_headers_new() HttpHeaders
+
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
     # The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
@@ -35,30 +59,37 @@ export type HttpError:
 # Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
 # Names keep first-insertion order and spelling; values keep append order.
 # Lookup shares list membership. Use clone() to separate mutable membership.
-export type HttpHeaders:
+export extern type HttpHeaders
 
 impl HttpHeaders:
     # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate UTF-8, framing and field values.
     fn append(name: String, value: Bytes) Result[Unit, HttpError]:
+        return msrt_http_headers_append(self, name, value)
 
     # Returns an owned copy of the membership, or none for an absent name.
     fn values(name: String) Optional[List[Bytes]]:
+        return msrt_http_headers_values(self, name)
 
     # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
     fn text(name: String) Result[Optional[List[String]], HttpError]:
+        return msrt_http_headers_text(self, name)
 
     # Returns first-inserted spellings in insertion order.
     fn names() List[String]:
+        return msrt_http_headers_names(self)
 
     # Removes a name; existing list aliases are detached from this header object.
     fn remove(name: String) Bool:
+        return msrt_http_headers_remove(self, name)
 
     # Copies name/list membership and shares immutable Bytes values.
     fn clone() HttpHeaders:
+        return msrt_http_headers_clone(self)
 
 # Creates empty mutable headers. No header values are joined or comma-combined.
 export fn headers() HttpHeaders:
+    return msrt_http_headers_new()
 
 # Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
@@ -79,7 +110,8 @@ export type ClientResponse:
 impl ClientResponse:
     # Borrows the current response metadata.
     # Clone the result for an independent owned value, including its headers.
-    fn metadata() HttpResponseMetadata:
+    fn metadata() ref HttpResponseMetadata:
+        return self.head
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
 export type HttpMethod:
@@ -110,6 +142,17 @@ export type HttpMethod:
 impl HttpMethod:
     # Returns the method token; outgoing requests reject malformed Custom tokens.
     fn text() String:
+        match self:
+            Get: return "GET"
+            Head: return "HEAD"
+            Post: return "POST"
+            Put: return "PUT"
+            Patch: return "PATCH"
+            Delete: return "DELETE"
+            Connect: return "CONNECT"
+            Options: return "OPTIONS"
+            Trace: return "TRACE"
+            Custom(value): return value.clone()
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
@@ -270,3 +313,11 @@ export interface ResponseBody:
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
     fn message() String:
+        match self:
+            InvalidInput: return "HTTP: invalid input"
+            InvalidData: return "HTTP: invalid data"
+            LimitExceeded: return "HTTP: limit exceeded"
+            PermissionDenied: return "HTTP: permission denied"
+            Closed: return "HTTP: resource is closed"
+            Timeout: return "HTTP: operation timed out"
+            Failed(message): return message.clone()

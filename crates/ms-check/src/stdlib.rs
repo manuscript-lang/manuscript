@@ -372,13 +372,42 @@ pub fn done(file: Name) -> Option<Rc<StdResult>> {
     world(|w| w.done.get(&file).cloned())
 }
 
+fn source_reach(module: &ModRef) -> Vec<ModRef> {
+    let mut seen: Vec<ModRef> = Vec::new();
+    let mut stack: Vec<ModRef> = vec![module.clone()];
+    while let Some(m) = stack.pop() {
+        for item in &m.imports {
+            if let Some(dep) = standard_source_module(n(&item.path))
+                && !seen.iter().any(|s| s.file == dep.file)
+            {
+                seen.push(dep.clone());
+                stack.push(dep);
+            }
+        }
+    }
+    seen
+}
+
+/// The bundled source modules that import `module`, directly or not, and are imported back by it.
+fn source_group(module: &ModRef) -> Vec<ModRef> {
+    let mut group = vec![module.clone()];
+    for m in source_reach(module) {
+        if m.file != module.file && source_reach(&m).iter().any(|r| r.file == module.file) {
+            group.push(m);
+        }
+    }
+    group
+}
+
 /// Checks a bundled source module and the bundled modules it imports, once.
+/// Modules that import each other are checked together.
 pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     ensure_standard();
     if let Some(r) = done(module.file) {
         return r;
     }
-    let cycle = world(|w| !w.checking.insert(module.file));
+    let group = source_group(module);
+    let cycle = world(|w| group.iter().any(|g| !w.checking.insert(g.file)));
     if cycle {
         panic!(
             "cyclic standard source dependency at {} while checking {:?}",
@@ -386,9 +415,13 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             world(|w| w.checking.clone())
         );
     }
-    for item in &module.imports {
-        if let Some(dep) = standard_source_module(n(&item.path)) {
-            ensure_source(&dep);
+    for g in &group {
+        for item in &g.imports {
+            if let Some(dep) = standard_source_module(n(&item.path))
+                && !group.iter().any(|m| m.file == dep.file)
+            {
+                ensure_source(&dep);
+            }
         }
     }
     let mut checker = Checker::new(&CheckOptions {
@@ -403,6 +436,9 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             .trim_start_matches("@std/")
             .trim_end_matches(".ms")
     );
+    if group.len() > 1 {
+        checker.group = group.clone();
+    }
     let program = checker.check_modules(vec![module.clone()], Some(module.file));
     if !program.diagnostics.is_empty() {
         let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
@@ -412,33 +448,35 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             text.join("; ")
         );
     }
-    let symbols = program
-        .symbols
-        .get(&module.file)
-        .cloned()
-        .expect("module symbols");
-    let exports: HashMap<Name, SymRef> = symbols
-        .borrow()
-        .iter()
-        .filter(|(_, s)| s.module == module.file)
-        .map(|(k, v)| (*k, v.clone()))
-        .collect();
-    let methods: Vec<MethodRef> = program
-        .methods
-        .iter()
-        .filter(|m| m.module == module.file)
-        .cloned()
-        .collect();
-    let result = Rc::new(StdResult {
-        symbols,
-        exports,
-        methods,
-    });
-    world(|w| {
-        w.done.insert(module.file, result.clone());
-        w.checking.remove(&module.file);
-    });
-    result
+    for g in &group {
+        let symbols = program
+            .symbols
+            .get(&g.file)
+            .cloned()
+            .expect("module symbols");
+        let exports: HashMap<Name, SymRef> = symbols
+            .borrow()
+            .iter()
+            .filter(|(_, s)| s.module == g.file)
+            .map(|(k, v)| (*k, v.clone()))
+            .collect();
+        let methods: Vec<MethodRef> = program
+            .methods
+            .iter()
+            .filter(|m| m.module == g.file)
+            .cloned()
+            .collect();
+        let result = Rc::new(StdResult {
+            symbols,
+            exports,
+            methods,
+        });
+        world(|w| {
+            w.done.insert(g.file, result.clone());
+            w.checking.remove(&g.file);
+        });
+    }
+    done(module.file).expect("checked")
 }
 
 /// All bundled source modules, checked.
@@ -472,6 +510,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
     ) {
         match state.get(&module.file) {
             Some(2) => return,
+            Some(1) if is_source_module(module) => return,
             Some(1) => {
                 diagnostics.push(Diagnostic {
                     file: Arc::from(module.file.as_str()),

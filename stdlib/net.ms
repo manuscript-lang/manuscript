@@ -14,6 +14,52 @@ import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
 
+extern fn msrt_net_ip_address_text(value: IpAddress) String
+
+extern fn msrt_net_ip_address_family(value: IpAddress) Bool
+
+extern fn msrt_net_cidr_text(value: Cidr) String
+
+extern fn msrt_net_contains_ip(
+    cidr: Cidr,
+    address: IpAddress
+) Result[Bool, NetworkError]
+
+extern fn msrt_net_parse_cidr(text: String) Result[Cidr, NetworkError]
+
+extern fn msrt_net_parse_ip(text: String) Result[IpAddress, NetworkError]
+
+extern fn msrt_net_network() Network
+
+extern fn msrt_tls_parse_certificates(
+    pem: String,
+    max_certificates: Optional[Int]
+) Result[List[CertificateInfo], TlsError]
+
+extern fn msrt_tls_verify_certificates(
+    chain_pem: String,
+    roots_pem: String,
+    server_name: String,
+    now: Timestamp
+) Result[Unit, TlsError]
+
+extern fn msrt_url_decode_component(text: String) Result[String, UrlError]
+
+extern fn msrt_url_encode_component(text: String) String
+
+extern fn msrt_url_format(value: Url) Result[String, UrlError]
+
+extern fn msrt_url_format_query(entries: List[QueryEntry]) String
+
+extern fn msrt_url_parse(text: String) Result[Url, UrlError]
+
+extern fn msrt_url_parse_query(
+    text: String,
+    max_entries: Optional[Int]
+) Result[List[QueryEntry], UrlError]
+
+extern fn msrt_url_resolve(base: Url, reference: String) Result[Url, UrlError]
+
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
     # An address, CIDR, name, record kind, or option is malformed, or a limit or timeout is negative.
@@ -120,6 +166,15 @@ export type DnsKind:
 impl DnsKind:
     # Returns the uppercase wire category.
     fn text() String:
+        match self:
+            A: return "A"
+            AAAA: return "AAAA"
+            CNAME: return "CNAME"
+            MX: return "MX"
+            NS: return "NS"
+            TXT: return "TXT"
+            PTR: return "PTR"
+            SRV: return "SRV"
 
 # Numeric address families reported by IP values and host interfaces.
 export type IpFamily:
@@ -131,23 +186,32 @@ export type IpFamily:
 impl IpFamily:
     # Returns IPv4 or IPv6.
     fn text() String:
+        match self:
+            IPv4: return "IPv4"
+            IPv6: return "IPv6"
 
 # A validated numeric IPv4/IPv6 address without a port or zone.
-export type IpAddress:
+export extern type IpAddress
 
 impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
     fn text() String:
+        return msrt_net_ip_address_text(self)
 
     # Returns the normalized address family.
     fn family() IpFamily:
+        if msrt_net_ip_address_family(self):
+            return IPv6
+
+        return IPv4
 
 # A validated, masked numeric CIDR range.
-export type Cidr:
+export extern type Cidr
 
 impl Cidr:
     # Returns the canonical masked prefix without reparsing.
     fn text() String:
+        return msrt_net_cidr_text(self)
 
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
@@ -175,16 +239,28 @@ export interface Listener:
 
 # Reports whether an IP address belongs to a CIDR range.
 export fn contains_ip(cidr: Cidr, address: IpAddress) Result[Bool, NetworkError]:
+    return msrt_net_contains_ip(cidr, address)
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
 export fn parse_cidr(text: String) Result[Cidr, NetworkError]:
+    return msrt_net_parse_cidr(text)
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
 export fn parse_ip(text: String) Result[IpAddress, NetworkError]:
+    return msrt_net_parse_ip(text)
 
 impl Error for NetworkError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
     fn message() String:
+        match self:
+            InvalidInput: return "network: invalid input"
+            InvalidData: return "network: invalid data"
+            LimitExceeded: return "network: limit exceeded"
+            PermissionDenied: return "network: permission denied"
+            Unsupported: return "network: operation not supported"
+            Closed: return "network: resource is closed"
+            Timeout: return "network: operation timed out"
+            Failed(message): return message.clone()
 
 # Network, DNS, HTTP, and WebSocket operations for the current host.
 export interface Network:
@@ -309,6 +385,7 @@ export interface Network:
 
 # Returns network operations for the current host.
 export fn network() Network:
+    return msrt_net_network()
 
 # Errors returned when TLS configuration, certificates, or peer authentication fail.
 export type TlsError:
@@ -370,6 +447,7 @@ export fn parse_certificates(
     pem: String,
     max_certificates: Optional[Int] = none
 ) Result[List[CertificateInfo], TlsError]:
+    return msrt_tls_parse_certificates(pem, max_certificates)
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
 export fn verify_certificates(
@@ -378,10 +456,16 @@ export fn verify_certificates(
     server_name: String,
     now: Timestamp
 ) Result[Unit, TlsError]:
+    return msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
 
 impl Error for TlsError:
     # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
     fn message() String:
+        match self:
+            InvalidInput: return "TLS: invalid input"
+            InvalidData: return "TLS: invalid data"
+            LimitExceeded: return "TLS: limit exceeded"
+            AuthenticationFailed: return "TLS: authentication failed"
 
 # Errors returned for malformed URL text, components, or query limits.
 export type UrlError:
@@ -416,32 +500,43 @@ export type Url:
 
 # Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) Result[String, UrlError]:
+    return msrt_url_decode_component(text)
 
 # Percent-encodes one URL component using UTF-8 bytes.
 export fn encode_component(text: String) String:
+    return msrt_url_encode_component(text)
 
 # Formats URL components as an absolute hierarchical URL.
 # Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
 export fn format(value: Url) Result[String, UrlError]:
+    return msrt_url_format(value)
 
 # Encodes query entries as a query string.
 export fn format_query(entries: List[QueryEntry]) String:
+    return msrt_url_format_query(entries)
 
 # Parses an absolute URL into its components.
 export fn parse(text: String) Result[Url, UrlError]:
+    return msrt_url_parse(text)
 
 # Parses a query string, preserving duplicate keys and their input order.
 export fn parse_query(
     text: String,
     max_entries: Optional[Int] = none
 ) Result[List[QueryEntry], UrlError]:
+    return msrt_url_parse_query(text, max_entries)
 
 # Resolves a relative reference against a base URL.
 export fn resolve(base: Url, reference: String) Result[Url, UrlError]:
+    return msrt_url_resolve(base, reference)
 
 impl Error for UrlError:
     # Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
     fn message() String:
+        match self:
+            InvalidInput: return "URL: invalid input"
+            InvalidData: return "URL: invalid data"
+            LimitExceeded: return "URL: limit exceeded"
 
 # Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
 export type WebSocketError:
@@ -505,3 +600,11 @@ export type WebSocketOptions:
 impl Error for WebSocketError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `WebSocket: <reason>`.
     fn message() String:
+        match self:
+            InvalidInput: return "WebSocket: invalid input"
+            InvalidData: return "WebSocket: invalid data"
+            LimitExceeded: return "WebSocket: limit exceeded"
+            PermissionDenied: return "WebSocket: permission denied"
+            Closed: return "WebSocket: resource is closed"
+            Timeout: return "WebSocket: operation timed out"
+            Failed(message): return message.clone()

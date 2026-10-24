@@ -3,32 +3,9 @@
 /// `(receiver, [(operation, native identity)])`.
 pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
     (
-        "IpAddress",
-        &[("text", "net/ip_text"), ("family", "net/ip_family")],
-    ),
-    ("Cidr", &[("text", "net/cidr_text")]),
-    ("DnsKind", &[("text", "net/dns_kind_text")]),
-    ("IpFamily", &[("text", "net/ip_family_text")]),
-    (
         "NormalizationForm",
         &[("normalize", "string/form_normalize")],
     ),
-    (
-        "HttpHeaders",
-        &[
-            ("append", "http/headers_append"),
-            ("values", "http/headers_values"),
-            ("text", "http/headers_text"),
-            ("names", "http/headers_names"),
-            ("clone", "http/headers_clone"),
-            ("remove", "http/headers_remove"),
-        ],
-    ),
-    (
-        "ClientResponse",
-        &[("metadata", "http/client_response_metadata")],
-    ),
-    ("HttpMethod", &[("text", "http/method_text")]),
     (
         "Optional",
         &[

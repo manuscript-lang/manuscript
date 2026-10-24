@@ -5,6 +5,44 @@ import ReadStream from "@std/io.ms"
 import Timestamp from "@std/time.ms"
 import WriteStream from "@std/io.ms"
 
+extern fn msstd_fs_constants() Map[String, Int]
+
+extern fn msstd_fs_filesystem() FileSystem
+
+extern fn msrt_path_basename(path: String) String
+
+extern fn msrt_path_dirname(path: String) String
+
+extern fn msrt_path_extension(path: String) String
+
+extern fn msrt_path_is_absolute(path: String) Bool
+
+extern fn msrt_path_join(parts: List[String]) String
+
+extern fn msrt_path_normalize(path: String) String
+
+extern fn msrt_path_relative(base: String, target: String) Result[String, PathError]
+
+extern fn msstd_fs_posix() PathOperations
+
+extern fn msstd_fs_win32() PathOperations
+
+extern fn msrt_path_basename_without(path: String, suffix: String) String
+
+extern fn msrt_path_resolve(base: String, parts: List[String]) Result[String, PathError]
+
+extern fn msrt_path_parse(path: String) PathParts
+
+extern fn msrt_path_format(parts: PathParts) String
+
+extern fn msrt_path_separator() String
+
+extern fn msrt_path_delimiter() String
+
+extern fn msrt_path_to_namespaced_path(path: String) String
+
+extern fn msrt_path_matches_glob(path: String, pattern: String) Result[Bool, PathError]
+
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
     # A path is empty or holds NUL, an argument is outside its range (mode bits, offset, size, flags string, origin), the handle lacks the needed read or write mode, or the operation targets the wrong kind of entry.
@@ -362,6 +400,7 @@ export type FileSystemInfo:
 # Returns this host's filesystem flag, mode, and permission constants by name.
 # Names and values vary by host; absent entries are not supported constants or portable enum cases.
 export fn constants() Map[String, Int]:
+    return msstd_fs_constants()
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
@@ -408,9 +447,21 @@ export type GlobOptions:
 impl Error for FileSystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `filesystem: <reason>`, such as `filesystem: file or directory not found`.
     fn message() String:
+        match self:
+            InvalidInput: return "filesystem: invalid input"
+            InvalidData: return "filesystem: invalid data"
+            LimitExceeded: return "filesystem: limit exceeded"
+            NotFound: return "filesystem: file or directory not found"
+            AlreadyExists: return "filesystem: already exists"
+            NotEmpty: return "filesystem: directory not empty"
+            PermissionDenied: return "filesystem: permission denied"
+            Unsupported: return "filesystem: operation not supported"
+            Closed: return "filesystem: resource is closed"
+            Failed(message): return message.clone()
 
 # Returns filesystem operations for the current host.
 export fn filesystem() FileSystem:
+    return msstd_fs_filesystem()
 
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:
@@ -419,24 +470,31 @@ export type PathError:
 
 # Returns the final path component, excluding trailing separators.
 export fn basename(path: String) String:
+    return msrt_path_basename(path)
 
 # Returns the directory portion of a path.
 export fn dirname(path: String) String:
+    return msrt_path_dirname(path)
 
 # Returns the final extension, including its leading dot, or an empty string.
 export fn extension(path: String) String:
+    return msrt_path_extension(path)
 
 # Reports whether a path is absolute according to the host path rules.
 export fn is_absolute(path: String) Bool:
+    return msrt_path_is_absolute(path)
 
 # Joins path parts using the host separator and normalizes the result.
 export fn join(parts: List[String]) String:
+    return msrt_path_join(parts)
 
 # Normalizes separators and dot segments without accessing the filesystem.
 export fn normalize(path: String) String:
+    return msrt_path_normalize(path)
 
 # Computes a relative path from `base` to `target` using host path rules.
 export fn relative(base: String, target: String) Result[String, PathError]:
+    return msrt_path_relative(base, target)
 
 # Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:
@@ -487,34 +545,46 @@ export interface PathOperations:
 
 # Returns path operations using POSIX separators and parsing rules.
 export fn posix() PathOperations:
+    return msstd_fs_posix()
 
 # Returns path operations using Windows separators and parsing rules.
 export fn win32() PathOperations:
+    return msstd_fs_win32()
 
 # Returns the basename with the supplied suffix removed when it matches.
 export fn basename_without(path: String, suffix: String) String:
+    return msrt_path_basename_without(path, suffix)
 
 # Resolves path parts against a base using host path conventions.
 export fn resolve(base: String, parts: List[String]) Result[String, PathError]:
+    return msrt_path_resolve(base, parts)
 
 # Splits a path into its root, directory, base, extension, and name.
 export fn parse(path: String) PathParts:
+    return msrt_path_parse(path)
 
 # Formats parsed path components as a path string.
 export fn format(parts: PathParts) String:
+    return msrt_path_format(parts)
 
 # Returns the host's path separator.
 export fn separator() String:
+    return msrt_path_separator()
 
 # Returns the host's path-list delimiter.
 export fn delimiter() String:
+    return msrt_path_delimiter()
 
 # Converts a path to the host's namespaced representation when applicable.
 export fn to_namespaced_path(path: String) String:
+    return msrt_path_to_namespaced_path(path)
 
 # Tests a path against a glob pattern.
 export fn matches_glob(path: String, pattern: String) Result[Bool, PathError]:
+    return msrt_path_matches_glob(path, pattern)
 
 impl Error for PathError:
     # Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.
     fn message() String:
+        match self:
+            InvalidInput: return "path: invalid input"
