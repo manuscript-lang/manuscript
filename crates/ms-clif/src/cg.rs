@@ -25,7 +25,7 @@ use std::collections::{HashMap, HashSet};
 
 /// Offset of `code` in a closure object.
 pub const CLOSURE_CODE: i32 = 16;
-/// Offset of the payload in a `Shared[T]` box.
+/// Offset of the payload in a MIR `Shared` box (internal; builders use it).
 pub const SHARED_VALUE: i64 = 16;
 /// Offset of the first capture in a closure object.
 pub const CLOSURE_CAPTURES: u32 = 24;
@@ -45,7 +45,7 @@ pub enum Glue {
     BlockCopy,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
-    /// Destructor of a `Shared[T]` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
+    /// Destructor of a MIR `Shared` box `fn(obj)`; the `Ty` is `T`. Drops the payload, frees the box.
     SharedDrop,
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
