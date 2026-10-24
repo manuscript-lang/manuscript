@@ -244,3 +244,22 @@ test "more sleeping tasks than the timer heap keeps all finish":
 
         let results = group.results() | try expect_ok
         try expect_equal(results.length(), 1200)
+
+test "using a task after its group closed gives Closed":
+    var group = TaskGroup[Int]()
+    let task = group.spawn(lambda: slow_square(3))
+    group.close()
+    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    (
+        group.spawn(
+            lambda: slow_square(4)
+        ).result() | try expect_error | try expect_equal(TaskError.Closed)
+    )
+    group.wait() | try expect_error | try expect_equal(TaskError.Closed)
+    group.results() | try expect_error | try expect_equal(TaskError.Closed)
+
+test "a second result call gives Closed":
+    with TaskGroup[Int]() as group:
+        let task = group.spawn(lambda: square(2))
+        task.result() | try expect_ok | try expect_equal(4)
+        task.result() | try expect_error | try expect_equal(TaskError.Closed)

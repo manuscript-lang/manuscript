@@ -30,12 +30,12 @@ test "a group collects its results in start order":
 - `group.results()` waits for every started task and returns their results in start order, or the first task's error. `group.wait()` waits for all of them and reports an error if any ended without a result.
 - Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
-- Closing a group invalidates its tasks: `result()` on a task whose group was closed faults, and so does `spawn` on a closed group. A task cannot wait on or close its own group.
+- Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
 - A fault in a task ends the program, as a fault anywhere does.
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(work, timeout: some(duration(...)))` limits one task. `TaskGroup[T](timeout: some(duration(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`.
+A task has no time limit unless you give one. `spawn(work, timeout: some(duration(...)))` limits one task. `TaskGroup[T](timeout: some(duration(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript

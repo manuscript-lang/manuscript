@@ -24,6 +24,8 @@ export type TaskError:
     case TimedOut
     # The task was cancelled before it finished.
     case Cancelled
+    # The task's group was closed, or its result was already collected.
+    case Closed
 
 impl Error for TaskError:
     # Returns the fixed diagnostic `task: <reason>`.
@@ -31,16 +33,17 @@ impl Error for TaskError:
         match self:
             case TimedOut: return "task: timed out"
             case Cancelled: return "task: cancelled"
+            case Closed: return "task: closed"
 
-# Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled) to a result.
+# Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected) to a result.
 def outcome(code: Int) -> Result[Unit, TaskError]:
     if code == 1:
         return error(TaskError.TimedOut)
     if code == 2:
         return error(TaskError.Cancelled)
-
     if code == 3:
-        panic("Task: its result was already collected or its group was closed")
+        return error(TaskError.Closed)
+
     return ok(())
 
 # A limit in nanoseconds, or -1 for none.

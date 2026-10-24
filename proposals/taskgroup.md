@@ -52,7 +52,7 @@ def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
 - `spawn(work: Callable[[], T], timeout: Optional[Duration] = none) -> Task[T]`: starts a task. It first runs when the caller waits. A task takes the shorter of its own limit and the group's remaining time.
 - `Task[T].result() -> Result[T, TaskError]`: waits for the task. Takes the result, so call it once (a second call faults).
 - `results() -> Result[List[T], TaskError]`: waits for every task, results in start order, or the first task's error. `wait() -> Result[Unit, TaskError]` waits for all and reports an error if any ended without a result.
-- `TaskError` is `TimedOut | Cancelled`; it implements `Error`.
+- `TaskError` is `TimedOut | Cancelled | Closed`; it implements `Error`. `Closed` means the group was closed or the result was already collected; using a closed group never faults.
 
 **Scope.** `close` (run by `with` on every exit) cancels tasks not yet collected, then waits for them, so no task outlives its block. To keep the work, call `results()`, `wait()` or `result()` before the block ends. This is the owner's decision (2026-10-24).
 

@@ -63,7 +63,7 @@ pub extern "C-unwind" fn msrt_scope_new() -> i64 {
 
 /// Starts `closure` as a task of `scope`. A negative limit means none. `task_limit_ns` counts from
 /// now and `scope_limit_ns` from the scope's creation; the task ends at the earlier one.
-/// Returns the task handle.
+/// Returns the task handle, or -1 when the scope is closed.
 ///
 /// # Safety
 /// `closure` must be a live closure object.
@@ -76,7 +76,8 @@ pub unsafe extern "C-unwind" fn msrt_scope_spawn(
 ) -> i64 {
     let now = crate::sys::monotonic_ns();
     let Some(s) = find(scope) else {
-        crate::fault::fault(b"TaskGroup: the group is closed");
+        // The group was closed: the handle -1 reads back as closed.
+        return -1;
     };
     let mut limit = task_limit_ns;
     if scope_limit_ns >= 0 {
@@ -101,6 +102,9 @@ pub extern "C-unwind" fn msrt_scope_join(handle: i64, keep: i64) -> i64 {
 /// else returned. The tasks stay joinable.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_scope_wait(scope: i64) -> i64 {
+    if find(scope).is_none() {
+        return 3;
+    }
     let mut worst = 0;
     for handle in tasks_of(scope) {
         // SAFETY: single threaded scheduler.
