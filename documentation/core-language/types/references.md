@@ -20,6 +20,25 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `.clone()` is a deep copy of nested values. Opaque handles have no built-in clone and are never copied. See [mutation and cloning](records.md#mutation-and-cloning).
 
+## Sharing a value
+
+`Shared[T]` from `@std/shared.ms` gives several owners one immutable, reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow. Nothing changes the value through a `Shared`, so state that holders update lives inside the value's own handles. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner.
+
+```
+import {share, Shared} from "@std/shared.ms"
+
+type Settings:
+    name: String
+
+fn describe(settings: Shared[Settings]) String:
+    return settings.get().name
+
+fn main_example() String:
+    let settings = share(Settings("prod"))
+    let again = settings
+    return describe(again) + describe(settings)
+```
+
 ## References inside other values
 
 Records, alternatives, collections, and closures may hold resource references. Storing a resource neither closes it nor keeps it open; arrange cleanup for the resource itself.
