@@ -2,5 +2,3 @@
 # check: the "cannot find module ../x.ms" message names an unresolved <DIR>/.. on Windows; Linux collapses it.
 # check: an import of a file in a missing directory names the whole path; Linux (and Go) name the missing directory.
 # run: the Windows stack walk stops after 255 frames, so a 200000-deep recursion fault collapses to "repeated 255 more times" and never reaches main.
-# run: the Windows spawn-site capture recovers only the spawn frame, so `task started by:` omits its callers.
-e2e/stdlib/tasks-fault
