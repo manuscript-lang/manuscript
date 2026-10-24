@@ -39,7 +39,7 @@ fn linked_natives_follow_the_manuscript_abi() {
     let _ = std::fs::remove_file(&object);
     assert_eq!(
         text(&out),
-        "42\n6\nfalse true\nhello, world\nhello, a considerably longer visitor name\n"
+        "42\n6\nfalse true\nhello, world\nhello, a considerably longer visitor name\nok 3 error divide by zero\nQUIET|error divide by zero|error overflow\ntrue true\n"
     );
 }
 
