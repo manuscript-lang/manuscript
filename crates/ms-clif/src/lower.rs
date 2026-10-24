@@ -2134,6 +2134,19 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let (_, at, _) = self.fields_of(rty)[i as usize];
                 let lay = self.g.lay.mem(rty);
                 let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
+                // The result is read and written with the field's own layout, so each of its
+                // leaves must sit at the same distance from the field's address as in the field.
+                debug_assert!(
+                    {
+                        let fty = m.records[r.index()].fields[i as usize].1;
+                        let own = mem_layout(&self.g.lay.leaves(fty));
+                        own.offsets
+                            .iter()
+                            .enumerate()
+                            .all(|(k, o)| lay.offsets[at + k] - lay.offsets[at] == *o)
+                    },
+                    "field {i} of record {r:?} is laid out differently inside the record"
+                );
                 let p = self.a(inst, 0)[0];
                 vec![self.add_imm(p, off)]
             }

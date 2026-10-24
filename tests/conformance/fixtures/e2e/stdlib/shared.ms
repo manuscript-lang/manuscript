@@ -104,3 +104,15 @@ test "an optional payload keeps its value through take and put":
     let taken = shared.take()
     shared.put(taken)
     try expect_equal(shared.get(), some(5))
+
+type Pair:
+    flag: Bool
+    value: Optional[Int]
+
+test "a record payload with an optional field after a flag survives take and put":
+    let shared = share(Pair(flag: 1 == 1, value: some(5)))
+    var pair = shared.take()
+    pair = Pair(flag: 1 == 2, value: pair.value)
+    shared.put(pair)
+    try expect_equal(shared.get().value, some(5))
+    try expect_equal(shared.get().flag, 1 == 2)
