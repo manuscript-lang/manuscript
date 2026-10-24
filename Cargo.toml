@@ -43,7 +43,7 @@ panic = "abort"
 
 [profile.dev]
 panic = "abort"
-# Line tables are enough for backtraces and the debugger; full variable info slows every build and link.
+# Line tables are enough for backtraces and profiles; full variable info slows every build and link.
 debug = "line-tables-only"
 
 # Cranelift is slow to build unoptimized; keep it lightly optimized in dev builds.

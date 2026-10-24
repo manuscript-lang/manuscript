@@ -45,24 +45,24 @@ pub enum TyKind {
     Int,
     /// `Float`, an IEEE 754 binary64.
     Float,
-    /// `String`: a reference-counted UTF-8 object.
+    /// `String`: an owned two-word UTF-8 value.
     Str,
-    /// `Bytes`: a reference-counted byte-string object.
+    /// `Bytes`: an owned byte string.
     Bytes,
-    /// A raw machine word that is not reference counted (descriptors, code
-    /// addresses, erased interface data). Never retained or released.
+    /// A raw machine word that needs no drop (descriptors, code
+    /// addresses, erased interface data).
     Ptr,
-    /// A record: a reference-counted heap object with fields in declaration order.
+    /// A record: a value with fields in declaration order.
     Rec(RecId),
-    /// An alternative: a reference-counted heap object with a tag and payload.
+    /// An alternative: a value with a tag and payload.
     Alt(AltId),
-    /// `List[T]`: a reference-counted heap object with inline elements.
+    /// `List[T]`: an owned list value.
     List(Ty),
     /// `Optional[T]`. `T` must be a scalar or a single-word reference type;
     /// pointer-like payloads use the null pointer as `none`. Lowering wraps
     /// anything else (nested optionals, interfaces) in an alternative.
     Opt(Ty),
-    /// A runtime-implemented reference-counted object type such as `Map[K, V]`
+    /// A runtime-implemented object type such as `Map[K, V]`
     /// or `Set[T]`, named as the runtime names it.
     Obj(String, Vec<Ty>),
     /// A closure object: parameter types (all passed borrowed) and the result.
@@ -207,7 +207,7 @@ impl TyTable {
         self.intern(TyKind::Obj(name.to_string(), args))
     }
 
-    /// Whether values of `ty` own a reference count that must be released.
+    /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
             TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr => false,

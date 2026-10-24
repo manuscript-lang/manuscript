@@ -1,10 +1,10 @@
 //! Native backend: lowers verified MIR to Cranelift, emits an object file, and
-//! links it with the system toolchain and the runtime static library.
+//! links it with the bundled `lld` and the runtime static library.
 //!
 //! Values are flattened into scalar leaves (see [`layout`]). Ownership follows
 //! the MIR rules: the generated code drops owned values at their `drop`
-//! instructions only; reference-counted strings are the only values with
-//! compiler-visible counts. Frame pointers are always kept so the runtime can
+//! instructions only; only `Shared[T]`, closures and interface
+//! payload blocks carry counts. Frame pointers are always kept so the runtime can
 //! walk stacks for fault traces and sampling profiles.
 
 pub mod layout;

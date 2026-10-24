@@ -30,7 +30,7 @@ pub type DropFn = unsafe extern "C" fn(*mut Obj);
 /// The 16-byte header every heap object starts with.
 #[repr(C)]
 pub struct Obj {
-    /// Non-atomic reference count (the language has no concurrency).
+    /// Non-atomic reference count: every task runs on the one runtime thread.
     pub rc: usize,
     /// Drop protocol entry; never null for a live object.
     pub drop: Option<DropFn>,
