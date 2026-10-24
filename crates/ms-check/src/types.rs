@@ -213,6 +213,11 @@ impl Type {
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
+    /// Whether this is the type `name` declared by the bundled source module `module`.
+    pub fn is_source_type(&self, module: &str, name: &str) -> bool {
+        self.name.as_str() == name && self.symbol().is_some_and(|s| s.module.as_str() == module)
+    }
+
     /// The nominal definition's symbol, if any.
     pub fn symbol(&self) -> Option<SymRef> {
         self.def.as_ref().and_then(|d| d.symbol())

@@ -329,7 +329,7 @@ impl FnLower<'_> {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is_std("Bytes") {
             Some((KIND_STRING, "msrt_encoding_base64_decode", true))
-        } else if t.is_std("Url") {
+        } else if t.is_source_type("@std/net.ms", "Url") {
             Some((KIND_STRING, "msrt_url_parse", false))
         } else if t.is_std("Decimal") {
             Some((KIND_NUMBER, "msstd_decimal_literal", false))
@@ -922,7 +922,7 @@ impl FnLower<'_> {
             return Ok(id);
         }
         // A URL is its formatted text.
-        if t.is_std("Url") {
+        if t.is_source_type("@std/net.ms", "Url") {
             return self.jencode_url(doc, value);
         }
         match t.kind {
