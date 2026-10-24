@@ -64,6 +64,8 @@ def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
 
 **Channel (stage 4).** `Channel[T](capacity: Int)` is a refcounted handle like `Shared[T]`, so several closures can hold it; the buffered values are never shared. `send(value: T)` consumes the value and waits while the buffer is full; `receive() -> Optional[T]` returns an owned value, `none` once the channel is closed and drained; `close()` is explicit and idempotent.
 
+Transport (from the child-processes proposal, PR #1183): processes use `Sender[T]` and `Receiver[T]` endpoints, `Sender.close()`, and `receive()` returns `none` once closed and drained. Stage 4 therefore defines the endpoint types as interfaces, with the in-process queue as one implementation, so an IPC-backed endpoint can implement the same interface later.
+
 ## Implementation
 
 - Runtime (`ms-rt`): `scope.rs` keeps the task list of each scope. `msrt_scope_new`, `msrt_scope_spawn(scope, closure, task_limit_ns, scope_limit_ns)` (retains the closure, starts a `SPAWN_FATAL` task, registers a kill deadline), `msrt_scope_join(handle, keep)` and `msrt_scope_wait(scope)` (0 returned, 1 timed out, 2 cancelled, 3 collected or closed). Scope ids carry a generation, so a closed group's id never reaches a later group, and `msrt_scope_close(scope)` (cancel, wait, release).
