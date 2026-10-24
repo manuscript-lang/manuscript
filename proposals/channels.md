@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans `channel[T]() -> (Sender[T], Receiver[T])`; `proposals/child-processes.md` stage 3 plans `fork` with an entry `def f(input: Receiver[In], output: Sender[Out], argument: A)`. That is two endpoint types, two entry parameters, and a pair of channels per conversation.
-- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is `Channel[A, B](capacity)`, which creates a connected pair and returns one end; `ch.peer()` takes the other end, `Channel[B, A]`, once. The two ends have the type arguments swapped.
+- Change: one type, `Channel[Send, Receive]`. An endpoint both sends `Send` and receives `Receive`. A pair is `Channel[A, B](capacity)`, which creates a connected pair and returns one end; `ch.peer()` takes the other end once and returns `Optional[Channel[B, A]]` (`none` after the first call: a safe error, not a fault). The two ends have the type arguments swapped.
 - Entry rule: a worker or process entry takes **one** parameter, the child's end of the channel: `def f(ch: Channel[In, Out]) -> R`. `spawn(entry)` creates the pair, passes one end, returns the other.
 - Transport follows where the peer lives: queue between tasks, moved values between workers, JSON frames between processes. The API is identical.
 - Cost: no new syntax; one runtime endpoint type; deletes `Sender`, `Receiver` and the `clone` fan-in from the TaskGroup plan. Decision requested: sign-off on the type shape, the entry rule, and the open questions below.
@@ -44,7 +44,7 @@ from "@std/channels.ms" import Channel
 
 # Channel[Send, Receive]
 Channel[A, B](capacity: Int) -> Channel[A, B]   # constructor: creates a connected pair, returns one end
-ch.peer() -> Channel[B, A]                       # takes the other end; a second call faults
+ch.peer() -> Optional[Channel[B, A]]             # takes the other end; none if already taken
 
 ch.send(value: Send) -> Result[Unit, Closed]   # consumes value; parks while full; cancellation point
 ch.receive() -> Optional[Receive]              # owned value; none when peer closed and drained; parks while empty
@@ -143,7 +143,8 @@ from "@std/channels.ms" import Channel
 
 def squares() -> List[Int]:
     var mine = Channel[Int, Int](4)
-    var theirs = mine.peer()
+    guard var theirs = mine.peer() else:
+        return []
     with TaskGroup[Unit]() as group:
         group.spawn(lambda: serve(theirs))
         var out: List[Int] = []
@@ -179,7 +180,7 @@ with WorkerGroup[Unit]() as group:
 - **`Port[Send, Receive]` placeholder name.** Same shape; `Channel` is the owner's name.
 - **`Channel[T]` same type both ways.** Smaller, but a process child that receives `Bytes` and replies `String` would need a wrapping alternative on both sides. Rejected on child-processes evidence.
 - **Pair-returning function or static method.** Rejected: the language has no tuples (`documentation/core-language/basics/expressions.md:158`), no `let (a, b)` pattern (`types/destructuring.md`), no static methods (`types/contracts.md:76`), and Chinmay keeps `Channel` uppercase (no lowercase `channel(...)`). A record result (`ChannelPair`) needs a non-literal constructor and field destructuring of move-only values; unverified.
-- **`peer()` that faults on the second call.** The cost of one-constructor-two-ends; the alternative is `peer()` returning `Optional[Channel[B, A]]`. Open question.
+- **`peer()` that faults on the second call.** Rejected: misuse should be a safe error, not a fault (Chinmay, 2026-10-24, on TaskGroup use-after-close).
 - **One-way channels, entry takes a pair.** Entry `def f(ch: Pair[In, Out])` holding two one-way ends gets the single-parameter win without bidirectional types. Set aside: it keeps two endpoint types and still needs two handles per conversation; not measured, a taste call for Chinmay.
 - **Smallest version:** tasks only, `Channel[S, R](n)`, no group integration. Proves the type and close semantics, leaves the entry rule unproven; it is stage 1 below.
 - **Node model (`postMessage` + events + `workerData`).** Rejected: multiple inputs to a child.
@@ -214,7 +215,7 @@ The same fixture body running against all three groups is the parity gate. No te
 
 - Resolve before approval (decider: Chinmay):
   1. Accept bidirectional `Channel[Send, Receive]` over one-way ends plus a pair-typed entry parameter (recommend: bidirectional, per your direction), and accept losing fan-in in v1.
-  2. `peer()` second call: fault (recommended) vs `Optional`.
+  2. `peer()` second call: `Optional` (recommended, per your safe-errors direction) vs fault.
   3. Half-close. Recommend: none in v1.
   4. Accept the stage 0 spike result as the gate for the type's implementation.
 - Resolve during implementation:
