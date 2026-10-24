@@ -1484,7 +1484,7 @@ impl<'a> Parser<'a> {
                         "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with TaskGroup[T]() as group: group.spawn(lambda: work())"),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with TaskGroup[T]() as group: group.spawn(lambda ch: work())"),
                         _ => {}
                     }
                 }

@@ -90,6 +90,14 @@ pub unsafe extern "C-unwind" fn msrt_scope_spawn(
     handle as i64
 }
 
+/// Called by a task's closure once its cleanup is registered: a task cancelled before it first ran
+/// unwinds here, so its work never starts but its cleanup runs.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_scope_started() {
+    // SAFETY: single threaded scheduler.
+    unsafe { task::unwind_if_cancelled() }
+}
+
 /// Waits for one task and returns how it ended; the task stays joinable until `msrt_scope_close`
 /// or a second call collects it.
 #[unsafe(no_mangle)]

@@ -10,7 +10,15 @@
 
 ## Status
 
-- **Approved** by Chinmay on 2026-10-24 ("great, let's build it"). Implementation: stage 2 (tasks) next. Written against `main` at `6361798f`; TaskGroup (#1166) has since landed on `main`.
+- **Approved** by Chinmay on 2026-10-24 ("great, let's build it"). Written against `main` at `6361798f`; TaskGroup (#1166) has since landed on `main`.
+- Stage 2 (tasks) implemented. Choices made while building it:
+  - `TaskTransport` lives in `stdlib/tasks.ms`, unexported, so only `spawn` makes task channels.
+  - A token lasts for one wait (`msrt_channel_token/park/post`, `crates/ms-rt/src/channel.rs`): no token outlives its wait, so a late post is dropped and nothing needs freeing at close.
+  - `close()` closes the whole end; unread values on it are dropped and later calls give `Closed`. The other end drains first.
+  - 16 unread values per direction before a send waits.
+  - `.clone()` of a `Channel` shares the end; waiters are a list, so several senders or receivers on one end work.
+  - The task's end closes in a `with` cleanup, so it closes on return, cancellation, or a cancellation before the task first ran (the "never starts" check moved into the task body, `msrt_scope_started`).
+  - Time limits are now also checked on each task switch: tasks that keep each other ready never reached `reactor_wait`, where kills expired.
 - Direction (Chinmay, 2026-10-24): bidirectional; `Channel` uppercase; spawn creates the ends; "spawn should return the handle ... Channel can be a field on that return type"; "i want majority of things in ms"; "tasks and workers should be just in memory, no socket, use socket pair only for processes"; "channel should have a dedicated transport field ... instantiate a different transport for different levels ... only use Rust for things that are not feasible"; "a full result, no connect. let's do full def if needed".
 - Superseded drafts (git history): tuple `channel_pair`, `peer()`/`create_mirror`, `AtomicWords` ring, JSON over a pipe at every level.
 - Reviews: two skeptical subagent reviews; the second (2026-10-24, against source with `ms build`) is folded in below and listed in Review outcome.

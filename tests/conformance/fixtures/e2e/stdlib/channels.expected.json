@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "channels.ms::a task answers each message in order",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "channels.ms::the group reads what a finished task sent, then the end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "channels.ms::sending after the other end closed gives Closed",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "channels.ms::an end used after closing it gives Closed",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "channels.ms::a task cancelled while it waits closes its end",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "channels.ms::a task cancelled before it first ran closes its end",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "channels.ms::closing the group closes every channel",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "channels.ms::a group without channel types gives each task a Unit channel",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "channels.ms::cloned ends share one channel",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "channels.ms::channel errors describe themselves",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN channels.ms::a task answers each message in order\nPASS channels.ms::a task answers each message in order\nRUN channels.ms::the group reads what a finished task sent, then the end\nPASS channels.ms::the group reads what a finished task sent, then the end\nRUN channels.ms::sending after the other end closed gives Closed\nPASS channels.ms::sending after the other end closed gives Closed\nRUN channels.ms::an end used after closing it gives Closed\nPASS channels.ms::an end used after closing it gives Closed\nRUN channels.ms::a task cancelled while it waits closes its end\nPASS channels.ms::a task cancelled while it waits closes its end\nRUN channels.ms::a task cancelled before it first ran closes its end\nPASS channels.ms::a task cancelled before it first ran closes its end\nRUN channels.ms::closing the group closes every channel\nPASS channels.ms::closing the group closes every channel\nRUN channels.ms::a group without channel types gives each task a Unit channel\nPASS channels.ms::a group without channel types gives each task a Unit channel\nRUN channels.ms::cloned ends share one channel\nPASS channels.ms::cloned ends share one channel\nRUN channels.ms::channel errors describe themselves\nPASS channels.ms::channel errors describe themselves\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
