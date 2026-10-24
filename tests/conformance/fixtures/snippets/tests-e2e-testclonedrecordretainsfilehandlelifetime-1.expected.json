@@ -3,8 +3,8 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 4,
+    "exit_code": 1,
     "stdout": "",
-    "stderr": ""
+    "stderr": "<DIR>/tests-e2e-testclonedrecordretainsfilehandlelifetime-1.ms:31:33: type: cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }

@@ -1,16 +1,16 @@
-import Key from "./domain.ms"
-import {add_generic, remove_generic} from "./helpers.ms"
+from "./domain.ms" import Key
+from "./helpers.ms" import add_generic, remove_generic
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
-export fn first_run() Set[Key]:
+export def first_run() -> Set[Key]:
     var items = Set[Key]([Key(1, "original")])
     items.add(Key(1, "duplicate"))
     add_generic(var items, Key(2, "second"))
@@ -18,11 +18,11 @@ export fn first_run() Set[Key]:
     remove_generic(var items, Key(8, "absent"))
     return items
 
-export fn first_add(var items: Set[Key], value: Key) Unit:
+export def first_add(var items: Set[Key], value: Key) -> Unit:
     items.add(value)
 
-export fn first_remove(var items: Set[Key], value: Key) Unit:
+export def first_remove(var items: Set[Key], value: Key) -> Unit:
     items.remove(value)
 
-export fn first_empty() Set[Key]:
+export def first_empty() -> Set[Key]:
     return Set[Key]([])

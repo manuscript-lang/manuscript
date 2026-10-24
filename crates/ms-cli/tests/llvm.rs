@@ -82,7 +82,7 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
 fn deeply_nested_literal_builds_quickly() {
     let depth = 400;
     let source = format!(
-        "export fn main() Int:\n    let x = {}1{}\n    return x.length()\n",
+        "export def main() -> Int:\n    let x = {}1{}\n    return x.length()\n",
         "[".repeat(depth),
         "]".repeat(depth)
     );

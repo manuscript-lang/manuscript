@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() String:\n    return \"Que|\"\n"
+    "fmt": "def work() -> String:\n    return \"Que|\"\n"
   }
 }

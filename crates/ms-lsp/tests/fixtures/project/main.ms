@@ -1,7 +1,7 @@
-import {double, Counter} from "./util.ms"
-import helper from "./helper.ms"
+from "./util.ms" import double, Counter
+from "./helper.ms" import helper
 
-fn main() Int:
+def main() -> Int:
     let counter = Counter(count: 1)
     let value = double(counter.count)
     return helper(value)

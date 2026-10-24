@@ -1,6 +1,6 @@
-import {range} from "@std/collections.ms"
+from "@std/collections.ms" import range
 
-export fn main() Int:
+export def main() -> Int:
     var reserved = List[Int](reserve: 1000)
     if reserved.length() != 0: return 1
 

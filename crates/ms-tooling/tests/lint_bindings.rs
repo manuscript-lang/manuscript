@@ -21,7 +21,7 @@ fn codes(source: &str) -> Vec<String> {
 
 #[test]
 fn if_var_borrow_that_is_only_written_is_not_unread() {
-    let source = "export fn main() Int:
+    let source = "export def main() -> Int:
     var m = Map[String, Int]()
     m.add(\"a\", 1)
     if var n = m.get(\"a\"):
@@ -33,7 +33,7 @@ fn if_var_borrow_that_is_only_written_is_not_unread() {
 
 #[test]
 fn if_let_binding_that_is_never_read_is_still_reported() {
-    let source = "export fn main() Int:
+    let source = "export def main() -> Int:
     let m = Map[String, Int]()
     if let n = m.get(\"a\"):
         return 1

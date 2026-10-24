@@ -5,4 +5,4 @@ type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-fn tree() Expr: return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
+def tree() -> Expr: return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))

@@ -1,1 +1,1 @@
-error parse 2:8:22 "expected an expression, found ':'; 'try' is a prefix on a call, not a block: write 'try f(x)' to unwrap a Result or return its error, and 'if let' to handle failure locally"
+error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/library_project_test.go:25 TestLibrarySourceCommandsDiscoverExportsAndErrors
-export fn other() Int: return 4
+export def other() -> Int: return 4

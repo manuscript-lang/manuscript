@@ -1,7 +1,7 @@
-fn f(xs: List[Int]) List[Int]:
+def f(xs: List[Int]) -> List[Int]:
     var extra = [10]
     xs.for_each(
-        fn(v: Int) Unit:
+        lambda (v: Int) -> Unit:
             extra.append(v)
     )
-    return xs.map(fn(v: Int) Int: v + extra.length())
+    return xs.map(lambda (v: Int) -> Int: v + extra.length())

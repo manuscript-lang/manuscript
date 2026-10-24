@@ -1,13 +1,13 @@
 # conform: tags=closures,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/checker/defaults_test.go:29 TestDefaultArgumentBoundaries
-fn f() Unit:
+def f() -> Unit:
     var outer = 1
-    let callback = fn(
+    let callback = lambda (
         value: Int = (
-            fn() Int:
+            lambda () -> Int:
                 outer = 2
                 return outer
         )()
-    ) Int:
+    ) -> Int:
         return value

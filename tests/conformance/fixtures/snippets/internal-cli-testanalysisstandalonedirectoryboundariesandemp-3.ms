@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=internal/cli/analysis_test.go:153 TestAnalysisStandaloneDirectoryBoundariesAndEmpty
-import main from "../a.ms"
+from "../a.ms" import main
 
-export fn value() Int:
+export def value() -> Int:
     return main()

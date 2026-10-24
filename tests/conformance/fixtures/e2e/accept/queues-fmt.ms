@@ -1,8 +1,8 @@
 # conform: tags=closures,control-flow,formatter,match,modules,optional,parser,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/queues.ms
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import Queue from "@std/queue.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/queue.ms" import Queue
 
 test "omitted capacity creates an unbounded queue":
     var queue = Queue[Int]()
@@ -42,11 +42,11 @@ test "a copy is an independent queue":
     queue.dequeue() | try expect_equal(second)
 
 test "queue elements include ordinary functions":
-    var queue = Queue[fn() Int](1)
-    queue.enqueue(fn(): return 7)
+    var queue = Queue[Callable[[], Int]](1)
+    queue.enqueue(lambda: return 7)
 
     match queue.dequeue():
-        some(callback):
+        case some(callback):
             try expect_equal(callback(), 7)
-        none:
+        case none:
             return fail("callback missing")

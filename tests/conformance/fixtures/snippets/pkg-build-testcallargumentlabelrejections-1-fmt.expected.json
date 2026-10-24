@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn one(value: Int) Int:\n    return value\n\nfn two(left: Int, right: Int) Int:\n    return left - right\n\nfn zero() Unit:\n    return\n\nfn identity[T](value: T) T:\n    return value\n\nfn apply(transform: fn(value: Int) Int) Int:\n    return transform(1)\n\ntype Box:\n    value: Int\n\ntype Choice:\n    case Payload(value: Int)\n\ninterface Read:\n    fn get() Int\n\nimpl Read for Box:\n    fn get() Int:\n        return self.value\n"
+    "fmt": "def one(value: Int) -> Int:\n    return value\n\ndef two(left: Int, right: Int) -> Int:\n    return left - right\n\ndef zero() -> Unit:\n    return\n\ndef identity[T](value: T) -> T:\n    return value\n\ndef apply(transform: Callable[[Int], Int]) -> Int:\n    return transform(1)\n\ntype Box:\n    value: Int\n\ntype Choice:\n    case Payload(value: Int)\n\ninterface Read:\n    def get() -> Int\n\nimpl Read for Box:\n    def get() -> Int:\n        return self.value\n"
   }
 }

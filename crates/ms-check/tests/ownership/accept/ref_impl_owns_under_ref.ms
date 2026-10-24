@@ -1,9 +1,9 @@
 interface Shows:
-    fn view() ref String
+    def view() -> ref String
 
 type Item:
     name: String
 
 impl Shows for Item:
-    fn view() String:
+    def view() -> String:
         return self.name.clone()

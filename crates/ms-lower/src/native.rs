@@ -467,15 +467,7 @@ impl<'a> FnLower<'a> {
         if native == "shared/share" {
             // The payload moves into a refcounted box; copies of the handle retain it.
             let payload = self.owned(args[0].val);
-            let v = self
-                .b
-                .emit(
-                    ms_mir::ir::Op::SharedNew,
-                    &[payload],
-                    ms_mir::ir::Imm::None,
-                    Some(result),
-                )
-                .expect("shared result");
+            let v = self.shared_new(payload, result);
             return Ok(Val { v, own: true });
         }
         if native == "time/duration" {

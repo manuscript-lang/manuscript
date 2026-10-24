@@ -1,9 +1,9 @@
 # conform: tags=formatter,lists,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-04.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn difference(values: List[Int]) Int:
+def difference(values: List[Int]) -> Int:
     let [first, second] = values
     return first - second
 

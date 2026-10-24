@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe(found: Int) Int:\n    var sum = 0\n    var i = 0\n\n    while i < 1000:\n        if let found = affine(i):\n            sum += found\n        else:\n            sum += found\n\n        i += 1\n\n    return sum\n"
+    "fmt": "def probe(found: Int) -> Int:\n    var sum = 0\n    var i = 0\n\n    while i < 1000:\n        if let found = affine(i):\n            sum += found\n        else:\n            sum += found\n\n        i += 1\n\n    return sum\n"
   }
 }

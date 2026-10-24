@@ -1,5 +1,5 @@
-import stdout from "@std/io.ms"
-import {expect_equal} from "@std/testing.ms"
+from "@std/io.ms" import stdout
+from "@std/testing.ms" import expect_equal
 
 # A point in the plane.
 type Point:
@@ -12,44 +12,44 @@ type Shape:
     case Empty
 
 interface Named:
-    fn label() String
+    def label() -> String
 
 impl Point:
-    fn norm() Int:
+    def norm() -> Int:
         return self.x * self.x + self.y * self.y
 
 impl Named for Point:
-    fn label() String:
+    def label() -> String:
         return "point"
 
-fn add(a: Int, b: Int) Int:
+def add(a: Int, b: Int) -> Int:
     let total = a + b
     return total
 
-fn area(shape: Shape) Int:
+def area(shape: Shape) -> Int:
     match shape:
-        Circle(r):
+        case Circle(r):
             return r * r * 3
-        Square(s):
+        case Square(s):
             return s * s
-        _:
+        case _:
             return 0
 
-fn describe(p: Point) String:
+def describe(p: Point) -> String:
     let n = p.norm()
-    return "norm is {n} at {p.x}"
+    return f"norm is {n} at {p.x}"
 
-export fn main() Int:
+export def main() -> Int:
     let p = Point(x: 1, y: 2)
     let values = [1, 2, 3]
     for v in values:
-        say("{v}")
+        say(f"{v}")
 
     let result = add(1, 2)
     return result
 
-fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n")
+def say(text: String) -> Result[Unit, Error]:
+    try stdout().write(f"{text}\n")
     return stdout().flush()
 
 test "addition":

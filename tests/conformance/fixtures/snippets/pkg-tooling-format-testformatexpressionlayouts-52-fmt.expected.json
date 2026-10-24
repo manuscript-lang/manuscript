@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(\n    first: Int,\n    second: String\n) Result[Optional[Map[String, String]], ApplicationError]:\n    return error(cause)\n"
+    "fmt": "def work(\n    first: Int,\n    second: String\n) -> Result[Optional[Map[String, String]], ApplicationError]:\n    return error(cause)\n"
   }
 }

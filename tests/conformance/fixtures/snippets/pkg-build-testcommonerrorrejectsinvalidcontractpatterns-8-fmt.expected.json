@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Impostor:\n    detail: String\n\nfn wrong(value: Impostor) Error:\n    return Error(value: value)\n"
+    "fmt": "type Impostor:\n    detail: String\n\ndef wrong(value: Impostor) -> Error:\n    return Error(value: value)\n"
   }
 }

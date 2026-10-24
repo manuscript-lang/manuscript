@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,interfaces,lists,maps,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/mutation-aliases.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 test "Map remove direct and bound preserve order and no-op absence":
     var values = Map[Int, String]()
@@ -39,23 +39,23 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     let trigger = some(1)
     first.remove(
         match trigger:
-            some(key): some(key)
-            none: some(0)
+            case some(key): some(key)
+            case none: some(0)
     )
     try expect_false(not first.is_empty())
 
 interface MapRemoval:
-    var fn remove(key: Int) Unit
-    fn keys() List[Int]
+    var def remove(key: Int) -> Unit
+    def keys() -> List[Int]
 
 type MapAdapter:
     values: Map[Int, String]
 
 impl MapRemoval for MapAdapter:
-    var fn remove(key: Int) Unit:
+    var def remove(key: Int) -> Unit:
         self.values.remove(key)
 
-    fn keys() List[Int]: self.values.keys()
+    def keys() -> List[Int]: self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -112,17 +112,17 @@ test "List splice moves replacement elements and handles Optional elements":
     try expect_equal(optional[0], some(2))
 
 interface ListSplicing:
-    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
-    fn contents() List[Int]
+    var def splice(start: Int, delete_count: Int, replacement: List[Int]) -> Unit
+    def contents() -> List[Int]
 
 type ListAdapter:
     values: List[Int]
 
 impl ListSplicing for ListAdapter:
-    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
+    var def splice(start: Int, delete_count: Int, replacement: List[Int]) -> Unit:
         self.values.splice(start, delete_count, replacement)
 
-    fn contents() List[Int]: self.values.clone()
+    def contents() -> List[Int]: self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])

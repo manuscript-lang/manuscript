@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module",
+        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinference-4.ms",
           "line": 6,
-          "column": 64,
-          "offset": 302
+          "column": 68,
+          "offset": 310
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-4.ms:6:64: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-4.ms:6:68: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -5,15 +5,15 @@ type Point:
     x: Int
     y: Int
 
-fn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step
+def bump(map: Int, key: Int, step: Int = 1) -> Int: map + key + step
 
 type Counter:
     total: Int
 
 interface Adder:
-    fn add(amount: Int, extra: Int) Int
+    def add(amount: Int, extra: Int) -> Int
 
 impl Adder for Counter:
-    fn add(amount: Int, extra: Int) Int: self.total + amount + extra
+    def add(amount: Int, extra: Int) -> Int: self.total + amount + extra
 
-fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int:
+def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...

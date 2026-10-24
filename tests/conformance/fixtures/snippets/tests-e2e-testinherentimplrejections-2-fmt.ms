@@ -2,8 +2,8 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/inherent_methods_test.go:33 TestInherentImplRejections
 interface I:
-    fn f() Int
+    def f() -> Int
 
 impl I:
-    fn f() Int:
+    def f() -> Int:
         return 1

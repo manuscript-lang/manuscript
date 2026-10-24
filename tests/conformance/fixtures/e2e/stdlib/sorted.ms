@@ -1,13 +1,13 @@
 # conform: tags=optional,stdlib-sorted,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal, expect_true, expect_false} from "@std/testing.ms"
-import {SortedMap, SortedSet} from "@std/sorted.ms"
-import {range} from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_true, expect_false
+from "@std/sorted.ms" import SortedMap, SortedSet
+from "@std/collections.ms" import range
 
 test "add get replace remove":
     var map = SortedMap[Int, String]()
     for key in [5, 1, 9, 3, 7]:
-        map.add(key, "v{key}")
+        map.add(key, f"v{key}")
     try expect_equal(map.keys(), [1, 3, 5, 7, 9])
     try expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])
     try expect_equal(map.get(3), some("v3"))
@@ -22,9 +22,11 @@ test "add get replace remove":
 
 test "string keys order lexicographically":
     var map = SortedMap[String, Int]()
+
     for word in ["pear", "apple", "fig"]:
         let size = word.length()
         map.add(word, size)
+
     try expect_equal(map.keys(), ["apple", "fig", "pear"])
 
 test "first last floor ceiling and pops":

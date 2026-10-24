@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "",
-    "stderr": "index 3 out of range for length 3; pass a default: get(index:, default: ...)\n  at bounds-fault-search.ms:11 in search\n  at bounds-fault-search.ms:20 in main\n"
+    "stderr": "index 3 out of range for length 3; pass a default: get(index:, default: ...)\n  at bounds-fault-search.ms:12 in search\n  at bounds-fault-search.ms:23 in main\n"
   }
 }

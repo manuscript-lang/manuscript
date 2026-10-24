@@ -1,15 +1,15 @@
 # conform: tags=control-flow,diagnostics,interpolation,modules,stdlib-io,stdlib-process,tier-io,try-result
 # conform: phase=check
 # conform: origin=documentation/learn/common-tasks.md:39
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     for name in arguments():
-        try stdout().write("Hello, {name}!\n")
+        try stdout().write(f"Hello, {name}!\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
 

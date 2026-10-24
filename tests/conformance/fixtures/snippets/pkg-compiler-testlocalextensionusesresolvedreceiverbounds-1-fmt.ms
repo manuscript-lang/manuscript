@@ -1,11 +1,11 @@
 # conform: tags=control-flow,formatter,generics,interfaces,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/local_extensions_test.go:122 TestLocalExtensionUsesResolvedReceiverBounds
-import Box from "./domain.ms"
+from "./domain.ms" import Box
 
 interface Read:
-    fn get() Int
+    def get() -> Int
 
 impl Read for Box[T]:
-    fn get() Int:
+    def get() -> Int:
         return self.value.original()

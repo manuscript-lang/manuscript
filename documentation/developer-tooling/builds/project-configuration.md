@@ -55,7 +55,7 @@ name = "graph"
 source = "src"
 ```
 
-`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, and `profile` need an executable entry: add `entry = "src/main.ms"` and export `fn main() Int`.
+`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, and `profile` need an executable entry: add `entry = "src/main.ms"` and export `def main() -> Int`.
 
 To share library code today, copy its sources into each consuming project, for example `src/graph/`, and use relative imports or an alias:
 
@@ -71,8 +71,8 @@ Keep the copy under version control and record the upstream URL, exact revision,
 Imports name an exported symbol and a path:
 
 ```manuscript
-import CustomerId from "./domain/customers.ms"
-import Order from "@domain/orders.ms"
+from "./domain/customers.ms" import CustomerId
+from "@domain/orders.ms" import Order
 ```
 
 For an import in `src/main.ms`, the first path resolves to `src/domain/customers.ms`. The second expands `@domain` and resolves to `src/domain/orders.ms`.

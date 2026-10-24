@@ -1,13 +1,13 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 let LIMIT = 10
 let DOUBLE = LIMIT * 2
 let NAMES: List[String] = ["a", "b"]
-let GREETING = "limit {LIMIT}"
+let GREETING = f"limit {LIMIT}"
 let NOTHING: Optional[Int] = none
 let from = 4
 
-fn limit_plus(extra: Int) Int:
+def limit_plus(extra: Int) -> Int:
     return LIMIT + extra
 
 test "constants stand for their initializers":
@@ -33,12 +33,12 @@ type Phase:
 let START = Phase.Idle
 let NEXT: Phase = Idle
 
-fn phase_name(phase: Phase) String:
+def phase_name(phase: Phase) -> String:
     match phase:
-        Idle:
+        case Idle:
             return "idle"
-        Active(count):
-            return "active {count}"
+        case Active(count):
+            return f"active {count}"
 
 test "a qualified payloadless case is a constant":
     try expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))

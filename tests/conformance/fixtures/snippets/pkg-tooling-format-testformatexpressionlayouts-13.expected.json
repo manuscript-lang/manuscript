@@ -14,7 +14,7 @@
           "file": "pkg-tooling-format-testformatexpressionlayouts-13.ms",
           "line": 5,
           "column": 33,
-          "offset": 233
+          "offset": 234
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-13.ms",
           "line": 7,
-          "column": 3,
-          "offset": 306
+          "column": 6,
+          "offset": 316
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:5:33: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:7:3: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:5:33: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:7:6: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

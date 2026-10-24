@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/local_extensions_test.go:83 TestLocalExtensionValidation
 impl Read[Int] for Box[Int]:
-    fn extra() Int:
+    def extra() -> Int:
         return 0

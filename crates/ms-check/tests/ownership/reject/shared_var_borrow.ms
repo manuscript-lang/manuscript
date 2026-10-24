@@ -1,6 +1,6 @@
-import {share, Shared} from "@std/shared.ms"
+from "@std/shared.ms" import share, Shared
 
-fn f() Int:
+def f() -> Int:
     let items = share([1, 2])
     var inner = items.get()  # error: read-only result
     return inner.length()

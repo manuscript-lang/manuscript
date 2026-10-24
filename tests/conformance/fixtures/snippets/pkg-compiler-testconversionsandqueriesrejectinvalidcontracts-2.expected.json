@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected fn(key: String, value: Int) Bool, found fn(value: Int, key: String) Bool (in argument 'predicate' of value.every); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)",
+        "message": "expected Callable[[String, Int], Bool], found Callable[[Int, String], Bool] (in argument 'predicate' of value.every); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms",
           "line": 6,
-          "column": 53,
-          "offset": 282
+          "column": 57,
+          "offset": 290
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms:6:53: type: expected fn(key: String, value: Int) Bool, found fn(value: Int, key: String) Bool (in argument 'predicate' of value.every); the function's parameter is named value but this position expects key; rename the parameter to key, or wrap the function in a lambda: fn(key: ...) ...: f(value: key)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms:6:57: type: expected Callable[[String, Int], Bool], found Callable[[Int, String], Bool] (in argument 'predicate' of value.every); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

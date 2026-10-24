@@ -1,22 +1,22 @@
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {ReadStream, IoError, read_line} from "@std/io.ms"
-import Bytes from "@std/bytes.ms"
-import {PriorityQueue} from "@std/queue.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/io.ms" import ReadStream, IoError, read_line
+from "@std/bytes.ms" import Bytes
+from "@std/queue.ms" import PriorityQueue
 
 type Key:
     id: Int
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
-fn compare(left: Key, right: Key) Int:
+def compare(left: Key, right: Key) -> Int:
     return left.id - right.id
 
 test "domain equality and hashing select interfaces":
@@ -64,13 +64,13 @@ type EchoReader:
     unused: Int
 
 impl ReadStream for EchoReader:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
         return ok(some(Bytes([requested])))
 
-    fn close() Unit: unit
+    def close() -> Unit: ()
 
 test "native compositions preserve Optional arguments for source implementations":
     var stream = ReadStream(EchoReader(0))

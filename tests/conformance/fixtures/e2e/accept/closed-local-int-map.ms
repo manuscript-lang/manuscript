@@ -1,17 +1,17 @@
 # conform: tags=closures,control-flow,faults,lists,maps,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
-import {expect_contains, expect_equal, expect_false, expect_fault, expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_false, expect_fault, expect_true
 
-fn effect(var visits: List[Int], value: Int) Int:
+def effect(var visits: List[Int], value: Int) -> Int:
     visits.append(value)
     return value
 
-fn missing() Int:
+def missing() -> Int:
     let values = Map[Int, Int]()
     return values.get(0).get()
 
-fn returned_alias() Map[Int, Int]:
+def returned_alias() -> Map[Int, Int]:
     var values = Map[Int, Int]()
     values.add(2, 20)
     return values
@@ -40,7 +40,7 @@ test "closed map arguments retain written evaluation order":
     values.get(3).get() | try expect_equal(30)
 
 test "missing local lookups keep Optional faults":
-    (try expect_fault(fn(): let ignored = missing())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = missing())) | try expect_contains(
         "Optional.get"
     )
 
@@ -59,5 +59,5 @@ test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
     values.add(1, 10)
 
-    let callback = fn() Int: values.get(1).get()
+    let callback = lambda () -> Int: values.get(1).get()
     callback() | try expect_equal(10)

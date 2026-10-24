@@ -1,11 +1,11 @@
 # conform: tags=closures,control-flow,diagnostics,interfaces,modules,tier-core
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/interface_views/right.ms
-import {Read, Reader} from "./domain.ms"
+from "./domain.ms" import Read, Reader
 
 impl Read for Reader:
-    fn read() Int: self.operation() + 20
+    def read() -> Int: self.operation() + 20
 
-export fn right() Read:
+export def right() -> Read:
     let value = 2
-    return Read(Reader(fn() Int: value))
+    return Read(Reader(lambda () -> Int: value))

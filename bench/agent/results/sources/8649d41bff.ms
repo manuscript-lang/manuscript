@@ -1,6 +1,6 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
-import {range} from "@std/collections.ms"
-import {min} from "@std/math.ms"
+from "@std/io.ms" import read_all, stdin, stdout
+from "@std/collections.ms" import range
+from "@std/math.ms" import min
 
 type PathStat:
     path: String
@@ -16,12 +16,12 @@ type Entry:
     latency: Int
     latency_text: String
 
-fn all_digits(text: String) Bool:
-    if text.is_empty(): return false
+def all_digits(text: String) -> Bool:
+    if text.is_empty(): return False
 
-    return text.scalar_values().fold(true, fn(ok, v): ok and v >= 48 and v <= 57)
+    return text.scalar_values().fold(True, lambda ok, v: ok and v >= 48 and v <= 57)
 
-fn parse_entry(line: String) Optional[Entry]:
+def parse_entry(line: String) -> Optional[Entry]:
     let fields = line.split(" ")
     if fields.length() != 6: return none
 
@@ -45,15 +45,15 @@ fn parse_entry(line: String) Optional[Entry]:
         )
     )
 
-fn compare_paths(a: PathStat, b: PathStat) Int:
+def compare_paths(a: PathStat, b: PathStat) -> Int:
     if a.count != b.count: return b.count - a.count
 
     return a.path.compare(b.path)
 
-fn report(text: String) Unit:
-    stdout().write("{text}\n").get()
+def report(text: String) -> Unit:
+    stdout().write(f"{text}\n").get()
 
-export fn main() Int:
+export def main() -> Int:
     let text = read_all(stdin()).get().decode_utf8().get()
     var levels = Map[String, Int]()
     var status_counts = [0, 0, 0, 0, 0]
@@ -74,9 +74,9 @@ export fn main() Int:
             let digit = entry.status.scalar_at(0) - 48
 
             if digit == 2: status_counts[0] += 1
-            else if digit == 3: status_counts[1] += 1
-            else if digit == 4: status_counts[2] += 1
-            else if digit == 5: status_counts[3] += 1
+            elif digit == 3: status_counts[1] += 1
+            elif digit == 4: status_counts[2] += 1
+            elif digit == 5: status_counts[3] += 1
             else: status_counts[4] += 1
 
             counts.add(entry.path, counts.get_or(entry.path, 0) + 1)
@@ -90,22 +90,22 @@ export fn main() Int:
         else:
             malformed += 1
 
-    report("valid: {valid}")
-    report("malformed: {malformed}")
+    report(f"valid: {valid}")
+    report(f"malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        report("{level}: {levels.get_or(level, 0)}")
+        report(f"{level}: {levels.get_or(level, 0)}")
     report(
-        "status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
+        f"status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
     )
 
-    let sorted_latencies = latencies.sorted(fn(a, b): a - b)
+    let sorted_latencies = latencies.sorted(lambda a, b: a - b)
     let n = sorted_latencies.length()
     var p95 = 0
     if n > 0: p95 = sorted_latencies[(95 * n + 99) / 100 - 1]
-    report("p95: {p95}")
+    report(f"p95: {p95}")
     if let best = slowest:
         report(
-            "slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
+            f"slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
         )
     report("top:")
 
@@ -115,10 +115,10 @@ export fn main() Int:
         let count = counts.get_or(path, 0)
         stats.append(PathStat(path: path, count: count, total: totals.get_or(path, 0)))
 
-    let paths = stats.sorted(fn(a, b): compare_paths(a, b))
+    let paths = stats.sorted(lambda a, b: compare_paths(a, b))
 
     for i in range(0, min(3, paths.length())):
         let stat = paths[i]
-        report("{stat.path} {stat.count} avg={stat.total / stat.count}")
+        report(f"{stat.path} {stat.count} avg={stat.total / stat.count}")
 
     return 0

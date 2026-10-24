@@ -1,22 +1,22 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
-import {BigInt, parse} from "@std/bigint.ms"
-import {StringBuilder} from "@std/string.ms"
+from "@std/io.ms" import read_line, stdin, stdout
+from "@std/bigint.ms" import BigInt, parse
+from "@std/string.ms" import StringBuilder
 
 type Entry:
     category: String
     cents: BigInt
 
-fn is_digits(text: String) Bool:
+def is_digits(text: String) -> Bool:
     if text.is_empty():
-        return false
+        return False
 
     for c in text.chars():
         if not "0123456789".contains(c):
-            return false
-    return true
+            return False
+    return True
 
 # Returns the amount in cents, so "12.5" becomes 1250 and "0.07" becomes 7.
-fn parse_amount(text: String) Optional[BigInt]:
+def parse_amount(text: String) -> Optional[BigInt]:
     let parts = text.split(".")
     if parts.length() > 2:
         return none
@@ -40,7 +40,7 @@ fn parse_amount(text: String) Optional[BigInt]:
     return some(parse(whole + fraction, 10).get())
 
 # A quoted category may contain commas but no quotes, so splitting on quotes isolates it.
-fn parse_line(line: String) Optional[Entry]:
+def parse_line(line: String) -> Optional[Entry]:
     var category = ""
     var amount = ""
 
@@ -66,7 +66,7 @@ fn parse_line(line: String) Optional[Entry]:
 
     return none
 
-fn format_cents(cents: BigInt) String:
+def format_cents(cents: BigInt) -> String:
     let digits = "00" + cents.to_string_radix(10)
     let split_at = digits.length() - 2
     var whole = digits.slice(0, split_at).get()
@@ -74,14 +74,14 @@ fn format_cents(cents: BigInt) String:
         whole = whole.slice(1, whole.length()).get()
     return whole + "." + digits.slice(split_at, digits.length()).get()
 
-fn compare_text(left: String, right: String) Int:
+def compare_text(left: String, right: String) -> Int:
     return left.compare(right)
 
-export fn main() Int:
+export def main() -> Int:
     var totals = Map[String, BigInt]()
     var skipped = 0
     let input = stdin()
-    var done = false
+    var done = False
 
     while not done:
         if let line = read_line(input).get():
@@ -96,13 +96,13 @@ export fn main() Int:
             else:
                 skipped += 1
         else:
-            done = true
+            done = True
 
     var out = StringBuilder()
     for category in totals.keys().sorted(compare_text):
         out.append(category + ": " + format_cents(totals.get(category).get()) + "\n")
     if skipped > 0:
-        out.append("skipped: {skipped}\n")
+        out.append(f"skipped: {skipped}\n")
     stdout().write(out.freeze()).get()
     stdout().flush().get()
     return 0

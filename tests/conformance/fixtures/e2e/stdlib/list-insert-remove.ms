@@ -1,6 +1,6 @@
 # conform: tags=lists,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 test "insert and remove shift the tail for every element kind":
     var numbers = [1, 2, 3]

@@ -1,6 +1,6 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn map_total(values: Map[String, Int]) Int:
+def map_total(values: Map[String, Int]) -> Int:
     var total = 0
     for entry in values:
         let {value} = entry

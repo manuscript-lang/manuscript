@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms",
           "line": 5,
-          "column": 16,
-          "offset": 193
+          "column": 21,
+          "offset": 202
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms",
           "line": 6,
-          "column": 16,
-          "offset": 222
+          "column": 20,
+          "offset": 238
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms:5:16: type: cannot infer callback parameter x; provide a type or a known function context\n<DIR>/pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms:6:16: type: cannot infer callback parameter x; provide a type or a known function context\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms:5:21: type: cannot infer callback parameter x; provide a type or a known function context\n<DIR>/pkg-parser-testresulttypefollowsparameterswithoutarrow-3.ms:6:20: type: cannot infer callback parameter x; provide a type or a known function context\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

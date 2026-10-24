@@ -1,8 +1,8 @@
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/testing.ms"
-import {ReadStream, IoError, read_line} from "@std/io.ms"
-import filesystem from "@std/fs.ms"
-import Closeable from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/io.ms" import ReadStream, IoError, read_line
+from "@std/fs.ms" import filesystem
+from "@std/core.ms" import Closeable
+from "@std/bytes.ms" import Bytes
 
 type MemoryStream:
     data: Bytes
@@ -10,7 +10,7 @@ type MemoryStream:
     closed: Bool
 
 impl ReadStream for MemoryStream:
-    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    var def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         if self.closed: return error(IoError.Closed)
         if self.offset == self.data.length(): return ok(none)
 
@@ -24,45 +24,45 @@ impl ReadStream for MemoryStream:
         self.offset = end
         return ok(chunk)
 
-    var fn close() Unit: self.closed = true
+    var def close() -> Unit: self.closed = True
 
-fn present(input: ReadStream, max: Optional[Int] = none) Bool:
+def present(input: ReadStream, max: Optional[Int] = none) -> Bool:
     if let line = read_line(input, max):
         return line.is_some()
 
-    return false
+    return False
 
 type LineTailCleanup:
     marker: String
 
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
-    var fn close() Unit:
-        let written = filesystem().write_file(self.marker, "closed", true)
+    var def close() -> Unit:
+        let written = filesystem().write_file(self.marker, "closed", True)
 
-fn with_cleanup(var input: ReadStream, marker: String) Bool:
-    with resource = LineTailCleanup(marker):
+def with_cleanup(var input: ReadStream, marker: String) -> Bool:
+    with LineTailCleanup(marker) as resource:
         if let line = read_line(input):
             return line.is_some()
 
-        return false
+        return False
 
-fn limit(var visits: List[Int]) Int:
+def limit(var visits: List[Int]) -> Int:
     visits.append(1)
     return 100
 
-fn picked(var visits: List[Int]) ReadStream:
+def picked(var visits: List[Int]) -> ReadStream:
     visits.append(2)
-    return ReadStream(MemoryStream("a\n".to_bytes(), 0, false))
+    return ReadStream(MemoryStream("a\n".to_bytes(), 0, False))
 
-fn reordered(var visits: List[Int]) Bool:
+def reordered(var visits: List[Int]) -> Bool:
     if let line = read_line(max_bytes: limit(var visits), input: picked(var visits)):
         return line.is_some()
 
-    return false
+    return False
 
 test "presence keeps custom EOF empty CRLF and following text":
-    let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, false)
+    let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, False)
     var input = ReadStream(source)
     present(input) | try expect_true
     (try read_line(input)) | try expect_equal(some("λ"))
@@ -70,23 +70,23 @@ test "presence keeps custom EOF empty CRLF and following text":
     present(input) | try expect_false
 
 test "presence retains custom errors and limits":
-    let source = MemoryStream("abc\nx\n".to_bytes(), 0, false)
+    let source = MemoryStream("abc\nx\n".to_bytes(), 0, False)
     var input = ReadStream(source)
     present(input, 2) | try expect_false
     input.close()
     present(input) | try expect_false
 
 test "presence retains written argument order and cleanup":
-    var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, false))
+    var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, False))
     var visits: List[Int] = []
     reordered(var visits) | try expect_true
     visits | try expect_equal([1, 2])
 
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
-        let first = "{temporary.path()}/first"
-        let second = "{temporary.path()}/second"
+    with (fs.temporary("manuscript-presence-") | try expect_ok) as temporary:
+        let first = f"{temporary.path()}/first"
+        let second = f"{temporary.path()}/second"
         with_cleanup(var input, first.clone()) | try expect_true
         fs.read_file(first).is_ok() | try expect_true
         fs.read_file(second).is_ok() | try expect_false
@@ -96,11 +96,11 @@ test "presence retains written argument order and cleanup":
 test "presence and text reads share buffered consumption":
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
-        let path = "{temporary.path()}/lines"
+    with (fs.temporary("manuscript-presence-") | try expect_ok) as temporary:
+        let path = f"{temporary.path()}/lines"
         let written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
 
-        with handle = (fs.open(path, "r", 384) | try expect_ok):
+        with (fs.open(path, "r", 384) | try expect_ok) as handle:
             let input = handle.reader()
             present(input) | try expect_true
             (try read_line(input)) | try expect_equal(some("λ"))

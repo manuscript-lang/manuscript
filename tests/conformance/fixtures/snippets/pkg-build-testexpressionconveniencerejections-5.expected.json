@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-build-testexpressionconveniencerejections-5.ms",
           "line": 4,
-          "column": 23,
-          "offset": 182
+          "column": 27,
+          "offset": 186
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-5.ms:4:23: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-5.ms:4:27: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

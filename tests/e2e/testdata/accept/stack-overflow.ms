@@ -1,8 +1,8 @@
-import {expect_contains, expect_fault} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_fault
 
 # Every call keeps 1500 locals live across the recursive call, so the frame is large enough
 # that the 1 GiB main stack runs out after only a few hundred thousand calls.
-fn fat(n: Int) Int:
+def fat(n: Int) -> Int:
     let a0 = n + 0
     let a1 = n + 1
     let a2 = n + 2
@@ -3012,7 +3012,7 @@ fn fat(n: Int) Int:
 
 test "stack exhaustion is reported as a stack overflow":
     let message = try expect_fault(
-        fn():
+        lambda:
             let ignored = fat(0)
     )
     message | try expect_contains("stack overflow")

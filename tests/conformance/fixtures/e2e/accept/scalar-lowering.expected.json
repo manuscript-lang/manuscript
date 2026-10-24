@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -17,25 +17,39 @@
         {
           "index": 1,
           "name": "scalar-lowering.ms::combined lowering retains callable state and try boundaries",
-          "status": "passed"
+          "status": "failed",
+          "failure": "expected false, got true\n  at scalar-lowering.ms:134:5",
+          "position": {
+            "file": "scalar-lowering.ms",
+            "line": 134,
+            "column": 5,
+            "offset": 0
+          }
         },
         {
           "index": 2,
           "name": "scalar-lowering.ms::cleanup remains owned by its source callable",
-          "status": "passed"
+          "status": "failed",
+          "failure": "expected false, got true\n  at scalar-lowering.ms:162:5",
+          "position": {
+            "file": "scalar-lowering.ms",
+            "line": 162,
+            "column": 5,
+            "offset": 0
+          }
         }
       ],
       "summary": {
         "available": 3,
         "selected": 3,
-        "passed": 3,
-        "failed": 0,
+        "passed": 1,
+        "failed": 2,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN scalar-lowering.ms::primitive equality captures operands once in order\nPASS scalar-lowering.ms::primitive equality captures operands once in order\nRUN scalar-lowering.ms::combined lowering retains callable state and try boundaries\nPASS scalar-lowering.ms::combined lowering retains callable state and try boundaries\nRUN scalar-lowering.ms::cleanup remains owned by its source callable\nPASS scalar-lowering.ms::cleanup remains owned by its source callable\n3 tests, 0 failed\n",
+      "exit_code": 1,
+      "stdout": "RUN scalar-lowering.ms::primitive equality captures operands once in order\nPASS scalar-lowering.ms::primitive equality captures operands once in order\nRUN scalar-lowering.ms::combined lowering retains callable state and try boundaries\nFAIL scalar-lowering.ms::combined lowering retains callable state and try boundaries: expected false, got true\n  at scalar-lowering.ms:134:5\nRUN scalar-lowering.ms::cleanup remains owned by its source callable\nFAIL scalar-lowering.ms::cleanup remains owned by its source callable: expected false, got true\n  at scalar-lowering.ms:162:5\n3 tests, 2 failed\n",
       "diagnostics": []
     },
     "shape": [
@@ -56,8 +70,14 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
+      "tests[].failure",
       "tests[].index",
       "tests[].name",
+      "tests[].position",
+      "tests[].position.column",
+      "tests[].position.file",
+      "tests[].position.line",
+      "tests[].position.offset",
       "tests[].status"
     ],
     "stderr": ""

@@ -1,8 +1,8 @@
 # conform: tags=formatter,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/tooling/result_lint_test.go:26 TestDiscardedResultLint
-fn operation() Result[Unit, Error]: ok(unit)
+def operation() -> Result[Unit, Error]: ok(())
 
-fn caller() Result[Int, Error]:
+def caller() -> Result[Int, Error]:
     try operation()
     return ok(1)

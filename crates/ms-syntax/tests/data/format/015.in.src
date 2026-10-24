@@ -1,5 +1,5 @@
-import panic from "@std/core.ms"
-export fn main() Int:
+from "@std/core.ms" import panic
+export def main() -> Int:
     let values = [1, 2, 3]
     var total = 0
     var count = 0

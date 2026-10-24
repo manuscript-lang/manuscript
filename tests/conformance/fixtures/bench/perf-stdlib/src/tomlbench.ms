@@ -1,21 +1,21 @@
-import range from "@std/collections.ms"
-import {bench} from "./harness.ms"
-import {StringBuilder} from "@std/string.ms"
-import {parse} from "@std/toml.ms"
+from "@std/collections.ms" import range
+from "./harness.ms" import bench
+from "@std/string.ms" import StringBuilder
+from "@std/toml.ms" import parse
 
-fn toml_doc(count: Int) String:
+def toml_doc(count: Int) -> String:
     var sb = StringBuilder()
     for i in range(0, count):
-        sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
+        sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.freeze()
 
-export fn bench_toml() Unit:
+export def bench_toml() -> Unit:
     let toml = toml_doc(2000)
 
     bench(
         "toml.parse",
         2000,
-        fn() Int:
+        lambda () -> Int:
             if parse(toml).is_ok():
                 return 1
 

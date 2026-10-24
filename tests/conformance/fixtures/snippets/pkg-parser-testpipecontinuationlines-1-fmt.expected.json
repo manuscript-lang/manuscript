@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n    let v = x\n        | f  # first\n        # explain\n        | g(a: 1)\n        .size()\n    return 0\n"
+    "fmt": "def f() -> Int:\n    let v = x\n        | f  # first\n        # explain\n        | g(a: 1)\n        .size()\n    return 0\n"
   }
 }

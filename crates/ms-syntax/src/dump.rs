@@ -670,7 +670,9 @@ impl D {
                 body,
                 &[],
             ),
-            StmtKind::For { name, iter, body } => self.stmt_fields(
+            StmtKind::For {
+                name, iter, body, ..
+            } => self.stmt_fields(
                 sp,
                 "for",
                 name.as_str(),

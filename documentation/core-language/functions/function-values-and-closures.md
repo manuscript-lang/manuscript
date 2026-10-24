@@ -5,39 +5,37 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(value: T) U`. A closure borrows or owns the bindings it captures.
+Store a function in a binding or pass it as an argument. Anonymous functions use `lambda`; the type is `Callable[[T], U]`. A closure borrows or owns the bindings it captures.
 
 ```manuscript
-fn apply(value: Int, transform: fn(value: Int) Int) Int:
-    return transform(value: value)
+def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
+    return transform(value)
 
 let offset = 1
-let decrement = fn(value: Int) Int:
+let decrement = lambda (value: Int) -> Int:
     return value - offset
 
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types keep parameter names. Calls through values follow the [call rules](declarations-and-calls.md#argument-names), with the same suspension and evaluation as declared functions. A contextual anonymous function adopts the context's labels but keeps its own local names. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters. Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A `def` or `lambda` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
-Labels, parameter order, parameter types, and result type are all part of function-type identity, and compatibility is invariant. A mismatch needs an explicit adapter function.
+Parameter types in order and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `def f(amount: Int) -> Int` and `def g(value: Int) -> Int` both fit `Callable[[Int], Int]`. A mismatch needs an explicit adapter function.
 
 ```manuscript
-fn subtract_one(amount: Int) Int:
+def subtract_one(amount: Int) -> Int:
     return amount - 1
 
-fn adapt() Unit:
-    # Rejected: amount and value are different function-type labels.
-    let invalid: fn(value: Int) Int = subtract_one
-
-    let renamed = fn(value: Int) Int:
-        return subtract_one(amount: value)
-    let result = apply(value: 3, transform: renamed)
+def adapt() -> Unit:
+    let ok: Callable[[Int], Int] = subtract_one
+    # Rejected: the result type differs.
+    let invalid: Callable[[Int], String] = subtract_one
+    let result = apply(value: 3, transform: ok)
 ```
 
-An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position; local names may differ from the context's labels: `let increment: fn(value: Int) Int = fn(item): item + 1` is called as `increment(value: 3)`.
+An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `let increment: Callable[[Int], Int] = lambda item: item + 1` is called as `increment(3)`.
 
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.
@@ -55,10 +53,10 @@ A closure that is only called in the function that made it borrows what it captu
 
 ```manuscript
 
-fn tag_count() Int:
+def tag_count() -> Int:
     var tags = ["docs"]
     tags.append("release")
-    let count = fn():
+    let count = lambda:
         return tags.length()
     return count()
 # tag_count() returns 2.
@@ -67,9 +65,9 @@ fn tag_count() Int:
 A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
 ```manuscript
-fn total(values: List[Int]) Int:
+def total(values: List[Int]) -> Int:
     var sum = 0
-    values.for_each(fn(value):
+    values.for_each(lambda value:
         sum += value
     )
     return sum
@@ -82,12 +80,12 @@ A closure that is returned or stored owns what it captures instead, so it cannot
 Open a resource inside the callback that uses it:
 
 ```manuscript
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/bytes.ms" import Bytes
 
-fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:
-    return fn():
-        with file = try filesystem().open(path: path, flags: "r", mode: 0):
+def notes_reader(path: String) -> Callable[[], Result[Bytes, FileSystemError]]:
+    return lambda:
+        with try filesystem().open(path: path, flags: "r", mode: 0) as file:
             return file.read_file(max_bytes: 1048576)
 ```
 
@@ -99,8 +97,8 @@ Capturing an already-open file keeps the same handle and does not delay its `wit
 
 ```manuscript
 
-fn names() List[String]:
-    return [1, 2].map(fn(value): value.to_string())
+def names() -> List[String]:
+    return [1, 2].map(lambda value: value.to_string())
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.

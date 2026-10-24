@@ -1,19 +1,19 @@
 # conform: tags=closures,control-flow,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/inline-suites.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn double(value: Int) Int: value * 2
+def double(value: Int) -> Int: value * 2
 
-fn apply(value: Int, transform: fn(value: Int) Int) Int: transform(value)
+def apply(value: Int, transform: Callable[[Int], Int]) -> Int: transform(value)
 
-fn choose(value: Int) Int:
+def choose(value: Int) -> Int:
     if value > 0: return double(value)
     else: return 0
 
-fn alternate(value: Int) Int:
+def alternate(value: Int) -> Int:
     if value < 0: return -1
-    else if value == 0: return 0
+    elif value == 0: return 0
     else:
         return 1
 
@@ -23,10 +23,10 @@ test "inline functions and branches":
     try expect_equal(alternate(0), 0)
     try expect_equal(alternate(3), 1)
 
-    let increment = fn(value: Int): value + 1
+    let increment = lambda (value: Int): value + 1
     try expect_equal(increment(2), 3)
 
-    let result = apply(4, fn(value): value * 3)
+    let result = apply(4, lambda value: value * 3)
     try expect_equal(result, 12)
 
     var count = 0

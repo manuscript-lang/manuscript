@@ -5,23 +5,23 @@ weight = 3
 
 # Numbers and booleans
 
-`3` is an `Int`, `0.5` a `Float`, `12.50d` a `Decimal`. Conversions are explicit. Booleans are `true` and `false`.
+`3` is an `Int`, `0.5` a `Float`, `12.50d` a `Decimal`. Conversions are explicit. Booleans are `True` and `False`.
 
 ```manuscript
 let count = 3
 let ratio = 0.5
 let price = 12.50d
-let active = true
+let active = True
 ```
 
-Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
 | `Int` | Platform-sized signed integer (64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
 | `Float` | IEEE 754 binary64 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
-| `Bool` | `true` or `false` |
+| `Bool` | `True` or `False` |
 
 ## Arithmetic and conversion
 
@@ -34,7 +34,7 @@ Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals 
 - This guide assumes 64-bit `Int`; 32-bit targets narrow the range.
 
 ```manuscript
-fn literals() Unit:
+def literals() -> Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
     let precise: Decimal = 1e3d
@@ -46,9 +46,9 @@ fn literals() Unit:
 
 | Receiver | Signature/result |
 | --- | --- |
-| `Int` | `to_float() Float`; `to_decimal() Decimal` |
-| `Float` | `truncate_to_int() Optional[Int]` |
-| `Decimal` | `to_float() Float`; `truncate_to_int() Optional[Int]` |
+| `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
+| `Float` | `truncate_to_int() -> Optional[Int]` |
+| `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
 Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
@@ -112,17 +112,17 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Decimal from "@std/decimal.ms"
-import NumberError from "@std/math.ms"
-import expect_equal from "@std/testing.ms"
+from "@std/decimal.ms" import Decimal
+from "@std/math.ms" import NumberError
+from "@std/testing.ms" import expect_equal
 
-fn amount_text() Result[String, NumberError]:
+def amount_text() -> Result[String, NumberError]:
     let subtotal = 19.99d * 3d
     let tax = try (subtotal * 0.0825d).round(places: 2)
     let tax_text = try tax.to_fixed(digits: 2)
     let total_text = try (subtotal + tax).to_fixed(digits: 2)
     let padded = try 25.50d.to_fixed(digits: 2)
-    return ok("tax {tax_text} total {total_text} padded {padded}")
+    return ok(f"tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":
     try amount_text() | try expect_equal("tax 4.95 total 64.92 padded 25.50")

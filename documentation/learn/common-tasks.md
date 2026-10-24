@@ -13,13 +13,13 @@ Save as `hello.ms`. Check both write and flush.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-import stdout from "@std/io.ms"
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     try stdout().write("Hello, Manuscript!\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -37,15 +37,15 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 
 <!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     for name in arguments():
-        try stdout().write("Hello, {name}!\n")
+        try stdout().write(f"Hello, {name}!\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -61,11 +61,11 @@ Save as `read.ms`. `to_string()` returns `none` for invalid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
     let text = try filesystem().read_file(path, max_bytes: 1048576)
         | .decode_utf8().ok_or(FileSystemError.InvalidData)
@@ -73,7 +73,7 @@ fn run() Result[Unit, Error]:
     try stdout().write(text)
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -88,18 +88,18 @@ ms run read.ms -- notes.txt
 
 ## Write a text file
 
-Save as `write.ms`. `replace: false` fails if the file exists.
+Save as `write.ms`. `replace: False` fails if the file exists.
 
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
+from "@std/process.ms" import arguments
+from "@std/fs.ms" import filesystem, FileSystemError
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
-    return filesystem().write_file(path, "saved notes\n", replace: false)
+    return filesystem().write_file(path, "saved notes\n", replace: False)
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -110,7 +110,7 @@ ms run write.ms -- saved.txt
 cat saved.txt
 ```
 
-Use `replace: true` to overwrite. Relative paths use the working directory.
+Use `replace: True` to overwrite. Relative paths use the working directory.
 
 ## Read standard input line by line
 
@@ -118,19 +118,19 @@ Save as `lines.ms`. `try` the `Result`, then check the `Optional` for EOF.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import {stdin, stdout, read_line} from "@std/io.ms"
+from "@std/io.ms" import stdin, stdout, read_line
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let input = stdin()
-    while true:
+    while True:
         let line = try read_line(input, max_bytes: 4096)
         if let text = line:
-            try stdout().write("{text}\n")
+            try stdout().write(f"{text}\n")
         else:
             break
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -148,14 +148,14 @@ Save as `number.ms`. `parse_int()` returns an `Optional[Int]`.
 
 <!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/io.ms" import stdout
 
-fn show(number: Int) Result[Unit, Error]:
-    try stdout().write("{number}\n")
+def show(number: Int) -> Result[Unit, Error]:
+    try stdout().write(f"{number}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     let number = arguments().get(0, default: "42").parse_int()
     if let value = number:
         if show(value).is_ok():
@@ -175,16 +175,16 @@ Save as `json.ms`. `parse[String]` errors on malformed JSON or another type.
 
 <!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1},{"args":["42"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import parse from "@std/json.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/json.ms" import parse
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
-    try stdout().write("{text}\n")
+    try stdout().write(f"{text}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -202,22 +202,22 @@ Save as `config.ms`. Parse a record directly and serialize it back.
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import {parse, stringify} from "@std/json.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/json.ms" import parse, stringify
+from "@std/io.ms" import stdout
 
 type Config:
     name: String
-    enabled: Bool = true
+    enabled: Bool = True
 
-fn run() Result[Unit, Error]:
-    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+def run() -> Result[Unit, Error]:
+    let text = arguments().get(0, default: "{\"name\":\"Sam\"}")
     let encoded = try parse[Config](text)
         | try stringify
-    try stdout().write("{encoded}\n")
+    try stdout().write(f"{encoded}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0
@@ -228,7 +228,7 @@ ms run config.ms -- '{"name":"Sam"}'
 ```
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
-- Unknown members are ignored unless `ignore_unknown_fields: false`.
+- Unknown members are ignored unless `ignore_unknown_fields: False`.
 - Write `parse[Config]` explicitly after `try`.
 - `stringify` writes fields in declaration order.
 
@@ -238,12 +238,12 @@ Save as `get.ms`. Status is `response.metadata().status`; bytes are `response.bo
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/process.ms"
-import {HttpError, HttpMethod, headers} from "@std/http.ms"
-import network from "@std/net.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/http.ms" import HttpError, HttpMethod, headers
+from "@std/net.ms" import network
+from "@std/io.ms" import stdout
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let url = try arguments().first().ok_or(HttpError.InvalidInput)
     let response = try network().request(
         HttpMethod.Get, url, headers(), "",
@@ -255,7 +255,7 @@ fn run() Result[Unit, Error]:
     try stdout().write(text)
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
     return 0

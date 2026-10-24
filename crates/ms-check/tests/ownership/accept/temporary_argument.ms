@@ -1,8 +1,8 @@
-fn make() List[Int]:
+def make() -> List[Int]:
     return [1, 2]
 
-fn total(xs: List[Int]) Int:
+def total(xs: List[Int]) -> Int:
     return xs.length()
 
-fn f() Int:
+def f() -> Int:
     return total(make()) + make().length()

@@ -1,12 +1,12 @@
-import {stdin, stdout} from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import Bytes from "@std/bytes.ms"
-import range from "@std/collections.ms"
+from "@std/io.ms" import stdin, stdout
+from "@std/streams.ms" import read_lines
+from "@std/bytes.ms" import Bytes
+from "@std/collections.ms" import range
 
 let BAD = "error: bad command"
 
 # Returns the value of a 1 to 6 digit decimal token, or -1 when it is malformed.
-fn number(text: String) Int:
+def number(text: String) -> Int:
     if text.byte_length() < 1 or text.byte_length() > 6: return -1
 
     var n = 0
@@ -18,12 +18,12 @@ fn number(text: String) Int:
 
     return n
 
-fn zeros(n: Int) List[Int]:
+def zeros(n: Int) -> List[Int]:
     var xs = [0]
     for i in range(1, n): xs.append(0)
     return xs
 
-fn lcs(a: Bytes, b: Bytes) Int:
+def lcs(a: Bytes, b: Bytes) -> Int:
     var prev = zeros(b.length() + 1)
     var cur = zeros(b.length() + 1)
 
@@ -39,7 +39,7 @@ fn lcs(a: Bytes, b: Bytes) Int:
 
     return prev[b.length()]
 
-fn edit(a: Bytes, b: Bytes) Int:
+def edit(a: Bytes, b: Bytes) -> Int:
     var prev = zeros(b.length() + 1)
     for j in range(0, b.length() + 1): prev[j] = j
 
@@ -61,7 +61,7 @@ fn edit(a: Bytes, b: Bytes) Int:
 
     return prev[b.length()]
 
-fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
+def knap(cap: Int, ws: List[Int], vs: List[Int]) -> Int:
     var total = 0
     for w in ws: total += w
 
@@ -80,7 +80,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
     return best[limit]
 
-fn coins(amount: Int, denoms: List[Int]) Int:
+def coins(amount: Int, denoms: List[Int]) -> Int:
     let inf = amount + 1
     var dp = [0]
 
@@ -92,7 +92,7 @@ fn coins(amount: Int, denoms: List[Int]) Int:
 
     return dp[amount]
 
-fn answer(line: String) String:
+def answer(line: String) -> String:
     let tokens = line.split(" ")
     let command = tokens[0]
 
@@ -101,9 +101,9 @@ fn answer(line: String) String:
 
         let a = tokens[1].to_bytes()
         let b = tokens[2].to_bytes()
-        if command == "lcs": return "{lcs(a, b)}"
+        if command == "lcs": return f"{lcs(a, b)}"
 
-        return "{edit(a, b)}"
+        return f"{edit(a, b)}"
 
     if command == "knap":
         if tokens.length() < 2: return BAD
@@ -125,7 +125,7 @@ fn answer(line: String) String:
             ws.append(w)
             vs.append(v)
 
-        return "{knap(cap, ws, vs)}"
+        return f"{knap(cap, ws, vs)}"
 
     if command == "coins":
         if tokens.length() < 3: return BAD
@@ -144,16 +144,16 @@ fn answer(line: String) String:
         let fewest = coins(amount, denoms)
         if fewest > amount: return "impossible"
 
-        return "{fewest}"
+        return f"{fewest}"
 
     return BAD
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     for c in line.scalar_values():
-        if c != 32: return false
-    return true
+        if c != 32: return False
+    return True
 
-export fn main() Int:
+export def main() -> Int:
     for line in read_lines(stdin()).get():
         if is_blank(line): continue
 

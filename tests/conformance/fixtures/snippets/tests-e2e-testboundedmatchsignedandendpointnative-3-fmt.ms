@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/match_bounds_test.go:164 TestBoundedMatchSignedAndEndpointNative
-export fn main() Int:
+export def main() -> Int:
     let shapes = [
         Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)
     ]

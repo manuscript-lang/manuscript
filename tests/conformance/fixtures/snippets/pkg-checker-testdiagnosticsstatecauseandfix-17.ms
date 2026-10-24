@@ -1,5 +1,5 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:36 TestDiagnosticsStateCauseAndFix
-fn f() Int:
+def f() -> Int:
     return "a" + 1

@@ -1,65 +1,65 @@
-import {TextError} from "@std/core.ms"
-import {expect_true} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_true
 
-fn halve(n: Int) Optional[Int]:
+def halve(n: Int) -> Optional[Int]:
     if n % 2 != 0:
         return none
 
     return some(value: n / 2)
 
-fn parse(n: Int) Result[Int, TextError]:
+def parse(n: Int) -> Result[Int, TextError]:
     if n < 0:
         return error(cause: TextError("negative"))
 
     return ok(value: n)
 
-fn matched(n: Int) Int:
+def matched(n: Int) -> Int:
     let found = halve(n: n)
 
     match found:
-        some(v):
+        case some(v):
             return v
-        none:
+        case none:
             return 0 - 1
 
-fn twice(n: Int) Int:
+def twice(n: Int) -> Int:
     let found = halve(n: n)
     var total = 0
 
     match found:
-        some(v):
+        case some(v):
             total = total + v
-        none:
+        case none:
             total = total + 100
 
     match found:
-        some(v):
+        case some(v):
             total = total + v
-        none:
+        case none:
             total = total + 1000
 
     return total
 
-fn results(n: Int) String:
+def results(n: Int) -> String:
     let parsed = parse(n: n)
 
     match parsed:
-        ok(v):
-            return "ok {v}"
-        error(cause):
+        case ok(v):
+            return f"ok {v}"
+        case error(cause):
             return cause.message()
 
-fn formatted(n: Int) String:
+def formatted(n: Int) -> String:
     let found = halve(n: n)
-    return "{found}"
+    return f"{found}"
 
-fn captured(n: Int) Int:
+def captured(n: Int) -> Int:
     let found = halve(n: n)
-    let read = fn() Int:
+    let read = lambda () -> Int:
         match found:
-            some(v):
+            case some(v):
                 return v
-            none:
+            case none:
                 return 0 - 1
     return read()
 

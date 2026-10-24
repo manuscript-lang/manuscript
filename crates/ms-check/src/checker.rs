@@ -271,13 +271,14 @@ impl Checker {
     // ------------------------------------------------------------ diagnostics
 
     fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let marker = format!("; add: import {name} from ");
+        let suffix = format!(" import {name}");
         let file = self.current_file();
         let _ = pos;
-        self.p
-            .diagnostics
-            .iter()
-            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&marker))
+        self.p.diagnostics.iter().any(|d| {
+            d.file.as_ref() == file.as_str()
+                && d.message.contains("; add: from ")
+                && d.message.ends_with(&suffix)
+        })
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -1339,7 +1340,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
+                "make_fixture must be a nongeneric zero-argument function; declare def make_fixture() -> ConcreteFixture",
             );
             return;
         }

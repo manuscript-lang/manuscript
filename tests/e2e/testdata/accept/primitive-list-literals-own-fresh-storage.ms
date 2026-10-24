@@ -1,6 +1,6 @@
-import {expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_true
 
-fn fresh() List[Int]:
+def fresh() -> List[Int]:
     return [1, 2, 3]
 
 test "literals":
@@ -10,7 +10,7 @@ test "literals":
     try expect_true((a.length() == 4 and b.length() == 3))
 
     var floats = [1.5, 2.5]
-    let flags = [true, false, true]
+    let flags = [True, False, True]
     var words = ["a", "b"]
     let empty = List[Int]()
     try expect_true(

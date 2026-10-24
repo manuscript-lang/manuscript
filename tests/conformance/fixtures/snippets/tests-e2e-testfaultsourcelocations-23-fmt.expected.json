@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Crash:\n    fn run() Int\n\ntype Item:\n    value: Int\n\nimpl Crash for Item:\n    fn run() Int:\n        return 1 / self.value\n\nexport fn main() Int:\n    let item = Item(0)\n    let run = item.run\n    return run()\n"
+    "fmt": "interface Crash:\n    def run() -> Int\n\ntype Item:\n    value: Int\n\nimpl Crash for Item:\n    def run() -> Int:\n        return 1 / self.value\n\nexport def main() -> Int:\n    let item = Item(0)\n    let run = item.run\n    return run()\n"
   }
 }

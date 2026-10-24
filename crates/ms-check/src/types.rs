@@ -89,6 +89,10 @@ pub struct Type {
     pub default: RefCell<Option<Ty>>,
     /// Omittable parameters of a known source callable.
     pub defaults: Defaults,
+    /// Omittable parameters erased by `required_type`: not callable permissions, but still
+    /// how the value is represented (an omittable parameter crosses a function value as an
+    /// optional).
+    pub erased: Defaults,
 }
 
 impl Clone for Type {
@@ -104,6 +108,7 @@ impl Clone for Type {
             bounds: RefCell::new(self.bounds.borrow().clone()),
             default: RefCell::new(self.default.borrow().clone()),
             defaults: self.defaults.clone(),
+            erased: self.erased.clone(),
         }
     }
 }
@@ -117,21 +122,19 @@ impl fmt::Debug for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.kind == Kind::Function {
-            f.write_str("fn(")?;
+            f.write_str("Callable[[")?;
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
-                write!(f, "{}: {}", a.name, a.ty)?;
-                if self.is_default(a.name) {
-                    f.write_str(" = ...")?;
-                }
+                write!(f, "{}", a.ty)?;
             }
-            f.write_str(") ")?;
-            return match &self.result {
-                Some(r) => write!(f, "{r}"),
-                None => f.write_str("<unknown>"),
-            };
+            f.write_str("], ")?;
+            match &self.result {
+                Some(r) => write!(f, "{r}")?,
+                None => f.write_str("<unknown>")?,
+            }
+            return f.write_char(']');
         }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {
@@ -170,12 +173,18 @@ impl Type {
             bounds: RefCell::new(Vec::new()),
             default: RefCell::new(None),
             defaults: None,
+            erased: None,
         }
     }
 
     /// Whether `name` is an omittable parameter.
     pub fn is_default(&self, name: Name) -> bool {
         self.defaults.as_ref().is_some_and(|d| d.contains(&name))
+    }
+
+    /// Whether `name` crosses a function value as an optional, whether or not a call may omit it.
+    pub fn is_lifted(&self, name: Name) -> bool {
+        self.is_default(name) || self.erased.as_ref().is_some_and(|d| d.contains(&name))
     }
 
     /// The id as text.
@@ -541,6 +550,16 @@ pub fn test_outcome() -> Ty {
 /// Substitution of type variables by id.
 pub type Subst = HashMap<Name, Ty>;
 
+/// A `Callable[[...], R]` parameter has a synthetic positional name (`_0`, `_1`);
+/// parameter names are not part of identity for it.
+fn names_match(a: Name, b: Name) -> bool {
+    let synthetic = |n: Name| {
+        let s = n.as_str();
+        s.len() > 1 && s.starts_with('_') && s[1..].bytes().all(|c| c.is_ascii_digit())
+    };
+    a == b || synthetic(a) || synthetic(b)
+}
+
 /// Structural identity.
 pub fn same(a: &Ty, b: &Ty) -> bool {
     if Rc::ptr_eq(a, b) && a.args.is_empty() && a.params.is_empty() {
@@ -560,7 +579,7 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
     }
     if a.kind == Kind::Function {
         for (p, q) in a.params.iter().zip(&b.params) {
-            if p.name != q.name || !same(&p.ty, &q.ty) {
+            if !names_match(p.name, q.name) || !same(&p.ty, &q.ty) {
                 return false;
             }
         }
@@ -685,6 +704,7 @@ pub fn required_type(t: &Ty) -> Ty {
         return t.clone();
     }
     let mut r = (**t).clone();
+    r.erased = t.defaults.clone().or_else(|| t.erased.clone());
     r.defaults = None;
     if let Some(a) = args {
         r.args = a;
@@ -811,29 +831,37 @@ pub fn constructor_signature(t: &Ty) -> Ty {
 /// A key identifying a type's structure.
 pub fn type_key(t: &Ty) -> String {
     let mut key = String::new();
-    write_type_key(&mut key, t);
+    write_type_key(&mut key, t, false);
     key
 }
 
-fn write_type_key(key: &mut String, t: &Ty) {
+/// `type_key` plus which function parameters are represented as optionals.
+pub fn lowering_key(t: &Ty) -> String {
+    let mut key = String::new();
+    write_type_key(&mut key, t, true);
+    key
+}
+
+fn write_type_key(key: &mut String, t: &Ty, lifted: bool) {
     key.push_str(t.id.as_str());
     if t.kind == Kind::Function {
         for p in &t.params {
             key.push('[');
-            key.push_str(p.name.as_str());
-            key.push(':');
-            write_type_key(key, &p.ty);
+            write_type_key(key, &p.ty, lifted);
+            if lifted && t.is_lifted(p.name) {
+                key.push('=');
+            }
             key.push(']');
         }
         key.push_str("[result:");
         if let Some(r) = &t.result {
-            write_type_key(key, r);
+            write_type_key(key, r, lifted);
         }
         key.push(']');
     }
     for a in &t.args {
         key.push('[');
-        write_type_key(key, a);
+        write_type_key(key, a, lifted);
         key.push(']');
     }
 }
@@ -868,7 +896,7 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if p.name != q.name || !unify(&p.ty, &q.ty, vars, bindings) {
+            if !names_match(p.name, q.name) || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }

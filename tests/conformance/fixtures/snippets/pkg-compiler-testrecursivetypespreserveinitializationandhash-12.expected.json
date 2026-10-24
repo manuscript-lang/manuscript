@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms",
           "line": 5,
-          "column": 8,
-          "offset": 240
+          "column": 9,
+          "offset": 241
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:8: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:9: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

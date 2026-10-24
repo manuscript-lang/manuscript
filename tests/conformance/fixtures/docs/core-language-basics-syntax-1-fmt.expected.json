@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Customer:\n    name: String\n    active: Bool\n\nexport fn welcome(customer: Customer) String:\n    if customer.active:\n        return \"Welcome, {customer.name}!\"\n\n    return \"Your account is inactive.\"\n"
+    "fmt": "export type Customer:\n    name: String\n    active: Bool\n\nexport def welcome(customer: Customer) -> String:\n    if customer.active:\n        return f\"Welcome, {customer.name}!\"\n\n    return \"Your account is inactive.\"\n"
   }
 }

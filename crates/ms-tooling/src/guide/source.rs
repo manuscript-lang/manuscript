@@ -55,7 +55,7 @@ pub fn leading_comment(source: &str, offset: usize) -> String {
     let own_line = lines.pop().unwrap_or("");
     // Names of cases and operations follow their keyword; inline payload fields
     // do not begin a declaration line and must not inherit a case description.
-    if !matches!(own_line.trim(), "" | "export" | "fn" | "var fn" | "case") {
+    if !matches!(own_line.trim(), "" | "export" | "def" | "var def" | "case") {
         return String::new();
     }
     let indent = |s: &str| s.len() - s.trim_start_matches([' ', '\t']).len();

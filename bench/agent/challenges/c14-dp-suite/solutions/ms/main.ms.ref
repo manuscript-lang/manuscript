@@ -1,6 +1,6 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
+from "@std/io.ms" import stdin, stdout, read_line
 
-fn parse_num(s: String) Optional[Int]:
+def parse_num(s: String) -> Optional[Int]:
     let codes = s.scalar_values()
     if codes.length() < 1 or codes.length() > 6:
         return none
@@ -15,19 +15,19 @@ fn parse_num(s: String) Optional[Int]:
 
     return some(n)
 
-fn min_int(a: Int, b: Int) Int:
+def min_int(a: Int, b: Int) -> Int:
     if a < b:
         return a
 
     return b
 
-fn max_int(a: Int, b: Int) Int:
+def max_int(a: Int, b: Int) -> Int:
     if a > b:
         return a
 
     return b
 
-fn lcs(a: String, b: String) Int:
+def lcs(a: String, b: String) -> Int:
     let x = a.scalar_values()
     let y = b.scalar_values()
     var prev = List[Int]()
@@ -54,7 +54,7 @@ fn lcs(a: String, b: String) Int:
 
     return prev.get(y.length())
 
-fn edit(a: String, b: String) Int:
+def edit(a: String, b: String) -> Int:
     let x = a.scalar_values()
     let y = b.scalar_values()
     var prev = List[Int]()
@@ -75,11 +75,9 @@ fn edit(a: String, b: String) Int:
             var sub = 1
             if x.get(i - 1) == y.get(j - 1):
                 sub = 0
+
             var best = min_int(
-                min_int(
-                    prev.get(j) + 1,
-                    (cur.get(j - 1) + 1)
-                ),
+                min_int(prev.get(j) + 1, (cur.get(j - 1) + 1)),
                 (prev.get((j - 1)) + sub)
             )
             cur.append(best)
@@ -90,7 +88,7 @@ fn edit(a: String, b: String) Int:
 
     return prev.get(y.length())
 
-fn knap(t: List[String]) String:
+def knap(t: List[String]) -> String:
     if t.length() < 2:
         return "error: bad command"
 
@@ -130,9 +128,9 @@ fn knap(t: List[String]) String:
 
         i = i + 1
 
-    return "{best.get(capacity)}"
+    return f"{best.get(capacity)}"
 
-fn coins(t: List[String]) String:
+def coins(t: List[String]) -> String:
     if t.length() < 3:
         return "error: bad command"
 
@@ -155,6 +153,7 @@ fn coins(t: List[String]) String:
     let inf = 1000000000
     var best = List[Int]()
     best.append(0)
+
     var a = 1
 
     while a <= amount:
@@ -169,23 +168,19 @@ fn coins(t: List[String]) String:
     if answer >= inf:
         return "impossible"
 
-    return "{answer}"
+    return f"{answer}"
 
-fn solve_line(line: String) String:
+def solve_line(line: String) -> String:
     let t = line.split(" ")
     let name = t.get(0)
 
     if name == "lcs" or name == "edit":
-        if (
-            t.length() != 3
-            or t.get(1).is_empty()
-            or t.get(2).is_empty()
-        ):
+        if (t.length() != 3 or t.get(1).is_empty() or t.get(2).is_empty()):
             return "error: bad command"
         if name == "lcs":
-            return "{lcs(t.get(1), t.get(2))}"
+            return f"{lcs(t.get(1), t.get(2))}"
 
-        return "{edit(t.get(1), t.get(2))}"
+        return f"{edit(t.get(1), t.get(2))}"
 
     if name == "knap":
         return knap(t)
@@ -194,8 +189,8 @@ fn solve_line(line: String) String:
 
     return "error: bad command"
 
-fn run() Result[Unit, Error]:
-    while true:
+def run() -> Result[Unit, Error]:
+    while True:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -204,11 +199,11 @@ fn run() Result[Unit, Error]:
         if line.replace_all(old: " ", new: "").get().is_empty():
             continue
 
-        try stdout().write("{solve_line(line)}\n")
+        try stdout().write(f"{solve_line(line)}\n")
 
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

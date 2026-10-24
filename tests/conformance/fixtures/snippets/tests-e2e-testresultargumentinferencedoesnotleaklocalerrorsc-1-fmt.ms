@@ -1,6 +1,6 @@
 # conform: tags=formatter,modules,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/result_argument_scope_test.go:13 TestResultArgumentInferenceDoesNotLeakLocalErrorScope
-import erase from "./helper.ms"
+from "./helper.ms" import erase
 
-fn invalid(r: Result[Int, Cause[Int]]) Result[Int, Error]: erase(r)
+def invalid(r: Result[Int, Cause[Int]]) -> Result[Int, Error]: erase(r)

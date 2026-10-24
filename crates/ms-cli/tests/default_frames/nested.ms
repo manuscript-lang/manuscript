@@ -1,8 +1,8 @@
-fn divide(value: Int = 1 / 0) Int:
+def divide(value: Int = 1 / 0) -> Int:
     return value
 
-fn outer(value: Int = divide()) Int:
+def outer(value: Int = divide()) -> Int:
     return value
 
-export fn main() Int:
+export def main() -> Int:
     return outer()

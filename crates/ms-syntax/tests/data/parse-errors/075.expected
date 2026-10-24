@@ -1,1 +1,1 @@
-error parse 2:15:29 "expected end of statement, found 'if'; there is no inline conditional expression: declare 'var name = ...' and assign it in each branch of an if/else, or use 'match'"
+error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

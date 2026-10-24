@@ -1,4 +1,4 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
+from "@std/io.ms" import read_line, stdin, stdout
 
 type Line:
     sku: String
@@ -11,34 +11,34 @@ type Store:
     totals: Map[String, Int]
     lines: Map[String, List[Line]]
 
-fn emit(text: String) Unit:
-    stdout().write("{text}\n").get()
+def emit(text: String) -> Unit:
+    stdout().write(f"{text}\n").get()
 
-fn is_digit(code: Int) Bool:
+def is_digit(code: Int) -> Bool:
     return code >= 48 and code <= 57
 
-fn is_sku_char(code: Int) Bool:
+def is_sku_char(code: Int) -> Bool:
     return (code >= 65 and code <= 90) or is_digit(code) or code == 45
 
-fn is_id_char(code: Int) Bool:
+def is_id_char(code: Int) -> Bool:
     return (code >= 97 and code <= 122) or is_digit(code) or code == 45
 
-fn all_chars(text: String, allowed: fn(code: Int) Bool) Bool:
+def all_chars(text: String, allowed: Callable[[Int], Bool]) -> Bool:
     if text.length() == 0:
-        return false
+        return False
 
     for c in text.chars():
         if not allowed(c.scalar_at(0)):
-            return false
-    return true
+            return False
+    return True
 
-fn valid_sku(text: String) Bool:
+def valid_sku(text: String) -> Bool:
     return all_chars(text, is_sku_char)
 
-fn valid_id(text: String) Bool:
+def valid_id(text: String) -> Bool:
     return all_chars(text, is_id_char)
 
-fn parse_bounded(text: String, low: Int, high: Int, max_digits: Int) Optional[Int]:
+def parse_bounded(text: String, low: Int, high: Int, max_digits: Int) -> Optional[Int]:
     if text.length() == 0 or text.length() > max_digits:
         return none
 
@@ -56,17 +56,17 @@ fn parse_bounded(text: String, low: Int, high: Int, max_digits: Int) Optional[In
 
     return some(value)
 
-fn money(cents: Int) String:
+def money(cents: Int) -> String:
     let rest = cents % 100
     if rest < 10:
-        return "{cents / 100}.0{rest}"
+        return f"{cents / 100}.0{rest}"
 
-    return "{cents / 100}.{rest}"
+    return f"{cents / 100}.{rest}"
 
-fn compare_text(left: String, right: String) Int:
+def compare_text(left: String, right: String) -> Int:
     return left.compare(right)
 
-fn stock_cmd(var store: Store, sku: String, qty_text: String) Unit:
+def stock_cmd(var store: Store, sku: String, qty_text: String) -> Unit:
     if not valid_sku(sku):
         emit("error: bad sku")
         return
@@ -78,27 +78,27 @@ fn stock_cmd(var store: Store, sku: String, qty_text: String) Unit:
 
         let now = store.stock.get_or(sku, 0) + qty
         store.stock.add(key: sku, value: now)
-        emit("ok {sku} stock={now}")
+        emit(f"ok {sku} stock={now}")
     else:
         emit("error: bad quantity")
 
-fn price_cmd(var store: Store, sku: String, cents_text: String) Unit:
+def price_cmd(var store: Store, sku: String, cents_text: String) -> Unit:
     if let cents = parse_bounded(cents_text, 0, 10000000, 8):
         if store.stock.contains(sku):
             store.prices.add(key: sku, value: cents)
             emit("ok")
         else:
-            emit("error: unknown sku {sku}")
+            emit(f"error: unknown sku {sku}")
     else:
         emit("error: bad price")
 
-fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
+def order_cmd(var store: Store, id: String, items: List[String]) -> Unit:
     if not valid_id(id):
         emit("error: bad order id")
         return
 
     if store.statuses.contains(id):
-        emit("error: order {id} already exists")
+        emit(f"error: order {id} already exists")
         return
 
     var lines = List[Line]()
@@ -107,33 +107,33 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
         let parts = token.split(":")
 
         if parts.length() != 2 or not valid_sku(parts.get(0)):
-            emit("error: bad item {token}")
+            emit(f"error: bad item {token}")
             return
 
         if let qty = parse_bounded(parts.get(1), 1, 100000, 7):
             lines.append(Line(sku: parts.get(0), qty: qty))
         else:
-            emit("error: bad item {token}")
+            emit(f"error: bad item {token}")
             return
 
     var seen = Map[String, Bool]()
 
     for line in lines:
         if seen.contains(line.sku):
-            emit("error: duplicate sku {line.sku}")
+            emit(f"error: duplicate sku {line.sku}")
             return
 
-        seen.add(key: line.sku, value: true)
+        seen.add(key: line.sku, value: True)
 
         if not store.stock.contains(line.sku):
-            emit("error: unknown sku {line.sku}")
+            emit(f"error: unknown sku {line.sku}")
             return
 
         let have = store.stock.get_or(line.sku, 0)
 
         if line.qty > have:
             emit(
-                "error: insufficient stock for {line.sku} (have {have}, need {line.qty})"
+                f"error: insufficient stock for {line.sku} (have {have}, need {line.qty})"
             )
             return
 
@@ -156,19 +156,19 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
     store.statuses.add(key: id, value: "placed")
     store.totals.add(key: id, value: total)
     store.lines.add(key: id, value: lines)
-    emit("ok {id} total={money(total)}")
+    emit(f"ok {id} total={money(total)}")
 
-fn cancel_cmd(var store: Store, id: String) Unit:
+def cancel_cmd(var store: Store, id: String) -> Unit:
     if not store.statuses.contains(id):
-        emit("error: unknown order {id}")
+        emit(f"error: unknown order {id}")
         return
 
     let status = store.statuses.get_or(id, "")
 
     if status == "shipped":
-        emit("error: order {id} already shipped")
-    else if status == "cancelled":
-        emit("error: order {id} already cancelled")
+        emit(f"error: order {id} already shipped")
+    elif status == "cancelled":
+        emit(f"error: order {id} already cancelled")
     else:
         for line in store.lines.get_or(id, List[Line]()):
             (
@@ -184,22 +184,22 @@ fn cancel_cmd(var store: Store, id: String) Unit:
         store.statuses.add(key: id, value: "cancelled")
         emit("ok")
 
-fn ship_cmd(var store: Store, id: String) Unit:
+def ship_cmd(var store: Store, id: String) -> Unit:
     if not store.statuses.contains(id):
-        emit("error: unknown order {id}")
+        emit(f"error: unknown order {id}")
         return
 
     let status = store.statuses.get_or(id, "")
 
     if status == "shipped":
-        emit("error: order {id} already shipped")
-    else if status == "cancelled":
-        emit("error: order {id} is cancelled")
+        emit(f"error: order {id} already shipped")
+    elif status == "cancelled":
+        emit(f"error: order {id} is cancelled")
     else:
         store.statuses.add(key: id, value: "shipped")
         emit("ok")
 
-fn reserved(store: Store, sku: String) Int:
+def reserved(store: Store, sku: String) -> Int:
     var units = 0
     for entry in store.statuses.entries():
         if entry.value == "placed":
@@ -208,11 +208,13 @@ fn reserved(store: Store, sku: String) Int:
                     units += line.qty
     return units
 
-fn report_cmd(store: Store) Unit:
+def report_cmd(store: Store) -> Unit:
     for sku in store.stock.keys().sorted(compare_text):
         let stock = store.stock.get_or(sku, 0)
         let price = store.prices.get_or(sku, 0)
-        emit("{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}")
+        emit(
+            f"{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}"
+        )
 
     var placed = 0
     var shipped = 0
@@ -222,22 +224,22 @@ fn report_cmd(store: Store) Unit:
     for entry in store.statuses.entries():
         if entry.value == "placed":
             placed += 1
-        else if entry.value == "shipped":
+        elif entry.value == "shipped":
             shipped += 1
             revenue += store.totals.get_or(entry.key, 0)
         else:
             cancelled += 1
 
-    emit("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-    emit("revenue={money(revenue)}")
+    emit(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    emit(f"revenue={money(revenue)}")
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     for c in line.chars():
         if c != " ":
-            return false
-    return true
+            return False
+    return True
 
-fn handle(var store: Store, line: String) Unit:
+def handle(var store: Store, line: String) -> Unit:
     let tokens = line.split(" ")
     let count = tokens.length()
     let cmd = tokens.get(0)
@@ -247,27 +249,27 @@ fn handle(var store: Store, line: String) Unit:
             emit("error: usage")
         else:
             stock_cmd(var store, tokens.get(1), tokens.get(2))
-    else if cmd == "price":
+    elif cmd == "price":
         if count != 3:
             emit("error: usage")
         else:
             price_cmd(var store, tokens.get(1), tokens.get(2))
-    else if cmd == "order":
+    elif cmd == "order":
         if count < 3:
             emit("error: usage")
         else:
             order_cmd(var store, tokens.get(1), tokens.slice(2, count).get())
-    else if cmd == "cancel":
+    elif cmd == "cancel":
         if count != 2:
             emit("error: usage")
         else:
             cancel_cmd(var store, tokens.get(1))
-    else if cmd == "ship":
+    elif cmd == "ship":
         if count != 2:
             emit("error: usage")
         else:
             ship_cmd(var store, tokens.get(1))
-    else if cmd == "report":
+    elif cmd == "report":
         if count != 1:
             emit("error: usage")
         else:
@@ -275,7 +277,7 @@ fn handle(var store: Store, line: String) Unit:
     else:
         emit("error: unknown command")
 
-export fn main() Int:
+export def main() -> Int:
     var store = Store(
         stock: Map[String, Int](), prices: Map[String, Int](),
         statuses: Map[String, String](), totals: Map[String, Int](),
@@ -283,7 +285,7 @@ export fn main() Int:
     )
     let input = stdin()
 
-    while true:
+    while True:
         if let text = read_line(input).get():
             if not is_blank(text):
                 handle(var store, text)

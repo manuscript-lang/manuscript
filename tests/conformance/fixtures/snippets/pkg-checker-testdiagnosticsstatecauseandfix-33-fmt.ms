@@ -5,7 +5,7 @@ type Choice[T]:
     case Found(value: T)
     case Missing
 
-fn f(c: Choice[Int]) Int:
+def f(c: Choice[Int]) -> Int:
     match c:
-        Choice[String].Found(v): return 1
-        Choice[String].Missing: return 0
+        case Choice[String].Found(v): return 1
+        case Choice[String].Missing: return 0

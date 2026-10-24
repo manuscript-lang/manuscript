@@ -1,16 +1,19 @@
 # conform: tags=control-flow,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=run
 # conform: origin=tests/e2e/testdata/accept/operand-order.ms
-import expect_equal from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-export fn main() Int:
+export def main() -> Int:
     var number = 1
-    let total = number + (
-        match some(1):
-            some(value):
-                number += 1
-                value
-            none: 0
+    let total = (
+        number
+        + (
+            match some(1):
+                case some(value):
+                    number += 1
+                    value
+                case none: 0
+        )
     )
     if total != 2:
         return 1

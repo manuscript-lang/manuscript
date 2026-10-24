@@ -1,17 +1,17 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/terse-data.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
-fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
+def subtract(amount: Int, deduction: Int = 1) -> Int: amount - deduction
 
-fn first[T](left: T, right: T) T: left
+def first[T](left: T, right: T) -> T: left
 
-fn size(values: Map[String, Int]) Int: values.length()
+def size(values: Map[String, Int]) -> Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) Int: (values.get().length())
+def optional_size(values: Optional[Map[String, Int]]) -> Int: (values.get().length())
 
-fn mark(var log: List[Int], value: Int) Int:
+def mark(var log: List[Int], value: Int) -> Int:
     log.append(value)
     return value
 
@@ -26,7 +26,7 @@ test "map literals and positional identifier arguments":
     let right = 8
     try expect_equal(first(left, right), 4)
 
-    let stored: fn(amount: Int, deduction: Int) Int = subtract
+    let stored: Callable[[Int, Int], Int] = subtract
     try expect_equal(stored(amount, deduction), 7)
 
     var values = {"a": 1, "b": 2, "a": 3}
@@ -65,13 +65,13 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
 test "map literal uses custom key equality":
     let a = Key(1, "first")

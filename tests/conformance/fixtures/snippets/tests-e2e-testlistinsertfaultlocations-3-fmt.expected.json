@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n    let insert = [1].insert\n    insert(index: 5, value: 9)\n    return 0\n"
+    "fmt": "export def main() -> Int:\n    let insert = [1].insert\n    insert(index: 5, value: 9)\n    return 0\n"
   }
 }

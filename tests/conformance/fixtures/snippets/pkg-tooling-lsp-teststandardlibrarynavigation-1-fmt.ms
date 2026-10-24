@@ -1,11 +1,11 @@
 # conform: tags=formatter,lists,modules,parser,stdlib-collections,stdlib-system,strings,tier-io
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
-import ListBuilder from "@std/collections.ms"
-import system from "@std/process.ms"
+from "@std/collections.ms" import ListBuilder
+from "@std/process.ms" import system
 
-fn length(values: List[Int]) Int:
+def length(values: List[Int]) -> Int:
     return values.length()
 
-fn os_name() String:
+def os_name() -> String:
     return system().info().os

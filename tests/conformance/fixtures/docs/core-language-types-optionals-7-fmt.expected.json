@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn first_number(text: Optional[String]) Optional[Int]:\n    return text.map(fn(value): value.trim()).and_then(fn(value): value.parse_int())\n"
+    "fmt": "def first_number(text: Optional[String]) -> Optional[Int]:\n    return (\n        text\n        .map(lambda value: value.trim().clone())\n        .and_then(lambda value: value.parse_int())\n    )\n"
   }
 }

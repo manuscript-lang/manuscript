@@ -13,14 +13,14 @@
         "position": {
           "file": "pkg-build-testgenericrecursionandnamespacerules-5.ms",
           "line": 8,
-          "column": 8,
-          "offset": 235
+          "column": 9,
+          "offset": 236
         }
       },
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "missing implementation operation equals; add fn equals(other: Equal) Bool to this impl",
+        "message": "missing implementation operation equals; add fn equals(other: Equal) -> Bool to this impl",
         "position": {
           "file": "pkg-build-testgenericrecursionandnamespacerules-5.ms",
           "line": 7,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:8:8: type: extra operation compare; Equal declares: equals (remove it or add it to the interface)\n<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:7:1: type: missing implementation operation equals; add fn equals(other: Equal) Bool to this impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:8:9: type: extra operation compare; Equal declares: equals (remove it or add it to the interface)\n<DIR>/pkg-build-testgenericrecursionandnamespacerules-5.ms:7:1: type: missing implementation operation equals; add fn equals(other: Equal) -> Bool to this impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

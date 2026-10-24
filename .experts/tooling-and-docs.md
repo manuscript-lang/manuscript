@@ -16,7 +16,7 @@ Verified: formatter policy changes also require reformatting the repository's `.
 
 Decision: remove redundant argument labels from ordinary test assertions. The latest direction is for formatted code to read like prose: keep each setup, action, and check together, then start a paragraph at the next setup or a section comment. Do not isolate a short binding from its immediate use or simple return. Give substantial callbacks their own paragraphs, and retain attached guards. Verify these reading boundaries with [the prose fixture](../crates/ms-syntax/tests/data/format/042.in.src).
 
-Correction: a single explicit-return callback should not keep an unnecessary indented body when its call fits, e.g. `queue.enqueue(fn(): return 7)`. Preserve comments and nested suites; never compact a bare call body into an implicit return. Verify LF/CRLF and idempotence with [the callback fixture](../crates/ms-syntax/tests/data/format/041.in.src).
+Correction: a single explicit-return callback should not keep an unnecessary indented body when its call fits, e.g. `queue.enqueue(lambda: return 7)`. Preserve comments and nested suites; never compact a bare call body into an implicit return. Verify LF/CRLF and idempotence with [the callback fixture](../crates/ms-syntax/tests/data/format/041.in.src).
 
 ### Editor recovery must preserve delimiter continuations
 
@@ -70,7 +70,7 @@ Verified: task recipes must preserve I/O failure: matching a failed stdout write
 
 Decision: documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator. Native builds were requested to work from the installed `ms` alone. Today linking uses the system `cc`/`ld`, and a bundled linker is a tracked follow-up ([design contract](../crates/DESIGN.md)); do not claim a stronger installation guarantee than the packaged check demonstrates. OS-specific prerequisites remain permitted. This establishes a delivery boundary for user-facing tooling: test the command from the user's installation context, not only from the checkout.
 
-Verified: `vscode-languageclient` 10 requires a log output channel, including `onDidChangeLogLevel` and severity methods. A plain output channel fails during editor activation even when a direct compiler LSP handshake succeeds. Create the shared channel with `{ log: true }`; activation and restart tests must exercise the logging API rather than making client startup a no-op.
+Verified: `vscode-languageclient` 10 requires a log output channel, including `onDidChangeLogLevel` and severity methods. A plain output channel fails during editor activation even when a direct compiler LSP handshake succeeds. Create the shared channel with `{ log: True }`; activation and restart tests must exercise the logging API rather than making client startup a no-op.
 
 Apply when: adding CLI tooling, upgrading the editor client, or making claims about installation requirements.
 Evidence: [client setup](../extensions/vscode/extension.js), [dependency pin](../extensions/vscode/package-lock.json), [activation/restart regression](../extensions/vscode/tests/extension.test.js), [packaging script](../scripts/package-rust.sh), [packaged binary check](../scripts/dist-check.sh), [native build contract](../documentation/developer-tooling/how-it-works.md).
@@ -100,7 +100,7 @@ Decision: the user requested reuse of VS Code highlighting code where possible. 
 
 Decision: present API classifications as human-readable badges beside symbol headings, instead of exposing compiler labels such as `Kind: fn.` as prose. The [generator](../crates/ms-tooling/src/guide/src/docgen.rs) keeps portable Markdown readable and raw JSON kinds stable; the [heading renderer](../website/layouts/_markup/render-heading.html) adds badges without changing symbol anchors or table-of-contents labels. Check rendered pages when changing this metadata.
 
-Decision: show API excerpts in regular Manuscript declaration syntax, rather than checker dumps such as `DnsRecord: DnsRecord`, `field kind: String`, or `operation receive: fn(...)->...`. Generate fields, cases, methods, and generic bounds from the source declarations, omitting implementation bodies. Compiler-bound calls without an ordinary declaration link to their special call rules rather than displaying `<unknown>` as a type. Verify CLI output and published pages together; keep the machine-readable JSON contract stable.
+Decision: show API excerpts in regular Manuscript declaration syntax, rather than checker dumps such as `DnsRecord: DnsRecord`, `field kind: String`, or `operation receive: Callable[[...], Unit]->...`. Generate fields, cases, methods, and generic bounds from the source declarations, omitting implementation bodies. Compiler-bound calls without an ordinary declaration link to their special call rules rather than displaying `<unknown>` as a type. Verify CLI output and published pages together; keep the machine-readable JSON contract stable.
 
 Verified: styling a code container did not highlight Manuscript examples fenced as `text`. Explicit `manuscript` fences use the shared grammar, with [tokenization checks](../tests/docs/highlighting.test.cjs). The documentation generator emits the same language label so regenerated API pages retain highlighting.
 

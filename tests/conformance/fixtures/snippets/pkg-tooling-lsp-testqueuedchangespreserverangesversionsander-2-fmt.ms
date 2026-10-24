@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/scheduling_test.go:62 TestQueuedChangesPreserveRangesVersionsAndErrors
 # alpha beta
-fn answer() Int:
+def answer() -> Int:
     return 2

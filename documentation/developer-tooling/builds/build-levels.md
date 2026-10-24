@@ -10,7 +10,7 @@ weight = 2
 Save this entrypoint as `main.ms`:
 
 ```manuscript
-export fn main() Int:
+export def main() -> Int:
     return 0
 ```
 

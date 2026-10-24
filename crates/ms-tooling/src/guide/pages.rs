@@ -189,7 +189,7 @@ fn import_line(m: &ApiModule) -> String {
     if m.path == "prelude" {
         "available in every module; no import".to_string()
     } else {
-        format!("import Name from {:?}", m.path)
+        format!("from {:?} import Name", m.path)
     }
 }
 
@@ -222,7 +222,7 @@ fn module_page(m: &ApiModule) -> String {
 fn declaration_page(m: &ApiModule, d: &ApiDeclaration) -> String {
     let mut b = format!("{} {} ({})\n", d.kind, d.name, m.path);
     if m.path != "prelude" {
-        b += &format!("import {} from {:?}\n", bare(&d.name), m.path);
+        b += &format!("from {:?} import {}\n", m.path, bare(&d.name));
     }
     let doc = cap_doc(&d.doc, 500);
     if !doc.is_empty() {

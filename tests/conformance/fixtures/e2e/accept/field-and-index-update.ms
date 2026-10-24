@@ -1,8 +1,8 @@
 # conform: tags=lists,maps,mutation,records,tier-core
 # conform: phase=run
 # conform: origin=perf thread: in-place field updates and name-indexed element updates
-import stdout from "@std/io.ms"
-import range from "@std/collections.ms"
+from "@std/io.ms" import stdout
+from "@std/collections.ms" import range
 
 type Reader:
     entries: List[Map[String, Int]]
@@ -12,17 +12,17 @@ type Reader:
 type Holder:
     reader: Reader
 
-fn put(var reader: Reader, id: Int, key: String, value: Int) Unit:
+def put(var reader: Reader, id: Int, key: String, value: Int) -> Unit:
     reader.entries[id].add(key, value)
 
-fn grow(var holder: Holder, name: String) Unit:
+def grow(var holder: Holder, name: String) -> Unit:
     holder.reader.names.append(name)
     holder.reader.entries.append(Map[String, Int]())
 
-fn put_list(var maps: List[Map[String, Int]], id: Int) Unit:
+def put_list(var maps: List[Map[String, Int]], id: Int) -> Unit:
     maps[id].add("k", 1)
 
-export fn main() Int:
+export def main() -> Int:
     var reader = Reader(
         entries: [Map[String, Int](), Map[String, Int]()], names: ["a", "b"], depth: 0
     )
@@ -46,10 +46,10 @@ export fn main() Int:
         total += 1
 
     stdout().write(
-        "{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
+        f"{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
     )
     stdout().write(
-        "{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
+        f"{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
     )
-    stdout().write("{maps[1].length()} {maps[0].length()}\n")
+    stdout().write(f"{maps[1].length()} {maps[0].length()}\n")
     return 0

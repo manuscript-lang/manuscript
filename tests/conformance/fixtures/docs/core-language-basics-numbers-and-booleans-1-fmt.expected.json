@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "let count = 3\nlet ratio = 0.5\nlet price = 12.50d\nlet active = true\n"
+    "fmt": "let count = 3\nlet ratio = 0.5\nlet price = 12.50d\nlet active = True\n"
   }
 }

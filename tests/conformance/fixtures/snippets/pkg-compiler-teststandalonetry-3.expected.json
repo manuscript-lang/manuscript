@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-teststandalonetry-3.ms",
           "line": 4,
-          "column": 35,
-          "offset": 181
+          "column": 39,
+          "offset": 185
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "pkg-compiler-teststandalonetry-3.ms",
           "line": 7,
           "column": 5,
-          "offset": 222
+          "offset": 228
         }
       },
       {
@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-teststandalonetry-3.ms:4:35: type: Int does not satisfy Error; use a type that implements it\n<DIR>/pkg-compiler-teststandalonetry-3.ms:7:5: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it\n<DIR>/pkg-compiler-teststandalonetry-3.ms:4:1: type: Int does not satisfy Error; use a type that implements it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-teststandalonetry-3.ms:4:39: type: Int does not satisfy Error; use a type that implements it\n<DIR>/pkg-compiler-teststandalonetry-3.ms:7:5: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it\n<DIR>/pkg-compiler-teststandalonetry-3.ms:4:1: type: Int does not satisfy Error; use a type that implements it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,9 +4,9 @@
 type Other:
     detail: String
 
-fn wrong(cause: Error) String:
+def wrong(cause: Error) -> String:
     match cause:
-        Other(value):
+        case Other(value):
             return value.detail
-        _:
+        case _:
             return cause.message()

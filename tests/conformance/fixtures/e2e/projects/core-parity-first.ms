@@ -1,43 +1,49 @@
 # conform: tags=aliasing,closures,control-flow,diagnostics,faults,generics,interfaces,interpolation,maps,match,modules,optional,sets,strings,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/core_parity/first.ms
-import {Key, Cause} from "./domain.ms"
-import {
-    transform_set, lookup, locate_map, locate_set, convert, remap_keys, remap_values
-} from "./helpers.ms"
+from "./domain.ms" import Key, Cause
+from "./helpers.ms" import (
+    transform_set,
+    lookup,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
+)
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
 impl Error for Cause:
-    fn message() String: "first {self.count}"
+    def message() -> String: f"first {self.count}"
 
-export fn first_mapped() Set[Key]:
+export def first_mapped() -> Set[Key]:
     let values = Set[Int]([1, 2])
-    return transform_set(values, fn(n): Key(0, n.to_string()))
+    return transform_set(values, lambda n: Key(0, n.to_string()))
 
-export fn first_bound_map() fn(transform: fn(value: Int) Key) Set[Key]:
+export def first_bound_map() -> Callable[[Callable[[Int], Key]], Set[Key]]:
     return Set[Int]([1, 2]).map[Key]
 
-export fn first_generic_map[T: Hashable](values: Set[T]) Set[Key]:
-    return transform_set(values, fn(n): Key(0, n.to_string()))
+export def first_generic_map[T: Hashable](values: Set[T]) -> Set[Key]:
+    return transform_set(values, lambda n: Key(0, n.to_string()))
 
-export fn first_lookup() String:
+export def first_lookup() -> String:
     var values = Map[Key, String]()
     values.add(Key(5, "original"), "found")
-    return values.filter(fn(k, v): true) | lookup(Key(5, "different"), "absent")
+    return values.filter(lambda k, v: True) | lookup(Key(5, "different"), "absent")
 
-export fn first_failure(cause: Cause) Result[String, Error]:
+export def first_failure(cause: Cause) -> Result[String, Error]:
     let value: Result[Int, Error] = error(cause)
-    return value.map(fn(n): n.to_string()).and_then(fn(text): ok(text))
+    return value.map(lambda n: n.to_string()).and_then(lambda text: ok(text))
 
-export fn first_queries() Bool:
+export def first_queries() -> Bool:
     let key = Key(5, "original")
     var map = Map[Key, String]()
     map.add(key, "found")
@@ -48,27 +54,27 @@ export fn first_queries() Bool:
         and locate_set(set, Key(5, "different")).is_some()
     )
 
-export fn first_converted(cause: Cause) Result[Int, Error]:
+export def first_converted(cause: Cause) -> Result[Int, Error]:
     let missing: Optional[Int] = none
-    return convert(missing, fn() Error: cause)
+    return convert(missing, lambda () -> Error: cause)
 
-export fn first_folded(cause: Cause) Error:
+export def first_folded(cause: Cause) -> Error:
     var values = Map[String, Int]()
     values.add("key", 1)
-    return values.fold[Error](cause, fn(acc, key, value): acc)
+    return values.fold[Error](cause, lambda acc, key, value: acc)
 
-export fn first_key_transform[T: Hashable](input: Map[T, Int]) Map[Key, Int]:
-    return remap_keys(input, fn(key, value): Key(0, key.to_string()))
+export def first_key_transform[T: Hashable](input: Map[T, Int]) -> Map[Key, Int]:
+    return remap_keys(input, lambda key, value: Key(0, key.to_string()))
 
-export fn first_bound_keys() fn(transform: fn(key: Int, value: Int) Key) Map[Key, Int]:
+export def first_bound_keys() -> Callable[[Callable[[Int, Int], Key]], Map[Key, Int]]:
     var chain_1 = Map[Int, Int]()
     chain_1.add(1, 10)
     chain_1.add(2, 20)
     return chain_1.map_keys[Key]
 
-export fn first_value_transform() Int:
+export def first_value_transform() -> Int:
     var input = Map[Key, Int]()
     input.add(Key(5, "original"), 2)
 
-    let mapped = remap_values(input, fn(key, value): value + 1)
+    let mapped = remap_values(input, lambda key, value: value + 1)
     return mapped.get(Key(5, "different")).get(0)

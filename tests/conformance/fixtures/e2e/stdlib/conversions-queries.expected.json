@@ -3,77 +3,104 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "conversions-queries.ms::conversions and collection queries are callable",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "conversions-queries.ms::Map fold uses ordered snapshots and returns independent accumulators",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "conversions-queries.ms::Map find returns fresh entry shells with copied payloads",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "conversions-queries.ms::Set fold and find preserve ordered snapshots and copied payloads",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "conversions-queries.ms::ok_or without a cause records the calling file and line",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 9,
-        "selected": 9,
-        "passed": 9,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN conversions-queries.ms::conversions and collection queries are callable\nPASS conversions-queries.ms::conversions and collection queries are callable\nRUN conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts\nPASS conversions-queries.ms::conversions retain unconstrained payloads nesting and lazy counts\nRUN conversions-queries.ms::Map fold uses ordered snapshots and returns independent accumulators\nPASS conversions-queries.ms::Map fold uses ordered snapshots and returns independent accumulators\nRUN conversions-queries.ms::Map find returns fresh entry shells with copied payloads\nPASS conversions-queries.ms::Map find returns fresh entry shells with copied payloads\nRUN conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers\nPASS conversions-queries.ms::Map predicates short circuit over snapshots including empty receivers\nRUN conversions-queries.ms::Set fold and find preserve ordered snapshots and copied payloads\nPASS conversions-queries.ms::Set fold and find preserve ordered snapshots and copied payloads\nRUN conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities\nPASS conversions-queries.ms::Set predicates short circuit over snapshots and keep empty identities\nRUN conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot\nPASS conversions-queries.ms::nonmatching queries and all-true predicates visit the complete snapshot\nRUN conversions-queries.ms::ok_or without a cause records the calling file and line\nPASS conversions-queries.ms::ok_or without a cause records the calling file and line\n9 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`k` is moved here but used again at 197:20; a value has one owner, so pass `k.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "conversions-queries.ms",
+            "line": 196,
+            "column": 27,
+            "offset": 6400
+          },
+          "fix": {
+            "position": {
+              "file": "conversions-queries.ms",
+              "line": 196,
+              "column": 28,
+              "offset": 6401
+            },
+            "end": {
+              "file": "conversions-queries.ms",
+              "line": 196,
+              "column": 28,
+              "offset": 6401
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot move `v.label` out of `v`: only a whole variable can move; take an owned copy with `v.label.clone()`",
+          "position": {
+            "file": "conversions-queries.ms",
+            "line": 334,
+            "column": 27,
+            "offset": 10076
+          },
+          "fix": {
+            "position": {
+              "file": "conversions-queries.ms",
+              "line": 334,
+              "column": 32,
+              "offset": 10081
+            },
+            "end": {
+              "file": "conversions-queries.ms",
+              "line": 334,
+              "column": 32,
+              "offset": 10081
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -84,11 +111,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

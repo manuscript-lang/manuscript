@@ -1,4 +1,4 @@
-fn f() Int:
+def f() -> Int:
     var rows = [[1], [2]]
     let head = rows[0]
     let n = head.length()

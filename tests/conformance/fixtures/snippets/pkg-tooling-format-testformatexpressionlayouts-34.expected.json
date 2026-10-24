@@ -9,41 +9,41 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module",
+        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-34.ms",
           "line": 5,
           "column": 8,
-          "offset": 187
+          "offset": 191
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module",
+        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-34.ms",
           "line": 5,
           "column": 19,
-          "offset": 198
+          "offset": 202
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module",
+        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-34.ms",
           "line": 5,
           "column": 31,
-          "offset": 210
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:8: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:19: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:31: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:8: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:19: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-34.ms:5:31: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

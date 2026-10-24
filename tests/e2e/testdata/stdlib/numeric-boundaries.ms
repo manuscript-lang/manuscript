@@ -1,7 +1,7 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
-import {duration} from "@std/time.ms"
-import {BigInt, BigIntError, from_int} from "@std/math.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/decimal.ms" import Decimal
+from "@std/time.ms" import duration
+from "@std/math.ms" import BigInt, BigIntError, from_int
 
 test "integer division retains signed boundary and remainder rules":
     let minimum = -9223372036854775808

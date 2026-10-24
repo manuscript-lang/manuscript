@@ -1,6 +1,6 @@
-fn f() Int:
+def f() -> Int:
     var xs = [1]
-    let add = fn(v: Int) Unit:
+    let add = lambda (v: Int) -> Unit:
         xs.append(v)
     xs.append(2)  # error: while `add` borrows it
     add(3)

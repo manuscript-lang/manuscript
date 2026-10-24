@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {range, List, filled} from \"@std/collections.ms\"\n"
+    "fmt": "from \"@std/collections.ms\" import range, List, filled\n"
   }
 }

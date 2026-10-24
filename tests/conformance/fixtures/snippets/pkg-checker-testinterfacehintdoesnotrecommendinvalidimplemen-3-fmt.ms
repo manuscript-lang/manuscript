@@ -2,6 +2,6 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/interface_hints_test.go:98 TestInterfaceHintDoesNotRecommendInvalidImplementationReceivers
 interface Shape:
-    fn area() Int
+    def area() -> Int
 
-fn f[T](value: T) Shape: value
+def f[T](value: T) -> Shape: value

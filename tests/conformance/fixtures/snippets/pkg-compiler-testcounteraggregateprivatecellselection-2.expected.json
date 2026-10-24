@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Cell; declare it with 'let Cell = ...' before use, define 'fn Cell(...)', or import it from a module",
+        "message": "unknown binding Cell; declare it with 'let Cell = ...' before use, define 'def Cell(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testcounteraggregateprivatecellselection-2.ms",
           "line": 5,
           "column": 16,
-          "offset": 193
+          "offset": 197
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-2.ms:5:16: resolution: unknown binding Cell; declare it with 'let Cell = ...' before use, define 'fn Cell(...)', or import it from a module\n<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-2.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-2.ms:5:16: resolution: unknown binding Cell; declare it with 'let Cell = ...' before use, define 'def Cell(...) -> T:', or import it from a module\n<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-2.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

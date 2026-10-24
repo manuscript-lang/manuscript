@@ -1,9 +1,9 @@
-import {expect_equal} from "@std/testing.ms"
-import ListBuilder from "@std/collections.ms"
-import MapBuilder from "@std/collections.ms"
-import SetBuilder from "@std/collections.ms"
-import BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/collections.ms" import ListBuilder
+from "@std/collections.ms" import MapBuilder
+from "@std/collections.ms" import SetBuilder
+from "@std/bytes.ms" import BytesBuilder
+from "@std/string.ms" import StringBuilder
 
 test "sealed builders":
     var list = ListBuilder[Int]()

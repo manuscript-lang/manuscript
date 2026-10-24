@@ -1,9 +1,9 @@
-import {expect_false} from "@std/testing.ms"
-import parse from "@std/math.ms"
-import BigInt from "@std/math.ms"
-import BigIntError from "@std/math.ms"
+from "@std/testing.ms" import expect_false
+from "@std/math.ms" import parse
+from "@std/math.ms" import BigInt
+from "@std/math.ms" import BigIntError
 
-fn verify_bigint() Result[Unit, Error]:
+def verify_bigint() -> Result[Unit, Error]:
     let large = try parse(text: "18446744073709551616", radix: 10, max_digits: 30)
     (
         not (
@@ -12,7 +12,7 @@ fn verify_bigint() Result[Unit, Error]:
             ) == "340282366920938463463374607431768211456"
         )
     ) | try expect_false
-    return ok(unit)
+    return ok(())
 
 test "large integers are exact":
     try verify_bigint()

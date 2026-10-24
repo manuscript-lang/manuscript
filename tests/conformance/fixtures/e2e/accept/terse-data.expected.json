@@ -3,42 +3,104 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "terse-data.ms::map literals and positional identifier arguments",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "terse-data.ms::map literal uses custom key equality",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 2,
-        "selected": 2,
-        "passed": 2,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN terse-data.ms::map literals and positional identifier arguments\nPASS terse-data.ms::map literals and positional identifier arguments\nRUN terse-data.ms::map literal uses custom key equality\nPASS terse-data.ms::map literal uses custom key equality\n2 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`key` is moved here but used again at 50:33; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "terse-data.ms",
+            "line": 49,
+            "column": 16,
+            "offset": 1754
+          },
+          "fix": {
+            "position": {
+              "file": "terse-data.ms",
+              "line": 49,
+              "column": 19,
+              "offset": 1757
+            },
+            "end": {
+              "file": "terse-data.ms",
+              "line": 49,
+              "column": 19,
+              "offset": 1757
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`a` is moved here but used again at 80:57; a value has one owner, so pass `a.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "terse-data.ms",
+            "line": 79,
+            "column": 19,
+            "offset": 2581
+          },
+          "fix": {
+            "position": {
+              "file": "terse-data.ms",
+              "line": 79,
+              "column": 20,
+              "offset": 2582
+            },
+            "end": {
+              "file": "terse-data.ms",
+              "line": 79,
+              "column": 20,
+              "offset": 2582
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -49,11 +111,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

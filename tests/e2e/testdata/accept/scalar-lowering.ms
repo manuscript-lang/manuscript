@@ -1,7 +1,7 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, expect_not_equal, expect_ok, expect_true} from "@std/testing.ms"
-import Closeable from "@std/core.ms"
-import filesystem from "@std/fs.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, expect_ok, expect_true
+from "@std/core.ms" import Closeable
+from "@std/fs.ms" import filesystem
 
 type Counter:
     value: Int = 0
@@ -11,21 +11,21 @@ type Resource:
 
 # Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
-    var fn close() Unit:
-        let _written = filesystem().write_file(self.marker, "closed", true)
+    var def close() -> Unit:
+        let _written = filesystem().write_file(self.marker, "closed", True)
 
-fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
+def closed(marker: String) -> Bool: filesystem().read_file(marker).is_ok()
 
-fn mark(var counter: Counter, digit: Int) Int:
+def mark(var counter: Counter, digit: Int) -> Int:
     counter.value = counter.value * 10 + digit
     return digit
 
-fn generic[T: Equal](left: T, right: T) Bool: left == right
+def generic[T: Equal](left: T, right: T) -> Bool: left == right
 
-fn returning_match() Bool:
-    return true == match some(1):
-        some(_): return false
-        none: false
+def returning_match() -> Bool:
+    return True == match some(1):
+        case some(_): return False
+        case none: False
 
 test "primitive equality captures operands once in order":
     var counter = Counter()
@@ -34,97 +34,97 @@ test "primitive equality captures operands once in order":
 
     var original = 1
     let captured = original == match some(1):
-        some(value):
+        case some(value):
             original = 2
             value
-        none: 0
+        case none: 0
     try expect_false(not captured or original != 2)
 
-    let skipped = false and mark(var counter, 3) == 3
-    let skipped_again = true or mark(var counter, 4) == 4
+    let skipped = False and mark(var counter, 3) == 3
+    let skipped_again = True or mark(var counter, 4) == 4
     try expect_false((skipped or not skipped_again or counter.value != 12))
-    try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
-    try expect_false(not generic(left: true, right: true))
+    try expect_false("é" == f"e\u{0301}" or "λ🙂" != "λ🙂")
+    try expect_false(not generic(left: True, right: True))
     try expect_false(returning_match())
 
-fn conditional(marker: String, take: Bool) Int:
+def conditional(marker: String, take: Bool) -> Int:
     if take:
-        with resource = Resource(marker.clone()): return 7
+        with Resource(marker.clone()) as resource: return 7
     return 8
 
-fn matched(marker: String) Int:
+def matched(marker: String) -> Int:
     return match some(1):
-        some(value):
-            with resource = Resource(marker.clone()): return value
+        case some(value):
+            with Resource(marker.clone()) as resource: return value
             0
-        none: 0
+        case none: 0
 
-fn defaulted(
+def defaulted(
     marker: String,
     value: Int = match some(2):
-        some(number):
-            with resource = Resource(marker.clone()):
-                let _used = unit
+        case some(number):
+            with Resource(marker.clone()) as resource:
+                let _used = ()
             number
-        none: 0
-) Int: value
+        case none: 0
+) -> Int: value
 
-fn nested(marker: String) Unit:
-    let callback = fn() Unit:
-        with resource = Resource(marker.clone()): return
+def nested(marker: String) -> Unit:
+    let callback = lambda () -> Unit:
+        with Resource(marker.clone()) as resource: return
     callback()
 
-fn failed() Result[Int, TextError]: error(TextError("expected"))
+def failed() -> Result[Int, TextError]: error(TextError("expected"))
 
-fn propagate(marker: String) Result[Int, TextError]:
-    with resource = Resource(marker.clone()):
+def propagate(marker: String) -> Result[Int, TextError]:
+    with Resource(marker.clone()) as resource:
         let value = try failed()
         return ok(value)
 
     return ok(0)
 
-fn bare_propagate() Result[Int, TextError]:
+def bare_propagate() -> Result[Int, TextError]:
     let value = try failed()
     return ok(value)
 
-fn equality_propagate() Result[Bool, TextError]:
+def equality_propagate() -> Result[Bool, TextError]:
     let matches = (try failed()) == 0
     return ok(matches)
 
-fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
+def bool_failed() -> Result[Bool, TextError]: error(TextError("expected"))
 
-fn nested_results(marker: String) Result[Int, TextError]:
-    let child = fn() Result[Bool, TextError]:
-        with resource = Resource(marker.clone()):
+def nested_results(marker: String) -> Result[Int, TextError]:
+    let child = lambda () -> Result[Bool, TextError]:
+        with Resource(marker.clone()) as resource:
             let value = try bool_failed()
             return ok(value)
 
-        return ok(false)
+        return ok(False)
 
     let _ignored = child()
     let value = try failed()
     return ok(value)
 
-fn statement_match_try(marker: String) Result[Int, TextError]:
+def statement_match_try(marker: String) -> Result[Int, TextError]:
     match some(1):
-        some(_):
-            with resource = Resource(marker.clone()):
+        case some(_):
+            with Resource(marker.clone()) as resource:
                 let value = try failed()
                 return ok(value)
-        none: return ok(0)
+        case none: return ok(0)
 
     return ok(-1)
 
-fn value_match_loop_try(marker: String) Result[Int, TextError]:
+def value_match_loop_try(marker: String) -> Result[Int, TextError]:
     var index = 0
 
     while index < 2:
         let _selected = match some(index):
-            some(number):
-                with resource = Resource(marker.clone()):
+            case some(number):
+                with Resource(marker.clone()) as resource:
                     let _value = try failed()
                 number
-            none: 0
+            case none: 0
 
         index += 1
 
@@ -133,38 +133,38 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
 test "combined lowering retains callable state and try boundaries":
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
+    with (fs.temporary("manuscript-scalar-") | try expect_ok) as temporary:
         let dir = temporary.path()
         let expected = Result[Int, TextError].error(TextError("expected"))
-        try expect_equal(nested_results("{dir}/nested"), expected)
-        try expect_true(closed("{dir}/nested"))
-        try expect_equal(statement_match_try("{dir}/statement"), expected)
-        try expect_true(closed("{dir}/statement"))
-        try expect_equal(value_match_loop_try("{dir}/loop"), expected)
-        try expect_true(closed("{dir}/loop"))
+        try expect_equal(nested_results(f"{dir}/nested"), expected)
+        try expect_true(closed(f"{dir}/nested"))
+        try expect_equal(statement_match_try(f"{dir}/statement"), expected)
+        try expect_true(closed(f"{dir}/statement"))
+        try expect_equal(value_match_loop_try(f"{dir}/loop"), expected)
+        try expect_true(closed(f"{dir}/loop"))
 
 test "cleanup remains owned by its source callable":
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
+    with (fs.temporary("manuscript-scalar-") | try expect_ok) as temporary:
         let dir = temporary.path()
-        try expect_equal(conditional("{dir}/skipped", take: false), 8)
-        try expect_false(closed("{dir}/skipped"))
-        try expect_equal(conditional("{dir}/taken", take: true), 7)
-        try expect_true(closed("{dir}/taken"))
-        try expect_equal(matched("{dir}/matched"), 1)
-        try expect_true(closed("{dir}/matched"))
-        try expect_equal(defaulted("{dir}/default"), 2)
-        try expect_true(closed("{dir}/default"))
-        try expect_equal(defaulted("{dir}/supplied", 9), 9)
-        try expect_false(closed("{dir}/supplied"))
-        nested("{dir}/nested")
-        try expect_true(closed("{dir}/nested"))
+        try expect_equal(conditional(f"{dir}/skipped", take: False), 8)
+        try expect_false(closed(f"{dir}/skipped"))
+        try expect_equal(conditional(f"{dir}/taken", take: True), 7)
+        try expect_true(closed(f"{dir}/taken"))
+        try expect_equal(matched(f"{dir}/matched"), 1)
+        try expect_true(closed(f"{dir}/matched"))
+        try expect_equal(defaulted(f"{dir}/default"), 2)
+        try expect_true(closed(f"{dir}/default"))
+        try expect_equal(defaulted(f"{dir}/supplied", 9), 9)
+        try expect_false(closed(f"{dir}/supplied"))
+        nested(f"{dir}/nested")
+        try expect_true(closed(f"{dir}/nested"))
         try expect_equal(
-            propagate("{dir}/propagated"),
+            propagate(f"{dir}/propagated"),
             Result[Int, TextError].error(TextError("expected"))
         )
-        try expect_true(closed("{dir}/propagated"))
+        try expect_true(closed(f"{dir}/propagated"))
         try expect_equal(
             bare_propagate(), Result[Int, TextError].error(TextError("expected"))
         )
@@ -177,10 +177,10 @@ test "cleanup remains owned by its source callable":
         while index < 3:
             index += 1
 
-            with resource = Resource("{dir}/loop{index}"):
+            with Resource(f"{dir}/loop{index}") as resource:
                 if index == 1: continue
                 if index == 2: break
 
-        try expect_true(closed("{dir}/loop1"))
-        try expect_true(closed("{dir}/loop2"))
-        try expect_false(closed("{dir}/loop3"))
+        try expect_true(closed(f"{dir}/loop1"))
+        try expect_true(closed(f"{dir}/loop2"))
+        try expect_false(closed(f"{dir}/loop3"))

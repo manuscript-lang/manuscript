@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...)', or import it from a module",
+        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-17.ms",
           "line": 4,
-          "column": 25,
-          "offset": 200
+          "column": 26,
+          "offset": 201
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...)', or import it from a module",
+        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-17.ms",
           "line": 6,
           "column": 16,
-          "offset": 293
+          "offset": 298
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-17.ms:4:25: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-17.ms:6:16: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-17.ms:4:26: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatparagraphs-17.ms:6:16: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

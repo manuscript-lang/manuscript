@@ -1,9 +1,9 @@
-import panic from "@std/core.ms"
-import range from "@std/collections.ms"
+from "@std/core.ms" import panic
+from "@std/collections.ms" import range
 
-fn add(a: Int, b: Int) Int: a + b
+def add(a: Int, b: Int) -> Int: a + b
 
-export fn main() Int:
+export def main() -> Int:
     var sum = 0
     for i in range(0, 5000000):
         sum = add(sum, i)

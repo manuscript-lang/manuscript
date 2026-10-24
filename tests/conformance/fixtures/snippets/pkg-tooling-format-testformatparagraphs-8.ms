@@ -1,12 +1,12 @@
 # conform: tags=control-flow,diagnostics,tier-core,with-cleanup
 # conform: phase=check
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:101 TestFormatParagraphs
-fn work(enabled: Bool) Int:
+def work(enabled: Bool) -> Int:
     let count = 2
 
     if enabled:
         run(count)
-    else if count > 0: run(1)
+    elif count > 0: run(1)
     else:
         run(0)
 
@@ -21,6 +21,6 @@ fn work(enabled: Bool) Int:
 
         run(item)
 
-    with resource = acquire():
+    with acquire() as resource:
         run(resource)
     return count

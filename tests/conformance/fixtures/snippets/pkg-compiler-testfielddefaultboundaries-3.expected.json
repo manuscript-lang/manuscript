@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding count; declare it with 'let count = ...' before use, define 'fn count(...)', or import it from a module",
+        "message": "unknown binding count; declare it with 'let count = ...' before use, define 'def count(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testfielddefaultboundaries-3.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-3.ms:5:18: resolution: unknown binding count; declare it with 'let count = ...' before use, define 'fn count(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-3.ms:5:18: resolution: unknown binding count; declare it with 'let count = ...' before use, define 'def count(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

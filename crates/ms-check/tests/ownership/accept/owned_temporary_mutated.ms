@@ -1,5 +1,5 @@
-fn make() List[Int]:
+def make() -> List[Int]:
     return [1]
 
-fn f() Int:
+def f() -> Int:
     return make().length()

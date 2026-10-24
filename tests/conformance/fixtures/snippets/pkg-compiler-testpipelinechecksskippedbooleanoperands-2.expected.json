@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testpipelinechecksskippedbooleanoperands-2.ms",
           "line": 4,
-          "column": 30,
-          "offset": 182
+          "column": 34,
+          "offset": 186
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpipelinechecksskippedbooleanoperands-2.ms:4:30: type: logical operands require Bool, found Bool and Int; compare explicitly, e.g. x != 0\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpipelinechecksskippedbooleanoperands-2.ms:4:34: type: logical operands require Bool, found Bool and Int; compare explicitly, e.g. x != 0\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

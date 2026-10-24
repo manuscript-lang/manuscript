@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testdiagnosticfixes-2.ms",
           "line": 8,
-          "column": 9,
-          "offset": 263
+          "column": 10,
+          "offset": 268
         }
       },
       {
@@ -47,14 +47,14 @@
           "file": "pkg-checker-testdiagnosticfixes-2.ms",
           "line": 9,
           "column": 18,
-          "offset": 313
+          "offset": 321
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-2.ms:8:9: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:4:16: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:4:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:9:18: type: expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-2.ms:8:10: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:4:16: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:4:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n<DIR>/pkg-checker-testdiagnosticfixes-2.ms:9:18: type: expected Error, found Result[Int] (in argument 'cause' of error); use a concrete value implementing Error and create its explicit interface view with Error(value: ...)\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

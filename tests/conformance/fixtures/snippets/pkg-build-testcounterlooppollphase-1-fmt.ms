@@ -1,21 +1,21 @@
 # conform: tags=control-flow,formatter,lists,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/build/loop_poll_test.go:17 TestCounterLoopPollPhase
-fn poll_literal_up(var log: List[Int], start: Int) Unit:
+def poll_literal_up(var log: List[Int], start: Int) -> Unit:
     var i = -137
 
     while i < 1000:
         log.append(i)
         i += 1
 
-fn poll_literal_down(var log: List[Int], start: Int) Unit:
+def poll_literal_down(var log: List[Int], start: Int) -> Unit:
     var i = 500
 
     while i > 0:
         log.append(i)
         i -= 1
 
-fn poll_literal_nested(var log: List[Int], start: Int) Unit:
+def poll_literal_nested(var log: List[Int], start: Int) -> Unit:
     var outer = 0
 
     while outer < 3:
@@ -27,21 +27,21 @@ fn poll_literal_nested(var log: List[Int], start: Int) Unit:
 
         outer += 1
 
-fn poll_up(var log: List[Int], start: Int) Unit:
+def poll_up(var log: List[Int], start: Int) -> Unit:
     var i = start
 
     while i < 1000:
         log.append(i)
         i += 1
 
-fn poll_down(var log: List[Int], start: Int) Unit:
+def poll_down(var log: List[Int], start: Int) -> Unit:
     var i = start
 
     while i > 0:
         log.append(i)
         i -= 1
 
-fn poll_continue(var log: List[Int], start: Int) Unit:
+def poll_continue(var log: List[Int], start: Int) -> Unit:
     var i = start
     var skips = 0
 
@@ -53,7 +53,7 @@ fn poll_continue(var log: List[Int], start: Int) Unit:
         log.append(i)
         i += 1
 
-fn poll_reset(var log: List[Int], start: Int) Unit:
+def poll_reset(var log: List[Int], start: Int) -> Unit:
     var i = start
 
     while i < 1000:
@@ -62,7 +62,7 @@ fn poll_reset(var log: List[Int], start: Int) Unit:
         if i == 5:
             i = 0
 
-fn poll_nested(var log: List[Int], start: Int) Unit:
+def poll_nested(var log: List[Int], start: Int) -> Unit:
     var outer = 0
 
     while outer < 3:

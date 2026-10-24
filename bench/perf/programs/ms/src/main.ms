@@ -1,16 +1,16 @@
-import {TextError} from "@std/core.ms"
-import {stdout, stdin, read_line, ReadStream} from "@std/io.ms"
-import {clock, Instant} from "@std/time.ms"
-import {StringBuilder} from "@std/string.ms"
+from "@std/core.ms" import TextError
+from "@std/io.ms" import stdout, stdin, read_line, ReadStream
+from "@std/time.ms" import clock, Instant
+from "@std/string.ms" import StringBuilder
 
 interface Counter:
-    var fn bump(by: Int) Int
+    var def bump(by: Int) -> Int
 
 type Acc:
     total: Int
 
 impl Counter for Acc:
-    var fn bump(by: Int) Int:
+    var def bump(by: Int) -> Int:
         self.total += by
         return self.total
 
@@ -19,48 +19,48 @@ type Shape:
     case Square(s: Int)
     case Tri(b: Int)
 
-fn got_line(input: ReadStream) Bool:
+def got_line(input: ReadStream) -> Bool:
     if let line = read_line(input):
         return line.is_some()
 
-    return false
+    return False
 
-fn say(text: String) Unit:
+def say(text: String) -> Unit:
     let _ignored = stdout().write(text)
 
-fn since(started: Instant) Int:
+def since(started: Instant) -> Int:
     return clock().now().difference(started).to_nanoseconds()
 
-fn report(name: String, ops: Int, started: Instant) Unit:
-    say("{name} {ops} {since(started)}\n")
+def report(name: String, ops: Int, started: Instant) -> Unit:
+    say(f"{name} {ops} {since(started)}\n")
 
-fn ident[T](x: T) T:
+def ident[T](x: T) -> T:
     return x
 
-fn checked(n: Int) Result[Int, TextError]:
+def checked(n: Int) -> Result[Int, TextError]:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn chain(n: Int) Result[Int, TextError]:
+def chain(n: Int) -> Result[Int, TextError]:
     let v = try checked(n)
     return ok(v)
 
-fn area(s: Shape) Int:
+def area(s: Shape) -> Int:
     var out = 0
 
     match s:
-        Circle(r):
+        case Circle(r):
             out = r * 3
-        Square(side):
+        case Square(side):
             out = side * side
-        Tri(b):
+        case Tri(b):
             out = b
 
     return out
 
-fn bench_string() Int:
+def bench_string() -> Int:
     let t = clock().now()
     var sb = StringBuilder()
     var i = 0
@@ -73,21 +73,21 @@ fn bench_string() Int:
     report("string_append_50k", 50000, t)
     return built.byte_length()
 
-fn bench_read_line() Unit:
+def bench_read_line() -> Unit:
     let t = clock().now()
     let input = stdin()
     var lines = 0
-    var more = true
+    var more = True
 
     while more:
         if got_line(input):
             lines += 1
         else:
-            more = false
+            more = False
 
     report("read_line", lines, t)
 
-fn bench_map() Int:
+def bench_map() -> Int:
     let t = clock().now()
     var m = Map[Int, Int]()
     var i = 0
@@ -106,7 +106,7 @@ fn bench_map() Int:
     report("map_put_get_8k", 16000, t)
     return sum
 
-fn bench_int_eq() Int:
+def bench_int_eq() -> Int:
     let t = clock().now()
     var hits = 0
     var i = 0
@@ -119,7 +119,7 @@ fn bench_int_eq() Int:
     report("int_eq", 10000000, t)
     return hits
 
-fn bench_generic() Int:
+def bench_generic() -> Int:
     let t = clock().now()
     var i = 0
     var g = 0
@@ -131,7 +131,7 @@ fn bench_generic() Int:
     report("generic_call", 100000000, t)
     return g
 
-fn bench_method() Int:
+def bench_method() -> Int:
     let t = clock().now()
     var acc = Acc(0)
     var i = 0
@@ -143,7 +143,7 @@ fn bench_method() Int:
     report("method_call", 100000000, t)
     return acc.total
 
-fn bench_try() Int:
+def bench_try() -> Int:
     let t = clock().now()
     var i = 0
     var tr = 0
@@ -159,7 +159,7 @@ fn bench_try() Int:
     report("try", 100000000, t)
     return tr
 
-fn bench_match() Int:
+def bench_match() -> Int:
     let t = clock().now()
     let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
     var i = 0
@@ -172,7 +172,7 @@ fn bench_match() Int:
     report("match", 100000000, t)
     return ma
 
-fn bench_length() Int:
+def bench_length() -> Int:
     var xs: List[Int] = []
     var i = 0
 
@@ -192,7 +192,7 @@ fn bench_length() Int:
     report("builtin_length", 100000000, t)
     return ln
 
-fn bench_for_list() Int:
+def bench_for_list() -> Int:
     var big: List[Int] = []
     var i = 0
 
@@ -212,7 +212,7 @@ fn bench_for_list() Int:
     report("for_list", 100000000, t)
     return fs
 
-export fn main() Int:
+export def main() -> Int:
     let built = bench_string()
     bench_read_line()
 
@@ -224,5 +224,5 @@ export fn main() Int:
     let ma = bench_match()
     let ln = bench_length()
     let fs = bench_for_list()
-    say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
+    say(f"# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
     return 0

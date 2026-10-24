@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/project_bench_test.go:33 BenchmarkProjectPipeline
-import value from "./shared.ms"
+from "./shared.ms" import value
 
-export fn result() Int: return value()
+export def result() -> Int: return value()

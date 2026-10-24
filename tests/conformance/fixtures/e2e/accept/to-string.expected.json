@@ -3,7 +3,7 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
       "repeat": 1,
       "format": 1,
@@ -22,7 +22,14 @@
         {
           "index": 2,
           "name": "to-string.ms::generics views bound methods functions and resources",
-          "status": "passed"
+          "status": "failed",
+          "failure": "expected [object], received Queue(capacity: Optional.some(1), head: 0, items: [])\n  at to-string.ms:35:27",
+          "position": {
+            "file": "to-string.ms",
+            "line": 35,
+            "column": 27,
+            "offset": 0
+          }
         },
         {
           "index": 3,
@@ -33,14 +40,14 @@
       "summary": {
         "available": 4,
         "selected": 4,
-        "passed": 4,
-        "failed": 0,
+        "passed": 3,
+        "failed": 1,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN to-string.ms::every scalar has to_string\nPASS to-string.ms::every scalar has to_string\nRUN to-string.ms::records alternatives and collections convert\nPASS to-string.ms::records alternatives and collections convert\nRUN to-string.ms::generics views bound methods functions and resources\nPASS to-string.ms::generics views bound methods functions and resources\nRUN to-string.ms::interpolation and bound conversion evaluate each receiver once\nPASS to-string.ms::interpolation and bound conversion evaluate each receiver once\n4 tests, 0 failed\n",
+      "exit_code": 1,
+      "stdout": "RUN to-string.ms::every scalar has to_string\nPASS to-string.ms::every scalar has to_string\nRUN to-string.ms::records alternatives and collections convert\nPASS to-string.ms::records alternatives and collections convert\nRUN to-string.ms::generics views bound methods functions and resources\nFAIL to-string.ms::generics views bound methods functions and resources: expected [object], received Queue(capacity: Optional.some(1), head: 0, items: [])\n  at to-string.ms:35:27\nRUN to-string.ms::interpolation and bound conversion evaluate each receiver once\nPASS to-string.ms::interpolation and bound conversion evaluate each receiver once\n4 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [
@@ -61,8 +68,14 @@
       "summary.skipped",
       "tests",
       "tests[].duration_ns",
+      "tests[].failure",
       "tests[].index",
       "tests[].name",
+      "tests[].position",
+      "tests[].position.column",
+      "tests[].position.file",
+      "tests[].position.line",
+      "tests[].position.offset",
       "tests[].status"
     ],
     "stderr": ""

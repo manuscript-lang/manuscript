@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module",
+        "message": "unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testmutationrejections-6.ms",
           "line": 5,
           "column": 17,
-          "offset": 164
+          "offset": 168
         }
       },
       {
@@ -25,25 +25,25 @@
           "file": "pkg-compiler-testmutationrejections-6.ms",
           "line": 6,
           "column": 5,
-          "offset": 180
+          "offset": 184
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module",
+        "message": "unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testmutationrejections-6.ms",
           "line": 6,
           "column": 13,
-          "offset": 188
+          "offset": 192
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-6.ms:5:17: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module\n<DIR>/pkg-compiler-testmutationrejections-6.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n<DIR>/pkg-compiler-testmutationrejections-6.ms:6:13: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-6.ms:5:17: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module\n<DIR>/pkg-compiler-testmutationrejections-6.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n<DIR>/pkg-compiler-testmutationrejections-6.ms:6:13: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

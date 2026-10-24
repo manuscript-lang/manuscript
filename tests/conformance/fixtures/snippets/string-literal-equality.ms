@@ -1,9 +1,9 @@
 # conform: tags=strings,tier-io
 # conform: phase=run
 # conform: origin=string == short literal compiled inline
-import {stdout} from "@std/io.ms"
+from "@std/io.ms" import stdout
 
-fn score(s: String) Int:
+def score(s: String) -> Int:
     var n = 0
     if s == "a":
         n += 1
@@ -19,8 +19,8 @@ fn score(s: String) Int:
         n += 32
     return n
 
-export fn main() Int:
+export def main() -> Int:
     let all = ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
     for s in all:
-        let _i = stdout().write("{score(s)} ")
+        let _i = stdout().write(f"{score(s)} ")
     return 0

@@ -1,26 +1,26 @@
-import {stdin, stdout} from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import {range} from "@std/collections.ms"
-import {SortedMap} from "@std/sorted.ms"
+from "@std/io.ms" import stdin, stdout
+from "@std/streams.ms" import read_lines
+from "@std/collections.ms" import range
+from "@std/sorted.ms" import SortedMap
 
 # A valid record: its category and its amount as a string of cents (digits only, no leading zeros).
 type Record:
     category: String
     cents: String
 
-fn is_digits(text: String) Bool:
+def is_digits(text: String) -> Bool:
     if text.length() == 0:
-        return false
+        return False
 
     for i in range(0, text.length()):
         let code = text.scalar_at(i)
         if code < 48 or code > 57:
-            return false
+            return False
 
-    return true
+    return True
 
 # Converts "12", "12.5" or "0.07" into cents as digits; none when the text is not a valid amount.
-fn amount_cents(text: String) Optional[String]:
+def amount_cents(text: String) -> Optional[String]:
     let parts = text.split(".")
     if parts.length() > 2:
         return none
@@ -44,14 +44,14 @@ fn amount_cents(text: String) Optional[String]:
         fraction = "00"
     return some(strip_zeros(whole + fraction))
 
-fn strip_zeros(digits: String) String:
+def strip_zeros(digits: String) -> String:
     var start = 0
     while start < digits.length() - 1 and digits.scalar_at(start) == 48:
         start += 1
     return digits.slice_scalars(start, digits.length()).get()
 
 # Splits one line into its two fields, honouring double quotes around the category.
-fn parse_line(line: String) Optional[Record]:
+def parse_line(line: String) -> Optional[Record]:
     var category = ""
     var amount = ""
 
@@ -78,7 +78,7 @@ fn parse_line(line: String) Optional[Record]:
     else:
         return none
 
-fn add_digits(a: String, b: String) String:
+def add_digits(a: String, b: String) -> String:
     var i = a.length() - 1
     var j = b.length() - 1
     var carry = 0
@@ -95,13 +95,13 @@ fn add_digits(a: String, b: String) String:
             sum += b.scalar_at(j) - 48
             j -= 1
 
-        out = "{sum % 10}" + out
+        out = f"{sum % 10}" + out
         carry = sum / 10
 
     return strip_zeros(out)
 
 # Formats cents digits as a plain decimal with exactly two fraction digits.
-fn format_total(cents: String) String:
+def format_total(cents: String) -> String:
     var padded = cents
     while padded.length() < 3:
         padded = "0" + padded
@@ -113,7 +113,7 @@ fn format_total(cents: String) String:
         + padded.slice_scalars(n - 2, n).get()
     )
 
-export fn main() Int:
+export def main() -> Int:
     let lines = read_lines(stdin()).get()
     var totals = SortedMap[String, String]()
     var skipped = 0
@@ -134,8 +134,8 @@ export fn main() Int:
 
     var out = ""
     for category in totals.keys():
-        out += "{category}: {format_total(totals.get(category).get("0"))}\n"
+        out += f"{category}: {format_total(totals.get(category).get("0"))}\n"
     if skipped > 0:
-        out += "skipped: {skipped}\n"
+        out += f"skipped: {skipped}\n"
     stdout().write(out).get()
     return 0

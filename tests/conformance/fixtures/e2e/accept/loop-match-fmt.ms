@@ -1,22 +1,22 @@
 # conform: tags=alternatives,control-flow,formatter,match,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/loop-match.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type State:
     case Ready
     case Waiting
 
-fn loop(state: State) Int:
+def loop(state: State) -> Int:
     var count = 0
 
     for value in [1, 2, 3]:
         count += 1
 
         match state:
-            Ready:
+            case Ready:
                 break
-            Waiting:
+            case Waiting:
                 continue
 
         count += 100

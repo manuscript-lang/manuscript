@@ -1,25 +1,25 @@
-import {stdin, stdout, read_all} from "@std/io.ms"
+from "@std/io.ms" import stdin, stdout, read_all
 
-fn all_digits(s: String) Bool:
+def all_digits(s: String) -> Bool:
     if s.is_empty():
-        return false
+        return False
 
     for c in s.scalar_values():
         if c < 48 or c > 57:
-            return false
-    return true
+            return False
+    return True
 
-fn is_level(s: String) Bool:
+def is_level(s: String) -> Bool:
     return s == "DEBUG" or s == "INFO" or s == "WARN" or s == "ERROR"
 
-fn is_method(s: String) Bool:
+def is_method(s: String) -> Bool:
     return s == "GET" or s == "POST" or s == "PUT" or s == "DELETE"
 
 type Stat:
     count: Int
     total: Int
 
-fn run() Result[Unit, Error]:
+def run() -> Result[Unit, Error]:
     let data = try read_all(input: stdin())
     let text = data.decode_utf8().get("")
     var valid = 0
@@ -60,70 +60,79 @@ fn run() Result[Unit, Error]:
             continue
 
         valid = valid + 1
+
         let level = f.get(1)
-        levels.add(key: level.clone(), value: levels.get_or(key: level, fallback: 0) + 1)
+        levels.add(
+            key: level.clone(), value: levels.get_or(key: level, fallback: 0) + 1
+        )
+
         let first = f.get(4).scalar_at(0)
         var cls = 4
         if first >= 50 and first <= 53:
             cls = first - 50
         classes.set(cls, classes.get(cls) + 1)
+
         let path = f.get(3)
         let lat = f.get(5).parse_int().get()
         latencies.append(lat)
 
         if lat > slowest:
             slowest = lat
-            slowest_text = "{lat} {f.get(2)} {path} {f.get(0)}"
+            slowest_text = f"{lat} {f.get(2)} {path} {f.get(0)}"
 
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
-        stats.add(key: path.clone(), value: Stat(count: old.count + 1, total: old.total + lat))
+        stats.add(
+            key: path.clone(), value: Stat(count: old.count + 1, total: old.total + lat)
+        )
 
     var out = List[String]()
-    out.append("valid: {valid}")
-    out.append("malformed: {malformed}")
+    out.append(f"valid: {valid}")
+    out.append(f"malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append("{level}: {levels.get_or(key: level, fallback: 0)}")
+        out.append(f"{level}: {levels.get_or(key: level, fallback: 0)}")
+
     let sorted_lat = latencies.sorted(
-        compare: fn(left: Int, right: Int) Int:
-            return left - right
+        compare: lambda (left: Int, right: Int) -> Int: return left - right
     )
     var p95 = 0
     if sorted_lat.length() > 0:
         p95 = sorted_lat.get((95 * sorted_lat.length() + 99) / 100 - 1)
     out.append(
-        "status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
+        f"status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
     )
-    out.append("p95: {p95}")
+    out.append(f"p95: {p95}")
     if slowest >= 0:
-        out.append("slowest: {slowest_text}")
+        out.append(f"slowest: {slowest_text}")
     out.append("top:")
+
     let ranked = (
         stats
         .entries()
         .sorted(
-            compare: fn(
+            compare: lambda (
                 left: MapEntry[String, Stat],
                 right: MapEntry[String, Stat]
-            ) Int:
+            ) -> Int:
                 if left.value.count != right.value.count:
                     return right.value.count - left.value.count
 
                 return left.key.compare(right.key)
         )
     )
+
     var shown = 0
 
     for e in ranked:
         if shown >= 3:
             break
 
-        out.append("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
+        out.append(f"{e.key} {e.value.count} avg={e.value.total / e.value.count}")
         shown = shown + 1
 
-    try stdout().write("{out.join("\n")}\n")
+    try stdout().write(f"{out.join("\n")}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     match run():
-        ok(_): return 0
-        error(_): return 1
+        case ok(_): return 0
+        case error(_): return 1

@@ -1,15 +1,15 @@
 # conform: tags=formatter,generics,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-09.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Box[T]:
     value: T
 
-fn unwrap[T](box: Box[T]) ref T:
+def unwrap[T](box: Box[T]) -> ref T:
     return box.value
 
-fn same[T: Equal](left: T, right: T) Bool:
+def same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 test "generic argument inference":

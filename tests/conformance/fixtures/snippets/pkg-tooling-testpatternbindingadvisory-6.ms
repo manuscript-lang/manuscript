@@ -6,9 +6,9 @@ type Failure[T]:
     case Denied(reason: T)
 
 impl Error for Failure[T]:
-    fn message() String: "f"
+    def message() -> String: "f"
 
-fn use[T](value: Result[Int, Failure[T]]) Int:
+def use[T](value: Result[Int, Failure[T]]) -> Int:
     match value:
-        error(NotFound): return 1
-        ok(value): return value
+        case error(NotFound): return 1
+        case ok(value): return value

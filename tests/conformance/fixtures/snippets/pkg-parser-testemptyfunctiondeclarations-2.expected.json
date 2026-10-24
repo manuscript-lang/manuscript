@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-parser-testemptyfunctiondeclarations-2.ms",
           "line": 7,
-          "column": 8,
-          "offset": 229
+          "column": 9,
+          "offset": 234
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:7:8: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:7:9: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

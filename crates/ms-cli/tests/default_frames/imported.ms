@@ -1,4 +1,4 @@
-import {divide} from "./library.ms"
+from "./library.ms" import divide
 
-export fn main() Int:
+export def main() -> Int:
     return divide()

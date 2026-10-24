@@ -5,8 +5,8 @@ export type Customer:
     name: String
     active: Bool
 
-export fn welcome(customer: Customer) String:
+export def welcome(customer: Customer) -> String:
     if customer.active:
-        return "Welcome, {customer.name}!"
+        return f"Welcome, {customer.name}!"
 
     return "Your account is inactive."

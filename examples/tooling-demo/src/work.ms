@@ -1,12 +1,12 @@
-import range from "@std/collections.ms"
+from "@std/collections.ms" import range
 
-fn compute() Int:
+def compute() -> Int:
     var result = 0
     for index in range(0, 3000000):
         result += index % 7
     return result
 
-fn compare() Int:
+def compare() -> Int:
     let left = compute()
     let right = compute()
     if left != right:
@@ -14,5 +14,5 @@ fn compare() Int:
 
     return 0
 
-export fn main() Int:
+export def main() -> Int:
     return compare()

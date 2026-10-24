@@ -1,10 +1,10 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-10b.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 interface ReadValue[T]:
-    fn get() ref T
+    def get() -> ref T
 
 type Box[T]:
     value: T
@@ -13,26 +13,26 @@ type ReaderHolder:
     reader: ReadValue[Int]
 
 type CallbackReader:
-    read_value: fn() Int
+    read_value: Callable[[], Int]
 
 impl ReadValue[T] for Box[T]:
-    fn get() ref T:
+    def get() -> ref T:
         return self.value
 
 impl ReadValue[Int] for CallbackReader:
-    fn get() Int:
+    def get() -> Int:
         return self.read_value()
 
-fn seven() Int:
+def seven() -> Int:
     return 7
 
-fn make_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
+def make_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
     return ReadValue[Int](source)
 
-fn forward_view[T: ReadValue[Int]](source: T) ReadValue[Int]:
+def forward_view[T: ReadValue[Int]](source: T) -> ReadValue[Int]:
     return ReadValue[Int](source)
 
-fn consume[T: ReadValue[Int]](source: T) Int:
+def consume[T: ReadValue[Int]](source: T) -> Int:
     return source.get()
 
 test "contract views and callbacks":

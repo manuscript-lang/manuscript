@@ -1,7 +1,7 @@
 # conform: tags=faults,formatter,lists,maps,parser,strings,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/prelude_test.go:32 TestCollectionPreludeAndShadowing
-fn use() Int:
+def use() -> Int:
     let nested: List[List[Int]] = [[], [1]]
     let empty: Map[String, Int] = {}
     var chain_1 = Map[String, Int]()
