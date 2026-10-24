@@ -491,6 +491,21 @@ pub fn capture_frames() -> Vec<usize> {
 #[cfg(not(test))]
 fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
     let mark = out.len();
+    #[cfg(windows)]
+    {
+        // TEMP-DEBUG
+        let t = unsafe { &**TABLES.ptr() };
+        for &pc in captured {
+            let info = match find_func(t, pc) {
+                Some(f) => {
+                    let (l, fi, sc) = find_line(t, f, pc);
+                    format!("func={} line={l} file={fi} scope={sc}", String::from_utf8_lossy(cstr(t, f.name_off)))
+                }
+                None => "func=none".to_string(),
+            };
+            out.extend_from_slice(format!("\n  DBG pc={pc:x} {info}").as_bytes());
+        }
+    }
     out.extend_from_slice(b"\n  task started by:");
     let header = out.len();
     describe_with(out, |_, visit| {
