@@ -21,8 +21,6 @@
     "@std/collections.ms/Set": "native",
     "@std/collections.ms/SetBuilder": "native",
     "@std/http.ms/HttpHeaders": "native",
-    "@std/logcore.ms/LogGate": "native",
-    "@std/logcore.ms/LogState": "native",
     "@std/net.ms/Cidr": "native",
     "@std/shared.ms/Shared": "native",
     "@std/net.ms/IpAddress": "native",
@@ -126,6 +124,13 @@
     "time/from_calendar": "msstd_time_from_calendar",
     "time/local_zone": "msstd_time_local_zone",
     "time/parse_timestamp": "msstd_time_parse_timestamp",
-    "time/timestamp": "msstd_time_timestamp"
+    "time/timestamp": "msstd_time_timestamp",
+    "io/copy": "msstd_io_copy",
+    "io/read_all": "msstd_io_read_all",
+    "io/stdin": "msstd_io_stdin",
+    "io/stdout": "msstd_io_stdout",
+    "io/stderr": "msstd_io_stderr",
+    "io/files": "msstd_io_files",
+    "io/terminal": "msstd_io_terminal"
   }
 }

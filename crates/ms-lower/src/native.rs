@@ -143,6 +143,10 @@ impl<'a> FnLower<'a> {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
+            // A symbol that still has a hand-lowered native identity keeps it.
+            if let Some(legacy) = ms_check::stdlib::native_for_symbol(symbol) {
+                return self.native_function(e, view, &legacy, params, sym);
+            }
             // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
             let args = self.native_args(view)?;
             if self.dead {

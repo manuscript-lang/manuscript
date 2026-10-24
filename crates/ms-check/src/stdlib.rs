@@ -68,6 +68,8 @@ struct World {
     /// Exported records and alternatives of source modules, declared when the module is registered so
     /// native modules can name them before the source module is checked.
     source_types: HashMap<(Name, Name), SymRef>,
+    /// Source modules whose types native modules named while loading; they are checked right after.
+    stub_modules: Vec<Name>,
     modules: HashMap<Name, HashMap<Name, SymRef>>,
     module_order: Vec<Name>,
     sources: Vec<ModRef>,
@@ -150,6 +152,13 @@ pub fn ensure_standard() {
         panic!("standard declarations: {e}");
     }
     world(|w| w.state = 2);
+    // Types that native modules took from a source module are filled in by checking that module.
+    let stubs = world(|w| std::mem::take(&mut w.stub_modules));
+    for path in stubs {
+        if let Some(module) = standard_source_module(path) {
+            ensure_source(&module);
+        }
+    }
 }
 
 /// Every bundled module (native and source) in file-name order, with the
@@ -192,6 +201,20 @@ pub fn intrinsic_operations(id: Name) -> Option<Ty> {
 /// The native identity of a receiver operation (`Receiver id/name`).
 pub fn receiver_binding(key: &str) -> Option<Name> {
     world(|w| w.receiver_bindings.get(key).copied())
+}
+
+/// The native function (`module/name`) that bindings.json binds to a runtime symbol, when exactly one is.
+pub fn native_for_symbol(symbol: &str) -> Option<String> {
+    ensure_standard();
+    world(|w| {
+        let mut bound = w
+            .runtime_symbols
+            .iter()
+            .filter(|(_, s)| s.as_str() == symbol)
+            .map(|(k, _)| k.clone());
+        let first = bound.next()?;
+        bound.next().is_none().then_some(first)
+    })
 }
 
 /// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
@@ -246,10 +269,10 @@ pub fn source_type(module: Name, name: Name) -> Option<SymRef> {
 /// module reuses it, so native modules and the source module agree on one type.
 pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
     let name = d.name();
-    let kind = if matches!(d.decl().kind, DeclKind::Alternative(_)) {
-        Kind::Alternative
-    } else {
-        Kind::Record
+    let kind = match d.decl().kind {
+        DeclKind::Alternative(_) => Kind::Alternative,
+        DeclKind::Interface(_) => Kind::Contract,
+        _ => Kind::Record,
     };
     let stem = module
         .file
@@ -289,7 +312,13 @@ pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
         w.modules
             .get(&path)
             .and_then(|m| m.get(&name).cloned())
-            .or_else(|| w.source_types.get(&(path, name)).cloned())
+            .or_else(|| {
+                let stub = w.source_types.get(&(path, name)).cloned()?;
+                if w.state == 1 && !w.stub_modules.contains(&path) {
+                    w.stub_modules.push(path);
+                }
+                Some(stub)
+            })
             // An `extern type` of a source module is canonical from the moment of loading.
             .or_else(|| {
                 w.symbols
@@ -351,7 +380,11 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     }
     let cycle = world(|w| !w.checking.insert(module.file));
     if cycle {
-        panic!("cyclic standard source dependency at {}", module.file);
+        panic!(
+            "cyclic standard source dependency at {} while checking {:?}",
+            module.file,
+            world(|w| w.checking.clone())
+        );
     }
     for item in &module.imports {
         if let Some(dep) = standard_source_module(n(&item.path)) {
@@ -650,7 +683,9 @@ impl Loader<'_> {
             for d in &module.decls {
                 match &d.decl().kind {
                     DeclKind::Record(r) if r.external => self.register_extern_type(module, d)?,
-                    DeclKind::Record(_) | DeclKind::Alternative(_) if d.decl().export => {
+                    DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                        if d.decl().export =>
+                    {
                         let stub = source_type_symbol(module, d);
                         world(|w| w.source_types.insert((module.file, d.name()), stub));
                     }

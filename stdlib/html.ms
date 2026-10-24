@@ -1,3 +1,12 @@
+extern fn msrt_html_escape(text: String) String
+
+extern fn msrt_html_unescape(text: String) String
+
+extern fn msrt_html_parse(
+    text: String,
+    limits: Optional[HtmlLimits]
+) Result[HtmlNode, HtmlError]
+
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
     # A supplied input-byte, tree-depth or node-count budget is negative.
@@ -66,18 +75,25 @@ export type HtmlNode:
 
 # Escapes text for insertion into an HTML text or quoted attribute context.
 export fn escape(text: String) String:
+    return msrt_html_escape(text)
 
 # Decodes HTML5 named and numeric character references in text context, once.
 # Recognized references can omit semicolons; unrecognized text remains literal.
 # Does not parse markup or normalize text; invalid numeric scalars become U+FFFD.
 export fn unescape(text: String) String:
+    return msrt_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
 export fn parse(
     text: String,
     limits: Optional[HtmlLimits] = none
 ) Result[HtmlNode, HtmlError]:
+    return msrt_html_parse(text, limits)
 
 impl Error for HtmlError:
     # Returns an HTML-prefixed diagnostic without echoing source markup.
     fn message() String:
+        match self:
+            InvalidInput: return "HTML: invalid input"
+            InvalidData: return "HTML: invalid data"
+            LimitExceeded: return "HTML: limit exceeded"

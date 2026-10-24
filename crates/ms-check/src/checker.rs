@@ -542,7 +542,7 @@ impl Checker {
             }
             if matches!(
                 d.decl().kind,
-                DeclKind::Record(_) | DeclKind::Alternative(_)
+                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
             ) {
                 // A bundled module's exported types were declared when it was registered.
                 let predeclared = stdlib::is_source_module(module)
