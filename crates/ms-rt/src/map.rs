@@ -602,6 +602,34 @@ pub unsafe extern "C-unwind" fn msrt_map_copy(
     unsafe { copy_map(m, &*kd, opt(vd), out) }
 }
 
+/// Makes room for `n` entries so that inserting that many never regrows the map.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_map_reserve(
+    m: *mut MapVal,
+    kd: *const TypeDesc,
+    vd: *const TypeDesc,
+    n: i64,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe {
+        let m = &mut *m;
+        let n = usize::try_from(n).unwrap_or(0);
+        if n <= m.cap || n > u32::MAX as usize / 2 {
+            return;
+        }
+        let l = layout(&*kd, opt(vd));
+        let cap = n.next_power_of_two().max(8);
+        m.slots = if m.slots.is_null() {
+            alloc::alloc(cap * l.stride)
+        } else {
+            alloc::realloc(m.slots, cap * l.stride)
+        };
+        m.cap = cap;
+        rebuild_index(m, &l, cap * 2);
+    }
+}
+
 /// `add(key, value)` / `Set.add`: `key` and `val` are consumed.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_map_add(

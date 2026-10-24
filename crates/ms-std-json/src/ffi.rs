@@ -4,7 +4,7 @@
 //! ([`DocObj`]) plus `u32` node ids. A parse yields a document the generated decoders read with the
 //! accessors; an encoder starts a `builder_new` document, adds nodes bottom-up and serializes the
 //! root. Node ids are only valid for the document that issued them.
-use crate::{Doc, Limits, Node, NodeId};
+use crate::{Doc, Limits, Node};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{
@@ -26,13 +26,6 @@ pub struct NotNumber;
 impl Status for NotNumber {
     fn status(self) -> u8 {
         1
-    }
-}
-
-fn put(entries: &mut Vec<(String, NodeId)>, key: &str, id: NodeId) {
-    match entries.iter_mut().find(|e| e.0 == key) {
-        Some(e) => e.1 = id,
-        None => entries.push((String::from(key), id)),
     }
 }
 
@@ -64,10 +57,10 @@ native! {
         match &d.nodes[id as usize] {
             Node::Null => KIND_NULL,
             Node::Bool(_) => KIND_BOOL,
-            Node::Number(_) => KIND_NUMBER,
+            Node::Num(_) | Node::RawNum(_) => KIND_NUMBER,
             Node::Str(_) => KIND_STRING,
-            Node::Array(_) => KIND_ARRAY,
-            Node::Object(_) => KIND_OBJECT,
+            Node::Arr { .. } | Node::ArrB(_) => KIND_ARRAY,
+            Node::Obj { .. } | Node::ObjB(_) => KIND_OBJECT,
         }
     }
 
@@ -76,16 +69,14 @@ native! {
     }
 
     fn msrt_json_text(d: ObjRef<'_, Doc>, id: u32) -> &str {
-        match &d.0.nodes[id as usize] {
-            Node::Number(s) | Node::Str(s) => s,
-            _ => "",
-        }
+        d.0.text_of(id)
     }
 
     fn msrt_json_len(d: ObjRef<Doc>, id: u32) -> i64 {
         match &d.nodes[id as usize] {
-            Node::Array(v) => v.len() as i64,
-            Node::Object(v) => v.len() as i64,
+            Node::Arr { len, .. } | Node::Obj { len, .. } => i64::from(*len),
+            Node::ArrB(_) => d.items(id).len() as i64,
+            Node::ObjB(_) => d.members(id).len() as i64,
             _ => 0,
         }
     }
@@ -93,16 +84,16 @@ native! {
     /// `i` is below `msrt_json_len`.
     fn msrt_json_item(d: ObjRef<Doc>, id: u32, i: i64) -> u32 {
         match &d.nodes[id as usize] {
-            Node::Array(v) => v[i as usize],
-            Node::Object(v) => v[i as usize].1,
+            Node::Arr { .. } | Node::ArrB(_) => d.items(id)[i as usize],
+            Node::Obj { .. } | Node::ObjB(_) => d.members(id)[i as usize].val,
             _ => 0,
         }
     }
 
     fn msrt_json_key(d: ObjRef<'_, Doc>, id: u32, i: i64) -> &str {
-        match &d.0.nodes[id as usize] {
-            Node::Object(v) => &v[i as usize].0,
-            _ => "",
+        match d.0.members(id).get(i as usize) {
+            Some(m) => d.0.slice(m.key),
+            None => "",
         }
     }
 
@@ -119,23 +110,23 @@ native! {
     }
 
     fn msrt_json_add_number(d: ObjMut<Doc>, text: &str) -> u32 {
-        d.0.add(Node::Number(String::from(text)))
+        d.0.add_raw_number(text)
     }
 
     fn msrt_json_add_string(d: ObjMut<Doc>, text: &str) -> u32 {
-        d.0.add(Node::Str(String::from(text)))
+        d.0.add_str(text)
     }
 
     fn msrt_json_add_array(d: ObjMut<Doc>, ids: IdArray, n: i64) -> u32 {
-        d.0.add(Node::Array(ids.get(n)))
+        d.0.add_array(ids.get(n))
     }
 
     fn msrt_json_add_object(d: ObjMut<Doc>, keys: StrArray, ids: IdArray, n: i64) -> u32 {
-        let mut entries = Vec::new();
+        let obj = d.0.add_object();
         for (k, id) in keys.get(n).into_iter().zip(ids.get(n)) {
-            put(&mut entries, k, id);
+            d.0.object_put(obj, k, id);
         }
-        d.0.add(Node::Object(entries))
+        obj
     }
 
     fn msrt_json_stringify(
@@ -163,57 +154,65 @@ native! {
 
     fn msrt_json_add_float(d: ObjMut<Doc>, v: f64) -> u32 {
         match crate::float_text(v) {
-            Some(text) => d.0.add(Node::Number(text)),
+            Some(text) => d.0.add_raw_number(&text),
             None => d.0.add(Node::Null),
         }
     }
 
     fn msrt_json_add_empty_array(d: ObjMut<Doc>) -> u32 {
-        d.0.add(Node::Array(Vec::new()))
+        d.0.add_array(Vec::new())
     }
 
     fn msrt_json_array_push(d: ObjMut<Doc>, arr: u32, item: u32) -> () {
-        if let Node::Array(v) = &mut d.0.nodes[arr as usize] {
-            v.push(item);
-        }
+        d.0.array_push(arr, item);
     }
 
     fn msrt_json_add_empty_object(d: ObjMut<Doc>) -> u32 {
-        d.0.add(Node::Object(Vec::new()))
+        d.0.add_object()
     }
 
     fn msrt_json_object_put(d: ObjMut<Doc>, obj: u32, key: &str, item: u32) -> () {
-        if let Node::Object(v) = &mut d.0.nodes[obj as usize] {
-            put(v, key, item);
-        }
+        d.0.object_put(obj, key, item);
+    }
+
+    fn msrt_json_add_array_n(d: ObjMut<Doc>, n: i64) -> u32 {
+        d.0.add_array_with_capacity(usize::try_from(n).unwrap_or(0))
+    }
+
+    fn msrt_json_add_object_n(d: ObjMut<Doc>, n: i64) -> u32 {
+        d.0.add_object_with_capacity(usize::try_from(n).unwrap_or(0))
+    }
+
+    /// `msrt_json_object_put` for a key the object does not hold yet.
+    fn msrt_json_object_add(d: ObjMut<Doc>, obj: u32, key: &str, item: u32) -> () {
+        d.0.object_add(obj, key, item);
     }
 
     fn msrt_json_find(d: ObjRef<Doc>, id: u32, key: &str) -> i64 {
-        match &d.nodes[id as usize] {
-            Node::Object(v) => v.iter().position(|e| e.0 == key).map_or(-1, |i| i as i64),
-            _ => -1,
-        }
+        d.members(id)
+            .iter()
+            .position(|m| d.slice(m.key) == key)
+            .map_or(-1, |i| i as i64)
     }
 
     fn msrt_json_has_unknown(d: ObjRef<Doc>, id: u32, names: Vec<&str>) -> bool {
-        match &d.nodes[id as usize] {
-            Node::Object(v) => v.iter().any(|e| !names.contains(&e.0.as_str())),
-            _ => false,
-        }
+        d.members(id)
+            .iter()
+            .any(|m| !names.contains(&d.slice(m.key)))
     }
 
     /// Index of the variant name in `names` (-1 when unknown); `payload` is the payload node
     /// (-1 for a bare name) and is written only for a string or single-key object.
     fn msrt_json_variant(d: ObjRef<Doc>, id: u32, names: Vec<&str>, payload: Out<i64>) -> i64 {
         let index = |name: &str| names.iter().position(|k| *k == name).map_or(-1, |i| i as i64);
-        match &d.nodes[id as usize] {
-            Node::Str(s) => {
+        match (&d.nodes[id as usize], d.members(id)) {
+            (Node::Str(s), _) => {
                 payload.write(-1);
-                index(s)
+                index(d.slice(*s))
             }
-            Node::Object(v) if v.len() == 1 => {
-                payload.write(i64::from(v[0].1));
-                index(&v[0].0)
+            (_, [m]) => {
+                payload.write(i64::from(m.val));
+                index(d.slice(m.key))
             }
             _ => -1,
         }

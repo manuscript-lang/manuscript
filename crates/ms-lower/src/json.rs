@@ -132,6 +132,11 @@ impl FnLower<'_> {
         Ok(self.b.binop(Op::And, raw, m))
     }
 
+    /// The number of entries of the map or set `m`.
+    fn jcount(&mut self, m: Value) -> Result<Value, Error> {
+        self.call_runtime("msrt_map_length", &[m], MTy::INT)
+    }
+
     fn jkind(&mut self, doc: Value, id: Value) -> Result<Value, Error> {
         self.jcall_masked("msrt_json_kind", &[doc, id], 0xff)
     }
@@ -440,7 +445,7 @@ impl FnLower<'_> {
         let n = self.jlen(doc, id)?;
         let acc = self.jvar(lt);
         let zero = self.b.iconst(0);
-        let empty = self.b.list_new(et, zero);
+        let empty = self.b.list_new(et, n);
         self.b.def_var(acc, empty);
         self.counted_loop(zero, n, &mut |s, iv| {
             let item = s.jitem(doc, id, iv)?;
@@ -468,26 +473,41 @@ impl FnLower<'_> {
         let n = self.jlen(doc, id)?;
         let acc = self.jvar(mt);
         let empty = self.map_new(mt)?;
+        let empty = self.jreserve(empty, n)?;
         self.b.def_var(acc, empty);
         let zero = self.b.iconst(0);
+        // The parser rejects repeated names, so only a key read from them can collide.
+        let names_are_keys = key.id.as_str() == "String";
         self.counted_loop(zero, n, &mut |s, iv| {
             let name = s.call_runtime("msrt_json_key", &[doc, id, iv], MTy::STR)?;
             let k = s.jdecode_key(key, key_mt, name, acc)?;
             let item = s.jitem(doc, id, iv)?;
             let r = s.jdecode_call(value, doc, item, strict)?;
             let x = s.junwrap(r, &[k], &[acc]);
-            // Two names that read as one key collide.
-            let m = s.b.use_var(acc);
-            let dup = s.jmap_contains(m, k)?;
-            let zero = s.b.iconst(0);
-            let fresh = s.b.icmp(Cc::Eq, dup, zero);
-            s.jrequire(fresh, &[k, x], &[acc]);
+            if !names_are_keys {
+                // Two names that read as one key collide.
+                let m = s.b.use_var(acc);
+                let dup = s.jmap_contains(m, k)?;
+                let zero = s.b.iconst(0);
+                let fresh = s.b.icmp(Cc::Eq, dup, zero);
+                s.jrequire(fresh, &[k, x], &[acc]);
+            }
             let m = s.b.use_var(acc);
             let m2 = s.map_insert(m, k, x)?;
             s.b.def_var(acc, m2);
             Ok(())
         })?;
         Ok(self.b.use_var(acc))
+    }
+
+    /// The owned map `m` with room for `n` entries.
+    fn jreserve(&mut self, m: Value, n: Value) -> Result<Value, Error> {
+        let mt = self.ty_of(m);
+        let slot = self.put_slot(m);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a map has a value descriptor"))?;
+        self.call_runtime("msrt_map_reserve", &[slot, kd, vd, n], MTy::UNIT)?;
+        Ok(self.take_slot(slot, mt))
     }
 
     /// Whether the borrowed map `m` has the borrowed key `k`, as 0 or 1.
@@ -947,7 +967,8 @@ impl FnLower<'_> {
                 let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("a record type lowers to a record"));
                 };
-                let obj = self.jadd("msrt_json_add_empty_object", &[doc])?;
+                let width = self.b.iconst(fields.len() as i64);
+                let obj = self.jadd("msrt_json_add_object_n", &[doc, width])?;
                 for (i, f) in fields.iter().enumerate() {
                     let fv = self.b.rec_get(r, i as u32, value);
                     self.jencode_member(doc, obj, &f.name, &f.ty, fv)?;
@@ -989,7 +1010,8 @@ impl FnLower<'_> {
         self.b.seal_block(put);
         self.b.switch_to(put);
         let key = self.b.str_lit(name);
-        self.call_runtime("msrt_json_object_put", &[doc, obj, key, id], MTy::UNIT)?;
+        // Field names are distinct.
+        self.call_runtime("msrt_json_object_add", &[doc, obj, key, id], MTy::UNIT)?;
         self.b.br(after, &[]);
         self.b.seal_block(after);
         self.b.switch_to(after);
@@ -1048,7 +1070,8 @@ impl FnLower<'_> {
 
     /// A set is an array of its elements in insertion order.
     fn jencode_set(&mut self, elem: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
-        let arr = self.jadd("msrt_json_add_empty_array", &[doc])?;
+        let n = self.jcount(value)?;
+        let arr = self.jadd("msrt_json_add_array_n", &[doc, n])?;
         let elem = elem.clone();
         self.each_entry(value, &mut |s, key, _| {
             let id = s.jencode_nested(&elem, doc, key)?;
@@ -1079,8 +1102,18 @@ impl FnLower<'_> {
         if !keyable {
             return Ok(self.b.iconst(-1));
         }
-        let obj = self.jadd("msrt_json_add_empty_object", &[doc])?;
+        let n = self.jcount(value)?;
+        let obj = self.jadd("msrt_json_add_object_n", &[doc, n])?;
         let (key, value_ty) = (key.clone(), value_ty.clone());
+        // These keys are distinct as text when they are distinct as keys.
+        let distinct = matches!(key.id.as_str(), "String" | "Int" | "Bool")
+            || key.is_std("Duration")
+            || jplain_alt(&key);
+        let member_sym = if distinct {
+            "msrt_json_object_add"
+        } else {
+            "msrt_json_object_put"
+        };
         self.each_entry(value, &mut |s, k, v| {
             let v = v.ok_or_else(|| Error::new("a map entry has a value"))?;
             let id = s.jencode_nested(&value_ty, doc, v)?;
@@ -1104,7 +1137,7 @@ impl FnLower<'_> {
             } else {
                 s.format_value(Val { v: k, own: false })?
             };
-            s.call_runtime("msrt_json_object_put", &[doc, obj, name.v, id], MTy::UNIT)?;
+            s.call_runtime(member_sym, &[doc, obj, name.v, id], MTy::UNIT)?;
             if name.own {
                 s.drop_value(name.v);
             }
@@ -1117,8 +1150,8 @@ impl FnLower<'_> {
     }
 
     fn jencode_list(&mut self, elem: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
-        let arr = self.jadd("msrt_json_add_empty_array", &[doc])?;
         let n = self.b.list_len(value);
+        let arr = self.jadd("msrt_json_add_array_n", &[doc, n])?;
         let zero = self.b.iconst(0);
         self.counted_loop(zero, n, &mut |s, iv| {
             let item = s.b.list_get(value, iv);
@@ -1309,16 +1342,18 @@ impl FnLower<'_> {
                     good,
                     rty,
                     &mut |s| {
+                        // Dropping `r` beside the copy lets the optimizer move the payload out.
                         let x = s.b.opt_get(r);
                         let x = s.owned(Val { v: x, own: false });
+                        s.drop_value(r);
                         Ok(Some(s.b.alt_new(ra, ok as u32, &[x])))
                     },
                     &mut |s| {
+                        s.drop_value(r);
                         let e = s.json_error(ra, err, "InvalidData")?;
                         Ok(Some(e))
                     },
                 )?;
-                s.drop_value(r);
                 Ok(Some(v.v))
             },
             &mut |s| {

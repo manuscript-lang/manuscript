@@ -65,6 +65,7 @@ msrt_map_new(out: *mut MapVal)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc)
 msrt_map_copy( m: *const MapVal, kd: *const TypeDesc, vd: *const TypeDesc, out: *mut MapVal, )
+msrt_map_reserve(m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, n: i64)
 msrt_map_add( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_add_w8( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
 msrt_map_add_sw8( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, key: *mut u8, val: *mut u8, )
@@ -462,6 +463,9 @@ msrt_json_add_empty_array(d: *mut DocObj) -> u32
 msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
 msrt_json_add_empty_object(d: *mut DocObj) -> u32
 msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrVal, item: u32, )
+msrt_json_add_array_n(d: *mut DocObj, n: i64) -> u32
+msrt_json_add_object_n(d: *mut DocObj, n: i64) -> u32
+msrt_json_object_add( d: *mut DocObj, obj: u32, key: *const StrVal, item: u32, )
 msrt_json_find(d: *const DocObj, id: u32, key: *const StrVal) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
