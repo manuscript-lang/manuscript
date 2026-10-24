@@ -3,10 +3,10 @@ type Box:
     items: List[Int]
 
 impl Box:
-    def list() -> List[Int]:
+    def list() -> ref List[Int]:
         return self.items
 
-    def pick(first: Bool) -> List[Int]:
+    def pick(first: Bool) -> ref List[Int]:
         if first:
             return self.items
 
@@ -18,6 +18,6 @@ def borrow_it(var b: Box) -> Int:
     return b.items.length()
 
 def copy_it(var b: Box) -> Int:
-    var xs = b.pick(True)
+    var xs = b.pick(True).clone()
     xs.append(1)
     return b.items.length()

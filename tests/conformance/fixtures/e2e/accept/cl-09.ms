@@ -6,7 +6,7 @@ from "@std/testing.ms" import expect_equal, expect_false
 type Box[T]:
     value: T
 
-def unwrap[T](box: Box[T]) -> T:
+def unwrap[T](box: Box[T]) -> ref T:
     return box.value
 
 def same[T: Equal](left: T, right: T) -> Bool:

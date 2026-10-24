@@ -7,9 +7,9 @@ def identity[T](value: T) -> T: value
 
 def first[T](left: T, right: T) -> T: left
 
-def optional[T](value: Optional[T], fallback: T) -> T: value.get(fallback)
+def optional[T](value: Optional[T], fallback: T) -> ref T: value.get(fallback)
 
-def describe[T](value: T, cause: Error) -> String: cause.message()
+def describe[T](value: T, cause: Error) -> ref String: cause.message()
 
 type Events:
     values: List[Int]
@@ -18,7 +18,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> String: self.detail
+    def message() -> ref String: self.detail
 
 type GenericFailure[T]:
     detail: T

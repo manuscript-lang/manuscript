@@ -1,5 +1,5 @@
 export interface Read[T]:
-    def get() -> T
+    def get() -> ref T
 
 export def invoke[T: Read[Int]](value: T) -> Int:
     return value.get()

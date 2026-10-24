@@ -5,7 +5,7 @@ interface Same[V: Equal]:
     def same(other: V) -> Bool
 
 interface Read[V]:
-    def get() -> V
+    def get() -> ref V
 
 type Box[T]:
     value: T
@@ -15,8 +15,8 @@ impl Same[T] for Box[T]:
         return self.value == other
 
 impl Read[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 
-def read[T](value: Box[T]) -> T:
+def read[T](value: Box[T]) -> ref T:
     return value.get()

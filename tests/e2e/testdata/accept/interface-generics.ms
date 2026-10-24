@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal, expect_false
 
 interface Read[V]:
-    def get() -> V
+    def get() -> ref V
 
 interface Same[V: Equal]:
     def same(other: V) -> Bool
@@ -10,7 +10,7 @@ type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 
 impl Same[T] for Box[T]:
@@ -35,7 +35,7 @@ impl Read[Int] for Pair[Int, B]:
 def identity(value: Int) -> Int:
     return value
 
-def read[T](box: Box[T]) -> T:
+def read[T](box: Box[T]) -> ref T:
     return box.get()
 
 test "parameters and bounds belong to interfaces and types":

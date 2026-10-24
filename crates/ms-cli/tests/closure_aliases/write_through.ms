@@ -30,7 +30,7 @@ def branch(var box: Box, take: Bool) -> Unit:
 
     box.count += 1
 
-def contents(box: Box) -> List[List[Int]]:
+def contents(box: Box) -> ref List[List[Int]]:
     return box.items
 
 export def main() -> Int:

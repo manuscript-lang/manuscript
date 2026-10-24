@@ -1,4 +1,4 @@
-def core(line: String) -> String:
+def core(line: String) -> ref String:
     return line.trim()
 
 def use_it(line: String) -> Int:

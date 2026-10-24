@@ -53,7 +53,7 @@ type CustomError:
     detail: String
 
 impl Error for CustomError:
-    def message() -> String:
+    def message() -> ref String:
         return self.detail
 
 type TaggedError[T]:
@@ -71,7 +71,7 @@ def propagate_generic() -> Result[Unit, Error]:
     let completed = try decode_generically()
     return ok(())
 
-def describe_error(cause: Error) -> String:
+def describe_error(cause: Error) -> ref String:
     match cause:
         case JsonError(json): return describe_json_error(json)
         case IoError(io): return describe_io_error(io)
@@ -89,7 +89,7 @@ def describe_io_error(cause: IoError) -> String:
         case Failed(message): return f"I/O: {message}"
         case _: return cause.message()
 
-def tagged_detail(cause: Error) -> String:
+def tagged_detail(cause: Error) -> ref String:
     match cause:
         case TaggedError[Int](item):
             return f"integer {item.detail}"
@@ -159,7 +159,7 @@ type ReadError:
     retryable: Bool
 
 impl Error for ReadError:
-    def message() -> String:
+    def message() -> ref String:
         return self.diagnostic
 
 def failed_read() -> Result[Unit, ReadError]:
@@ -218,7 +218,7 @@ def generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
     let completed = try generic_failure(cause)
     return ok(())
 
-def describe_direct(cause: Error) -> String:
+def describe_direct(cause: Error) -> ref String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
@@ -321,16 +321,16 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    def label() -> T
+    def label() -> ref T
 
 type Labelled[T]:
     value: T
 
 impl Label[String] for Labelled[String]:
-    def label() -> String:
+    def label() -> ref String:
         return self.value
 
-def match_label(view: Label[String]) -> String:
+def match_label(view: Label[String]) -> ref String:
     match view:
         case Labelled[String](receiver):
             return receiver.value

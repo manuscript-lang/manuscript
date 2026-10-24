@@ -8,23 +8,23 @@ type Outer:
     inner: Box
 
 impl Box:
-    def list() -> List[Int]:
+    def list() -> ref List[Int]:
         return self.items
 
-    def pick(first: Bool) -> List[Int]:
+    def pick(first: Bool) -> ref List[Int]:
         if first:
             return self.items
 
         return [9]
 
 impl Outer:
-    def inside() -> Box:
+    def inside() -> ref Box:
         return self.inner
 
-def first_of[T](xs: List[T]) -> T:
+def first_of[T](xs: List[T]) -> ref T:
     return xs[0]
 
-def forward(b: Box) -> List[Int]:
+def forward(b: Box) -> ref List[Int]:
     return b.list()
 
 def grow(var b: Box) -> Unit:
@@ -33,11 +33,11 @@ def grow(var b: Box) -> Unit:
     xs.append(2)
 
 def grow_deep(var o: Outer) -> Unit:
-    var xs = o.inside().list()
+    var xs = o.inside().list().clone()
     xs.append(7)
 
 def copy_it(var b: Box) -> List[Int]:
-    var xs = b.pick(True)
+    var xs = b.pick(True).clone()
     xs.append(100)
     return xs
 

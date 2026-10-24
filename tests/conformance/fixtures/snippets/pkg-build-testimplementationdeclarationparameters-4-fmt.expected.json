@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Read[V]:\n    def get() -> V\n\ntype Pair[A, B]:\n    left: A\n    right: B\n\nimpl Read[B] for Pair[Int, B]:\n    def get() -> B:\n        return self.right\n"
+    "fmt": "interface Read[V]:\n    def get() -> ref V\n\ntype Pair[A, B]:\n    left: A\n    right: B\n\nimpl Read[B] for Pair[Int, B]:\n    def get() -> ref B:\n        return self.right\n"
   }
 }

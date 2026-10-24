@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal
 
 interface ReadValue[T]:
-    def get() -> T
+    def get() -> ref T
 
 type Box[T]:
     value: T
@@ -13,7 +13,7 @@ type CallbackReader:
     read_value: Callable[[], Int]
 
 impl ReadValue[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 
 impl ReadValue[Int] for CallbackReader:

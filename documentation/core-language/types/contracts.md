@@ -83,13 +83,13 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    def get() -> T
+    def get() -> ref T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 ```
 

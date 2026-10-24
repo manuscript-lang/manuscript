@@ -29,20 +29,20 @@
             "file": "cl-10b.ms",
             "line": 45,
             "column": 50,
-            "offset": 1232
+            "offset": 1240
           },
           "fix": {
             "position": {
               "file": "cl-10b.ms",
               "line": 45,
               "column": 56,
-              "offset": 1238
+              "offset": 1246
             },
             "end": {
               "file": "cl-10b.ms",
               "line": 45,
               "column": 56,
-              "offset": 1238
+              "offset": 1246
             },
             "replacement": ".clone()"
           }

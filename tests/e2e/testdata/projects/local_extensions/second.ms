@@ -12,7 +12,7 @@ def delta() -> Int:
     return 20
 
 impl Read[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 
 impl Read[Int] for Choice:

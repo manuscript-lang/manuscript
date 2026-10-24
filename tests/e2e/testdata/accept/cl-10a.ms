@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal, expect_false
 
 interface ReadValue[T]:
-    def get() -> T
+    def get() -> ref T
 
 interface SameValue[T: Equal]:
     def same(other: T) -> Bool
@@ -10,7 +10,7 @@ type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    def get() -> T:
+    def get() -> ref T:
         return self.value
 
 impl SameValue[T] for Box[T]:

@@ -4,7 +4,7 @@ type Failure:
     message_text: String
 
 impl Error for Failure:
-    def message() -> String:
+    def message() -> ref String:
         return self.message_text
 
 def success() -> Result[Optional[Int], Error]:

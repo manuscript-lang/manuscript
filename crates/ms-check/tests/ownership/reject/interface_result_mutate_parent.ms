@@ -1,11 +1,11 @@
 interface Named:
-    def names() -> List[String]
+    def names() -> ref List[String]
 
 type Box:
     items: List[String]
 
 impl Named for Box:
-    def names() -> List[String]:
+    def names() -> ref List[String]:
         return self.items
 
 def f(var b: Box) -> Int:

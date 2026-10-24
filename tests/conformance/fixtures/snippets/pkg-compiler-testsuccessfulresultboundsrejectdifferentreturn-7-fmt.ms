@@ -5,4 +5,4 @@ type Cause:
     text: String
 
 impl Error for Cause:
-    def message() -> String: self.text
+    def message() -> ref String: self.text

@@ -50,7 +50,7 @@ impl Queue[T]:
         return value
 
     # Returns the oldest value without removing it, or none when the queue is empty.
-    def peek() -> Optional[T]:
+    def peek() -> ref Optional[T]:
         if self.head >= self.items.length():
             return none
 

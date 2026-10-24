@@ -5,5 +5,5 @@ type Item:
     name: String
 
 impl Shows for Item:
-    def view() -> String:  # error: the result kinds must agree
+    def view() -> String:
         return self.name.clone()

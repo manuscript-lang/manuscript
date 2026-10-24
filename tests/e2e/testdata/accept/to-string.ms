@@ -13,10 +13,10 @@ type Outcome:
     case Waiting
 
 interface Named:
-    def name() -> String
+    def name() -> ref String
 
 impl Named for Person:
-    def name() -> String:
+    def name() -> ref String:
         return self.name
 
 def stringify[T](value: T) -> String:
