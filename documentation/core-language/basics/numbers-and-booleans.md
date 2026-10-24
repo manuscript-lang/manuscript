@@ -74,6 +74,8 @@ def sized() -> Unit:
 
 `to_intN()` returns the narrower or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
+`abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `min`, `max`, `min_of` and `max_of` already accept any `Comparable` width.
+
 ## Runtime numeric outcomes
 
 ### Int
