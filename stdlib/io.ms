@@ -1,6 +1,32 @@
 from "@std/bytes.ms" import Bytes
 from "@std/time.ms" import Duration
 
+extern def msstd_io_copy(
+    input: ReadStream,
+    output: WriteStream,
+    max_bytes: Optional[Int]
+) -> Result[Int, IoError]
+
+extern def msstd_io_read_all(
+    input: ReadStream,
+    max_bytes: Optional[Int]
+) -> Result[Bytes, IoError]
+
+extern def msstd_io_read_line(
+    input: ReadStream,
+    max_bytes: Optional[Int]
+) -> Result[Optional[String], IoError]
+
+extern def msstd_io_stdin() -> ReadStream
+
+extern def msstd_io_stdout() -> WriteStream
+
+extern def msstd_io_stderr() -> WriteStream
+
+extern def msstd_io_files() -> Files
+
+extern def msstd_io_terminal() -> Terminal
+
 # A file-like byte stream that returns `none` at end of input.
 export interface File:
     # Releases the file resource; retained aliases do not extend its open lifetime.
@@ -60,35 +86,49 @@ export def copy(
     input: ReadStream,
     output: WriteStream,
     max_bytes: Optional[Int] = none
-) -> Result[Int, IoError]: ...
+) -> Result[Int, IoError]:
+    return msstd_io_copy(input, output, max_bytes)
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
 export def read_all(
     input: ReadStream,
     max_bytes: Optional[Int] = none
-) -> Result[Bytes, IoError]: ...
+) -> Result[Bytes, IoError]:
+    return msstd_io_read_all(input, max_bytes)
 
 # Reads one line, omitting its line ending; returns `none` at end of stream.
 export def read_line(
     input: ReadStream,
     max_bytes: Optional[Int] = none
-) -> Result[Optional[String], IoError]: ...
+) -> Result[Optional[String], IoError]:
+    return msstd_io_read_line(input, max_bytes)
 
 impl Error for IoError:
     # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case Closed: return "I/O: resource is closed"
+            case InvalidInput: return "I/O: invalid input"
+            case Unavailable: return "I/O: service unavailable"
+            case InvalidData: return "I/O: invalid data"
+            case LimitExceeded: return "I/O: limit exceeded"
+            case Failed(message): return message.clone()
 
 # Returns the process standard-input stream.
-export def stdin() -> ReadStream: ...
+export def stdin() -> ReadStream:
+    return msstd_io_stdin()
 
 # Returns the process standard-output stream.
-export def stdout() -> WriteStream: ...
+export def stdout() -> WriteStream:
+    return msstd_io_stdout()
 
 # Returns the process standard-error stream.
-export def stderr() -> WriteStream: ...
+export def stderr() -> WriteStream:
+    return msstd_io_stderr()
 
 # Returns file operations for the current host.
-export def files() -> Files: ...
+export def files() -> Files:
+    return msstd_io_files()
 
 # Errors returned by terminal queries and raw-mode operations.
 export type TerminalError:
@@ -204,7 +244,15 @@ export interface RawTerminal:
 
 impl Error for TerminalError:
     # Returns a fixed diagnostic, or the host message for `Failed`.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "terminal: invalid input"
+            case NotTerminal: return "terminal: standard stream is not a terminal"
+            case Unsupported: return "terminal: operation not supported"
+            case Busy: return "terminal: terminal is already in use"
+            case Closed: return "terminal: resource is closed"
+            case Failed(message): return message.clone()
 
 # Returns terminal operations for the current process.
-export def terminal() -> Terminal: ...
+export def terminal() -> Terminal:
+    return msstd_io_terminal()

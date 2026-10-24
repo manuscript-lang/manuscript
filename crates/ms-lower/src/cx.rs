@@ -419,19 +419,7 @@ impl Cx {
         if t.is_std("BigInt") {
             return Ok(m.types.obj("BigInt", Vec::new()));
         }
-        // Runtime handles are reference-counted objects.
-        for name in [
-            "Regex",
-            "IpAddress",
-            "Cidr",
-            "HttpHeaders",
-            "LogState",
-            "LogGate",
-        ] {
-            if t.is_std(name) {
-                return Ok(m.types.obj(name, Vec::new()));
-            }
-        }
-        Err(Error::new(format!("unsupported native type {t}")))
+        // Any other opaque runtime type is a reference-counted handle.
+        Ok(m.types.obj(t.name.as_str(), Vec::new()))
     }
 }

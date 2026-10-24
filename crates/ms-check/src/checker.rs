@@ -178,6 +178,8 @@ pub struct Checker {
     pub(crate) standard_declarations: bool,
     pub(crate) deferred_default_bounds: Vec<DeferredBound>,
     pub(crate) id_scope: String,
+    /// Mutually importing bundled source modules checked together.
+    pub(crate) group: Vec<ModRef>,
     pub(crate) p: Program,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
@@ -214,6 +216,7 @@ impl Checker {
             standard_declarations: false,
             deferred_default_bounds: Vec::new(),
             id_scope: String::new(),
+            group: Vec::new(),
             p: Program::default(),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
@@ -407,12 +410,20 @@ impl Checker {
         self.p.methods.extend(stdlib::standard_implementations());
         let mut checked: Vec<ModRef> = Vec::new();
         for module in &modules {
+            if !self.group.is_empty() && self.group.iter().any(|g| g.file == module.file) {
+                continue;
+            }
             if stdlib::is_source_module(module) && Some(module.file) != bundled {
                 self.adopt_checked(module, bundled.is_some());
                 continue;
             }
             self.check_module(module);
             checked.push(module.clone());
+        }
+        if !self.group.is_empty() {
+            let group = self.group.clone();
+            self.check_group(&group);
+            checked.extend(group);
         }
         self.p.modules = modules;
         crate::passes::finish_modules(&checked);
@@ -472,6 +483,71 @@ impl Checker {
         self.check_defaults(module);
         self.check_bodies(module);
         self.declaration_checks(module);
+    }
+
+    fn enter_module(&mut self, module: &ModRef) {
+        self.module = Some(module.clone());
+        self.names = self.p.symbols[&module.file].clone();
+        self.scope = Scope::new(None);
+    }
+
+    /// Checks mutually importing bundled modules in lockstep: every module declares its
+    /// symbols before any module imports, resolves signatures or checks bodies.
+    fn check_group(&mut self, group: &[ModRef]) {
+        for module in group {
+            self.module = Some(module.clone());
+            self.names = Rc::new(RefCell::new(HashMap::new()));
+            self.p.symbols.insert(module.file, self.names.clone());
+            self.scope = Scope::new(None);
+            for name in PRIMITIVE_NAMES {
+                let nm = n(name);
+                let s = Rc::new(Sym {
+                    name: nm,
+                    id: nm,
+                    kind: SymKind::Type,
+                    module: n(""),
+                    native: n(""),
+                    export: true,
+                    ty: RefCell::new(Some(primitive(name))),
+                    variables: RefCell::new(Vec::new()),
+                    decl: None,
+                });
+                self.names.borrow_mut().insert(nm, s);
+            }
+            self.add_standard_prelude();
+            self.declare_symbols(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.import_symbols(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.declare_type_variables(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.resolve_signatures(module);
+            self.check_constant_cycles(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            for d in &module.decls {
+                if matches!(d.decl().kind, DeclKind::Impl(_)) {
+                    self.implementation(d);
+                }
+            }
+        }
+        for module in group {
+            self.enter_module(module);
+            self.check_test_fixture(module);
+            self.check_defaults(module);
+            self.check_bodies(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.declaration_checks(module);
+        }
     }
 
     fn import_symbols(&mut self, module: &ModRef) {
@@ -543,7 +619,7 @@ impl Checker {
             }
             if matches!(
                 d.decl().kind,
-                DeclKind::Record(_) | DeclKind::Alternative(_)
+                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
             ) {
                 // A bundled module's exported types were declared when it was registered.
                 let predeclared = stdlib::is_source_module(module)
@@ -772,7 +848,9 @@ impl Checker {
                         self.expression(default, Some(&typ));
                         let is_none =
                             matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
-                        if typ.id != "@std/Optional" || !is_none {
+                        // Bundled interfaces are implemented by the runtime, which fills any default.
+                        let bundled = stdlib::is_source_module(module);
+                        if !bundled && (typ.id != "@std/Optional" || !is_none) {
                             self.type_error(
                                 param.pos,
                                 "interface defaults must be Optional.none; write '= none' or remove the default",
@@ -790,7 +868,7 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(f, &s.ty());
+                        self.check_extern_signature(f, &s.ty(), d.pos());
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
@@ -997,10 +1075,16 @@ impl Checker {
 
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
-    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty) {
+    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
+        }
+        if !f.type_params.is_empty() {
+            self.type_error(
+                pos,
+                "an extern fn cannot be generic; declare the concrete types the native symbol takes",
+            );
         }
         const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
         const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];

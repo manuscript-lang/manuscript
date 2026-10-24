@@ -897,10 +897,7 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 self.need(Tok::Def)?;
                 let name = self.need(Tok::Name)?;
-                if self.kind() == Tok::LBracket {
-                    let t = self.peek();
-                    return self.fail(t, "an extern def cannot be generic; declare the concrete types the native symbol takes");
-                }
+                let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
                 let (result_ref, result) = self.result_type()?;
                 if self.kind() == Tok::Colon {
@@ -910,7 +907,7 @@ impl<'a> Parser<'a> {
                 self.end()?;
                 DeclKind::Fn(Func {
                     name: self.sym(name),
-                    type_params: Vec::new(),
+                    type_params,
                     params,
                     result,
                     result_ref,

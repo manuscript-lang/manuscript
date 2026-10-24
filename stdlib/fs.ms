@@ -5,6 +5,50 @@ from "@std/io.ms" import ReadStream
 from "@std/time.ms" import Timestamp
 from "@std/io.ms" import WriteStream
 
+extern def msstd_fs_constants() -> Map[String, Int]
+
+extern def msstd_fs_filesystem() -> FileSystem
+
+extern def msrt_path_basename(path: String) -> String
+
+extern def msrt_path_dirname(path: String) -> String
+
+extern def msrt_path_extension(path: String) -> String
+
+extern def msrt_path_is_absolute(path: String) -> Bool
+
+extern def msrt_path_join(parts: List[String]) -> String
+
+extern def msrt_path_normalize(path: String) -> String
+
+extern def msrt_path_relative(base: String, target: String) -> Result[String, PathError]
+
+extern def msstd_fs_posix() -> PathOperations
+
+extern def msstd_fs_win32() -> PathOperations
+
+extern def msrt_path_basename_without(path: String, suffix: String) -> String
+
+extern def msrt_path_resolve(
+    base: String,
+    parts: List[String]
+) -> Result[String, PathError]
+
+extern def msrt_path_parse(path: String) -> PathParts
+
+extern def msrt_path_format(parts: PathParts) -> String
+
+extern def msrt_path_separator() -> String
+
+extern def msrt_path_delimiter() -> String
+
+extern def msrt_path_to_namespaced_path(path: String) -> String
+
+extern def msrt_path_matches_glob(
+    path: String,
+    pattern: String
+) -> Result[Bool, PathError]
+
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
     # A path is empty or holds NUL, an argument is outside its range (mode bits, offset, size, flags string, origin), the handle lacks the needed read or write mode, or the operation targets the wrong kind of entry.
@@ -376,7 +420,8 @@ export type FileSystemInfo:
 
 # Returns this host's filesystem flag, mode, and permission constants by name.
 # Names and values vary by host; absent entries are not supported constants or portable enum cases.
-export def constants() -> Map[String, Int]: ...
+export def constants() -> Map[String, Int]:
+    return msstd_fs_constants()
 
 # Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
@@ -422,10 +467,22 @@ export type GlobOptions:
 
 impl Error for FileSystemError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `filesystem: <reason>`, such as `filesystem: file or directory not found`.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "filesystem: invalid input"
+            case InvalidData: return "filesystem: invalid data"
+            case LimitExceeded: return "filesystem: limit exceeded"
+            case NotFound: return "filesystem: file or directory not found"
+            case AlreadyExists: return "filesystem: already exists"
+            case NotEmpty: return "filesystem: directory not empty"
+            case PermissionDenied: return "filesystem: permission denied"
+            case Unsupported: return "filesystem: operation not supported"
+            case Closed: return "filesystem: resource is closed"
+            case Failed(message): return message.clone()
 
 # Returns filesystem operations for the current host.
-export def filesystem() -> FileSystem: ...
+export def filesystem() -> FileSystem:
+    return msstd_fs_filesystem()
 
 # Errors returned when a path cannot be parsed or resolved.
 export type PathError:
@@ -433,25 +490,32 @@ export type PathError:
     case InvalidInput
 
 # Returns the final path component, excluding trailing separators.
-export def basename(path: String) -> String: ...
+export def basename(path: String) -> String:
+    return msrt_path_basename(path)
 
 # Returns the directory portion of a path.
-export def dirname(path: String) -> String: ...
+export def dirname(path: String) -> String:
+    return msrt_path_dirname(path)
 
 # Returns the final extension, including its leading dot, or an empty string.
-export def extension(path: String) -> String: ...
+export def extension(path: String) -> String:
+    return msrt_path_extension(path)
 
 # Reports whether a path is absolute according to the host path rules.
-export def is_absolute(path: String) -> Bool: ...
+export def is_absolute(path: String) -> Bool:
+    return msrt_path_is_absolute(path)
 
 # Joins path parts using the host separator and normalizes the result.
-export def join(parts: List[String]) -> String: ...
+export def join(parts: List[String]) -> String:
+    return msrt_path_join(parts)
 
 # Normalizes separators and dot segments without accessing the filesystem.
-export def normalize(path: String) -> String: ...
+export def normalize(path: String) -> String:
+    return msrt_path_normalize(path)
 
 # Computes a relative path from `base` to `target` using host path rules.
-export def relative(base: String, target: String) -> Result[String, PathError]: ...
+export def relative(base: String, target: String) -> Result[String, PathError]:
+    return msrt_path_relative(base, target)
 
 # Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:
@@ -501,35 +565,47 @@ export interface PathOperations:
     def matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
 
 # Returns path operations using POSIX separators and parsing rules.
-export def posix() -> PathOperations: ...
+export def posix() -> PathOperations:
+    return msstd_fs_posix()
 
 # Returns path operations using Windows separators and parsing rules.
-export def win32() -> PathOperations: ...
+export def win32() -> PathOperations:
+    return msstd_fs_win32()
 
 # Returns the basename with the supplied suffix removed when it matches.
-export def basename_without(path: String, suffix: String) -> String: ...
+export def basename_without(path: String, suffix: String) -> String:
+    return msrt_path_basename_without(path, suffix)
 
 # Resolves path parts against a base using host path conventions.
-export def resolve(base: String, parts: List[String]) -> Result[String, PathError]: ...
+export def resolve(base: String, parts: List[String]) -> Result[String, PathError]:
+    return msrt_path_resolve(base, parts)
 
 # Splits a path into its root, directory, base, extension, and name.
-export def parse(path: String) -> PathParts: ...
+export def parse(path: String) -> PathParts:
+    return msrt_path_parse(path)
 
 # Formats parsed path components as a path string.
-export def format(parts: PathParts) -> String: ...
+export def format(parts: PathParts) -> String:
+    return msrt_path_format(parts)
 
 # Returns the host's path separator.
-export def separator() -> String: ...
+export def separator() -> String:
+    return msrt_path_separator()
 
 # Returns the host's path-list delimiter.
-export def delimiter() -> String: ...
+export def delimiter() -> String:
+    return msrt_path_delimiter()
 
 # Converts a path to the host's namespaced representation when applicable.
-export def to_namespaced_path(path: String) -> String: ...
+export def to_namespaced_path(path: String) -> String:
+    return msrt_path_to_namespaced_path(path)
 
 # Tests a path against a glob pattern.
-export def matches_glob(path: String, pattern: String) -> Result[Bool, PathError]: ...
+export def matches_glob(path: String, pattern: String) -> Result[Bool, PathError]:
+    return msrt_path_matches_glob(path, pattern)
 
 impl Error for PathError:
     # Returns a path-prefixed diagnostic without revealing the supplied paths or pattern.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "path: invalid input"

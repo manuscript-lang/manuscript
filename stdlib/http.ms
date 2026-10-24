@@ -12,6 +12,30 @@ from "@std/net.ms" import WebSocket
 from "@std/net.ms" import WebSocketError
 from "@std/net.ms" import WebSocketOptions
 
+extern def msrt_http_headers_append(
+    headers: HttpHeaders,
+    name: String,
+    value: Bytes
+) -> Result[Unit, HttpError]
+
+extern def msrt_http_headers_values(
+    value: HttpHeaders,
+    name: String
+) -> Optional[List[Bytes]]
+
+extern def msrt_http_headers_text(
+    value: HttpHeaders,
+    name: String
+) -> Result[Optional[List[String]], HttpError]
+
+extern def msrt_http_headers_names(value: HttpHeaders) -> List[String]
+
+extern def msrt_http_headers_remove(value: HttpHeaders, name: String) -> Bool
+
+extern def msrt_http_headers_clone(value: HttpHeaders) -> HttpHeaders
+
+extern def msrt_http_headers_new() -> HttpHeaders
+
 # Errors returned for invalid requests, transport failures, timeouts, and limits.
 export type HttpError:
     # The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
@@ -35,30 +59,37 @@ export type HttpError:
 # Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
 # Names keep first-insertion order and spelling; values keep append order.
 # Lookup shares list membership. Use clone() to separate mutable membership.
-export type HttpHeaders: ...
+export extern type HttpHeaders
 
 impl HttpHeaders:
     # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate UTF-8, framing and field values.
-    def append(name: String, value: Bytes) -> Result[Unit, HttpError]: ...
+    def append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+        return msrt_http_headers_append(self, name, value)
 
     # Returns an owned copy of the membership, or none for an absent name.
-    def values(name: String) -> Optional[List[Bytes]]: ...
+    def values(name: String) -> Optional[List[Bytes]]:
+        return msrt_http_headers_values(self, name)
 
     # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
-    def text(name: String) -> Result[Optional[List[String]], HttpError]: ...
+    def text(name: String) -> Result[Optional[List[String]], HttpError]:
+        return msrt_http_headers_text(self, name)
 
     # Returns first-inserted spellings in insertion order.
-    def names() -> List[String]: ...
+    def names() -> List[String]:
+        return msrt_http_headers_names(self)
 
     # Removes a name; existing list aliases are detached from this header object.
-    def remove(name: String) -> Bool: ...
+    def remove(name: String) -> Bool:
+        return msrt_http_headers_remove(self, name)
 
     # Copies name/list membership and shares immutable Bytes values.
-    def clone() -> HttpHeaders: ...
+    def clone() -> HttpHeaders:
+        return msrt_http_headers_clone(self)
 
 # Creates empty mutable headers. No header values are joined or comma-combined.
-export def headers() -> HttpHeaders: ...
+export def headers() -> HttpHeaders:
+    return msrt_http_headers_new()
 
 # Response status and headers shared by buffered and streaming response access.
 export type HttpResponseMetadata:
@@ -79,7 +110,8 @@ export type ClientResponse:
 impl ClientResponse:
     # Borrows the current response metadata.
     # Clone the result for an independent owned value, including its headers.
-    def metadata() -> HttpResponseMetadata: ...
+    def metadata() -> ref HttpResponseMetadata:
+        return self.head
 
 # Known HTTP methods, plus extension tokens validated by outgoing operations.
 export type HttpMethod:
@@ -109,7 +141,18 @@ export type HttpMethod:
 
 impl HttpMethod:
     # Returns the method token; outgoing requests reject malformed Custom tokens.
-    def text() -> String: ...
+    def text() -> String:
+        match self:
+            case Get: return "GET"
+            case Head: return "HEAD"
+            case Post: return "POST"
+            case Put: return "PUT"
+            case Patch: return "PATCH"
+            case Delete: return "DELETE"
+            case Connect: return "CONNECT"
+            case Options: return "OPTIONS"
+            case Trace: return "TRACE"
+            case Custom(value): return value.clone()
 
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
@@ -269,4 +312,12 @@ export interface ResponseBody:
 
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "HTTP: invalid input"
+            case InvalidData: return "HTTP: invalid data"
+            case LimitExceeded: return "HTTP: limit exceeded"
+            case PermissionDenied: return "HTTP: permission denied"
+            case Closed: return "HTTP: resource is closed"
+            case Timeout: return "HTTP: operation timed out"
+            case Failed(message): return message.clone()

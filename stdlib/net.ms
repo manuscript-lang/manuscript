@@ -14,6 +14,52 @@ from "@std/http.ms" import HttpServerOptions
 from "@std/io.ms" import IoError
 from "@std/time.ms" import Timestamp
 
+extern def msrt_net_ip_address_text(value: IpAddress) -> String
+
+extern def msrt_net_ip_address_family(value: IpAddress) -> Bool
+
+extern def msrt_net_cidr_text(value: Cidr) -> String
+
+extern def msrt_net_contains_ip(
+    cidr: Cidr,
+    address: IpAddress
+) -> Result[Bool, NetworkError]
+
+extern def msrt_net_parse_cidr(text: String) -> Result[Cidr, NetworkError]
+
+extern def msrt_net_parse_ip(text: String) -> Result[IpAddress, NetworkError]
+
+extern def msrt_net_network() -> Network
+
+extern def msrt_tls_parse_certificates(
+    pem: String,
+    max_certificates: Optional[Int]
+) -> Result[List[CertificateInfo], TlsError]
+
+extern def msrt_tls_verify_certificates(
+    chain_pem: String,
+    roots_pem: String,
+    server_name: String,
+    now: Timestamp
+) -> Result[Unit, TlsError]
+
+extern def msrt_url_decode_component(text: String) -> Result[String, UrlError]
+
+extern def msrt_url_encode_component(text: String) -> String
+
+extern def msrt_url_format(value: Url) -> Result[String, UrlError]
+
+extern def msrt_url_format_query(entries: List[QueryEntry]) -> String
+
+extern def msrt_url_parse(text: String) -> Result[Url, UrlError]
+
+extern def msrt_url_parse_query(
+    text: String,
+    max_entries: Optional[Int]
+) -> Result[List[QueryEntry], UrlError]
+
+extern def msrt_url_resolve(base: Url, reference: String) -> Result[Url, UrlError]
+
 # Errors returned by socket, DNS, and network connection operations.
 export type NetworkError:
     # An address, CIDR, name, record kind, or option is malformed, or a limit or timeout is negative.
@@ -119,7 +165,16 @@ export type DnsKind:
 
 impl DnsKind:
     # Returns the uppercase wire category.
-    def text() -> String: ...
+    def text() -> String:
+        match self:
+            case A: return "A"
+            case AAAA: return "AAAA"
+            case CNAME: return "CNAME"
+            case MX: return "MX"
+            case NS: return "NS"
+            case TXT: return "TXT"
+            case PTR: return "PTR"
+            case SRV: return "SRV"
 
 # Numeric address families reported by IP values and host interfaces.
 export type IpFamily:
@@ -130,24 +185,33 @@ export type IpFamily:
 
 impl IpFamily:
     # Returns IPv4 or IPv6.
-    def text() -> String: ...
+    def text() -> String:
+        match self:
+            case IPv4: return "IPv4"
+            case IPv6: return "IPv6"
 
 # A validated numeric IPv4/IPv6 address without a port or zone.
-export type IpAddress: ...
+export extern type IpAddress
 
 impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
-    def text() -> String: ...
+    def text() -> String:
+        return msrt_net_ip_address_text(self)
 
     # Returns the normalized address family.
-    def family() -> IpFamily: ...
+    def family() -> IpFamily:
+        if msrt_net_ip_address_family(self):
+            return IPv6
+
+        return IPv4
 
 # A validated, masked numeric CIDR range.
-export type Cidr: ...
+export extern type Cidr
 
 impl Cidr:
     # Returns the canonical masked prefix without reparsing.
-    def text() -> String: ...
+    def text() -> String:
+        return msrt_net_cidr_text(self)
 
 # DNS record data returned by a typed lookup.
 export type DnsRecord:
@@ -174,17 +238,29 @@ export interface Listener:
     def close() -> Unit
 
 # Reports whether an IP address belongs to a CIDR range.
-export def contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]: ...
+export def contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]:
+    return msrt_net_contains_ip(cidr, address)
 
 # Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export def parse_cidr(text: String) -> Result[Cidr, NetworkError]: ...
+export def parse_cidr(text: String) -> Result[Cidr, NetworkError]:
+    return msrt_net_parse_cidr(text)
 
 # Validates and canonicalizes an IPv4 or IPv6 address.
-export def parse_ip(text: String) -> Result[IpAddress, NetworkError]: ...
+export def parse_ip(text: String) -> Result[IpAddress, NetworkError]:
+    return msrt_net_parse_ip(text)
 
 impl Error for NetworkError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `network: <reason>`.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "network: invalid input"
+            case InvalidData: return "network: invalid data"
+            case LimitExceeded: return "network: limit exceeded"
+            case PermissionDenied: return "network: permission denied"
+            case Unsupported: return "network: operation not supported"
+            case Closed: return "network: resource is closed"
+            case Timeout: return "network: operation timed out"
+            case Failed(message): return message.clone()
 
 # Network, DNS, HTTP, and WebSocket operations for the current host.
 export interface Network:
@@ -308,7 +384,8 @@ export interface Network:
     def with_resolver(address: String) -> Result[Network, NetworkError]
 
 # Returns network operations for the current host.
-export def network() -> Network: ...
+export def network() -> Network:
+    return msrt_net_network()
 
 # Errors returned when TLS configuration, certificates, or peer authentication fail.
 export type TlsError:
@@ -369,7 +446,8 @@ export type TlsOptions:
 export def parse_certificates(
     pem: String,
     max_certificates: Optional[Int] = none
-) -> Result[List[CertificateInfo], TlsError]: ...
+) -> Result[List[CertificateInfo], TlsError]:
+    return msrt_tls_parse_certificates(pem, max_certificates)
 
 # Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
 export def verify_certificates(
@@ -377,11 +455,17 @@ export def verify_certificates(
     roots_pem: String,
     server_name: String,
     now: Timestamp
-) -> Result[Unit, TlsError]: ...
+) -> Result[Unit, TlsError]:
+    return msrt_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
 
 impl Error for TlsError:
     # Returns the fixed diagnostic `TLS: <reason>`, such as `TLS: authentication failed`, without echoing certificate text.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "TLS: invalid input"
+            case InvalidData: return "TLS: invalid data"
+            case LimitExceeded: return "TLS: limit exceeded"
+            case AuthenticationFailed: return "TLS: authentication failed"
 
 # Errors returned for malformed URL text, components, or query limits.
 export type UrlError:
@@ -415,33 +499,44 @@ export type Url:
     fragment: String
 
 # Decodes one percent-encoded URL component. `+` is not treated as a space.
-export def decode_component(text: String) -> Result[String, UrlError]: ...
+export def decode_component(text: String) -> Result[String, UrlError]:
+    return msrt_url_decode_component(text)
 
 # Percent-encodes one URL component using UTF-8 bytes.
-export def encode_component(text: String) -> String: ...
+export def encode_component(text: String) -> String:
+    return msrt_url_encode_component(text)
 
 # Formats URL components as an absolute hierarchical URL.
 # Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
-export def format(value: Url) -> Result[String, UrlError]: ...
+export def format(value: Url) -> Result[String, UrlError]:
+    return msrt_url_format(value)
 
 # Encodes query entries as a query string.
-export def format_query(entries: List[QueryEntry]) -> String: ...
+export def format_query(entries: List[QueryEntry]) -> String:
+    return msrt_url_format_query(entries)
 
 # Parses an absolute URL into its components.
-export def parse(text: String) -> Result[Url, UrlError]: ...
+export def parse(text: String) -> Result[Url, UrlError]:
+    return msrt_url_parse(text)
 
 # Parses a query string, preserving duplicate keys and their input order.
 export def parse_query(
     text: String,
     max_entries: Optional[Int] = none
-) -> Result[List[QueryEntry], UrlError]: ...
+) -> Result[List[QueryEntry], UrlError]:
+    return msrt_url_parse_query(text, max_entries)
 
 # Resolves a relative reference against a base URL.
-export def resolve(base: Url, reference: String) -> Result[Url, UrlError]: ...
+export def resolve(base: Url, reference: String) -> Result[Url, UrlError]:
+    return msrt_url_resolve(base, reference)
 
 impl Error for UrlError:
     # Returns a URL-prefixed diagnostic without echoing addresses, query values or credentials.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "URL: invalid input"
+            case InvalidData: return "URL: invalid data"
+            case LimitExceeded: return "URL: limit exceeded"
 
 # Errors returned by WebSocket handshakes, message limits, timeouts, or closed sockets.
 export type WebSocketError:
@@ -504,4 +599,12 @@ export type WebSocketOptions:
 
 impl Error for WebSocketError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `WebSocket: <reason>`.
-    def message() -> String: ...
+    def message() -> String:
+        match self:
+            case InvalidInput: return "WebSocket: invalid input"
+            case InvalidData: return "WebSocket: invalid data"
+            case LimitExceeded: return "WebSocket: limit exceeded"
+            case PermissionDenied: return "WebSocket: permission denied"
+            case Closed: return "WebSocket: resource is closed"
+            case Timeout: return "WebSocket: operation timed out"
+            case Failed(message): return message.clone()
