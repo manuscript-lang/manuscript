@@ -7,7 +7,7 @@
 //! per-size free lists so growing and rebuilding big lists does not map and unmap memory
 //! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB). Single
 //! threaded: no locks.
-use crate::global::Global;
+use crate::global::Process;
 use crate::sys;
 use core::ptr::null_mut;
 
@@ -90,7 +90,11 @@ struct State {
     live: isize,
 }
 
-static STATE: Global<State> = Global::new(State {
+// Process-wide until stage 3 of `proposals/worker-threads.md`: blocking-pool threads allocate
+// and free runtime blocks too (see `glue/pool.rs`), so a per-thread arena would route their
+// blocks to the wrong allocator on free. Per-isolate arenas arrive with the owner registry and
+// remote-free stack.
+static STATE: Process<State> = Process::new(State {
     base: 0,
     end: 0,
     next_page: 0,

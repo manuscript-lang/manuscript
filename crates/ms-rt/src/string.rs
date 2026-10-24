@@ -8,7 +8,6 @@
 //! the string last measured, see [`Hint`]).
 use crate::alloc;
 use crate::fault;
-use crate::global::Global;
 use crate::obj;
 use crate::utf8;
 use core::ptr::null_mut;
@@ -272,13 +271,15 @@ struct Hint {
     scalar: usize,
     offset: usize,
 }
-static HINT: Global<Hint> = Global::new(Hint {
+crate::isolate_static! {
+    static HINT: Hint = Hint {
     s: core::ptr::null(),
     len: 0,
     count: usize::MAX,
     scalar: 0,
     offset: 0,
-});
+};
+}
 const HINT_MIN: usize = 24;
 
 /// Byte offset of scalar `n` (0..=count) with a remembered position for sequential access.
@@ -2165,10 +2166,11 @@ unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
     from_buf(out)
 }
 
+crate::isolate_static! {
 /// Dynamic string copies and drops, `[drop static, drop owned, copy static, copy owned]`, counted when
 /// the program was compiled with `MS_COUNT_STR` set (see `ms-clif`); printed at exit by the `stats` runtime.
-pub static STR_COUNTS: Global<[u64; 4]> = Global::new([0; 4]);
-
+    pub static STR_COUNTS: [u64; 4] = [0; 4];
+}
 /// Records one executed string drop (`kind` 0) or copy (1) of a string whose capacity word is `cap`.
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {

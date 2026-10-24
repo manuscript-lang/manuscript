@@ -5,14 +5,14 @@
 //! returns. The parent calls `msrt_trap_wait`, which reports whether the child faulted and
 //! with which message (the first line of the fault report).
 
-use crate::global::Global;
 use crate::string;
 use crate::sys;
 use ms_rt_abi::StrVal;
 
+crate::isolate_static! {
 /// Read end of the child's stderr pipe and the child's process id.
-static TRAP: Global<(i32, i32)> = Global::new((-1, 0));
-
+    static TRAP: (i32, i32) = (-1, 0);
+}
 /// Forks. Returns 0 in the child (run the operation, then `msrt_trap_end`) and 1 in the
 /// parent (call `msrt_trap_wait`).
 #[unsafe(no_mangle)]

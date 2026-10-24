@@ -57,7 +57,6 @@ static WAKE_FD: AtomicI32 = AtomicI32::new(-1);
 #[cfg(unix)]
 mod imp {
     use super::*;
-    use crate::global::Global;
     use mio::unix::SourceFd;
     use mio::unix::pipe;
     use mio::{Events, Poll, Token};
@@ -78,7 +77,9 @@ mod imp {
         _wake_tx: pipe::Sender,
     }
 
-    static STATE: Global<Option<State>> = Global::new(None);
+    crate::isolate_static! {
+        static STATE: Option<State> = None;
+    }
 
     fn state() -> &'static mut State {
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -215,7 +216,6 @@ mod imp {
     //! A handle that is not a socket cannot be registered and counts as ready at once.
 
     use super::*;
-    use crate::global::Global;
     use mio::net::TcpStream;
     use mio::{Events, Poll, Token, Waker};
     use std::collections::HashMap;
@@ -232,7 +232,9 @@ mod imp {
         views: HashMap<usize, TcpStream>,
     }
 
-    static STATE: Global<Option<State>> = Global::new(None);
+    crate::isolate_static! {
+        static STATE: Option<State> = None;
+    }
     static WAKER: Mutex<Option<Arc<Waker>>> = Mutex::new(None);
 
     fn state() -> &'static mut State {

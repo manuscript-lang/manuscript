@@ -1,7 +1,6 @@
 //! Type descriptors: drop, copy, equality and hash of values stored in slots.
 use crate::alloc;
 use crate::fault;
-use crate::global::Global;
 use crate::map;
 use crate::obj;
 use crate::string;
@@ -146,7 +145,9 @@ unsafe fn slot_copy_slow(d: &TypeDesc, src: *const u8, dst: *mut u8) {
 struct EqState {
     pairs: Vec<(usize, usize)>,
 }
-static EQ: Global<EqState> = Global::new(EqState { pairs: Vec::new() });
+crate::isolate_static! {
+    static EQ: EqState = EqState { pairs: Vec::new() };
+}
 const MAX_EQ_DEPTH: usize = 200_000;
 
 /// Registers a pair of objects being compared; 0 means the pair is already in progress

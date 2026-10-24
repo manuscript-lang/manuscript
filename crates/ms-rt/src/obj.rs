@@ -1,6 +1,5 @@
 //! Object headers, reference counting and the allocator entry points.
 use crate::alloc;
-use crate::global::Global;
 use core::ptr::null_mut;
 use ms_rt_abi::Obj;
 
@@ -49,9 +48,12 @@ pub unsafe fn release(o: *mut Obj) {
 }
 
 const MAX_DROP_DEPTH: usize = 4096;
-static DROP_DEPTH: Global<usize> = Global::new(0);
-static PENDING: Global<*mut Obj> = Global::new(null_mut());
-
+crate::isolate_static! {
+    static DROP_DEPTH: usize = 0;
+}
+crate::isolate_static! {
+    static PENDING: *mut Obj = null_mut();
+}
 /// Runs an object's drop entry, deferring when the drop nesting is deep so long
 /// chains (linked lists, deep trees) cannot overflow the stack.
 ///
@@ -145,9 +147,10 @@ pub unsafe extern "C-unwind" fn msrt_drop_slow(o: *mut Obj) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::global::Process;
     use crate::testutil::lock;
 
-    static DROPS: Global<usize> = Global::new(0);
+    static DROPS: Process<usize> = Process::new(0);
 
     unsafe extern "C" fn count_drop(o: *mut Obj) {
         // SAFETY: test object allocated by new_obj.
@@ -178,7 +181,7 @@ mod tests {
         hdr: Obj,
         next: *mut Obj,
     }
-    static FREED: Global<usize> = Global::new(0);
+    static FREED: Process<usize> = Process::new(0);
 
     unsafe extern "C" fn drop_node(o: *mut Obj) {
         // SAFETY: test node allocated below.

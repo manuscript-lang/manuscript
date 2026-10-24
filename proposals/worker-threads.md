@@ -214,3 +214,14 @@ flowchart LR
   - arena sizing, alignment on Windows, worker cap, lifetime of a moved value's arena;
   - today a foreign block leaks (not corrupts); corruption only applies to the multi-arena design;
   - stage 1 split, gate given proposed thresholds, `Global` removed instead of defaulted.
+
+## Appendix: static classification (stage 2, implemented in `crates/ms-rt/src/global.rs`)
+
+- `Global<T>` is removed. Runtime statics are `Process<T>` (one copy, main isolate only) or `isolate_static!` (thread-local, `ManuallyDrop`, const-initialized).
+- Per-isolate (`isolate_static!`): `DROP_DEPTH`, `PENDING` (`obj.rs`); `EQ` (`desc.rs`); string `HINT`, `STR_COUNTS` (`string.rs`); `TRAP` (`trap.rs`); `CLEANUPS`, `SHIELD`, `FAULTING`, `SECONDARY`, `TASK_CANCEL`, `PRIMARY`, `GUARDS` (`fault.rs`); `SCHED` (`task.rs`); poller `STATE` (`poller.rs`, both backends).
+- Process-wide, set before other isolates start or read-only: `TABLES` (`fault.rs`); `ARGC`, `ARGV`, `ARG_SKIP`, `MAIN_FN`, `MAIN_RESULT`, `START_NANOS` (`start.rs`); profiler `BUFFER`, `PATH`, Windows `TARGET`, `SAMPLER` (`profile.rs`).
+- Process-wide, needs a lock before a second isolate runs (stage 3): `OUT`, `TTY`, `CLOSED` (`io.rs`, the shared stdout writer); `EXIT_HOOKS` (`process.rs`).
+- Process-wide for now, per-isolate in stage 3: allocator `STATE` (`alloc.rs`). First tried per-isolate in stage 2: `conform` failed (`docs/learn-common-tasks-5` segfault) because blocking-pool threads allocate and free runtime blocks, and a block from a thread's own arena freed elsewhere is routed to `free`. Stage 3 adds the owner registry and remote-free stack first. Also: `STACK_LO`, `STACK_HI` (`fault.rs`; the Windows sampler thread reads them, and the Unix `SIGPROF` handler can run on any thread); Windows `BUF`, `FAULTED`, `REPORT` (`trap_windows.rs`).
+- Test-only statics stay `Process<T>` (`obj.rs` `DROPS`/`FREED`, `fault.rs`/`task.rs` `LOG`, `TOKEN`, `GOT`, `RESULT`).
+- Not `Global`, unchanged: `msrt_stack_limit`, `msrt_cancel_flag`, `PENDING_SIGNAL`, `INBOX`, `INBOX_FULL`, `WAKE_FD` (atomics or `static mut`; stage 3 replaces them with the stack-slot header and an isolate record).
+- `ms-std-*` crates keep their own `ms_rt::ffi::Global` cells (`ms-std-io` STDIN, `ms-std-terminal`, `ms-std-system` caches). They are main-isolate-only: a worker that reaches them must fault (stage 4).

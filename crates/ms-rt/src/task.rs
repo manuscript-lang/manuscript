@@ -11,7 +11,6 @@
 //! thread posts to with `msrt_token_post`, and any other thread with `msrt_token_post_remote`.
 use crate::alloc;
 use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
-use crate::global::Global;
 use crate::sys;
 use core::cmp::Reverse;
 use core::ptr::null_mut;
@@ -124,7 +123,8 @@ static INBOX: std::sync::Mutex<Vec<(u64, u64)>> = std::sync::Mutex::new(Vec::new
 /// Whether `INBOX` may hold posts; spares the scheduler the lock when nothing was posted.
 static INBOX_FULL: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
-static SCHED: Global<Sched> = Global::new(Sched {
+crate::isolate_static! {
+    static SCHED: Sched = Sched {
     cur: null_mut(),
     main: null_mut(),
     ready: VecDeque::new(),
@@ -142,7 +142,8 @@ static SCHED: Global<Sched> = Global::new(Sched {
     tokens: Vec::new(),
     free_tokens: Vec::new(),
     remote_tokens: 0,
-});
+};
+}
 
 /// The scheduler state. Each access derives a fresh short-lived reference from the raw pointer,
 /// so a binding held across calls that also reach the scheduler never aliases a live `&mut`.
@@ -1189,10 +1190,11 @@ pub fn reset_for_tests() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::global::Process;
     use crate::testutil::lock;
 
-    static LOG: Global<[u8; 16]> = Global::new([0; 16]);
-    static LOG_N: Global<usize> = Global::new(0);
+    static LOG: Process<[u8; 16]> = Process::new([0; 16]);
+    static LOG_N: Process<usize> = Process::new(0);
 
     /// A binding held across another `sched()` access must stay valid; Miri's Stacked Borrows
     /// rejected the previous `&'static mut` return here.
@@ -1295,8 +1297,8 @@ mod tests {
         reset_for_tests();
     }
 
-    static TOKEN: Global<u64> = Global::new(0);
-    static GOT: Global<(u32, u64)> = Global::new((0, 0));
+    static TOKEN: Process<u64> = Process::new(0);
+    static GOT: Process<(u32, u64)> = Process::new((0, 0));
 
     unsafe extern "C-unwind" fn token_parker(arg: *mut u8) {
         let mut v = 0;
@@ -1454,7 +1456,7 @@ mod tests {
     mod fd_waits {
         use super::*;
 
-        static RESULT: Global<u32> = Global::new(0);
+        static RESULT: Process<u32> = Process::new(0);
 
         fn pipe() -> [i32; 2] {
             let mut fds = [0i32; 2];

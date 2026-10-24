@@ -1,7 +1,7 @@
 //! Process entry: tables, signals, the main thread with its large stack, exit status.
 use crate::alloc;
 use crate::fault::{self, PENDING_SIGNAL, STACK_LO, TABLES};
-use crate::global::Global;
+use crate::global::Process;
 use crate::string;
 use crate::sys;
 use core::ffi::c_void;
@@ -15,14 +15,14 @@ const GUARD: usize = 1 << 16;
 /// Grace period after the first stop request before cleanup is abandoned.
 const CLEANUP_GRACE_SECS: u32 = 30;
 
-static ARGC: Global<i32> = Global::new(0);
-static ARGV: Global<*const *const u8> = Global::new(core::ptr::null());
+static ARGC: Process<i32> = Process::new(0);
+static ARGV: Process<*const *const u8> = Process::new(core::ptr::null());
 /// Leading program arguments that `msrt_args` hides: the test runner's selector.
-static ARG_SKIP: Global<i32> = Global::new(0);
-static MAIN_FN: Global<Option<extern "C-unwind" fn() -> i64>> = Global::new(None);
-static MAIN_RESULT: Global<i64> = Global::new(0);
+static ARG_SKIP: Process<i32> = Process::new(0);
+static MAIN_FN: Process<Option<extern "C-unwind" fn() -> i64>> = Process::new(None);
+static MAIN_RESULT: Process<i64> = Process::new(0);
 /// `CLOCK_MONOTONIC` nanoseconds when the runtime started; 0 before `msrt_start`.
-static START_NANOS: Global<i64> = Global::new(0);
+static START_NANOS: Process<i64> = Process::new(0);
 
 /// Monotonic nanoseconds since the runtime started (the origin of `process.uptime()`); 0 when not started.
 #[unsafe(no_mangle)]

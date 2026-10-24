@@ -1,5 +1,5 @@
 //! Faults, the cleanup stack, call depth, cancellation and process exit.
-use crate::global::Global;
+use crate::global::Process;
 #[allow(unused_imports)]
 use crate::sys;
 use core::fmt;
@@ -15,10 +15,12 @@ pub static mut msrt_stack_limit: usize = 0;
 #[unsafe(no_mangle)]
 pub static msrt_cancel_flag: AtomicU8 = AtomicU8::new(0);
 
-pub static TABLES: Global<*const Tables> = Global::new(core::ptr::null());
-/// Lowest and highest valid stack addresses for frame walking (0 = unknown).
-pub static STACK_LO: Global<usize> = Global::new(0);
-pub static STACK_HI: Global<usize> = Global::new(0);
+pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
+/// Lowest and highest valid stack addresses for frame walking (0 = unknown). Process-wide until
+/// worker isolates exist: the Windows sampler thread and the `SIGPROF` handler read them from other
+/// threads (see `proposals/worker-threads.md`).
+pub static STACK_LO: Process<usize> = Process::new(0);
+pub static STACK_HI: Process<usize> = Process::new(0);
 
 /// Stack kept free below the limit for fault reporting and cleanups.
 const STACK_RESERVE_MAX: usize = 1 << 20;
@@ -90,15 +92,23 @@ pub(crate) unsafe fn set_stack_bounds(lo: usize, hi: usize) {
 }
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
-static CLEANUPS: Global<Vec<(usize, usize)>> = Global::new(Vec::new());
-pub(crate) static SHIELD: Global<u32> = Global::new(0);
+crate::isolate_static! {
+    static CLEANUPS: Vec<(usize, usize)> = Vec::new();
+}
+crate::isolate_static! {
+    pub(crate) static SHIELD: u32 = 0;
+}
 pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
-static FAULTING: Global<bool> = Global::new(false);
-static SECONDARY: Global<Vec<Vec<u8>>> = Global::new(Vec::new());
-
+crate::isolate_static! {
+    static FAULTING: bool = false;
+}
+crate::isolate_static! {
+    static SECONDARY: Vec<Vec<u8>> = Vec::new();
+}
+crate::isolate_static! {
 /// Stop request aimed at the running task (see `task`); 0 when none.
-static TASK_CANCEL: Global<u8> = Global::new(0);
-
+    static TASK_CANCEL: u8 = 0;
+}
 /// Value of `msrt_cancel_flag` when cancellation is not shielded.
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
@@ -633,8 +643,9 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
 #[cfg(not(test))]
 const SKIP_MARKER: &[u8] = b"\x01SKIP\x01";
 
-static PRIMARY: Global<Option<Vec<u8>>> = Global::new(None);
-
+crate::isolate_static! {
+    static PRIMARY: Option<Vec<u8>> = None;
+}
 fn finish_report(primary: Option<Vec<u8>>) -> ! {
     // SAFETY: single threaded access to the report state.
     let mut report = unsafe {
@@ -880,8 +891,9 @@ struct GuardFrame {
     trap: bool,
 }
 
-static GUARDS: Global<Vec<GuardFrame>> = Global::new(Vec::new());
-
+crate::isolate_static! {
+    static GUARDS: Vec<GuardFrame> = Vec::new();
+}
 /// Length of the cleanup stack below the innermost guard (0 outside guards).
 #[inline]
 fn guard_base() -> usize {
@@ -1201,8 +1213,8 @@ mod tests {
     use super::*;
     use crate::testutil::{fault_of, lock};
 
-    static LOG: Global<[u8; 8]> = Global::new([0; 8]);
-    static LOG_N: Global<usize> = Global::new(0);
+    static LOG: Process<[u8; 8]> = Process::new([0; 8]);
+    static LOG_N: Process<usize> = Process::new(0);
 
     #[test]
     fn native_frame_budget_counts_only_callers_after_the_anchor() {
