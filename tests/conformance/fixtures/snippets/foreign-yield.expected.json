@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'yield' is not a keyword; there are no generators, so build a list and return it",
+        "position": {
+          "file": "foreign-yield.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 130
+        },
+        "end": {
+          "file": "foreign-yield.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 135
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}
