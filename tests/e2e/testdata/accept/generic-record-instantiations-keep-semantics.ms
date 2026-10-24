@@ -1,4 +1,4 @@
-import {expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_true
 
 type Box[T]:
     v: T
@@ -8,13 +8,13 @@ type Pair[A, B]:
     first: A
     second: B
 
-fn wrap[T](value: T) Box[T]:
+def wrap[T](value: T) -> Box[T]:
     return Box[T](v: value, n: 1)
 
-fn unwrap[T](b: Box[T]) T:
+def unwrap[T](b: Box[T]) -> T:
     return b.v
 
-fn bump(b: Box[Int]) Int:
+def bump(b: Box[Int]) -> Int:
     return b.v + b.n
 
 test "generic records":

@@ -1,10 +1,10 @@
-import {expect_equal} from "@std/testing.ms"
-import {NormalizationForm, StringError} from "@std/string.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/string.ms" import NormalizationForm, StringError
 
-fn normalize(form: NormalizationForm, text: String) Result[String, StringError]:
+def normalize(form: NormalizationForm, text: String) -> Result[String, StringError]:
     return form.normalize(text)
 
-fn call[T](operation: fn(text: String, max_bytes: Optional[Int]) T, text: String) T:
+def call[T](operation: Callable[[String, Optional[Int]], T], text: String) -> T:
     return operation(text, none)
 
 test "typed Unicode forms retain normalization and bound dispatch":
@@ -19,10 +19,10 @@ test "typed Unicode forms retain normalization and bound dispatch":
         NormalizationForm.Nfkd
     ]:
         let spelling = match form:
-            Nfc: "NFC"
-            Nfd: "NFD"
-            Nfkc: "NFKC"
-            Nfkd: "NFKD"
+            case Nfc: "NFC"
+            case Nfd: "NFD"
+            case Nfkc: "NFKC"
+            case Nfkd: "NFKD"
 
         try expect_equal(form.normalize("ﬁé").get(), "ﬁé".normalize(spelling).get())
 

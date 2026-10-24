@@ -117,21 +117,19 @@ impl fmt::Debug for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.kind == Kind::Function {
-            f.write_str("fn(")?;
+            f.write_str("Callable[[")?;
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
-                write!(f, "{}: {}", a.name, a.ty)?;
-                if self.is_default(a.name) {
-                    f.write_str(" = ...")?;
-                }
+                write!(f, "{}", a.ty)?;
             }
-            f.write_str(") ")?;
-            return match &self.result {
-                Some(r) => write!(f, "{r}"),
-                None => f.write_str("<unknown>"),
-            };
+            f.write_str("], ")?;
+            match &self.result {
+                Some(r) => write!(f, "{r}")?,
+                None => f.write_str("<unknown>")?,
+            }
+            return f.write_char(']');
         }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {
@@ -538,6 +536,16 @@ pub fn test_outcome() -> Ty {
 /// Substitution of type variables by id.
 pub type Subst = HashMap<Name, Ty>;
 
+/// A `Callable[[...], R]` parameter has a synthetic positional name (`_0`, `_1`);
+/// parameter names are not part of identity for it.
+fn names_match(a: Name, b: Name) -> bool {
+    let synthetic = |n: Name| {
+        let s = n.as_str();
+        s.len() > 1 && s.starts_with('_') && s[1..].bytes().all(|c| c.is_ascii_digit())
+    };
+    a == b || synthetic(a) || synthetic(b)
+}
+
 /// Structural identity.
 pub fn same(a: &Ty, b: &Ty) -> bool {
     if Rc::ptr_eq(a, b) && a.args.is_empty() && a.params.is_empty() {
@@ -557,7 +565,7 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
     }
     if a.kind == Kind::Function {
         for (p, q) in a.params.iter().zip(&b.params) {
-            if p.name != q.name || !same(&p.ty, &q.ty) {
+            if !names_match(p.name, q.name) || !same(&p.ty, &q.ty) {
                 return false;
             }
         }
@@ -865,7 +873,7 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if p.name != q.name || !unify(&p.ty, &q.ty, vars, bindings) {
+            if !names_match(p.name, q.name) || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }

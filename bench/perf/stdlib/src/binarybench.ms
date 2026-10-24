@@ -1,14 +1,14 @@
-import range from "@std/collections.ms"
-import {bench, words} from "./harness.ms"
-import {base64_encode, base64_decode, hex_encode} from "@std/encoding.ms"
-import {sha256} from "@std/crypto.ms"
-import {BytesBuilder} from "@std/bytes.ms"
+from "@std/collections.ms" import range
+from "./harness.ms" import bench, words
+from "@std/encoding.ms" import base64_encode, base64_decode, hex_encode
+from "@std/crypto.ms" import sha256
+from "@std/bytes.ms" import BytesBuilder
 
-export fn bench_binary() Unit:
+export def bench_binary() -> Unit:
     let blob = words(20000).join(",").to_bytes()
     bench(
         "encoding.base64_encode", blob.length(),
-        fn() Int: return base64_encode(blob).length()
+        lambda () -> Int: return base64_encode(blob).length()
     )
 
     let b64 = base64_encode(blob)
@@ -16,7 +16,7 @@ export fn bench_binary() Unit:
     bench(
         "encoding.base64_decode",
         blob.length(),
-        fn() Int:
+        lambda () -> Int:
             if let b = base64_decode(b64):
                 return b.length()
 
@@ -24,14 +24,14 @@ export fn bench_binary() Unit:
     )
 
     bench(
-        "encoding.hex_encode", blob.length(), fn() Int: return hex_encode(blob).length()
+        "encoding.hex_encode", blob.length(), lambda () -> Int: return hex_encode(blob).length()
     )
-    bench("crypto.sha256", blob.length(), fn() Int: return sha256(blob).length())
+    bench("crypto.sha256", blob.length(), lambda () -> Int: return sha256(blob).length())
 
     bench(
         "bytes.builder",
         100000,
-        fn() Int:
+        lambda () -> Int:
             var bb = BytesBuilder()
             for j in range(0, 100000):
                 bb.append(j % 256)

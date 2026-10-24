@@ -1,6 +1,6 @@
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {from_scalars, StringBuilder} from "@std/string.ms"
-import {range} from "@std/collections.ms"
+from "@std/bytes.ms" import Bytes, BytesBuilder
+from "@std/string.ms" import from_scalars, StringBuilder
+from "@std/collections.ms" import range
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:
@@ -12,11 +12,11 @@ export type EncodingError:
     case LimitExceeded
 
 # Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
-export fn base64_decode(
+export def base64_decode(
     text: String,
-    url_safe: Bool = false,
+    url_safe: Bool = False,
     max_bytes: Optional[Int] = none
-) Result[Bytes, EncodingError]:
+) -> Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -67,7 +67,7 @@ export fn base64_decode(
     return ok(out.freeze())
 
 # Value of a Base64 digit in the chosen alphabet, or -1.
-fn base64_digit(byte: Int, url_safe: Bool) Int:
+def base64_digit(byte: Int, url_safe: Bool) -> Int:
     if byte >= 65 and byte <= 90: return byte - 65
     if byte >= 97 and byte <= 122: return byte - 71
     if byte >= 48 and byte <= 57: return byte + 4
@@ -84,19 +84,19 @@ fn base64_digit(byte: Int, url_safe: Bool) Int:
     return -1
 
 # One Base64 digit as text.
-fn base64_table(url_safe: Bool) List[String]:
+def base64_table(url_safe: Bool) -> List[String]:
     if url_safe: return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".chars()
 
     return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".chars()
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
-fn budget(max_bytes: Optional[Int]) Int:
+def budget(max_bytes: Optional[Int]) -> Int:
     if let limit = max_bytes: return limit
 
     return 9223372036854775807
 
 # Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
-export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
+export def base64_encode(data: Bytes, url_safe: Bool = False) -> String:
     var out = StringBuilder()
     let table = base64_table(url_safe)
     let bytes = data.values()
@@ -125,10 +125,10 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     return out.freeze()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
-export fn hex_decode(
+export def hex_decode(
     text: String,
     max_bytes: Optional[Int] = none
-) Result[Bytes, EncodingError]:
+) -> Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -149,7 +149,7 @@ export fn hex_decode(
     return ok(out.freeze())
 
 # Value of a hexadecimal digit of either case, or -1.
-fn hex_digit(byte: Int) Int:
+def hex_digit(byte: Int) -> Int:
     if byte >= 48 and byte <= 57: return byte - 48
     if byte >= 97 and byte <= 102: return byte - 87
     if byte >= 65 and byte <= 70: return byte - 55
@@ -157,7 +157,7 @@ fn hex_digit(byte: Int) Int:
     return -1
 
 # Encodes each byte as two lowercase hexadecimal digits.
-export fn hex_encode(data: Bytes) String:
+export def hex_encode(data: Bytes) -> String:
     var out = StringBuilder()
     let digits = "0123456789abcdef".chars()
 
@@ -169,15 +169,15 @@ export fn hex_encode(data: Bytes) String:
 
 impl Error for EncodingError:
     # Returns an encoding-prefixed diagnostic without echoing the encoded input.
-    fn message() String:
+    def message() -> String:
         match self:
-            InvalidInput: return "encoding: invalid input"
-            InvalidData: return "encoding: invalid data"
-            LimitExceeded: return "encoding: limit exceeded"
+            case InvalidInput: return "encoding: invalid input"
+            case InvalidData: return "encoding: invalid data"
+            case LimitExceeded: return "encoding: limit exceeded"
 
 # Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
 # No byte order mark is written.
-export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
+export def utf16_encode(text: String, little_endian: Bool = True) -> Bytes:
     var out = BytesBuilder()
 
     for scalar in text.scalar_values():
@@ -190,7 +190,7 @@ export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
 
     return out.freeze()
 
-fn append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) Unit:
+def append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) -> Unit:
     if little_endian:
         out.append(code % 256)
         out.append(code / 256)
@@ -199,25 +199,25 @@ fn append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) Unit:
         out.append(code % 256)
 
 # UTF-8 byte length of one scalar.
-fn utf8_length(scalar: Int) Int:
+def utf8_length(scalar: Int) -> Int:
     if scalar < 128: return 1
     if scalar < 2048: return 2
     if scalar < 65536: return 3
 
     return 4
 
-fn text_of(scalars: List[Int]) String:
+def text_of(scalars: List[Int]) -> String:
     if let text = from_scalars(scalars): return text
 
     return ""
 
 # Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
 # An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
-export fn utf16_decode(
+export def utf16_decode(
     data: Bytes,
-    little_endian: Bool = true,
+    little_endian: Bool = True,
     max_bytes: Optional[Int] = none
-) Result[String, EncodingError]:
+) -> Result[String, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -257,10 +257,10 @@ export fn utf16_decode(
     return ok(text_of(scalars))
 
 # Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
-export fn latin1_encode(text: String) Result[Bytes, EncodingError]:
+export def latin1_encode(text: String) -> Result[Bytes, EncodingError]:
     return narrow(text, 255)
 
-fn narrow(text: String, maximum: Int) Result[Bytes, EncodingError]:
+def narrow(text: String, maximum: Int) -> Result[Bytes, EncodingError]:
     var out = BytesBuilder()
 
     for scalar in text.scalar_values():
@@ -271,15 +271,15 @@ fn narrow(text: String, maximum: Int) Result[Bytes, EncodingError]:
     return ok(out.freeze())
 
 # Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
-export fn latin1_decode(data: Bytes) String:
+export def latin1_decode(data: Bytes) -> String:
     return text_of(data.values())
 
 # Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
-export fn ascii_encode(text: String) Result[Bytes, EncodingError]:
+export def ascii_encode(text: String) -> Result[Bytes, EncodingError]:
     return narrow(text, 127)
 
 # Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
-export fn ascii_decode(data: Bytes) Result[String, EncodingError]:
+export def ascii_decode(data: Bytes) -> Result[String, EncodingError]:
     let bytes = data.values()
     for byte in bytes:
         if byte > 127: return error(EncodingError.InvalidData)

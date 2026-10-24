@@ -26,27 +26,27 @@ export type NormalizationForm:
 impl NormalizationForm:
     # Normalizes text with the existing String.normalize budgets and StringError cases.
     # Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
-    fn normalize(
+    def normalize(
         text: String,
         max_bytes: Optional[Int] = none
-    ) Result[String, StringError]:
+    ) -> Result[String, StringError]: ...
 
 # Builds text from Unicode scalar values. Invalid scalars return `InvalidInput`.
-export fn from_scalars(values: List[Int]) Result[String, StringError]:
+export def from_scalars(values: List[Int]) -> Result[String, StringError]: ...
 
 impl Error for StringError:
     # Returns original Failed text, or a string-prefixed diagnostic for other cases.
-    fn message() String:
+    def message() -> String: ...
 
 # Mutable builder for constructing a string without repeated intermediate copies.
-export type StringBuilder:
+export type StringBuilder: ...
 
 impl StringBuilder:
     # Appends the supplied text in order; mutation after freeze raises a sealed-builder fault.
-    fn append(value: String) Unit:
+    def append(value: String) -> Unit: ...
 
     # Seals the builder and returns immutable text; repeated freeze returns the same text value.
-    fn freeze() String:
+    def freeze() -> String: ...
 
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:
@@ -58,58 +58,58 @@ export type RegexError:
     case LimitExceeded
 
 # A compiled regular expression that can be reused across input strings.
-export type Regex:
+export type Regex: ...
 
 impl Regex:
     # Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
-    fn matches(text: String) Bool:
+    def matches(text: String) -> Bool: ...
 
     # Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
     # A supplied cap is a strict budget, not truncation; zero-width matches follow native regexp rules.
-    fn find_all(
+    def find_all(
         text: String,
         max_matches: Optional[Int] = none
-    ) Result[List[String], RegexError]:
+    ) -> Result[List[String], RegexError]: ...
 
     # Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
     # max_bytes optionally bounds UTF-8 output; negatives return InvalidInput, exhaustion LimitExceeded.
-    fn replace_all(
+    def replace_all(
         text: String,
         replacement: String,
         max_bytes: Optional[Int] = none
-    ) Result[String, RegexError]:
+    ) -> Result[String, RegexError]: ...
 
     # Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
-    fn captures(text: String) List[String]:
+    def captures(text: String) -> List[String]: ...
 
     # Like captures for every nonoverlapping match, under find_all's match-count budget.
-    fn captures_all(
+    def captures_all(
         text: String,
         max_matches: Optional[Int] = none
-    ) Result[List[List[String]], RegexError]:
+    ) -> Result[List[List[String]], RegexError]: ...
 
     # Returns the first match's named groups that participated; empty map when nothing matches.
-    fn named_captures(text: String) Map[String, String]:
+    def named_captures(text: String) -> Map[String, String]: ...
 
     # Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing matches.
-    fn find_span(text: String) Optional[List[Int]]:
+    def find_span(text: String) -> Optional[List[Int]]: ...
 
     # Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
-    fn split(
+    def split(
         text: String,
         max_pieces: Optional[Int] = none
-    ) Result[List[String], RegexError]:
+    ) -> Result[List[String], RegexError]: ...
 
     # Like replace_all but expands $1, ${name}, and $$ in template from each match (Rust regex syntax: use ${1}x, not $1x).
-    fn replace_template(
+    def replace_template(
         text: String,
         template: String,
         max_bytes: Optional[Int] = none
-    ) Result[String, RegexError]:
+    ) -> Result[String, RegexError]: ...
 
 # Compiles a regular expression. Invalid pattern syntax is returned as an error.
-export fn compile(pattern: String) Result[Regex, RegexError]:
+export def compile(pattern: String) -> Result[Regex, RegexError]: ...
 
 impl Error for RegexError:
     # Returns a regular-expression-prefixed diagnostic without echoing pattern or input text.
-    fn message() String:
+    def message() -> String: ...

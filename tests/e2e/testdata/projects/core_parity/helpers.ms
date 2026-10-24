@@ -1,35 +1,35 @@
-export fn transform_set[T: Hashable, U: Hashable](
+export def transform_set[T: Hashable, U: Hashable](
     values: Set[T],
-    transform: fn(value: T) U
-) Set[U]:
+    transform: Callable[[T], U]
+) -> Set[U]:
     return values.map[U](transform)
 
-export fn lookup[K: Hashable, V](values: Map[K, V], key: K, fallback: V) V:
+export def lookup[K: Hashable, V](values: Map[K, V], key: K, fallback: V) -> V:
     let get = values.get_or
     return get(key, fallback)
 
-export fn locate_map[K: Hashable, V](
+export def locate_map[K: Hashable, V](
     values: Map[K, V],
     needle: K
-) Optional[MapEntry[K, V]]:
+) -> Optional[MapEntry[K, V]]:
     let find = values.find
-    return find(fn(key, value): key == needle)
+    return find(lambda key, value: key == needle)
 
-export fn locate_set[T: Hashable](values: Set[T], needle: T) Optional[T]:
+export def locate_set[T: Hashable](values: Set[T], needle: T) -> Optional[T]:
     let find = values.find
-    return find(fn(value): value == needle)
+    return find(lambda value: value == needle)
 
-export fn convert[T, E: Error](value: Optional[T], create: fn() E) Result[T, E]:
+export def convert[T, E: Error](value: Optional[T], create: Callable[[], E]) -> Result[T, E]:
     return value.ok_or_else[E](create)
 
-export fn remap_keys[K: Hashable, V, W: Hashable](
+export def remap_keys[K: Hashable, V, W: Hashable](
     values: Map[K, V],
-    transform: fn(key: K, value: V) W
-) Map[W, V]:
+    transform: Callable[[K, V], W]
+) -> Map[W, V]:
     return values.map_keys[W](transform)
 
-export fn remap_values[K: Hashable, V, W](
+export def remap_values[K: Hashable, V, W](
     values: Map[K, V],
-    transform: fn(key: K, value: V) W
-) Map[K, W]:
+    transform: Callable[[K, V], W]
+) -> Map[K, W]:
     return values.map[W](transform)

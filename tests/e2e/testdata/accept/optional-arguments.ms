@@ -1,21 +1,21 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Queue from "@std/queue.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/queue.ms" import Queue
 
-fn number(value: Optional[Int] = none) Int: value.get(-1)
+def number(value: Optional[Int] = none) -> Int: value.get(-1)
 
-fn present[T](value: Optional[T]) Optional[T]: value
+def present[T](value: Optional[T]) -> Optional[T]: value
 
-fn nested(value: Optional[Optional[Int]]) Bool: value.get().is_none()
+def nested(value: Optional[Optional[Int]]) -> Bool: value.get().is_none()
 
-fn list_size(value: Optional[List[Int]]) Int: value.get().length()
+def list_size(value: Optional[List[Int]]) -> Int: value.get().length()
 
-fn flag(value: Optional[Bool]) Bool: value.get()
+def flag(value: Optional[Bool]) -> Bool: value.get()
 
-fn success(value: Optional[Result[Int, TextError]]) Int:
+def success(value: Optional[Result[Int, TextError]]) -> Int:
     return value.get().get(-1)
 
-fn context[T](value: Optional[T], fallback: T) T:
+def context[T](value: Optional[T], fallback: T) -> T:
     if let inner = value:
         return inner
 
@@ -25,7 +25,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    def message() -> String: self.detail
 
 type Notice:
     failure: Optional[Error]
@@ -40,29 +40,29 @@ type Choice[T]:
     case chosen(value: Optional[T])
 
 interface Read:
-    fn read(value: Optional[Int]) Int
+    def read(value: Optional[Int]) -> Int
 
 type Reader:
     offset: Int
 
 impl Read for Reader:
-    fn read(value: Optional[Int]) Int: value.get(0) + self.offset
+    def read(value: Optional[Int]) -> Int: value.get(0) + self.offset
 
 type Counter:
     calls: Int
 
-fn next(var counter: Counter) Int:
+def next(var counter: Counter) -> Int:
     counter.calls += 1
     return counter.calls
 
-fn ordered(first: Optional[Int], second: Optional[Int]) Int:
+def ordered(first: Optional[Int], second: Optional[Int]) -> Int:
     return first.get() * 10 + second.get()
 
-fn invoke(value: Optional[fn(value: Int) Int]) Int: value.get()(4)
+def invoke(value: Optional[Callable[[Int], Int]]) -> Int: value.get()(4)
 
-fn increment(value: Int) Int: value + 1
+def increment(value: Int) -> Int: value + 1
 
-fn calls_of(value: Optional[Counter]) Int: value.get().calls
+def calls_of(value: Optional[Counter]) -> Int: value.get().calls
 
 test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
@@ -73,7 +73,7 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(number(), -1)
     try expect_equal(number(), -1)
 
-    let stored: fn(value: Optional[Int]) Int = number
+    let stored: Callable[[Optional[Int]], Int] = number
     try expect_equal(stored(5), 5)
     try expect_equal(present(6).get(), 6)
     try expect_equal(present[Int](7).get(), 7)
@@ -91,10 +91,10 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(context(value: none, fallback: 9), 9)
     try expect_equal(context(value: [], fallback: [1]).length(), 0)
     try expect_equal(success(ok(10)), 10)
-    try expect_false(flag(false))
-    try expect_false(flag(true and false))
+    try expect_false(flag(False))
+    try expect_false(flag(True and False))
     try expect_equal(invoke(increment), 5)
-    try expect_equal(invoke(fn(value): value + 2), 6)
+    try expect_equal(invoke(lambda value: value + 2), 6)
 
 test "constructor fields and methods use optional arguments":
     let defaulted = DefaultBox()
@@ -109,7 +109,7 @@ test "constructor fields and methods use optional arguments":
     let choice = Choice.chosen(5)
 
     match choice:
-        chosen(value):
+        case chosen(value):
             try expect_equal(value.get(), 5)
 
     let reader = Reader(2)

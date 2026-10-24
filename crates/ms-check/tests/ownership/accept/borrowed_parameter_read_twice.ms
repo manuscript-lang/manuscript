@@ -1,5 +1,5 @@
-fn total(xs: List[Int]) Int:
+def total(xs: List[Int]) -> Int:
     return xs.length()
 
-fn f(xs: List[Int]) Int:
+def f(xs: List[Int]) -> Int:
     return total(xs) + total(xs)

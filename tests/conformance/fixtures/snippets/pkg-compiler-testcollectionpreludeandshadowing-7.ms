@@ -4,5 +4,5 @@
 type Map[K, V]:
     value: V
 
-fn f() Unit:
+def f() -> Unit:
     let xs = {1: 2}

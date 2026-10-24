@@ -5,6 +5,6 @@ type Optional[T]:
     case some(value: T)
     case none
 
-fn f(value: Optional[Int]) Unit: return
+def f(value: Optional[Int]) -> Unit: return
 
-fn call() Unit: f(4)
+def call() -> Unit: f(4)

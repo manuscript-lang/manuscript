@@ -1,7 +1,7 @@
 # conform: tags=alternatives,match,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-2.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type Items:
     count: Int
@@ -9,10 +9,10 @@ type Items:
 type Outcome:
     case Value(value: Int)
 
-fn compute(value: Int) Int:
+def compute(value: Int) -> Int:
     return value
 
-fn ordinary() Outcome:
+def ordinary() -> Outcome:
     return Outcome.Value(compute(3))
 
 test "non-prelude spellings are ordinary names":
@@ -22,5 +22,5 @@ test "non-prelude spellings are ordinary names":
     try expect_equal(forward(4), 4)
 
     match ordinary():
-        Value(value):
+        case Value(value):
             try expect_equal(value, 3)

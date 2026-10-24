@@ -1,9 +1,9 @@
 # conform: tags=lists,faults,perf,tier-core
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
-import {stdout} from "@std/io.ms"
+from "@std/io.ms" import stdout
 
-fn search(a: List[Int], want: Int) Int:
+def search(a: List[Int], want: Int) -> Int:
     var lo = 0
     var hi = a.length()
     while lo <= hi:
@@ -16,6 +16,6 @@ fn search(a: List[Int], want: Int) Int:
             hi = mid - 1
     return -1
 
-export fn main() Int:
-    stdout().write("{search([1, 3, 5], 9)}\n")
+export def main() -> Int:
+    stdout().write(f"{search([1, 3, 5], 9)}\n")
     return 0

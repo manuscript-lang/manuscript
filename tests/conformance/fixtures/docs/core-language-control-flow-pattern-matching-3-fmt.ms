@@ -5,9 +5,9 @@ type Position:
     case Point(x: Int, y: Int)
     case Unknown
 
-fn horizontal(position: Position) Int:
+def horizontal(position: Position) -> Int:
     match position:
-        Position.Point(horizontal_value, _):
+        case Position.Point(horizontal_value, _):
             return horizontal_value
-        Position.Unknown:
+        case Position.Unknown:
             return 0

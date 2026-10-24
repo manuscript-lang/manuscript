@@ -4,5 +4,5 @@
 export type Identity:
     value: Int
 
-export fn read(value: Identity) Int:
+export def read(value: Identity) -> Int:
     return value.value

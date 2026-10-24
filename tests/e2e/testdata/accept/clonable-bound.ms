@@ -1,10 +1,10 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type Pair:
     left: String
     right: List[Int]
 
-fn twice[T: Clonable](value: T) List[T]:
+def twice[T: Clonable](value: T) -> List[T]:
     return [value.clone(), value]
 
 test "a Clonable bound allows clone on a type parameter":

@@ -1,6 +1,6 @@
-import {expect_equal} from "@std/testing.ms"
-import {Decimal, RoundingMode} from "@std/decimal.ms"
-import NumberError from "@std/math.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/decimal.ms" import Decimal, RoundingMode
+from "@std/math.ms" import NumberError
 
 test "decimal cents stay exact and fixed places retain zeros":
     let total = 19.99d * 3d
@@ -10,7 +10,7 @@ test "decimal cents stay exact and fixed places retain zeros":
     try expect_equal((try (total + tax).to_fixed(2)), "64.92")
     try expect_equal((try 25.50d.to_fixed(2)), "25.50")
     try expect_equal((try 9007199254740993.125d.to_fixed(2)), "9007199254740993.12")
-    try expect_equal("{25.50d}", "25.5")
+    try expect_equal(f"{25.50d}", "25.5")
     try expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)
 
 test "decimal rounding modes include signed ties and coarse scales":
@@ -28,9 +28,9 @@ test "decimal rounding modes include signed ties and coarse scales":
     let fixed = 25.5d.to_fixed
     try expect_equal((try fixed(2)), "25.50")
 
-    let rounded: fn(places: Int, mode: Optional[RoundingMode]) Result[
+    let rounded: Callable[[Int, Optional[RoundingMode]], Result[
         Decimal, NumberError
-    ] = 2.5d.round
+    ]] = 2.5d.round
     try expect_equal((try rounded(0, RoundingMode.HalfEven)), 2d)
 
 test "decimal scale extremes and invalid requests return typed errors":

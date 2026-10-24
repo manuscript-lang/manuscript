@@ -1,5 +1,5 @@
-import {read_lines} from "@std/streams.ms"
-import {stdin, stdout} from "@std/io.ms"
+from "@std/streams.ms" import read_lines
+from "@std/io.ms" import stdin, stdout
 
 type Line:
     sku: String
@@ -15,33 +15,33 @@ type Shop:
     price: Map[String, Int] = Map[String, Int]()
     orders: Map[String, Order] = Map[String, Order]()
 
-fn emit(text: String) Unit:
-    stdout().write("{text}\n").get()
+def emit(text: String) -> Unit:
+    stdout().write(f"{text}\n").get()
 
-fn is_upper_digit_dash(value: Int) Bool: (
+def is_upper_digit_dash(value: Int) -> Bool: (
     (value >= 65 and value <= 90)
     or (value >= 48 and value <= 57)
     or value == 45
 )
 
-fn is_lower_digit_dash(value: Int) Bool: (
+def is_lower_digit_dash(value: Int) -> Bool: (
     (value >= 97 and value <= 122)
     or (value >= 48 and value <= 57)
     or value == 45
 )
 
-fn is_digit(value: Int) Bool: value >= 48 and value <= 57
+def is_digit(value: Int) -> Bool: value >= 48 and value <= 57
 
-fn is_sku(s: String) Bool:
+def is_sku(s: String) -> Bool:
     return not s.is_empty() and s.scalar_values().every(is_upper_digit_dash)
 
-fn is_order_id(s: String) Bool:
+def is_order_id(s: String) -> Bool:
     return not s.is_empty() and s.scalar_values().every(is_lower_digit_dash)
 
-fn is_number(s: String) Bool:
+def is_number(s: String) -> Bool:
     return s.length() >= 1 and s.length() <= 7 and s.scalar_values().every(is_digit)
 
-fn parse_cents(s: String) Optional[Int]:
+def parse_cents(s: String) -> Optional[Int]:
     if not is_number(s): return none
 
     let cents = s.parse_int().get()
@@ -49,7 +49,7 @@ fn parse_cents(s: String) Optional[Int]:
 
     return some(cents)
 
-fn parse_qty(s: String) Optional[Int]:
+def parse_qty(s: String) -> Optional[Int]:
     if not is_number(s): return none
 
     let qty = s.parse_int().get()
@@ -57,18 +57,18 @@ fn parse_qty(s: String) Optional[Int]:
 
     return some(qty)
 
-fn money(cents: Int) String:
+def money(cents: Int) -> String:
     let frac = cents % 100
-    if frac < 10: return "{cents / 100}.0{frac}"
+    if frac < 10: return f"{cents / 100}.0{frac}"
 
-    return "{cents / 100}.{frac}"
+    return f"{cents / 100}.{frac}"
 
-fn line_cost(qty: Int, price: Int) Int:
+def line_cost(qty: Int, price: Int) -> Int:
     if qty >= 10: return (qty * price * 90 + 50) / 100
 
     return qty * price
 
-fn cmd_stock(var shop: Shop, parts: List[String]) Unit:
+def cmd_stock(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() != 3:
         emit("error: usage")
         return
@@ -83,11 +83,11 @@ fn cmd_stock(var shop: Shop, parts: List[String]) Unit:
         let stock = shop.stock.get_or(sku, 0) + qty
         if not shop.stock.contains(sku): shop.price.add(sku, 0)
         shop.stock.add(sku, stock)
-        emit("ok {sku} stock={stock}")
+        emit(f"ok {sku} stock={stock}")
     else:
         emit("error: bad quantity")
 
-fn cmd_price(var shop: Shop, parts: List[String]) Unit:
+def cmd_price(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() != 3:
         emit("error: usage")
         return
@@ -96,7 +96,7 @@ fn cmd_price(var shop: Shop, parts: List[String]) Unit:
         let sku = parts[1]
 
         if not shop.stock.contains(sku):
-            emit("error: unknown sku {sku}")
+            emit(f"error: unknown sku {sku}")
             return
 
         shop.price.add(sku, cents)
@@ -104,7 +104,7 @@ fn cmd_price(var shop: Shop, parts: List[String]) Unit:
     else:
         emit("error: bad price")
 
-fn cmd_order(var shop: Shop, parts: List[String]) Unit:
+def cmd_order(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() < 3:
         emit("error: usage")
         return
@@ -121,17 +121,17 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
         let pieces = token.split(":")
 
         if pieces.length() != 2 or not is_sku(pieces[0]):
-            emit("error: bad item {token}")
+            emit(f"error: bad item {token}")
             return
 
         if let qty = parse_qty(pieces[1]):
             lines.append(Line(sku: pieces[0], qty: qty))
         else:
-            emit("error: bad item {token}")
+            emit(f"error: bad item {token}")
             return
 
     if shop.orders.contains(id):
-        emit("error: order {id} already exists")
+        emit(f"error: order {id} already exists")
         return
 
     var seen = Set[String]()
@@ -139,20 +139,20 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
 
     for line in lines:
         if seen.contains(line.sku):
-            emit("error: duplicate sku {line.sku}")
+            emit(f"error: duplicate sku {line.sku}")
             return
 
         seen.add(line.sku)
 
         if not shop.stock.contains(line.sku):
-            emit("error: unknown sku {line.sku}")
+            emit(f"error: unknown sku {line.sku}")
             return
 
         let stock = shop.stock.get_or(line.sku, 0)
 
         if line.qty > stock:
             emit(
-                "error: insufficient stock for {line.sku} (have {stock}, need {line.qty})"
+                f"error: insufficient stock for {line.sku} (have {stock}, need {line.qty})"
             )
             return
 
@@ -161,9 +161,9 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
     for line in lines:
         shop.stock.add(line.sku, shop.stock.get_or(line.sku, 0) - line.qty)
     shop.orders.add(id, Order(status: "placed", total: total, lines: lines))
-    emit("ok {id} total={money(total)}")
+    emit(f"ok {id} total={money(total)}")
 
-fn cmd_cancel(var shop: Shop, parts: List[String]) Unit:
+def cmd_cancel(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() != 2:
         emit("error: usage")
         return
@@ -171,17 +171,17 @@ fn cmd_cancel(var shop: Shop, parts: List[String]) Unit:
     let id = parts[1]
 
     if not shop.orders.contains(id):
-        emit("error: unknown order {id}")
+        emit(f"error: unknown order {id}")
         return
 
     let order = shop.orders.get(id).get()
 
     if order.status == "shipped":
-        emit("error: order {id} already shipped")
+        emit(f"error: order {id} already shipped")
         return
 
     if order.status == "cancelled":
-        emit("error: order {id} already cancelled")
+        emit(f"error: order {id} already cancelled")
         return
 
     for line in order.lines:
@@ -196,7 +196,7 @@ fn cmd_cancel(var shop: Shop, parts: List[String]) Unit:
     )
     emit("ok")
 
-fn cmd_ship(var shop: Shop, parts: List[String]) Unit:
+def cmd_ship(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() != 2:
         emit("error: usage")
         return
@@ -204,17 +204,17 @@ fn cmd_ship(var shop: Shop, parts: List[String]) Unit:
     let id = parts[1]
 
     if not shop.orders.contains(id):
-        emit("error: unknown order {id}")
+        emit(f"error: unknown order {id}")
         return
 
     let order = shop.orders.get(id).get()
 
     if order.status == "shipped":
-        emit("error: order {id} already shipped")
+        emit(f"error: order {id} already shipped")
         return
 
     if order.status == "cancelled":
-        emit("error: order {id} is cancelled")
+        emit(f"error: order {id} is cancelled")
         return
 
     (
@@ -229,7 +229,7 @@ fn cmd_ship(var shop: Shop, parts: List[String]) Unit:
     )
     emit("ok")
 
-fn cmd_report(var shop: Shop, parts: List[String]) Unit:
+def cmd_report(var shop: Shop, parts: List[String]) -> Unit:
     if parts.length() != 1:
         emit("error: usage")
         return
@@ -253,17 +253,17 @@ fn cmd_report(var shop: Shop, parts: List[String]) Unit:
         if order.status == "cancelled":
             cancelled += 1
 
-    for sku in shop.stock.keys().sorted(fn(a: String, b: String) Int: a.compare(b)):
+    for sku in shop.stock.keys().sorted(lambda (a: String, b: String) -> Int: a.compare(b)):
         let stock = shop.stock.get_or(sku, 0)
         let price = shop.price.get_or(sku, 0)
         emit(
-            "{sku} stock={stock} price={money(price)} reserved={reserved.get_or(sku, 0)}"
+            f"{sku} stock={stock} price={money(price)} reserved={reserved.get_or(sku, 0)}"
         )
 
-    emit("orders placed={placed} shipped={shipped} cancelled={cancelled}")
-    emit("revenue={money(revenue)}")
+    emit(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
+    emit(f"revenue={money(revenue)}")
 
-fn run(var shop: Shop, text: String) Unit:
+def run(var shop: Shop, text: String) -> Unit:
     if text.replace(" ", "").is_empty(): return
 
     let parts = text.split(" ")
@@ -271,20 +271,20 @@ fn run(var shop: Shop, text: String) Unit:
 
     if name == "stock":
         cmd_stock(var shop, parts)
-    else if name == "price":
+    elif name == "price":
         cmd_price(var shop, parts)
-    else if name == "order":
+    elif name == "order":
         cmd_order(var shop, parts)
-    else if name == "cancel":
+    elif name == "cancel":
         cmd_cancel(var shop, parts)
-    else if name == "ship":
+    elif name == "ship":
         cmd_ship(var shop, parts)
-    else if name == "report":
+    elif name == "report":
         cmd_report(var shop, parts)
     else:
         emit("error: unknown command")
 
-export fn main() Int:
+export def main() -> Int:
     var shop = Shop()
     for text in read_lines(stdin()).get():
         run(var shop, text)

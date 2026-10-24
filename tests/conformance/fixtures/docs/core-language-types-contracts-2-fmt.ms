@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/contracts.md:21
 interface Increment:
-    fn apply(value: Int) Int
+    def apply(value: Int) -> Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) Int:
+    def apply(value: Int) -> Int:
         return value + self.delta

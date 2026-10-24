@@ -1,79 +1,79 @@
-import {expect_contains, expect_equal, expect_fault, expect_true} from "@std/testing.ms"
-import StringBuilder from "@std/string.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault, expect_true
+from "@std/string.ms" import StringBuilder
 
-fn add(a: Int, b: Int) Int: return a + b
+def add(a: Int, b: Int) -> Int: return a + b
 
-fn subtract(a: Int, b: Int) Int: return a - b
+def subtract(a: Int, b: Int) -> Int: return a - b
 
-fn multiply(a: Int, b: Int) Int: return a * b
+def multiply(a: Int, b: Int) -> Int: return a * b
 
-fn divide(a: Int, b: Int) Int: return a / b
+def divide(a: Int, b: Int) -> Int: return a / b
 
-fn remainder(a: Int, b: Int) Int: return a % b
+def remainder(a: Int, b: Int) -> Int: return a % b
 
-fn negate(a: Int) Int: return -a
+def negate(a: Int) -> Int: return -a
 
-fn flip(a: Float) Float: return -a
+def flip(a: Float) -> Float: return -a
 
 test "add high overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = add(a: 9223372036854775807, b: 1)
     )
     message | try expect_contains("Int overflow;")
 
 test "add low overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = add(a: -9223372036854775808, b: -1)
     )
     message | try expect_contains("Int overflow;")
 
 test "subtract high overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = subtract(a: 9223372036854775807, b: -1)
     )
     message | try expect_contains("Int overflow;")
 
 test "subtract low overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = subtract(a: -9223372036854775808, b: 1)
     )
     message | try expect_contains("Int overflow;")
 
 test "multiply high overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = multiply(a: 9223372036854775807, b: 2)
     )
     message | try expect_contains("Int overflow;")
 
 test "multiply minimum overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = multiply(a: -9223372036854775808, b: -1)
     )
     message | try expect_contains("Int overflow;")
 
 test "divide minimum overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = divide(a: -9223372036854775808, b: -1)
     )
     message | try expect_contains("Int./: overflow;")
 
 test "divide by zero faults":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = divide(a: 1, b: 0)
     )
     message | try expect_contains("division by zero;")
 
 test "remainder by zero faults":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = remainder(a: 1, b: 0)
     )
     message | try expect_contains("remainder by zero;")
@@ -94,7 +94,7 @@ test "negation":
 
 test "negating the minimum overflows":
     let message = try expect_fault(
-        fn():
+        lambda:
             let bad = negate(a: -9223372036854775808)
     )
     message | try expect_contains("Int overflow;")

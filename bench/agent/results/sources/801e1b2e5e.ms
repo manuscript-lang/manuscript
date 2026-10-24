@@ -1,4 +1,4 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+from "@std/io.ms" import read_all, stdin, stdout
 
 type Token:
     case Num(value: Int)
@@ -10,63 +10,63 @@ type Parsed:
     zero_division: Bool
 
 # Splits one line into tokens; `none` means an unknown character was found.
-fn tokenize(line: String) Optional[List[Token]]:
+def tokenize(line: String) -> Optional[List[Token]]:
     var tokens = List[Token]()
     var value = 0
-    var in_number = false
+    var in_number = False
 
     for code in line.scalar_values():
         if code >= 48 and code <= 57:
             value = value * 10 + (code - 48)
-            in_number = true
+            in_number = True
         else:
             if in_number:
                 tokens.append(Num(value: value))
                 value = 0
-                in_number = false
+                in_number = False
 
             if code == 43:
                 tokens.append(Op(symbol: "+"))
-            else if code == 45:
+            elif code == 45:
                 tokens.append(Op(symbol: "-"))
-            else if code == 42:
+            elif code == 42:
                 tokens.append(Op(symbol: "*"))
-            else if code == 47:
+            elif code == 47:
                 tokens.append(Op(symbol: "/"))
-            else if code == 40:
+            elif code == 40:
                 tokens.append(Op(symbol: "("))
-            else if code == 41:
+            elif code == 41:
                 tokens.append(Op(symbol: ")"))
-            else if code != 32 and code != 9:
+            elif code != 32 and code != 9:
                 return none
 
     if in_number:
         tokens.append(Num(value: value))
     return some(tokens)
 
-fn number_at(tokens: List[Token], pos: Int) Optional[Int]:
+def number_at(tokens: List[Token], pos: Int) -> Optional[Int]:
     if pos >= tokens.length():
         return none
 
     match tokens.get(pos):
-        Num(value):
+        case Num(value):
             return some(value)
-        _:
+        case _:
             return none
 
-fn symbol_at(tokens: List[Token], pos: Int) String:
+def symbol_at(tokens: List[Token], pos: Int) -> String:
     if pos >= tokens.length():
         return ""
 
     match tokens.get(pos):
-        Op(symbol):
+        case Op(symbol):
             return symbol
-        _:
+        case _:
             return ""
 
-fn parse_primary(tokens: List[Token], pos: Int) Optional[Parsed]:
+def parse_primary(tokens: List[Token], pos: Int) -> Optional[Parsed]:
     if let value = number_at(tokens, pos):
-        return some(Parsed(value: value, next: pos + 1, zero_division: false))
+        return some(Parsed(value: value, next: pos + 1, zero_division: False))
     if symbol_at(tokens, pos) != "(":
         return none
 
@@ -80,7 +80,7 @@ fn parse_primary(tokens: List[Token], pos: Int) Optional[Parsed]:
             )
     return none
 
-fn parse_unary(tokens: List[Token], pos: Int) Optional[Parsed]:
+def parse_unary(tokens: List[Token], pos: Int) -> Optional[Parsed]:
     if symbol_at(tokens, pos) == "-":
         if let operand = parse_unary(tokens, pos + 1):
             return some(
@@ -94,7 +94,7 @@ fn parse_unary(tokens: List[Token], pos: Int) Optional[Parsed]:
 
     return parse_primary(tokens, pos)
 
-fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
+def product_rest(tokens: List[Token], left: Parsed) -> Optional[Parsed]:
     let symbol = symbol_at(tokens, left.next)
     if symbol != "*" and symbol != "/":
         return some(left)
@@ -111,7 +111,7 @@ fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
             )
         if right.value == 0:
             return product_rest(
-                tokens, Parsed(value: 0, next: right.next, zero_division: true)
+                tokens, Parsed(value: 0, next: right.next, zero_division: True)
             )
 
         return product_rest(
@@ -123,13 +123,13 @@ fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
 
     return none
 
-fn parse_product(tokens: List[Token], pos: Int) Optional[Parsed]:
+def parse_product(tokens: List[Token], pos: Int) -> Optional[Parsed]:
     if let first = parse_unary(tokens, pos):
         return product_rest(tokens, first)
 
     return none
 
-fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
+def sum_rest(tokens: List[Token], left: Parsed) -> Optional[Parsed]:
     let symbol = symbol_at(tokens, left.next)
     if symbol != "+" and symbol != "-":
         return some(left)
@@ -154,25 +154,25 @@ fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
 
     return none
 
-fn parse_sum(tokens: List[Token], pos: Int) Optional[Parsed]:
+def parse_sum(tokens: List[Token], pos: Int) -> Optional[Parsed]:
     if let first = parse_product(tokens, pos):
         return sum_rest(tokens, first)
 
     return none
 
 # Returns the output line for one non-blank input line.
-fn evaluate(line: String) String:
+def evaluate(line: String) -> String:
     if let tokens = tokenize(line):
         if let parsed = parse_sum(tokens, 0):
             if parsed.next == tokens.length():
                 if parsed.zero_division:
                     return "error: division by zero"
 
-                return "{parsed.value}"
+                return f"{parsed.value}"
 
     return "error: syntax"
 
-export fn main() Int:
+export def main() -> Int:
     let bytes = read_all(stdin()).get()
     let text = bytes.decode_utf8().get("")
     var output = List[String]()
@@ -184,7 +184,7 @@ export fn main() Int:
         output.append(evaluate(line))
 
     if output.length() > 0:
-        stdout().write("{output.join("\n")}\n").get()
+        stdout().write(f"{output.join("\n")}\n").get()
         stdout().flush().get()
 
     return 0

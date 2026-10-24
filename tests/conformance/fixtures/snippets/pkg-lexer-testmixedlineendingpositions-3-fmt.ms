@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/lexer/positions_test.go:17 TestMixedLineEndingPositions
 # first
-fn value() Int:
+def value() -> Int:
     return 1

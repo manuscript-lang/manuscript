@@ -2,9 +2,9 @@ type Tree:
     case Leaf
     case Node(left: Tree, value: Int)
 
-fn mirror(t: Tree) Tree:
+def mirror(t: Tree) -> Tree:
     match t:
-        Node(l, v):
+        case Node(l, v):
             return Node(left: mirror(l), value: v)
-        Leaf:
+        case Leaf:
             return Leaf

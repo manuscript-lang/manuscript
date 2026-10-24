@@ -1,9 +1,9 @@
 # conform: tags=closures,faults,lists,modules,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/optional-members-call-directly.ms
-import {expect_equal, expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_true
 
-fn fallback() Int: 9
+def fallback() -> Int: 9
 
 test "optional members":
     let present = some(3)
@@ -15,11 +15,11 @@ test "optional members":
     try expect_true(
         (
             absent.or_else(
-                create: fn() Optional[Int]: some(fallback())
+                create: lambda () -> Optional[Int]: some(fallback())
             ).get() == 9
         )
     )
-    try expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))
+    try expect_true((present.map(lambda (value: Int) -> Int: value + 1).get() == 4))
 
     var items = List[Int]()
     try expect_equal(items.get(index: 0, default: -1), -1)

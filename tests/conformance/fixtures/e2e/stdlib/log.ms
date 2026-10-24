@@ -1,16 +1,16 @@
 # conform: tags=aliasing,control-flow,diagnostics,interfaces,interpolation,lists,modules,optional,records,stdlib-bytes,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/log.ms
-import {expect_equal, expect_error, expect_false} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/log.ms" import (
     Transport, LogLevel, LogError, create, record, bind, stream_transport,
     stdout_transport, file_transport
-} from "@std/log.ms"
-import {WriteStream, IoError} from "@std/io.ms"
-import JsonValue from "@std/json.ms"
-import {filesystem, FileSystemError} from "@std/fs.ms"
-import Bytes from "@std/bytes.ms"
-import MemoryStream from "./support/streams.ms"
+)
+from "@std/io.ms" import WriteStream, IoError
+from "@std/json.ms" import JsonValue
+from "@std/fs.ms" import filesystem, FileSystemError
+from "@std/bytes.ms" import Bytes
+from "./support/streams.ms" import MemoryStream
 
 type Items:
     items: List[Optional[Int]]
@@ -24,37 +24,37 @@ type Payload:
     time: Int
 
 test "logger writes typed escaped records and protects metadata":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport, timestamp: false)
+    with stream_transport(WriteStream(output)) as transport:
+        let logger = try create(transport, timestamp: False)
         let fields = Payload(
-            9007199254740993, ok: true, Items([none, some(1)]), 0, "fake", 0
+            9007199254740993, ok: True, Items([none, some(1)]), 0, "fake", 0
         )
         try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
-        let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\}\}\n"
+        let expected = "{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":{\"items\":[null,1]}}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
         try logger.flush()
 
     try expect_false(output.closed)
 
 test "non-object values are written under data":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport, timestamp: false)
+    with stream_transport(WriteStream(output)) as transport:
+        let logger = try create(transport, timestamp: False)
         try record(logger, LogLevel.Info, "n", 7)
         try record(logger, LogLevel.Warn, "l", ["a", "b"])
 
-        let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
+        let expected = "{\"level\":30,\"msg\":\"n\",\"data\":7}\n{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
 
 test "levels filter methods and function values":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport, LogLevel.Warn, false)
+    with stream_transport(WriteStream(output)) as transport:
+        let logger = try create(transport, LogLevel.Warn, False)
         try expect_false(
             (
                 logger.enabled(LogLevel.Info)
@@ -76,7 +76,7 @@ test "levels filter methods and function values":
         try logger.debug("debug")
         try logger.info("info")
 
-        let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
+        let expected = "{\"level\":40,\"msg\":\"warn\"}\n{\"level\":50,\"msg\":\"error\"}\n{\"level\":60,\"msg\":\"fatal\"}\n{\"level\":10,\"msg\":\"trace\"}\n{\"level\":20,\"msg\":\"debug\"}\n{\"level\":30,\"msg\":\"info\"}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
         logger.set_level(LogLevel.Silent)
         try expect_false(
@@ -100,10 +100,10 @@ type Request:
     request: Int
 
 test "child bindings snapshot values and merge without mutating inputs":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let root = try create(transport, timestamp: false)
+    with stream_transport(WriteStream(output)) as transport:
+        let root = try create(transport, timestamp: False)
         let logger = try bind(root, Service("api"))
         let child = try bind(logger, Request(7))
         logger.set_level(LogLevel.Fatal)
@@ -111,16 +111,16 @@ test "child bindings snapshot values and merge without mutating inputs":
         try record(child, LogLevel.Info, "child", Service("worker"))
         try logger.fatal("parent")
 
-        let expected = "\{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7\}\n\{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"\}\n"
+        let expected = "{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7}\n{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))
 
 test "limits and unencodable values reject before writing":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
+    with stream_transport(WriteStream(output)) as transport:
+        let line = "{\"level\":30,\"msg\":\"x\"}\n"
         let logger = try create(
-            transport, timestamp: false, max_bytes: (line.to_bytes().length())
+            transport, timestamp: False, max_bytes: (line.to_bytes().length())
         )
         try logger.info("x")
         try expect_equal(output.data.decode_utf8(), some(line))
@@ -129,7 +129,7 @@ test "limits and unencodable values reject before writing":
         let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
         try expect_equal(logger.info("xx"), limited)
 
-        let zero = try create(transport, timestamp: false, max_bytes: 0)
+        let zero = try create(transport, timestamp: False, max_bytes: 0)
         try expect_equal(zero.info(""), limited)
         try expect_false(
             (
@@ -141,17 +141,17 @@ test "limits and unencodable values reject before writing":
             )
         )
 
-        let unlimited = try create(transport, timestamp: false)
+        let unlimited = try create(transport, timestamp: False)
         let bad = JsonValue.NumberValue("NaN")
         let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
         try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
         try expect_equal(output.data, before)
 
 test "transport closure and stream errors preserve identity":
-    var output = MemoryStream("".to_bytes(), 0, closed: false)
+    var output = MemoryStream("".to_bytes(), 0, closed: False)
     let transport = stream_transport(WriteStream(output))
     let logger = try create(transport)
-    output.closed = true
+    output.closed = True
 
     let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
     try expect_equal(logger.info("closed"), io_closed)
@@ -166,23 +166,23 @@ test "transport closure and stream errors preserve identity":
 test "file transport appends and flushes with scoped cleanup":
     let fs = filesystem()
 
-    with directory = try fs.temporary("manuscript-log-"):
-        let path = "{directory.path()}/events.ndjson"
+    with try fs.temporary("manuscript-log-") as directory:
+        let path = f"{directory.path()}/events.ndjson"
 
-        with transport = try file_transport(path):
-            let logger = try create(transport, timestamp: false)
+        with try file_transport(path) as transport:
+            let logger = try create(transport, timestamp: False)
             try logger.info("first")
             try logger.flush()
 
-        with transport = try file_transport(path):
-            let logger = try create(transport, timestamp: false)
+        with try file_transport(path) as transport:
+            let logger = try create(transport, timestamp: False)
             try logger.warn("second")
 
         let data = try fs.read_file(path)
         try expect_false(
             (
                 data.decode_utf8() != some(
-                    "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
+                    "{\"level\":30,\"msg\":\"first\"}\n{\"level\":40,\"msg\":\"second\"}\n"
                 )
             )
         )
@@ -191,7 +191,7 @@ test "file transport appends and flushes with scoped cleanup":
                 (
                     try expect_error(
                         file_transport(
-                            "{directory.path()}/missing/events.ndjson"
+                            f"{directory.path()}/missing/events.ndjson"
                         )
                     )
                 ) != LogError.FileSystem(FileSystemError.NotFound)
@@ -199,8 +199,8 @@ test "file transport appends and flushes with scoped cleanup":
         )
 
 test "stdout transport accepts records and leaves stdout open":
-    with transport = stdout_transport():
-        let logger = try create(transport, timestamp: false)
+    with stdout_transport() as transport:
+        let logger = try create(transport, timestamp: False)
         try logger.info("stdout log")
         try logger.flush()
 
@@ -208,34 +208,34 @@ type CaptureTransport:
     output: MemoryStream
 
 impl Transport for CaptureTransport:
-    var fn write(data: String) Result[Unit, LogError]:
+    var def write(data: String) -> Result[Unit, LogError]:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Result[Unit, LogError]:
+    var def write_bytes(data: Bytes) -> Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
         self.output.data = self.output.data.concat(data)
-        return ok(unit)
+        return ok(())
 
-    fn flush() Result[Unit, LogError]:
+    def flush() -> Result[Unit, LogError]:
         if self.output.closed: return error(LogError.Closed)
 
-        return ok(unit)
+        return ok(())
 
-    fn close() Unit: self.output.closed = true
+    def close() -> Unit: self.output.closed = True
 
 test "source transports receive complete records and close through their contract":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
     let sink = CaptureTransport(output)
 
-    with transport = Transport(sink):
-        let logger = try create(transport, timestamp: false)
+    with Transport(sink) as transport:
+        let logger = try create(transport, timestamp: False)
         try logger.info("source transport")
         try logger.flush()
         try expect_false(
             (
                 output.data.decode_utf8() != some(
-                    "\{\"level\":30,\"msg\":\"source transport\"\}\n"
+                    "{\"level\":30,\"msg\":\"source transport\"}\n"
                 )
             )
         )
@@ -243,10 +243,10 @@ test "source transports receive complete records and close through their contrac
     try expect_false(not output.closed)
 
 test "log_json and child_json accept only JSON objects":
-    let output = MemoryStream("".to_bytes(), 0, closed: false)
+    let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with transport = stream_transport(WriteStream(output)):
-        let logger = try create(transport, timestamp: false)
+    with stream_transport(WriteStream(output)) as transport:
+        let logger = try create(transport, timestamp: False)
         let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
 
         for text in ["[1]", "5", "null", "\"s\"", "nope"]:
@@ -254,8 +254,8 @@ test "log_json and child_json accept only JSON objects":
             try expect_false(logger.child_json(text).is_ok())
 
         try expect_equal(output.data.length(), 0)
-        try logger.log_json(LogLevel.Info, "m", "\{\"a\":1\}")
+        try logger.log_json(LogLevel.Info, "m", "{\"a\":1}")
         try record(logger, LogLevel.Info, "m", [1])
 
-        let expected = "\{\"level\":30,\"msg\":\"m\",\"a\":1\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+        let expected = "{\"level\":30,\"msg\":\"m\",\"a\":1}\n{\"level\":30,\"msg\":\"m\",\"data\":[1]}\n"
         try expect_equal(output.data.decode_utf8(), some(expected))

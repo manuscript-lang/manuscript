@@ -5,4 +5,4 @@ type Result[T, E]:
     case ok(value: T)
     case error(cause: E)
 
-fn wrong(value: Result[Int, String]) Int: value.get()
+def wrong(value: Result[Int, String]) -> Int: value.get()

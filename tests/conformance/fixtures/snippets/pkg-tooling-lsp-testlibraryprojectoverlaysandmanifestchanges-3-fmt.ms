@@ -1,6 +1,6 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/analysis_test.go:192 TestLibraryProjectOverlaysAndManifestChanges
-import value from "@lib/value.ms"
+from "@lib/value.ms" import value
 
-export fn other() Int: return value()
+export def other() -> Int: return value()

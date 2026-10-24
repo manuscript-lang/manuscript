@@ -1,8 +1,8 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
-fn identity[T](value: T) T: return value
+def identity[T](value: T) -> T: return value
 
-fn bounded_sum() Int:
+def bounded_sum() -> Int:
     var sum = 0
     var i = 0
 
@@ -12,7 +12,7 @@ fn bounded_sum() Int:
 
     return sum
 
-fn descending_sum() Int:
+def descending_sum() -> Int:
     var sum = 0
     var i = -1
 
@@ -22,7 +22,7 @@ fn descending_sum() Int:
 
     return sum
 
-fn prefix_overflow() Int:
+def prefix_overflow() -> Int:
     var sum = 1
     var i = 0
 
@@ -33,7 +33,7 @@ fn prefix_overflow() Int:
 
     return sum
 
-fn peer_overflow() Int:
+def peer_overflow() -> Int:
     var sum = 9223372036854775807
     var peer = 0
     var i = 0
@@ -45,7 +45,7 @@ fn peer_overflow() Int:
 
     return sum
 
-fn after_step_overflow() Int:
+def after_step_overflow() -> Int:
     var sum = 9223372036854775807
     var i = 0
 
@@ -55,7 +55,7 @@ fn after_step_overflow() Int:
 
     return sum
 
-fn optional_overflow(flag: Bool) Int:
+def optional_overflow(flag: Bool) -> Int:
     var sum = 9223372036854775807
     var i = 0
 
@@ -66,7 +66,7 @@ fn optional_overflow(flag: Bool) Int:
 
     return sum
 
-fn descending_overflow() Int:
+def descending_overflow() -> Int:
     var sum = -9223372036854775808
     var i = 0
 
@@ -76,23 +76,23 @@ fn descending_overflow() Int:
 
     return sum
 
-fn expression_overflow() Int:
+def expression_overflow() -> Int:
     var sum = 0
     var i = 0
 
     while i < 1:
         let value = match some(1):
-            some(n):
+            case some(n):
                 sum = 9223372036854775807
                 n
-            none: 0
+            case none: 0
 
         sum += value
         i += 1
 
     return sum
 
-fn extreme_endpoints() Int:
+def extreme_endpoints() -> Int:
     var sum = 9223372036854775803
     var i = 9223372036854775805
 
@@ -106,33 +106,33 @@ test "bounded scalar sums preserve values":
     bounded_sum() | try expect_equal(499500)
     descending_sum() | try expect_equal(-499500)
     extreme_endpoints() | try expect_equal(9223372036854775805)
-    optional_overflow(flag: false) | try expect_equal(9223372036854775807)
+    optional_overflow(flag: False) | try expect_equal(9223372036854775807)
 
 test "intermediate carry updates still fault":
-    (try expect_fault(fn(): let ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "counter phases and optional updates still fault":
-    (try expect_fault(fn(): let ignored = after_step_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = after_step_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = optional_overflow(flag: true))) | try expect_contains(
+    (try expect_fault(lambda: let ignored = optional_overflow(flag: True))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = descending_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = descending_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "statement expression writes discard scalar bounds":
-    (try expect_fault(fn(): let ignored = expression_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = expression_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
-fn product_sum() Int:
+def product_sum() -> Int:
     var sum = 0
     var i = -100
 
@@ -142,7 +142,7 @@ fn product_sum() Int:
 
     return sum
 
-fn zero_effect(var visits: List[Int]) Int:
+def zero_effect(var visits: List[Int]) -> Int:
     visits.append(1)
     return 9223372036854775807
 

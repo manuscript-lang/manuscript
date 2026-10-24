@@ -1,4 +1,4 @@
 # conform: tags=formatter,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/prelude_test.go:116 TestPreludeNamesCannotBeRedeclared
-fn some(value: Int) Int: value
+def some(value: Int) -> Int: value

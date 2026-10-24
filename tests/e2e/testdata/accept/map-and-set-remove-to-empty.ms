@@ -1,4 +1,4 @@
-import {expect_equal, fail} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, fail
 
 test "maps and sets keep distinct keys after removal to empty":
     var m = Map[String, Int]()
@@ -6,7 +6,7 @@ test "maps and sets keep distinct keys after removal to empty":
     m.remove("cap")
     m.add(key: "pen", value: 2)
     m.add(key: "cap", value: 3)
-    if m.length() != 2: return fail("without: length {m.length()}")
+    if m.length() != 2: return fail(f"without: length {m.length()}")
 
     m.get("pen").get() | try expect_equal(2)
     m.get("cap").get() | try expect_equal(3)
@@ -16,7 +16,7 @@ test "maps and sets keep distinct keys after removal to empty":
     n.remove(key: 1)
     n.add(key: 2, value: 20)
     n.add(key: 1, value: 30)
-    if n.length() != 2: return fail("remove: length {n.length()}")
+    if n.length() != 2: return fail(f"remove: length {n.length()}")
 
     n.get(2).get() | try expect_equal(20)
     n.get(1).get() | try expect_equal(30)
@@ -26,4 +26,4 @@ test "maps and sets keep distinct keys after removal to empty":
     s.remove("cap")
     s.add("pen")
     s.add("cap")
-    if s.length() != 2: return fail("set: length {s.length()}")
+    if s.length() != 2: return fail(f"set: length {s.length()}")

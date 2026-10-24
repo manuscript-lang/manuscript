@@ -3,21 +3,21 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() List[Int]:
+    def list() -> List[Int]:
         return self.items
 
-    fn pick(first: Bool) List[Int]:
+    def pick(first: Bool) -> List[Int]:
         if first:
             return self.items
 
         return [1]
 
-fn borrow_it(var b: Box) Int:
+def borrow_it(var b: Box) -> Int:
     var xs = b.list()
     xs.append(1)
     return b.items.length()
 
-fn copy_it(var b: Box) Int:
-    var xs = b.pick(true)
+def copy_it(var b: Box) -> Int:
+    var xs = b.pick(True)
     xs.append(1)
     return b.items.length()

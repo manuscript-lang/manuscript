@@ -1,13 +1,13 @@
-import {stdin, stdout} from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
-import {max, min} from "@std/math.ms"
+from "@std/io.ms" import stdin, stdout
+from "@std/streams.ms" import read_lines
+from "@std/collections.ms" import range
+from "@std/math.ms" import max, min
 
 # Sentinel for any malformed number; every valid number in the spec is at least 0.
-fn bad() Int:
+def bad() -> Int:
     return -1
 
-fn parse_num(text: String) Int:
+def parse_num(text: String) -> Int:
     if text.is_empty() or text.byte_length() > 6:
         return bad()
 
@@ -16,13 +16,13 @@ fn parse_num(text: String) Int:
             return bad()
     return text.parse_int().get(bad())
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     for ch in line.scalar_values():
         if ch != 32:
-            return false
-    return true
+            return False
+    return True
 
-fn lcs(a: List[Int], b: List[Int]) Int:
+def lcs(a: List[Int], b: List[Int]) -> Int:
     var prev: List[Int] = []
     for j in range(0, b.length() + 1):
         prev.append(0)
@@ -40,7 +40,7 @@ fn lcs(a: List[Int], b: List[Int]) Int:
 
     return prev[b.length()]
 
-fn edit(a: List[Int], b: List[Int]) Int:
+def edit(a: List[Int], b: List[Int]) -> Int:
     var prev: List[Int] = []
     for j in range(0, b.length() + 1):
         prev.append(j)
@@ -58,7 +58,7 @@ fn edit(a: List[Int], b: List[Int]) Int:
 
     return prev[b.length()]
 
-fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
+def knap(cap: Int, weights: List[Int], values: List[Int]) -> Int:
     var total = 0
     for w in weights:
         total += w
@@ -80,7 +80,7 @@ fn knap(cap: Int, weights: List[Int], values: List[Int]) Int:
 
     return best[limit]
 
-fn coins(amount: Int, denominations: List[Int]) String:
+def coins(amount: Int, denominations: List[Int]) -> String:
     # Any real count is at most `amount`, so `amount + 1` marks unreachable sums.
     let unreachable = amount + 1
     var best: List[Int] = [0]
@@ -94,9 +94,9 @@ fn coins(amount: Int, denominations: List[Int]) String:
     if best[amount] >= unreachable:
         return "impossible"
 
-    return "{best[amount]}"
+    return f"{best[amount]}"
 
-fn run(line: String) String:
+def run(line: String) -> String:
     let tokens = line.split(" ")
     let name = tokens[0]
 
@@ -109,9 +109,9 @@ fn run(line: String) String:
         if a.is_empty() or b.is_empty():
             return "error: bad command"
         if name == "lcs":
-            return "{lcs(a.scalar_values(), b.scalar_values())}"
+            return f"{lcs(a.scalar_values(), b.scalar_values())}"
 
-        return "{edit(a.scalar_values(), b.scalar_values())}"
+        return f"{edit(a.scalar_values(), b.scalar_values())}"
 
     if name == "knap":
         if tokens.length() < 2:
@@ -137,7 +137,7 @@ fn run(line: String) String:
             weights.append(w)
             values.append(v)
 
-        return "{knap(cap, weights, values)}"
+        return f"{knap(cap, weights, values)}"
 
     if name == "coins":
         if tokens.length() < 3:
@@ -160,7 +160,7 @@ fn run(line: String) String:
 
     return "error: bad command"
 
-export fn main() Int:
+export def main() -> Int:
     if let lines = read_lines(stdin()):
         var out: List[String] = []
         for line in lines:

@@ -66,7 +66,7 @@ fn lexer_tokens(d: &Document) -> Vec<Token> {
             };
             tokens.push(Token {
                 kind,
-                previous_fn: previous == Tok::Fn,
+                previous_fn: previous == Tok::Def,
                 previous_type: previous == Tok::Type,
                 text: lexed.source[t.lo as usize..t.hi as usize].to_string(),
                 offset: t.pos.offset as usize,

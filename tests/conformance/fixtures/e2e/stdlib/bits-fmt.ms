@@ -1,21 +1,21 @@
 # conform: tags=formatter,modules,parser,stdlib-bits,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/bits.ms
-import {expect_equal, expect_fault} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/math.ms" import (
     bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right, shift_right_unsigned,
     rotate_left, rotate_right, count_ones, leading_zeros, trailing_zeros, wrapping_add,
     wrapping_subtract, wrapping_multiply
-} from "@std/math.ms"
-import {max_int, min_int} from "@std/math.ms"
+)
+from "@std/math.ms" import max_int, min_int
 
-fn shift_too_far() Unit:
+def shift_too_far() -> Unit:
     let value = shift_left(1, 64)
-    return unit
+    return ()
 
-fn shift_negative() Unit:
+def shift_negative() -> Unit:
     let value = shift_right(1, -1)
-    return unit
+    return ()
 
 test "bitwise operators follow two's complement":
     try expect_equal(bit_and(12, 10), 8)

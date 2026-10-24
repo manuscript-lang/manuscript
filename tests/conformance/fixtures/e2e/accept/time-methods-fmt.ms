@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,parser,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/time-methods.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {duration, clock, wall_clock, timestamp, parse_timestamp, TimeError} from "@std/time.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/time.ms" import duration, clock, wall_clock, timestamp, parse_timestamp, TimeError
 
 test "duration arithmetic and conversion":
     let interval = duration(1500000000)

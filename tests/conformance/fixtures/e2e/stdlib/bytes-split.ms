@@ -1,8 +1,8 @@
 # conform: tags=closures,faults,generics,lists,modules,mutation,optional,stdlib-bytes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/bytes-split.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/bytes.ms" import Bytes
 
 test "Bytes split is binary safe":
     let data = Bytes([255, 0, 1, 0, 254])
@@ -57,18 +57,18 @@ test "Bytes split optional limits truncate parts":
     try expect_equal(data.split(separator, 9999999), expected)
     try expect_equal(data.split(Bytes([]), 2), [Bytes([1]), Bytes([0])])
 
-fn split_then[T](data: Bytes, separator: Bytes, transform: fn(value: List[Bytes]) T) T:
+def split_then[T](data: Bytes, separator: Bytes, transform: Callable[[List[Bytes]], T]) -> T:
     return data.split(separator) | transform
 
-fn call_split(
-    operation: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes]
-) List[Bytes]:
+def call_split(
+    operation: Callable[[Bytes, Optional[Int]], List[Bytes]]
+) -> List[Bytes]:
     return operation(Bytes([0]), some(2))
 
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     let split = data.split
-    let typed: fn(separator: Bytes, max_parts: Optional[Int]) List[Bytes] = data.split
+    let typed: Callable[[Bytes, Optional[Int]], List[Bytes]] = data.split
     data = Bytes([9])
     try expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])
     try expect_equal(split(max_parts: 1, Bytes([0])), [Bytes([1])])
@@ -76,8 +76,8 @@ test "Bytes split bound methods and generic forwarding retain contracts":
     try expect_false(
         (
             split_then[Bool](
-                Bytes([1, 0, 2]), Bytes([0]), fn(value): value.length() == 2
-            ) != true
+                Bytes([1, 0, 2]), Bytes([0]), lambda value: value.length() == 2
+            ) != True
         )
     )
 

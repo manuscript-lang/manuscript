@@ -1,22 +1,22 @@
 # conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-process,strings,tier-io,try-result
 # conform: phase=check
 # conform: origin=documentation/learn/common-tasks.md:204
-import arguments from "@std/process.ms"
-import {parse, stringify} from "@std/json.ms"
-import stdout from "@std/io.ms"
+from "@std/process.ms" import arguments
+from "@std/json.ms" import parse, stringify
+from "@std/io.ms" import stdout
 
 type Config:
     name: String
-    enabled: Bool = true
+    enabled: Bool = True
 
-fn run() Result[Unit, Error]:
-    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+def run() -> Result[Unit, Error]:
+    let text = arguments().get(0, default: "{\"name\":\"Sam\"}")
     let encoded = try parse[Config](text)
         | try stringify
-    try stdout().write("{encoded}\n")
+    try stdout().write(f"{encoded}\n")
     return stdout().flush()
 
-export fn main() Int:
+export def main() -> Int:
     if run().is_error():
         return 1
 

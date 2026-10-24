@@ -1,53 +1,53 @@
 # conform: tags=closures,control-flow,faults,lists,modules,mutation,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/try-statement.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal
 
-fn parse(n: Int) Result[Int, TextError]:
+def parse(n: Int) -> Result[Int, TextError]:
     if n < 0:
         return error(TextError("neg"))
 
     return ok(n)
 
-fn bound(n: Int) Result[Int, TextError]:
+def bound(n: Int) -> Result[Int, TextError]:
     let v = try parse(n)
     return ok(v + 1)
 
-fn reassigned(n: Int) Result[Int, TextError]:
+def reassigned(n: Int) -> Result[Int, TextError]:
     var total = 1
     total = try parse(n)
     return ok(total * 2)
 
-fn check(n: Int) Result[Unit, TextError]:
+def check(n: Int) -> Result[Unit, TextError]:
     if n < 0:
         return error(TextError("neg"))
 
-    return ok(unit)
+    return ok(())
 
-fn discarded(n: Int) Result[Int, TextError]:
+def discarded(n: Int) -> Result[Int, TextError]:
     try check(n)
     return ok(7)
 
-fn code(r: Result[Int, TextError]) Int:
+def code(r: Result[Int, TextError]) -> Int:
     return r.get(-1)
 
-fn nested(n: Int) Result[Int, TextError]:
+def nested(n: Int) -> Result[Int, TextError]:
     return ok((try parse(n)) + (try parse(n - 5)))
 
-fn chained(n: Int) Result[Int, TextError]:
+def chained(n: Int) -> Result[Int, TextError]:
     let a = try bound(n)
     let b = try reassigned(a - 10)
     return ok(b)
 
-fn in_loop(values: List[Int]) Result[Int, TextError]:
+def in_loop(values: List[Int]) -> Result[Int, TextError]:
     var sum = 0
     for v in values:
         sum += try parse(v)
     return ok(sum)
 
-fn in_lambda(n: Int) Result[Int, TextError]:
-    let inner = fn() Result[Int, TextError]:
+def in_lambda(n: Int) -> Result[Int, TextError]:
+    let inner = lambda () -> Result[Int, TextError]:
         let v = try parse(n)
         return ok(v * 10)
 

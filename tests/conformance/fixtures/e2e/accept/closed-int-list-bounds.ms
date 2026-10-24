@@ -1,9 +1,9 @@
 # conform: tags=aliasing,closures,control-flow,faults,lists,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-int-list-bounds.ms
-import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
-fn filled_sum() Int:
+def filled_sum() -> Int:
     var values: List[Int] = []
     var i = 0
 
@@ -16,7 +16,7 @@ fn filled_sum() Int:
         sum += value
     return sum
 
-fn conditional_length(flag: Bool) Int:
+def conditional_length(flag: Bool) -> Int:
     var values: List[Int] = []
     var i = 0
 
@@ -27,7 +27,7 @@ fn conditional_length(flag: Bool) Int:
 
     return values.length()
 
-fn self_overflow() Int:
+def self_overflow() -> Int:
     var values = [0]
     var i = 0
 
@@ -37,7 +37,7 @@ fn self_overflow() Int:
 
     return values.get(-1)
 
-fn peer_overflow() Int:
+def peer_overflow() -> Int:
     var values = [0]
     var peer = [9223372036854775807]
     var i = 0
@@ -49,25 +49,25 @@ fn peer_overflow() Int:
 
     return peer.get(-1)
 
-fn prefix_overflow() Int:
+def prefix_overflow() -> Int:
     let values = [9223372036854775807, 1, -1]
     var sum = 0
     for value in values:
         sum += value
     return sum
 
-fn optional_overflow(default: Optional[Int]) Int:
+def optional_overflow(default: Optional[Int]) -> Int:
     let values = [9223372036854775807]
     var sum = 0
     for value in values:
         sum += values.get(0, default)
     return sum + 1
 
-fn effect(var visits: List[Int], value: Int) Int:
+def effect(var visits: List[Int], value: Int) -> Int:
     visits.append(value)
     return value
 
-fn mutated_alias() Int:
+def mutated_alias() -> Int:
     let values = [0]
     var alias = values
     alias.set(0, 9223372036854775807)
@@ -79,8 +79,8 @@ fn mutated_alias() Int:
 
 test "closed list scalar summaries preserve sums and lengths":
     filled_sum() | try expect_equal(4950)
-    conditional_length(flag: true) | try expect_equal(100)
-    conditional_length(flag: false) | try expect_equal(0)
+    conditional_length(flag: True) | try expect_equal(100)
+    conditional_length(flag: False) | try expect_equal(0)
 
     let empty: List[Int] = []
     var sum = 0
@@ -100,26 +100,26 @@ test "closed list reads preserve defaults and evaluation order":
     visits | try expect_equal([7, 0, 8, 9])
 
 test "recursive appends keep overflow checks":
-    (try expect_fault(fn(): let ignored = self_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = self_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "list prefixes and Optional defaults keep overflow checks":
-    (try expect_fault(fn(): let ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = optional_overflow(none))) | try expect_contains(
+    (try expect_fault(lambda: let ignored = optional_overflow(none))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = optional_overflow(some(0)))) | try expect_contains(
+    (try expect_fault(lambda: let ignored = optional_overflow(some(0)))) | try expect_contains(
         "Int overflow;"
     )
 
 test "aliased mutation keeps overflow checks":
-    (try expect_fault(fn(): let ignored = mutated_alias())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = mutated_alias())) | try expect_contains(
         "Int overflow;"
     )
 
@@ -134,14 +134,14 @@ test "append during traversal retains initial-length semantics":
     sum | try expect_equal(6)
     values.length() | try expect_equal(6)
 
-fn reordered_default_overflow() Int:
+def reordered_default_overflow() -> Int:
     let values = [0]
     var sum = 0
     for value in values:
         sum += values.get(default: 9223372036854775807, index: 2)
     return sum + 1
 
-fn scalar_append_overflow() Int:
+def scalar_append_overflow() -> Int:
     var values: List[Int] = []
     var carry = 0
     var i = 0
@@ -156,32 +156,32 @@ fn scalar_append_overflow() Int:
         sum += value
     return sum + 1
 
-fn match_length() Int:
+def match_length() -> Int:
     var values: List[Int] = []
 
     let ignored = match some(1):
-        some(n):
+        case some(n):
             values.append(n)
             n
-        none: 0
+        case none: 0
 
     return values.length()
 
-fn singleton(var values: List[Int]) List[Int]:
+def singleton(var values: List[Int]) -> List[Int]:
     values.append(1)
     return values
 
-fn default_length() Int:
+def default_length() -> Int:
     var values: List[Int] = []
-    let callback = fn(value: List[Int] = singleton(var values)) Int: value.length()
+    let callback = lambda (value: List[Int] = singleton(var values)) -> Int: value.length()
     let ignored = callback()
     return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":
-    (try expect_fault(fn(): let ignored = reordered_default_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = reordered_default_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn(): let ignored = scalar_append_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = scalar_append_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
@@ -189,7 +189,7 @@ test "hidden match and default mutations invalidate lengths":
     match_length() | try expect_equal(1)
     default_length() | try expect_equal(1)
 
-fn literal_length_sum() Int:
+def literal_length_sum() -> Int:
     let values = [1, 2, 3]
     var sum = 0
     var i = 0

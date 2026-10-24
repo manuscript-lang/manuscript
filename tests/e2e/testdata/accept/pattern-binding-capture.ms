@@ -1,37 +1,37 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Failure[T]:
     case NotFound
     case Denied(reason: T)
 
 impl Error for Failure[T]:
-    fn message() String: "Failure"
+    def message() -> String: "Failure"
 
 # An advisory preserves the semantics of this fresh, capitalized binding.
-fn captured[T](result: Result[Int, Failure[T]]) Int:
+def captured[T](result: Result[Int, Failure[T]]) -> Int:
     match result:
-        error(NotFound): return 1
-        ok(value): return value
+        case error(NotFound): return 1
+        case ok(value): return value
 
-fn failure_code[T](cause: Failure[T]) Int:
+def failure_code[T](cause: Failure[T]) -> Int:
     match cause:
-        NotFound: return 1
-        Denied(_): return 2
+        case NotFound: return 1
+        case Denied(_): return 2
 
-fn precise[T](result: Result[Int, Failure[T]]) Int:
+def precise[T](result: Result[Int, Failure[T]]) -> Int:
     match result:
-        error(cause): return failure_code(cause)
-        ok(value): return value
+        case error(cause): return failure_code(cause)
+        case ok(value): return value
 
-fn failure_reason(cause: Failure[String]) String:
+def failure_reason(cause: Failure[String]) -> String:
     match cause:
-        NotFound: return "missing"
-        Denied(reason): return reason
+        case NotFound: return "missing"
+        case Denied(reason): return reason
 
-fn deliberate(result: Result[Int, Failure[String]]) String:
+def deliberate(result: Result[Int, Failure[String]]) -> String:
     match result:
-        error(cause): return failure_reason(cause)
-        ok(_): return "ok"
+        case error(cause): return failure_reason(cause)
+        case ok(_): return "ok"
 
 test "a payload identifier binds every alternative without changing semantics":
     let denied: Result[Int, Failure[String]] = error(

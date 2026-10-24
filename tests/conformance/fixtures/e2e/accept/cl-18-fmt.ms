@@ -1,19 +1,19 @@
 # conform: tags=closures,control-flow,formatter,lists,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-18.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn apply(value: Int, transform: fn(value: Int) Int) Int:
+def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
     return transform(value: value)
 
 test "function suite boundaries":
     var calls: List[Int] = []
-    let dormant = fn() Unit:
+    let dormant = lambda () -> Unit:
         calls.append(1)
 
     let grouped = apply(
         transform: (
-            fn(value):
+            lambda value:
                 if value > 0:
                     return value - 1
 
@@ -22,7 +22,7 @@ test "function suite boundaries":
         value: 3
     )
 
-    let final_argument = apply(value: 3, transform: fn(value): return value - 1)
+    let final_argument = apply(value: 3, transform: lambda value: return value - 1)
     calls.length() | try expect_equal(0)
     grouped | try expect_equal(2)
     final_argument | try expect_equal(2)

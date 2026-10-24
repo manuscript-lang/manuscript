@@ -1,8 +1,8 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,optional,parser,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/map-transforms.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, expect_true
 
 type Counter:
     count: Int
@@ -12,53 +12,53 @@ type Key:
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: 0
+    def hash() -> Int: 0
 
-fn map_values[K: Hashable, V, W](
+def map_values[K: Hashable, V, W](
     values: Map[K, V],
-    transform: fn(key: K, value: V) W
-) Map[K, W]:
+    transform: Callable[[K, V], W]
+) -> Map[K, W]:
     return values.map[W](transform)
 
-fn map_keys[K: Hashable, V, W: Hashable](
+def map_keys[K: Hashable, V, W: Hashable](
     values: Map[K, V],
-    transform: fn(key: K, value: V) W
-) Map[W, V]:
+    transform: Callable[[K, V], W]
+) -> Map[W, V]:
     return values.map_keys[W](transform)
 
-fn reverse_map[K: Hashable, V, A](
+def reverse_map[K: Hashable, V, A](
     values: Map[K, V],
     initial: A,
-    step: fn(accumulator: A, key: K, value: V) A
-) A:
+    step: Callable[[A, K, V], A]
+) -> A:
     return values.fold_right[A](initial, step)
 
-fn reverse_set[T: Hashable, A](
+def reverse_set[T: Hashable, A](
     values: Set[T],
     initial: A,
-    step: fn(accumulator: A, value: T) A
-) A:
+    step: Callable[[A, T], A]
+) -> A:
     return values.fold_right(initial, step)
 
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
-    let mapped = source.map(fn(k, v): v.to_string())
+    let mapped = source.map(lambda k, v: v.to_string())
     mapped.get("b").get() | try expect_equal("2")
 
-    let keyed = source.map_keys(fn(k, v): v)
+    let keyed = source.map_keys(lambda k, v: v)
     keyed.get(2).get() | try expect_equal(2)
-    try expect_equal(source.find_last(fn(k, v): true).get().key, "a")
-    try expect_equal(source.fold_right("", fn(acc, k, v): acc + k), "ab")
+    try expect_equal(source.find_last(lambda k, v: True).get().key, "a")
+    try expect_equal(source.fold_right("", lambda acc, k, v: acc + k), "ab")
 
     let values = Set[Int]([2, 1])
-    try expect_equal(values.find_last(fn(v): true).get(), 1)
-    try expect_equal(values.fold_right("", fn(acc, v): acc + v.to_string()), "12")
+    try expect_equal(values.find_last(lambda v: True).get(), 1)
+    try expect_equal(values.fold_right("", lambda acc, v: acc + v.to_string()), "12")
 
 test "Map value transformation copies ordered snapshots and keeps independent values":
     let first = Key(2, "b")
@@ -73,13 +73,13 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 
     var mapped = map_values(
         source.clone(),
-        fn(k, v):
+        lambda k, v:
             seen.append(k.label + v.count.to_string())
             return v
     )
 
     seen | try expect_equal(["b2", "a1", "c3"])
-    try expect_equal(mapped.keys().map(fn(k): k.id), [2, 1, 3])
+    try expect_equal(mapped.keys().map(lambda k: k.id), [2, 1, 3])
 
     var edited = mapped.get(first).get().clone()
     edited.count = 7
@@ -96,15 +96,15 @@ test "Map key transformation retains first equal keys and last values":
 
     var mapped = map_keys(
         source.clone(),
-        fn(k, v):
+        lambda k, v:
             let key = Key(k % 2, k.to_string())
             created.append(key.clone())
             return key
     )
 
     (created.length() != 4 or mapped.length() != 2) | try expect_false
-    try expect_equal(mapped.keys().map(fn(k): k.label), ["2", "1"])
-    try expect_equal(mapped.values().map(fn(v): v.count), [3, 4])
+    try expect_equal(mapped.keys().map(lambda k: k.label), ["2", "1"])
+    try expect_equal(mapped.values().map(lambda v: v.count), [3, 4])
 
     var first_key = mapped.keys().get(0).clone()
     first_key.label = "first copy"
@@ -123,7 +123,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let bound = source.clone().map_keys[String]
 
     let mapped = bound(
-        transform: fn(k, v):
+        transform: lambda k, v:
             seen.append(k)
             return k.to_string()
     )
@@ -133,9 +133,9 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
     let values: Map[String, Int] = {"a": 0}
     let map = values.clone().map[Optional[Int]]
-    try expect_true((map(fn(k, v): none).get("a").get().is_none()))
+    try expect_true((map(lambda k, v: none).get("a").get().is_none()))
 
-    let nested = values.map(fn(k, v): Result[Int, TextError].error(TextError("nested")))
+    let nested = values.map(lambda k, v: Result[Int, TextError].error(TextError("nested")))
     nested.get("a").get().err().message() | try expect_equal("nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
@@ -144,7 +144,7 @@ test "empty transformations skip callbacks and allocate independent storage":
 
     var mapped = source.map[Counter](
         (
-            fn(k, v):
+            lambda k, v:
                 empty_calls.append(1)
                 return Counter(0)
         )
@@ -155,7 +155,7 @@ test "empty transformations skip callbacks and allocate independent storage":
 
     var keyed = source.map_keys[Key](
         (
-            fn(k, v):
+            lambda k, v:
                 empty_calls.append(1)
                 return Key(0, "unused")
         )
@@ -174,7 +174,7 @@ test "Map reverse fold and last match retain ordered snapshots":
     var folded = reverse_map(
         source.clone(),
         initial.clone(),
-        fn(acc, k, v):
+        lambda acc, k, v:
             var next = acc
             next.append(k + v.count.to_string())
             return next
@@ -187,7 +187,7 @@ test "Map reverse fold and last match retain ordered snapshots":
     var seen: List[String] = []
     let find = source.clone().find_last
     var found = find(
-        predicate: fn(k, v):
+        predicate: lambda k, v:
             seen.append(k)
             return k == "a"
     ).get().clone()
@@ -209,7 +209,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
     var folded = reverse_set(
         source.clone(),
         initial.clone(),
-        fn(acc, v):
+        lambda acc, v:
             var next = acc
             next.append(v.label)
             return next
@@ -222,7 +222,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
     var seen: List[Int] = []
     let find = source.clone().find_last
     var found = find(
-        fn(v):
+        lambda v:
             seen.append(v.id)
             return v.id == 1
     ).get().clone()
@@ -239,7 +239,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 
     var map_result = map_fold(
         step: (
-            fn(acc, k, v):
+            lambda acc, k, v:
                 empty_calls.append(1)
                 return acc
         ),
@@ -253,7 +253,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
     var set_result = set_fold(
         initial.clone(),
         (
-            fn(acc, v):
+            lambda acc, v:
                 empty_calls.append(1)
                 return acc
         )
@@ -268,9 +268,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             empty_map
             .find_last(
                 (
-                    fn(k, v):
+                    lambda k, v:
                         empty_calls.append(1)
-                        return false
+                        return False
                 )
             )
             .is_none()
@@ -281,9 +281,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             empty_set
             .find_last(
                 (
-                    fn(v):
+                    lambda v:
                         empty_calls.append(1)
-                        return false
+                        return False
                 )
             )
             .is_none()
@@ -297,9 +297,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             not (
                 values
                 .find_last(
-                    fn(k, v):
+                    lambda k, v:
                         seen_map.append(k)
-                        return false
+                        return False
                 )
                 .is_none()
             )
@@ -314,9 +314,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             not (
                 members
                 .find_last(
-                    fn(v):
+                    lambda v:
                         seen_set.append(v)
-                        return false
+                        return False
                 )
                 .is_none()
             )

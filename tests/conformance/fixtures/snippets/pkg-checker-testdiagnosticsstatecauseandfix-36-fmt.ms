@@ -1,10 +1,10 @@
 # conform: tags=closures,faults,formatter,generics,lists,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/checker/hints_test.go:55 TestDiagnosticsStateCauseAndFix
-fn pick[T](items: List[T], keep: fn(value: T) Bool) Optional[T]:
+def pick[T](items: List[T], keep: Callable[[T], Bool]) -> Optional[T]:
     return none
 
-fn f() Int:
+def f() -> Int:
     let nums = [1, 2]
-    let hit = pick(nums, fn(value: Int) Bool: value > 1)
+    let hit = pick(nums, lambda (value: Int) -> Bool: value > 1)
     return hit.get(0)

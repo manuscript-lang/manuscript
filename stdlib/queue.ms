@@ -1,5 +1,5 @@
-import {panic} from "@std/core.ms"
-import {range} from "@std/collections.ms"
+from "@std/core.ms" import panic
+from "@std/collections.ms" import range
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
@@ -13,14 +13,14 @@ export type Queue[T: Clonable]:
 
 impl Queue[T]:
     # Adds a value, returning false when a bounded queue is full. A non-positive capacity faults.
-    var fn enqueue(value: T) Bool:
+    var def enqueue(value: T) -> Bool:
         if let limit = self.capacity:
             if limit <= 0:
                 panic(
-                    "Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
+                    f"Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
                 )
             if self.length() >= limit:
-                return false
+                return False
 
         let count = self.items.length()
 
@@ -32,10 +32,10 @@ impl Queue[T]:
             self.head = 0
 
         self.items.append(some(value))
-        return true
+        return True
 
     # Removes and returns the oldest value, or `none` when empty.
-    var fn dequeue() Optional[T]:
+    var def dequeue() -> Optional[T]:
         if self.head >= self.items.length():
             return none
 
@@ -50,18 +50,18 @@ impl Queue[T]:
         return value
 
     # Returns the oldest value without removing it, or none when the queue is empty.
-    fn peek() Optional[T]:
+    def peek() -> Optional[T]:
         if self.head >= self.items.length():
             return none
 
         return self.items.get(self.head)
 
     # Returns the number of values currently waiting in the queue.
-    fn length() Int:
+    def length() -> Int:
         return self.items.length() - self.head
 
     # Reports whether dequeue and peek would return none.
-    fn is_empty() Bool:
+    def is_empty() -> Bool:
         return self.head >= self.items.length()
 
 # Negative compare results put left before right; equal priorities remain FIFO.
@@ -69,7 +69,7 @@ impl Queue[T]:
 export type PriorityQueue[T: Clonable]:
     # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
     # Comparisons must stay consistent.
-    compare: fn(left: T, right: T) Int
+    compare: Callable[[T, T], Int]
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Binary heap of values. Internal state: use the operations, not this field.
@@ -81,12 +81,12 @@ export type PriorityQueue[T: Clonable]:
 
 impl PriorityQueue[T]:
     # Reports whether the entry at `a` dequeues before the entry at `b`.
-    fn before(a: Int, b: Int) Bool:
+    def before(a: Int, b: Int) -> Bool:
         let order = self.compare(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
     # Exchanges two heap entries.
-    var fn swap(a: Int, b: Int) Unit:
+    var def swap(a: Int, b: Int) -> Unit:
         let left = self.heap.get(a).clone()
         self.heap.set(a, self.heap.get(b).clone())
         self.heap.set(b, left)
@@ -96,14 +96,14 @@ impl PriorityQueue[T]:
         self.orders.set(b, left_order)
 
     # Adds a value, returning false when a bounded queue is full. A non-positive capacity faults.
-    var fn enqueue(value: T) Bool:
+    var def enqueue(value: T) -> Bool:
         if let limit = self.capacity:
             if limit <= 0:
                 panic(
-                    "PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
+                    f"PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
                 )
             if self.heap.length() >= limit:
-                return false
+                return False
 
         self.heap.append(value)
         self.orders.append(self.next_order)
@@ -119,10 +119,10 @@ impl PriorityQueue[T]:
             self.swap(at, parent)
             at = parent
 
-        return true
+        return True
 
     # Removes and returns the next value by priority, or `none` when empty.
-    var fn dequeue() Optional[T]:
+    var def dequeue() -> Optional[T]:
         let count = self.heap.length()
         if count == 0:
             return none
@@ -141,7 +141,7 @@ impl PriorityQueue[T]:
         let size = count - 1
         var at = 0
 
-        while true:
+        while True:
             var child = at * 2 + 1
             if child >= size:
                 break
@@ -157,16 +157,16 @@ impl PriorityQueue[T]:
         return some(top)
 
     # Returns the next value by priority without removing it, or none when empty.
-    fn peek() Optional[T]:
+    def peek() -> Optional[T]:
         if self.heap.length() == 0:
             return none
 
         return some(self.heap.get(0).clone())
 
     # Returns the number of enqueued values, independent of their priorities.
-    fn length() Int:
+    def length() -> Int:
         return self.heap.length()
 
     # Reports whether the queue has no values to peek or dequeue.
-    fn is_empty() Bool:
+    def is_empty() -> Bool:
         return self.heap.length() == 0

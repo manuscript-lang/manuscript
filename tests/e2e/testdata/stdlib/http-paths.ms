@@ -1,32 +1,32 @@
-import {expect_ok} from "@std/testing.ms"
-import http_result from "./support/http.ms"
-import TextError from "@std/core.ms"
-import {headers, HttpMethod} from "@std/http.ms"
-import {text_headers, list_headers} from "./support/http.ms"
-import {
+from "@std/testing.ms" import expect_ok
+from "./support/http.ms" import http_result
+from "@std/core.ms" import TextError
+from "@std/http.ms" import headers, HttpMethod
+from "./support/http.ms" import text_headers, list_headers
+from "@std/http.ms" import (
     HttpRequest, HttpResponse, HttpExchange, HttpError, HttpServerOptions,
     HttpClientOptions, HttpHeaders
-} from "@std/http.ms"
-import network from "@std/net.ms"
-import TlsOptions from "@std/net.ms"
-import Bytes from "@std/bytes.ms"
+)
+from "@std/net.ms" import network
+from "@std/net.ms" import TlsOptions
+from "@std/bytes.ms" import Bytes
 
-fn route(request: HttpRequest) HttpResponse:
+def route(request: HttpRequest) -> HttpResponse:
     var cookies = Map[String, String]()
     cookies.add("Set-Cookie", "a=1")
     cookies.add("set-cookie", "b=2")
 
     let fields = match text_headers(cookies):
-        ok(found): found
-        error(cause): return HttpResponse(
+        case ok(found): found
+        case error(cause): return HttpResponse(
             status: 500, headers: headers(), body: (cause.message().to_bytes())
         )
 
     return HttpResponse(
-        status: 200, headers: fields, body: "{request.path}|{request.query}".to_bytes()
+        status: 200, headers: fields, body: f"{request.path}|{request.query}".to_bytes()
     )
 
-fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
+def stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
@@ -34,11 +34,11 @@ fn stream_route(exchange: HttpExchange) Result[Unit, HttpError]:
         status: 200, headers: (try list_headers(chain_1))
     )
     let written = (
-        try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
+        try http_result(exchange.write(f"{exchange.path()}|{exchange.query()}"))
     )
-    return ok(unit)
+    return ok(())
 
-fn check_route(url: String, expected: String) Result[Unit, Error]:
+def check_route(url: String, expected: String) -> Result[Unit, Error]:
     let response = (
         network().request(
             method: HttpMethod.Get, url: url,
@@ -58,9 +58,9 @@ fn check_route(url: String, expected: String) Result[Unit, Error]:
         ) != some(["a=1", "b=2"])
     ): return error(TextError("#257 repeated cookies regressed"))
 
-    return ok(unit)
+    return ok(())
 
-fn check_rejected(url: String) Result[Unit, Error]:
+def check_rejected(url: String) -> Result[Unit, Error]:
     let response = (
         network().request(
             method: HttpMethod.Get, url: url,
@@ -72,42 +72,42 @@ fn check_rejected(url: String) Result[Unit, Error]:
         TextError("unsafe or invalid path was dispatched")
     )
 
-    return ok(unit)
+    return ok(())
 
-fn check_paths(base: String) Result[Unit, Error]:
-    (try check_route(url: "{base}/a%20b", expected: "/a b|"))
-    (try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
-    (try check_route(url: "{base}/a/../b/", expected: "/b/|"))
-    (try check_route(url: "{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500"))
-    (try check_rejected("{base}/a%2Fb"))
-    (try check_rejected("{base}/a%00b"))
-    (try check_rejected("{base}/bad%ff/../x"))
-    return ok(unit)
+def check_paths(base: String) -> Result[Unit, Error]:
+    (try check_route(url: f"{base}/a%20b", expected: "/a b|"))
+    (try check_route(url: f"{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
+    (try check_route(url: f"{base}/a/../b/", expected: "/b/|"))
+    (try check_route(url: f"{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500"))
+    (try check_rejected(f"{base}/a%2Fb"))
+    (try check_rejected(f"{base}/a%00b"))
+    (try check_rejected(f"{base}/bad%ff/../x"))
+    return ok(())
 
 test "buffered routes validate original input and decode once":
-    with server = (
+    with (
         network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok
-    ):
-        (try check_paths("http://{server.address()}"))
+    ) as server:
+        (try check_paths(f"http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    with server = (
+    with (
         network().serve_stream(
             address: "127.0.0.1:0", handler: stream_route,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
-    ):
-        (try check_paths("http://{server.address()}"))
+    ) as server:
+        (try check_paths(f"http://{server.address()}"))
 
-fn expect_http_error[T](outcome: Result[T, HttpError]) Result[Unit, Error]:
+def expect_http_error[T](outcome: Result[T, HttpError]) -> Result[Unit, Error]:
     match outcome:
-        ok(_): return error(TextError("invalid URL succeeded"))
-        error(cause):
+        case ok(_): return error(TextError("invalid URL succeeded"))
+        case error(cause):
             if cause != HttpError.InvalidInput: return error(
                 TextError("malformed URL leaked transport error")
             )
 
-    return ok(unit)
+    return ok(())
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
@@ -121,13 +121,13 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
 
     let tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
-        alpn: [], require_client_certificate: false
+        alpn: [], require_client_certificate: False
     )
-    with client = (
+    with (
         network().http_client(
-            HttpClientOptions(decompress: false, cookies: false, tls: tls)
+            HttpClientOptions(decompress: False, cookies: False, tls: tls)
         ) | try expect_ok
-    ):
+    ) as client:
         (
             client.request(
                 method: HttpMethod.Get, url: "http://127.0.0.1:65536/",

@@ -1,21 +1,21 @@
 # conform: tags=aliasing,closures,control-flow,faults,lists,maps,modules,mutation,optional,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/collections.ms" import (
     ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries,
     flatten
-} from "@std/collections.ms"
+)
 
-fn positive(value: Int) Bool: value > 0
+def positive(value: Int) -> Bool: value > 0
 
-fn twice(value: Int) Int: value * 2
+def twice(value: Int) -> Int: value * 2
 
-fn duplicate(value: Int) List[Int]: [value, value]
+def duplicate(value: Int) -> List[Int]: [value, value]
 
-fn sum(accumulator: Int, value: Int) Int: accumulator + value
+def sum(accumulator: Int, value: Int) -> Int: accumulator + value
 
-fn parity(value: Int) Int: value % 2
+def parity(value: Int) -> Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
@@ -145,10 +145,10 @@ test "for over range counts without a list":
 
     try expect_equal(skipped, 16)
 
-    var callbacks: List[fn() Int] = []
+    var callbacks: List[Callable[[], Int]] = []
     for index in range(0, 3):
-        callbacks.append(fn(): index)
-    try expect_equal(callbacks.map(fn(call): call()), [0, 1, 2])
+        callbacks.append(lambda: index)
+    try expect_equal(callbacks.map(lambda call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(

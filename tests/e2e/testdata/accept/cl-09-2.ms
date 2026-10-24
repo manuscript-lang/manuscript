@@ -1,4 +1,4 @@
-fn absent[T]() Optional[T]:
+def absent[T]() -> Optional[T]:
     return none
 
 test "result context infers function arguments":

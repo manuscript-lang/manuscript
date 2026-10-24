@@ -1,6 +1,6 @@
-fn size(xs: List[Int]) Int:
+def size(xs: List[Int]) -> Int:
     return xs.length()
 
-fn f() Int:
+def f() -> Int:
     var xs = [0]
     return size(var xs)  # error: does not change

@@ -1,10 +1,10 @@
-import {expect_equal, expect_not_equal} from "@std/testing.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/testing.ms" import expect_equal, expect_not_equal
+from "@std/decimal.ms" import Decimal
 
-fn quotient(value: Int, divisor: Int) Int:
+def quotient(value: Int, divisor: Int) -> Int:
     return value / divisor
 
-fn remainder(value: Int, divisor: Int) Int:
+def remainder(value: Int, divisor: Int) -> Int:
     return value % divisor
 
 test "numeric boundary rules":
@@ -14,11 +14,11 @@ test "numeric boundary rules":
 
     let infinity = 1.0 / 0.0
     let nan = 0.0 / 0.0
-    try expect_equal("{infinity}", "Infinity")
+    try expect_equal(f"{infinity}", "Infinity")
     try expect_not_equal(nan, nan)
 
     let third = 1d / 3d
-    try expect_equal("{third}", "0.3333333333333333333333333333333333")
+    try expect_equal(f"{third}", "0.3333333333333333333333333333333333")
 
     let absent: Optional[Int] = none
     try expect_equal(1e300.truncate_to_int(), absent)

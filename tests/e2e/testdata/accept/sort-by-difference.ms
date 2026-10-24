@@ -1,10 +1,10 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
-fn ascending(xs: List[Int]) List[Int]:
-    return xs.sorted(compare: fn(left: Int, right: Int) Int: return left - right)
+def ascending(xs: List[Int]) -> List[Int]:
+    return xs.sorted(compare: lambda (left: Int, right: Int) -> Int: return left - right)
 
-fn descending(xs: List[Int]) List[Int]:
-    return xs.sorted(compare: fn(left: Int, right: Int) Int: return right - left)
+def descending(xs: List[Int]) -> List[Int]:
+    return xs.sorted(compare: lambda (left: Int, right: Int) -> Int: return right - left)
 
 test "a difference comparator sorts by value":
     ascending([5, -3, 9, 0, -3, 7]) | try expect_equal([-3, -3, 0, 5, 7, 9])
@@ -14,7 +14,7 @@ test "a difference comparator sorts by value":
 
 test "a difference comparator still faults when a subtraction overflows":
     let wide = [9223372036854775807, -9223372036854775807, 0]
-    (try expect_fault(fn(): let ignored = ascending(wide))) | try expect_contains(
+    (try expect_fault(lambda: let ignored = ascending(wide))) | try expect_contains(
         "Int overflow"
     )
 

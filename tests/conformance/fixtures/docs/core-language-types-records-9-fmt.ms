@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,modules,optional,parser,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/records.md:120
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
 type Node:
     value: Int

@@ -1,22 +1,22 @@
 # conform: tags=alternatives,control-flow,faults,formatter,lists,match,modules,mutation,optional,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/statement-match.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type Shape:
     case Circle(r: Int)
     case Rect(w: Int, h: Int)
     case Dot
 
-fn area(shape: Shape) Int:
+def area(shape: Shape) -> Int:
     match shape:
-        Circle(r): return 3 * r * r
-        Rect(w, h): return w * h
-        Dot: return 0
+        case Circle(r): return 3 * r * r
+        case Rect(w, h): return w * h
+        case Dot: return 0
 
     return -1
 
-fn first_positive(values: List[Optional[Int]]) Int:
+def first_positive(values: List[Optional[Int]]) -> Int:
     var index = 0
 
     while index < values.length():
@@ -24,33 +24,33 @@ fn first_positive(values: List[Optional[Int]]) Int:
         index += 1
 
         match item:
-            none: continue
-            some(value):
+            case none: continue
+            case some(value):
                 if value > 0:
                     return value
 
     return -1
 
-fn nested(rows: List[List[Optional[Int]]]) Int:
+def nested(rows: List[List[Optional[Int]]]) -> Int:
     var total = 0
 
     for row in rows:
         for item in row:
             match item:
-                none: break
-                some(value): total += value
+                case none: break
+                case some(value): total += value
 
         total += 1000
 
     return total
 
-fn side_effects(shape: Shape) Int:
+def side_effects(shape: Shape) -> Int:
     var count = 0
 
     match shape:
-        Circle(r):
+        case Circle(r):
             count += r
-        _:
+        case _:
             count += 100
 
     return count

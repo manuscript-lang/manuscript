@@ -1,8 +1,8 @@
 # conform: tags=control-flow,lists,maps,modules,mutation,records,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=bug bash: lowering and codegen
-import {expect_equal} from "@std/testing.ms"
-import {range} from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/collections.ms" import range
 
 type Pt:
     x: Int
@@ -12,13 +12,13 @@ type Row:
     cells: List[Int]
     pt: Pt
 
-fn shift(var p: Pt, dx: Int) Unit:
+def shift(var p: Pt, dx: Int) -> Unit:
     p.x += dx
 
-fn shift_at(var pts: List[Pt], i: Int, dx: Int) Unit:
+def shift_at(var pts: List[Pt], i: Int, dx: Int) -> Unit:
     shift(var pts[i], dx)
 
-fn grow(var rows: List[Row], i: Int, j: Int) Unit:
+def grow(var rows: List[Row], i: Int, j: Int) -> Unit:
     rows[i].cells.append(j)
     rows[i].pt.y = j
 
@@ -69,6 +69,6 @@ test "an eager list get default is released on every path":
 
 test "find over owned elements keeps the hit":
     let rows = [[1], [2], [3, 3]]
-    try expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), some([2]))
-    try expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), none)
-    try expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), some([3, 3]))
+    try expect_equal(rows.find(lambda (value: List[Int]): value[0] == 2), some([2]))
+    try expect_equal(rows.find(lambda (value: List[Int]): value[0] == 9), none)
+    try expect_equal(rows.find_last(lambda (value: List[Int]): value[0] > 1), some([3, 3]))

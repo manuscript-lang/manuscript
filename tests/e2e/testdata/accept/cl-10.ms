@@ -1,16 +1,16 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 interface Increment:
-    fn apply(value: Int) Int
+    def apply(value: Int) -> Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) Int:
+    def apply(value: Int) -> Int:
         return value + self.delta
 
-fn use_increment(operation: Increment) Int:
+def use_increment(operation: Increment) -> Int:
     return operation.apply(4)
 
 test "explicit contract conversion":

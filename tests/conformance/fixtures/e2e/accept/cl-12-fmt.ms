@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,maps,modules,mutation,parser,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-12.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn map_total(values: Map[String, Int]) Int:
+def map_total(values: Map[String, Int]) -> Int:
     var total = 0
 
     for entry in values:
@@ -12,7 +12,7 @@ fn map_total(values: Map[String, Int]) Int:
 
     return total
 
-fn set_total(values: Set[Int]) Int:
+def set_total(values: Set[Int]) -> Int:
     var total = 0
     for value in values:
         total += value

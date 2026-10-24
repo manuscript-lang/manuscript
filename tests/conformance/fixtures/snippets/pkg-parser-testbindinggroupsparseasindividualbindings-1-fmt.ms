@@ -6,10 +6,10 @@ let (
     B: Int = A + 1
 )
 
-fn main() Unit:
+def main() -> Unit:
     var (
         a = 10
-        b = fn(x: Int) Int:
+        b = lambda (x: Int) -> Int:
             return x + 1
     )
     let (

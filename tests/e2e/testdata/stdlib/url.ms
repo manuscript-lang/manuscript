@@ -1,8 +1,8 @@
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/net.ms" import (
     parse, format, resolve, encode_component, decode_component, parse_query,
     format_query, QueryEntry, Url, UrlError
-} from "@std/net.ms"
+)
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
@@ -41,7 +41,7 @@ test "URL format rejects queries that would not round trip":
             base.scheme.clone(), base.host.clone(), base.port, base.path.clone(),
             query.clone(), ""
         )
-        if format(bad) != invalid: return fail("query {query}")
+        if format(bad) != invalid: return fail(f"query {query}")
 
     let good = Url(
         base.scheme.clone(), base.host.clone(), base.port, base.path.clone(), "a=%41&b",
@@ -52,7 +52,7 @@ test "URL format rejects queries that would not round trip":
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
     let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
-        if parse(text) != invalid: return fail("accepted {text}")
+        if parse(text) != invalid: return fail(f"accepted {text}")
 
     let empty = try parse("http://")
     try expect_equal((try format(empty)), "http://")
@@ -66,7 +66,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
         let bad = Url(scheme.clone(), "host", none, "/path", "", "")
-        if format(bad) != invalid_text: return fail("invalid scheme accepted: {scheme}")
+        if format(bad) != invalid_text: return fail(f"invalid scheme accepted: {scheme}")
 
         try expect_equal(resolve(bad, "/next"), invalid_url)
 
@@ -77,7 +77,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
     for text in ["custom:/path", "custom+v1.2://host/path", "file:///path", "http://"]:
         let original = try parse(text)
         if (original | try format | try parse) != original: return fail(
-            "hierarchical URL round trip: {text}"
+            f"hierarchical URL round trip: {text}"
         )
 
     let uppercase = Url("HTTP", "host", none, "/path", "", "")

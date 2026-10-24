@@ -1,27 +1,27 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
-import {from_scalars} from "@std/string.ms"
-import {range} from "@std/collections.ms"
+from "@std/io.ms" import stdin, stdout, read_line
+from "@std/string.ms" import from_scalars
+from "@std/collections.ms" import range
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     for ch in line.chars():
         if ch != " ":
-            return false
-    return true
+            return False
+    return True
 
-fn is_ascii_digit(value: Int) Bool:
+def is_ascii_digit(value: Int) -> Bool:
     return value >= 48 and value <= 57
 
-fn is_ascii_letter(value: Int) Bool:
+def is_ascii_letter(value: Int) -> Bool:
     return (value >= 65 and value <= 90) or (value >= 97 and value <= 122)
 
 # Base code point of the alphabet that a letter belongs to.
-fn letter_base(value: Int) Int:
+def letter_base(value: Int) -> Int:
     if value >= 97:
         return 97
 
     return 65
 
-fn valid_caesar_key(key: String) Bool:
+def valid_caesar_key(key: String) -> Bool:
     let values = key.scalar_values()
     var start = 0
     if key.starts_with("-"):
@@ -29,29 +29,29 @@ fn valid_caesar_key(key: String) Bool:
 
     let digits = values.length() - start
     if digits == 0 or digits > 7:
-        return false
+        return False
 
     for index in range(start, values.length()):
         if not is_ascii_digit(values.get(index)):
-            return false
-    return true
+            return False
+    return True
 
-fn valid_vigenere_key(key: String) Bool:
+def valid_vigenere_key(key: String) -> Bool:
     let values = key.scalar_values()
     if values.length() == 0:
-        return false
+        return False
 
     for value in values:
         if not is_ascii_letter(value):
-            return false
-    return true
+            return False
+    return True
 
 # Caesar shift for encryption, normalized to 0..25.
-fn caesar_shift(key: String) Int:
+def caesar_shift(key: String) -> Int:
     let value = key.parse_int().get()
     return ((value % 26) + 26) % 26
 
-fn caesar(text: String, shift: Int) String:
+def caesar(text: String, shift: Int) -> String:
     var out: List[Int] = []
 
     for value in text.scalar_values():
@@ -63,7 +63,7 @@ fn caesar(text: String, shift: Int) String:
 
     return from_scalars(out).get()
 
-fn vigenere(text: String, key: String, decrypt: Bool) String:
+def vigenere(text: String, key: String, decrypt: Bool) -> String:
     let key_values = key.scalar_values()
     var out: List[Int] = []
     var position = 0
@@ -83,7 +83,7 @@ fn vigenere(text: String, key: String, decrypt: Bool) String:
 
     return from_scalars(out).get()
 
-fn run_command(line: String) String:
+def run_command(line: String) -> String:
     let parts = line.split(" ")
     if parts.length() < 4:
         return "error: bad command"
@@ -95,8 +95,8 @@ fn run_command(line: String) String:
 
     for index in range(3, parts.length()):
         if index > 3:
-            text = "{text} "
-        text = "{text}{parts.get(index)}"
+            text = f"{text} "
+        text = f"{text}{parts.get(index)}"
 
     if text == "":
         return "error: bad command"
@@ -121,19 +121,19 @@ fn run_command(line: String) String:
 
     return vigenere(text, key, decrypt)
 
-export fn main() Int:
+export def main() -> Int:
     let input = stdin()
     let output = stdout()
-    var more = true
+    var more = True
 
     while more:
         let next = read_line(input).get()
 
         if let line = next:
             if not is_blank(line):
-                output.write("{run_command(line)}\n").get()
+                output.write(f"{run_command(line)}\n").get()
         else:
-            more = false
+            more = False
 
     output.flush().get()
     return 0

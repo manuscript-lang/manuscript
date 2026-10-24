@@ -1,9 +1,9 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
-import {range} from "@std/collections.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/io.ms" import read_line, stdin, stdout
+from "@std/collections.ms" import range
+from "@std/bytes.ms" import Bytes
 
 # Returns the value of a 1 to 6 digit decimal, or -1 when the text is not one.
-fn parse_num(text: String) Int:
+def parse_num(text: String) -> Int:
     let digits = text.to_bytes()
     if digits.length() == 0 or digits.length() > 6:
         return -1
@@ -19,38 +19,38 @@ fn parse_num(text: String) Int:
 
     return value
 
-fn non_empty(text: String) Bool:
+def non_empty(text: String) -> Bool:
     return text.length() > 0
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     let bytes = line.to_bytes()
     for i in range(0, bytes.length()):
         if bytes.get(i) != 32:
-            return false
-    return true
+            return False
+    return True
 
-fn zeros(count: Int) List[Int]:
+def zeros(count: Int) -> List[Int]:
     var row = [0]
     for i in range(1, count):
         row.append(0)
     return row
 
-fn max2(a: Int, b: Int) Int:
+def max2(a: Int, b: Int) -> Int:
     if a > b:
         return a
 
     return b
 
-fn min3(a: Int, b: Int, c: Int) Int:
+def min3(a: Int, b: Int, c: Int) -> Int:
     return min2(min2(a, b), c)
 
-fn min2(a: Int, b: Int) Int:
+def min2(a: Int, b: Int) -> Int:
     if a < b:
         return a
 
     return b
 
-fn lcs_length(a: Bytes, b: Bytes) Int:
+def lcs_length(a: Bytes, b: Bytes) -> Int:
     let n = b.length()
     var prev = zeros(n + 1)
 
@@ -67,7 +67,7 @@ fn lcs_length(a: Bytes, b: Bytes) Int:
 
     return prev.get(n)
 
-fn edit_distance(a: Bytes, b: Bytes) Int:
+def edit_distance(a: Bytes, b: Bytes) -> Int:
     let n = b.length()
     var prev = zeros(n + 1)
     for j in range(0, n + 1):
@@ -93,14 +93,14 @@ fn edit_distance(a: Bytes, b: Bytes) Int:
     return prev.get(n)
 
 # An item is a `w:v` token with a weight of at least 1 and a value of at least 0.
-fn item_valid(token: String) Bool:
+def item_valid(token: String) -> Bool:
     let parts = token.split(":")
     if parts.length() != 2:
-        return false
+        return False
 
     return parse_num(parts.get(0)) >= 1 and parse_num(parts.get(1)) >= 0
 
-fn knapsack(tokens: List[String]) String:
+def knapsack(tokens: List[String]) -> String:
     let cap = parse_num(tokens.get(1))
     if cap < 0:
         return "error: bad command"
@@ -121,9 +121,9 @@ fn knapsack(tokens: List[String]) String:
                 let c = cap - k
                 best.set(c, max2(best.get(c), best.get(c - w) + v))
 
-    return "{best.get(cap)}"
+    return f"{best.get(cap)}"
 
-fn coin_change(tokens: List[String]) String:
+def coin_change(tokens: List[String]) -> String:
     let amount = parse_num(tokens.get(1))
     if amount < 0:
         return "error: bad command"
@@ -150,9 +150,9 @@ fn coin_change(tokens: List[String]) String:
     if fewest.get(amount) >= unreachable:
         return "impossible"
 
-    return "{fewest.get(amount)}"
+    return f"{fewest.get(amount)}"
 
-fn answer(line: String) String:
+def answer(line: String) -> String:
     let tokens = line.split(" ")
     let cmd = tokens.get(0)
     if (
@@ -161,14 +161,14 @@ fn answer(line: String) String:
         and non_empty(tokens.get(1))
         and non_empty(tokens.get(2))
     ):
-        return "{lcs_length(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
+        return f"{lcs_length(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
     if (
         cmd == "edit"
         and tokens.length() == 3
         and non_empty(tokens.get(1))
         and non_empty(tokens.get(2))
     ):
-        return "{edit_distance(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
+        return f"{edit_distance(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
     if cmd == "knap" and tokens.length() >= 2:
         return knapsack(tokens)
     if cmd == "coins" and tokens.length() >= 3:
@@ -176,17 +176,17 @@ fn answer(line: String) String:
 
     return "error: bad command"
 
-export fn main() Int:
+export def main() -> Int:
     let input = stdin()
     let output = stdout()
-    var reading = true
+    var reading = True
 
     while reading:
         if let line = read_line(input).get():
             if not is_blank(line):
-                output.write("{answer(line)}\n").get()
+                output.write(f"{answer(line)}\n").get()
         else:
-            reading = false
+            reading = False
 
     output.flush().get()
     return 0

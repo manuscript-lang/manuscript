@@ -1,17 +1,17 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 interface Apply[T]:
-    fn apply(value: Int) T
+    def apply(value: Int) -> T
 
 type Box[T]:
     value: T
 
-impl Apply[T] for Box[fn(value: Int) T]:
-    fn apply(value: Int) T:
+impl Apply[T] for Box[Callable[[Int], T]]:
+    def apply(value: Int) -> T:
         return self.value(value)
 
-fn render(value: Int) String:
-    return "{value}"
+def render(value: Int) -> String:
+    return f"{value}"
 
 test "implementation variables inside function signatures":
     let box = Box(render)

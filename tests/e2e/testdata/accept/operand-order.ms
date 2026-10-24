@@ -1,13 +1,13 @@
-import expect_equal from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-export fn main() Int:
+export def main() -> Int:
     var number = 1
     let total = number + (
         match some(1):
-            some(value):
+            case some(value):
                 number += 1
                 value
-            none: 0
+            case none: 0
     )
     if total != 2:
         return 1

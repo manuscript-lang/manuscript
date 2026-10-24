@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/snapshot_test.go:165 TestSnapshotReachableGenerationAndDerivedReuse
-import value from "./dep.ms"
+from "./dep.ms" import value
 
-export fn main() Int: value()
+export def main() -> Int: value()

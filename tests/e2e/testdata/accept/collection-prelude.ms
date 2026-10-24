@@ -1,6 +1,6 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import range from "@std/collections.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/collections.ms" import range
 
 type Shape:
     case Circle(radius: Float)
@@ -9,11 +9,11 @@ type Point:
     x: Int
     y: Int
 
-fn roll(i: Int) Result[Int, TextError]: ok(i)
+def roll(i: Int) -> Result[Int, TextError]: ok(i)
 
-fn count(values: List[String]) Int: values.length()
+def count(values: List[String]) -> Int: values.length()
 
-fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
+def update[K: Hashable, V](var values: Map[K, V], key: K, value: V) -> Map[K, V]:
     values.add(key, value)
     return values.clone()
 
@@ -78,10 +78,10 @@ test "map add captures receivers and arguments in written order":
     var visits = 0
     original.add(
         match some(1):
-            some(_):
+            case some(_):
                 visits = 1
                 1
-            none: 0
+            case none: 0
         ,
         2
     )
@@ -91,26 +91,26 @@ test "map add captures receivers and arguments in written order":
     original.add(
         key,
         match some(1):
-            some(_):
+            case some(_):
                 key = 4
                 5
-            none: 0
+            case none: 0
     )
     try expect_false(original.get(3).get() != 5 or original.contains(4))
 
     var order = 0
     original.add(
         value: match some(1):
-            some(_):
+            case some(_):
                 order = 1
                 7
-            none: 0
+            case none: 0
         ,
         key: match some(1):
-            some(_):
+            case some(_):
                 try expect_equal(order, 1)
                 order = 2
                 6
-            none: 0
+            case none: 0
     )
     try expect_false(order != 2 or original.get(6).get() != 7)

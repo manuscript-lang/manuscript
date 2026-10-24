@@ -1,23 +1,23 @@
-import {expect_equal, expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_true
 
 type Order:
     status: String
     items: List[String]
 
-fn count_placed(orders: Map[String, Order]) Int:
+def count_placed(orders: Map[String, Order]) -> Int:
     var n = 0
     for e in orders.entries():
         if e.value.status == "placed":
             n += e.value.items.length()
     return n
 
-fn ship(var orders: Map[String, Order], id: String) Bool:
+def ship(var orders: Map[String, Order], id: String) -> Bool:
     if var o = orders.get(id):
         o.status = "shipped"
         o.items.append("label")
-        return true
+        return True
 
-    return false
+    return False
 
 test "a for loop walks a map's entries, values and keys in insertion order":
     var m = Map[String, Int]()
@@ -28,11 +28,11 @@ test "a for loop walks a map's entries, values and keys in insertion order":
 
     var seen = List[String]()
     for e in m.entries():
-        seen.append("{e.key}={e.value}")
+        seen.append(f"{e.key}={e.value}")
     for e in m:
         seen.append(e.key.clone())
     for v in m.values():
-        seen.append("{v}")
+        seen.append(f"{v}")
 
     for k in m.keys():
         if k == "c":
@@ -47,7 +47,7 @@ test "a walk over a map the body changes still sees a snapshot":
     m.add(key: "x", value: 1)
     m.add(key: "y", value: 2)
     for e in m.entries():
-        m.add(key: "{e.key}{e.key}", value: e.value * 10)
+        m.add(key: f"{e.key}{e.key}", value: e.value * 10)
     try expect_equal(m.length(), 4)
     try expect_equal(m.get_or(key: "yy", fallback: 0), 20)
 
@@ -75,12 +75,12 @@ test "walks borrow record values and sets without copying them":
     try expect_equal(total, 22)
 
     var flags = Map[Bool, String]()
-    flags.add(key: true, value: "yes")
-    flags.add(key: false, value: "no")
+    flags.add(key: True, value: "yes")
+    flags.add(key: False, value: "no")
 
     var words = List[String]()
     for e in flags.entries():
-        words.append("{e.key}:{e.value}")
+        words.append(f"{e.key}:{e.value}")
     try expect_equal(words, ["true:yes", "false:no"])
 
 test "if var changes a map entry in place":
@@ -99,7 +99,7 @@ test "if var changes a map entry in place":
     var orders = Map[String, Order]()
     orders.add(key: "o1", value: Order(status: "placed", items: ["a"]))
     try expect_true(ship(var orders, "o1"))
-    try expect_equal(ship(var orders, "o9"), false)
+    try expect_equal(ship(var orders, "o9"), False)
 
     let o = orders.get("o1").get()
     try expect_equal(o.status, "shipped")

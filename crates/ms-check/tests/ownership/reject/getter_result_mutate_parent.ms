@@ -2,10 +2,10 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() List[Int]:
+    def list() -> List[Int]:
         return self.items
 
-fn f(var b: Box) Int:
+def f(var b: Box) -> Int:
     let xs = b.list()
     b.items = [2]  # error: cannot change `b.items` while `xs` borrows it
     return xs.length()

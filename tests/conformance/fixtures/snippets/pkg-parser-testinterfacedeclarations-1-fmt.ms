@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=pkg/parser/parser_test.go:118 TestInterfaceDeclarations
 export interface Read[T: Equal]:
-    fn get() T
+    def get() -> T
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    fn get() T:
+    def get() -> T:
         return self.value

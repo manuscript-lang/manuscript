@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {range} from "@std/collections.ms"
+from "@std/io.ms" import stdin, stdout
+from "@std/streams.ms" import read_lines
+from "@std/collections.ms" import range
 
 type Moment:
     year: Int
@@ -16,14 +16,14 @@ type Schedule:
     months: List[Bool]
     weekdays: List[Bool]
 
-fn is_blank(line: String) Bool:
+def is_blank(line: String) -> Bool:
     for ch in line.chars():
         if ch != " ":
-            return false
-    return true
+            return False
+    return True
 
 # Returns the value of an unsigned ASCII number of min_width to max_width digits, or -1.
-fn number(text: String, min_width: Int, max_width: Int) Int:
+def number(text: String, min_width: Int, max_width: Int) -> Int:
     if text.length() < min_width or text.length() > max_width:
         return -1
 
@@ -34,10 +34,10 @@ fn number(text: String, min_width: Int, max_width: Int) Int:
 
     return text.parse_int().get(-1)
 
-fn is_leap(year: Int) Bool:
+def is_leap(year: Int) -> Bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-fn days_in_month(year: Int, month: Int) Int:
+def days_in_month(year: Int, month: Int) -> Int:
     if month == 2:
         if is_leap(year):
             return 29
@@ -50,7 +50,7 @@ fn days_in_month(year: Int, month: Int) Int:
     return 31
 
 # Day of the week for a date, where 0 is Sunday. 1970-01-01 was a Thursday.
-fn weekday_of(year: Int, month: Int, day: Int) Int:
+def weekday_of(year: Int, month: Int, day: Int) -> Int:
     var days = 0
 
     for y in range(1970, year):
@@ -64,7 +64,7 @@ fn weekday_of(year: Int, month: Int, day: Int) Int:
     days += day - 1
     return (days + 4) % 7
 
-fn parse_start(text: String) Optional[Moment]:
+def parse_start(text: String) -> Optional[Moment]:
     let halves = text.split("T")
     if halves.length() != 2:
         return none
@@ -89,7 +89,7 @@ fn parse_start(text: String) Optional[Moment]:
     return some(Moment(year: year, month: month, day: day, hour: hour, minute: minute))
 
 # The [first, last] span named by a base item, or an empty list when it is invalid.
-fn bounds(base: String, low: Int, high: Int, stepped: Bool) List[Int]:
+def bounds(base: String, low: Int, high: Int, stepped: Bool) -> List[Int]:
     if base == "*":
         return [low, high]
 
@@ -112,7 +112,7 @@ fn bounds(base: String, low: Int, high: Int, stepped: Bool) List[Int]:
 
     return []
 
-fn item_values(item: String, low: Int, high: Int) List[Int]:
+def item_values(item: String, low: Int, high: Int) -> List[Int]:
     let parts = item.split("/")
     if parts.length() == 0 or parts.length() > 2:
         return []
@@ -136,10 +136,10 @@ fn item_values(item: String, low: Int, high: Int) List[Int]:
     return values
 
 # Marks the allowed values of one cron field, or returns an empty list when the field is invalid.
-fn parse_field(text: String, low: Int, high: Int) List[Bool]:
+def parse_field(text: String, low: Int, high: Int) -> List[Bool]:
     var allowed: List[Bool] = []
     for value in range(0, high + 1):
-        allowed.append(false)
+        allowed.append(False)
 
     for item in text.split(","):
         let values = item_values(item, low, high)
@@ -147,20 +147,20 @@ fn parse_field(text: String, low: Int, high: Int) List[Bool]:
             return []
 
         for value in values:
-            allowed[value] = true
+            allowed[value] = True
 
     return allowed
 
-fn two(n: Int) String:
+def two(n: Int) -> String:
     if n < 10:
-        return "0{n}"
+        return f"0{n}"
 
-    return "{n}"
+    return f"{n}"
 
-fn stamp(year: Int, month: Int, day: Int, hour: Int, minute: Int) String:
-    return "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+def stamp(year: Int, month: Int, day: Int, hour: Int, minute: Int) -> String:
+    return f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
 
-fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
+def runs(schedule: Schedule, start: Moment, count: Int) -> List[String]:
     var found: List[String] = []
     let start_year = start.year
     let start_month = start.month
@@ -198,54 +198,54 @@ fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
 
     return found
 
-fn describe(line_no: Int, text: String) List[String]:
-    let head = "line {line_no}"
+def describe(line_no: Int, text: String) -> List[String]:
+    let head = f"line {line_no}"
     let fields = text.split(" ")
     if fields.length() != 7:
-        return ["{head}: error: bad line"]
+        return [f"{head}: error: bad line"]
 
     let start = parse_start(fields[0])
     if not start.is_some():
-        return ["{head}: error: bad start"]
+        return [f"{head}: error: bad start"]
 
     let count = number(fields[1], 1, 2)
     if count < 1 or count > 20:
-        return ["{head}: error: bad count"]
+        return [f"{head}: error: bad count"]
 
     let minutes = parse_field(fields[2], 0, 59)
     if minutes.length() == 0:
-        return ["{head}: error: bad minute"]
+        return [f"{head}: error: bad minute"]
 
     let hours = parse_field(fields[3], 0, 23)
     if hours.length() == 0:
-        return ["{head}: error: bad hour"]
+        return [f"{head}: error: bad hour"]
 
     let days = parse_field(fields[4], 1, 31)
     if days.length() == 0:
-        return ["{head}: error: bad day-of-month"]
+        return [f"{head}: error: bad day-of-month"]
 
     let months = parse_field(fields[5], 1, 12)
     if months.length() == 0:
-        return ["{head}: error: bad month"]
+        return [f"{head}: error: bad month"]
 
     let weekdays = parse_field(fields[6], 0, 6)
     if weekdays.length() == 0:
-        return ["{head}: error: bad day-of-week"]
+        return [f"{head}: error: bad day-of-week"]
 
     let schedule = Schedule(
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
     let found = runs(schedule, start.get(), count)
     if found.length() == 0:
-        return ["{head}: never"]
+        return [f"{head}: never"]
 
     let total = found.length()
-    var out = ["{head}: {total} runs"]
+    var out = [f"{head}: {total} runs"]
     for run in found:
         out.append(run)
     return out
 
-export fn main() Int:
+export def main() -> Int:
     var out: List[String] = []
     var line_no = 0
 

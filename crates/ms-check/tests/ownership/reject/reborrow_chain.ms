@@ -1,4 +1,4 @@
-fn f() Int:
+def f() -> Int:
     var rows = [[1]]
     let a = rows[0]
     let b = a

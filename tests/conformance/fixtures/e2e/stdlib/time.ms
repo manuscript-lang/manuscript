@@ -1,11 +1,11 @@
 # conform: tags=control-flow,interpolation,modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/time.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/time.ms" import (
     timestamp, parse_timestamp, from_calendar, local_zone, Timestamp, TimeError, clock,
     wall_clock, sleep
-} from "@std/time.ms"
+)
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)
@@ -35,7 +35,7 @@ test "host clocks are usable and zero sleep completes":
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
     let out_of_range: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
     for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
-        if parse_timestamp(text) != out_of_range: return fail("range {text}")
+        if parse_timestamp(text) != out_of_range: return fail(f"range {text}")
 
 test "calendar fields follow the requested zone":
     let moment = try parse_timestamp("2024-03-10T12:30:15.250Z")

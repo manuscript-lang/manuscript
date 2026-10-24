@@ -1,17 +1,17 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
-import {decoder} from "@std/jsonstream.ms"
-import {stringify, JsonValue, JsonLimits, JsonError} from "@std/json.ms"
-import Bytes from "@std/bytes.ms"
-import range from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/jsonstream.ms" import decoder
+from "@std/json.ms" import stringify, JsonValue, JsonLimits, JsonError
+from "@std/bytes.ms" import Bytes
+from "@std/collections.ms" import range
 
-fn texts(values: List[JsonValue]) Result[List[String], Error]:
+def texts(values: List[JsonValue]) -> Result[List[String], Error]:
     var result: List[String] = []
     for item in values:
         result.append(try stringify(item))
     return ok(result)
 
 # Feeds the input in chunks of `size` bytes and returns every decoded value as text.
-fn decode(input: Bytes, size: Int) Result[List[String], Error]:
+def decode(input: Bytes, size: Int) -> Result[List[String], Error]:
     var reader = try decoder()
     var result: List[String] = []
     var offset = 0
@@ -28,26 +28,26 @@ fn decode(input: Bytes, size: Int) Result[List[String], Error]:
     return ok(result)
 
 test "JSON decoder preserves values split at every chunk size":
-    let source = "\{\"a\":\"é🙂\\u00e9\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}\n\"s\"[1]\{\"b\":2\}  42"
+    let source = "{\"a\":\"é🙂\\u00e9\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}\n\"s\"[1]{\"b\":2}  42"
     let expected = [
-        "\{\"a\":\"é🙂é\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}",
-        "\"s\"", "[1]", "\{\"b\":2\}", "42"
+        "{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}",
+        "\"s\"", "[1]", "{\"b\":2}", "42"
     ]
     let input = source.to_bytes()
     for size in range(1, input.length() + 1):
-        if (try decode(input, size)) != expected: return fail("chunk size {size}")
+        if (try decode(input, size)) != expected: return fail(f"chunk size {size}")
 
 test "JSON decoder reports truncated and malformed input":
     let invalid: Result[List[JsonValue], JsonError] = error(JsonError.InvalidData)
 
-    for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
+    for text in ["{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
         var reader = try decoder()
-        let fed = reader.feed("{text} ".to_bytes())
+        let fed = reader.feed(f"{text} ".to_bytes())
 
-        if text == "\{\"a\":[1" or text == "\"open":
-            if reader.finish() != invalid: return fail("truncated {text}")
-        else if fed != invalid and reader.finish() != invalid: return fail(
-            "malformed {text}"
+        if text == "{\"a\":[1" or text == "\"open":
+            if reader.finish() != invalid: return fail(f"truncated {text}")
+        elif fed != invalid and reader.finish() != invalid: return fail(
+            f"malformed {text}"
         )
 
 test "JSON decoder rejects invalid UTF-8 and stays failed":

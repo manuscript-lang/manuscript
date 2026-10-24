@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,lists,modules,numbers,records,sets,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/record-structs.ms
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
 
 type Point:
     x: Int
@@ -18,9 +18,9 @@ type Sized:
     width: Int
     height: Int = 2
 
-fn area(shape: Sized) Int: shape.width * shape.height
+def area(shape: Sized) -> Int: shape.width * shape.height
 
-fn shifted(point: Point, by: Int) Point:
+def shifted(point: Point, by: Int) -> Point:
     return Point(point.x + by, point.y + by)
 
 test "struct records read write compare format and clone":
@@ -34,12 +34,12 @@ test "struct records read write compare format and clone":
     var copy = a.clone()
     copy.y = 9
     try expect_false(not (a.y == 2 and copy.y == 9))
-    if "{a}" != "Point(x: 1, y: 2)": return fail("format changed: {a}")
+    if f"{a}" != "Point(x: 1, y: 2)": return fail(f"format changed: {a}")
 
 test "struct records with mixed field types":
-    var shape = Shape("disc", 1.5, solid: true, corner: Point(0, 0), tags: ["a"])
+    var shape = Shape("disc", 1.5, solid: True, corner: Point(0, 0), tags: ["a"])
     shape.weight *= 2.0
-    shape.name = "{shape.name}!"
+    shape.name = f"{shape.name}!"
     shape.corner.x = 4
     shape.tags.append("b")
     try expect_false(

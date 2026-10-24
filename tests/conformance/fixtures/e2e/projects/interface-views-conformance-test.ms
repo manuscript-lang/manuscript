@@ -1,10 +1,10 @@
 # conform: tags=diagnostics,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/interface_views/conformance_test.ms
-import invoke from "./domain.ms"
-import left from "./left.ms"
-import right from "./right.ms"
-import expect_equal from "@std/testing.ms"
+from "./domain.ms" import invoke
+from "./left.ms" import left
+from "./right.ms" import right
+from "@std/testing.ms" import expect_equal
 
 test "each module keeps its own view implementation":
     let first = left()

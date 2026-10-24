@@ -1,6 +1,6 @@
-fn make() String:
+def make() -> String:
     return "  a  "
 
-fn f() String:
+def f() -> String:
     let line = make()
     return line.trim()  # error: `trim` borrows its result from `line`

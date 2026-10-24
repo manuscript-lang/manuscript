@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/contracts.md:83
 interface ReadValue[T]:
-    fn get() T
+    def get() -> T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() T:
+    def get() -> T:
         return self.value

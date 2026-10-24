@@ -1,8 +1,8 @@
 # conform: tags=modules,stdlib-io,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
-import {stdout, stderr} from "@std/io.ms"
-import fail from "@std/testing.ms"
+from "@std/io.ms" import stdout, stderr
+from "@std/testing.ms" import fail
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
@@ -12,4 +12,4 @@ test "second=fails":
     return fail("expected failure")
 
 test "third=after":
-    return unit
+    return ()

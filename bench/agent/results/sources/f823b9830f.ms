@@ -1,6 +1,6 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
-import {from_scalars} from "@std/string.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/io.ms" import read_all, stdin, stdout
+from "@std/string.ms" import from_scalars
+from "@std/bytes.ms" import Bytes
 
 # Value tags.
 let TAG_NUM = 0
@@ -151,7 +151,7 @@ type Fail:
     syntax: Bool
 
 impl Error for Fail:
-    fn message() String:
+    def message() -> String:
         return self.msg
 
 # What `special_form` tells the evaluation loop to do next.
@@ -173,56 +173,56 @@ type Bindings:
     names: List[Int]
     inits: List[Value]
 
-fn mk(tag: Int, num: Int, text: String) Value:
+def mk(tag: Int, num: Int, text: String) -> Value:
     return Value(tag: tag, num: num, text: text)
 
-fn num_v(n: Int) Value:
+def num_v(n: Int) -> Value:
     return mk(TAG_NUM, n, "")
 
-fn bool_v(b: Bool) Value:
+def bool_v(b: Bool) -> Value:
     if b:
         return mk(TAG_BOOL, 1, "")
 
     return mk(TAG_BOOL, 0, "")
 
-fn str_v(s: String) Value:
+def str_v(s: String) -> Value:
     return mk(TAG_STR, 0, s)
 
-fn sym_v(id: Int) Value:
+def sym_v(id: Int) -> Value:
     return mk(TAG_SYM, id, "")
 
-fn nil_v() Value:
+def nil_v() -> Value:
     return mk(TAG_NIL, 0, "")
 
-fn void_v() Value:
+def void_v() -> Value:
     return mk(TAG_VOID, 0, "")
 
-fn truthy(v: Value) Bool:
+def truthy(v: Value) -> Bool:
     return not (v.tag == TAG_BOOL and v.num == 0)
 
-fn rt(msg: String) Fail:
-    return Fail(msg: msg, syntax: false)
+def rt(msg: String) -> Fail:
+    return Fail(msg: msg, syntax: False)
 
-fn syn(msg: String) Fail:
-    return Fail(msg: msg, syntax: true)
+def syn(msg: String) -> Fail:
+    return Fail(msg: msg, syntax: True)
 
-fn bad_form(name: String) Fail:
-    return syn("syntax error: bad form: {name}")
+def bad_form(name: String) -> Fail:
+    return syn(f"syntax error: bad form: {name}")
 
-fn type_fail(m: Machine, name: String, kind: String, v: Value) Fail:
-    return rt("{name}: expected {kind}, got {show(m, v, true)}")
+def type_fail(m: Machine, name: String, kind: String, v: Value) -> Fail:
+    return rt(f"{name}: expected {kind}, got {show(m, v, True)}")
 
-fn done_step(v: Value) Step:
-    return Step(done: true, value: v, env: 0, call: false)
+def done_step(v: Value) -> Step:
+    return Step(done: True, value: v, env: 0, call: False)
 
-fn next_step(x: Value, env: Int) Step:
-    return Step(done: false, value: x, env: env, call: false)
+def next_step(x: Value, env: Int) -> Step:
+    return Step(done: False, value: x, env: env, call: False)
 
-fn call_step(x: Value, env: Int) Step:
-    return Step(done: false, value: x, env: env, call: true)
+def call_step(x: Value, env: Int) -> Step:
+    return Step(done: False, value: x, env: env, call: True)
 
 # ---------------------------------------------------------------- symbols and environments
-fn intern(var m: Machine, name: String) Int:
+def intern(var m: Machine, name: String) -> Int:
     if let id = m.sym_ids.get(name):
         return id
 
@@ -233,12 +233,12 @@ fn intern(var m: Machine, name: String) Int:
     m.sym_ids.add(name, id)
     return id
 
-fn new_frame(var m: Machine, parent: Int) Int:
+def new_frame(var m: Machine, parent: Int) -> Int:
     m.frame_parent.append(parent)
     m.frame_head.append(-1)
     return m.frame_parent.length() - 1
 
-fn add_binding(var m: Machine, f: Int, sym: Int, v: Value) Unit:
+def add_binding(var m: Machine, f: Int, sym: Int, v: Value) -> Unit:
     if f == 0:
         m.globals.set(sym, v)
         return
@@ -249,7 +249,7 @@ fn add_binding(var m: Machine, f: Int, sym: Int, v: Value) Unit:
     m.frame_head.set(f, m.node_sym.length() - 1)
 
 # The value bound to `sym`, or an UNBOUND value when there is none.
-fn lookup(m: Machine, env: Int, sym: Int) Value:
+def lookup(m: Machine, env: Int, sym: Int) -> Value:
     var f = env
 
     while f > 0:
@@ -266,7 +266,7 @@ fn lookup(m: Machine, env: Int, sym: Int) Value:
     return m.globals.get(sym)
 
 # Assigns an existing binding; false when the symbol is unbound.
-fn assign(var m: Machine, env: Int, sym: Int, v: Value) Bool:
+def assign(var m: Machine, env: Int, sym: Int, v: Value) -> Bool:
     var f = env
 
     while f > 0:
@@ -275,32 +275,32 @@ fn assign(var m: Machine, env: Int, sym: Int, v: Value) Bool:
         while n >= 0:
             if m.node_sym.get(n) == sym:
                 m.node_val.set(n, v)
-                return true
+                return True
 
             n = m.node_next.get(n)
 
         f = m.frame_parent.get(f)
 
     if m.globals.get(sym).tag == TAG_UNBOUND:
-        return false
+        return False
 
     m.globals.set(sym, v)
-    return true
+    return True
 
 # ---------------------------------------------------------------- pairs and lists
-fn cons(var m: Machine, a: Value, d: Value) Value:
+def cons(var m: Machine, a: Value, d: Value) -> Value:
     m.cars.append(a)
     m.cdrs.append(d)
     return mk(TAG_PAIR, m.cars.length() - 1, "")
 
-fn car(m: Machine, p: Value) Value:
+def car(m: Machine, p: Value) -> Value:
     return m.cars.get(p.num)
 
-fn cdr(m: Machine, p: Value) Value:
+def cdr(m: Machine, p: Value) -> Value:
     return m.cdrs.get(p.num)
 
 # The elements of a proper list, or none when the chain ends in a non-empty tail.
-fn list_items(m: Machine, v: Value) Optional[List[Value]]:
+def list_items(m: Machine, v: Value) -> Optional[List[Value]]:
     var out = List[Value]()
     var cur = v
 
@@ -313,14 +313,14 @@ fn list_items(m: Machine, v: Value) Optional[List[Value]]:
 
     return some(out)
 
-fn require_list(m: Machine, name: String, v: Value) Result[List[Value], Fail]:
+def require_list(m: Machine, name: String, v: Value) -> Result[List[Value], Fail]:
     if let items = list_items(m, v):
         return ok(items)
 
     return error(type_fail(m, name, "list", v))
 
 # Builds a list from items[start..] ending in `tail`.
-fn build_list(var m: Machine, items: List[Value], start: Int, tail: Value) Value:
+def build_list(var m: Machine, items: List[Value], start: Int, tail: Value) -> Value:
     var result = tail
     var i = items.length() - 1
 
@@ -331,31 +331,31 @@ fn build_list(var m: Machine, items: List[Value], start: Int, tail: Value) Value
     return result
 
 # (begin forms...) built from items[start..], used as a body in tail position.
-fn body_form(var m: Machine, items: List[Value], start: Int) Value:
+def body_form(var m: Machine, items: List[Value], start: Int) -> Value:
     let forms = build_list(var m, items, start, nil_v())
     return cons(var m, sym_v(S_BEGIN), forms)
 
 # ---------------------------------------------------------------- printing and equality
-fn quote_str(s: String) String:
+def quote_str(s: String) -> String:
     var out = "\""
 
     for c in s.chars():
         if c == "\\":
             out = out + "\\\\"
-        else if c == "\"":
+        elif c == "\"":
             out = out + "\\\""
-        else if c == "\n":
+        elif c == "\n":
             out = out + "\\n"
-        else if c == "\t":
+        elif c == "\t":
             out = out + "\\t"
         else:
             out = out + c
 
     return out + "\""
 
-fn show(m: Machine, v: Value, readable: Bool) String:
+def show(m: Machine, v: Value, readable: Bool) -> String:
     if v.tag == TAG_NUM:
-        return "{v.num}"
+        return f"{v.num}"
 
     if v.tag == TAG_BOOL:
         if v.num == 1:
@@ -376,23 +376,23 @@ fn show(m: Machine, v: Value, readable: Bool) String:
     if v.tag == TAG_VOID:
         return "#<void>"
     if v.tag == TAG_PRIM:
-        return "#<builtin {m.prim_names.get(v.num)}>"
+        return f"#<builtin {m.prim_names.get(v.num)}>"
 
     if v.tag == TAG_CLO:
         let name = m.clos.get(v.num).name
         if name == "":
             return "#<procedure>"
 
-        return "#<procedure {name}>"
+        return f"#<procedure {name}>"
 
     var out = "("
     var cur = v
-    var first = true
+    var first = True
 
     while cur.tag == TAG_PAIR:
         if not first:
             out = out + " "
-        first = false
+        first = False
         out = out + show(m, car(m, cur), readable)
         cur = cdr(m, cur)
 
@@ -400,31 +400,31 @@ fn show(m: Machine, v: Value, readable: Bool) String:
         out = out + " . " + show(m, cur, readable)
     return out + ")"
 
-fn eqv(a: Value, b: Value) Bool:
+def eqv(a: Value, b: Value) -> Bool:
     if a.tag != b.tag:
-        return false
+        return False
     if a.tag == TAG_NUM or a.tag == TAG_BOOL or a.tag == TAG_SYM:
         return a.num == b.num
     if a.tag == TAG_NIL:
-        return true
+        return True
 
-    return false
+    return False
 
-fn equal_values(m: Machine, a: Value, b: Value) Bool:
+def equal_values(m: Machine, a: Value, b: Value) -> Bool:
     var x = a
     var y = b
 
     while x.tag == TAG_PAIR and y.tag == TAG_PAIR:
         if not equal_values(m, car(m, x), car(m, y)):
-            return false
+            return False
 
         x = cdr(m, x)
         y = cdr(m, y)
 
     if x.tag == TAG_PAIR or y.tag == TAG_PAIR:
-        return false
+        return False
     if x.tag != y.tag:
-        return false
+        return False
     if x.tag == TAG_STR:
         return x.text == y.text
     if (
@@ -436,61 +436,61 @@ fn equal_values(m: Machine, a: Value, b: Value) Bool:
     ):
         return x.num == y.num
 
-    return true
+    return True
 
-fn emit(var m: Machine, s: String) Unit:
+def emit(var m: Machine, s: String) -> Unit:
     if s.length() > 0:
         m.line_start = s.ends_with("\n")
     stdout().write(s).get()
 
 # ---------------------------------------------------------------- reader
-fn is_ws(c: Int) Bool:
+def is_ws(c: Int) -> Bool:
     return c == 32 or c == 9 or c == 10 or c == 13
 
-fn is_delim(c: Int) Bool:
+def is_delim(c: Int) -> Bool:
     return c == -1 or is_ws(c) or c == 40 or c == 41 or c == 34 or c == 59
 
-fn peek(r: Reader) Int:
+def peek(r: Reader) -> Int:
     return r.src.get(r.pos, -1)
 
-fn skip_space(var r: Reader) Unit:
-    while true:
+def skip_space(var r: Reader) -> Unit:
+    while True:
         let c = peek(r)
 
         if c == 59:
             while peek(r) != 10 and peek(r) != -1:
                 r.pos += 1
-        else if is_ws(c):
+        elif is_ws(c):
             r.pos += 1
         else:
             return
 
-fn codes_to_string(codes: List[Int]) String:
+def codes_to_string(codes: List[Int]) -> String:
     return from_scalars(codes).get()
 
-fn int_shape(codes: List[Int]) Bool:
+def int_shape(codes: List[Int]) -> Bool:
     var i = 0
     if codes.length() > 0 and codes.get(0) == 45:
         i = 1
     if i >= codes.length():
-        return false
+        return False
 
     while i < codes.length():
         let c = codes.get(i)
         if c < 48 or c > 57:
-            return false
+            return False
 
         i += 1
 
-    return true
+    return True
 
 # Parses a token that has int_shape; none when the value does not fit in int64.
-fn parse_int(codes: List[Int]) Optional[Int]:
+def parse_int(codes: List[Int]) -> Optional[Int]:
     var i = 0
-    var neg = false
+    var neg = False
 
     if codes.length() > 0 and codes.get(0) == 45:
-        neg = true
+        neg = True
         i = 1
 
     if i >= codes.length():
@@ -518,7 +518,7 @@ fn parse_int(codes: List[Int]) Optional[Int]:
 
     return some(n)
 
-fn read_atom(var m: Machine, var r: Reader) Result[Value, Fail]:
+def read_atom(var m: Machine, var r: Reader) -> Result[Value, Fail]:
     var codes = List[Int]()
 
     while not is_delim(peek(r)):
@@ -527,11 +527,11 @@ fn read_atom(var m: Machine, var r: Reader) Result[Value, Fail]:
 
     let text = codes_to_string(codes)
     if text == "#t":
-        return ok(bool_v(true))
+        return ok(bool_v(True))
     if text == "#f":
-        return ok(bool_v(false))
+        return ok(bool_v(False))
     if codes.get(0) == 35:
-        return error(syn("syntax error: bad token: {text}"))
+        return error(syn(f"syntax error: bad token: {text}"))
     if text == ".":
         return error(syn("syntax error: unexpected ."))
 
@@ -543,12 +543,12 @@ fn read_atom(var m: Machine, var r: Reader) Result[Value, Fail]:
 
     return ok(sym_v(intern(var m, text)))
 
-fn read_string(var r: Reader) Result[Value, Fail]:
+def read_string(var r: Reader) -> Result[Value, Fail]:
     r.pos += 1
 
     var codes = List[Int]()
 
-    while true:
+    while True:
         let c = peek(r)
         if c == -1:
             return error(syn("syntax error: unterminated string"))
@@ -566,11 +566,11 @@ fn read_string(var r: Reader) Result[Value, Fail]:
 
             if e == 110:
                 codes.append(10)
-            else if e == 116:
+            elif e == 116:
                 codes.append(9)
-            else if e == 92:
+            elif e == 92:
                 codes.append(92)
-            else if e == 34:
+            elif e == 34:
                 codes.append(34)
             else:
                 return error(syn("syntax error: bad escape"))
@@ -579,10 +579,10 @@ fn read_string(var r: Reader) Result[Value, Fail]:
 
     return ok(str_v(codes_to_string(codes)))
 
-fn read_list(var m: Machine, var r: Reader) Result[Value, Fail]:
+def read_list(var m: Machine, var r: Reader) -> Result[Value, Fail]:
     var items = List[Value]()
 
-    while true:
+    while True:
         skip_space(var r)
 
         let c = peek(r)
@@ -617,7 +617,7 @@ fn read_list(var m: Machine, var r: Reader) Result[Value, Fail]:
         let item = try read_datum(var m, var r)
         items.append(item)
 
-fn read_datum(var m: Machine, var r: Reader) Result[Value, Fail]:
+def read_datum(var m: Machine, var r: Reader) -> Result[Value, Fail]:
     skip_space(var r)
 
     let c = peek(r)
@@ -644,25 +644,25 @@ fn read_datum(var m: Machine, var r: Reader) Result[Value, Fail]:
     return read_atom(var m, var r)
 
 # ---------------------------------------------------------------- evaluator
-fn is_proper(m: Machine, x: Value) Bool:
+def is_proper(m: Machine, x: Value) -> Bool:
     var cur = x
     while cur.tag == TAG_PAIR:
         cur = cdr(m, cur)
     return cur.tag == TAG_NIL
 
-fn names_contains(names: List[Int], sym: Int) Bool:
+def names_contains(names: List[Int], sym: Int) -> Bool:
     for n in names:
         if n == sym:
-            return true
-    return false
+            return True
+    return False
 
-fn parse_params(m: Machine, spec: Value, form: String) Result[Params, Fail]:
+def parse_params(m: Machine, spec: Value, form: String) -> Result[Params, Fail]:
     var names = List[Int]()
     var cur = spec
 
     if cur.tag == TAG_SYM:
         names.append(cur.num)
-        return ok(Params(names: names, rest: true))
+        return ok(Params(names: names, rest: True))
 
     while cur.tag == TAG_PAIR:
         let p = car(m, cur)
@@ -672,20 +672,20 @@ fn parse_params(m: Machine, spec: Value, form: String) Result[Params, Fail]:
         names.append(p.num)
         cur = cdr(m, cur)
 
-    var rest = false
+    var rest = False
 
     if cur.tag == TAG_SYM:
         if names_contains(names.clone(), cur.num):
             return error(bad_form(form))
 
         names.append(cur.num)
-        rest = true
-    else if cur.tag != TAG_NIL:
+        rest = True
+    elif cur.tag != TAG_NIL:
         return error(bad_form(form))
 
     return ok(Params(names: names, rest: rest))
 
-fn make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) Value:
+def make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) -> Value:
     (
         m
         .clos
@@ -697,19 +697,19 @@ fn make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) 
     )
     return mk(TAG_CLO, m.clos.length() - 1, "")
 
-# Parses (lambda params body...) given the form's items.
-fn make_lambda(var m: Machine, items: List[Value], env: Int, name: String) Result[
+# Parses (closure params body...) given the form's items.
+def make_lambda(var m: Machine, items: List[Value], env: Int, name: String) -> Result[
     Value, Fail
 ]:
     if items.length() < 3:
-        return error(bad_form("lambda"))
+        return error(bad_form("closure"))
 
-    let p = try parse_params(m, items.get(1), "lambda")
+    let p = try parse_params(m, items.get(1), "closure")
     let body = body_form(var m, items, 2)
     return ok(make_closure(var m, name, p, body, env))
 
 # Creates a frame for a call to closure `id`, binding its parameters.
-fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
+def bind_args(var m: Machine, id: Int, args: List[Value]) -> Result[Int, Fail]:
     let params = m.clos.get(id).params.clone()
     let rest = m.clos.get(id).rest
     let env = m.clos.get(id).env
@@ -722,14 +722,14 @@ fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
     if n < nparams or (not rest and n > nparams):
         var name = m.clos.get(id).name
         if name == "":
-            name = "lambda"
+            name = "closure"
 
-        var expected = "{nparams}"
+        var expected = f"{nparams}"
         if rest:
-            expected = "at least {nparams}"
+            expected = f"at least {nparams}"
         return error(
             rt(
-                "wrong number of arguments to {name}: expected {expected}, got {n}"
+                f"wrong number of arguments to {name}: expected {expected}, got {n}"
             )
         )
 
@@ -748,22 +748,22 @@ fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fail]:
 
 # Calls any procedure from a non-tail position.
 # Calls any procedure from a non-tail position; `d` is the current call depth.
-fn apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) Result[Value, Fail]:
+def apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) -> Result[Value, Fail]:
     if f.tag == TAG_PRIM:
         return call_prim(var m, f.num, args, d)
     if f.tag != TAG_CLO:
-        return error(rt("not a procedure: {show(m, f, true)}"))
+        return error(rt(f"not a procedure: {show(m, f, True)}"))
 
     let fid = try bind_args(var m, f.num, args)
     if d >= MAX_DEPTH:
         return error(rt("recursion limit exceeded"))
 
     let body = m.clos.get(f.num).body
-    return eval(var m, body, fid, d + 1, true)
+    return eval(var m, body, fid, d + 1, True)
 
 # Evaluates x in env. `d0` is the call depth of the caller; `entered0` says the body
 # being run was already counted as a call, so tail calls here do not count again.
-fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool) Result[
+def eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool) -> Result[
     Value, Fail
 ]:
     var x = start_x
@@ -771,13 +771,13 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
     var depth = d0
     var entered = entered0
 
-    while true:
+    while True:
         if x.tag == TAG_SYM:
             let v = lookup(m, env, x.num)
             if v.tag != TAG_UNBOUND:
                 return ok(v)
 
-            return error(rt("unbound variable: {m.syms.get(x.num)}"))
+            return error(rt(f"unbound variable: {m.syms.get(x.num)}"))
 
         if x.tag != TAG_PAIR:
             if x.tag == TAG_NIL:
@@ -804,25 +804,25 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
                     return error(rt("recursion limit exceeded"))
 
                 depth += 1
-                entered = true
+                entered = True
         else:
             if not is_proper(m, x):
                 return error(syn("syntax error: bad application"))
 
-            let f = try eval(var m, head, env, depth, false)
+            let f = try eval(var m, head, env, depth, False)
             var args = List[Value]()
             var cur = cdr(m, x)
 
             while cur.tag == TAG_PAIR:
                 let arg = car(m, cur)
-                let v = try eval(var m, arg, env, depth, false)
+                let v = try eval(var m, arg, env, depth, False)
                 args.append(v)
                 cur = cdr(m, cur)
 
             if f.tag == TAG_PRIM:
                 return call_prim(var m, f.num, args, depth)
             if f.tag != TAG_CLO:
-                return error(rt("not a procedure: {show(m, f, true)}"))
+                return error(rt(f"not a procedure: {show(m, f, True)}"))
 
             let fid = try bind_args(var m, f.num, args)
             x = m.clos.get(f.num).body
@@ -833,9 +833,9 @@ fn eval(var m: Machine, start_x: Value, start_env: Int, d0: Int, entered0: Bool)
                     return error(rt("recursion limit exceeded"))
 
                 depth += 1
-                entered = true
+                entered = True
 
-fn special_form(var m: Machine, sid: Int, items: List[Value], env: Int, d: Int) Result[
+def special_form(var m: Machine, sid: Int, items: List[Value], env: Int, d: Int) -> Result[
     Step, Fail
 ]:
     if sid == S_IF:
@@ -851,7 +851,7 @@ fn special_form(var m: Machine, sid: Int, items: List[Value], env: Int, d: Int) 
 
     if sid == S_LAMBDA:
         if items.length() < 3:
-            return error(bad_form("lambda"))
+            return error(bad_form("closure"))
 
         let f = try make_lambda(var m, items, env, "")
         return ok(done_step(f))
@@ -873,17 +873,17 @@ fn special_form(var m: Machine, sid: Int, items: List[Value], env: Int, d: Int) 
     if sid == S_OR:
         return sf_or(var m, items, env, d)
     if sid == S_WHEN:
-        return sf_when(var m, items, env, false, d)
+        return sf_when(var m, items, env, False, d)
     if sid == S_UNLESS:
-        return sf_when(var m, items, env, true, d)
+        return sf_when(var m, items, env, True, d)
 
     return sf_try(var m, items, env, d)
 
-fn sf_if(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_if(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() != 3 and items.length() != 4:
         return error(bad_form("if"))
 
-    let t = try eval(var m, items.get(1), env, d, false)
+    let t = try eval(var m, items.get(1), env, d, False)
     if truthy(t):
         return ok(next_step(items.get(2), env))
     if items.length() == 4:
@@ -891,7 +891,7 @@ fn sf_if(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail
 
     return ok(done_step(void_v()))
 
-fn sf_define(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_define(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() < 3:
         return error(bad_form("define"))
 
@@ -911,12 +911,12 @@ fn sf_define(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, 
         ):
             let lambda_items = list_items(m, expr)
             if lambda_items.is_none():
-                return error(bad_form("lambda"))
+                return error(bad_form("closure"))
 
             let lambda_name = m.syms.get(target.num)
             value = try make_lambda(var m, lambda_items.get(), env, lambda_name)
         else:
-            value = try eval(var m, expr, env, d, false)
+            value = try eval(var m, expr, env, d, False)
 
         add_binding(var m, env, target.num, value)
         return ok(done_step(void_v()))
@@ -935,30 +935,30 @@ fn sf_define(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, 
 
     return error(bad_form("define"))
 
-fn sf_set(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_set(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() != 3 or items.get(1).tag != TAG_SYM:
         return error(bad_form("set!"))
 
     let sym = items.get(1).num
-    let v = try eval(var m, items.get(2), env, d, false)
+    let v = try eval(var m, items.get(2), env, d, False)
     if not assign(var m, env, sym, v):
-        return error(rt("unbound variable: {m.syms.get(sym)}"))
+        return error(rt(f"unbound variable: {m.syms.get(sym)}"))
 
     return ok(done_step(void_v()))
 
-fn sf_begin(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_begin(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() == 1:
         return ok(done_step(void_v()))
 
     var i = 1
 
     while i < items.length() - 1:
-        let v = try eval(var m, items.get(i), env, d, false)
+        let v = try eval(var m, items.get(i), env, d, False)
         i += 1
 
     return ok(next_step(items.get(items.length() - 1), env))
 
-fn parse_bindings(m: Machine, spec: Value, form: String) Result[Bindings, Fail]:
+def parse_bindings(m: Machine, spec: Value, form: String) -> Result[Bindings, Fail]:
     let pairs = list_items(m, spec)
     if pairs.is_none():
         return error(bad_form(form))
@@ -980,7 +980,7 @@ fn parse_bindings(m: Machine, spec: Value, form: String) Result[Bindings, Fail]:
 
     return ok(Bindings(names: names, inits: inits))
 
-fn sf_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_let(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() < 3:
         return error(bad_form("let"))
     if items.get(1).tag == TAG_SYM:
@@ -989,7 +989,7 @@ fn sf_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
     let b = try parse_bindings(m, items.get(1), "let")
     var vals = List[Value]()
     for init in b.inits:
-        vals.append(try eval(var m, init, env, d, false))
+        vals.append(try eval(var m, init, env, d, False))
 
     let fid = new_frame(var m, env)
     var i = 0
@@ -1000,7 +1000,7 @@ fn sf_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
 
     return ok(next_step(body_form(var m, items, 2), fid))
 
-fn sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() < 4:
         return error(bad_form("let"))
 
@@ -1008,20 +1008,20 @@ fn sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) Result[Ste
     let b = try parse_bindings(m, items.get(2), "let")
     var vals = List[Value]()
     for init in b.inits:
-        vals.append(try eval(var m, init, env, d, false))
+        vals.append(try eval(var m, init, env, d, False))
 
     let loop_env = new_frame(var m, env)
     let body = body_form(var m, items, 3)
     let loop_name = m.syms.get(sym)
     let clo = make_closure(
-        var m, loop_name, Params(names: b.names.clone(), rest: false), body, loop_env
+        var m, loop_name, Params(names: b.names.clone(), rest: False), body, loop_env
     )
     add_binding(var m, loop_env, sym, clo)
 
     let fid = try bind_args(var m, clo.num, vals)
     return ok(call_step(m.clos.get(clo.num).body, fid))
 
-fn sf_letstar(var m: Machine, items: List[Value], env: Int, form: String, d: Int) Result[
+def sf_letstar(var m: Machine, items: List[Value], env: Int, form: String, d: Int) -> Result[
     Step, Fail
 ]:
     if items.length() < 3:
@@ -1032,13 +1032,13 @@ fn sf_letstar(var m: Machine, items: List[Value], env: Int, form: String, d: Int
     var i = 0
 
     while i < b.names.length():
-        let v = try eval(var m, b.inits.get(i), fid, d, false)
+        let v = try eval(var m, b.inits.get(i), fid, d, False)
         add_binding(var m, fid, b.names.get(i), v)
         i += 1
 
     return ok(next_step(body_form(var m, items, 2), fid))
 
-fn sf_cond(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_cond(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     var i = 1
 
     while i < items.length():
@@ -1058,7 +1058,7 @@ fn sf_cond(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fa
 
             return ok(next_step(body_form(var m, p, 1), env))
 
-        let t = try eval(var m, head, env, d, false)
+        let t = try eval(var m, head, env, d, False)
 
         if truthy(t):
             if p.length() == 1:
@@ -1070,14 +1070,14 @@ fn sf_cond(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fa
 
     return ok(done_step(void_v()))
 
-fn sf_and(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_and(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() == 1:
-        return ok(done_step(bool_v(true)))
+        return ok(done_step(bool_v(True)))
 
     var i = 1
 
     while i < items.length() - 1:
-        let v = try eval(var m, items.get(i), env, d, false)
+        let v = try eval(var m, items.get(i), env, d, False)
         if not truthy(v):
             return ok(done_step(v))
 
@@ -1085,14 +1085,14 @@ fn sf_and(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
 
     return ok(next_step(items.get(items.length() - 1), env))
 
-fn sf_or(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_or(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() == 1:
-        return ok(done_step(bool_v(false)))
+        return ok(done_step(bool_v(False)))
 
     var i = 1
 
     while i < items.length() - 1:
-        let v = try eval(var m, items.get(i), env, d, false)
+        let v = try eval(var m, items.get(i), env, d, False)
         if truthy(v):
             return ok(done_step(v))
 
@@ -1100,7 +1100,7 @@ fn sf_or(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail
 
     return ok(next_step(items.get(items.length() - 1), env))
 
-fn sf_when(var m: Machine, items: List[Value], env: Int, negate: Bool, d: Int) Result[
+def sf_when(var m: Machine, items: List[Value], env: Int, negate: Bool, d: Int) -> Result[
     Step, Fail
 ]:
     if items.length() < 3:
@@ -1109,7 +1109,7 @@ fn sf_when(var m: Machine, items: List[Value], env: Int, negate: Bool, d: Int) R
             form = "unless"
         return error(bad_form(form))
 
-    let t = try eval(var m, items.get(1), env, d, false)
+    let t = try eval(var m, items.get(1), env, d, False)
     var fires = truthy(t)
     if negate:
         fires = not fires
@@ -1118,11 +1118,11 @@ fn sf_when(var m: Machine, items: List[Value], env: Int, negate: Bool, d: Int) R
 
     return ok(next_step(body_form(var m, items, 2), env))
 
-fn sf_try(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fail]:
+def sf_try(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
     if items.length() != 3:
         return error(bad_form("try"))
 
-    let r = eval(var m, items.get(1), env, d, false)
+    let r = eval(var m, items.get(1), env, d, False)
     if r.is_ok():
         return ok(done_step(r.get()))
 
@@ -1130,7 +1130,7 @@ fn sf_try(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
     if failure.syntax:
         return error(failure)
 
-    let handler = try eval(var m, items.get(2), env, d, false)
+    let handler = try eval(var m, items.get(2), env, d, False)
     var args = List[Value]()
     args.append(str_v(failure.msg))
 
@@ -1138,7 +1138,7 @@ fn sf_try(var m: Machine, items: List[Value], env: Int, d: Int) Result[Step, Fai
     return ok(done_step(v))
 
 # ---------------------------------------------------------------- builtins
-fn define_prim(var m: Machine, name: String, lo: Int, hi: Int) Unit:
+def define_prim(var m: Machine, name: String, lo: Int, hi: Int) -> Unit:
     m.prim_names.append(name)
     m.prim_min.append(lo)
     m.prim_max.append(hi)
@@ -1146,7 +1146,7 @@ fn define_prim(var m: Machine, name: String, lo: Int, hi: Int) Unit:
     let sym = intern(var m, name)
     m.globals.set(sym, mk(TAG_PRIM, m.prim_names.length() - 1, ""))
 
-fn install_prims(var m: Machine) Unit:
+def install_prims(var m: Machine) -> Unit:
     define_prim(var m, "+", 0, -1)
     define_prim(var m, "-", 1, -1)
     define_prim(var m, "*", 0, -1)
@@ -1222,23 +1222,23 @@ fn install_prims(var m: Machine) Unit:
     define_prim(var m, "void", 0, 0)
     define_prim(var m, "error", 1, -1)
 
-fn call_prim(var m: Machine, op: Int, args: List[Value], d: Int) Result[Value, Fail]:
+def call_prim(var m: Machine, op: Int, args: List[Value], d: Int) -> Result[Value, Fail]:
     let name = m.prim_names.get(op)
     let n = args.length()
     let lo = m.prim_min.get(op)
     let hi = m.prim_max.get(op)
 
     if n < lo or (hi >= 0 and n > hi):
-        var expected = "{lo}"
+        var expected = f"{lo}"
 
         if hi < 0:
-            expected = "at least {lo}"
-        else if lo != hi:
-            expected = "{lo} to {hi}"
+            expected = f"at least {lo}"
+        elif lo != hi:
+            expected = f"{lo} to {hi}"
 
         return error(
             rt(
-                "wrong number of arguments to {name}: expected {expected}, got {n}"
+                f"wrong number of arguments to {name}: expected {expected}, got {n}"
             )
         )
 
@@ -1247,25 +1247,25 @@ fn call_prim(var m: Machine, op: Int, args: List[Value], d: Int) Result[Value, F
 
     return prim_dispatch(var m, op, name, args)
 
-fn int_arg(m: Machine, name: String, v: Value) Result[Int, Fail]:
+def int_arg(m: Machine, name: String, v: Value) -> Result[Int, Fail]:
     if v.tag != TAG_NUM:
         return error(type_fail(m, name, "integer", v))
 
     return ok(v.num)
 
-fn str_arg(m: Machine, name: String, v: Value) Result[String, Fail]:
+def str_arg(m: Machine, name: String, v: Value) -> Result[String, Fail]:
     if v.tag != TAG_STR:
         return error(type_fail(m, name, "string", v))
 
     return ok(v.text)
 
-fn proc_arg(m: Machine, name: String, v: Value) Result[Value, Fail]:
+def proc_arg(m: Machine, name: String, v: Value) -> Result[Value, Fail]:
     if v.tag != TAG_PRIM and v.tag != TAG_CLO:
         return error(type_fail(m, name, "procedure", v))
 
     return ok(v)
 
-fn checked_add(a: Int, b: Int) Result[Int, Fail]:
+def checked_add(a: Int, b: Int) -> Result[Int, Fail]:
     if b > 0 and a > MAX_INT - b:
         return error(rt("integer overflow"))
     if b < 0 and a < MIN_INT - b:
@@ -1273,7 +1273,7 @@ fn checked_add(a: Int, b: Int) Result[Int, Fail]:
 
     return ok(a + b)
 
-fn checked_sub(a: Int, b: Int) Result[Int, Fail]:
+def checked_sub(a: Int, b: Int) -> Result[Int, Fail]:
     if b < 0 and a > MAX_INT + b:
         return error(rt("integer overflow"))
     if b > 0 and a < MIN_INT + b:
@@ -1281,17 +1281,17 @@ fn checked_sub(a: Int, b: Int) Result[Int, Fail]:
 
     return ok(a - b)
 
-fn checked_mul(a: Int, b: Int) Result[Int, Fail]:
+def checked_mul(a: Int, b: Int) -> Result[Int, Fail]:
     if a == 0 or b == 0:
         return ok(0)
 
-    var overflow = false
+    var overflow = False
 
     if a > 0 and b > 0:
         overflow = a > MAX_INT / b
-    else if a > 0 and b < 0:
+    elif a > 0 and b < 0:
         overflow = b < MIN_INT / a
-    else if a < 0 and b > 0:
+    elif a < 0 and b > 0:
         overflow = a < MIN_INT / b
     else:
         overflow = a < MAX_INT / b
@@ -1301,7 +1301,7 @@ fn checked_mul(a: Int, b: Int) Result[Int, Fail]:
 
     return ok(a * b)
 
-fn int_divide(op: Int, a: Int, b: Int) Result[Int, Fail]:
+def int_divide(op: Int, a: Int, b: Int) -> Result[Int, Fail]:
     if b == 0:
         return error(rt("division by zero"))
 
@@ -1325,7 +1325,7 @@ fn int_divide(op: Int, a: Int, b: Int) Result[Int, Fail]:
         r = r + b
     return ok(r)
 
-fn prim_dispatch(var m: Machine, op: Int, name: String, args: List[Value]) Result[
+def prim_dispatch(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
     Value, Fail
 ]:
     if op <= P_MAX:
@@ -1375,7 +1375,7 @@ fn prim_dispatch(var m: Machine, op: Int, name: String, args: List[Value]) Resul
 
     return predicates_and_lists(var m, op, name, args)
 
-fn arith(var m: Machine, op: Int, name: String, args: List[Value]) Result[Value, Fail]:
+def arith(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[Value, Fail]:
     if op == P_ADD:
         var acc = 0
         var i = 0
@@ -1416,32 +1416,32 @@ fn arith(var m: Machine, op: Int, name: String, args: List[Value]) Result[Value,
 
     return ok(num_v(acc))
 
-fn compare(var m: Machine, op: Int, name: String, args: List[Value]) Result[Value, Fail]:
+def compare(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[Value, Fail]:
     var nums = List[Int]()
     for v in args:
         nums.append(try int_arg(m, name, v))
 
-    var result = true
+    var result = True
     var i = 0
 
     while i + 1 < nums.length():
         let a = nums.get(i)
         let b = nums.get(i + 1)
         if op == P_EQ and a != b:
-            result = false
+            result = False
         if op == P_LT and not (a < b):
-            result = false
+            result = False
         if op == P_GT and not (a > b):
-            result = false
+            result = False
         if op == P_LE and not (a <= b):
-            result = false
+            result = False
         if op == P_GE and not (a >= b):
-            result = false
+            result = False
         i += 1
 
     return ok(bool_v(result))
 
-fn predicates_and_lists(var m: Machine, op: Int, name: String, args: List[Value]) Result[
+def predicates_and_lists(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
     Value, Fail
 ]:
     let a = args.get(0, void_v())
@@ -1509,7 +1509,7 @@ fn predicates_and_lists(var m: Machine, op: Int, name: String, args: List[Value]
 
     return list_prims(var m, op, name, args)
 
-fn list_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
+def list_prims(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
     Value, Fail
 ]:
     if op == P_LIST:
@@ -1587,22 +1587,22 @@ fn list_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
                     return error(type_fail(m, name, "pair", e))
                 if equal_values(m, car(m, e), target):
                     return ok(e)
-            else if equal_values(m, e, target):
+            elif equal_values(m, e, target):
                 return ok(cur)
 
             cur = cdr(m, cur)
 
-        return ok(bool_v(false))
+        return ok(bool_v(False))
 
     return string_prims(var m, op, name, args)
 
-fn all_pairs(m: Machine, cursors: List[Value]) Bool:
+def all_pairs(m: Machine, cursors: List[Value]) -> Bool:
     for c in cursors:
         if c.tag != TAG_PAIR:
-            return false
-    return true
+            return False
+    return True
 
-fn higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int) Result[
+def higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int) -> Result[
     Value, Fail
 ]:
     if op == P_MAP or op == P_FOREACH:
@@ -1695,7 +1695,7 @@ fn higher_order(var m: Machine, op: Int, name: String, args: List[Value], d: Int
     return string_prims(var m, op, name, args)
 
 # Stable merge sort; `less` is called as (less later earlier).
-fn sort_values(var m: Machine, items: List[Value], less: Value, d: Int) Result[
+def sort_values(var m: Machine, items: List[Value], less: Value, d: Int) -> Result[
     List[Value], Fail
 ]:
     let n = items.length()
@@ -1745,7 +1745,7 @@ fn sort_values(var m: Machine, items: List[Value], less: Value, d: Int) Result[
 
     return ok(out)
 
-fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
+def string_prims(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
     Value, Fail
 ]:
     if op == P_STRLEN:
@@ -1801,11 +1801,11 @@ fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result
         if int_shape(codes):
             if let n = parse_int(codes):
                 return ok(num_v(n))
-        return ok(bool_v(false))
+        return ok(bool_v(False))
 
     if op == P_NUM2STR:
         let n = try int_arg(m, name, args.get(0))
-        return ok(str_v("{n}"))
+        return ok(str_v(f"{n}"))
 
     if op == P_STR2SYM:
         let s = try str_arg(m, name, args.get(0))
@@ -1820,7 +1820,7 @@ fn string_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result
 
     return text_prims(var m, op, name, args)
 
-fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
+def text_prims(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
     Value, Fail
 ]:
     if op == P_STR2LIST:
@@ -1891,22 +1891,22 @@ fn text_prims(var m: Machine, op: Int, name: String, args: List[Value]) Result[
     var i = 1
 
     while i < args.length():
-        msg = msg + " " + show(m, args.get(i), true)
+        msg = msg + " " + show(m, args.get(i), True)
         i += 1
 
     return error(rt(msg))
 
 # ---------------------------------------------------------------- driver
-fn new_machine() Machine:
+def new_machine() -> Machine:
     var m = Machine(
         syms: List[String](), sym_ids: Map[String, Int](), globals: List[Value](),
         cars: List[Value](), cdrs: List[Value](), clos: List[Closure](),
         frame_parent: List[Int](), frame_head: List[Int](), node_sym: List[Int](),
         node_val: List[Value](), node_next: List[Int](), prim_names: List[String](),
-        prim_min: List[Int](), prim_max: List[Int](), line_start: true
+        prim_min: List[Int](), prim_max: List[Int](), line_start: True
     )
     for name in [
-        "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
+        "quote", "if", "define", "set!", "closure", "begin", "let", "let*", "letrec",
         "cond", "and", "or", "when", "unless", "try", "else"
     ]:
         intern(var m, name)
@@ -1915,17 +1915,17 @@ fn new_machine() Machine:
     install_prims(var m)
     return m
 
-fn report(var m: Machine, failure: Fail) Unit:
+def report(var m: Machine, failure: Fail) -> Unit:
     if not m.line_start:
         emit(var m, "\n")
-    emit(var m, "error: {failure.msg}\n")
+    emit(var m, f"error: {failure.msg}\n")
 
-export fn main() Int:
+export def main() -> Int:
     var m = new_machine()
     let data = read_all(stdin()).get()
     var r = Reader(src: data, pos: 0)
 
-    while true:
+    while True:
         skip_space(var r)
         if peek(r) == -1:
             break
@@ -1936,7 +1936,7 @@ export fn main() Int:
             report(var m, form.err())
             break
 
-        let res = eval(var m, form.get(), 0, 0, false)
+        let res = eval(var m, form.get(), 0, 0, False)
 
         if res.is_error():
             report(var m, res.err())

@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,tier-core,try-result
 # conform: phase=check
 # conform: origin=pkg/compiler/standalone_try_test.go:14 TestStandaloneTry
-fn operation() Unit: unit
+def operation() -> Unit: ()
 
-fn f() Result[Int, Error]:
+def f() -> Result[Int, Error]:
     try operation()
     return ok(1)

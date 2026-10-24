@@ -1,20 +1,20 @@
 # conform: tags=aliasing,control-flow,diagnostics,faults,interfaces,maps,match,modules,stdlib-testing,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/map_add_scope/first.ms
-import Key from "./domain.ms"
-import {insert, insert_bound} from "./helper.ms"
-import {expect_equal} from "@std/testing.ms"
+from "./domain.ms" import Key
+from "./helper.ms" import insert, insert_bound
+from "@std/testing.ms" import expect_equal
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(other): return (self.code == other.code or self.code == -other.code)
-            _: return false
+            case Key(other): return (self.code == other.code or self.code == -other.code)
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: 0
+    def hash() -> Int: 0
 
-export fn first() Result[Int, Error]:
+export def first() -> Result[Int, Error]:
     var m = Map[Key, Int]()
     var original = Key(1.0)
     m.add(original, 1)

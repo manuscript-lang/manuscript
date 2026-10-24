@@ -1,17 +1,17 @@
-import {
+from "@std/crypto.ms" import (
     CryptoError, HashAlgorithm, public_key_der, rsa_generate, rsa_sign, rsa_verify,
     rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt
-} from "@std/crypto.ms"
-import Bytes from "@std/bytes.ms"
-import {expect_equal, expect_true, expect_false} from "@std/testing.ms"
+)
+from "@std/bytes.ms" import Bytes
+from "@std/testing.ms" import expect_equal, expect_true, expect_false
 
-fn widened_sign(key: Bytes) Result[Bytes, Error]:
+def widened_sign(key: Bytes) -> Result[Bytes, Error]:
     return rsa_sign(key, HashAlgorithm.Sha256, "message".to_bytes())
 
-fn widened_decrypt(key: Bytes, data: Bytes) Result[Bytes, Error]:
+def widened_decrypt(key: Bytes, data: Bytes) -> Result[Bytes, Error]:
     return rsa_decrypt(key, HashAlgorithm.Sha256, data)
 
-fn marked(var calls: List[Int], marker: Int, data: Bytes) Bytes:
+def marked(var calls: List[Int], marker: Int, data: Bytes) -> Bytes:
     calls.append(marker)
     return data
 

@@ -1,10 +1,10 @@
 # conform: tags=control-flow,diagnostics,lists,match,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/error_boundaries/conformance_test.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import DomainFailure from "./domain.ms"
-import {first_error, first_result, first_propagated, first_generic, first_box} from "./first.ms"
-import {second_error, relay} from "./second.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "./domain.ms" import DomainFailure
+from "./first.ms" import first_error, first_result, first_propagated, first_generic, first_box
+from "./second.ms" import second_error, relay
 
 test "Error boundaries retain selected local and generic implementations":
     var original = DomainFailure(7)
@@ -19,7 +19,7 @@ test "Error boundaries retain selected local and generic implementations":
 
     for result in [first_result(original), first_propagated(original), relay(first)]:
         match result:
-            ok(_):
+            case ok(_):
                 return fail(message: "expected domain failure")
-            error(cause):
+            case error(cause):
                 try expect_equal(cause.message(), "first 8")

@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,interfaces,lists,match,modules,numbers,records,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/math-functions.ms
-import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
-import {
+from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/math.ms" import (
     acos, asin, atan, atan2, cosh, exp, log10, sinh, tan, tanh, abs, pi, e, remainder,
     max, min, max_of, min_of, acosh, asinh, atanh, cbrt, expm1, log1p, sign, sign_int,
     to_float32, is_integer, is_safe_integer, infinity, nan, epsilon, max_float,
     min_float, max_int, min_int, max_safe_integer, min_safe_integer, ln2, ln10, log2e,
     log10e, sqrt2, sqrt_half
-} from "@std/math.ms"
+)
 
-fn near(actual: Float, expected: Float) Bool:
+def near(actual: Float, expected: Float) -> Bool:
     return abs(actual - expected) < 0.000000001
 
 test "inverse trigonometric functions return radians":
@@ -44,14 +44,14 @@ type Ranked:
     unexpected: List[Int] = []
 
 impl Comparable for Ranked:
-    fn compare(other: Comparable) Int:
+    def compare(other: Comparable) -> Int:
         match other:
-            Ranked(value):
+            case Ranked(value):
                 if self.rank < value.rank: return -9223372036854775808
                 if self.rank > value.rank: return 9223372036854775807
 
                 return 0
-            _:
+            case _:
                 return 0
 
 test "extrema use comparator signs without negating Int minimum":
@@ -99,13 +99,13 @@ test "sign and integer predicates":
     try expect_false(is_integer(nan()))
     try expect_true(is_safe_integer(9007199254740991.0))
     try expect_false(is_safe_integer(9007199254740992.0))
-    try expect_equal(to_float32(0.1) == 0.1, false)
+    try expect_equal(to_float32(0.1) == 0.1, False)
 
 test "numeric limits and constants match IEEE and JavaScript":
     try expect_true(infinity() > max_float())
     try expect_true(nan().is_nan())
-    try expect_equal(1.0 + epsilon() > 1.0, true)
-    try expect_equal(1.0 + epsilon() / 2.0 > 1.0, false)
+    try expect_equal(1.0 + epsilon() > 1.0, True)
+    try expect_equal(1.0 + epsilon() / 2.0 > 1.0, False)
     try expect_true(min_float() > 0.0)
     try expect_equal(max_safe_integer(), 9007199254740991)
     try expect_equal(min_safe_integer(), -9007199254740991)

@@ -1,11 +1,11 @@
-import DomainFailure from "./domain.ms"
+from "./domain.ms" import DomainFailure
 
 impl Error for DomainFailure:
-    fn message() String:
-        return "second {self.code}"
+    def message() -> String:
+        return f"second {self.code}"
 
-export fn second_error(cause: DomainFailure) Error:
+export def second_error(cause: DomainFailure) -> Error:
     return cause
 
-export fn relay(cause: Error) Result[Unit, Error]:
+export def relay(cause: Error) -> Result[Unit, Error]:
     return error(cause)

@@ -1,27 +1,27 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
-import clock from "@std/time.ms"
-import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/time.ms" import clock
+from "@std/html.ms" import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError
 
-fn children(node: HtmlNode) List[HtmlNode]:
+def children(node: HtmlNode) -> List[HtmlNode]:
     match node:
-        Document(items): return items
-        Element(_, _, _, items): return items
-        _: return []
+        case Document(items): return items
+        case Element(_, _, _, items): return items
+        case _: return []
 
-fn text_content(node: HtmlNode) String:
+def text_content(node: HtmlNode) -> String:
     match node:
-        Text(text): return text
-        Document(items):
+        case Text(text): return text
+        case Document(items):
             var text = ""
-            for item in items: text = "{text}{text_content(item)}"
+            for item in items: text = f"{text}{text_content(item)}"
             return text
-        Element(_, _, _, items):
+        case Element(_, _, _, items):
             var text = ""
-            for item in items: text = "{text}{text_content(item)}"
+            for item in items: text = f"{text}{text_content(item)}"
             return text
-        _: return ""
+        case _: return ""
 
-fn body_nodes(node: HtmlNode) List[HtmlNode]:
+def body_nodes(node: HtmlNode) -> List[HtmlNode]:
     let html = children(node).get(0)
     return children(children(html).get(1))
 
@@ -37,7 +37,7 @@ test "HTML parses nested elements attributes entities and comments":
     let div = body_nodes(doc.clone()).get(0)
 
     match div:
-        Element(tag, namespace, attributes, items):
+        case Element(tag, namespace, attributes, items):
             try expect_false(tag != "div" or namespace != "")
             try expect_false(
                 (
@@ -62,7 +62,7 @@ test "HTML parses nested elements attributes entities and comments":
                     )
                 )
             )
-        _: return fail("expected element")
+        case _: return fail("expected element")
 
     try expect_equal(text_content(doc), "Hello é🙂 <world>")
 
@@ -79,9 +79,9 @@ test "HTML recovers unclosed tags and inserts document and table structure":
     )
 
     match children(nodes.get(1).clone()).get(0):
-        Element(tag, _, _, _):
+        case Element(tag, _, _, _):
             try expect_equal(tag, "tbody")
-        _: return fail("expected tbody")
+        case _: return fail("expected tbody")
 
     try expect_equal(text_content(nodes.get(1).clone()), "cell")
 
@@ -105,13 +105,13 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     let body = children(children(nodes.get(2).clone()).get(1).clone())
 
     let svg_items = match body.get(0):
-        Element(tag, namespace, _, items):
+        case Element(tag, namespace, _, items):
             try expect_false(tag != "svg" or namespace != "svg")
             items.clone()
-        _: return fail("expected SVG")
+        case _: return fail("expected SVG")
 
     match svg_items.get(0):
-        Element(_, child_namespace, attributes, _):
+        case Element(_, child_namespace, attributes, _):
             try expect_false(
                 (
                     child_namespace != "svg"
@@ -120,7 +120,7 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
                     )
                 )
             )
-        _: return fail("expected SVG anchor")
+        case _: return fail("expected SVG anchor")
 
     try expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")
 
@@ -146,7 +146,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
     try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
 
     let elapsed = clock().now().difference(started).to_milliseconds()
-    if elapsed > 5000: return fail("depth limit took {elapsed} ms")
+    if elapsed > 5000: return fail(f"depth limit took {elapsed} ms")
 
 test "HTML parse without limits applies defaults and an empty limits record lifts them":
     let nested = "<div>".repeat(20000).get()

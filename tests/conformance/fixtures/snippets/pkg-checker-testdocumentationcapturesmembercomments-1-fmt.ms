@@ -22,11 +22,11 @@ export type Outcome:
 
 export interface Countable:
     # Reads the count without mutation.
-    fn count() Int
+    def count() -> Int
 
 impl Countable for Counter:
     # Returns the stored count.
-    fn count() Int:
+    def count() -> Int:
         return self.count
 
 # Private declarations stay private.

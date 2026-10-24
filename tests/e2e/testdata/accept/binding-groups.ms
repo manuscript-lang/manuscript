@@ -1,11 +1,11 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 let (
     LOW = 1
     HIGH: Int = LOW + 9
 )
 export let (
-    LABEL = "range {LOW}..{HIGH}"
+    LABEL = f"range {LOW}..{HIGH}"
 )
 
 test "a constant group declares each constant":
@@ -14,7 +14,7 @@ test "a constant group declares each constant":
 test "a var group declares mutable locals":
     var (
         total = 0
-        step = fn(value: Int) Int:
+        step = lambda (value: Int) -> Int:
             return value + 1
     )
     total = step(total)

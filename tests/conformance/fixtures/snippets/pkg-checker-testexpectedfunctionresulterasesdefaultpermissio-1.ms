@@ -1,7 +1,7 @@
 # conform: tags=closures,diagnostics,generics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/contextual_inference_test.go:46 TestExpectedFunctionResultErasesDefaultPermissions
-fn from_callback[T](factory: fn() T) T: factory()
+def from_callback[T](factory: Callable[[], T]) -> T: factory()
 
-fn first() Unit:
-    let callback: fn(value: Int) Int = from_callback(fn(): fn(value: Int = 4): value)
+def first() -> Unit:
+    let callback: Callable[[Int], Int] = from_callback(lambda: lambda (value: Int = 4): value)

@@ -201,7 +201,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
         return false;
     }
     if current == Tok::LParen
-        && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
+        && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket)
     {
         return false;
     }
@@ -729,7 +729,7 @@ impl<'a> Layout<'a> {
                 if code.len() > 1
                     && matches!(
                         code[code.len() - 2].kind,
-                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn
+                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Lambda
                     )
                 {
                     items = true;
@@ -903,7 +903,10 @@ impl<'a> Layout<'a> {
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
         let (mut selected, mut level, mut count) = (None, 7, 0);
         for node in nodes {
-            if node.tok.kind == Tok::Newline || node.tok.kind == Tok::Fn {
+            if node.tok.kind == Tok::Newline
+                || node.tok.kind == Tok::Lambda
+                || node.tok.kind == Tok::Def
+            {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
             if node.group.is_some() {

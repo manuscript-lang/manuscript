@@ -8,6 +8,6 @@ type Failure:
 type Envelope:
     case Pair(left: Failure, right: Failure)
 
-fn use(value: Envelope) Int:
+def use(value: Envelope) -> Int:
     match value:
-        Pair(payload, NotFound): return 1
+        case Pair(payload, NotFound): return 1

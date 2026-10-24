@@ -1,32 +1,32 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/testing.ms"
-import range from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/collections.ms" import range
 
 interface Counter:
-    var fn increment() Unit
+    var def increment() -> Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var fn increment() Unit:
+    var def increment() -> Unit:
         self.val += 1
 
 type Box[T]:
     value: T
     child: Val
 
-fn replace[T](var box: Box[T], value: T) Unit:
+def replace[T](var box: Box[T], value: T) -> Unit:
     box.value = value
 
-fn receiver(var log: List[Int], value: Val) Val:
+def receiver(var log: List[Int], value: Val) -> Val:
     log.append(1)
     return value
 
-fn replacement(var log: List[Int]) Int:
+def replacement(var log: List[Int]) -> Int:
     log.append(2)
     return 7
 
-fn bump(var value: Val) Unit:
+def bump(var value: Val) -> Unit:
     value.val += 1
 
 test "record fields mutate through methods views and var parameters":
@@ -96,7 +96,7 @@ test "for loop iterates a snapshot while the source changes":
 
 test "callbacks over a snapshot leave the source writable":
     var values = [1, 2, 3]
-    let result = values.clone().map(fn(value): return value + 1)
+    let result = values.clone().map(lambda value: return value + 1)
     values.fill(9, 0, 3)
     try expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))
 
@@ -190,15 +190,15 @@ test "alternative clones retain tags and payloads":
     let copy = original.clone()
 
     match copy:
-        Choice.Present(value):
+        case Choice.Present(value):
             try expect_equal(value.val, 1)
-        Choice.Missing:
+        case Choice.Missing:
             return fail("clone changed the alternative tag")
 
     match original:
-        Choice.Present(value):
+        case Choice.Present(value):
             try expect_equal(value.val, 1)
-        Choice.Missing:
+        case Choice.Missing:
             return fail("clone changed the original alternative")
 
     let missing = Choice.Missing.clone()

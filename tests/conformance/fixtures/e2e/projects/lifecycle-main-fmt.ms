@@ -1,54 +1,54 @@
 # conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, fail} from "@std/testing.ms"
-import stderr from "@std/io.ms"
-import stdout from "@std/io.ms"
-import WriteStream from "@std/io.ms"
-import Closeable from "@std/core.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, fail
+from "@std/io.ms" import stderr
+from "@std/io.ms" import stdout
+from "@std/io.ms" import WriteStream
+from "@std/core.ms" import Closeable
 
 type Resource:
     label: String
     output: WriteStream
 
 impl Closeable for Resource:
-    fn close() Unit:
-        self.output.write(data: "close {self.label}\n")
+    def close() -> Unit:
+        self.output.write(data: f"close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
-fn report(output: WriteStream, label: String, value: Int) Int:
-    output.write(data: "{label}\n")
+def report(output: WriteStream, label: String, value: Int) -> Int:
+    output.write(data: f"{label}\n")
     return value
 
-fn combine(first: Int, second: Int) Int:
+def combine(first: Int, second: Int) -> Int:
     return first + second
 
-fn select(output: WriteStream) fn(first: Int, second: Int) Int:
+def select(output: WriteStream) -> Callable[[Int, Int], Int]:
     output.write(data: "callable\n")
     return combine
 
-fn early(output: WriteStream) Int:
-    with outer = Resource(label: "outer", output: output):
-        with inner = Resource(label: "inner", output: output):
+def early(output: WriteStream) -> Int:
+    with Resource(label: "outer", output: output) as outer:
+        with Resource(label: "inner", output: output) as inner:
             return report(output: output, label: "return value", value: 5)
 
-fn failure() Result[Int, TextError]:
+def failure() -> Result[Int, TextError]:
     return error(TextError("expected"))
 
-fn propagate(output: WriteStream) Result[Int, TextError]:
-    with resource = Resource(label: "propagation", output: output):
+def propagate(output: WriteStream) -> Result[Int, TextError]:
+    with Resource(label: "propagation", output: output) as resource:
         let number = try failure()
         return ok(number)
 
-fn iterable(output: WriteStream) List[Int]:
+def iterable(output: WriteStream) -> List[Int]:
     output.write(data: "iterable\n")
     return [1, 2]
 
-fn exercise() Result[Int, Error]:
+def exercise() -> Result[Int, Error]:
     let total = select(output: stdout())(
         second: report(output: stdout(), label: "second", value: 2),
         first: report(output: stdout(), label: "first", value: 1)
@@ -60,34 +60,34 @@ fn exercise() Result[Int, Error]:
         first: report(output: stdout(), label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
-    with resource = Resource(label: "normal", output: stdout()):
-        let completed = unit
+    with Resource(label: "normal", output: stdout()) as resource:
+        let completed = ()
     stdout().write(data: "after normal\n")
 
     var count = 0
 
     while count < 2:
-        with resource = Resource(label: "iteration", output: stdout()):
+        with Resource(label: "iteration", output: stdout()) as resource:
             count = count + 1
             continue
 
     for value in iterable(output: stdout()):
-        with resource = Resource(label: "break", output: stdout()):
+        with Resource(label: "break", output: stdout()) as resource:
             break
 
     match propagate(output: stdout()):
-        ok(_):
+        case ok(_):
             try fail(message: "Unexpected case")
-        error(_):
-            let completed = unit
+        case error(_):
+            let completed = ()
 
     early(output: stdout()) | try expect_equal(5)
     stdout().write(data: "finished\n")
     return ok(0)
 
-export fn main() Int:
+export def main() -> Int:
     match exercise():
-        ok(status): return status
-        error(cause):
-            let written = stderr().write("{cause.message()}\n")
+        case ok(status): return status
+        case error(cause):
+            let written = stderr().write(f"{cause.message()}\n")
             return 1

@@ -75,11 +75,11 @@ export type JsonValue:
 #
 # The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 # record and `parse[Map[String, Int]]` reads the same object as a map.
-export fn parse[T = JsonValue](
+export def parse[T = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
-    ignore_unknown_fields: Bool = true
-) Result[T, JsonError]:
+    ignore_unknown_fields: Bool = True
+) -> Result[T, JsonError]: ...
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
 # structural encoding for every record and alternative, so it is the way to choose a tagged or
@@ -110,7 +110,7 @@ export fn parse[T = JsonValue](
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.
-    fn to_json() JsonValue
+    def to_json() -> JsonValue
 
 # Encodes any value as JSON text. Every type is accepted;
 # a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
@@ -150,12 +150,12 @@ export interface JsonEncode:
 #
 # stringify(value: Request(model: "example", stream: true, user: none))
 # ```
-export fn stringify[T](
+export def stringify[T](
     value: T,
     max_bytes: Optional[Int] = none,
     indent: Optional[Int] = none
-) Result[String, JsonError]:
+) -> Result[String, JsonError]: ...
 
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
-    fn message() String:
+    def message() -> String: ...

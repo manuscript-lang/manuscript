@@ -1,19 +1,19 @@
 # conform: tags=control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-members.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Point:
     x: Int
     y: Int
 
 impl Equal for Point:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Point(value): return self.x == value.x
-            _: return false
+            case Point(value): return self.x == value.x
+            case _: return False
 
-fn contains_generic[T: Equal](values: List[T], value: T) Bool:
+def contains_generic[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value)
 
 test "list members match generic dispatch":

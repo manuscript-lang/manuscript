@@ -1,9 +1,9 @@
 # conform: tags=control-flow,faults,lists,maps,modules,mutation,optional,stdlib-faults,strings,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=documentation/core-language/types/collections.md:187
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
-fn positives(values: List[Int]) List[Int]:
+def positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:

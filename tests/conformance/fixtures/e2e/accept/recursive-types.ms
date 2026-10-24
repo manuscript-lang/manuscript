@@ -1,19 +1,19 @@
 # conform: tags=alternatives,control-flow,faults,generics,interfaces,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/recursive-types.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, fail
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
 
-fn evaluate(expr: Expr) Int:
+def evaluate(expr: Expr) -> Int:
     match expr:
-        Num(value): return value
-        Add(left, right): return evaluate(left) + evaluate(right)
-        Neg(inner): return -evaluate(inner)
+        case Num(value): return value
+        case Add(left, right): return evaluate(left) + evaluate(right)
+        case Neg(inner): return -evaluate(inner)
 
 type Tree[T]:
     case Leaf(value: T)
@@ -40,13 +40,13 @@ type Link:
     next: Optional[Link]
 
 impl Equal for Link:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Link(value): return self.value == value.value
-            _: return false
+            case Link(value): return self.value == value.value
+            case _: return False
 
 impl Hashable for Link:
-    fn hash() Int: return self.value
+    def hash() -> Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -60,9 +60,9 @@ test "recursive alternatives construct match compare and clone":
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
-        More(tree):
+        case More(tree):
             ((tree.value != 3 or tree.rest != Forest.Empty) | try expect_false)
-        Empty: return fail("lost mutual tree")
+        case Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
     let child = Node(value: 2, next: none)
@@ -154,19 +154,19 @@ test "finite nested generic composition constructs and extracts values":
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
-        Value(value):
+        case Value(value):
             try expect_equal(value.get().get(), 4)
 
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-        ok(inner): inner.clone()
-        error(_): return fail("unexpected outer result error")
+        case ok(inner): inner.clone()
+        case error(_): return fail("unexpected outer result error")
 
     match inner:
-        ok(value):
+        case ok(value):
             try expect_equal(value, 5)
-        error(_): return fail("unexpected inner result error")
+        case error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
     box.value.value | try expect_equal(6)

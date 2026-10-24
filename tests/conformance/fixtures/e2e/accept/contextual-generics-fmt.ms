@@ -1,43 +1,43 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/contextual-generics.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false
 
-fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 
-fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
+def fail_cause[T, E: Error](cause: E) -> Result[T, E]: error(cause)
 
-fn absent[T]() Optional[T]: none
+def absent[T]() -> Optional[T]: none
 
-fn identity[T](value: T) T: value
+def identity[T](value: T) -> T: value
 
-fn from_callback[T](factory: fn() T) T: factory()
+def from_callback[T](factory: Callable[[], T]) -> T: factory()
 
-fn transform[T, U](callback: fn(value: T) U) fn(value: T) U: callback
+def transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback
 
 type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    def message() -> String: self.detail
 
-fn first() Result[List[Int], TextError]: fail("empty")
+def first() -> Result[List[Int], TextError]: fail("empty")
 
-fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
+def failed() -> Result[Int, Error]: fail_cause(Failure("domain"))
 
-fn forward[T]() Optional[T]: absent()
+def forward[T]() -> Optional[T]: absent()
 
-fn consume(value: Optional[Int]) Int: value.get(0)
+def consume(value: Optional[Int]) -> Int: value.get(0)
 
 type Events:
     values: List[Int]
 
-fn record[T](var events: Events, value: Int) Optional[T]:
+def record[T](var events: Events, value: Int) -> Optional[T]:
     events.values.append(value)
     return none
 
-fn combine[T](var events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
+def combine[T](var events: Events, first: Optional[T], second: Optional[T]) -> Optional[T]:
     events.values.append(3)
     return first
 
@@ -53,15 +53,15 @@ test "expected generic results preserve behavior and call order":
     let empty: Optional[Int] = forward()
     try expect_false(not empty.is_none())
 
-    let values: List[Optional[Int]] = [1, 2].map(fn(item): absent())
+    let values: List[Optional[Int]] = [1, 2].map(lambda item: absent())
     try expect_equal(values.length(), 2)
     try expect_false(not values.get(0).is_none())
 
-    let callback: fn(value: Int) String = transform(fn(item): item.to_string())
+    let callback: Callable[[Int], String] = transform(lambda item: item.to_string())
     try expect_equal(callback(7), "7")
 
-    let defaulted: fn(value: Int) Int = from_callback(
-        fn(): fn(value: Int = 4): (value + 1)
+    let defaulted: Callable[[Int], Int] = from_callback(
+        lambda: lambda (value: Int = 4): (value + 1)
     )
     try expect_equal(defaulted(8), 9)
     try expect_equal(consume(identity(5)), 5)

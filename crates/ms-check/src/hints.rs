@@ -235,7 +235,7 @@ pub fn signature_text(t: &Ty) -> String {
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    format!("({}) {}", parts.join(", "), t.result_ty())
+    format!("({}) -> {}", parts.join(", "), t.result_ty())
 }
 
 /// Explains a function passed where names differ.
@@ -250,7 +250,7 @@ pub fn label_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
         if p.name != expected.params[i].name {
             let want = expected.params[i].name;
             return format!(
-                "the function's parameter is named {} but this position expects {}; rename the parameter to {}, or wrap the function in a lambda: fn({}: ...) ...: f({}: {})",
+                "the function's parameter is named {} but this position expects {}; rename the parameter to {}, or wrap the function in a lambda: lambda {}: f({}: {})",
                 p.name, want, want, want, p.name, want
             );
         }

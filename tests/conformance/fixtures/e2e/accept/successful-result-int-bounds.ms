@@ -1,21 +1,21 @@
 # conform: tags=closures,control-flow,interfaces,lists,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
-import Closeable from "@std/core.ms"
-import TextError from "@std/core.ms"
-import {expect_contains, expect_equal, expect_fault} from "@std/testing.ms"
+from "@std/core.ms" import Closeable
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
-fn checked(n: Int) Result[Int, TextError]:
+def checked(n: Int) -> Result[Int, TextError]:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-fn wrapped(n: Int) Result[Int, TextError]:
+def wrapped(n: Int) -> Result[Int, TextError]:
     let value = try checked(n)
     return ok(value)
 
-fn total(positive: Bool) Int:
+def total(positive: Bool) -> Int:
     var sum = 0
     var i = -2
 
@@ -32,7 +32,7 @@ fn total(positive: Bool) Int:
 
     return sum
 
-fn prefix() Int:
+def prefix() -> Int:
     var sum = 9223372036854775807
     var i = 0
 
@@ -45,7 +45,7 @@ fn prefix() Int:
 
     return sum
 
-fn peer() Int:
+def peer() -> Int:
     var sum = 9223372036854775807
     var value = 0
     var i = 0
@@ -58,20 +58,20 @@ fn peer() Int:
 
     return sum
 
-fn hidden(n: Int) Result[Int, TextError]:
+def hidden(n: Int) -> Result[Int, TextError]:
     if n < 0:
         return error(
             TextError(
                 match some(n):
-                    some(value):
+                    case some(value):
                         return ok(9223372036854775807)
-                    none: "negative"
+                    case none: "negative"
             )
         )
 
     return ok(n + 1)
 
-fn hidden_success() Int:
+def hidden_success() -> Int:
     var sum = 1
     var i = -1
 
@@ -86,18 +86,18 @@ type BoundedResultCleanup:
     visits: List[Int]
 
 impl Closeable for BoundedResultCleanup:
-    var fn close() Unit:
+    var def close() -> Unit:
         self.visits.append(7)
 
-fn cleanup(visits: List[Int]) Int:
-    with resource = BoundedResultCleanup(visits):
-        return total(true)
+def cleanup(visits: List[Int]) -> Int:
+    with BoundedResultCleanup(visits) as resource:
+        return total(True)
 
-fn argument(value: Int, var visits: List[Int]) Int:
+def argument(value: Int, var visits: List[Int]) -> Int:
     visits.append(value)
     return value
 
-fn ordered(var visits: List[Int]) Int:
+def ordered(var visits: List[Int]) -> Int:
     var sum = 0
     var i = -1
 
@@ -109,22 +109,22 @@ fn ordered(var visits: List[Int]) Int:
     return sum
 
 test "bounded successful Results preserve both branch budgets":
-    total(true) | try expect_equal(500498)
-    total(false) | try expect_equal(-500502)
+    total(True) | try expect_equal(500498)
+    total(False) | try expect_equal(-500502)
 
 test "Result payload bounds retain intermediate overflow":
-    (try expect_fault(fn(): let ignored = prefix())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = prefix())) | try expect_contains(
         "Int overflow"
     )
-    (try expect_fault(fn(): let ignored = peer())) | try expect_contains("Int overflow")
+    (try expect_fault(lambda: let ignored = peer())) | try expect_contains("Int overflow")
 
 test "Result helper overflow still occurs in the original call":
-    (try expect_fault(fn(): let ignored = checked(9223372036854775807))) | try expect_contains(
+    (try expect_fault(lambda: let ignored = checked(9223372036854775807))) | try expect_contains(
         "Int overflow"
     )
 
 test "hidden successful returns in error construction keep checks":
-    (try expect_fault(fn(): let ignored = hidden_success())) | try expect_contains(
+    (try expect_fault(lambda: let ignored = hidden_success())) | try expect_contains(
         "Int overflow"
     )
 
