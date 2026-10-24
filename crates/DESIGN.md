@@ -20,7 +20,7 @@ This describes the Rust and Cranelift implementation. Current ownership rules li
     -> ms-mir    (representation, ownership elaboration, optimizer, verifier, text format, interpreter)
     -> ms-clif   (MIR -> Cranelift -> object file; line tables; perf map)
     -> linker driver + ms-native (ms-rt and the ms-std-* crates in one static library, embedded in ms) -> executable
-tools: ms-project (manifest, lock, aliases, import resolution), ms-driver (module graph loading, entry rule, checking), ms-build (lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram; agent guide, `search_symbol` standard-library lookup, docgen), ms-lsp, ms-cli (`ms`), ms-conform (conformance runner)
+tools: ms-driver (manifest, aliases and import resolution in `project`; module graph loading, entry rule, checking), ms-build (lowering seam, optimize, codegen and link; the `ms build/run/test/profile` engine in ms-cli sits on it), ms-tooling (lint, inspect, review, diagram; agent guide, `search_symbol` standard-library lookup, docgen), ms-lsp, ms-cli (`ms`), ms-conform (conformance runner)
 ```
 
 Keep public crate APIs small and documented with rustdoc; cross-crate changes must preserve the shared ownership and runtime ABI contracts.

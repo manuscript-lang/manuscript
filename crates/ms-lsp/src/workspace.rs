@@ -7,7 +7,7 @@ use crate::json::{Json, obj};
 use crate::nav::{self, go_location_order};
 use crate::text::Position;
 use crate::uri;
-use ms_project::gopath;
+use ms_driver::project::gopath;
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -30,7 +30,7 @@ pub fn workspace_scope(d: &Document, recursive: bool) -> (String, bool) {
     let path = d.path();
     let mut root = gopath::dir(&path);
     let mut recursive = recursive;
-    if let Some(manifest) = ms_project::find_manifest(&path) {
+    if let Some(manifest) = ms_driver::project::find_manifest(&path) {
         root = gopath::dir(&manifest);
         recursive = true;
     }

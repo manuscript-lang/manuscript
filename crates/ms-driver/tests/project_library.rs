@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use ms_project::read_project;
+use ms_driver::project::read_project;
 
 #[test]
 fn library_entry_is_omitted_not_defaulted() {
@@ -83,7 +83,7 @@ fn alias_validation_is_sorted_and_confined() {
     write(root, "src/value.ms", "");
     let outside_dir = TempDir::new();
     let outside = write(outside_dir.path(), "value.ms", "");
-    let rel = ms_project::gopath::rel(root, &outside).unwrap();
+    let rel = ms_driver::project::gopath::rel(root, &outside).unwrap();
     let prefix = "[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n";
     let source = format!("{prefix}\"@z\" = \"missing\"\n  \"@a\" = \"{rel}\"\n");
     for _ in 0..20 {

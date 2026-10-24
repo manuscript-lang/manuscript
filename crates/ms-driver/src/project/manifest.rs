@@ -4,11 +4,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::error::{Location, ProjectError};
-use crate::gopath;
-use crate::overlay::Overlay;
-use crate::paths::source_path;
-use crate::strconv;
+use crate::project::error::{Location, ProjectError};
+use crate::project::gopath;
+use crate::project::overlay::Overlay;
+use crate::project::paths::source_path;
+use crate::project::strconv;
 
 /// The longest manifest line `bufio.Scanner` accepts (`MaxScanTokenSize - 1`).
 const MAX_LINE: usize = 65535;

@@ -15,7 +15,6 @@ default-members = [
     "crates/ms-lower",
     "crates/ms-lsp",
     "crates/ms-mir",
-    "crates/ms-project",
     "crates/ms-repo-check",
     "crates/ms-rt",
     "crates/ms-rt-abi",

@@ -2,10 +2,10 @@
 
 use std::collections::BTreeSet;
 
-use crate::error::ProjectError;
-use crate::gopath;
-use crate::manifest::Project;
-use crate::overlay::Overlay;
+use crate::project::error::ProjectError;
+use crate::project::gopath;
+use crate::project::manifest::Project;
+use crate::project::overlay::Overlay;
 
 fn skipped_name(name: &str) -> bool {
     name.starts_with('.') || name == "vendor" || name == "node_modules"

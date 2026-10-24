@@ -35,8 +35,8 @@ pub fn search_symbols(
         .map_err(|e| e.to_string())?
         .to_string_lossy()
         .into_owned();
-    if let Some(manifest) = ms_project::find_manifest(&format!("{root}/x.ms")) {
-        root = ms_project::gopath::dir(&manifest);
+    if let Some(manifest) = ms_driver::project::find_manifest(&format!("{root}/x.ms")) {
+        root = ms_driver::project::gopath::dir(&manifest);
     }
     let symbols = workspace_symbols(&Documents::new(), &[root], "", None).unwrap_or_default();
     let mut found: Vec<(i32, String, &'static str, String)> = Vec::new();

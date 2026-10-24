@@ -3,7 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use ms_project::{Project, ProjectError, discover_modules, gopath, read_project, source_path};
+use ms_driver::project::{
+    Project, ProjectError, discover_modules, gopath, read_project, source_path,
+};
 
 use crate::backend::{Backend, FormatFailure, FormatFile, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
@@ -179,15 +181,19 @@ fn format_paths(target: &str) -> Result<Vec<String>, ProjectError> {
     }
     // A discovered file symlink must stay inside the selected project/directory.
     // Explicit files remain independently selectable, including through symlinks.
-    let none = ms_project::Overlay::new();
+    let none = ms_driver::project::Overlay::new();
     paths
         .into_iter()
         .map(|path| source_path(&config.root, &path, &none))
         .collect()
 }
 
-fn path_error(op: &'static str, path: &str, error: &std::io::Error) -> ms_project::PathError {
-    ms_project::PathError {
+fn path_error(
+    op: &'static str,
+    path: &str,
+    error: &std::io::Error,
+) -> ms_driver::project::PathError {
+    ms_driver::project::PathError {
         op,
         path: path.to_string(),
         errno: error.raw_os_error().unwrap_or(0),
@@ -329,7 +335,7 @@ fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic,
         }
         FmtError::Project(ProjectError::Path(path_error)) => {
             let shown = format_display(cwd, &path_error.path);
-            message = file_error(&ProjectError::Path(ms_project::PathError {
+            message = file_error(&ProjectError::Path(ms_driver::project::PathError {
                 path: shown.clone(),
                 ..path_error
             }));

@@ -72,7 +72,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::process::{Command, Stdio};
 
-use ms_project::gopath;
+use ms_driver::project::gopath;
 
 use crate::backend::{Backend, BuildRequest, BuildType, Io, finish};
 use crate::diagnostic::{CommandDiagnostic, Position};
@@ -389,7 +389,7 @@ pub fn run_profile(
     let folded_path = gopath::join(&[&output, "profile.folded"]);
 
     if let Err(error) = std::fs::create_dir(&output) {
-        let cause = ms_project::error::errno_message(error.raw_os_error().unwrap_or(0));
+        let cause = ms_driver::project::error::errno_message(error.raw_os_error().unwrap_or(0));
         let message = format!(
             "profile directory must be new: mkdir {output}: {cause}; choose a path that does not exist with --out-dir <directory>"
         );

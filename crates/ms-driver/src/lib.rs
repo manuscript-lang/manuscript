@@ -1,7 +1,7 @@
 //! The Manuscript front-end driver: file name to checked program.
 //!
 //! ```text
-//! load (ms-project, ms-syntax) -> check (ms-check)
+//! load (project, ms-syntax) -> check (ms-check)
 //! ```
 //!
 //! Lowering, optimization, code generation and linking live in `ms-build`, so
@@ -11,6 +11,7 @@
 
 pub mod compile;
 pub mod load;
+pub mod project;
 
 pub use compile::{CheckRequest, Checked, check_graph, check_graph_at};
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};

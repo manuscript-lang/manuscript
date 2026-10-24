@@ -25,7 +25,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use ms_build::Lower;
-use ms_project::gopath;
+use ms_driver::project::gopath;
 
 use ms_build::FAILURE_MARKER;
 

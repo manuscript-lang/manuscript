@@ -3,8 +3,8 @@
 //! Unix symlink errors retain Go's exact behavior.
 
 #[cfg(not(windows))]
-use crate::error::ENOTDIR;
-use crate::error::ProjectError;
+use crate::project::error::ENOTDIR;
+use crate::project::error::ProjectError;
 
 const SEP: u8 = b'/';
 

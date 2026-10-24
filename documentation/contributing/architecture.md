@@ -19,7 +19,7 @@ weight = 1
 ```
 
 1. `ms-cli` validates options and picks a command; `ms-driver` loads and checks, `ms-build` lowers, generates code and links.
-2. `ms-project` reads `ms.toml` and `[aliases]` and resolves imports to canonical, root-confined paths, including editor overlays.
+2. `ms-driver`'s `project` module reads `ms.toml` and `[aliases]` and resolves imports to canonical, root-confined paths, including editor overlays.
 3. `ms-driver` loads the module graph: it follows imports, detects cycles, and returns the modules in dependency order.
 4. `ms-syntax` parses strictly, or with recovery for editor analysis. Standard declarations use the same parser.
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
@@ -36,7 +36,7 @@ weight = 1
 | `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
-| `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
+| `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
 | `ms-build` | Lowering seam, optimization, native codegen and link |
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
@@ -47,7 +47,7 @@ weight = 1
 
 - One syntax visitor owns traversal; passes pick callbacks.
 - Semantic lint uses the checker's resolved identities, never re-lexing source.
-- `ms-project` owns import path identity; the driver consumes it.
+- `ms-driver`'s `project` module owns import path identity; graph loading consumes it.
 - The CLI classifies commands once and shares one build path.
 
 ## Keep source and generated output distinct
@@ -78,7 +78,7 @@ Fix generated output through its generator, never by editing HTML or copying sta
 | Syntax or type rules | Guide, `ms-syntax`, `ms-check`, `ms-lower`, formatting and LSP, accepted/rejected fixtures |
 | Standard operation | `.ms` declaration, `bindings.json`, `ms-lower` native call, `ms-std-*` implementation, generated reference; test in a called test block |
 | Resource work | Checking, acquisition, cancellation, close; verify exit ordering |
-| Manifest, alias, or import | `ms-project`, module graph, overlays; test equivalent paths, escapes, malformed input |
+| Manifest, alias, or import | `ms-driver` `project`, module graph, overlays; test equivalent paths, escapes, malformed input |
 | CLI command | `ms-cli`, relevant crate, status/output contract; failed checking preserves outputs |
 | Documentation | Markdown or generator, `make docs-check`, `make book-check`, `make book` |
 | Build packaging | `scripts/package-rust.sh`; `make dist-check` runs the packaged binary |

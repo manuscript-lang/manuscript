@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::time::{Duration, Instant, SystemTime};
 
+use ms_driver::project::{Overlay, ProjectError, gopath};
 use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
-use ms_project::{Overlay, ProjectError, gopath};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
 use ms_tooling::diff::{DiffFile, parse_diff, removed_content, reverse_apply};

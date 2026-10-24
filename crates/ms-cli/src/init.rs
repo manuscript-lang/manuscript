@@ -1,7 +1,7 @@
 //! `ms init [directory]`: create a runnable project. Fully implemented here;
 //! it needs no engine.
 
-use ms_project::gopath;
+use ms_driver::project::gopath;
 
 use crate::backend::Io;
 
@@ -36,7 +36,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     };
     let manifest = format!(
         "[project]\nname = {}\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
-        ms_project::strconv::quote(&project_name(&absolute))
+        ms_driver::project::strconv::quote(&project_name(&absolute))
     );
     let files = [
         ("ms.toml".to_string(), manifest),
@@ -61,7 +61,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         ignore_build_cache(&gopath::join(&[&absolute, ".gitignore"]))
     };
     if let Err(error) = create() {
-        let message = ms_project::error::errno_message(error.raw_os_error().unwrap_or(0));
+        let message = ms_driver::project::error::errno_message(error.raw_os_error().unwrap_or(0));
         let _ = writeln!(
             io.stderr,
             "ms init: cannot create project in {directory}: {message}"

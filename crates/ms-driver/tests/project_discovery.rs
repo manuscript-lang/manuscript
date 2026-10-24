@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use ms_project::{Overlay, Project, discover_modules, discover_modules_with_overlay};
+use ms_driver::project::{Overlay, Project, discover_modules, discover_modules_with_overlay};
 
 fn sorted(mut v: Vec<String>) -> Vec<String> {
     v.sort();
