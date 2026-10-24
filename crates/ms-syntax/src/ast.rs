@@ -168,6 +168,8 @@ pub struct RecordDecl {
     pub type_params: Vec<TypeParam>,
     /// Fields in declaration order; `ty` is always present.
     pub fields: Vec<Param>,
+    /// `extern type Name`: an opaque value whose layout the runtime owns (bundled modules only).
+    pub external: bool,
 }
 
 /// `type Name[T]:` with `case` lines.

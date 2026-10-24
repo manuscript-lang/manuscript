@@ -525,6 +525,21 @@ impl Checker {
                 continue;
             }
             let name = d.name();
+            if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
+                // An opaque runtime type: the loader registered its canonical symbol.
+                let canonical = stdlib::is_source_module(module)
+                    .then(|| stdlib::standard_symbol(name.as_str()))
+                    .flatten()
+                    .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
+                match canonical {
+                    Some(s) => self.add_symbol(name, s, d.pos()),
+                    None => self.type_error(
+                        d.pos(),
+                        "extern type is available only in bundled standard modules; declare a record or alternative instead",
+                    ),
+                }
+                continue;
+            }
             let id = self.unique("symbol");
             let kind = match &d.decl().kind {
                 DeclKind::Fn(_) | DeclKind::Const(_) => None,
@@ -968,6 +983,14 @@ impl Checker {
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
     fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty) {
+        // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
+        if self
+            .module
+            .as_ref()
+            .is_some_and(stdlib::is_source_module)
+        {
+            return;
+        }
         const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
         const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];
         for (p, ty) in f.params.iter().zip(&t.params) {

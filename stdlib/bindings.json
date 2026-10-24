@@ -21,7 +21,6 @@
     "@std/collections.ms/MapBuilder": "native",
     "@std/collections.ms/Set": "native",
     "@std/collections.ms/SetBuilder": "native",
-    "@std/decimal.ms/Decimal": "native",
     "@std/http.ms/HttpHeaders": "native",
     "@std/logcore.ms/LogGate": "native",
     "@std/logcore.ms/LogState": "native",
