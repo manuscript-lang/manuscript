@@ -81,7 +81,9 @@ export fn parse(text: String) Result[Version, SemverError]:
     if core_and_pre.length() == 2:
         for identifier in core_and_pre[1].split("."):
             let scalars = identifier.scalar_values()
-            if not valid_identifier(scalars.clone()): return error(SemverError.InvalidData)
+            if not valid_identifier(scalars.clone()): return error(
+                SemverError.InvalidData
+            )
             if all_digits(scalars.clone()) and has_leading_zero(scalars): return error(
                 SemverError.InvalidData
             )
