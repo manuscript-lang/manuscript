@@ -97,3 +97,10 @@ test "a box dropped while its payload is out does not free the payload twice":
     first[0] = 0
     try expect_equal(first, [0, 2, 3, 4, 9])
     try expect_equal(second, [5, 6, 7, 8])
+
+test "an optional payload keeps its value through take and put":
+    let shared: Shared[Optional[Int]] = share(some(5))
+    try expect_equal(shared.get(), some(5))
+    let taken = shared.take()
+    shared.put(taken)
+    try expect_equal(shared.get(), some(5))
