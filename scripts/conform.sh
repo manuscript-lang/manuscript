@@ -27,5 +27,5 @@ fi
 
 "target/debug/ms-conform$exe" lint
 "target/debug/ms-conform$exe" run --ms "$repository/target/debug/ms$exe" \
-    --phase run,check,test --exclude-tag aliasing --expect-fail "$allow" \
+    --phase run,check,test --exclude-tag aliasing --expect-fail "$allow" --strict \
     --shard "${CONFORM_SHARD:-0/1}" --quiet --markdown .artifacts/conform.md "$@"

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (native handles; planned `Shared[T]`).
+    /// and handle types whose identity is shared (native handles and `Shared[T]`).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
@@ -61,6 +61,17 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
+        } else if t.is_std("Shared") {
+            // Sharing copies the handle, so a payload that must be closed once stays move-only.
+            let resource = t
+                .args
+                .first()
+                .is_some_and(|a| self.class_in(a, visiting) == Class::Resource);
+            if resource {
+                Class::Resource
+            } else {
+                Class::Copy
+            }
         } else if t.is_std("List") || t.is_std("Map") || t.is_std("Set") || t.is_std("Bytes") {
             Class::Move
         } else {

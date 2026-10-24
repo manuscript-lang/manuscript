@@ -351,6 +351,10 @@ impl Cx {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
+        if t.is_std("Shared") {
+            let payload = self.lower_ty(m, &t.args[0])?;
+            return Ok(m.types.obj("Shared", vec![payload]));
+        }
         // A collection builder is a shared handle over its accumulating collection.
         if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
             let items = if kind == "ListBuilder" {

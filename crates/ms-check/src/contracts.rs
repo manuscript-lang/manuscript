@@ -163,13 +163,19 @@ impl Checker {
         }
         let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
+        // A bundled module may add methods to the `extern type` it declares.
+        let own_extern = receiver.kind == Kind::Native
+            && nominal
+                .as_ref()
+                .is_some_and(|s| s.module == self.current_file());
         let foreign_native = nominal
             .as_ref()
             .is_some_and(|s| !s.native.as_str().is_empty())
-            && !self.standard_declarations;
+            && !self.standard_declarations
+            && !own_extern;
         if nominal.is_none()
             || foreign_native
-            || !matches!(receiver.kind, Kind::Record | Kind::Alternative)
+            || !(own_extern || matches!(receiver.kind, Kind::Record | Kind::Alternative))
         {
             if receiver.id != "<invalid>" {
                 self.type_error(

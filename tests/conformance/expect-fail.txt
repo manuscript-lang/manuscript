@@ -1,5 +1,3 @@
-# Fixtures the Rust `ms` still differs on (make conform). Remove entries as they are fixed.
-# run: -20: a callee inlined into main loses its fault frame and the caller line.
-# check/lsp/examples fixtures that depend on lint, inspect or LSP output of the Go tools.
-# test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
-# test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.
+# Frozen contracts still requiring fixes. Remove entries only after exact corpus replay passes.
+# File fixtures promise one shared instance and before_all/after_all per file, but the
+# process-isolated runner constructs the fixture for each test, after printing RUN.

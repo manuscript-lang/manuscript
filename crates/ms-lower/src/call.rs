@@ -449,6 +449,9 @@ impl<'a> FnLower<'a> {
         if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
             return self.builder_method(e, view, m, recv_expr, &method);
         }
+        if m.receiver.is_std("Shared") {
+            return self.shared_get(e, recv_expr);
+        }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }

@@ -132,7 +132,8 @@ Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
 MethodDeclaration = [ "var" ], "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, FunctionSuite ;
-ExternDeclaration = "extern", "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE ;
+ExternDeclaration = "extern", "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE
+                  | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return ()` succeeds; try or return error(...) fails it. *)
