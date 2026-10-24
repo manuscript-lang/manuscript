@@ -129,6 +129,7 @@ fn run_source_command(args: &[String], usage: &str, backend: &dyn Backend, io: &
                 targets: inv.targets.clone(),
                 json: inv.structured,
                 watch: inv.watch,
+                fix: inv.fix,
             };
             match command {
                 AnalysisCommand::Check => backend.check(&request, io),

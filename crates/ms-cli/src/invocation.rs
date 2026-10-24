@@ -57,6 +57,7 @@ pub struct Invocation {
     pub format_check: bool,
     pub structured: bool,
     pub watch: bool,
+    pub fix: bool,
     pub build_type_name: String,
     pub build_type_set: bool,
     pub test_timeout: String,
@@ -160,6 +161,7 @@ fn parse_options(
                 return Ok(());
             }
             "--watch" => inv.watch = true,
+            "--fix" => inv.fix = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -466,6 +468,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         return Err(usage_error(
             io,
             "--json cannot be combined with --watch; remove --watch for one versioned result",
+        ));
+    }
+    if inv.fix && (!inv.is_one_of(&["check", "lint"]) || inv.watch) {
+        return Err(usage_error(
+            io,
+            format!(
+                "--fix requires check or lint without --watch, not {command}; use ms check <file> --fix"
+            ),
         ));
     }
     if inv.watch && !inv.is_one_of(&["check", "lint", "run", "test"]) {

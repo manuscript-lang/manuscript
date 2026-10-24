@@ -95,6 +95,8 @@ pub struct AnalysisRequest {
     pub targets: Vec<String>,
     pub json: bool,
     pub watch: bool,
+    /// Apply machine-applicable fixes before reporting what remains.
+    pub fix: bool,
 }
 
 /// `ms build <input> [-o output]`. `output` is empty for the default

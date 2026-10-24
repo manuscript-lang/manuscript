@@ -361,7 +361,7 @@ impl Checker {
             i.constructor = Some(constructor);
         } else {
             let msg = self.unknown_name(name);
-            self.res_error(e.pos, msg);
+            self.res_error_name(e.pos, name.len(), msg);
         }
         finish_info(i)
     }
@@ -418,7 +418,7 @@ impl Checker {
                 && self.sym(*nm).is_none()
             {
                 let msg = self.unknown_name(*nm);
-                self.res_error(left.pos, msg);
+                self.res_error_name(left.pos, nm.len(), msg);
                 i.ty = Some(invalid());
                 return i;
             }
