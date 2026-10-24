@@ -2,6 +2,7 @@
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {IoError, ReadStream} from "@std/io.ms"
 import {ResponseBody} from "@std/http.ms"
+import Closeable from "@std/core.ms"
 
 # Errors returned for invalid input, malformed or oversized event streams, and failed reads.
 export type SseError:
@@ -238,25 +239,24 @@ fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
     decoder.event_bytes = 0
     decoder.open_block = false
 
-type BorrowedBody:
+type OwnedBody:
     body: ResponseBody
 
-impl ReadStream for BorrowedBody:
-    fn close() Unit:
-        return unit
+impl ReadStream for OwnedBody:
+    var fn close() Unit:
+        self.body.close()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         return self.body.read(max_bytes)
 
-# Views an HTTP response body as a ReadStream that the response keeps owning.
-# Closing the view does nothing, so close the body itself, usually with `with`.
-export fn borrow_body(body: ResponseBody) ReadStream:
-    return ReadStream(value: BorrowedBody(body))
+# Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
+export fn body_stream(body: ResponseBody) ReadStream:
+    return ReadStream(value: OwnedBody(body))
 
-# Pulls events from a borrowed ReadStream. The reader never closes the stream:
-# its owner closes it, and closing it makes a blocked read fail with ReadFailed.
+# Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
+# makes a blocked read fail with ReadFailed.
 export type SseReader:
-    # The borrowed stream, such as an HTTP response body.
+    # The stream, such as an HTTP response body made by `body_stream`.
     input: ReadStream
     # The decoder, whose `retry()` is readable between events.
     decoder: SseDecoder
@@ -269,7 +269,7 @@ export type SseReader:
     # Internal: true after a clean end of stream.
     finished: Bool
 
-# Wraps a stream in an event reader. Supplied limits and chunk size must be positive.
+# Takes a stream and wraps it in an event reader. Supplied limits and chunk size must be positive.
 export fn reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
@@ -284,6 +284,11 @@ export fn reader(
             chunk_bytes: chunk_bytes, finished: false
         )
     )
+
+impl Closeable for SseReader:
+    # Closes the stream the reader owns; reads after a close fail with ReadFailed.
+    var fn close() Unit:
+        self.input.close()
 
 # Returns the next event, or none after a clean end of stream.
 # A read failure, malformed line, exceeded limit or truncated event is an error.

@@ -175,7 +175,7 @@ impl Ownership {
 /// standard library, is checked and lowered under the same rules. Fix a module, then delete
 /// its entry.
 const UNVETTED: &[&str] = &[
-    // Transports share one stream handle through non-`var` methods.
+    // A child logger shares its parent's transport, which is a stream it cannot own twice.
     "@std/log.ms",
 ];
 
