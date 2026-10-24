@@ -15,6 +15,21 @@
           "line": 5,
           "column": 9,
           "offset": 186
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import expect_false from \"@std/testing.ms\"\n"
         }
       }
     ],

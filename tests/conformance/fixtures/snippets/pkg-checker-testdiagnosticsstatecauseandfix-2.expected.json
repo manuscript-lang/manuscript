@@ -15,6 +15,21 @@
           "line": 5,
           "column": 12,
           "offset": 171
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
         }
       }
     ],

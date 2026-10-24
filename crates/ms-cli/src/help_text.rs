@@ -45,7 +45,7 @@ Builds link with the linker bundled in ms on every platform; no C compiler or SD
 MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.
 "#;
 
-pub const HELP_CHECK: &str = r#"Usage: ms check <file.ms|directory|ms.toml>... [--json] [--watch]
+pub const HELP_CHECK: &str = r#"Usage: ms check <file.ms|directory|ms.toml>... [--json] [--watch] [--fix]
 
 Parse, resolve imports, and type-check independent inputs without executing source.
 A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.
@@ -55,6 +55,7 @@ Each input retains its own import root; pass nested projects explicitly. Use -- 
 Options:
   --json  Emit versioned JSON diagnostics instead of terminal messages
   --watch Recheck after each saved change to an input or loaded module (no --json)
+  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)
   -h, --help  Show this help without executing the command
 
 Examples:
@@ -64,7 +65,7 @@ Examples:
   ms check src utilities.ms --json
 "#;
 
-pub const HELP_LINT: &str = r#"Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch]
+pub const HELP_LINT: &str = r#"Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix]
 
 Check source hygiene and semantic lint rules in independent inputs and their imports.
 A project directory selects ms.toml; standalone directories discover .ms files recursively.
@@ -75,6 +76,7 @@ Exit status is 1 when any input fails checking or has lint findings.
 Options:
   --json  Emit versioned JSON findings with stable rule codes
   --watch Recheck after each saved change to an input or loaded module (no --json)
+  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)
   -h, --help  Show this help without executing the command
 
 Examples:

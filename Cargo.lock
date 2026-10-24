@@ -1114,6 +1114,7 @@ dependencies = [
  "memchr",
  "mio",
  "ms-rt-abi",
+ "ms-rt-hot",
  "ms-std-core",
  "ms-std-fs",
  "ms-std-io",
@@ -1127,6 +1128,13 @@ dependencies = [
 [[package]]
 name = "ms-rt-abi"
 version = "0.1.0"
+
+[[package]]
+name = "ms-rt-hot"
+version = "0.1.0"
+dependencies = [
+ "ms-rt-abi",
+]
 
 [[package]]
 name = "ms-std-archive"

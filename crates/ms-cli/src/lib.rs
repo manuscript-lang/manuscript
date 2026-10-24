@@ -133,6 +133,7 @@ fn run_source_command<L: Lower>(
                 targets: inv.targets.clone(),
                 json: inv.structured,
                 watch: inv.watch,
+                fix: inv.fix,
             };
             engine::analysis(&request, io)
         }

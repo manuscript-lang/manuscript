@@ -15,6 +15,21 @@
           "line": 5,
           "column": 19,
           "offset": 202
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testhtmlunescaperejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testhtmlunescaperejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import unescape from \"@std/html.ms\"\n"
         }
       }
     ],

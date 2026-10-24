@@ -1,7 +1,7 @@
 import {expect_equal} from "@std/testing.ms"
 import {headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse} from "@std/http.ms"
 import {IoError, ReadStream, read_all} from "@std/io.ms"
-import borrow_body from "@std/sse.ms"
+import body_stream from "@std/sse.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -32,15 +32,14 @@ test "request_stream uploads each chunk of a ReadStream":
     with server = try network().serve("127.0.0.1:0", echo):
         with client = try network().http_client(HttpClientOptions()):
             let upload = Chunks(parts: ["alpha ", "beta ", "gamma"])
-
-            with response = try client.request_stream(
+            let response = try client.request_stream(
                 HttpMethod.Post, "http://{server.address()}/", headers(),
                 ReadStream(value: upload)
-            ):
-                try expect_equal(response.metadata().status, 200)
+            )
+            try expect_equal(response.metadata().status, 200)
 
-                let body = try read_all(borrow_body(response))
-                try expect_equal(body, "alpha beta gamma".to_bytes())
+            let body = try read_all(body_stream(response))
+            try expect_equal(body, "alpha beta gamma".to_bytes())
 
 test "request_stream reports a failing ReadStream":
     with server = try network().serve("127.0.0.1:0", echo):

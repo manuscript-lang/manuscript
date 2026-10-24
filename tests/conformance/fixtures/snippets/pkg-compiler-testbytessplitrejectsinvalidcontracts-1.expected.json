@@ -15,6 +15,21 @@
           "line": 4,
           "column": 16,
           "offset": 174
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
       }
     ],

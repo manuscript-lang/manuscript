@@ -17,4 +17,4 @@ pub use compile::{CheckRequest, Checked, check_graph, check_graph_at};
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};
 
 /// The syntax types diagnostics are made of.
-pub use ms_syntax::{Diagnostic, Phase, Pos};
+pub use ms_syntax::{Diagnostic, DiagnosticFix, Phase, Pos};

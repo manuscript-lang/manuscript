@@ -485,7 +485,11 @@ impl Checker {
                 .map(|p| p.ty.clone());
             if expected.is_none() {
                 let hint = unknown_argument_hint(arg.name.as_str(), &call_name, params);
-                self.type_error(arg.pos, format!("unknown argument {}{hint}", arg.name));
+                self.type_error_name(
+                    arg.pos,
+                    arg.name.len(),
+                    format!("unknown argument {}{hint}", arg.name),
+                );
             }
             if expected.is_some() && !call_name.is_empty() {
                 self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));

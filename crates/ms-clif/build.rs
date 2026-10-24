@@ -70,10 +70,10 @@ fn main() {
         if target_os == "windows" { ".exe" } else { "" }
     );
     if target_os == "linux" || target_os == "macos" || target_os == "windows" {
-        // opt and llc sit beside lld when the LLVM tools were fetched; without them release builds
+        // opt, llc and llvm-link sit beside lld when the LLVM tools were fetched; without them release builds
         // keep using Cranelift. They are embedded gzipped (together about 54 MB).
         let tools = lld().parent().map(Path::to_path_buf).unwrap_or_default();
-        for tool in ["opt", "llc"] {
+        for tool in ["opt", "llc", "llvm-link"] {
             let gz = format!("{tool}.gz");
             let file = if target_os == "windows" {
                 format!("{tool}.exe")
@@ -101,6 +101,7 @@ fn main() {
             names.push(name.to_string());
         }
     }
+    names.push(embed_hot_ir(&bundle));
     let mut id = 0xcbf29ce484222325u64;
     for name in &names {
         let bytes = std::fs::read(bundle.join(name)).expect("read bundled file");
@@ -224,6 +225,31 @@ fn compress(from: &Path, to: &Path) {
     if std::fs::read(to).ok().as_deref() != Some(&packed) {
         std::fs::write(to, packed).expect("write compressed tool");
     }
+}
+
+/// Copies the `ms-rt-hot` IR that `cargo xtask runtime` writes (`MS_RT_HOT_IR` names another) into the
+/// bundle, or an empty placeholder: without it release builds still work, they just do not inline the
+/// runtime's pure helpers. Returns the bundled file's name.
+fn embed_hot_ir(bundle: &Path) -> String {
+    println!("cargo:rerun-if-env-changed=MS_RT_HOT_IR");
+    let built = std::env::var_os("MS_RT_HOT_IR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/ms-native/ms_rt_hot.ll")
+        });
+    println!("cargo:rerun-if-changed={}", built.display());
+    let bytes = std::fs::read(&built).unwrap_or_default();
+    if bytes.is_empty() {
+        println!(
+            "cargo:warning=no {}: release builds will not inline runtime helpers (run `cargo xtask runtime`)",
+            built.display()
+        );
+    }
+    let to = bundle.join("ms_rt_hot.ll");
+    if std::fs::read(&to).ok().as_deref() != Some(&bytes) {
+        std::fs::write(&to, bytes).expect("write the runtime helper IR");
+    }
+    "ms_rt_hot.ll".to_string()
 }
 
 /// `MS_LLD`, else the one `scripts/fetch-lld.sh` leaves in `target/llvm-bundle`.

@@ -208,7 +208,7 @@ impl Checker {
                         );
                     } else {
                         let msg = self.unknown_name(name);
-                        self.res_error(s.pos, msg);
+                        self.res_error_name(s.pos, name.len(), msg);
                     }
                     self.expression(value, None);
                     return (true, false);
