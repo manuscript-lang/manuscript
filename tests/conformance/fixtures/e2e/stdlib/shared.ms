@@ -1,4 +1,4 @@
-# conform: tags=records,interfaces,ownership,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
+# conform: tags=records,interfaces,mutation,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 import {share, Shared} from "@std/shared.ms"
 import {expect_equal} from "@std/testing.ms"
