@@ -31,7 +31,7 @@ impl ReadStream for BytesSource:
 # Streams the bytes in `data` in chunks of at most `chunk_bytes` (default 64 KiB).
 # A non-positive chunk size makes reads fail with InvalidInput.
 export def from_bytes(data: Bytes, chunk_bytes: Int = 65536) -> ReadStream:
-    return ReadStream(value: BytesSource(data, 0, chunk_bytes))
+    return BytesSource(data, 0, chunk_bytes)
 
 type MappedStream:
     input: ReadStream
@@ -57,7 +57,7 @@ impl ReadStream for MappedStream:
 # The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
 # Closing the result closes `input`.
 export def map(input: ReadStream, transform: Callable[[Bytes], Bytes]) -> ReadStream:
-    return ReadStream(value: MappedStream(input, transform))
+    return MappedStream(input, transform)
 
 type LimitedStream:
     input: ReadStream
@@ -88,7 +88,7 @@ impl ReadStream for LimitedStream:
 export def take(input: ReadStream, max_bytes: Int) -> ReadStream:
     var limit = max_bytes
     if limit < 0: limit = 0
-    return ReadStream(value: LimitedStream(input, limit))
+    return LimitedStream(input, limit)
 
 type ConcatStream:
     inputs: List[ReadStream]
@@ -119,7 +119,7 @@ impl ReadStream for ConcatStream:
 
 # Reads each input to its end in order. Each input is closed when it ends or when the result is closed.
 export def concat(inputs: List[ReadStream]) -> ReadStream:
-    return ReadStream(value: ConcatStream(inputs, 0))
+    return ConcatStream(inputs, 0)
 
 type TeeStream:
     input: ReadStream
@@ -141,7 +141,7 @@ impl ReadStream for TeeStream:
 # Copies every chunk read from `input` to `sink` as it passes through. A sink failure fails the read.
 # Closing the result closes `input` only; the caller owns `sink`.
 export def tee(input: ReadStream, sink: WriteStream) -> ReadStream:
-    return ReadStream(value: TeeStream(input, sink))
+    return TeeStream(input, sink)
 
 type MappedWriter:
     output: WriteStream
@@ -169,7 +169,7 @@ export def map_writer(
     output: WriteStream,
     transform: Callable[[Bytes], Bytes]
 ) -> WriteStream:
-    return WriteStream(value: MappedWriter(output, transform))
+    return MappedWriter(output, transform)
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
 export def digest(var input: ReadStream, algorithm: HashAlgorithm) -> Result[

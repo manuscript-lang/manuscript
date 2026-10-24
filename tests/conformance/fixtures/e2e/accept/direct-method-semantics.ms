@@ -71,8 +71,8 @@ test "direct methods":
     let rect = Rect(w: 3, h: 4)
     (rect.area() == 12) | try expect_true
     (rect.scaled(by: 3) == 36) | try expect_true
-    (through(shape: Shape(value: rect)) == 24) | try expect_true
-    (through(shape: Shape(value: Plus(n: 5))) == 10) | try expect_true
+    (through(shape: rect) == 24) | try expect_true
+    (through(shape: Plus(n: 5)) == 10) | try expect_true
     (Minus(n: 4).area() == 0 - 4) | try expect_true
     (rect.grow(depth: 10) == 13) | try expect_true
 

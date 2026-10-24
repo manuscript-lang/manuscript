@@ -9,7 +9,7 @@ type LocalError:
 
 impl Diagnostic for LocalError:
     def message() -> String:
-        return self.detail
+        return self.detail.clone()
 
 def wrong(value: LocalError) -> Diagnostic:
     return value

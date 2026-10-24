@@ -5,4 +5,4 @@ impl Read for Reader:
 
 export def right() -> Read:
     let value = 2
-    return Read(Reader(lambda () -> Int: value))
+    return Reader(lambda () -> Int: value)

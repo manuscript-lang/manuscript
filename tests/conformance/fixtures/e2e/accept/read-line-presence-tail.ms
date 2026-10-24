@@ -56,7 +56,7 @@ def limit(var visits: List[Int]) -> Int:
 
 def picked(var visits: List[Int]) -> ReadStream:
     visits.append(2)
-    return ReadStream(MemoryStream("a\n".to_bytes(), 0, False))
+    return MemoryStream("a\n".to_bytes(), 0, False)
 
 def reordered(var visits: List[Int]) -> Bool:
     if let line = read_line(max_bytes: limit(var visits), input: picked(var visits)):
@@ -66,7 +66,7 @@ def reordered(var visits: List[Int]) -> Bool:
 
 test "presence keeps custom EOF empty CRLF and following text":
     let source = MemoryStream("\r\nλ\nlast".to_bytes(), 0, False)
-    let input = ReadStream(source)
+    let input: ReadStream = source
     present(input) | try expect_true
     (try read_line(input)) | try expect_equal(some("λ"))
     present(input) | try expect_true
@@ -74,13 +74,13 @@ test "presence keeps custom EOF empty CRLF and following text":
 
 test "presence retains custom errors and limits":
     let source = MemoryStream("abc\nx\n".to_bytes(), 0, False)
-    var input = ReadStream(source)
+    var input: ReadStream = source
     present(input, 2) | try expect_false
     input.close()
     present(input) | try expect_false
 
 test "presence retains written argument order and cleanup":
-    var input = ReadStream(MemoryStream("b\n".to_bytes(), 0, False))
+    var input: ReadStream = MemoryStream("b\n".to_bytes(), 0, False)
     var visits: List[Int] = []
     reordered(var visits) | try expect_true
     visits | try expect_equal([1, 2])

@@ -35,7 +35,7 @@ impl WriteStream for Mem:
     var def close() -> Unit: self.closed = True
 
 def src(text: String) -> ReadStream:
-    return ReadStream(Mem(text.to_bytes(), 0, False))
+    return Mem(text.to_bytes(), 0, False)
 
 export def main() -> Int:
     match read_all(src("hello world\nline two\r\nlast"), 100):
@@ -58,7 +58,7 @@ export def main() -> Int:
 
     let sink = Mem("".to_bytes(), 0, False)
 
-    match copy(src("abcdefgh"), WriteStream(sink)):
+    match copy(src("abcdefgh"), sink):
         case ok(n): stdout().write(f"copied {n}" + "\n")
         case error(e): stdout().write(f"err {e.message()}" + "\n")
 

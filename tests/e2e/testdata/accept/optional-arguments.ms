@@ -118,7 +118,7 @@ test "constructor fields and methods use optional arguments":
     let read = reader.read
     try expect_equal(read(4), 6)
 
-    let view = Read(reader)
+    let view: Read = reader
     try expect_equal(view.read(5), 7)
 
     let counter = Counter(9)

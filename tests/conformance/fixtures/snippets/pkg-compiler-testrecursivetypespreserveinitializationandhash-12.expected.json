@@ -7,6 +7,17 @@
     "format": 1,
     "diagnostics": [
       {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly",
+        "position": {
+          "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms",
+          "line": 16,
+          "column": 13,
+          "offset": 427
+        }
+      },
+      {
         "code": "MS3040",
         "phase": "type",
         "message": "recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle",
@@ -21,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:9: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:16:13: type: I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly\n<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:9: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

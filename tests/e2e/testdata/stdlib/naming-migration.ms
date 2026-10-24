@@ -52,7 +52,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     values.add_default("d", 4)
     try expect_equal(values.values(), [1, 2, 3, 4])
 
-    var view = Defaults(DefaultAdapter(values.clone()))
+    var view: Defaults = DefaultAdapter(values.clone())
     view.add_default("a", 88)
     view.add_default_from("ee", key_length)
 
@@ -90,7 +90,7 @@ test "all builders keep Unit mutation function types":
     map_result.add("c", 4)
     try expect_equal(map.freeze().keys(), ["a", "b"])
 
-    var adapter = EntryBuilder(EntryAdapter(MapBuilder[String, Int]()))
+    var adapter: EntryBuilder = EntryAdapter(MapBuilder[String, Int]())
     let add_view: Callable[[String, Int], Unit] = adapter.add
     add_view("b", 2)
 

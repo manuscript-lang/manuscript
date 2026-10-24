@@ -29,27 +29,27 @@ impl Entropy for FailedEntropy:
         return error(RandomError.Failed(self.message.clone()))
 
 test "random algorithms call Manuscript entropy implementations":
-    try expect_equal((try secure_int(Entropy(ExactEntropy(1)), -2, 3)), -2)
+    try expect_equal((try secure_int(ExactEntropy(1), -2, 3)), -2)
     try expect_equal(
-        (try uuid_v4(Entropy(ExactEntropy(16)))), "00000000-0000-4000-8000-000000000000"
+        (try uuid_v4(ExactEntropy(16))), "00000000-0000-4000-8000-000000000000"
     )
 
 test "random errors propagate and invalid ranges do not read entropy":
     let invalid: Result[Int, RandomError] = error(RandomError.InvalidInput)
-    try expect_equal(secure_int(Entropy(FailedEntropy("read")), 3, 3), invalid)
+    try expect_equal(secure_int(FailedEntropy("read"), 3, 3), invalid)
 
     let failed: Result[String, RandomError] = error(RandomError.Failed("source failed"))
-    try expect_equal(uuid_v4(Entropy(FailedEntropy("source failed"))), failed)
+    try expect_equal(uuid_v4(FailedEntropy("source failed")), failed)
     try expect_equal((try entropy().bytes(16)).length(), 16)
 
 test "random accepts negative exclusive upper bounds":
     let source = ZeroEntropy(0)
-    try expect_equal((try secure_int(Entropy(source), -3, -2)), -3)
-    try expect_equal((try secure_int(Entropy(source), -10, -5)), -10)
+    try expect_equal((try secure_int(source, -3, -2)), -3)
+    try expect_equal((try secure_int(source, -10, -5)), -10)
 
 test "float shuffle and choice use the supplied entropy":
     let zero = ZeroEntropy(0)
-    try expect_equal(try float(Entropy(value: zero)), 0.0)
+    try expect_equal(try float(zero), 0.0)
 
     let sample = try float(entropy())
     try expect_equal(sample >= 0.0 and sample < 1.0, True)
@@ -60,5 +60,5 @@ test "float shuffle and choice use the supplied entropy":
         shuffled.sorted(lambda (left: Int, right: Int) -> Int: left - right),
         [1, 2, 3, 4, 5]
     )
-    try expect_equal(try choice(Entropy(value: zero), [7, 8, 9]), some(7))
+    try expect_equal(try choice(zero, [7, 8, 9]), some(7))
     try expect_equal(try choice(entropy(), List[Int]()), none)

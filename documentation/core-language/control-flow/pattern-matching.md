@@ -133,7 +133,7 @@ def describe_json(cause: JsonError) -> String:
 - Give exactly one receiver name or `_`, even for a payloadless alternative. The binding has the concrete type. Native opaque receivers fall to the wildcard.
 - Generic patterns name the full application: `MyError[Int](cause)` differs from `MyError[String]`; an in-scope parameter may be an argument (`MyError[T](cause)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
 - A final wildcard is required because contracts are open. It binds nothing; use the original value for generic handling.
-- The receiver is not copied, and matching adds no cleanup and catches no faults or cancellation. See [contract views](../types/contracts.md#explicit-contract-views).
+- The receiver is not copied, and matching adds no cleanup and catches no faults or cancellation. See [contract views](../types/contracts.md#interface-conversion).
 
 ## Matching resource references
 

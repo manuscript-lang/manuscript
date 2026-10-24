@@ -122,7 +122,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
             case InvalidData(line, column, reason):
                 (line < 1 or column < 1 or reason == "") | try expect_false
 
-                let boundary = Error(cause)
+                let boundary: Error = cause
                 ((boundary.message().starts_with("TOML ")) | try expect_true)
             case _: return fail("wrong TOML error")
 

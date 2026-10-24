@@ -8,7 +8,7 @@ export def relay[T: Read[Int]](value: T) -> Int:
     return invoke(value)
 
 export def as_view[T: Read[Int]](value: T) -> Read[Int]:
-    return Read[Int](value)
+    return value
 
 export def read_view(value: Read[Int]) -> Int:
     return value.get()

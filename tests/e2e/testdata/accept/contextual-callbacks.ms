@@ -45,7 +45,7 @@ test "contextual callbacks and inline returns":
     let callback = Callback(lambda (item: Int): item + 1)
     try expect_equal(callback.transform(3), 4)
 
-    let view = Read(Box(7))
+    let view: Read = Box(7)
     try expect_equal(view.get(), 7)
     try expect_false(invoke() != 0 or invoke(lambda item: item + 1) != 5)
 

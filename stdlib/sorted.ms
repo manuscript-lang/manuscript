@@ -2,7 +2,7 @@ from "@std/collections.ms" import range
 
 # Orders two keys: negative when `left` sorts first, zero when equal, positive when `right` sorts first.
 def order[T: Comparable](left: T, right: T) -> Int:
-    return left.compare(Comparable(value: right))
+    return left.compare(right)
 
 # One key-value pair of a SortedMap.
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:

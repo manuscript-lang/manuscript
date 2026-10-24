@@ -35,11 +35,9 @@ export def decoder(
     ): return error(JsonError.InvalidInput)
 
     return ok(
-        JsonDecoder(
-            Decoder(
-                limits: bounds, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
-                in_string: False, escaped: False, finished: False, failure: none
-            )
+        Decoder(
+            limits: bounds, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
+            in_string: False, escaped: False, finished: False, failure: none
         )
     )
 

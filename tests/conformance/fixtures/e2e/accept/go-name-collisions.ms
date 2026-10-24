@@ -42,7 +42,7 @@ test "field names that differ only in underscores stay distinct":
     try expect_equal(value, Spelled(1, 2, 3, 4))
 
 test "operation names that differ only in underscores stay distinct":
-    let methods = Methods(Spelled(1, 2, 3, 4))
+    let methods: Methods = Spelled(1, 2, 3, 4)
     try expect_false(methods.foo_bar() != 1 or methods.fooBar() != 2)
 
 test "functions named like Go predeclared identifiers still lower":
@@ -94,7 +94,7 @@ def clone_Tally(tally: Tally) -> Int:
 test "view and helper names stay apart from declared names":
     let tally = Tally(1)
     let copy = tally.clone()
-    let view = Counter(tally)
+    let view: Counter = tally
     try expect_false(view.count() != 1 or Counter_Tally(2).other != 2)
     try expect_false(copy.total != 1 or clone_Tally(tally) != 2)
 
@@ -110,7 +110,7 @@ impl Reporter for Tally:
         return f"receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
-    let reporter = Reporter(Tally(3))
+    let reporter: Reporter = Tally(3)
     try expect_false(
         (
             reporter.describe() != "describe 3"

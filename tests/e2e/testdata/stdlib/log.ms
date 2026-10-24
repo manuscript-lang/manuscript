@@ -257,7 +257,7 @@ test "source transports receive complete records and close through their contrac
     with (fs.temporary("manuscript-log-transport-") | try expect_ok) as temporary:
         let path = f"{temporary.path()}/records.ndjson"
 
-        with try create(Transport(CaptureTransport(path.clone())), timestamp: False) as logger:
+        with try create(CaptureTransport(path.clone()), timestamp: False) as logger:
             try logger.info("source transport")
             try logger.flush()
             try expect_equal(

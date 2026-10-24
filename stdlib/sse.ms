@@ -95,13 +95,11 @@ export def decoder(limits: SseLimits = SseLimits()) -> Result[SseDecoder, SseErr
     if not positive(limits.max_event_bytes): return error(SseError.InvalidInput)
 
     return ok(
-        SseDecoder(
-            Decoder(
-                limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
-                line_bytes: 0, event_bytes: 0, carriage: False, started: False,
-                open_block: False, event_type: "", data: List[String](), failure: none,
-                closed: False
-            )
+        Decoder(
+            limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
+            line_bytes: 0, event_bytes: 0, carriage: False, started: False,
+            open_block: False, event_type: "", data: List[String](), failure: none,
+            closed: False
         )
     )
 
@@ -251,7 +249,7 @@ impl ReadStream for OwnedBody:
 
 # Turns an HTTP response body into a ReadStream that owns it. Closing the stream closes the body.
 export def body_stream(body: ResponseBody) -> ReadStream:
-    return ReadStream(value: OwnedBody(body))
+    return OwnedBody(body)
 
 # Pulls events from a ReadStream it owns. Closing the reader closes the stream, and closing it
 # makes a blocked read fail with ReadFailed.

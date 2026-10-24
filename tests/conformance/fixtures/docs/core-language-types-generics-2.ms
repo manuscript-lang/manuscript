@@ -12,4 +12,4 @@ def accepts(value: Equal) -> Unit:
     return
 
 def use_view() -> Unit:
-    accepts(Equal(Key(1)))
+    accepts(Key(1))

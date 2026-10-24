@@ -561,7 +561,7 @@ impl Checker {
             return format!("{message}; more than one implementation provides it");
         }
         format!(
-            "{message}; it is provided by {}, so call it through an interface view, e.g. {}(value: ...).{name}()",
+            "{message}; it is provided by {}, so bind it to the interface first, e.g. let view: {} = value; view.{name}()",
             contracts.join(", "),
             contracts[0]
         )
@@ -746,7 +746,7 @@ impl Checker {
         }
         if self.implements(actual, expected) {
             return format!(
-                "{message}; {actual} implements {expected}; write {expected}(value: ...) to create an explicit interface view"
+                "{message}; {actual} implements {expected}, but generic inference does not convert; bind it to an {expected}-typed let first or give the arguments one type"
             );
         }
         if let Some(sym) = actual.symbol()
@@ -754,11 +754,16 @@ impl Checker {
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
             return format!(
-                "{message}; no applicable 'impl {expected} for {actual}' is visible; declare an implementation before creating an interface view"
+                "{message}; no applicable 'impl {expected} for {actual}' is visible; declare an implementation before passing it as {expected}"
             );
         }
+        format!("{message}; use a concrete value implementing {expected}")
+    }
+
+    pub(crate) fn interface_construction_message(&mut self, typ: &Ty) -> String {
+        self.unknown_type = true;
         format!(
-            "{message}; use a concrete value implementing {expected} and create its explicit interface view with {expected}(value: ...)"
+            "{typ} is an interface and cannot be constructed; a type with 'impl {typ} for <Type>:' passes wherever {typ} is expected, so pass the value directly"
         )
     }
 

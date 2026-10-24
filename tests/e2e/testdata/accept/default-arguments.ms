@@ -101,7 +101,7 @@ test "implementation and bound method defaults":
     let bound = offset.add
     (offset.add() != 8 or bound() != 8 or bound(0) != 4) | try expect_false
 
-    let view = Add(offset)
+    let view: Add = offset
     view.add(2) | try expect_equal(6)
 
     let box = Box[String]("boxed")
