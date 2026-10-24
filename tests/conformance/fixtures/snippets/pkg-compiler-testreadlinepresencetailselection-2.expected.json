@@ -15,6 +15,21 @@
           "line": 4,
           "column": 17,
           "offset": 174
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testreadlinepresencetailselection-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testreadlinepresencetailselection-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import ReadStream from \"@std/io.ms\"\n"
         }
       },
       {

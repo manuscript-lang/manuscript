@@ -15,6 +15,21 @@
           "line": 6,
           "column": 19,
           "offset": 217
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testfilefixturecontracts-7.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testfilefixturecontracts-7.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import TestHooks from \"@std/testing.ms\"\n"
         }
       },
       {

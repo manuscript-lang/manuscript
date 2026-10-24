@@ -15,6 +15,21 @@
           "line": 6,
           "column": 53,
           "offset": 297
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import format from \"@std/fs.ms\"\n"
         }
       },
       {

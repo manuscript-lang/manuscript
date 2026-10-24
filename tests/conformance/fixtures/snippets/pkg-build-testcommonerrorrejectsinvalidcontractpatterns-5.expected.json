@@ -15,6 +15,21 @@
           "line": 4,
           "column": 23,
           "offset": 182
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       }
     ],

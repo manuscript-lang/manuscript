@@ -22,7 +22,7 @@ A diagnostic names the violated rule and the declaration or call site involved. 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
 
 - Optional `end` has the same coordinate fields (exclusive). Parser token errors and failed import names provide it.
-- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports carry one; string-match rewrites and ambiguous imports get prose only.
+- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, labels and types with one `did you mean` candidate, and unresolved standard names (an `import` inserted at the top of the file) carry one; string-match rewrites and ambiguous imports get prose only. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
 - Consumers must tolerate absent optional fields.
 
 | Code | Family |

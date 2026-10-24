@@ -15,6 +15,21 @@
           "line": 4,
           "column": 13,
           "offset": 147
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testmutationrejections-17.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testmutationrejections-17.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Queue from \"@std/queue.ms\"\n"
         }
       },
       {

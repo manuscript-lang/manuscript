@@ -15,6 +15,21 @@
           "line": 6,
           "column": 25,
           "offset": 247
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-build-testlibraryerrordomainsaredistinct-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-build-testlibraryerrordomainsaredistinct-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       }
     ],
