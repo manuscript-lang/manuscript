@@ -446,30 +446,28 @@ msrt_json_text(d: *const DocObj, id: u32, out: *mut StrVal)
 msrt_json_len(d: *const DocObj, id: u32) -> i64
 msrt_json_item(d: *const DocObj, id: u32, i: i64) -> u32
 msrt_json_key(d: *const DocObj, id: u32, i: i64, out: *mut StrVal)
-msrt_json_builder_new() -> *mut DocObj
-msrt_json_add_null(d: *mut DocObj) -> u32
-msrt_json_add_bool(d: *mut DocObj, v: u8) -> u32
-msrt_json_add_number(d: *mut DocObj, text: *const StrVal) -> u32
-msrt_json_add_string(d: *mut DocObj, text: *const StrVal) -> u32
-msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32
-msrt_json_add_object( d: *mut DocObj, keys: *const *const StrVal, ids: *const u32, n: i64, ) -> u32
-msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut StrVal, ) -> u8
+msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, ) -> *mut WriterObj
+msrt_json_w_item(w: *mut WriterObj)
+msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
+msrt_json_w_undo(w: *mut WriterObj)
+msrt_json_w_begin_array(w: *mut WriterObj)
+msrt_json_w_end_array(w: *mut WriterObj)
+msrt_json_w_begin_object(w: *mut WriterObj)
+msrt_json_w_end_object(w: *mut WriterObj)
+msrt_json_w_null(w: *mut WriterObj)
+msrt_json_w_bool(w: *mut WriterObj, v: u8)
+msrt_json_w_int(w: *mut WriterObj, v: i64)
+msrt_json_w_float(w: *mut WriterObj, v: f64)
+msrt_json_w_number(w: *mut WriterObj, text: *const StrVal)
+msrt_json_w_string(w: *mut WriterObj, text: *const StrVal)
+msrt_json_w_finish(w: *mut WriterObj, out: *mut StrVal) -> u8
 msrt_json_dec_ip(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_cidr(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_int(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrVal, out: *mut f64) -> u8
-msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
-msrt_json_add_empty_array(d: *mut DocObj) -> u32
-msrt_json_array_push(d: *mut DocObj, arr: u32, item: u32)
-msrt_json_add_empty_object(d: *mut DocObj) -> u32
-msrt_json_object_put( d: *mut DocObj, obj: u32, key: *const StrVal, item: u32, )
-msrt_json_add_array_n(d: *mut DocObj, n: i64) -> u32
-msrt_json_add_object_n(d: *mut DocObj, n: i64) -> u32
-msrt_json_object_add( d: *mut DocObj, obj: u32, key: *const StrVal, item: u32, )
 msrt_json_find(d: *const DocObj, id: u32, key: *const StrVal) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64
-msrt_json_enc_float(v: f64, out: *mut StrVal)
 msrt_logcore_new_state( has_level: u8, level: i64, has_timestamp: u8, timestamp: u8, has_max: u8, max: i64, out: *mut *mut LoggerObj, ) -> u8
 msrt_logcore_child( l: *const LoggerObj, fields: *const StrVal, out: *mut *mut LoggerObj, ) -> u8
 msrt_logcore_enabled(l: *const LoggerObj, level: i64) -> u8

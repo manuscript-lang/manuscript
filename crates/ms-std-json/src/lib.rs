@@ -949,6 +949,266 @@ impl Doc {
     }
 }
 
+// ---- streaming writer ----
+
+#[derive(Clone, Copy, Default)]
+struct Level {
+    /// Members or items written so far.
+    count: u32,
+    /// Where the last separator started and the count then, for [`Writer::undo`].
+    undo_len: usize,
+    undo_count: u32,
+}
+
+/// Writes JSON text straight into a buffer: typed encoders call it in document order and never
+/// build a [`Doc`]. A failure (`max_bytes`, a number that is not JSON, nesting past
+/// [`DEPTH_CEILING`], a bad budget) is kept and every later call does nothing.
+pub struct Writer {
+    buf: String,
+    max: usize,
+    width: usize,
+    err: Option<Fail>,
+    levels: Vec<Level>,
+}
+
+impl Writer {
+    pub fn new(max_bytes: Option<i64>, indent: Option<i64>) -> Writer {
+        let mut err = None;
+        let max = budget(max_bytes).unwrap_or_else(|e| {
+            err = Some(e);
+            usize::MAX
+        });
+        let width = match indent {
+            None => 0,
+            Some(n) => usize::try_from(n).unwrap_or_else(|_| {
+                err = Some(Fail::InvalidInput);
+                0
+            }),
+        }
+        .min(INDENT_CEILING);
+        Writer {
+            buf: String::new(),
+            max,
+            width,
+            err,
+            levels: Vec::new(),
+        }
+    }
+
+    fn check(&mut self) {
+        if self.buf.len() > self.max {
+            self.err.get_or_insert(Fail::LimitExceeded);
+        }
+    }
+
+    fn fail(&mut self) {
+        self.err.get_or_insert(Fail::InvalidData);
+    }
+
+    fn newline(&mut self, level: usize) {
+        if self.width > 0 {
+            self.buf.push('\n');
+            let n = self.width * level;
+            self.buf.reserve(n);
+            for _ in 0..n {
+                self.buf.push(' ');
+            }
+        }
+    }
+
+    /// The separator before a member or item of the open container.
+    fn separate(&mut self) {
+        let depth = self.levels.len();
+        let Some(top) = self.levels.last_mut() else {
+            return;
+        };
+        top.undo_len = self.buf.len();
+        top.undo_count = top.count;
+        let comma = top.count > 0;
+        top.count += 1;
+        if comma {
+            self.buf.push(',');
+        }
+        self.newline(depth);
+    }
+
+    /// Starts an item of the open array.
+    pub fn item(&mut self) {
+        if self.err.is_none() {
+            self.separate();
+        }
+    }
+
+    /// Starts member `key` of the open object.
+    pub fn key(&mut self, key: &str) {
+        if self.err.is_some() {
+            return;
+        }
+        self.separate();
+        self.quoted(key);
+        self.buf.push(':');
+        if self.width > 0 {
+            self.buf.push(' ');
+        }
+        self.check();
+    }
+
+    /// Removes the last [`Writer::item`] or [`Writer::key`] and whatever followed it.
+    pub fn undo(&mut self) {
+        if self.err.is_some() {
+            return;
+        }
+        if let Some(top) = self.levels.last_mut() {
+            self.buf.truncate(top.undo_len);
+            top.count = top.undo_count;
+        }
+    }
+
+    fn open(&mut self, c: char) {
+        if self.err.is_some() {
+            return;
+        }
+        if self.levels.len() >= DEPTH_CEILING {
+            self.fail();
+            return;
+        }
+        self.buf.push(c);
+        self.levels.push(Level::default());
+        self.check();
+    }
+
+    fn close(&mut self, c: char) {
+        if self.err.is_some() {
+            return;
+        }
+        let Some(level) = self.levels.pop() else {
+            return self.fail();
+        };
+        if level.count > 0 {
+            self.newline(self.levels.len());
+        }
+        self.buf.push(c);
+        self.check();
+    }
+
+    pub fn begin_array(&mut self) {
+        self.open('[');
+    }
+    pub fn end_array(&mut self) {
+        self.close(']');
+    }
+    pub fn begin_object(&mut self) {
+        self.open('{');
+    }
+    pub fn end_object(&mut self) {
+        self.close('}');
+    }
+
+    pub fn null(&mut self) {
+        self.raw("null");
+    }
+
+    pub fn boolean(&mut self, v: bool) {
+        self.raw(if v { "true" } else { "false" });
+    }
+
+    pub fn int(&mut self, v: i64) {
+        if self.err.is_some() {
+            return;
+        }
+        let mut digits = [0u8; 20];
+        let mut at = digits.len();
+        let mut n = v.unsigned_abs();
+        loop {
+            at -= 1;
+            digits[at] = b'0' + (n % 10) as u8;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        if v < 0 {
+            self.buf.push('-');
+        }
+        for &d in &digits[at..] {
+            self.buf.push(char::from(d));
+        }
+        self.check();
+    }
+
+    /// A float; NaN and infinities are `null`.
+    pub fn float(&mut self, v: f64) {
+        match float_text(v) {
+            Some(t) => self.raw(&t),
+            None => self.null(),
+        }
+    }
+
+    /// Number text from a caller, which has to be one JSON number.
+    pub fn number(&mut self, text: &str) {
+        if self.err.is_some() {
+            return;
+        }
+        if !number_text_valid(text) {
+            return self.fail();
+        }
+        self.raw(text);
+    }
+
+    pub fn string(&mut self, text: &str) {
+        if self.err.is_some() {
+            return;
+        }
+        self.quoted(text);
+        self.check();
+    }
+
+    fn raw(&mut self, text: &str) {
+        if self.err.is_none() {
+            self.buf.push_str(text);
+            self.check();
+        }
+    }
+
+    fn quoted(&mut self, s: &str) {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let b = s.as_bytes();
+        self.buf.reserve(b.len() + 2);
+        self.buf.push('"');
+        let mut at = 0;
+        while let Some(i) = find_special(b, at) {
+            // Runs end at ASCII bytes, so they are character boundaries.
+            self.buf.push_str(s.get(at..i).unwrap_or(""));
+            match b[i] {
+                b'"' => self.buf.push_str("\\\""),
+                b'\\' => self.buf.push_str("\\\\"),
+                8 => self.buf.push_str("\\b"),
+                12 => self.buf.push_str("\\f"),
+                b'\n' => self.buf.push_str("\\n"),
+                b'\r' => self.buf.push_str("\\r"),
+                b'\t' => self.buf.push_str("\\t"),
+                c => {
+                    self.buf.push_str("\\u00");
+                    self.buf.push(char::from(HEX[usize::from(c >> 4)]));
+                    self.buf.push(char::from(HEX[usize::from(c & 0xf)]));
+                }
+            }
+            at = i + 1;
+        }
+        self.buf.push_str(s.get(at..).unwrap_or(""));
+        self.buf.push('"');
+    }
+
+    /// The text written, or the first failure.
+    pub fn finish(&mut self) -> Result<String, Fail> {
+        match self.err {
+            Some(e) => Err(e),
+            None if !self.levels.is_empty() => Err(Fail::InvalidData),
+            None => Ok(core::mem::take(&mut self.buf)),
+        }
+    }
+}
+
 // ---- scalar codecs ----
 
 /// Go's `json.Marshal(float64)`: shortest round-trip digits, exponent form outside

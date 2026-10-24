@@ -61,7 +61,12 @@ impl Cx {
         let mt = self.lower_ty(m, t)?;
         let doc = m.types.obj("JsonDoc", Vec::new());
         let (name, params, ret) = if encode {
-            ("json_encode", vec![borrowed(doc), borrowed(mt)], MTy::INT)
+            let writer = m.types.obj("JsonWriter", Vec::new());
+            (
+                "json_encode",
+                vec![borrowed(writer), borrowed(mt)],
+                MTy::INT,
+            )
         } else {
             let o = m.types.opt(mt);
             (
@@ -130,11 +135,6 @@ impl FnLower<'_> {
         let raw = self.call_runtime(sym, args, MTy::INT)?;
         let m = self.b.iconst(mask);
         Ok(self.b.binop(Op::And, raw, m))
-    }
-
-    /// The number of entries of the map or set `m`.
-    fn jcount(&mut self, m: Value) -> Result<Value, Error> {
-        self.call_runtime("msrt_map_length", &[m], MTy::INT)
     }
 
     fn jkind(&mut self, doc: Value, id: Value) -> Result<Value, Error> {
@@ -845,33 +845,57 @@ impl FnLower<'_> {
 
     pub(crate) fn lower_encoder(&mut self, t: &ct::Ty) -> Result<(), Error> {
         let p = self.b.params();
-        let (doc, value) = (p[0], p[1]);
+        let (w, value) = (p[0], p[1]);
         let mt = self.jmty(t)?;
-        let id = self.jencode(t, mt, doc, value)?;
-        self.b.ret(Some(id));
+        let written = self.jencode(t, mt, w, value)?;
+        self.b.ret(Some(written));
         Ok(())
     }
 
-    fn jadd(&mut self, sym: &str, args: &[Value]) -> Result<Value, Error> {
-        self.jcall_masked(sym, args, 0xffff_ffff)
+    fn jwriter_ty(&mut self) -> MTy {
+        self.b.m.types.obj("JsonWriter", Vec::new())
     }
 
-    /// Writes `value` (borrowed) into the builder; the node id, or -1 without a JSON form.
-    fn jencode(&mut self, t: &ct::Ty, mt: MTy, doc: Value, value: Value) -> Result<Value, Error> {
+    /// A writer call without a result.
+    fn jw(&mut self, sym: &str, args: &[Value]) -> Result<(), Error> {
+        self.call_runtime(sym, args, MTy::UNIT)?;
+        Ok(())
+    }
+
+    /// The result of an encoder that wrote its value.
+    fn jwritten(&mut self) -> Value {
+        self.b.iconst(0)
+    }
+
+    /// The result of an encoder whose value has no JSON form; nothing was written.
+    fn jno_form(&mut self) -> Value {
+        self.b.iconst(-1)
+    }
+
+    /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
+    /// was written.
+    fn jencode(&mut self, t: &ct::Ty, mt: MTy, w: Value, value: Value) -> Result<Value, Error> {
         if t.is_std("JsonValue") {
-            return self.jencode_tree(t, mt, doc, value);
+            return self.jencode_tree(t, mt, w, value);
         }
         match t.id.as_str() {
             "Int" => {
-                let text = self.call_runtime("msrt_int_to_string", &[value], MTy::STR)?;
-                let id = self.jadd("msrt_json_add_number", &[doc, text])?;
-                self.drop_value(text);
-                return Ok(id);
+                self.jw("msrt_json_w_int", &[w, value])?;
+                return Ok(self.jwritten());
             }
-            "Float" => return self.jadd("msrt_json_add_float", &[doc, value]),
-            "Bool" => return self.jadd("msrt_json_add_bool", &[doc, value]),
-            "String" => return self.jadd("msrt_json_add_string", &[doc, value]),
-            "Unit" | "Never" => return Ok(self.b.iconst(-1)),
+            "Float" => {
+                self.jw("msrt_json_w_float", &[w, value])?;
+                return Ok(self.jwritten());
+            }
+            "Bool" => {
+                self.jw("msrt_json_w_bool", &[w, value])?;
+                return Ok(self.jwritten());
+            }
+            "String" => {
+                self.jw("msrt_json_w_string", &[w, value])?;
+                return Ok(self.jwritten());
+            }
+            "Unit" | "Never" => return Ok(self.jno_form()),
             _ => {}
         }
         if t.is_std("Optional") {
@@ -883,37 +907,39 @@ impl FnLower<'_> {
             self.b.seal_block(no);
             self.b.switch_to(yes);
             let inner = self.b.opt_get(value);
-            let id = self.jencode_nested(&t.args[0], doc, inner)?;
-            self.b.def_var(out, id);
+            let written = self.jencode_nested(&t.args[0], w, inner)?;
+            self.b.def_var(out, written);
             self.b.br(join, &[]);
             self.b.switch_to(no);
-            let null = self.jadd("msrt_json_add_null", &[doc])?;
-            self.b.def_var(out, null);
+            self.jw("msrt_json_w_null", &[w])?;
+            let written = self.jwritten();
+            self.b.def_var(out, written);
             self.b.br(join, &[]);
             self.b.seal_block(join);
             self.b.switch_to(join);
             return Ok(self.b.use_var(out));
         }
         if t.is_std("List") {
-            return self.jencode_list(&t.args[0], doc, value);
+            return self.jencode_list(&t.args[0], w, value);
         }
         if t.is_std("Set") {
-            return self.jencode_set(&t.args[0], doc, value);
+            return self.jencode_set(&t.args[0], w, value);
         }
         if t.is_std("Map") {
-            return self.jencode_map(&t.args[0], &t.args[1], doc, value);
+            return self.jencode_map(&t.args[0], &t.args[1], w, value);
         }
         if t.is_std("Duration") {
-            return self.jencode_number_text(doc, value);
+            self.jw("msrt_json_w_int", &[w, value])?;
+            return Ok(self.jwritten());
         }
         if let Some(c) = self.json_encode_impl(t) {
             // `JsonEncode` replaces the structural encoding.
             let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
             let tree = self.b.call(fid, &[value]);
             let jt = ct::sub(&self.cx.callable_result(&c)?, &ct::Subst::new());
-            let id = self.jencode_call(&jt, doc, tree)?;
+            let written = self.jencode_call(&jt, w, tree)?;
             self.drop_value(tree);
-            return Ok(id);
+            return Ok(written);
         }
         if t.is_std("Timestamp") || t.is_std("Decimal") {
             let text = self.format_value(Val {
@@ -921,37 +947,37 @@ impl FnLower<'_> {
                 own: false,
             })?;
             let sym = if t.is_std("Decimal") {
-                "msrt_json_add_number"
+                "msrt_json_w_number"
             } else {
-                "msrt_json_add_string"
+                "msrt_json_w_string"
             };
-            let id = self.jadd(sym, &[doc, text.v])?;
+            self.jw(sym, &[w, text.v])?;
             if text.own {
                 self.drop_value(text.v);
             }
-            return Ok(id);
+            return Ok(self.jwritten());
         }
         // Bytes are standard base64 text.
         if mt == MTy::BYTES && t.is_std("Bytes") {
             let no_url = self.b.bconst(false);
             let text =
                 self.call_runtime("msrt_encoding_base64_encode", &[value, no_url], MTy::STR)?;
-            let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+            self.jw("msrt_json_w_string", &[w, text])?;
             self.drop_value(text);
-            return Ok(id);
+            return Ok(self.jwritten());
         }
         // A BigInt is its digits.
         if t.is_std("BigInt") {
             let radix = self.b.iconst(10);
             let text =
                 self.call_runtime("msstd_bigint_to_string_radix", &[value, radix], MTy::STR)?;
-            let id = self.jadd("msrt_json_add_number", &[doc, text])?;
+            self.jw("msrt_json_w_number", &[w, text])?;
             self.drop_value(text);
-            return Ok(id);
+            return Ok(self.jwritten());
         }
         // A URL is its formatted text.
         if t.is_source_type("@std/net.ms", "Url") {
-            return self.jencode_url(doc, value);
+            return self.jencode_url(w, value);
         }
         // An address or network is its text.
         for (name, sym) in [
@@ -960,9 +986,9 @@ impl FnLower<'_> {
         ] {
             if t.is_source_type("@std/net.ms", name) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
-                let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+                self.jw("msrt_json_w_string", &[w, text])?;
                 self.drop_value(text);
-                return Ok(id);
+                return Ok(self.jwritten());
             }
         }
         match t.kind {
@@ -971,26 +997,47 @@ impl FnLower<'_> {
                 let TyKind::Rec(r) = self.b.m.types.kind(mt).clone() else {
                     return Err(Error::new("a record type lowers to a record"));
                 };
-                let width = self.b.iconst(fields.len() as i64);
-                let obj = self.jadd("msrt_json_add_object_n", &[doc, width])?;
+                self.jw("msrt_json_w_begin_object", &[w])?;
                 for (i, f) in fields.iter().enumerate() {
                     let fv = self.b.rec_get(r, i as u32, value);
-                    self.jencode_member(doc, obj, &f.name, &f.ty, fv)?;
+                    self.jencode_member(w, &f.name, &f.ty, fv)?;
                 }
-                Ok(obj)
+                self.jw("msrt_json_w_end_object", &[w])?;
+                Ok(self.jwritten())
             }
-            ct::Kind::Alternative => self.jencode_alternative(t, mt, doc, value),
+            ct::Kind::Alternative => self.jencode_alternative(t, mt, w, value),
             // No JSON form: omitted, `null` in a list, `InvalidData` at the root.
-            _ => Ok(self.b.iconst(-1)),
+            _ => Ok(self.jno_form()),
         }
     }
 
-    /// Adds member `name` of `obj` unless the value has no JSON form; an absent optional field
-    /// is omitted too.
+    /// Calls `body` to write one value after `start` has begun its slot (a key or an item); when
+    /// the value has no JSON form, removes the slot again and runs `fallback`.
+    fn jslot_or(
+        &mut self,
+        w: Value,
+        written: Value,
+        fallback: &mut dyn FnMut(&mut Self) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let z = self.b.iconst(0);
+        let has_form = self.b.icmp(Cc::Ge, written, z);
+        let (undo, after) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(has_form, after, &[], undo, &[]);
+        self.b.seal_block(undo);
+        self.b.switch_to(undo);
+        self.jw("msrt_json_w_undo", &[w])?;
+        fallback(self)?;
+        self.b.br(after, &[]);
+        self.b.seal_block(after);
+        self.b.switch_to(after);
+        Ok(())
+    }
+
+    /// Writes member `name` unless the value has no JSON form; an absent optional field is
+    /// omitted too.
     fn jencode_member(
         &mut self,
-        doc: Value,
-        obj: Value,
+        w: Value,
         name: &str,
         ty: &ct::Ty,
         value: Value,
@@ -1006,16 +1053,10 @@ impl FnLower<'_> {
         } else {
             (ty.clone(), value)
         };
-        let id = self.jencode_nested(&inner_ty, doc, inner)?;
-        let z = self.b.iconst(0);
-        let has_form = self.b.icmp(Cc::Ge, id, z);
-        let put = self.b.new_block();
-        self.b.br_if(has_form, put, &[], after, &[]);
-        self.b.seal_block(put);
-        self.b.switch_to(put);
         let key = self.b.str_lit(name);
-        // Field names are distinct.
-        self.call_runtime("msrt_json_object_add", &[doc, obj, key, id], MTy::UNIT)?;
+        self.jw("msrt_json_w_key", &[w, key])?;
+        let written = self.jencode_nested(&inner_ty, w, inner)?;
+        self.jslot_or(w, written, &mut |_| Ok(()))?;
         self.b.br(after, &[]);
         self.b.seal_block(after);
         self.b.switch_to(after);
@@ -1034,7 +1075,7 @@ impl FnLower<'_> {
     }
 
     /// `Url` as the string `url.format` makes; a URL that cannot be formatted has no JSON form.
-    fn jencode_url(&mut self, doc: Value, value: Value) -> Result<Value, Error> {
+    fn jencode_url(&mut self, w: Value, value: Value) -> Result<Value, Error> {
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
@@ -1052,12 +1093,13 @@ impl FnLower<'_> {
             .b
             .emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
             .expect("take");
-        let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+        self.jw("msrt_json_w_string", &[w, text])?;
         self.drop_value(text);
-        self.b.def_var(out, id);
+        let written = self.jwritten();
+        self.b.def_var(out, written);
         self.b.br(join, &[]);
         self.b.switch_to(no);
-        let none = self.b.iconst(-1);
+        let none = self.jno_form();
         self.b.def_var(out, none);
         self.b.br(join, &[]);
         self.b.seal_block(join);
@@ -1065,28 +1107,67 @@ impl FnLower<'_> {
         Ok(self.b.use_var(out))
     }
 
-    fn jencode_number_text(&mut self, doc: Value, value: Value) -> Result<Value, Error> {
-        let text = self.call_runtime("msrt_int_to_string", &[value], MTy::STR)?;
-        let id = self.jadd("msrt_json_add_number", &[doc, text])?;
-        self.drop_value(text);
-        Ok(id)
+    /// Writes one array item; an element without a JSON form is `null`.
+    fn jencode_item(&mut self, elem: &ct::Ty, w: Value, item: Value) -> Result<(), Error> {
+        self.jw("msrt_json_w_item", &[w])?;
+        let written = self.jencode_nested(elem, w, item)?;
+        self.jslot_or(w, written, &mut |s| {
+            s.jw("msrt_json_w_item", &[w])?;
+            s.jw("msrt_json_w_null", &[w])
+        })
     }
 
     /// A set is an array of its elements in insertion order.
-    fn jencode_set(&mut self, elem: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
-        let n = self.jcount(value)?;
-        let arr = self.jadd("msrt_json_add_array_n", &[doc, n])?;
+    fn jencode_set(&mut self, elem: &ct::Ty, w: Value, value: Value) -> Result<Value, Error> {
+        self.jw("msrt_json_w_begin_array", &[w])?;
         let elem = elem.clone();
-        self.each_entry(value, &mut |s, key, _| {
-            let id = s.jencode_nested(&elem, doc, key)?;
-            let z = s.b.iconst(0);
-            let has_form = s.b.icmp(Cc::Ge, id, z);
-            let null = s.jadd("msrt_json_add_null", &[doc])?;
-            let id = s.b.select(has_form, id, null);
-            s.call_runtime("msrt_json_array_push", &[doc, arr, id], MTy::UNIT)?;
-            Ok(())
-        })?;
-        Ok(arr)
+        self.each_entry(value, &mut |s, key, _| s.jencode_item(&elem, w, key))?;
+        self.jw("msrt_json_w_end_array", &[w])?;
+        Ok(self.jwritten())
+    }
+
+    /// Writes the member name of the map key `k` of type `key`.
+    fn jencode_map_key(&mut self, key: &ct::Ty, w: Value, k: Value) -> Result<(), Error> {
+        if key.id.as_str() == "String" {
+            return self.jw("msrt_json_w_key", &[w, k]);
+        }
+        if !jplain_alt(key) {
+            let name = self.format_value(Val { v: k, own: false })?;
+            self.jw("msrt_json_w_key", &[w, name.v])?;
+            if name.own {
+                self.drop_value(name.v);
+            }
+            return Ok(());
+        }
+        // The case name, selected by the key's tag.
+        let key_mt = self.jmty(key)?;
+        let TyKind::Alt(_) = self.b.m.types.kind(key_mt).clone() else {
+            return Err(Error::new("an alternative key lowers to an alternative"));
+        };
+        let cases = ct::cases(key);
+        let tag = self.b.alt_tag(k);
+        let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
+        let join = self.b.new_block();
+        let arms: Vec<(i64, _)> = blocks
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (i as i64, *b))
+            .collect();
+        let other = self.b.new_block();
+        self.b.switch(tag, &arms, other);
+        self.b.seal_block(other);
+        self.b.switch_to(other);
+        self.b.unreachable();
+        for (i, c) in cases.iter().enumerate() {
+            self.b.seal_block(blocks[i]);
+            self.b.switch_to(blocks[i]);
+            let name = self.b.str_lit(c.name.as_str());
+            self.jw("msrt_json_w_key", &[w, name])?;
+            self.b.br(join, &[]);
+        }
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        Ok(())
     }
 
     /// A map is an object whose keys are the text form of its keys; a value without a JSON form
@@ -1095,7 +1176,7 @@ impl FnLower<'_> {
         &mut self,
         key: &ct::Ty,
         value_ty: &ct::Ty,
-        doc: Value,
+        w: Value,
         value: Value,
     ) -> Result<Value, Error> {
         let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
@@ -1104,85 +1185,43 @@ impl FnLower<'_> {
             || key.is_std("Decimal")
             || jplain_alt(key);
         if !keyable {
-            return Ok(self.b.iconst(-1));
+            return Ok(self.jno_form());
         }
-        let n = self.jcount(value)?;
-        let obj = self.jadd("msrt_json_add_object_n", &[doc, n])?;
+        self.jw("msrt_json_w_begin_object", &[w])?;
         let (key, value_ty) = (key.clone(), value_ty.clone());
-        // These keys are distinct as text when they are distinct as keys.
-        let distinct = matches!(key.id.as_str(), "String" | "Int" | "Bool")
-            || key.is_std("Duration")
-            || jplain_alt(&key);
-        let member_sym = if distinct {
-            "msrt_json_object_add"
-        } else {
-            "msrt_json_object_put"
-        };
         self.each_entry(value, &mut |s, k, v| {
             let v = v.ok_or_else(|| Error::new("a map entry has a value"))?;
-            let id = s.jencode_nested(&value_ty, doc, v)?;
-            let z = s.b.iconst(0);
-            let has_form = s.b.icmp(Cc::Ge, id, z);
-            let put = s.b.new_block();
-            let after = s.b.new_block();
-            s.b.br_if(has_form, put, &[], after, &[]);
-            s.b.seal_block(put);
-            s.b.switch_to(put);
-            let name = if key.id.as_str() == "String" {
-                Val { v: k, own: false }
-            } else if jplain_alt(&key) {
-                // The case name, as a payload-free alternative is written elsewhere.
-                let key_mt = s.jmty(&key)?;
-                let node = s.jencode_alternative(&key, key_mt, doc, k)?;
-                Val {
-                    v: s.jtext(doc, node)?,
-                    own: true,
-                }
-            } else {
-                s.format_value(Val { v: k, own: false })?
-            };
-            s.call_runtime(member_sym, &[doc, obj, name.v, id], MTy::UNIT)?;
-            if name.own {
-                s.drop_value(name.v);
-            }
-            s.b.br(after, &[]);
-            s.b.seal_block(after);
-            s.b.switch_to(after);
-            Ok(())
+            s.jencode_map_key(&key, w, k)?;
+            let written = s.jencode_nested(&value_ty, w, v)?;
+            s.jslot_or(w, written, &mut |_| Ok(()))
         })?;
-        Ok(obj)
+        self.jw("msrt_json_w_end_object", &[w])?;
+        Ok(self.jwritten())
     }
 
-    fn jencode_list(&mut self, elem: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
+    fn jencode_list(&mut self, elem: &ct::Ty, w: Value, value: Value) -> Result<Value, Error> {
+        self.jw("msrt_json_w_begin_array", &[w])?;
         let n = self.b.list_len(value);
-        let arr = self.jadd("msrt_json_add_array_n", &[doc, n])?;
         let zero = self.b.iconst(0);
         self.counted_loop(zero, n, &mut |s, iv| {
             let item = s.b.list_get(value, iv);
-            let id = s.jencode_nested(elem, doc, item)?;
-            // An element without a JSON form is `null`.
-            let z = s.b.iconst(0);
-            let has_form = s.b.icmp(Cc::Ge, id, z);
-            let null = s.jadd("msrt_json_add_null", &[doc])?;
-            let id = s.b.select(has_form, id, null);
-            s.call_runtime("msrt_json_array_push", &[doc, arr, id], MTy::UNIT)?;
-            Ok(())
+            s.jencode_item(elem, w, item)
         })?;
-        Ok(arr)
+        self.jw("msrt_json_w_end_array", &[w])?;
+        Ok(self.jwritten())
     }
 
     fn jencode_alternative(
         &mut self,
         t: &ct::Ty,
         mt: MTy,
-        doc: Value,
+        w: Value,
         value: Value,
     ) -> Result<Value, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
             return Err(Error::new("an alternative lowers to an alternative"));
         };
         let cases = ct::cases(t);
-        let out = self.b.declare_var(MTy::INT, Mode::Borrow);
         let tag = self.b.alt_tag(value);
         let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
         let join = self.b.new_block();
@@ -1199,26 +1238,26 @@ impl FnLower<'_> {
         for (i, c) in cases.iter().enumerate() {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
-            let id = if c.fields.is_empty() {
+            if c.fields.is_empty() {
                 let name = self.b.str_lit(c.name.as_str());
-                self.jadd("msrt_json_add_string", &[doc, name])?
+                self.jw("msrt_json_w_string", &[w, name])?;
             } else {
-                let inner = self.jadd("msrt_json_add_empty_object", &[doc])?;
+                self.jw("msrt_json_w_begin_object", &[w])?;
+                let key = self.b.str_lit(c.name.as_str());
+                self.jw("msrt_json_w_key", &[w, key])?;
+                self.jw("msrt_json_w_begin_object", &[w])?;
                 for (j, f) in c.fields.iter().enumerate() {
                     let fv = self.b.alt_get(a, i as u32, j as u32, value);
-                    self.jencode_member(doc, inner, f.name.as_str(), &f.ty, fv)?;
+                    self.jencode_member(w, f.name.as_str(), &f.ty, fv)?;
                 }
-                let outer = self.jadd("msrt_json_add_empty_object", &[doc])?;
-                let key = self.b.str_lit(c.name.as_str());
-                self.call_runtime("msrt_json_object_put", &[doc, outer, key, inner], MTy::UNIT)?;
-                outer
-            };
-            self.b.def_var(out, id);
+                self.jw("msrt_json_w_end_object", &[w])?;
+                self.jw("msrt_json_w_end_object", &[w])?;
+            }
             self.b.br(join, &[]);
         }
         self.b.seal_block(join);
         self.b.switch_to(join);
-        Ok(self.b.use_var(out))
+        Ok(self.jwritten())
     }
 
     /// A stored `JsonValue` is written as it is.
@@ -1226,16 +1265,13 @@ impl FnLower<'_> {
         &mut self,
         t: &ct::Ty,
         mt: MTy,
-        doc: Value,
+        w: Value,
         value: Value,
     ) -> Result<Value, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
             return Err(Error::new("JsonValue is an alternative"));
         };
         let cases = ct::cases(t);
-        let missing = || Error::new("JsonValue lacks a case");
-        let find = |name: &str| cases.iter().position(|c| c.name.as_str() == name);
-        let out = self.b.declare_var(MTy::INT, Mode::Borrow);
         let tag = self.b.alt_tag(value);
         let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
         let join = self.b.new_block();
@@ -1252,42 +1288,40 @@ impl FnLower<'_> {
         for (i, c) in cases.iter().enumerate() {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
-            let id = match c.name.as_str() {
-                "Null" => self.jadd("msrt_json_add_null", &[doc])?,
+            match c.name.as_str() {
+                "Null" => self.jw("msrt_json_w_null", &[w])?,
                 "BoolValue" => {
                     let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jadd("msrt_json_add_bool", &[doc, v])?
+                    self.jw("msrt_json_w_bool", &[w, v])?;
                 }
                 "NumberValue" => {
                     let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jadd("msrt_json_add_number", &[doc, v])?
+                    self.jw("msrt_json_w_number", &[w, v])?;
                 }
                 "StringValue" => {
                     let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jadd("msrt_json_add_string", &[doc, v])?
+                    self.jw("msrt_json_w_string", &[w, v])?;
                 }
                 "ArrayValue" => {
                     let l = self.b.alt_get(a, i as u32, 0, value);
-                    self.jencode_list(t, doc, l)?
+                    self.jencode_list(t, w, l)?;
                 }
                 "ObjectValue" => {
                     let m = self.b.alt_get(a, i as u32, 0, value);
-                    let _ = find("ObjectValue").ok_or_else(missing)?;
                     let map = &c.fields[0].ty;
-                    self.jencode_map(&map.args[0], &map.args[1], doc, m)?
+                    self.jencode_map(&map.args[0], &map.args[1], w, m)?;
                 }
                 other => {
                     return Err(Error::new(format!(
                         "json: unexpected JsonValue case {other}"
                     )));
                 }
-            };
-            self.b.def_var(out, id);
+            }
             self.b.br(join, &[]);
         }
         self.b.seal_block(join);
         self.b.switch_to(join);
-        Ok(self.b.use_var(out))
+        Ok(self.jwritten())
     }
 
     // ------------------------------------------------------------- entry points
@@ -1462,17 +1496,17 @@ impl FnLower<'_> {
         };
         let (hm, vm) = flat(self, "max_bytes")?;
         let (hi, vi) = flat(self, "indent")?;
-        let doc_ty = self.jdoc_ty();
-        let doc = self.call_runtime("msrt_json_builder_new", &[], doc_ty)?;
-        let dvar = self.jvar(doc_ty);
-        self.b.def_var(dvar, doc);
+        let writer_ty = self.jwriter_ty();
+        let writer = self.call_runtime("msrt_json_writer_new", &[hm, vm, hi, vi], writer_ty)?;
+        let wvar = self.jvar(writer_ty);
+        self.b.def_var(wvar, writer);
         let enc = {
             let hir = self.hir.clone();
             self.cx.json_fn(self.b.m, &hir, &t, true)?
         };
-        let id = self.b.call(enc, &[doc, value]);
+        let written = self.b.call(enc, &[writer, value]);
         let zero = self.b.iconst(0);
-        let has_form = self.b.icmp(Cc::Ge, id, zero);
+        let has_form = self.b.icmp(Cc::Ge, written, zero);
         let TyKind::Alt(ra) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("stringify returns a Result"));
         };
@@ -1486,11 +1520,10 @@ impl FnLower<'_> {
             rty,
             &mut |s| {
                 let slot = s.jslot(MTy::STR);
-                let code =
-                    s.status_code("msrt_json_stringify", &[doc, id, hm, vm, hi, vi, slot])?;
+                let code = s.status_code("msrt_json_w_finish", &[writer, slot])?;
                 Ok(Some(
                     s.status_result(
-                        "msrt_json_stringify",
+                        "msrt_json_w_finish",
                         code,
                         Some((slot, MTy::STR)),
                         None,
@@ -1501,8 +1534,8 @@ impl FnLower<'_> {
             },
             &mut |s| Ok(Some(s.json_error(ra, err, "InvalidData")?)),
         )?;
-        let doc = self.b.use_var(dvar);
-        self.drop_value(doc);
+        let writer = self.b.use_var(wvar);
+        self.drop_value(writer);
         Ok(out)
     }
 }
