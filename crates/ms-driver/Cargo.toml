@@ -9,7 +9,6 @@ description = "Manuscript front-end driver: module graph loading and checking"
 workspace = true
 
 [dependencies]
-ms-project = { path = "../ms-project" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
 

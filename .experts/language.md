@@ -15,7 +15,7 @@ Verify: `fn` in a `type` body is a parse error; `impl Type:` works across module
 Decision: editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target identity must be respected. Treating every not-found canonicalization result as an unsaved file would let an overlay hide an unresolved external target.
 
 Apply when: changing project resolution, filesystem identity, or editor overlays.
-Evidence: [overlay canonicalization](../crates/ms-project/src/overlay.rs), [symlink identity regression](../crates/ms-project/tests/project.rs).
+Evidence: [overlay canonicalization](../crates/ms-driver/src/project/overlay.rs), [symlink identity regression](../crates/ms-driver/tests/project_project.rs).
 Verify: new confined overlay files compile without being written to disk; overlays for outside paths, dangling external links, or symlinked external parents are rejected. Normalize accepted overlay keys to canonical file identity so symlinked workspace directories retain unsaved content; reject conflicting snapshots of one file. Recovery keeps valid declarations while diagnostics still prevent producing an executable.
 
 ### String conversion is available on every value

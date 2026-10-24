@@ -2,8 +2,8 @@
 
 use std::collections::BTreeMap;
 
-use crate::error::ProjectError;
-use crate::paths::source_path;
+use crate::project::error::ProjectError;
+use crate::project::paths::source_path;
 
 /// Unsaved editor contents keyed by path (sorted, so iteration is deterministic).
 pub type Overlay = BTreeMap<String, String>;

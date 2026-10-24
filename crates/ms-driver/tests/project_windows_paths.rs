@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use ms_project::{Overlay, canonical_overlay, gopath, read_project, resolve_import, source_path};
+use ms_driver::project::{
+    Overlay, canonical_overlay, gopath, read_project, resolve_import, source_path,
+};
 
 struct TempDir(PathBuf);
 
@@ -88,7 +90,7 @@ fn native_absolute_project_paths_resolve_without_repeating_the_drive() {
         gopath::clean(native(&manifest))
     );
     assert_eq!(
-        ms_project::find_manifest(&project.entry).unwrap(),
+        ms_driver::project::find_manifest(&project.entry).unwrap(),
         gopath::join(&[&project.root, "ms.toml"])
     );
     assert_eq!(

@@ -29,7 +29,7 @@ mod regexp;
 pub mod util;
 pub mod verify;
 
-pub use ms_project::strconv::quote;
+pub use ms_driver::project::strconv::quote;
 
 use backend::{
     AnalysisCommand, AnalysisRequest, Backend, BuildRequest, DiagramRequest, Io, OutputRequest,

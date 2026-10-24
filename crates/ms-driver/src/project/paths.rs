@@ -2,10 +2,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::error::ProjectError;
-use crate::gopath;
-use crate::manifest::Project;
-use crate::overlay::Overlay;
+use crate::project::error::ProjectError;
+use crate::project::gopath;
+use crate::project::manifest::Project;
+use crate::project::overlay::Overlay;
 
 /// Resolve a local import; standard (`@std/`) imports belong to the checker.
 pub fn resolve_import(
@@ -82,7 +82,9 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
             // A dangling link is an existing entry, not a new editor file.
             match std::fs::symlink_metadata(&path) {
                 Ok(_) => return Err(error),
-                Err(e) if e.raw_os_error() != Some(crate::error::ENOENT) => return Err(error),
+                Err(e) if e.raw_os_error() != Some(crate::project::error::ENOENT) => {
+                    return Err(error);
+                }
                 Err(_) => {}
             }
             let parent = gopath::eval_symlinks(&gopath::dir(&path))?;

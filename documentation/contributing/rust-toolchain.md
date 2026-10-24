@@ -54,7 +54,7 @@ Under Miri the allocator takes its arena from the heap in place of `mmap` (and i
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
-| `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
+| `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
 | `ms-build` | Lowering seam, optimization, native codegen and link |
 | `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform` | The `ms` binary; the conformance runner |

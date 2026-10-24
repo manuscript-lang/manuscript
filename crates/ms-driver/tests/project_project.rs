@@ -1,7 +1,7 @@
 mod common;
 
 use common::*;
-use ms_project::{Overlay, find_manifest, read_project, resolve_import, source_path};
+use ms_driver::project::{Overlay, find_manifest, read_project, resolve_import, source_path};
 
 #[test]
 fn manifest_canonical_paths_and_comments() {
@@ -182,7 +182,7 @@ fn import_forms_and_confinement() {
     }
     let outside_dir = TempDir::new();
     let outside = write(outside_dir.path(), "outside.ms", "");
-    let rel = ms_project::gopath::rel(&p.source, &outside).unwrap();
+    let rel = ms_driver::project::gopath::rel(&p.source, &outside).unwrap();
     let error = resolve_import(&p, &p.entry, &rel, &Overlay::new())
         .unwrap_err()
         .to_string();

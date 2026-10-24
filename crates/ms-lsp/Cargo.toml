@@ -12,7 +12,6 @@ workspace = true
 ms-json = { path = "../ms-json" }
 ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
-ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
 ms-tooling = { path = "../ms-tooling" }
 
