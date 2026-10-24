@@ -39,14 +39,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         ],
     ),
     (
-        "Decimal",
-        &[
-            ("round", "decimal/round"),
-            ("to_fixed", "decimal/to_fixed"),
-            ("compare", "decimal/compare"),
-        ],
-    ),
-    (
         "HttpHeaders",
         &[
             ("append", "http/headers_append"),

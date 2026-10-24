@@ -140,7 +140,7 @@ impl<'a> FnLower<'a> {
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         if let Some(symbol) = native.strip_prefix("extern:") {
-            return self.extern_call(e, view, symbol, params);
+            return self.extern_call(e, view, symbol, sym);
         }
         match native {
             "collections/range" => {

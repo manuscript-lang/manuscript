@@ -859,6 +859,24 @@ impl<'a> Parser<'a> {
                     external: false,
                 })
             }
+            Tok::Extern if self.ahead(1).kind == Tok::Type => {
+                self.at += 1;
+                self.at += 1;
+                let name_tok = self.need(Tok::Name)?;
+                let name = self.sym(name_tok);
+                let type_params = self.type_params()?;
+                if self.kind() == Tok::Colon {
+                    let t = self.peek();
+                    return self.fail(t, "an extern type has no body; remove the ':'");
+                }
+                self.end()?;
+                DeclKind::Record(RecordDecl {
+                    name,
+                    type_params,
+                    fields: Vec::new(),
+                    external: true,
+                })
+            }
             Tok::Extern => {
                 self.at += 1;
                 self.need(Tok::Fn)?;
@@ -1091,6 +1109,7 @@ impl<'a> Parser<'a> {
                 name,
                 type_params,
                 fields,
+                external: false,
             }),
         };
         let id = self.id();

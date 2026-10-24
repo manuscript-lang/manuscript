@@ -316,7 +316,10 @@ pub type SymRef = Rc<Sym>;
 impl Sym {
     /// The symbol's type (panics if not yet resolved).
     pub fn ty(&self) -> Ty {
-        self.ty.borrow().clone().expect("symbol type resolved")
+        self.ty
+            .borrow()
+            .clone()
+            .unwrap_or_else(|| panic!("symbol type resolved: {} in {}", self.name, self.module))
     }
 
     /// The symbol's type if resolved.
