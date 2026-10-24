@@ -34,6 +34,10 @@ Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown
 Evidence: [stdlib validator](../bench/perf/compare_stdlib.py), [program measurements](../bench/perf/programs/results.md).
 Verify: balanced process order, identical tool flags and inputs, no simultaneous CPU work, raw samples plus source and binary hashes, and focused controls for regressions. Identical instructions can vary when relocated across alignment boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.
 
+Verified: a Python launcher's inherited high-water mark can dominate Linux `wait4` RSS for small child executables. Use a small native launcher that forks after its own exec for separate RSS trials; distinguish maximum single-process RSS in a waited process tree from simultaneous aggregate memory. Keep timing trials separate and label empty extraction caches separately from cold OS page caches.
+Evidence: [isolated RSS helper](../bench/perf/representative/rss.c), [measurement protocol](../bench/perf/representative/README.md).
+Verify: a trivial native program's reported RSS must not merely equal the Python launcher's RSS; retain the original raw measurements when correcting the measurement method.
+
 ### Source-size gap versus TypeScript is lines and I/O ceremony, not syntax noise
 
 Verified (2026-10-22, o200k_base): `bench/agent/tokens.py` puts the hand-written reference solutions at ms 12.2k, rust 10.1k, go 10.1k, ts 8.3k tokens, so Manuscript is not below Rust (1.21x) or TypeScript (1.48x); the old ms references predate `xs[i]`, `+=`, and inline suites, so they overstate it. Agent-written ms was 1.30x TypeScript. Newlines and indentation account for about 40% of the gap (ms programs run about 1.75x the lines), and agents ignore forms the cheat sheet never showed: `xs[i]`, one-line `if c: return x`, no `flush()`. Reading stdin and the `run()`/`main()` match ceremony cost about 100 tokens per program. Blank lines are free (`\n\n` replaces `\n`). Open options, not decisions: `main` returning `Result`, `try` on `Optional`, a less vertical formatter for call arguments.
