@@ -263,10 +263,7 @@ unsafe extern "C-unwind" fn closure_main(arg: *mut u8) {
 /// # Safety
 /// `entry` is a live capture-free closure.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_worker_start(
-    entry: *mut ms_rt_abi::Closure,
-    end: i64,
-) -> i64 {
+pub unsafe extern "C-unwind" fn msrt_worker_start(entry: *mut ms_rt_abi::Closure, end: i64) -> i64 {
     // SAFETY: `entry` is live by contract; the block is freed by the worker or on failure.
     unsafe {
         let block = crate::sys::malloc(core::mem::size_of::<StartArg>()).cast::<StartArg>();

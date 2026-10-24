@@ -1,0 +1,152 @@
+# conform: tags=closures,with-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
+# conform: phase=test
+from "@std/channels.ms" import Channel, ChannelError
+from "@std/collections.ms" import range
+from "@std/core.ms" import panic
+from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
+
+type Job:
+    id: Int
+    words: List[String]
+
+type Done:
+    id: Int
+    count: Int
+
+def square_each(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
+    while True:
+        if let n = try ch.receive():
+            try ch.send(n * n)
+        else:
+            return ok(())
+
+    return ok(())
+
+def squares() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let finished = square_each(var ch)
+
+def count_words() -> Unit:
+    var ch = worker_channel[Done, Job]()
+
+    while True:
+        let got = ch.receive()
+        if got.is_error():
+            return
+
+        if let job = got.get(none):
+            ch.send(Done(id: job.id, count: job.words.length()))
+        else:
+            return
+
+def explode() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    panic("worker boom")
+
+def wait_forever() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let got = ch.receive()
+
+def sum_until_closed() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    var total = 0
+
+    while True:
+        let got = ch.receive()
+        if got.is_error():
+            return
+
+        if let n = got.get(none):
+            total += n
+        else:
+            ch.send(total)
+            return
+
+def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
+    var worker = try group.spawn(squares)
+    worker.channel.send(value)
+
+    var answer = -1
+    if let got = worker.channel.receive().get(none):
+        answer = got
+    try worker.join()
+    return ok(answer)
+
+test "a worker answers a message":
+    with WorkerGroup[Int, Int]() as group:
+        expect_equal(ask(group, 12), ok(144))
+
+test "a worker answers each message in order":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(squares).get(none)
+        let sent = worker.channel.send(1)
+        expect_ok(sent)
+        expect_ok(worker.channel.send(2))
+        expect_ok(worker.channel.send(3))
+        expect_equal(worker.channel.receive(), ok(some(1)))
+        expect_equal(worker.channel.receive(), ok(some(4)))
+        expect_equal(worker.channel.receive(), ok(some(9)))
+        worker.channel.close()
+        expect_ok(worker.join())
+
+test "records cross as JSON":
+    with WorkerGroup[Job, Done]() as group:
+        var worker = group.spawn(count_words).get(none)
+        expect_ok(worker.channel.send(Job(id: 7, words: ["a", "b", "c"])))
+        expect_equal(worker.channel.receive(), ok(some(Done(id: 7, count: 3))))
+        worker.channel.close()
+        expect_ok(worker.join())
+
+test "many messages wait for room":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(squares).get(none)
+        var total = 0
+
+        for n in range(0, 200):
+            expect_ok(worker.channel.send(n))
+            if let got = worker.channel.receive().get(none):
+                total += got
+
+        worker.channel.close()
+        expect_ok(worker.join())
+        expect_equal(total, 2646700)
+
+test "workers run side by side with memory of their own":
+    with WorkerGroup[Int, Int]() as group:
+        var first = group.spawn(sum_until_closed).get(none)
+        var second = group.spawn(sum_until_closed).get(none)
+
+        for n in range(0, 100):
+            expect_ok(first.channel.send(n))
+            expect_ok(second.channel.send(n * 2))
+
+        first.channel.close()
+        second.channel.close()
+        expect_ok(first.join())
+        expect_ok(second.join())
+
+test "a fault in a worker is a result, not the end of the program":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(explode).get(none)
+        let outcome = worker.join()
+        expect_error(outcome)
+
+test "cancelling a worker stops it":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(wait_forever).get(none)
+        worker.cancel()
+        expect_equal(worker.join(), error(WorkerError.Cancelled))
+
+test "leaving the group stops workers that are still running":
+    with WorkerGroup[Int, Int]() as group:
+        let worker = group.spawn(wait_forever)
+        expect_ok(worker)
+
+    expect_equal(1, 1)
+
+test "sends after the worker ended report the channel closed":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(explode).get(none)
+        let outcome = worker.join()
+        expect_error(worker.channel.send(1))

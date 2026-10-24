@@ -89,12 +89,20 @@ impl WorkerTransport[In, Out]:
     def decode(text: String) -> Result[Optional[Out], ChannelError]:
         match parse[Out](text):
             case ok(value): return ok(some(value))
-            case error(why): return error(ChannelError.Broken("a message could not be decoded: " + why.message()))
+            case error(why): return error(
+                ChannelError.Broken(
+                    "a message could not be decoded: " + why.message()
+                )
+            )
 
 impl Transport[In, Out] for WorkerTransport[In, Out]:
     var def send(value: In) -> Result[Unit, ChannelError]:
         match stringify(value):
-            case error(why): return error(ChannelError.Broken("a message could not be encoded: " + why.message()))
+            case error(why): return error(
+                ChannelError.Broken(
+                    "a message could not be encoded: " + why.message()
+                )
+            )
             case ok(text):
                 if msrt_pipe_send(self.end, text) != 0:
                     return error(ChannelError.Closed)
@@ -153,7 +161,6 @@ impl Worker[In, Out]:
 def outcome_of(report: String) -> Result[Unit, WorkerError]:
     if report.starts_with("1"):
         return error(WorkerError.Faulted(report.slice(1, report.length()).get("")))
-
     if report.starts_with("2"):
         return error(WorkerError.Cancelled)
 
@@ -172,7 +179,6 @@ impl WorkerGroup[In, Out]:
     # `worker_channel`.
     def spawn(entry: Callable[[], Unit]) -> Result[Worker[In, Out], WorkerError]:
         let near = msrt_pipe_new()
-
         if near == 0:
             return error(WorkerError.NotStarted)
 
