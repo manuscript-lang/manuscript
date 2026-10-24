@@ -3,4 +3,4 @@
 # conform: origin=pkg/parser/partial_continuation_test.go:129 TestPartialContinuationLeadingTriviaAndRecoverySpan
 # prefix
 # second
-fn work(a: Int) Int:
+def work(a: Int) -> Int: ...

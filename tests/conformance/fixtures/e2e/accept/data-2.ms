@@ -1,8 +1,8 @@
 # conform: tags=modules,optional,stdlib-bytes,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/data-2.ms
-import {expect_equal} from "@std/testing.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/bytes.ms" import Bytes
 
 test "explicit byte conversion":
     try expect_equal("é".byte_length(), 2)

@@ -1,43 +1,43 @@
 # conform: tags=control-flow,diagnostics,interfaces,modules,mutation,numbers,records,stdlib-cleanup,stdlib-collections,strings,tier-stdlib,with-cleanup
 # conform: phase=check
 # conform: origin=bench/lowering/production.ms
-import range from "@std/collections.ms"
-import Closeable from "@std/core.ms"
+from "@std/collections.ms" import range
+from "@std/core.ms" import Closeable
 
 type Resource:
     value: Int
 
 impl Closeable for Resource:
-    fn close() Unit: return
+    def close() -> Unit: return
 
-fn empty(value: Int) Int: value
+def empty(value: Int) -> Int: value
 
-fn kept(resource: Resource) Int:
-    with active = resource: return 1
+def kept(resource: Resource) -> Int:
+    with resource as active: return 1
 
-fn ints(left: Int, right: Int, limit: Int, resource: Resource) Int:
-    with active = resource:
+def ints(left: Int, right: Int, limit: Int, resource: Resource) -> Int:
+    with resource as active:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
-fn floats(left: Float, right: Float, limit: Int, resource: Resource) Int:
-    with active = resource:
+def floats(left: Float, right: Float, limit: Int, resource: Resource) -> Int:
+    with resource as active:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
-fn bools(left: Bool, right: Bool, limit: Int, resource: Resource) Int:
-    with active = resource:
+def bools(left: Bool, right: Bool, limit: Int, resource: Resource) -> Int:
+    with resource as active:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
-fn strings(left: String, right: String, limit: Int, resource: Resource) Int:
-    with active = resource:
+def strings(left: String, right: String, limit: Int, resource: Resource) -> Int:
+    with resource as active:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1

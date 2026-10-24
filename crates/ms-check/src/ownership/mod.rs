@@ -174,13 +174,7 @@ impl Ownership {
 /// Standard-library source modules not yet ownership clean. Every other module, user or
 /// standard library, is checked and lowered under the same rules. Fix a module, then delete
 /// its entry.
-const UNVETTED: &[&str] = &[
-    // Transports share one stream handle through non-`var` methods.
-    "@std/log.ms",
-    // `borrow_body` stores a response body it only means to borrow; a resource handle has no
-    // way to be held without being moved.
-    "@std/sse.ms",
-];
+const UNVETTED: &[&str] = &[];
 
 /// Whether the ownership checker vets this module.
 pub fn is_vetted(file: Name) -> bool {
@@ -211,6 +205,96 @@ impl Hir<'_> {
         }
         summaries.contracts = joined;
         true
+    }
+
+    /// Checks the `ref` written in result types: a `ref` result must lend from a parameter or the
+    /// receiver, and an implementation agrees with the interface operation it implements.
+    fn ref_results(
+        &self,
+        modules: &HashMap<Name, ModuleHir>,
+        callables: &[Callable],
+        summaries: &Summaries,
+    ) -> Vec<Diagnostic> {
+        let diag = |file: Name, pos: ms_syntax::Pos, message: String| Diagnostic {
+            file: std::sync::Arc::from(file.as_str()),
+            pos,
+            phase: ms_syntax::Phase::Type,
+            message,
+            end: None,
+            fix: None,
+        };
+        let insert_ref = |mut d: Diagnostic, at: ms_syntax::Pos| {
+            d.fix = Some(ms_syntax::DiagnosticFix {
+                pos: at,
+                end: at,
+                replacement: "ref ".to_string(),
+            });
+            d
+        };
+        let mut out = Vec::new();
+        for c in callables {
+            let Some(f) = c.func.func() else { continue };
+            if f.body.is_empty() {
+                continue;
+            }
+            let lends = summaries
+                .get(&(c.module.file, c.id()))
+                .is_some_and(|s| !s.result.slots.is_empty());
+            if lends && !f.result_ref {
+                out.push(insert_ref(
+                    diag(
+                        c.module.file,
+                        f.result.pos,
+                        format!(
+                            "`{}` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`",
+                            f.name
+                        ),
+                    ),
+                    f.result.pos,
+                ));
+            }
+            if f.result_ref && !lends {
+                out.push(diag(
+                    c.module.file,
+                    f.result.pos,
+                    format!(
+                        "`{}` returns `ref`, but no `return` gives back part of a parameter or the receiver; drop `ref` to return an owned value",
+                        f.name
+                    ),
+                ));
+            }
+        }
+        for m in &self.program().methods {
+            let (Some(contract), Some(decl)) = (&m.contract, &m.decl) else {
+                continue;
+            };
+            let (Some(f), Some(def)) = (decl.func(), &contract.def) else {
+                continue;
+            };
+            if !modules.contains_key(&m.module) {
+                continue;
+            }
+            let declared = def
+                .operations
+                .borrow()
+                .iter()
+                .find(|o| o.name == f.name)
+                .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
+            let Some(declared) = declared else { continue };
+            // A `ref` operation lets an implementation lend or own; an owning operation must not
+            // be implemented by a lender, since callers of the contract treat its result as owned.
+            if f.result_ref && !declared {
+                out.push(diag(
+                    m.module,
+                    f.result.pos,
+                    format!(
+                        "`{}` implements an operation that returns an owned result, but this method returns `ref`; declare `ref` on the interface operation or return an owned copy",
+                        f.name
+                    ),
+                ));
+            }
+        }
+        out
     }
 
     /// Checks ownership rules and computes move, borrow and drop facts for
@@ -268,7 +352,7 @@ impl Hir<'_> {
             }
         }
         let mut facts = HashMap::new();
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut exclusive = HashSet::new();
         let mut getters = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {

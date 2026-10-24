@@ -115,7 +115,12 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(&mut compiled, Path::new(&output), request.build_type) {
+    if let Err(message) = backend.link(
+        &mut compiled,
+        Path::new(&output),
+        request.build_type,
+        &request.link,
+    ) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if structured {

@@ -4,6 +4,6 @@
 type Int:
     x: Int
 
-fn f() Int:
+def f() -> Int:
     let t = Int(x: 2)
     return 0

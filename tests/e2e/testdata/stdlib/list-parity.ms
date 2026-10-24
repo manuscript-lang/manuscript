@@ -1,12 +1,12 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import range from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/collections.ms" import range
 
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
     var seen: List[Int] = []
 
     let even = values.count(
-        fn(value: Int) Bool:
+        lambda (value: Int) -> Bool:
             seen.append(value)
             return value % 2 == 0
     )
@@ -14,7 +14,7 @@ test "List count calls the predicate once per element":
     try expect_false(even != 2 or seen != values)
 
     let empty: List[Int] = []
-    try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
+    try expect_equal(empty.count(lambda (value: Int) -> Bool: True), 0)
 
 test "List insert mutates in place":
     var values = [1, 3]
@@ -75,7 +75,7 @@ test "List distinct keeps the first equal element in order":
     copy.append(1)
     try expect_false(not (empty.is_empty()))
 
-fn unique_count[T: Equal](values: List[T]) Int:
+def unique_count[T: Equal](values: List[T]) -> Int:
     return values.distinct().length()
 
 test "List parity operations support generic and bound use":
@@ -85,10 +85,12 @@ test "List parity operations support generic and bound use":
     let insert = values.insert
     insert(2, 3)
 
-    let pop: fn() Optional[Int] = values.pop
+    let pop: Callable[[], Optional[Int]] = values.pop
     let popped = pop()
     let count = values.count
-    try expect_false(popped != some(3) or count(fn(value: Int) Bool: value > 0) != 2)
+    try expect_false(
+        popped != some(3) or count(lambda (value: Int) -> Bool: value > 0) != 2
+    )
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
@@ -96,7 +98,7 @@ test "List distinct handles large Int and String lists":
 
     for index in range(0, 60000):
         numbers.append(index % 30000)
-        words.append("w{index % 20000}")
+        words.append(f"w{index % 20000}")
 
     let unique = numbers.distinct()
     try expect_false(

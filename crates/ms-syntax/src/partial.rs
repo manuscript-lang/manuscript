@@ -45,8 +45,9 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
         {
             let declaration = [
                 "import ",
+                "from ",
                 "export ",
-                "fn ",
+                "def ",
                 "type ",
                 "interface ",
                 "impl ",
@@ -176,8 +177,10 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
 fn partial_root_start(source: &str) -> bool {
     for keyword in [
         "import",
+        "from",
         "export",
-        "fn",
+        "def",
+        "extern",
         "type",
         "interface",
         "impl",
@@ -334,7 +337,7 @@ fn declared_name(chunk: &str) -> Option<String> {
         }
         let rest = trimmed.strip_prefix("export ").unwrap_or(trimmed);
         let fields: Vec<&str> = rest.split_whitespace().collect();
-        if fields.len() < 2 || !matches!(fields[0], "fn" | "type" | "interface") {
+        if fields.len() < 2 || !matches!(fields[0], "def" | "type" | "interface") {
             return None;
         }
         return fields[1]

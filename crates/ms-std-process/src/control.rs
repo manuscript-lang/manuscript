@@ -607,10 +607,7 @@ mod tests {
     }
 }
 
-unsafe extern "C-unwind" {
-    /// Small-block heap bytes `[used, in_use]` from the runtime allocator.
-    fn msrt_heap_stats(out: *mut i64);
-}
+use ms_rt::obj::msrt_heap_stats;
 
 /// Heap and resident bytes: `(heap_used, heap_total, heap_system, external, resident)`.
 pub fn memory_usage() -> Res<[i64; 5]> {

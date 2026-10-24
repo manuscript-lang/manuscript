@@ -1,7 +1,7 @@
 # TOML 1.0 parser implemented in Manuscript.
-import {parse_int, parse_float} from "@std/math.ms"
-import {from_scalars, StringBuilder} from "@std/string.ms"
-import {log, sqrt} from "@std/math.ms"
+from "@std/math.ms" import parse_int, parse_float
+from "@std/string.ms" import from_scalars, StringBuilder
+from "@std/math.ms" import log, sqrt
 
 # A TOML value. Date and time values retain their original TOML text.
 export type TomlValue:
@@ -69,11 +69,11 @@ export type TomlLimits:
 
 impl Error for TomlError:
     # Formats the source line, scalar column and parser reason for a malformed document.
-    fn message() String:
+    def message() -> String:
         match self:
-            InvalidInput: return "invalid TOML input"
-            InvalidData(line, column, reason): return "TOML {line}:{column}: {reason}"
-            LimitExceeded: return "TOML limit exceeded"
+            case InvalidInput: return "invalid TOML input"
+            case InvalidData(line, column, reason): return f"TOML {line}:{column}: {reason}"
+            case LimitExceeded: return "TOML limit exceeded"
 
 type Reader:
     chars: List[String]
@@ -99,37 +99,37 @@ type Node:
     case ArrayNode(values: List[Node])
     case TableArray(ids: List[Int])
 
-fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
-    reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
+def new_table(var reader: Reader, explicit: Bool, dotted: Bool) -> Int:
+    reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: False))
     reader.entries.append(Map[String, Node]())
     return reader.tables.length() - 1
 
-fn flags(reader: Reader, id: Int) Table:
+def flags(reader: Reader, id: Int) -> Table:
     return reader.tables.get(id)
 
-fn store_flags(var reader: Reader, id: Int, flags: Table) Unit:
+def store_flags(var reader: Reader, id: Int, flags: Table) -> Unit:
     reader.tables.set(id, flags)
 
-fn lookup(reader: Reader, id: Int, key: String) Optional[Node]:
+def lookup(reader: Reader, id: Int, key: String) -> Optional[Node]:
     return reader.entries.get(id).get(key)
 
-fn contains_key(reader: Reader, id: Int, key: String) Bool:
+def contains_key(reader: Reader, id: Int, key: String) -> Bool:
     return reader.entries.get(id).contains(key)
 
 # Adds an entry to the table's map in place.
-fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
+def put(var reader: Reader, id: Int, key: String, node: Node) -> Unit:
     reader.entries[id].add(key, node)
 
-fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
+def put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) -> Unit:
     put(var reader, id, key, Node.TableArray(ids))
 
-fn peek(reader: Reader) String:
+def peek(reader: Reader) -> String:
     return reader.chars.get(reader.pos, default: "").clone()
 
-fn ahead(reader: Reader, offset: Int) String:
+def ahead(reader: Reader, offset: Int) -> String:
     return reader.chars.get(reader.pos + offset, default: "").clone()
 
-fn advance(var reader: Reader) String:
+def advance(var reader: Reader) -> String:
     let c = peek(reader)
     if c == "": return c.clone()
 
@@ -143,61 +143,61 @@ fn advance(var reader: Reader) String:
 
     return c.clone()
 
-fn invalid(reader: Reader, reason: String) TomlError:
+def invalid(reader: Reader, reason: String) -> TomlError:
     return TomlError.InvalidData(
         line: reader.line, column: reader.column, reason: reason
     )
 
-fn space(var reader: Reader, multiline: Bool) Unit:
-    while true:
+def space(var reader: Reader, multiline: Bool) -> Unit:
+    while True:
         let c = peek(reader)
 
         if (c == " " or c == "\t" or (multiline and c == "\n")):
             advance(var reader)
-        else if multiline and c == "#":
+        elif multiline and c == "#":
             while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
         else:
             break
 
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
-fn default_limits() TomlLimits:
+def default_limits() -> TomlLimits:
     return TomlLimits(max_depth: some(10000), max_values: some(1000000))
 
-fn within(value: Int, limit: Optional[Int]) Bool:
+def within(value: Int, limit: Optional[Int]) -> Bool:
     if let maximum = limit:
         return value <= maximum
 
-    return true
+    return True
 
-fn allocate(var reader: Reader) Result[Unit, TomlError]:
+def allocate(var reader: Reader) -> Result[Unit, TomlError]:
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
         TomlError.LimitExceeded
     )
 
-    return ok(unit)
+    return ok(())
 
-fn budget(reader: Reader, depth: Int) Result[Unit, TomlError]:
+def budget(reader: Reader, depth: Int) -> Result[Unit, TomlError]:
     if not within(depth, reader.limits.max_depth): return error(TomlError.LimitExceeded)
 
-    return ok(unit)
+    return ok(())
 
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
-fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
+def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
     let quote = advance(var reader)
-    var multiline = false
+    var multiline = False
 
     if (not key and peek(reader) == quote and ahead(reader, 1) == quote):
         advance(var reader)
         advance(var reader)
-        multiline = true
+        multiline = True
         if peek(reader) == "\n": advance(var reader)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
     var result = StringBuilder()
 
-    while true:
+    while True:
         let c = advance(var reader)
         if c == "": return error(invalid(reader, "unterminated string"))
 
@@ -247,13 +247,13 @@ fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
 
         let escaped = advance(var reader)
 
-        if escaped == "b": result.append("\u{8}")
-        else if escaped == "t": result.append("\t")
-        else if escaped == "n": result.append("\n")
-        else if escaped == "f": result.append("\u{c}")
-        else if escaped == "r": result.append("\r")
-        else if escaped == "\"" or escaped == "\\": result.append(escaped)
-        else if escaped == "u" or escaped == "U":
+        if escaped == "b": result.append(f"\u{8}")
+        elif escaped == "t": result.append("\t")
+        elif escaped == "n": result.append("\n")
+        elif escaped == "f": result.append(f"\u{c}")
+        elif escaped == "r": result.append("\r")
+        elif escaped == "\"" or escaped == "\\": result.append(escaped)
+        elif escaped == "u" or escaped == "U":
             var count = 4
             if escaped == "U": count = 8
 
@@ -279,16 +279,16 @@ fn string_value(var reader: Reader, key: Bool) Result[String, TomlError]:
         else:
             return error(invalid(reader, "invalid string escape"))
 
-fn key_path(var reader: Reader) Result[List[String], TomlError]:
+def key_path(var reader: Reader) -> Result[List[String], TomlError]:
     var keys: List[String] = []
 
-    while true:
-        space(var reader, multiline: false)
+    while True:
+        space(var reader, multiline: False)
 
         var key = ""
 
         if peek(reader) == "\"" or peek(reader) == "'":
-            key = try string_value(var reader, key: true)
+            key = try string_value(var reader, key: True)
         else:
             while (
                 peek(reader) != ""
@@ -300,12 +300,12 @@ fn key_path(var reader: Reader) Result[List[String], TomlError]:
             if key == "": return error(invalid(reader, "expected key"))
 
         keys.append(key)
-        space(var reader, multiline: false)
+        space(var reader, multiline: False)
         if peek(reader) != ".": return ok(keys)
 
         advance(var reader)
 
-fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
+def child(var reader: Reader, parent: Int, key: String, dotted: Bool) -> Result[
     Int, TomlError
 ]:
     if flags(reader, parent).sealed: return error(
@@ -317,14 +317,14 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
     if existing.is_none():
         try allocate(var reader)
 
-        let created = new_table(var reader, explicit: false, dotted)
+        let created = new_table(var reader, explicit: False, dotted)
         put(var reader, parent, key, Node.TableNode(created))
         return ok(created)
 
     let node = existing.get()
 
     match node:
-        TableNode(value):
+        case TableNode(value):
             let state = flags(reader, value)
             if state.sealed: return error(invalid(reader, "inline table is closed"))
             if dotted and state.explicit: return error(
@@ -332,13 +332,13 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[
             )
 
             return ok(value)
-        TableArray(ids):
+        case TableArray(ids):
             if dotted: return error(invalid(reader, "dotted key extends a table array"))
 
             return ok(ids.last().get())
-        _: return error(invalid(reader, "key is already a value"))
+        case _: return error(invalid(reader, "key is already a value"))
 
-fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
+def append_table(var reader: Reader, parent: Int, key: String, next: Int) -> Result[
     Unit, TomlError
 ]:
     let existing = lookup(reader, parent, key)
@@ -346,19 +346,19 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
     if existing.is_none():
         try allocate(var reader)
         put_array(var reader, parent, key, [next])
-        return ok(unit)
+        return ok(())
 
     let node = existing.get()
 
     match node:
-        TableArray(ids):
+        case TableArray(ids):
             var grown = ids.clone()
             grown.append(next)
             put_array(var reader, parent, key, grown)
-            return ok(unit)
-        _: return error(invalid(reader, "table array conflicts with value"))
+            return ok(())
+        case _: return error(invalid(reader, "table array conflicts with value"))
 
-fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
+def assign(var reader: Reader, parent: Int, keys: List[String], value: Node) -> Result[
     Unit, TomlError
 ]:
     var current = parent
@@ -367,7 +367,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
     while index < keys.length() - 1:
         current = try child(
             reader: var reader, parent: current, key: (keys.get(index).clone()),
-            dotted: true
+            dotted: True
         )
         index += 1
 
@@ -377,67 +377,67 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
     )
 
     put(var reader, current, key, value)
-    return ok(unit)
+    return ok(())
 
-fn seal(var reader: Reader, value: Node) Unit:
+def seal(var reader: Reader, value: Node) -> Unit:
     match value:
-        TableNode(id):
+        case TableNode(id):
             var state = flags(reader, id)
-            if state.sealed: return unit
+            if state.sealed: return ()
 
-            state.sealed = true
+            state.sealed = True
             store_flags(var reader, id, state)
             for entry in reader.entries.get(id).clone(): seal(
                 var reader, entry.value.clone()
             )
-        ArrayNode(values):
+        case ArrayNode(values):
             for item in values: seal(var reader, item)
-        _: return unit
+        case _: return ()
 
-fn digits(text: String, alphabet: String) Bool:
-    if text == "": return false
+def digits(text: String, alphabet: String) -> Bool:
+    if text == "": return False
 
-    var previous = false
+    var previous = False
 
     for c in text.split(""):
         if c == "_":
-            if not previous: return false
+            if not previous: return False
 
-            previous = false
+            previous = False
         else:
-            if not alphabet.contains(c): return false
+            if not alphabet.contains(c): return False
 
-            previous = true
+            previous = True
 
     return previous
 
-fn decimal_digits(text: String) Bool:
+def decimal_digits(text: String) -> Bool:
     return digits(text, "0123456789")
 
-fn decimal_part(text: String) Bool:
-    if not decimal_digits(text): return false
+def decimal_part(text: String) -> Bool:
+    if not decimal_digits(text): return False
 
     let clean = text.replace("_", "", text.byte_length())
     return clean == "0" or not clean.starts_with("0")
 
-fn date_number(text: String, minimum: Int, maximum: Int) Bool:
-    if not digits(text, "0123456789") or text.contains("_"): return false
+def date_number(text: String, minimum: Int, maximum: Int) -> Bool:
+    if not digits(text, "0123456789") or text.contains("_"): return False
     if let value = parse_int(text, 10):
         return value >= minimum and value <= maximum
 
-    return false
+    return False
 
-fn date_valid(text: String) Bool:
+def date_valid(text: String) -> Bool:
     if (
         text.scalar_length() != 10
         or text.get(4, default: "") != "-"
         or text.get(7, default: "") != "-"
-    ): return false
+    ): return False
 
     let year = text.slice(0, 4).get("")
     let month = text.slice(5, 7).get("")
     let day = text.slice(8, 10).get("")
-    if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
+    if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return False
 
     let m = month.parse_int().get()
     var maximum = 31
@@ -451,16 +451,16 @@ fn date_valid(text: String) Bool:
 
     return date_number(day, 1, maximum)
 
-fn time_valid(text: String) Bool:
+def time_valid(text: String) -> Bool:
     if (
         text.scalar_length() < 8
         or text.get(2, default: "") != ":"
         or text.get(5, default: "") != ":"
-    ): return false
-    if not date_number(text.slice(0, 2).get(""), 0, 23): return false
-    if not date_number(text.slice(3, 5).get(""), 0, 59): return false
-    if not date_number(text.slice(6, 8).get(""), 0, 60): return false
-    if text.scalar_length() == 8: return true
+    ): return False
+    if not date_number(text.slice(0, 2).get(""), 0, 23): return False
+    if not date_number(text.slice(3, 5).get(""), 0, 59): return False
+    if not date_number(text.slice(6, 8).get(""), 0, 60): return False
+    if text.scalar_length() == 8: return True
 
     let fraction = text.slice(9, text.scalar_length()).get("")
     return (
@@ -469,41 +469,41 @@ fn time_valid(text: String) Bool:
         and not fraction.contains("_")
     )
 
-fn datetime_valid(text: String) Bool:
-    if date_valid(text): return true
-    if time_valid(text): return true
-    if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return false
+def datetime_valid(text: String) -> Bool:
+    if date_valid(text): return True
+    if time_valid(text): return True
+    if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return False
 
     let separator = text.get(10, default: "")
-    if (separator != "T" and separator != "t" and separator != " "): return false
+    if (separator != "T" and separator != "t" and separator != " "): return False
 
     var rest = text.slice(11, text.scalar_length()).get("")
 
     if rest.ends_with("Z") or rest.ends_with("z"):
         rest = rest.slice(0, rest.scalar_length() - 1).get("")
-    else if rest.contains("+") or rest.contains("-"):
+    elif rest.contains("+") or rest.contains("-"):
         var index = rest.index_of("+").get(-1)
         if index < 0: index = rest.index_of("-").get(-1)
 
         let zone = rest.slice(index + 1, rest.scalar_length()).get("")
-        if zone.scalar_length() != 5 or zone.get(2, default: "") != ":": return false
-        if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
-        if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
+        if zone.scalar_length() != 5 or zone.get(2, default: "") != ":": return False
+        if not date_number(zone.slice(0, 2).get(""), 0, 23): return False
+        if not date_number(zone.slice(3, 5).get(""), 0, 59): return False
 
         rest = rest.slice(0, index).get("")
 
     return time_valid(rest)
 
-fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
-    if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
-    if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
+def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
+    if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(True)))
+    if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(False)))
     if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
 
     var clean = text.clone()
-    var signed = false
+    var signed = False
 
     if clean.starts_with("+") or clean.starts_with("-"):
-        signed = true
+        signed = True
         clean = clean.slice(1, clean.scalar_length()).get("")
 
     var radix = 10
@@ -512,10 +512,10 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
     if clean.starts_with("0x"):
         radix = 16
         alphabet = "0123456789abcdefABCDEF"
-    else if clean.starts_with("0o"):
+    elif clean.starts_with("0o"):
         radix = 8
         alphabet = "01234567"
-    else if clean.starts_with("0b"):
+    elif clean.starts_with("0b"):
         radix = 2
         alphabet = "01"
 
@@ -598,15 +598,15 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
 
     return error(invalid(reader, "integer out of range"))
 
-fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
+def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     try allocate(var reader)
     try budget(reader, depth)
-    space(var reader, multiline: false)
+    space(var reader, multiline: False)
 
     let c = peek(reader)
     if c == "\"" or c == "'": return ok(
         Node.Leaf(
-            TomlValue.StringValue(try string_value(var reader, key: false))
+            TomlValue.StringValue(try string_value(var reader, key: False))
         )
     )
 
@@ -614,29 +614,29 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         advance(var reader)
 
         var values: List[Node] = []
-        space(var reader, multiline: true)
+        space(var reader, multiline: True)
 
         while peek(reader) != "]":
             values.append(try read_value(var reader, depth + 1))
-            space(var reader, multiline: true)
+            space(var reader, multiline: True)
             if peek(reader) == "]": break
             if advance(var reader) != ",": return error(
                 invalid(reader, "expected array comma")
             )
 
-            space(var reader, multiline: true)
+            space(var reader, multiline: True)
 
         advance(var reader)
         return ok(Node.ArrayNode(values))
 
-    if c == "\{":
+    if c == "{":
         advance(var reader)
 
-        let result = new_table(var reader, explicit: true, dotted: false)
-        space(var reader, multiline: false)
+        let result = new_table(var reader, explicit: True, dotted: False)
+        space(var reader, multiline: False)
 
-        if peek(reader) != "\}":
-            while true:
+        if peek(reader) != "}":
+            while True:
                 let keys = try key_path(var reader)
                 if advance(var reader) != "=": return error(
                     invalid(reader, "expected equals")
@@ -644,8 +644,8 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
 
                 let value = try read_value(var reader, depth + keys.length())
                 try assign(reader: var reader, parent: result, keys: keys, value: value)
-                space(var reader, multiline: false)
-                if peek(reader) == "\}": break
+                space(var reader, multiline: False)
+                if peek(reader) == "}": break
                 if advance(var reader) != ",": return error(
                     invalid(reader, "expected inline table comma")
                 )
@@ -666,7 +666,7 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         and peek(reader) != "#"
         and peek(reader) != ","
         and peek(reader) != "]"
-        and peek(reader) != "\}"
+        and peek(reader) != "}"
         and peek(reader) != " "
     ):
         text = text.concat(advance(var reader))
@@ -682,7 +682,7 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
             and peek(reader) != "#"
             and peek(reader) != ","
             and peek(reader) != "]"
-            and peek(reader) != "\}"
+            and peek(reader) != "}"
         ):
             text = text.concat(advance(var reader))
 
@@ -697,7 +697,9 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
     reader.column = end_column
     return result
 
-fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, TomlError]:
+def materialize(var reader: Reader, node: Node, depth: Int) -> Result[
+    TomlValue, TomlError
+]:
     try budget(reader, depth)
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(
@@ -705,8 +707,8 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
     )
 
     match node:
-        Leaf(value): return ok(value)
-        TableNode(id):
+        case Leaf(value): return ok(value)
+        case TableNode(id):
             var entries = Map[String, TomlValue]()
             for entry in reader.entries.get(id).clone():
                 entries.add(
@@ -716,13 +718,13 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
                     )
                 )
             return ok(TomlValue.TableValue(entries))
-        ArrayNode(values):
+        case ArrayNode(values):
             var result: List[TomlValue] = []
             for value in values: result.append(
                 try materialize(var reader, value, (depth + 1))
             )
             return ok(TomlValue.ArrayValue(result))
-        TableArray(ids):
+        case TableArray(ids):
             var result: List[TomlValue] = []
             for id in ids: result.append(
                 try materialize(
@@ -732,10 +734,10 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
             return ok(TomlValue.ArrayValue(result))
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
-export fn parse(
+export def parse(
     text: String,
     limits: Optional[TomlLimits] = none
-) Result[TomlValue, TomlError]:
+) -> Result[TomlValue, TomlError]:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -776,22 +778,22 @@ export fn parse(
     )
     try allocate(var reader)
 
-    let root = new_table(var reader, explicit: true, dotted: false)
+    let root = new_table(var reader, explicit: True, dotted: False)
     var current = root
     var current_depth = 1
 
-    while true:
-        space(var reader, multiline: true)
+    while True:
+        space(var reader, multiline: True)
         if peek(reader) == "": break
 
         if peek(reader) == "[":
             advance(var reader)
 
-            var array = false
+            var array = False
 
             if peek(reader) == "[":
                 advance(var reader)
-                array = true
+                array = True
 
             let keys = try key_path(var reader)
             if advance(var reader) != "]" or (array and advance(var reader) != "]"): return error(
@@ -804,7 +806,7 @@ export fn parse(
             while index < keys.length() - 1:
                 parent = try child(
                     reader: var reader, parent: parent, key: (keys.get(index).clone()),
-                    dotted: false
+                    dotted: False
                 )
                 index += 1
 
@@ -816,14 +818,14 @@ export fn parse(
             if array:
                 try allocate(var reader)
 
-                let next = new_table(var reader, explicit: true, dotted: false)
+                let next = new_table(var reader, explicit: True, dotted: False)
                 try append_table(
                     reader: var reader, parent: parent, key: key, next: next
                 )
                 current = next
             else:
                 current = try child(
-                    reader: var reader, parent: parent, key: key, dotted: false
+                    reader: var reader, parent: parent, key: key, dotted: False
                 )
 
                 var state = flags(reader, current)
@@ -831,7 +833,7 @@ export fn parse(
                     invalid(reader, "table already defined")
                 )
 
-                state.explicit = true
+                state.explicit = True
                 store_flags(var reader, current, state)
 
             current_depth = keys.length() + 1
@@ -846,7 +848,7 @@ export fn parse(
             let value = try read_value(var reader, (current_depth + keys.length()))
             try assign(reader: var reader, parent: current, keys: keys, value: value)
 
-        space(var reader, multiline: false)
+        space(var reader, multiline: False)
         if peek(reader) == "#":
             while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
         if peek(reader) != "" and advance(var reader) != "\n": return error(
@@ -860,12 +862,12 @@ type Writer:
     out: StringBuilder
     started: Bool
 
-fn hex4(code: Int) String:
+def hex4(code: Int) -> String:
     var digits = code.to_string_radix(16)
     while digits.length() < 4: digits = "0".concat(digits)
     return digits
 
-fn quote_text(text: String) String:
+def quote_text(text: String) -> String:
     var result = StringBuilder()
     result.append("\"")
 
@@ -873,13 +875,13 @@ fn quote_text(text: String) String:
         let code = c.scalar_at(0)
 
         if c == "\"": result.append("\\\"")
-        else if c == "\\": result.append("\\\\")
-        else if c == "\n": result.append("\\n")
-        else if c == "\t": result.append("\\t")
-        else if c == "\r": result.append("\\r")
-        else if code == 8: result.append("\\b")
-        else if code == 12: result.append("\\f")
-        else if code < 32 or code == 127:
+        elif c == "\\": result.append("\\\\")
+        elif c == "\n": result.append("\\n")
+        elif c == "\t": result.append("\\t")
+        elif c == "\r": result.append("\\r")
+        elif code == 8: result.append("\\b")
+        elif code == 12: result.append("\\f")
+        elif code < 32 or code == 127:
             result.append("\\u")
             result.append(hex4(code))
         else: result.append(c)
@@ -887,17 +889,17 @@ fn quote_text(text: String) String:
     result.append("\"")
     return result.freeze()
 
-fn format_key(key: String) String:
+def format_key(key: String) -> String:
     var bare = key != ""
     for c in key.chars():
         if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
             c
-        ): bare = false
+        ): bare = False
     if bare: return key
 
     return quote_text(key)
 
-fn format_float(value: Float) String:
+def format_float(value: Float) -> String:
     if value.is_nan(): return "nan"
 
     if not value.is_finite():
@@ -910,53 +912,53 @@ fn format_float(value: Float) String:
 
     return text.concat(".0")
 
-fn inline_value(value: TomlValue) String:
+def inline_value(value: TomlValue) -> String:
     match value:
-        StringValue(text): return quote_text(text)
-        IntValue(number): return number.to_string()
-        FloatValue(number): return format_float(number)
-        BoolValue(flag): return flag.to_string()
-        DateTimeValue(text): return text
-        ArrayValue(values):
+        case StringValue(text): return quote_text(text)
+        case IntValue(number): return number.to_string()
+        case FloatValue(number): return format_float(number)
+        case BoolValue(flag): return flag.to_string()
+        case DateTimeValue(text): return text
+        case ArrayValue(values):
             var parts: List[String] = []
             for item in values: parts.append(inline_value(item))
             return "[".concat(parts.join(", ")).concat("]")
-        TableValue(values):
+        case TableValue(values):
             var parts: List[String] = []
             for entry in values.entries(): parts.append(
                 format_key(entry.key.clone()).concat(" = ").concat(
                     inline_value(entry.value.clone())
                 )
             )
-            if parts.is_empty(): return "\{\}"
+            if parts.is_empty(): return "{}"
 
-            return "\{ ".concat(parts.join(", ")).concat(" \}")
+            return "{ ".concat(parts.join(", ")).concat(" }")
 
-fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
+def table_items(values: List[TomlValue]) -> List[Map[String, TomlValue]]:
     var tables: List[Map[String, TomlValue]] = []
 
     for item in values:
         match item:
-            TableValue(table): tables.append(table.clone())
-            _: return []
+            case TableValue(table): tables.append(table.clone())
+            case _: return []
 
     return tables
 
-fn dotted(path: List[String]) String:
+def dotted(path: List[String]) -> String:
     var parts: List[String] = []
     for key in path: parts.append(format_key(key))
     return parts.join(".")
 
-fn emit_header(var writer: Writer, header: String) Unit:
+def emit_header(var writer: Writer, header: String) -> Unit:
     if writer.started: writer.out.append("\n")
     writer.out.append(header)
     writer.out.append("\n")
-    writer.started = true
+    writer.started = True
 
-fn section_kind(value: TomlValue) Int:
+def section_kind(value: TomlValue) -> Int:
     match value:
-        TableValue(_): return 1
-        ArrayValue(elements):
+        case TableValue(_): return 1
+        case ArrayValue(elements):
             if (
                 not elements.is_empty()
                 and table_items(
@@ -965,12 +967,12 @@ fn section_kind(value: TomlValue) Int:
             ): return 2
 
             return 0
-        _: return 0
+        case _: return 0
 
-fn emit_one(
+def emit_one(
     var writer: Writer, path: List[String], brackets: String,
     table: Map[String, TomlValue]
-) Unit:
+) -> Unit:
     if brackets == "[[": emit_header(
         var writer, "[[".concat(dotted(path.clone())).concat("]]")
     )
@@ -978,7 +980,7 @@ fn emit_one(
 
     emit_table(var writer, path, table)
 
-fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Unit:
+def emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) -> Unit:
     for entry in values.entries():
         if section_kind(entry.value.clone()) == 0: (
             writer
@@ -998,45 +1000,45 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
         child.append(entry.key.clone())
 
         match entry.value:
-            TableValue(table): emit_one(
+            case TableValue(table): emit_one(
                 writer: var writer, path: child, brackets: "[", table: table
             )
-            ArrayValue(elements):
+            case ArrayValue(elements):
                 if section_kind(entry.value.clone()) == 2:
                     for table in table_items(elements.clone()): emit_one(
                         writer: var writer, path: child.clone(), brackets: "[[",
                         table: table
                     )
-            _: unit
+            case _: ()
 
-fn datetimes_valid(value: TomlValue) Bool:
+def datetimes_valid(value: TomlValue) -> Bool:
     match value:
-        DateTimeValue(text): return datetime_valid(text)
-        ArrayValue(values):
+        case DateTimeValue(text): return datetime_valid(text)
+        case ArrayValue(values):
             for item in values:
-                if not datetimes_valid(item): return false
-            return true
-        TableValue(values):
+                if not datetimes_valid(item): return False
+            return True
+        case TableValue(values):
             for entry in values.entries():
-                if not datetimes_valid(entry.value.clone()): return false
-            return true
-        _: return true
+                if not datetimes_valid(entry.value.clone()): return False
+            return True
+        case _: return True
 
 # Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
-export fn stringify(
+export def stringify(
     value: TomlValue,
     max_bytes: Optional[Int] = none
-) Result[String, TomlError]:
+) -> Result[String, TomlError]:
     if let limit = max_bytes:
         if limit < 0: return error(TomlError.InvalidInput)
 
     let root = match value:
-        TableValue(values): values.clone()
-        _: return error(TomlError.InvalidInput)
+        case TableValue(values): values.clone()
+        case _: return error(TomlError.InvalidInput)
 
     if not datetimes_valid(value): return error(TomlError.InvalidInput)
 
-    var writer = Writer(StringBuilder(), started: false)
+    var writer = Writer(StringBuilder(), started: False)
     emit_table(var writer, [], root)
 
     let text = writer.out.freeze()

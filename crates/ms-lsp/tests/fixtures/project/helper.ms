@@ -1,4 +1,4 @@
-import {double} from "./util.ms"
+from "./util.ms" import double
 
-export fn helper(n: Int) Int:
+export def helper(n: Int) -> Int:
     return double(n) + 1

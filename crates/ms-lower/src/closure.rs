@@ -1580,3 +1580,101 @@ fn alias_origin(fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
         _ => crate::mutation::index_parts(&fl.hir, e).and_then(|(left, _)| alias_origin(fl, left)),
     }
 }
+
+impl FnLower<'_> {
+    /// A function value read where the checker expects the plain form of its type: a held value
+    /// whose omittable parameters are optionals goes through an adapter that supplies them.
+    pub(crate) fn fit_function_value(&mut self, e: &Expr, x: Val) -> Result<Val, Error> {
+        let want = self.emty(e)?;
+        let have = self.ty_of(x.v);
+        if want == have {
+            return Ok(x);
+        }
+        let (TyKind::Fn(hp, hr), TyKind::Fn(wp, wr)) = (
+            self.b.m.types.kind(have).clone(),
+            self.b.m.types.kind(want).clone(),
+        ) else {
+            return Ok(x);
+        };
+        let lifts = hp.len() == wp.len()
+            && hr == wr
+            && hp.iter().zip(&wp).all(|(h, w)| {
+                h == w || matches!(self.b.m.types.kind(*h).clone(), TyKind::Opt(i) if i == *w)
+            });
+        if !lifts {
+            return Ok(x);
+        }
+        let mut ps = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        ps.extend(wp.iter().map(|t| Param {
+            ty: *t,
+            mode: Mode::Borrow,
+        }));
+        let mut f = ms_mir::ir::Func::new("<function adapter>", ps, wr);
+        f.kind = FuncKind::Closure {
+            captures: vec![have],
+        };
+        let id = self.b.m.add_func(f);
+        self.cx.queue.push(Job {
+            func: id,
+            kind: JobKind::FnAdapt(Rc::new(crate::cx::FnAdaptJob {
+                hir: self.hir.clone(),
+                have,
+            })),
+        });
+        let held = self.owned(x);
+        let v = self
+            .b
+            .emit(Op::ClosureNew, &[held], Imm::Func(id), Some(want))
+            .expect("closure");
+        Ok(Val { v, own: true })
+    }
+}
+
+/// Lowers the body of a function adapter: it calls the held value, wrapping plain arguments in
+/// the optionals the held value takes.
+pub(crate) fn build_fn_adapter(
+    cx: &mut Cx,
+    m: &mut Module,
+    func: FuncId,
+    job: &crate::cx::FnAdaptJob,
+) -> Result<(), Error> {
+    let proto = m.funcs[func.index()].clone();
+    let file = m.add_file(job.hir.data.file.as_str());
+    let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
+    b.func_mut().kind = proto.kind.clone();
+    let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
+    let result = lower_fn_adapter(&mut fl, job.have);
+    let mut f = fl.b.into_func();
+    result?;
+    f.compact_blocks();
+    m.funcs[func.index()] = f;
+    Ok(())
+}
+
+fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy) -> Result<(), Error> {
+    let params = fl.b.params();
+    let held =
+        fl.b.emit(Op::ClosureCap, &[params[0]], Imm::Idx(0), Some(have))
+            .expect("capture");
+    let TyKind::Fn(hp, _) = fl.b.m.types.kind(have).clone() else {
+        return Err(Error::new("function adapter without a function type"));
+    };
+    let mut args = Vec::new();
+    for (i, h) in hp.iter().enumerate() {
+        let v = params[i + 1];
+        if fl.ty_of(v) == *h {
+            args.push(v);
+            continue;
+        }
+        let o = fl.owned(Val { v, own: false });
+        let some = fl.b.opt_some(o);
+        args.push(fl.borrow(Val { v: some, own: true }));
+    }
+    let r = fl.b.call_ind(held, &args);
+    let out = fl.val(r, true);
+    fl.emit_return(Some(out));
+    Ok(())
+}

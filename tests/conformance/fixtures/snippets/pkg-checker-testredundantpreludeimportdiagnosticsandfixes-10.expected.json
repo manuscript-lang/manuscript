@@ -13,14 +13,14 @@
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10.ms",
           "line": 4,
-          "column": 8,
-          "offset": 204
+          "column": 35,
+          "offset": 231
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10.ms",
           "line": 4,
-          "column": 12,
-          "offset": 208
+          "column": 39,
+          "offset": 235
         },
         "fix": {
           "position": {
@@ -32,8 +32,8 @@
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10.ms",
             "line": 4,
-            "column": 39,
-            "offset": 235
+            "column": 27,
+            "offset": 223
           },
           "replacement": ""
         }
@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10.ms:4:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-10.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

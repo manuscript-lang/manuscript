@@ -9,41 +9,41 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module",
+        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-fuzzformat-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 159
+          "offset": 163
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module",
+        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-fuzzformat-1.ms",
           "line": 5,
           "column": 22,
-          "offset": 169
+          "offset": 173
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module",
+        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-fuzzformat-1.ms",
           "line": 5,
           "column": 34,
-          "offset": 181
+          "offset": 185
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:12: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...)', or import it from a module\n<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:22: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...)', or import it from a module\n<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:34: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:12: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:22: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-fuzzformat-1.ms:5:34: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

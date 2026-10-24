@@ -7,10 +7,10 @@
 //! cancellation between them.
 use alloc::collections::VecDeque;
 use core::sync::atomic::{AtomicI32, AtomicU64, AtomicUsize, Ordering};
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::sys;
-use ms_std_rt::poll_cancel;
 
 const SLOTS: usize = 32;
 const MAX_SIGNAL: i64 = 64;
@@ -67,7 +67,7 @@ fn restore(sig: i32) {
     unsafe { libc::sigaction(sig, &act, core::ptr::null_mut()) };
 }
 
-ms_std_core::abi_handle!(Watcher);
+ms_rt::ffi::abi_handle!(Watcher);
 
 /// One `SignalStream`.
 pub struct Watcher {
@@ -191,7 +191,7 @@ impl Watcher {
             };
             // SAFETY: one valid `pollfd`.
             if unsafe { libc::poll(&mut p, 1, 0) } <= 0 {
-                ms_std_rt::task_sleep(5_000_000);
+                ms_rt::glue::task_sleep(5_000_000);
             }
         }
     }

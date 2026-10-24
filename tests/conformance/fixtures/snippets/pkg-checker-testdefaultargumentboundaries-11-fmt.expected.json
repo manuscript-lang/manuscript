@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(value: Int = 1) Int:\n    return value\n\nfn apply(callback: fn(value: Int) Int) Int:\n    return callback()\n"
+    "fmt": "def f(value: Int = 1) -> Int:\n    return value\n\ndef apply(callback: Callable[[Int], Int]) -> Int:\n    return callback()\n"
   }
 }

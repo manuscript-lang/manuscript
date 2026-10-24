@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn recurse[T](value: T) Unit:\n    let next = recurse[List[T]]\n"
+    "fmt": "def recurse[T](value: T) -> Unit:\n    let next = recurse[List[T]]\n"
   }
 }

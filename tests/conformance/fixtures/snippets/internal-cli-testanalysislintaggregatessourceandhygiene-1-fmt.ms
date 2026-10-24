@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/analysis_test.go:73 TestAnalysisLintAggregatesSourceAndHygiene
-import value from "./shared.ms"
+from "./shared.ms" import value
 
-export fn main() Int:
+export def main() -> Int:
     return value()

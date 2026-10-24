@@ -14,7 +14,7 @@
           "file": "learn-tour-9.ms",
           "line": 9,
           "column": 16,
-          "offset": 287
+          "offset": 291
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "learn-tour-9.ms",
           "line": 11,
           "column": 12,
-          "offset": 335
+          "offset": 339
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "learn-tour-9.ms",
           "line": 15,
           "column": 12,
-          "offset": 454
+          "offset": 462
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "learn-tour-9.ms",
           "line": 13,
           "column": 1,
-          "offset": 346
+          "offset": 350
         }
       }
     ],

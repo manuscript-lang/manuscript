@@ -1,14 +1,14 @@
 # conform: tags=closures,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-05.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn increase(value: Int) Int:
+def increase(value: Int) -> Int:
     return value + 1
 
-fn apply(value: Int, transform: fn(value: Int) Int) Int:
+def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
     return transform(value)
 
 test "function label compatibility":
-    let transform: fn(value: Int) Int = increase
+    let transform: Callable[[Int], Int] = increase
     try expect_equal(apply(4, transform), 5)

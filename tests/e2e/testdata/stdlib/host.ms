@@ -1,8 +1,8 @@
-import {expect_equal, expect_false, expect_not_equal} from "@std/testing.ms"
-import arguments from "@std/process.ms"
-import {system, endianness, end_of_line, os_type, dev_null} from "@std/process.ms"
-import {control, commands, CommandError, CommandOutput} from "@std/process.ms"
-import {read_line} from "@std/io.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal
+from "@std/process.ms" import arguments
+from "@std/process.ms" import system, endianness, end_of_line, os_type, dev_null
+from "@std/process.ms" import control, commands, CommandError, CommandOutput
+from "@std/io.ms" import read_line
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
@@ -55,7 +55,7 @@ test "subprocess validation returns expected domain errors":
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with child = try commands().spawn("cat", []):
+    with try commands().spawn("cat", []) as child:
         try child.stdin().write("ping\n")
 
         let line = try read_line(child.stdout())

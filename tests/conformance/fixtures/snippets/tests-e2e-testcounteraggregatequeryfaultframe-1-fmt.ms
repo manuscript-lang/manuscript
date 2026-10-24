@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/counter_aggregate_test.go:166 TestCounterAggregateQueryFaultFrame
-fn probe() Int:
+def probe() -> Int:
     var sum = 0
     var i = 0
 

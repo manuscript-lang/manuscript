@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,with-cleanup,tier-core
 # conform: phase=check
-export fn main() Int:
-    with g = try 5:
+export def main() -> Int:
+    with try 5 as g:
         return 1
     return 0

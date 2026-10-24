@@ -4,8 +4,8 @@
 type Val:
     val: Int
 
-fn work(var value: Val) Unit:
-    let callback = fn() Unit:
+def work(var value: Val) -> Unit:
+    let callback = lambda () -> Unit:
         value.val = value.val + 1
     callback()
 

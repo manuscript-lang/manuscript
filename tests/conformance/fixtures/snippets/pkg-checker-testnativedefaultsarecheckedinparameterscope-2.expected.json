@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testnativedefaultsarecheckedinparameterscope-2.ms",
           "line": 4,
-          "column": 19,
-          "offset": 181
+          "column": 20,
+          "offset": 182
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-2.ms:4:19: type: expected Int, found Bool\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-2.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-2.ms:4:20: type: expected Int, found Bool\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-2.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

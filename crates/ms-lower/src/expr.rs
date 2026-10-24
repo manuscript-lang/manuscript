@@ -145,7 +145,11 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- literals
 
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
-        let t = self.ety(e);
+        // A literal converted to an interface keeps its own type until the conversion.
+        let t = match self.hir.info(e).error_source {
+            Some(src) => ct::sub(&src, &self.subst),
+            None => self.ety(e),
+        };
         match t.id.as_str() {
             "Int" => {
                 let n: i128 = parse_int(text)
@@ -217,7 +221,10 @@ impl<'a> FnLower<'a> {
 
     fn name(&mut self, e: &Expr) -> Result<Val, Error> {
         match self.hir.resolution(e) {
-            Resolution::Local(b) => self.read_local(&b),
+            Resolution::Local(b) => {
+                let x = self.read_local(&b)?;
+                self.fit_function_value(e, x)
+            }
             Resolution::Constant(_) => self.call_expr(e),
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
             Resolution::Function(sym) if sym.native.as_str().is_empty() => {

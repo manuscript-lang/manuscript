@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-// End-to-end harness: links against libms_rt.a and drives msrt_start like generated code.
+// End-to-end harness: links against libms_native.a and drives msrt_start like generated code.
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

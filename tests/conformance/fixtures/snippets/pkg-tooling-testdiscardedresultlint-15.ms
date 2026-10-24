@@ -4,5 +4,5 @@
 type Outcome:
     value: Int
 
-fn caller() Unit:
+def caller() -> Unit:
     Outcome(1)

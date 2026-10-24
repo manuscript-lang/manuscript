@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/record_bounds_test.go:68 TestClosedRecordRejectsDifferentMethodShapes
-fn probe() Int:
+def probe() -> Int:
     let cell = Cell(0)
     var i = 0
 

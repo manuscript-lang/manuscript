@@ -1,19 +1,19 @@
 # conform: tags=control-flow,diagnostics,interfaces,modules,records,stdlib-cleanup,tier-stdlib,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:63 TestDiagnosticsStateCauseAndFix
-import Closeable from "@std/core.ms"
+from "@std/core.ms" import Closeable
 
 type R:
     n: Int
 
 impl Closeable for R:
-    fn close() Unit:
-        return unit
+    def close() -> Unit:
+        return ()
 
-fn mk() Result[R, Error]:
+def mk() -> Result[R, Error]:
     return ok(R(n: 1))
 
-fn f() Int:
-    with x = mk():
+def f() -> Int:
+    with mk() as x:
         return 1
     return 0

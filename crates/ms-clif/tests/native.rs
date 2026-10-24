@@ -271,17 +271,17 @@ b0:
     assert!(err.contains("at main t.ms:21"), "{err}");
 }
 
-/// Builds the real `ms-rt` static library once (in its own target directory).
+/// Builds the real runtime static library (`ms-native`) once (in its own target directory).
 fn real_runtime() -> &'static PathBuf {
     static RT: OnceLock<PathBuf> = OnceLock::new();
     RT.get_or_init(|| {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let target = root.join("target").join("ms-rt-for-clif");
+        let target = root.join("target").join("ms-native-for-clif");
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
         let mut command = Command::new(cargo);
         command
             .current_dir(&root)
-            .args(["build", "--release", "-p", "ms-rt"]);
+            .args(["build", "--release", "-p", "ms-native"]);
         // The bundled Linux linker links musl, so the runtime is a musl build.
         let musl = format!("{}-unknown-linux-musl", std::env::consts::ARCH);
         if cfg!(target_os = "linux") {
@@ -303,8 +303,8 @@ fn real_runtime() -> &'static PathBuf {
             .arg("--target-dir")
             .arg(&target)
             .status()
-            .expect("cargo build ms-rt");
-        assert!(st.success(), "building ms-rt failed");
+            .expect("cargo build ms-native");
+        assert!(st.success(), "building ms-native failed");
         #[cfg(windows)]
         let release = target.join(&gnullvm).join("release");
         #[cfg(not(windows))]
@@ -313,11 +313,11 @@ fn real_runtime() -> &'static PathBuf {
         } else {
             target.join("release")
         };
-        let name = "libms_rt.a";
+        let name = "libms_native.a";
         // Parallel test processes share this target directory and each cargo
         // run briefly replaces the archive, so take a private copy to link.
         let built = release.join(name);
-        let copy = std::env::temp_dir().join(format!("ms-rt-{}-{name}", std::process::id()));
+        let copy = std::env::temp_dir().join(format!("ms-native-{}-{name}", std::process::id()));
         for _ in 0..100 {
             if std::fs::copy(&built, &copy).is_ok() {
                 return copy;

@@ -1,7 +1,7 @@
-fn escape() fn(value: Int) Unit:
+def escape() -> Callable[[Int], Unit]:
     var rows = [[1]]
     var first = rows[0]
     return first.append
 
-export fn main() Int:
+export def main() -> Int:
     return 0

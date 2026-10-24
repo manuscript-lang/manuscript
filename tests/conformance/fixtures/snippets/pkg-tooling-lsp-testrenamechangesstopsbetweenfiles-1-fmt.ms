@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/boundaries_test.go:56 TestRenameChangesStopsBetweenFiles
-fn first() Int: 1
+def first() -> Int: 1

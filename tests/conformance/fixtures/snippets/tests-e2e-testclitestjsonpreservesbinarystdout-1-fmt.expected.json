@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import stdout from \"@std/io.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\ntest \"bytes\":\n    let data = \"x\".to_bytes().with_value(index: 0, value: 255)\n    let _out = stdout().write_bytes(data: data)\n"
+    "fmt": "from \"@std/io.ms\" import stdout\nfrom \"@std/bytes.ms\" import Bytes\n\ntest \"bytes\":\n    let data = \"x\".to_bytes().with_value(index: 0, value: 255)\n    let _out = stdout().write_bytes(data: data)\n"
   }
 }

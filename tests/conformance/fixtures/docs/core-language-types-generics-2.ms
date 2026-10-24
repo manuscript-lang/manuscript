@@ -5,11 +5,11 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
-        return true
+    def equals(other: Equal) -> Bool:
+        return True
 
-fn accepts(value: Equal) Unit:
+def accepts(value: Equal) -> Unit:
     return
 
-fn use_view() Unit:
-    accepts(Equal(Key(1)))
+def use_view() -> Unit:
+    accepts(Key(1))

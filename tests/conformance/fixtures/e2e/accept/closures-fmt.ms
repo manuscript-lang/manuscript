@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,formatter,generics,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/closures.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn apply(value: Int, action: fn(value: Int) Int) Int:
+def apply(value: Int, action: Callable[[Int], Int]) -> Int:
     return action(value)
 
-fn countdown[T](value: T, count: Int) T:
+def countdown[T](value: T, count: Int) -> T:
     if count == 0:
         return value
 
@@ -16,10 +16,10 @@ test "closures borrow the variable and shadowing":
     var offset = 1
     offset = 10
 
-    let action = fn(value: Int):
+    let action = lambda (value: Int):
         return value + offset
 
-    if true:
+    if True:
         var offset = 20
         offset = 30
         try expect_equal(action(offset), 40)
@@ -28,8 +28,8 @@ test "closures borrow the variable and shadowing":
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
 
-    let factory = fn(value: Int) fn(value: Int) Int:
-        return fn(value):
+    let factory = lambda (value: Int) -> Callable[[Int], Int]:
+        return lambda value:
             return value + offset
     let nested = factory(value: 99)
     offset = 100

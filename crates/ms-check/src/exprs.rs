@@ -143,7 +143,11 @@ impl Checker {
                 && exp.id != "<invalid>"
                 && !compatible(&Some(actual.clone()), exp)
             {
-                if self.error_assignable(&actual, exp) {
+                if self.interface_assignable(&actual, exp) {
+                    i.error_source = Some(actual.clone());
+                    i.scoped_error = exp.is_std("Error") && self.error_needs_scope(&actual);
+                    i.ty = Some(exp.clone());
+                } else if self.error_assignable(&actual, exp) {
                     i.error_source = Some(actual.clone());
                     let mut cause = actual.clone();
                     if cause.is_std("Result") && cause.args.len() == 2 {
@@ -361,7 +365,7 @@ impl Checker {
             i.constructor = Some(constructor);
         } else {
             let msg = self.unknown_name(name);
-            self.res_error(e.pos, msg);
+            self.res_error_name(e.pos, name.len(), msg);
         }
         finish_info(i)
     }
@@ -418,7 +422,7 @@ impl Checker {
                 && self.sym(*nm).is_none()
             {
                 let msg = self.unknown_name(*nm);
-                self.res_error(left.pos, msg);
+                self.res_error_name(left.pos, nm.len(), msg);
                 i.ty = Some(invalid());
                 return i;
             }
@@ -869,7 +873,7 @@ impl Checker {
                 hint = int_float_mix_hint(&at, &bt);
             }
             if hint.is_empty() {
-                hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
+                hint = "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)".to_string();
             }
             self.type_error(
                 e.pos,

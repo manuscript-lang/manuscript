@@ -1,1 +1,1 @@
-error parse 2:11:32 "for uses 'in', not 'of'; write 'for item in items:'"
+error parse 1:8:7 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

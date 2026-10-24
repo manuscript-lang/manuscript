@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export let MAX_ITEMS = 100\nlet NAMES: List[String] = [\"Ada\", \"Grace\"]\nlet LIMIT = MAX_ITEMS * 2\n\nfn is_full(count: Int) Bool:\n    return count >= LIMIT\n"
+    "fmt": "export let MAX_ITEMS = 100\nlet NAMES: List[String] = [\"Ada\", \"Grace\"]\nlet LIMIT = MAX_ITEMS * 2\n\ndef is_full(count: Int) -> Bool:\n    return count >= LIMIT\n"
   }
 }

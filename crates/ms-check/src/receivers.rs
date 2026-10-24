@@ -1,107 +1,10 @@
 //! Native receiver operation identities.
 
 /// `(receiver, [(operation, native identity)])`.
-/// String operations whose result is an immutable view into the receiver: the checker treats the
-/// result as a borrow of the receiver's place, so keeping it past the receiver takes `.clone()`.
-pub const LENDING_NATIVES: &[&str] = &["string/trim", "string/trim_start", "string/trim_end"];
-
 pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
-    (
-        "IpAddress",
-        &[("text", "net/ip_text"), ("family", "net/ip_family")],
-    ),
-    ("Cidr", &[("text", "net/cidr_text")]),
-    ("DnsKind", &[("text", "net/dns_kind_text")]),
-    ("IpFamily", &[("text", "net/ip_family_text")]),
     (
         "NormalizationForm",
         &[("normalize", "string/form_normalize")],
-    ),
-    (
-        "HashAlgorithm",
-        &[
-            ("digest", "crypto/hash_algorithm_digest"),
-            ("hmac", "crypto/hash_algorithm_hmac"),
-            ("hasher", "crypto/hash_algorithm_hasher"),
-            ("hmac_hasher", "crypto/hash_algorithm_hmac_hasher"),
-        ],
-    ),
-    (
-        "CompressionFormat",
-        &[
-            ("compress", "archive/format_compress"),
-            ("decompress", "archive/format_decompress"),
-            ("compress_stream", "archive/format_compress_stream"),
-            ("decompress_stream", "archive/format_decompress_stream"),
-        ],
-    ),
-    (
-        "ArchiveFormat",
-        &[
-            ("pack", "archive/format_pack"),
-            ("unpack", "archive/format_unpack"),
-        ],
-    ),
-    (
-        "Decimal",
-        &[
-            ("round", "decimal/round"),
-            ("to_fixed", "decimal/to_fixed"),
-            ("compare", "decimal/compare"),
-        ],
-    ),
-    (
-        "HttpHeaders",
-        &[
-            ("append", "http/headers_append"),
-            ("values", "http/headers_values"),
-            ("text", "http/headers_text"),
-            ("names", "http/headers_names"),
-            ("clone", "http/headers_clone"),
-            ("remove", "http/headers_remove"),
-        ],
-    ),
-    (
-        "ClientResponse",
-        &[("metadata", "http/client_response_metadata")],
-    ),
-    ("HttpMethod", &[("text", "http/method_text")]),
-    (
-        "Duration",
-        &[
-            ("add", "time/duration_add"),
-            ("subtract", "time/duration_subtract"),
-            ("multiply", "time/duration_multiply"),
-            ("divide", "time/duration_divide"),
-            ("negate", "time/duration_negate"),
-            ("abs", "time/duration_abs"),
-            ("compare", "time/duration_compare"),
-            ("to_nanoseconds", "time/duration_nanoseconds"),
-            ("to_microseconds", "time/duration_microseconds"),
-            ("to_milliseconds", "time/duration_milliseconds"),
-            ("to_seconds", "time/duration_seconds"),
-            ("to_minutes", "time/duration_minutes"),
-            ("to_hours", "time/duration_hours"),
-        ],
-    ),
-    (
-        "Instant",
-        &[
-            ("shift", "time/instant_shift"),
-            ("difference", "time/instant_difference"),
-            ("compare", "time/instant_compare"),
-        ],
-    ),
-    (
-        "Timestamp",
-        &[
-            ("to_string", "time/format_timestamp"),
-            ("unix_seconds", "time/unix_seconds"),
-            ("nanoseconds", "time/nanoseconds"),
-            ("shift", "time/shift"),
-            ("difference", "time/difference"),
-            ("compare", "time/timestamp_compare"),
-        ],
     ),
     (
         "Optional",
@@ -300,22 +203,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("is_nan", "math/is_nan"),
             ("is_finite", "math/is_finite"),
             ("compare", "math/compare_float"),
-        ],
-    ),
-    (
-        "BigInt",
-        &[
-            ("add", "math/add"),
-            ("subtract", "math/subtract"),
-            ("multiply", "math/multiply"),
-            ("divide", "math/divide"),
-            ("remainder", "math/remainder"),
-            ("compare", "math/compare"),
-            ("bit_and", "math/bit_and"),
-            ("bit_or", "math/bit_or"),
-            ("bit_xor", "math/bit_xor"),
-            ("to_int", "math/to_int"),
-            ("to_string_radix", "math/format"),
         ],
     ),
     (

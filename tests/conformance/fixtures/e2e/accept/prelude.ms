@@ -1,22 +1,22 @@
 # conform: tags=closures,control-flow,faults,interfaces,match,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/prelude.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
 
 type Failure:
     message_text: String
 
 impl Error for Failure:
-    fn message() String:
+    def message() -> ref String:
         return self.message_text
 
-fn success() Result[Optional[Int], Error]:
+def success() -> Result[Optional[Int], Error]:
     return ok(some(7))
 
-fn failure() Result[Int, Failure]:
+def failure() -> Result[Int, Failure]:
     return error(Failure("failed"))
 
-fn propagated() Result[Int, Error]:
+def propagated() -> Result[Int, Error]:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
@@ -29,7 +29,7 @@ test "prelude cases and optional methods need no imports":
         (
             absent.get(9) != 9
             or absent.or_else(
-                fn() Optional[Int]: return some(11)
+                lambda () -> Optional[Int]: return some(11)
             ).get() != 11
         )
     )
@@ -45,6 +45,6 @@ test "prelude Error preserves concrete failures through try":
     try expect_equal(cause.message(), "failed")
 
     match cause:
-        Failure(value):
+        case Failure(value):
             try expect_equal(value.message_text, "failed")
-        _: return fail("concrete error lost")
+        case _: return fail("concrete error lost")

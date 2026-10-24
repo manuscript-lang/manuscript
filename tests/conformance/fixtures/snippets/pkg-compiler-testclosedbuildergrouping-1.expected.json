@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...)', or import it from a module",
+        "message": "unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testclosedbuildergrouping-1.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testclosedbuildergrouping-1.ms:4:13: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testclosedbuildergrouping-1.ms:4:13: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

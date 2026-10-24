@@ -88,6 +88,10 @@ Apply when: adding lowered operations, inlining, source fault traces, or call fa
 Evidence: [expected failures](../tests/conformance/expect-fail.txt), [call depth fixture](../tests/e2e/testdata/accept/call-depth.ms), [fault and frame docs](../documentation/contributing/compiler/lowering/cleanup-and-faults.md).
 Verify: `make conform` fault-location cases; preserve frame order, line numbers, and names.
 
+Verified: the runaway-recursion corpus count reflects a one-million raw-frame traversal budget, not a call-depth limit. Recursion is admitted by stack size. Windows must count native callers after the same `fault_vec` anchor before spending the remaining budget on generated frames; removing its old 256-frame cap without preserving that shared budget produces a different repeat count. Never manufacture a source-frame count by subtracting guessed native overhead.
+Evidence: [frame walkers and budget regressions](../crates/ms-rt/src/fault.rs), [Windows native unwind anchor](../crates/ms-rt/src/sys_windows.rs), [stack-size contract](../documentation/core-language/errors/faults.md).
+Verify: native Windows shallow fault traces and the exact runaway-recursion corpus fixture; host synthetic-chain tests and cross-compilation alone cannot prove native unwind-entry identity.
+
 Verified: LLVM translation must preserve cold-edge hints and identify runtime fault calls as `cold noreturn` while keeping their distinct source sites. Ordinary calls also need `nomerge`: merging equivalent calls from separate source paths can make a native fault name the other path's test or statement. Use exact runtime identities rather than a symbol prefix for semantic attributes: user function names can share a prefix. LLVM fault-frame tests must check bundled LLVM availability, not an unrelated clang installation.
 Evidence: [LLVM translation and six-target object tests](../crates/ms-clif/src/llvm_ir.rs), [actual backend frame comparison](../crates/ms-cli/tests/llvm.rs), [runtime fault definitions](../crates/ms-rt/src/fault.rs).
 Verify: generate and verify ELF, Mach-O and COFF for x86-64 and ARM64; run LLVM/Cranelift fault-frame equality on supported native hosts. Cross-target object generation establishes code generation, not native execution or runtime ABI correctness on another operating system.
@@ -113,6 +117,10 @@ Verified (Go-era probes, still the cases to re-run): walking the type dependency
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies, many matches, deeply nested literals), time `ms check` and `ms build` separately, and profile any step that grows faster than 2x per doubling. Prefer a global memo or index over a per-query rescan, and keep cycle checks ahead of memo hits.
+
+Verified: collecting all caller constants at every inline candidate repeatedly scans a growing function. Index the caller once and extend the index with the appended callee blocks; the continuation contains old instructions and must not be scanned again. Keep the constant-argument bonus, growth budget and inlining decisions unchanged.
+Evidence: [inliner](../crates/ms-mir/src/opt/inline.rs), [constant-bonus regression](../crates/ms-mir/tests/opt_inline.rs).
+Verify: compare optimized MIR and native binaries before/after on real programs, and measure the entire build as well as the inline pass at N/2N/4N. A compiler-only improvement does not imply faster generated programs.
 
 Verified: repeatedly recomputing use counts and scanning a function to delete the last unused instruction makes dead-expression chains quadratic. Decrement operand use counts as dead users are removed, and visit newly dead definitions with a worklist. Preserve faulting instructions and owned results as roots.
 Evidence: [dead-code elimination](../crates/ms-mir/src/opt/simplify.rs), [dead-graph and unused-check regressions](../crates/ms-mir/tests/opt_simplify.rs).

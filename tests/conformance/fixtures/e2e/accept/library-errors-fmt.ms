@@ -1,43 +1,43 @@
 # conform: tags=aliasing,alternatives,control-flow,formatter,generics,interfaces,interpolation,lists,match,modules,parser,records,stdlib-encoding,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library-errors.ms
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import {parse, JsonError, JsonLimits} from "@std/json.ms"
-import {EncodingError, hex_decode} from "@std/encoding.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/json.ms" import parse, JsonError, JsonLimits
+from "@std/encoding.ms" import EncodingError, hex_decode
 
 type ApplicationError:
     case Json(cause: JsonError)
     case Encoding(cause: EncodingError)
 
 impl Error for ApplicationError:
-    fn message() String: "ApplicationError"
+    def message() -> String: "ApplicationError"
 
-fn encoding_error(cause: EncodingError) ApplicationError:
+def encoding_error(cause: EncodingError) -> ApplicationError:
     return Encoding(cause)
 
-fn decode_bad_input() Result[Unit, ApplicationError]:
+def decode_bad_input() -> Result[Unit, ApplicationError]:
     match hex_decode(text: "zz", max_bytes: 10):
-        ok(_):
-            return ok(unit)
-        error(cause):
+        case ok(_):
+            return ok(())
+        case error(cause):
             return error(encoding_error(cause))
 
-fn json_error_code(cause: JsonError) Int:
+def json_error_code(cause: JsonError) -> Int:
     match cause:
-        InvalidInput:
+        case InvalidInput:
             return 1
-        InvalidData:
+        case InvalidData:
             return 2
-        LimitExceeded:
+        case LimitExceeded:
             return 3
 
 test "JSON errors need only JSON cases":
     let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
 
     match parse(text: "[", limits: limits):
-        ok(_):
+        case ok(_):
             return fail(message: "malformed JSON succeeded")
-        error(cause):
+        case error(cause):
             try expect_equal(json_error_code(cause), 2)
 
 test "explicit error mapping preserves the cause":
@@ -47,63 +47,63 @@ test "explicit error mapping preserves the cause":
     decode_bad_input() | try expect_equal(expected)
 
 # Error is an ordinary operation contract. Custom errors use ordinary impl blocks.
-import IoError from "@std/io.ms"
+from "@std/io.ms" import IoError
 
 type CustomError:
     detail: String
 
 impl Error for CustomError:
-    fn message() String:
+    def message() -> ref String:
         return self.detail
 
 type TaggedError[T]:
     detail: T
 
 impl Error for TaggedError[T]:
-    fn message() String:
+    def message() -> String:
         return "tagged failure"
 
-fn decode_generically() Result[Unit, Error]:
+def decode_generically() -> Result[Unit, Error]:
     let bytes = try hex_decode(text: "zz", max_bytes: 10)
-    return ok(unit)
+    return ok(())
 
-fn propagate_generic() Result[Unit, Error]:
+def propagate_generic() -> Result[Unit, Error]:
     let completed = try decode_generically()
-    return ok(unit)
+    return ok(())
 
-fn describe_error(cause: Error) String:
+def describe_error(cause: Error) -> ref String:
     match cause:
-        JsonError(json): return describe_json_error(json)
-        IoError(io): return describe_io_error(io)
-        _:
+        case JsonError(json): return describe_json_error(json)
+        case IoError(io): return describe_io_error(io)
+        case _:
             return cause.message()
 
-fn describe_json_error(cause: JsonError) String:
+def describe_json_error(cause: JsonError) -> String:
     match cause:
-        InvalidInput: return "bad JSON limits"
-        InvalidData: return "malformed JSON"
-        LimitExceeded: return "JSON bound exceeded"
+        case InvalidInput: return "bad JSON limits"
+        case InvalidData: return "malformed JSON"
+        case LimitExceeded: return "JSON bound exceeded"
 
-fn describe_io_error(cause: IoError) String:
+def describe_io_error(cause: IoError) -> String:
     match cause:
-        Failed(message): return "I/O: {message}"
-        _: return cause.message()
+        case Failed(message): return f"I/O: {message}"
+        case _: return cause.message()
 
-fn tagged_detail(cause: Error) String:
+def tagged_detail(cause: Error) -> ref String:
     match cause:
-        TaggedError[Int](item):
-            return "integer {item.detail}"
-        TaggedError[String](item):
+        case TaggedError[Int](item):
+            return f"integer {item.detail}"
+        case TaggedError[String](item):
             return item.detail
-        _:
+        case _:
             return cause.message()
 
-fn generic_type_pattern[T](cause: Error, expected: T) Bool:
+def generic_type_pattern[T](cause: Error, expected: T) -> Bool:
     match cause:
-        TaggedError[T](_):
-            return true
-        _:
-            return false
+        case TaggedError[T](_):
+            return True
+        case _:
+            return False
 
 test "generic handling preserves the concrete error and its payload":
     let json = Error(JsonError.InvalidData)
@@ -119,14 +119,14 @@ test "generic handling preserves the concrete error and its payload":
     describe_error(wrapped) | try expect_equal("malformed JSON")
 
     let cause = match propagate_generic():
-        ok(_):
+        case ok(_):
             return fail(message: "invalid data succeeded")
-        error(cause): cause
+        case error(cause): cause
 
     match cause:
-        EncodingError(encoding):
+        case EncodingError(encoding):
             try expect_equal(encoding, EncodingError.InvalidData)
-        _:
+        case _:
             return fail(message: "generic propagation lost concrete type")
 
 test "type patterns compare exact generic applications":
@@ -147,9 +147,9 @@ test "Error views can be stored and matched":
     let cause = errors[0]
 
     match cause:
-        CustomError(custom):
+        case CustomError(custom):
             try expect_equal(custom.detail, "shared diagnostic")
-        _:
+        case _:
             return fail(message: "shared view lost type")
 
 type ReadError:
@@ -159,26 +159,26 @@ type ReadError:
     retryable: Bool
 
 impl Error for ReadError:
-    fn message() String:
+    def message() -> ref String:
         return self.diagnostic
 
-fn failed_read() Result[Unit, ReadError]:
+def failed_read() -> Result[Unit, ReadError]:
     return error(
         ReadError(
             diagnostic: "read failed", path: "settings.json", attempt: 2,
-            retryable: true
+            retryable: True
         )
     )
 
-fn propagate_read() Result[Unit, ReadError]:
+def propagate_read() -> Result[Unit, ReadError]:
     let completed = try failed_read()
-    return ok(unit)
+    return ok(())
 
 test "domain error fields survive propagation without a wrapper":
     let cause = match propagate_read():
-        ok(_):
+        case ok(_):
             return fail(message: "failed read succeeded")
-        error(cause): cause
+        case error(cause): cause
 
     (cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable) | try expect_false
 
@@ -188,7 +188,7 @@ test "domain error fields survive propagation without a wrapper":
     let generic: Error = cause
 
     match generic:
-        ReadError(read):
+        case ReadError(read):
             (
                 (
                     (
@@ -198,32 +198,32 @@ test "domain error fields survive propagation without a wrapper":
                     )
                 ) | try expect_false
             )
-        _:
+        case _:
             return fail(message: "generic boundary lost concrete error")
 
-fn read_failure(cause: ReadError) Result[Unit, ReadError]:
+def read_failure(cause: ReadError) -> Result[Unit, ReadError]:
     return error(cause)
 
-fn general_read(cause: ReadError) Result[Unit, Error]:
+def general_read(cause: ReadError) -> Result[Unit, Error]:
     let completed = try read_failure(cause)
-    return ok(unit)
+    return ok(())
 
-fn forward_read(cause: ReadError) Result[Unit, Error]:
+def forward_read(cause: ReadError) -> Result[Unit, Error]:
     return read_failure(cause)
 
-fn generic_failure[E: Error](cause: E) Result[Unit, E]:
+def generic_failure[E: Error](cause: E) -> Result[Unit, E]:
     return error(cause)
 
-fn generic_propagation[E: Error](cause: E) Result[Unit, Error]:
+def generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
     let completed = try generic_failure(cause)
-    return ok(unit)
+    return ok(())
 
-fn describe_direct(cause: Error) String:
+def describe_direct(cause: Error) -> ref String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
     let original = ReadError(
-        diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: true
+        diagnostic: "read failed", path: "settings.json", attempt: 3, retryable: True
     )
     let shared: Error = Error(original.clone())
     (
@@ -239,12 +239,12 @@ test "specific errors pass directly into Error boundaries":
 
     for result in results:
         let cause = match result:
-            ok(_):
+            case ok(_):
                 return fail(message: "failed read succeeded")
-            error(cause): cause
+            case error(cause): cause
 
         match cause:
-            ReadError(read):
+            case ReadError(read):
                 (
                     (
                         read.path != "settings.json"
@@ -252,47 +252,47 @@ test "specific errors pass directly into Error boundaries":
                         or not read.retryable
                     )
                 ) | try expect_false
-            _:
+            case _:
                 return fail(message: "Error boundary lost original type")
 
     match shared:
-        ReadError(read):
+        case ReadError(read):
             read.path | try expect_equal("settings.json")
-        _:
+        case _:
             return fail(message: "shared Error lost concrete type")
 
     original.path | try expect_equal("settings.json")
 
-fn read_success() Result[Int, ReadError]:
+def read_success() -> Result[Int, ReadError]:
     return ok(7)
 
-fn general_read_success() Result[Int, Error]:
+def general_read_success() -> Result[Int, Error]:
     return read_success()
 
 test "Error Result forwarding preserves successful payloads":
     match general_read_success():
-        ok(value):
+        case ok(value):
             try expect_equal(value, 7)
-        error(_):
+        case error(_):
             return fail(message: "Error Result turned success into failure")
 
 type ValidationError:
     case InvalidField(field: String, expected: Int, actual: Int)
 
 impl Error for ValidationError:
-    fn message() String: "ValidationError"
+    def message() -> String: "ValidationError"
 
-fn invalid_field() Result[Unit, ValidationError]:
+def invalid_field() -> Result[Unit, ValidationError]:
     return error(InvalidField(field: "attempt", expected: 1, actual: 0))
 
 test "domain case payloads need no Error implementation":
     let cause = match invalid_field():
-        ok(_):
+        case ok(_):
             return fail(message: "invalid field succeeded")
-        error(cause): cause
+        case error(cause): cause
 
     match cause:
-        InvalidField(field, expected, actual):
+        case InvalidField(field, expected, actual):
             ((field != "attempt" or expected != 1 or actual != 0) | try expect_false)
 
 test "standard error diagnostics work directly":
@@ -301,9 +301,9 @@ test "standard error diagnostics work directly":
     (cause.message() != "read failed" or message() != "read failed") | try expect_false
     JsonError.InvalidData.message() | try expect_equal("JSON: invalid data")
 
-import FileSystemError from "@std/fs.ms"
-import {LogError} from "@std/log.ms"
-import {CommandError} from "@std/process.ms"
+from "@std/fs.ms" import FileSystemError
+from "@std/log.ms" import LogError
+from "@std/process.ms" import CommandError
 
 test "standard diagnostics preserve messages and wrapped causes":
     let sink = LogError.Io(IoError.Failed("sink diagnostic"))
@@ -321,26 +321,26 @@ test "standard diagnostics preserve messages and wrapped causes":
 
 # The type-pattern rule also works for unrelated operation contracts.
 interface Label[T]:
-    fn label() T
+    def label() -> ref T
 
 type Labelled[T]:
     value: T
 
 impl Label[String] for Labelled[String]:
-    fn label() String:
+    def label() -> ref String:
         return self.value
 
-fn match_label(view: Label[String]) String:
+def match_label(view: Label[String]) -> ref String:
     match view:
-        Labelled[String](receiver):
+        case Labelled[String](receiver):
             return receiver.value
-        _:
+        case _:
             return view.label()
 
 type Count:
     value: Int
 
-fn counted_view(var count: Count) Label[String]:
+def counted_view(var count: Count) -> Label[String]:
     count.value = count.value + 1
     return Label[String](Labelled("label diagnostic"))
 
@@ -348,9 +348,9 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     var count = Count(value: 0)
 
     match counted_view(var count):
-        Labelled[String](receiver):
+        case Labelled[String](receiver):
             try expect_equal(receiver.value, "label diagnostic")
-        _:
+        case _:
             return fail(message: "unrelated contract pattern did not run")
 
     count.value | try expect_equal(1)
@@ -358,20 +358,20 @@ test "contract matches evaluate once and preserve ordinary contract semantics":
     let view = Label[String](Labelled("separate handler"))
     match_label(view) | try expect_equal("separate handler")
 
-import filesystem from "@std/fs.ms"
+from "@std/fs.ms" import filesystem
 
-fn check_missing_file() Result[Unit, Error]:
+def check_missing_file() -> Result[Unit, Error]:
     let fs = filesystem()
     let directory = try fs.temporary_directory("manuscript-errors-")
-    let missing = "{directory}/missing-secret-token"
+    let missing = f"{directory}/missing-secret-token"
 
     let cause = match fs.read_file(path: missing):
-        ok(_):
+        case ok(_):
             return fail(message: "missing file read succeeded")
-        error(cause): cause
+        case error(cause): cause
 
     match cause:
-        NotFound:
+        case NotFound:
             let diagnostic = cause.message
             let shared: Error = cause
             (
@@ -382,21 +382,21 @@ fn check_missing_file() Result[Unit, Error]:
                     )
                 ) | try expect_false
             )
-        _:
+        case _:
             return fail(message: "missing file changed error case")
 
-    match fs.stat(path: missing, follow_links: true):
-        ok(_):
+    match fs.stat(path: missing, follow_links: True):
+        case ok(_):
             return fail(message: "missing file stat succeeded")
-        error(cause):
+        case error(cause):
             try expect_equal(cause.message(), "filesystem: file or directory not found")
 
-    let removed = try fs.remove(path: directory, recursive: false)
-    return ok(unit)
+    let removed = try fs.remove(path: directory, recursive: False)
+    return ok(())
 
 test "missing file diagnostics preserve the filesystem case":
     match check_missing_file():
-        ok(_):
-            return unit
-        error(cause):
+        case ok(_):
+            return ()
+        case error(cause):
             return fail(message: cause.message())

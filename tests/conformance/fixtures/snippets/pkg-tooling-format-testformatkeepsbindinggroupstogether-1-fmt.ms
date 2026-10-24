@@ -1,18 +1,18 @@
 # conform: tags=closures,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_group_test.go:6 TestFormatKeepsBindingGroupsTogether
-fn helper() Int: 1
+def helper() -> Int: 1
 
 let (
     A = 1
     B: Int = A + 1
 )
 
-fn main() Unit:
+def main() -> Unit:
     let x = 1
     var (
         a = 10
-        b = fn(x: Int) Int:
+        b = lambda (x: Int) -> Int:
             return x + 1
     )
     let (

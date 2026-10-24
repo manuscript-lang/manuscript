@@ -9,19 +9,34 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type SetBuilder; add: import SetBuilder from \"@std/collections.ms\"",
+        "message": "unknown type SetBuilder; add: from \"@std/collections.ms\" import SetBuilder",
         "position": {
           "file": "pkg-checker-testknownstandardtypeimporthint-1.ms",
           "line": 4,
-          "column": 17,
-          "offset": 166
+          "column": 18,
+          "offset": 167
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testknownstandardtypeimporthint-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testknownstandardtypeimporthint-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/collections.ms\" import SetBuilder\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testknownstandardtypeimporthint-1.ms:4:17: resolution: unknown type SetBuilder; add: import SetBuilder from \"@std/collections.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testknownstandardtypeimporthint-1.ms:4:18: resolution: unknown type SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

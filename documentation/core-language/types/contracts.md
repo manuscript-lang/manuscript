@@ -9,35 +9,35 @@ An interface is an operation contract: implementations must supply the declared 
 
 ```manuscript
 interface Payments:
-    fn charge(amount: Money) Result[Receipt, PaymentError]
+    def charge(amount: Money) -> Result[Receipt, PaymentError]
 ```
 
 ## Explicit implementations
 
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `def reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
 
 `impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. Source methods cannot declare their own type parameters yet; use a generic function taking the receiver.
 
 ```manuscript
 interface Increment:
-    fn apply(value: Int) Int
+    def apply(value: Int) -> Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) Int:
+    def apply(value: Int) -> Int:
         return value + self.delta
 ```
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. Operations and methods declare no generic parameters of their own.
+After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var def` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. Operations and methods declare no generic parameters of their own.
 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
-    fn apply(amount: Int) Int:
+    def apply(amount: Int) -> Int:
         return amount + self.delta
 ```
 
@@ -53,20 +53,20 @@ export type Offset:
 Another module can add its own implementation:
 
 ```text
-import Offset from "./offset.ms"
+from "./offset.ms" import Offset
 
 export interface Double:
-    fn doubled() Int
+    def doubled() -> Int
 
 impl Double for Offset:
-    fn doubled() Int:
+    def doubled() -> Int:
         return self.delta * 2
 
-export fn double_view(value: Offset) Double:
-    return Double(value: value)
+export def double_view(value: Offset) -> Double:
+    return value
 ```
 
-Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `Double` elsewhere does not add `doubled` to raw `Offset` values. `double_view(Offset(delta: 3)).doubled()` works anywhere because the view retains the implementation.
+Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `Double` elsewhere does not add `doubled` to raw `Offset` values. `double_view(Offset(delta: 3)).doubled()` works anywhere because the returned interface value retains the implementation.
 
 - Each module sees the defining module's implementations plus its own extensions. Duplicate or overlapping receiver/contract pairs in that set are rejected, including replacing a defining-module implementation.
 - Separate modules may define the same local pair; extensions never propagate through imports.
@@ -75,7 +75,7 @@ Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `D
 - Receivers must be source-defined nominal records or alternatives. Standard-library receivers, interfaces, bare type parameters, specialization, generic operations, and implementation inheritance are unsupported.
 - Contracts may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
 - Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](records.md#public-data-surfaces).
-- Same-named operations from different interfaces need an explicit view.
+- Same-named operations from different interfaces need an [interface-typed binding](#selecting-an-operation).
 
 ## Generic implementations
 
@@ -83,13 +83,13 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    fn get() T
+    def get() -> ref T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() T:
+    def get() -> ref T:
         return self.value
 ```
 
@@ -99,10 +99,10 @@ Interface parameter bounds can restrict an implementation without restricting th
 
 ```manuscript
 interface SameValue[T: Equal]:
-    fn same(other: T) Bool
+    def same(other: T) -> Bool
 
 impl SameValue[T] for Box[T]:
-    fn same(other: T) Bool:
+    def same(other: T) -> Bool:
         return self.value == other
 ```
 
@@ -113,40 +113,40 @@ Two blocks overlap if their receiver and contract applications can match the sam
 ```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
-    fn get() Int:
+    def get() -> Int:
         return self.value
 ```
 
-`ReadValue[Int]` and `ReadValue[String]` on one receiver are distinct pairs but share `get`, so dispatch needs an explicit view. Specialization follows the [finite-application rules](generics.md#finite-recursive-applications).
+`ReadValue[Int]` and `ReadValue[String]` on one receiver are distinct pairs but share `get`, so dispatch needs an interface-typed binding. Specialization follows the [finite-application rules](generics.md#finite-recursive-applications).
 
-## Explicit contract views
+## Interface conversion
 
-Create a view with `Contract(value: concrete)`, or `Contract[T](value: concrete)` for a generic contract. The concrete type needs a declared implementation whose bounds hold. The standard `Error` boundary accepts implementing errors directly ([error compatibility](../errors/propagation.md#error-compatibility)).
+A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `let` with a type annotation, record fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
-A view keeps the same receiver reference: no copy, no lifetime extension, no added lock.
+The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. The interface value owns a copy when the operand is borrowed.
 
 ```manuscript
-fn use_increment(operation: Increment) Int:
+def use_increment(operation: Increment) -> Int:
     return operation.apply(1)
 
 let offset = Offset(2)
-let view = Increment(offset)
-let result = use_increment(view)
-# Rejected: conversion is not implicit at a call boundary.
-let wrong = use_increment(offset)
+let result = use_increment(offset)
+let again = offset.value
+let kept: Increment = offset.clone()
 ```
 
-The constructor accepts an implementing value or an existing view of the exact same application (identity). Other contracts and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check. Generic arguments are written explicitly or come from an expected application.
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`let view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
-A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise select a view: `Increment(value: offset).apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
+A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `let view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
-fn invoke[T: Increment](operation: T) Int:
-    return Increment(operation).apply(1)
+def invoke[T: Increment](operation: T) -> Int:
+    let view: Increment = operation
+    return view.apply(1)
 
 let from_concrete = invoke(offset)
 let from_view = invoke(view)

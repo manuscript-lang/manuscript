@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-testdefaulttypeargumentrules-2.ms",
           "line": 4,
-          "column": 15,
-          "offset": 168
+          "column": 16,
+          "offset": 169
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaulttypeargumentrules-2.ms:4:15: type: type parameter B needs a default because an earlier parameter has one; give B a default or move it before the defaulted parameters\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaulttypeargumentrules-2.ms:4:16: type: type parameter B needs a default because an earlier parameter has one; give B a default or move it before the defaulted parameters\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

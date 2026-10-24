@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "sse-http.ms::HTTP response bodies decode as SSE without being closed by the reader",
+          "name": "sse-http.ms::HTTP response bodies decode as SSE and close with the reader",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN sse-http.ms::HTTP response bodies decode as SSE without being closed by the reader\nPASS sse-http.ms::HTTP response bodies decode as SSE without being closed by the reader\n1 tests, 0 failed\n",
+      "stdout": "RUN sse-http.ms::HTTP response bodies decode as SSE and close with the reader\nPASS sse-http.ms::HTTP response bodies decode as SSE and close with the reader\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

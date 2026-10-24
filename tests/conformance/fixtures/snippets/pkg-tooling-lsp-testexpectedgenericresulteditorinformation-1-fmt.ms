@@ -1,10 +1,10 @@
 # conform: tags=closures,formatter,generics,optional,parser,strings,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/contextual_generics_test.go:10 TestExpectedGenericResultEditorInformation
-fn absent[T]() Optional[T]: none
+def absent[T]() -> Optional[T]: none
 
-fn transform[T, U](callback: fn(value: T) U) fn(value: T) U: callback
+def transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback
 
-fn answer() Unit:
+def answer() -> Unit:
     let empty: Optional[Int] = absent()
-    let callback: fn(value: Int) String = transform(fn(item): item.to_string())
+    let callback: Callable[[Int], String] = transform(lambda item: item.to_string())

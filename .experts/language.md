@@ -2,13 +2,17 @@
 
 Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](compiler.md) and [ownership notes](../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
+### Implementing types convert to their interface implicitly
+
+Decision (Chinmay, reversing the explicit-view rule): a type with a declared `impl I for T` passes wherever `I` is expected; `Error` widening was already implicit and shares the path (`Info.error_source`). The conversion follows the position: a read-only argument borrows the operand, a stored position moves it at its last use; the interface value owns a copy when the operand is borrowed. Chinmay then removed interface construction: `I(value: x)` is rejected ("cannot be constructed"); annotate a `let` to select an interface. Generic inference still does not convert. Evidence: `crates/ms-check/tests/ownership/*/interface_conversion_*.ms`, `crates/ms-cli/tests/interface_conversion/`. Open: no interface-to-interface conversion.
+
 ### Standard and user code share one method syntax
 
 Decision: the user required that the standard library, as the reference, use only forms user code can write. Methods live in `impl` blocks, never in `type` bodies: `impl Type:` declares a type's own methods and `impl Interface for Type:` implements an interface; the presence of `for` fixes which name is the type, so no lookup is needed. Rejected spellings: `impl Type as/with/satisfies Interface`, a comma form, and a stdlib-only `native impl`. Method-level type parameters work only in bundled modules; source methods reject them, a known gap.
 
 Apply when: changing impl parsing, method declaration rules, stdlib receiver operations, or docs that show type declarations with methods.
 Evidence: [contract rules](../documentation/core-language/types/contracts.md#explicit-implementations), [parser](../crates/ms-syntax/src/parser.rs), [inherent method fixture](../tests/e2e/testdata/accept/inherent-methods.ms).
-Verify: `fn` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make conform` still binds every receiver operation.
+Verify: `def` in a `type` body is a parse error; `impl Type:` works across modules for exported types; `impl Interface:`, `impl Foreign:`, and generic methods give targeted errors; `make conform` still binds every receiver operation.
 
 ### An unsaved overlay cannot replace a dangling source symlink
 
@@ -122,7 +126,7 @@ Verify: replace a defaulted function with a required-argument function through a
 
 Decision (user, under reference semantics): ordinary record fields and collections are mutable. The user rejected immutable replacement APIs and instance freezing in favor of an explicit duplicate operation (`.clone()`). Preserve `let`/`var` binding rules independently of object mutation. Do not manufacture copies of sockets, files, locks, or other native service handles.
 
-Superseded in part: under value semantics `let` is deeply immutable, aliasing is gone, `.clone()` is deep and is being renamed `.copy()`, and resources are move-only and never copied. The statements that aliases observe mutation, that a clone's nested references stay shared, and that a cloned record may retain a handle reference no longer hold. Treat [ownership notes](../crates/ms-check/OWNERSHIP.md) as authoritative; fixtures tagged `aliasing` in the conformance corpus are excluded for this reason.
+Superseded in part: under value semantics `let` is deeply immutable, aliasing is gone, `.clone()` is deep (the `.copy()` rename was dropped; `Clonable` landed in #1134), and resources are move-only and never copied. The statements that aliases observe mutation, that a clone's nested references stay shared, and that a cloned record may retain a handle reference no longer hold. Treat [ownership notes](../crates/ms-check/OWNERSHIP.md) as authoritative; fixtures tagged `aliasing` in the conformance corpus are excluded for this reason.
 
 Apply when: changing fields, collection updates, copies, or equality.
 Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [mutation fixture](../tests/e2e/testdata/accept/mutation.ms); [ownership notes](../crates/ms-check/OWNERSHIP.md).
@@ -140,7 +144,7 @@ Verify: Optional methods and Result propagation into Error execute without impor
 
 ### Parameterless main and imported host accessors
 
-Decision: applications export `fn main() Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
+Decision: applications export `def main() -> Int` and import the standard services they use. The user explicitly deferred enforcement; the earlier exploration of `using`, scoped replacement, and manifest permissions is not an accepted implementation requirement. Ordinary service parameters remain available for helpers and source fakes.
 
 Apply when: changing entrypoints, host roots, standard imports, tests, or authority documentation.
 Evidence: [CLI contract](../stdlib/process.ms), [host accessors fixture](../tests/e2e/testdata/accept/host-accessors.ms).
@@ -148,7 +152,7 @@ Verify: a parameterless entry runs; parameterized entries fail; imported accesso
 
 ### Keep short bodies available without a second function kind
 
-Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `else if`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
+Decision: the user requested a terse language with single-line functions and conditions. Do not restore the earlier blanket requirement for indented function bodies. The user clarified that `else` must start on a separate line: allow one branch per line, and reject same-line `else` or `elif`. The latest correction permits a single expression after a function or method colon and implicitly returns it. Multiline bodies retain explicit returns. Other inline suites retain ordinary statement semantics; there is no separate callable kind.
 
 Apply when: changing suite parsing, anonymous-function layout, formatting, or syntax documentation.
 Evidence: [canonical suite rules](../documentation/core-language/basics/grammar.md#statements-and-patterns), [inline suite fixture](../tests/e2e/testdata/accept/inline-suites.ms).
@@ -227,9 +231,11 @@ Apply when: changing operator precedence, line layout, `try`, or call argument b
 Evidence: [pipe flows](../documentation/core-language/basics/expressions.md#pipe-flows), [parser](../crates/ms-syntax/src/parser.rs), and [pipe fixture](../tests/e2e/testdata/accept/pipe-flow.ms).
 Verify: `try parse(text) | double | try check | .to_string_radix(radix: 10)` runs; a continuation line at the wrong indentation is rejected.
 
-### Result types are written without `->`
+### Result types use `->` (Python-aligned surface)
 
-Decision: the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and fn types still require the result type (`fn f(x: Int) Int:`, `fn(value: Int) Int`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous. `ms fmt` reformats migrated files because shorter lines rewrap.
+Superseded: the Python-aligned grammar (see [the final delta](../documentation/core-language/basics/grammar.md)) restores `->` before result types, spells function types `Callable[[Int], Int]`, and makes parameter names in function types documentation only. The earlier decision follows for history.
+
+Decision (superseded): the user asked to drop `->` before result types to save tokens (about 1% of source tokens measured with cl100k over the stdlib, accept tests, and examples; colons and `name: Type` were left alone). Named functions, methods, interface operations, and function types still require the result type (`def f(x: Int) -> Int:`, `Callable[[Int], Int]`); lambdas may omit it and the parser reads a type after `)` as the result type and `:` as the body. `->` is a lexer token only so the parser can say to remove it. Call labels, map entries, and inline suites keep `:` because no separator would make `f(a [1])`, `a (b)`, and `a -1` unambiguous. `ms fmt` reformats migrated files because shorter lines rewrap.
 
 Decision: the same spelling applies to displayed types, including LSP hover. Keep the shared type formatter ([types](../crates/ms-check/src/types.rs)) consistent with source syntax; hover, completions, diagnostics, and API snapshots consume it. Consumers that parse displayed signatures must skip nested callback parameter lists before reading the outer result.
 
@@ -254,3 +260,40 @@ Decision: `let (` / `var (` declare several bindings of one kind, one entry per 
 Apply when: changing binding grammar, formatter layout of declarations, or destructuring.
 Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md), [binding groups fixture](../tests/e2e/testdata/accept/binding-groups.ms).
 Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
+
+### `ref` marks borrows; reference types stay out
+
+Decision: the reference-syntax spike recommended no marker (inference plus `Clonable` instead), and Chinmay overrode it: a result that lends part of a borrowed parameter is written `ref T`, and a binding that borrows a place is `let ref x = a.b` / `var ref x = xs[i]` (#1137, #1142). Loops and matches over a parameter borrow it unless a payload or loop variable is moved out (#1128). `ref` is not a type: it appears only in a declared result type or a binding, never in function types, fields, elements or type arguments, so there are no lifetimes to teach. The marker is staged: an unmarked lending function still lends by inference.
+
+Apply when: changing result types, bindings, interface operation agreement, or the ownership pass.
+Evidence: [ownership notes](../crates/ms-check/OWNERSHIP.md), [grammar](../documentation/core-language/basics/grammar.md).
+Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x` on an owned value, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
+
+### `Clonable` replaces ad hoc copying in generic code
+
+Decision: `Clonable` is a prelude interface whose `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data and functions qualify; interface views, regular expressions and resource handles do not. Deque, Queue and sorted collections are vetted against it.
+
+Apply when: writing generic stdlib code that stores or returns borrowed elements.
+Evidence: [generics](../documentation/core-language/types/generics.md), [declarations](../documentation/core-language/modules/declarations.md).
+Verify: a `[T: Clonable]` function can return `xs[0].clone()`; a resource handle fails the bound.
+
+### `extern def` binds native symbols; planned natives stay labeled
+
+Decision: `extern def name(...) -> T` declares a bodiless function whose symbol is its Manuscript name, linked with `--link` (#1136, #1138). It may be exported and may return `Result` with a payload-free error type; it cannot be generic, take defaults or `var` parameters, or be a method. Wrap an extern in an ordinary function to rename it. Planned and not shipped: `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` (#1133 marks them planned in the docs).
+
+Apply when: adding natives or user-facing FFI; do not document planned items as available.
+Evidence: [native functions](../documentation/core-language/functions/native-functions.md), [extern parity script](../scripts/extern-parity.py).
+Verify: `extern def labs(value: Int) -> Int` calls `labs`; a generic or method extern is rejected.
+
+### Methods before free functions
+
+Decision (Chinmay's preference): do not add "random" free functions to the standard library or examples; put the operation on the type it acts on. Free functions remain for operations with no natural receiver, and `|` flows compose them.
+
+Apply when: naming new stdlib API or reviewing examples.
+Verify: a new operation on a `String`, `List` or `Map` is a method, not a module function taking that value.
+
+### Interfaces convert implicitly; construction is removed
+
+Status: in flight (PR #1135, not yet on main as of this note). Decision: a value converts to an interface at a typed binding or argument (`let v: Shape = x`), and `Shape(value: x)` / `Shape(x)` fail with "cannot be constructed"; about 260 stdlib and fixture uses were migrated. Re-check the checker before relying on either spelling.
+
+Apply when: touching interface views, generic matching, or conversion diagnostics.

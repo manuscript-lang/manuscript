@@ -3,37 +3,237 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "list-equality-mutation.ms::element Equal mutating either List retains both captured headers",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 1,
-        "selected": 1,
-        "passed": 1,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN list-equality-mutation.ms::element Equal mutating either List retains both captured headers\nPASS list-equality-mutation.ms::element Equal mutating either List retains both captured headers\n1 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "this closure outlives the statement, so it takes `side` with it, but `side` is used again at 80:12; capture `side.clone()` to keep the original",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 30,
+            "column": 17,
+            "offset": 858
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "this closure outlives the statement, so it takes `mutation` with it, but `mutation` is used again at 66:8; capture `mutation.clone()` to keep the original",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 30,
+            "column": 17,
+            "offset": 858
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "this closure outlives the statement, so it takes `left` with it, but `left` is used again at 63:9; capture `left.clone()` to keep the original",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 30,
+            "column": 17,
+            "offset": 858
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "this closure outlives the statement, so it takes `right` with it, but `right` is used again at 64:9; capture `right.clone()` to keep the original",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 30,
+            "column": 17,
+            "offset": 858
+          }
+        },
+        {
+          "code": "MS3030",
+          "phase": "type",
+          "message": "this closure changes captured `calls`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `calls`",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 30,
+            "column": 17,
+            "offset": 858
+          }
+        },
+        {
+          "code": "MS3030",
+          "phase": "type",
+          "message": "cannot move `left` out: it only borrows its value (a variable captured by the closure); use `left.clone()` to get an owned copy",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 35,
+            "column": 22,
+            "offset": 974
+          },
+          "fix": {
+            "position": {
+              "file": "list-equality-mutation.ms",
+              "line": 35,
+              "column": 26,
+              "offset": 978
+            },
+            "end": {
+              "file": "list-equality-mutation.ms",
+              "line": 35,
+              "column": 26,
+              "offset": 978
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3030",
+          "phase": "type",
+          "message": "cannot move `right` out: it only borrows its value (a variable captured by the closure); use `right.clone()` to get an owned copy",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 37,
+            "column": 22,
+            "offset": 1028
+          },
+          "fix": {
+            "position": {
+              "file": "list-equality-mutation.ms",
+              "line": 37,
+              "column": 27,
+              "offset": 1033
+            },
+            "end": {
+              "file": "list-equality-mutation.ms",
+              "line": 37,
+              "column": 27,
+              "offset": 1033
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`visit` is moved here but used again at 64:34; a value has one owner, so pass `visit.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 63,
+            "column": 33,
+            "offset": 1772
+          },
+          "fix": {
+            "position": {
+              "file": "list-equality-mutation.ms",
+              "line": 63,
+              "column": 38,
+              "offset": 1777
+            },
+            "end": {
+              "file": "list-equality-mutation.ms",
+              "line": 63,
+              "column": 38,
+              "offset": 1777
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`visit` is moved here but used again at 67:34; a value has one owner, so pass `visit.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 64,
+            "column": 34,
+            "offset": 1813
+          },
+          "fix": {
+            "position": {
+              "file": "list-equality-mutation.ms",
+              "line": 64,
+              "column": 39,
+              "offset": 1818
+            },
+            "end": {
+              "file": "list-equality-mutation.ms",
+              "line": 64,
+              "column": 39,
+              "offset": 1818
+            },
+            "replacement": ".clone()"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "`side` is moved here but used again at 91:33; a value has one owner, so pass `side.clone()` to keep the original, or move it only at its last use",
+          "position": {
+            "file": "list-equality-mutation.ms",
+            "line": 91,
+            "column": 33,
+            "offset": 2665
+          },
+          "fix": {
+            "position": {
+              "file": "list-equality-mutation.ms",
+              "line": 91,
+              "column": 37,
+              "offset": 2669
+            },
+            "end": {
+              "file": "list-equality-mutation.ms",
+              "line": 91,
+              "column": 37,
+              "offset": 2669
+            },
+            "replacement": ".clone()"
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].fix",
+      "diagnostics[].fix.end",
+      "diagnostics[].fix.end.column",
+      "diagnostics[].fix.end.file",
+      "diagnostics[].fix.end.line",
+      "diagnostics[].fix.end.offset",
+      "diagnostics[].fix.position",
+      "diagnostics[].fix.position.column",
+      "diagnostics[].fix.position.file",
+      "diagnostics[].fix.position.line",
+      "diagnostics[].fix.position.offset",
+      "diagnostics[].fix.replacement",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -44,11 +244,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

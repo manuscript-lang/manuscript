@@ -342,8 +342,6 @@ pub(crate) enum Message {
     Text(&'static str),
     /// The case's first field.
     Payload,
-    /// The message of the case's first field, itself a standard error of this name.
-    Cause(&'static str),
 }
 
 impl Cx {
@@ -370,22 +368,6 @@ impl Cx {
         let key = format!("native.message:{name}");
         if let Some(f) = self.helpers.get(&key) {
             return Ok(*f);
-        }
-        // Wrapped causes are named first: the builder borrows the module.
-        let mut causes = Vec::new();
-        if let (Some(table), TyKind::Alt(a)) =
-            (crate::messages::table(name), m.types.kind(data_ty).clone())
-        {
-            for (i, c) in m.alts[a.index()].cases.clone().iter().enumerate() {
-                if let Some((_, Message::Cause(inner))) = table.iter().find(|(n, _)| *n == c.name) {
-                    let payload = c
-                        .fields
-                        .first()
-                        .map(|f| f.1)
-                        .ok_or_else(|| Error::new("cause without payload"))?;
-                    causes.push((i, self.message_fn(m, inner, payload)?));
-                }
-            }
         }
         let ps = vec![Param {
             ty: data_ty,
@@ -441,15 +423,6 @@ impl Cx {
                         Some((_, Message::Payload)) => {
                             let p = b.alt_get(a, i as u32, 0, recv);
                             copy(&mut b, p)
-                        }
-                        Some((_, Message::Cause(_))) => {
-                            let f = causes
-                                .iter()
-                                .find(|(k, _)| *k == i)
-                                .map(|(_, f)| *f)
-                                .ok_or_else(|| Error::new("cause message missing"))?;
-                            let p = b.alt_get(a, i as u32, 0, recv);
-                            b.call(f, &[p])
                         }
                         None => return Err(Error::new(format!("{n}.{} has no message", c.name))),
                     };

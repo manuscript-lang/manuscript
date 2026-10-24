@@ -1,9 +1,9 @@
 # conform: tags=control-flow,lists,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-08.ms
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn selected_sum(values: List[Int]) Int:
+def selected_sum(values: List[Int]) -> Int:
     var total = 0
 
     for value in values:

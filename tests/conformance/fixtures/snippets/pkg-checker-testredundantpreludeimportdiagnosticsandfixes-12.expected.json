@@ -13,27 +13,27 @@
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 9,
-          "offset": 205
+          "column": 35,
+          "offset": 231
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 13,
-          "offset": 209
+          "column": 39,
+          "offset": 235
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 9,
-            "offset": 205
+            "column": 35,
+            "offset": 231
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 15,
-            "offset": 211
+            "column": 41,
+            "offset": 237
           },
           "replacement": ""
         }
@@ -45,27 +45,27 @@
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 15,
-          "offset": 211
+          "column": 41,
+          "offset": 237
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 18,
-          "offset": 214
+          "column": 44,
+          "offset": 240
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 15,
-            "offset": 211
+            "column": 41,
+            "offset": 237
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 20,
-            "offset": 216
+            "column": 46,
+            "offset": 242
           },
           "replacement": ""
         }
@@ -77,27 +77,27 @@
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 20,
-          "offset": 216
+          "column": 46,
+          "offset": 242
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
           "line": 4,
-          "column": 23,
-          "offset": 219
+          "column": 49,
+          "offset": 245
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 18,
-            "offset": 214
+            "column": 44,
+            "offset": 240
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms",
             "line": 4,
-            "column": 23,
-            "offset": 219
+            "column": 49,
+            "offset": 245
           },
           "replacement": ""
         }
@@ -106,7 +106,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:9: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:15: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:20: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:41: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-12.ms:4:46: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,11 +1,11 @@
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import range from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/collections.ms" import range
 
-fn append_value[T](var values: List[T], value: T) List[T]:
+def append_value[T](var values: List[T], value: T) -> List[T]:
     values.append(value)
     return values.clone()
 
-fn forwarded[T](values: List[T]) List[T]:
+def forwarded[T](values: List[T]) -> List[T]:
     return values.clone()
 
 type Lists:
@@ -51,19 +51,19 @@ test "Float Bool and String preserve mutation traversal and width":
         )
     )
 
-    var booleans = [true, false, true]
+    var booleans = [True, False, True]
     booleans.remove(0)
-    booleans.prepend(false)
+    booleans.prepend(False)
 
     var strings = ["a", "b", "c"]
     strings.reverse_in_place()
     try expect_false(
-        not (booleans == [false, false, true] and strings == ["c", "b", "a"])
+        not (booleans == [False, False, True] and strings == ["c", "b", "a"])
     )
 
 test "stable sort and strict Result slice preserve separate storage":
     let values = [7, 1, 4, 8, 2, 5]
-    var sorted = values.sorted(fn(left, right): return left % 3 - right % 3)
+    var sorted = values.sorted(lambda left, right: return left % 3 - right % 3)
     sorted.set(0, 99)
     try expect_equal(values[0], 7)
 

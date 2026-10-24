@@ -1,25 +1,25 @@
 # conform: tags=control-flow,faults,generics,interpolation,lists,maps,match,modules,numbers,optional,stdlib-errors,stdlib-testing,stdlib-toml,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/toml.ms
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/testing.ms"
-import TextError from "@std/core.ms"
-import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/core.ms" import TextError
+from "@std/toml.ms" import parse, stringify, TomlValue, TomlError, TomlLimits
 
-fn entries(value: TomlValue) Result[Map[String, TomlValue], Error]:
+def entries(value: TomlValue) -> Result[Map[String, TomlValue], Error]:
     match value:
-        TableValue(values): return ok(values)
-        _: return error(TextError("expected TOML table"))
+        case TableValue(values): return ok(values)
+        case _: return error(TextError("expected TOML table"))
 
-fn items(value: TomlValue) Result[List[TomlValue], Error]:
+def items(value: TomlValue) -> Result[List[TomlValue], Error]:
     match value:
-        ArrayValue(values): return ok(values)
-        _: return error(TextError("expected TOML array"))
+        case ArrayValue(values): return ok(values)
+        case _: return error(TextError("expected TOML array"))
 
-fn limits(
+def limits(
     bytes: Optional[Int],
     depth: Optional[Int],
     values: Optional[Int]
-) Optional[TomlLimits]:
+) -> Optional[TomlLimits]:
     return some(TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values))
 
 test "TOML scalars quoted keys comments exact integers and dates":
@@ -47,7 +47,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
         try entries(
             (
                 parse(
-                    text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
+                    text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, {name = 'Ada', meta.age = 37},]\n"
                 ) | try expect_ok
             )
         )
@@ -108,23 +108,23 @@ test "TOML implicit parents dotted keys and arrays of tables":
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
     for text in [
-        "a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a=\{b=1\}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
-        "a=[,]", "a=\{b=1,\}", "a=\{b=1\nb=2\}", "a=01", "a=1_", "a=_1", "a=1__2",
-        "a=+0x1", "a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29",
-        "a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
-        "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
+        "a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a={b=1}\na.c=2", "a.b=1\n[a]", "a=[1 2]",
+        "a=[,]", "a={b=1,}", "a={b=1\nb=2}", "a=01", "a=1_", "a=_1", "a=1__2", "a=+0x1",
+        "a=1.", "a=.1", "a=1e", "a=9223372036854775808", "a=2023-02-29", "a=24:00:00",
+        "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false", "a=1\rb=2",
+        "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
         let cause = match parse(text: text):
-            ok(_): return fail("invalid TOML accepted: {text}")
-            error(cause): cause
+            case ok(_): return fail(f"invalid TOML accepted: {text}")
+            case error(cause): cause
 
         match cause:
-            InvalidData(line, column, reason):
+            case InvalidData(line, column, reason):
                 (line < 1 or column < 1 or reason == "") | try expect_false
 
-                let boundary = Error(cause)
+                let boundary: Error = cause
                 ((boundary.message().starts_with("TOML ")) | try expect_true)
-            _: return fail("wrong TOML error")
+            case _: return fail("wrong TOML error")
 
 test "TOML optional limits include implicit tables and zero":
     let limited: Result[TomlValue, TomlError] = error(TomlError.LimitExceeded)
@@ -187,34 +187,34 @@ test "TOML nonfinite floats CRLF and repeated separators":
     )
 
     match root.get("positive").get():
-        FloatValue(number):
+        case FloatValue(number):
             ((number.is_finite() or number < 0.0) | try expect_false)
-        _: return fail("expected float")
+        case _: return fail("expected float")
 
     match root.get("negative").get():
-        FloatValue(number):
+        case FloatValue(number):
             ((number.is_finite() or number > 0.0) | try expect_false)
-        _: return fail("expected float")
+        case _: return fail("expected float")
 
     match root.get("nan").get():
-        FloatValue(number):
+        case FloatValue(number):
             ((number.is_nan()) | try expect_true)
-        _: return fail("expected float")
+        case _: return fail("expected float")
 
     (root.get("integer").get() | try expect_equal(TomlValue.IntValue(1000000)))
 
-fn failure(text: String) String:
+def failure(text: String) -> String:
     match parse(text: text):
-        ok(_): return "accepted"
-        error(cause): return cause.message()
+        case ok(_): return "accepted"
+        case error(cause): return cause.message()
 
 test "TOML errors report the offending line and column":
-    failure("x = 1\ny = \"a\u{1}b\"") | try expect_equal(
+    failure(f"x = 1\ny = \"a\u{1}b\"") | try expect_equal(
         "TOML 2:7: invalid control character"
     )
     failure("x = 1\ny = 2\rz = 3") | try expect_equal("TOML 2:6: bare carriage return")
-    failure("x = 1\n\u{0}") | try expect_equal("TOML 2:1: invalid control character")
-    failure("a = 1\u{0}") | try expect_equal("TOML 1:6: invalid control character")
+    failure(f"x = 1\n\u{0}") | try expect_equal("TOML 2:1: invalid control character")
+    failure(f"a = 1\u{0}") | try expect_equal("TOML 1:6: invalid control character")
     failure("y = True") | try expect_equal("TOML 1:5: invalid value")
     failure("y = yes") | try expect_equal("TOML 1:5: invalid value")
     failure("y = abc") | try expect_equal("TOML 1:5: invalid value")
@@ -230,7 +230,7 @@ test "TOML limits fields default to none":
     )
 
 test "TOML stringify round trips scalars tables and arrays of tables":
-    let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
+    let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], {a = 1}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
     let parsed = (parse(text: source) | try expect_ok)
     let text = (stringify(value: parsed) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(parsed)
@@ -250,7 +250,7 @@ test "TOML stringify requires a table root and honors max_bytes":
     stringify(value: root, max_bytes: 6) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
 
-fn repeated(text: String, count: Int) String:
+def repeated(text: String, count: Int) -> String:
     if count <= 0: return ""
     if count == 1: return text
 
@@ -262,7 +262,7 @@ fn repeated(text: String, count: Int) String:
 test "TOML long strings parse and stringify in linear time":
     let long = repeated(text: "x\\n", count: 150000)
     let expected = repeated(text: "x\n", count: 150000)
-    let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
+    let root = (parse(text: f"a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
     let table = (try entries(root.clone()))
     (table.get("a").get() | try expect_equal(TomlValue.StringValue(expected.clone())))
     (table.get("b").get() | try expect_equal(TomlValue.StringValue(expected)))

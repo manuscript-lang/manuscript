@@ -1,20 +1,20 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/testing.ms"
-import {TextError, panic} from "@std/core.ms"
-import {category, ErrorCategory} from "@std/core.ms"
-import {FileSystemError} from "@std/fs.ms"
-import {SystemError} from "@std/process.ms"
-import {ProcessError, CommandError} from "@std/process.ms"
-import {NetworkError} from "@std/net.ms"
-import {HttpError} from "@std/http.ms"
-import {IoError} from "@std/io.ms"
-import {JsonError} from "@std/json.ms"
-import {NumberError} from "@std/math.ms"
-import {LogError} from "@std/log.ms"
-import {CryptoError} from "@std/crypto.ms"
-import {YamlError} from "@std/yaml.ms"
-import {TomlError} from "@std/toml.ms"
-import {SseError} from "@std/sse.ms"
-import {range_by} from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/core.ms" import TextError, panic
+from "@std/core.ms" import category, ErrorCategory
+from "@std/fs.ms" import FileSystemError
+from "@std/process.ms" import SystemError
+from "@std/process.ms" import ProcessError, CommandError
+from "@std/net.ms" import NetworkError
+from "@std/http.ms" import HttpError
+from "@std/io.ms" import IoError
+from "@std/json.ms" import JsonError
+from "@std/math.ms" import NumberError
+from "@std/log.ms" import LogError
+from "@std/crypto.ms" import CryptoError
+from "@std/yaml.ms" import YamlError
+from "@std/toml.ms" import TomlError
+from "@std/sse.ms" import SseError
+from "@std/collections.ms" import range_by
 
 type CustomError:
     message: String
@@ -23,21 +23,21 @@ type PathError:
     case InvalidInput
 
 impl Error for PathError:
-    fn message() String:
+    def message() -> String:
         return "path: invalid input"
 
 impl Error for CustomError:
-    fn message() String:
+    def message() -> ref String:
         panic("classification must not call user code")
         return self.message
 
-fn is_missing(cause: Error) Bool:
+def is_missing(cause: Error) -> Bool:
     return category(cause) == some(ErrorCategory.NotFound)
 
-fn yaml_error(cause: Error) Result[YamlError, Error]:
+def yaml_error(cause: Error) -> Result[YamlError, Error]:
     match cause:
-        YamlError(found): return ok(found)
-        _: return error(TextError("category changed domain"))
+        case YamlError(found): return ok(found)
+        case _: return error(TextError("category changed domain"))
 
 test "shared categories keep exact standard domain values":
     (is_missing(FileSystemError.NotFound)) | try expect_true
@@ -84,7 +84,7 @@ test "shared categories keep exact standard domain values":
     category(original) | try expect_equal(some(ErrorCategory.InvalidData))
 
     match (try yaml_error(original)):
-        InvalidData(line, column, reason):
+        case InvalidData(line, column, reason):
             (
                 (
                     (
@@ -94,7 +94,7 @@ test "shared categories keep exact standard domain values":
                     )
                 ) | try expect_false
             )
-        _: return fail("category changed variant")
+        case _: return fail("category changed variant")
 
 test "timeout classification keeps timeout spelling out of generic handling":
     let causes: List[Error] = [

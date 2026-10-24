@@ -5,10 +5,10 @@ type Failure:
     code: Int
 
 impl Error for Failure:
-    fn message() String: "failure"
+    def message() -> String: "failure"
 
-fn failing() Result[Int, Failure]: error(Failure(code: 1))
+def failing() -> Result[Int, Failure]: error(Failure(code: 1))
 
-fn count[T](r: Result[T, Error]) Int: 1
+def count[T](r: Result[T, Error]) -> Int: 1
 
-fn use() Int: count(r: failing())
+def use() -> Int: count(r: failing())

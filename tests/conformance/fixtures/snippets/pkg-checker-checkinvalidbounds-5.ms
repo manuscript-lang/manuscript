@@ -4,4 +4,4 @@
 type Data:
     value: Int
 
-fn record[T: Data](value: T) Unit: return
+def record[T: Data](value: T) -> Unit: return

@@ -1,40 +1,40 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/collections.ms" import MapBuilder, SetBuilder, ListBuilder
+from "@std/bytes.ms" import Bytes, BytesBuilder
+from "@std/string.ms" import StringBuilder
 
 type Counter:
     calls: Int
 
 interface EntryBuilder:
-    var fn add(key: String, value: Int) Unit
+    var def add(key: String, value: Int) -> Unit
 
 type EntryAdapter:
     builder: MapBuilder[String, Int]
 
 impl EntryBuilder for EntryAdapter:
-    var fn add(key: String, value: Int) Unit:
+    var def add(key: String, value: Int) -> Unit:
         self.builder.add(key, value)
 
 interface Defaults:
-    var fn add_default(key: String, value: Int) Unit
-    var fn add_default_from(key: String, create: fn(key: String) Int) Unit
+    var def add_default(key: String, value: Int) -> Unit
+    var def add_default_from(key: String, create: Callable[[String], Int]) -> Unit
 
 type DefaultAdapter:
     values: Map[String, Int]
 
 impl Defaults for DefaultAdapter:
-    var fn add_default(key: String, value: Int) Unit:
+    var def add_default(key: String, value: Int) -> Unit:
         self.values.add_default(key, value)
 
-    var fn add_default_from(key: String, create: fn(key: String) Int) Unit:
+    var def add_default_from(key: String, create: Callable[[String], Int]) -> Unit:
         self.values.add_default_from(key, create)
 
-fn eager(var counter: Counter) Int:
+def eager(var counter: Counter) -> Int:
     counter.calls += 1
     return 99
 
-fn key_length(key: String) Int: key.length()
+def key_length(key: String) -> Int: key.length()
 
 test "default insertion keeps eager and lazy calls and receiver identity":
     var values = Map[String, Int]()
@@ -46,13 +46,13 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
 
-    let lazy: fn(key: String, create: fn(key: String) Int) Unit = values.add_default_from
+    let lazy: Callable[[String, Callable[[String], Int]], Unit] = values.add_default_from
     lazy("a", key_length)
     lazy("ccc", key_length)
     values.add_default("d", 4)
     try expect_equal(values.values(), [1, 2, 3, 4])
 
-    var view = Defaults(DefaultAdapter(values.clone()))
+    var view: Defaults = DefaultAdapter(values.clone())
     view.add_default("a", 88)
     view.add_default_from("ee", key_length)
 
@@ -61,7 +61,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     try expect_false(values.contains("copy") or not copy.contains("copy"))
     try expect_equal(values.keys(), ["a", "b", "ccc", "d"])
 
-    let legacy: fn(key: String, value: Int) Unit = values.add_default
+    let legacy: Callable[[String, Int], Unit] = values.add_default
     legacy("a", 100)
     values.add_default_from("ff", key_length)
     try expect_false(counter.calls != 1 or values.get("a") != some(1))
@@ -69,7 +69,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
 test "all builders keep Unit mutation function types":
     var list = ListBuilder[Int]()
-    let append_list: fn(value: Int) Unit = list.append
+    let append_list: Callable[[Int], Unit] = list.append
     append_list(1)
 
     var list_result = list.freeze()
@@ -78,11 +78,11 @@ test "all builders keep Unit mutation function types":
     try expect_equal(list_result, [1, 2])
 
     var map = MapBuilder[String, Int]()
-    let add_map: fn(key: String, value: Int) Unit = map.add
+    let add_map: Callable[[String, Int], Unit] = map.add
     let _unit: Unit = add_map("a", 1)
     map.add("b", 2)
 
-    let legacy_map: fn(key: String, value: Int) Unit = map.add
+    let legacy_map: Callable[[String, Int], Unit] = map.add
     legacy_map("a", 3)
 
     var map_result = map.freeze()
@@ -90,16 +90,16 @@ test "all builders keep Unit mutation function types":
     map_result.add("c", 4)
     try expect_equal(map.freeze().keys(), ["a", "b"])
 
-    var adapter = EntryBuilder(EntryAdapter(MapBuilder[String, Int]()))
-    let add_view: fn(key: String, value: Int) Unit = adapter.add
+    var adapter: EntryBuilder = EntryAdapter(MapBuilder[String, Int]())
+    let add_view: Callable[[String, Int], Unit] = adapter.add
     add_view("b", 2)
 
     var set = SetBuilder[Int]()
-    let add_set: fn(value: Int) Unit = set.add
+    let add_set: Callable[[Int], Unit] = set.add
     add_set(2)
     set.add(1)
 
-    let legacy_set: fn(value: Int) Unit = set.add
+    let legacy_set: Callable[[Int], Unit] = set.add
     legacy_set(2)
 
     var set_result = set.freeze()
@@ -108,17 +108,17 @@ test "all builders keep Unit mutation function types":
     try expect_equal(set.freeze().values(), [2, 1])
 
     var bytes = BytesBuilder()
-    let append_byte: fn(value: Int) Unit = bytes.append
+    let append_byte: Callable[[Int], Unit] = bytes.append
     append_byte(65)
 
-    let concat_bytes: fn(values: Bytes) Unit = bytes.concat
+    let concat_bytes: Callable[[Bytes], Unit] = bytes.concat
     concat_bytes("B".to_bytes())
     try expect_false(
         (bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes())
     )
 
     var text = StringBuilder()
-    let append_text: fn(value: String) Unit = text.append
+    let append_text: Callable[[String], Unit] = text.append
     append_text("ab")
     try expect_false(text.freeze() != "ab" or text.freeze() != "ab")
 

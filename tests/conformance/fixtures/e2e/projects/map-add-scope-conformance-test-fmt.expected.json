@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import first from \"./first.ms\"\nimport second from \"./second.ms\"\nimport expect_equal from \"@std/testing.ms\"\n\ntest \"map add generic and bound calls retain lexical key evidence\":\n    (try first()) | try expect_equal(2)\n    (try second()) | try expect_equal(3)\n"
+    "fmt": "from \"./first.ms\" import first\nfrom \"./second.ms\" import second\nfrom \"@std/testing.ms\" import expect_equal\n\ntest \"map add generic and bound calls retain lexical key evidence\":\n    (try first()) | try expect_equal(2)\n    (try second()) | try expect_equal(3)\n"
   }
 }

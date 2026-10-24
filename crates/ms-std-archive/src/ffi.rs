@@ -6,7 +6,7 @@
 
 use crate::{Entry, Limits};
 use alloc::vec::Vec;
-use ms_std_core::{Bytes, Fail, RecList, Str, abi_record, native};
+use ms_rt::ffi::{Bytes, Fail, RecList, Str, abi_record, native};
 
 abi_record! {
     /// `ArchiveEntry` record: `path, data, directory`.

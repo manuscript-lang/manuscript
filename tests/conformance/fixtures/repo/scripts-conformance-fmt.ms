@@ -1,12 +1,12 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,parser,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=scripts/conformance.ms
-import {expect_equal, expect_false, expect_some, expect_true, fail} from "@std/testing.ms"
-import stdout from "@std/io.ms"
-import arguments from "@std/process.ms"
-import filesystem from "@std/fs.ms"
-import commands from "@std/process.ms"
-import parse from "@std/json.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_some, expect_true, fail
+from "@std/io.ms" import stdout
+from "@std/process.ms" import arguments
+from "@std/fs.ms" import filesystem
+from "@std/process.ms" import commands
+from "@std/json.ms" import parse
 
 # Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
 # Each source file keeps its own compiler graph, process, host roots and test report.
@@ -35,7 +35,7 @@ type Report:
     summary: Summary
     fixture_errors: List[FixtureError] = []
 
-fn validate(report: Report) Result[Unit, Error]:
+def validate(report: Report) -> Result[Unit, Error]:
     report.format | try expect_equal(expected: 1)
     report.completed | try expect_true
     report.exit_code | try expect_equal(expected: 0)
@@ -55,29 +55,29 @@ fn validate(report: Report) Result[Unit, Error]:
     for entry in report.tests:
         if entry.status == "passed":
             passed = passed + 1
-        else if entry.status == "skipped":
+        elif entry.status == "skipped":
             skipped = skipped + 1
         else:
-            return fail("{entry.name}: incomplete or failed test ({entry.status})")
+            return fail(f"{entry.name}: incomplete or failed test ({entry.status})")
 
     passed | try expect_equal(expected: report.summary.passed)
     skipped | try expect_equal(expected: report.summary.skipped)
-    return ok(unit)
+    return ok(())
 
-fn inventory(suite: String) Result[List[String], Error]:
+def inventory(suite: String) -> Result[List[String], Error]:
     let fs = filesystem()
     var files: List[String] = []
 
     if suite == "all" or suite == "core":
         let core = try fs.glob("tests/e2e/testdata/accept", "*.ms")
         core.is_empty() | try expect_false
-        for file in core: files.append("tests/e2e/testdata/accept/{file}")
+        for file in core: files.append(f"tests/e2e/testdata/accept/{file}")
 
         let projects = try fs.glob(
             "tests/e2e/testdata/projects", "*/conformance_test.ms"
         )
         projects.is_empty() | try expect_false
-        for file in projects: files.append("tests/e2e/testdata/projects/{file}")
+        for file in projects: files.append(f"tests/e2e/testdata/projects/{file}")
         for file in [
             "examples/hello/test.ms", "examples/tooling-demo/src/math.ms",
             "pkg/tooling/format/testdata/compact.input.ms",
@@ -88,15 +88,15 @@ fn inventory(suite: String) Result[List[String], Error]:
     if suite == "all" or suite == "stdlib":
         let library = try fs.glob("tests/e2e/testdata/stdlib", "*.ms")
         library.is_empty() | try expect_false
-        for file in library: files.append("tests/e2e/testdata/stdlib/{file}")
+        for file in library: files.append(f"tests/e2e/testdata/stdlib/{file}")
 
     files.is_empty() | try expect_false
-    return ok(files.sorted(fn(left, right): left.compare(right)))
+    return ok(files.sorted(lambda left, right: left.compare(right)))
 
-fn selected(index: Int, shard: Int, count: Int) Bool:
+def selected(index: Int, shard: Int, count: Int) -> Bool:
     return index % count == shard
 
-fn run(args: List[String]) Result[Unit, Error]:
+def run(args: List[String]) -> Result[Unit, Error]:
     if args.length() != 4:
         return fail(
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
@@ -118,23 +118,23 @@ fn run(args: List[String]) Result[Unit, Error]:
     for file in files:
         if selected(index, shard, count):
             ran = ran + 1
-            try emit("TEST {file}")
+            try emit(f"TEST {file}")
 
             let result = run_file(ms, file)
 
             match result:
-                ok(_): try emit("PASS {file}")
-                error(cause):
-                    try emit("FAIL {file}: {cause.message()}")
+                case ok(_): try emit(f"PASS {file}")
+                case error(cause):
+                    try emit(f"FAIL {file}: {cause.message()}")
                     failed = failed + 1
 
         index = index + 1
 
-    try emit("{ran} files, {failed} failed")
+    try emit(f"{ran} files, {failed} failed")
     failed | try expect_equal(expected: 0)
-    return ok(unit)
+    return ok(())
 
-fn run_file(ms: String, file: String) Result[Unit, Error]:
+def run_file(ms: String, file: String) -> Result[Unit, Error]:
     let output = try commands().run(
         ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes,
         max_output_bytes: 16000000
@@ -143,40 +143,40 @@ fn run_file(ms: String, file: String) Result[Unit, Error]:
     let stderr = output.stderr.decode_utf8() | try expect_some
 
     match check_output(output.exit_code, text):
-        ok(_): return ok(unit)
-        error(cause):
-            try emit("{text}\n{stderr}")
+        case ok(_): return ok(())
+        case error(cause):
+            try emit(f"{text}\n{stderr}")
             return error(cause)
 
-fn check_output(status: Int, text: String) Result[Unit, Error]:
+def check_output(status: Int, text: String) -> Result[Unit, Error]:
     status | try expect_equal(expected: 0)
 
     let report = try parse[Report](text)
     return validate(report)
 
-export fn main() Int:
+export def main() -> Int:
     match run(arguments()):
-        ok(_): return 0
-        error(cause):
-            let written = stdout().write("{cause.message()}\n")
+        case ok(_): return 0
+        case error(cause):
+            let written = stdout().write(f"{cause.message()}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":
     var report = Report(
-        1, true, 0, [Case("pass", "passed"), Case("skip", "skipped")],
+        1, True, 0, [Case("pass", "passed"), Case("skip", "skipped")],
         Summary(2, 2, 1, 0, 1, 0)
     )
     try validate(report)
-    report.completed = false
+    report.completed = False
     validate(report).is_error() | try expect_true
-    report.completed = true
+    report.completed = True
     report.summary.not_run = 1
     validate(report).is_error() | try expect_true
     report.summary.not_run = 0
     report.tests = [Case("pass", "failed"), Case("skip", "skipped")]
     validate(report).is_error() | try expect_true
-    validate(Report(1, true, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
-    check_output(1, "\{\}").is_error() | try expect_true
+    validate(Report(1, True, 0, [], Summary(0, 0, 0, 0, 0, 0))).is_error() | try expect_true
+    check_output(1, "{}").is_error() | try expect_true
     check_output(0, "not JSON").is_error() | try expect_true
 
 test "shards cover every inventory entry exactly once":
@@ -194,9 +194,9 @@ test "shards cover every inventory entry exactly once":
             hits | try expect_equal(expected: 1)
             index = index + 1
 
-fn emit(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n")
-    return ok(unit)
+def emit(text: String) -> Result[Unit, Error]:
+    try stdout().write(f"{text}\n")
+    return ok(())
 
 test "invalid suite and shard arguments fail before running children":
     run([]).is_error() | try expect_true
@@ -210,7 +210,7 @@ test "child launch failures are returned to the fixture dispatcher":
     run_file(".", "fixture.ms").is_error() | try expect_true
 
 test "fixture lifecycle errors invalidate an otherwise successful report":
-    var report = Report(1, true, 0, [Case("pass", "passed")], Summary(1, 1, 1, 0, 0, 0))
+    var report = Report(1, True, 0, [Case("pass", "passed")], Summary(1, 1, 1, 0, 0, 0))
     (
         report.fixture_errors.append(
             FixtureError("fixture.ms", "after_all", "cleanup failed")

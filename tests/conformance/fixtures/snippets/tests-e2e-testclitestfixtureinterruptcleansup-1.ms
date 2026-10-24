@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/test_fixture_test.go:196 TestCLITestFixtureInterruptCleansUp
 test "interruptible":
     println("READY")
-    while true:
+    while True:
         try expect_equal(1, 1)
 
 test "later":

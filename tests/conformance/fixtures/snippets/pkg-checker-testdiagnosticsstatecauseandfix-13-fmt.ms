@@ -4,5 +4,5 @@
 type P:
     x: Int
 
-fn f(p: P) Int:
+def f(p: P) -> Int:
     return p.y

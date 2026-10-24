@@ -1,19 +1,19 @@
 # conform: tags=control-flow,interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:265
-import expect_equal from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 interface Increment:
-    var fn increment() Unit
+    var def increment() -> Unit
 
 type Counter:
     value: Int
 
 impl Increment for Counter:
-    var fn increment() Unit:
+    var def increment() -> Unit:
         self.value = self.value + 1
 
-fn reset(var counter: Counter) Unit:
+def reset(var counter: Counter) -> Unit:
     counter.value = 0
 
 test "counter behavior":

@@ -9,19 +9,60 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type HttpMethod; add: import HttpMethod from \"@std/http.ms\"",
+        "message": "unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
           "line": 8,
-          "column": 27,
-          "offset": 281
+          "column": 32,
+          "offset": 290
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/http.ms\" import HttpMethod\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+          "line": 8,
+          "column": 51,
+          "offset": 309
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/http.ms\" import HttpMethod\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:27: resolution: unknown type HttpMethod; add: import HttpMethod from \"@std/http.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:32: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:51: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

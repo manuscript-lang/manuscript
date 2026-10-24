@@ -9,19 +9,60 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
         "position": {
           "file": "core-language-errors-results-4.ms",
           "line": 6,
-          "column": 37,
-          "offset": 256
+          "column": 38,
+          "offset": 255
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "position": {
+          "file": "core-language-errors-results-4.ms",
+          "line": 6,
+          "column": 71,
+          "offset": 288
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-4.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:6:37: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:6:38: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-4.ms:6:71: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

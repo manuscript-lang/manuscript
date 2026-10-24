@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type HttpHeaders:\n    value: String\n\nfn lookup(fields: HttpHeaders) Unit:\n    fields.values(\"content-type\")\n"
+    "fmt": "type HttpHeaders:\n    value: String\n\ndef lookup(fields: HttpHeaders) -> Unit:\n    fields.values(\"content-type\")\n"
   }
 }

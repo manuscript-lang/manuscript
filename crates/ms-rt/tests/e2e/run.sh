@@ -1,14 +1,14 @@
 #!/bin/sh
-# End-to-end runtime checks: builds libms_rt.a and drives it from a C harness.
+# End-to-end runtime checks: builds libms_native.a and drives it from a C harness.
 # Usage: crates/ms-rt/tests/e2e/run.sh   (CARGO_TARGET_DIR respected)
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../../.." && pwd)
 target=${CARGO_TARGET_DIR:-$root/target}
-(cd "$root" && cargo build -q -p ms-rt)
+(cd "$root" && cargo build -q -p ms-native)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-cc -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -o "$work/h" "$here/harness.c" "$target/debug/libms_rt.a" -lpthread -ldl -lm
+cc -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -o "$work/h" "$here/harness.c" "$target/debug/libms_native.a" -lpthread -ldl -lm
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 out=$("$work/h" ok 2>"$work/err") && st=0 || st=$?

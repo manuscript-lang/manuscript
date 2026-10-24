@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/checker/json_parse_test.go:24 TestParseTypeArgument
 type Request:
-    callback: fn() Int
+    callback: Callable[[], Int]
 
-fn f(text: String) Result[Request, JsonError]:
+def f(text: String) -> Result[Request, JsonError]:
     return parse[Request](text)

@@ -5,4 +5,4 @@ type Data:
     count: Int = 3
 
 impl Data:
-    fn read() Int:
+    def read() -> Int: ...

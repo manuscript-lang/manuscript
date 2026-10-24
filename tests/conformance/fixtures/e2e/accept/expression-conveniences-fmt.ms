@@ -1,9 +1,9 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/expression-conveniences.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
-import Closeable from "@std/core.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/core.ms" import Closeable
 
 type Counter:
     count: Int
@@ -12,39 +12,39 @@ type Resource:
     counter: Counter
 
 impl Closeable for Resource:
-    var fn close() Unit:
+    var def close() -> Unit:
         self.counter.count = self.counter.count + 1
 
-fn identity[T](value: T) T: return value
+def identity[T](value: T) -> T: return value
 
-fn amount(text: String, counter: Counter) Result[Int, TextError]:
-    with resource = Resource(counter: counter):
+def amount(text: String, counter: Counter) -> Result[Int, TextError]:
+    with Resource(counter: counter) as resource:
         let cents = match text.parse_int():
-            some(value):
+            case some(value):
                 value
-            none:
+            case none:
                 return error(cause: TextError("Invalid amount"))
 
         return ok(value: cents + 1)
 
-fn early(value: Optional[Int]) Int:
+def early(value: Optional[Int]) -> Int:
     let number = match value:
-        some(number): number
-        none: return 9
+        case some(number): number
+        case none: return 9
 
     return number + 1
 
-fn all_return(value: Optional[Int]) Int:
+def all_return(value: Optional[Int]) -> Int:
     let unreachable = match value:
-        some(number): return number
-        none: return 9
+        case some(number): return number
+        case none: return 9
 
-fn tick(var counter: Counter) Result[Int, Error]:
+def tick(var counter: Counter) -> Result[Int, Error]:
     counter.count | try expect_equal(1)
     counter.count = counter.count + 1
     return ok(0)
 
-fn values(var counter: Counter) List[Int]:
+def values(var counter: Counter) -> List[Int]:
     counter.count = counter.count + 1
     return [7, 8]
 
@@ -59,7 +59,7 @@ test "indexing and generic applications coexist":
     (values(var counter) [(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
     identity[Int](items[0]) | try expect_equal(10)
 
-    let callbacks: List[fn(value: Int) Int] = [identity[Int]]
+    let callbacks: List[Callable[[Int], Int]] = [identity[Int]]
     (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
 test "empty list constructors have fresh typed storage":
@@ -78,10 +78,10 @@ test "string concatenation and scalar ordering":
     (("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a")) | try expect_true
     ("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b") | try expect_false
     ("" + "value" != "value" or "value" + "" != "value") | try expect_false
-    ("\u{e000}" < "\u{10000}") | try expect_true
+    (f"\u{e000}" < f"\u{10000}") | try expect_true
 
     let sorted = ["z", "a", "b"].sorted(
-        fn(left: String, right: String) Int:
+        lambda (left: String, right: String) -> Int:
             if left < right: return -1
             if left > right: return 1
 
@@ -110,32 +110,32 @@ test "match expressions preserve returns and cleanup":
     ) | try expect_false
 
     let nested = match present:
-        some(value):
+        case some(value):
             # manuscript:allow-nested-match regression for nested expression values and the absent branch
             match absent:
-                some(other): value + other
-                none: value
-        none: 0
+                case some(other): value + other
+                case none: value
+        case none: 0
 
     nested | try expect_equal(4)
 
     let contextual: List[Int] = match absent:
-        some(value): [value]
-        none: []
+        case some(value): [value]
+        case none: []
 
     contextual.length() | try expect_equal(0)
 
     let result = identity[Int](
         match present:
-            some(value): value
-            none: 0
+            case some(value): value
+            case none: 0
     )
     result | try expect_equal(4)
 
-    let callback = fn(value: Optional[Int]) Int:
+    let callback = lambda (value: Optional[Int]) -> Int:
         let number = match value:
-            some(number): number
-            none: return 42
+            case some(number): number
+            case none: return 42
 
         return number
 
@@ -153,24 +153,24 @@ test "match blocks produce their final value":
     let present: Optional[Int] = some(value: 5)
 
     let result = match present:
-        some(value):
+        case some(value):
             let doubled = value * 2
             doubled + 1
-        none: 0
+        case none: 0
 
     result | try expect_equal(11)
 
     var count = 0
 
-    while true:
+    while True:
         count = count + 1
 
         match present:
-            some(value):
+            case some(value):
                 if count < value: continue
 
                 break
-            none: break
+            case none: break
 
     count | try expect_equal(5)
 
@@ -178,51 +178,51 @@ test "contextual values infer from later arms":
     let present: Optional[Int] = some(value: 5)
 
     let optional = match present:
-        none: none
-        some(value): some(value: value)
+        case none: none
+        case some(value): some(value: value)
 
     optional.get() | try expect_equal(5)
 
     let list = match present:
-        none: []
-        some(value): [value]
+        case none: []
+        case some(value): [value]
 
     list[0] | try expect_equal(5)
 
-fn returned_argument(var counter: Counter) Result[Int, Error]:
+def returned_argument(var counter: Counter) -> Result[Int, Error]:
     let absent: Optional[Int] = none
     return ok(
         combine(
             first: match absent:
-                some(value): value
-                none: return ok(17)
+                case some(value): value
+                case none: return ok(17)
             ,
             second: (try tick(var counter))
         )
     )
 
-fn combine(first: Int, second: Int) Int: return first + second
+def combine(first: Int, second: Int) -> Int: return first + second
 
-fn propagated(text: String) Result[Int, TextError]:
+def propagated(text: String) -> Result[Int, TextError]:
     let result = match text.parse_int():
-        some(value):
+        case some(value):
             try Result[Int, TextError].ok(value: value)
-        none:
+        case none:
             try Result[Int, TextError].error(cause: TextError("missing"))
 
     return ok(value: result)
 
-fn returned_loop(value: Optional[Int]) Int:
+def returned_loop(value: Optional[Int]) -> Int:
     var index = 0
 
-    while true:
+    while True:
         if index > 1: return 23
 
         match value:
-            some(number):
+            case some(number):
                 index = index + 1
                 continue
-            none: break
+            case none: break
 
     return 24
 
@@ -240,26 +240,26 @@ test "expression exits preserve caller boundaries and evaluation order":
 
     var iterations = 0
 
-    while true:
+    while True:
         let value = match present:
-            some(number):
+            case some(number):
                 while iterations < 3:
                     iterations = iterations + 1
                     if iterations == 2: continue
                     if iterations == 3: break
                 number
-            none: break
+            case none: break
 
         if value == 1: break
 
     iterations | try expect_equal(3)
 
-fn condition_exit(value: Optional[Int]) Int:
-    while true:
+def condition_exit(value: Optional[Int]) -> Int:
+    while True:
         while (
             match value:
-                some(number): true
-                none: break
+                case some(number): True
+                case none: break
         ):
             return 1
 
@@ -276,7 +276,7 @@ test "indexing preserves zero and nested optionals":
     let nested: List[Optional[Int]] = [none, some(value: 0)]
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
-fn observed_optional(var counter: Counter) Optional[Int]:
+def observed_optional(var counter: Counter) -> Optional[Int]:
     counter.count = counter.count + 1
     return some(value: 5)
 
@@ -284,32 +284,32 @@ test "match evaluates its input once and only the selected arm":
     var counter = Counter(count: 0)
 
     let result = match observed_optional(var counter):
-        some(value):
+        case some(value):
             counter.count = counter.count + 10
             value + 1
-        none:
+        case none:
             counter.count = counter.count + 100
             0
 
     (result != 6 or counter.count != 11) | try expect_false
 
-fn inline_match(value: Optional[Int]) Int: match value:
-    some(number): number
-    none: 0
+def inline_match(value: Optional[Int]) -> Int: match value:
+    case some(number): number
+    case none: 0
 
 test "match composes with inferred callbacks and map literals":
     let values: List[Optional[Int]] = [some(3), none]
     let mapped = values.map(
-        fn(value): match value:
-            some(number): number + 1
-            none: 0
+        lambda value: match value:
+            case some(number): number + 1
+            case none: 0
     )
     (mapped[0] != 4 or mapped[1] != 0) | try expect_false
 
     let lookup = {
         "value": match values[0]:
-            some(number): number
-            none: 0
+            case some(number): number
+            case none: 0
     }
     lookup.get("value").get() | try expect_equal(3)
     (inline_match(none) != 0 or inline_match(some(5)) != 5) | try expect_false

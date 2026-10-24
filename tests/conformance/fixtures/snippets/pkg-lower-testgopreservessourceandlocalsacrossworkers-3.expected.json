@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding step15; declare it with 'let step15 = ...' before use, define 'fn step15(...)', or import it from a module",
+        "message": "unknown binding step15; declare it with 'let step15 = ...' before use, define 'def step15(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-lower-testgopreservessourceandlocalsacrossworkers-3.ms",
           "line": 4,
-          "column": 24,
-          "offset": 171
+          "column": 28,
+          "offset": 175
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-lower-testgopreservessourceandlocalsacrossworkers-3.ms:4:24: resolution: unknown binding step15; declare it with 'let step15 = ...' before use, define 'fn step15(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-lower-testgopreservessourceandlocalsacrossworkers-3.ms:4:28: resolution: unknown binding step15; declare it with 'let step15 = ...' before use, define 'def step15(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

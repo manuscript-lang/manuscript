@@ -1,4 +1,4 @@
-import Bytes from "@std/bytes.ms"
+from "@std/bytes.ms" import Bytes
 
 # Errors returned when a byte range or numeric representation is invalid.
 export type BinaryError:

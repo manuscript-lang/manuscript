@@ -1,1 +1,1 @@
-error parse 1:16:15 "expected ':', found '/'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
+error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

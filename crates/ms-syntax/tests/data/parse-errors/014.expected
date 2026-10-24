@@ -1,1 +1,1 @@
-error parse 4:12:95 "expected ':', found name 'forCause'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

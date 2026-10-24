@@ -65,6 +65,11 @@ pub struct ReceiverRequirement {
 struct World {
     state: u8, // 0 unloaded, 1 loading, 2 loaded
     symbols: HashMap<Name, SymRef>,
+    /// Exported records and alternatives of source modules, declared when the module is registered so
+    /// native modules can name them before the source module is checked.
+    source_types: HashMap<(Name, Name), SymRef>,
+    /// Source modules whose types native modules named while loading; they are checked right after.
+    stub_modules: Vec<Name>,
     modules: HashMap<Name, HashMap<Name, SymRef>>,
     module_order: Vec<Name>,
     sources: Vec<ModRef>,
@@ -147,6 +152,13 @@ pub fn ensure_standard() {
         panic!("standard declarations: {e}");
     }
     world(|w| w.state = 2);
+    // Types that native modules took from a source module are filled in by checking that module.
+    let stubs = world(|w| std::mem::take(&mut w.stub_modules));
+    for path in stubs {
+        if let Some(module) = standard_source_module(path) {
+            ensure_source(&module);
+        }
+    }
 }
 
 /// Every bundled module (native and source) in file-name order, with the
@@ -191,6 +203,20 @@ pub fn receiver_binding(key: &str) -> Option<Name> {
     world(|w| w.receiver_bindings.get(key).copied())
 }
 
+/// The native function (`module/name`) that bindings.json binds to a runtime symbol, when exactly one is.
+pub fn native_for_symbol(symbol: &str) -> Option<String> {
+    ensure_standard();
+    world(|w| {
+        let mut bound = w
+            .runtime_symbols
+            .iter()
+            .filter(|(_, s)| s.as_str() == symbol)
+            .map(|(k, _)| k.clone());
+        let first = bound.next()?;
+        bound.next().is_none().then_some(first)
+    })
+}
+
 /// The runtime symbol that implements a native function (`module/name`), as bindings.json names it.
 pub fn runtime_symbol(native: &str) -> Option<String> {
     ensure_standard();
@@ -233,10 +259,76 @@ pub fn is_native_module(path: Name) -> bool {
     world(|w| w.modules.contains_key(&path))
 }
 
+/// The symbol of a record or alternative declared in a bundled source module, as registered at load.
+pub fn source_type(module: Name, name: Name) -> Option<SymRef> {
+    ensure_standard();
+    world(|w| w.source_types.get(&(module, name)).cloned())
+}
+
+/// Declares the symbol of a record or alternative of a bundled source module. The checker of the
+/// module reuses it, so native modules and the source module agree on one type.
+pub(crate) fn source_type_symbol(module: &ModRef, d: &DeclRef) -> SymRef {
+    let name = d.name();
+    let kind = match d.decl().kind {
+        DeclKind::Alternative(_) => Kind::Alternative,
+        DeclKind::Interface(_) => Kind::Contract,
+        _ => Kind::Record,
+    };
+    let stem = module
+        .file
+        .as_str()
+        .trim_start_matches("@std/")
+        .trim_end_matches(".ms");
+    let s = Rc::new(Sym {
+        name,
+        id: n(&format!("standard_{stem}_symbol_{name}")),
+        kind: SymKind::Type,
+        module: module.file,
+        native: n(""),
+        export: d.decl().export,
+        ty: RefCell::new(None),
+        variables: RefCell::new(Vec::new()),
+        decl: Some(d.clone()),
+    });
+    let def = Definition::new(&s, kind);
+    let mut t = Type::new(
+        name,
+        n(&format!(
+            "module/{}#{}",
+            crate::checker::hex(module.file.as_str()),
+            name
+        )),
+        kind,
+    );
+    t.def = Some(def);
+    *s.ty.borrow_mut() = Some(Rc::new(t));
+    s
+}
+
 /// A native module's declaration by name.
 pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     ensure_standard();
-    world(|w| w.modules.get(&path).and_then(|m| m.get(&name).cloned()))
+    world(|w| {
+        w.modules
+            .get(&path)
+            .and_then(|m| m.get(&name).cloned())
+            .or_else(|| {
+                let stub = w.source_types.get(&(path, name)).cloned()?;
+                if w.state == 1 && !w.stub_modules.contains(&path) {
+                    w.stub_modules.push(path);
+                }
+                Some(stub)
+            })
+            // An `extern type` of a source module is canonical from the moment of loading.
+            .or_else(|| {
+                w.symbols
+                    .get(&name)
+                    .filter(|s| {
+                        s.module == path && s.export && w.source_modules.contains_key(&path)
+                    })
+                    .cloned()
+            })
+    })
 }
 
 /// Every bundled module path in sorted order.
@@ -280,19 +372,56 @@ pub fn done(file: Name) -> Option<Rc<StdResult>> {
     world(|w| w.done.get(&file).cloned())
 }
 
+fn source_reach(module: &ModRef) -> Vec<ModRef> {
+    let mut seen: Vec<ModRef> = Vec::new();
+    let mut stack: Vec<ModRef> = vec![module.clone()];
+    while let Some(m) = stack.pop() {
+        for item in &m.imports {
+            if let Some(dep) = standard_source_module(n(&item.path))
+                && !seen.iter().any(|s| s.file == dep.file)
+            {
+                seen.push(dep.clone());
+                stack.push(dep);
+            }
+        }
+    }
+    seen
+}
+
+/// The bundled source modules that import `module`, directly or not, and are imported back by it.
+fn source_group(module: &ModRef) -> Vec<ModRef> {
+    let mut group = vec![module.clone()];
+    for m in source_reach(module) {
+        if m.file != module.file && source_reach(&m).iter().any(|r| r.file == module.file) {
+            group.push(m);
+        }
+    }
+    group
+}
+
 /// Checks a bundled source module and the bundled modules it imports, once.
+/// Modules that import each other are checked together.
 pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
     ensure_standard();
     if let Some(r) = done(module.file) {
         return r;
     }
-    let cycle = world(|w| !w.checking.insert(module.file));
+    let group = source_group(module);
+    let cycle = world(|w| group.iter().any(|g| !w.checking.insert(g.file)));
     if cycle {
-        panic!("cyclic standard source dependency at {}", module.file);
+        panic!(
+            "cyclic standard source dependency at {} while checking {:?}",
+            module.file,
+            world(|w| w.checking.clone())
+        );
     }
-    for item in &module.imports {
-        if let Some(dep) = standard_source_module(n(&item.path)) {
-            ensure_source(&dep);
+    for g in &group {
+        for item in &g.imports {
+            if let Some(dep) = standard_source_module(n(&item.path))
+                && !group.iter().any(|m| m.file == dep.file)
+            {
+                ensure_source(&dep);
+            }
         }
     }
     let mut checker = Checker::new(&CheckOptions {
@@ -307,6 +436,9 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             .trim_start_matches("@std/")
             .trim_end_matches(".ms")
     );
+    if group.len() > 1 {
+        checker.group = group.clone();
+    }
     let program = checker.check_modules(vec![module.clone()], Some(module.file));
     if !program.diagnostics.is_empty() {
         let text: Vec<String> = program.diagnostics.iter().map(|d| d.to_string()).collect();
@@ -316,33 +448,35 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             text.join("; ")
         );
     }
-    let symbols = program
-        .symbols
-        .get(&module.file)
-        .cloned()
-        .expect("module symbols");
-    let exports: HashMap<Name, SymRef> = symbols
-        .borrow()
-        .iter()
-        .filter(|(_, s)| s.module == module.file)
-        .map(|(k, v)| (*k, v.clone()))
-        .collect();
-    let methods: Vec<MethodRef> = program
-        .methods
-        .iter()
-        .filter(|m| m.module == module.file)
-        .cloned()
-        .collect();
-    let result = Rc::new(StdResult {
-        symbols,
-        exports,
-        methods,
-    });
-    world(|w| {
-        w.done.insert(module.file, result.clone());
-        w.checking.remove(&module.file);
-    });
-    result
+    for g in &group {
+        let symbols = program
+            .symbols
+            .get(&g.file)
+            .cloned()
+            .expect("module symbols");
+        let exports: HashMap<Name, SymRef> = symbols
+            .borrow()
+            .iter()
+            .filter(|(_, s)| s.module == g.file)
+            .map(|(k, v)| (*k, v.clone()))
+            .collect();
+        let methods: Vec<MethodRef> = program
+            .methods
+            .iter()
+            .filter(|m| m.module == g.file)
+            .cloned()
+            .collect();
+        let result = Rc::new(StdResult {
+            symbols,
+            exports,
+            methods,
+        });
+        world(|w| {
+            w.done.insert(g.file, result.clone());
+            w.checking.remove(&g.file);
+        });
+    }
+    done(module.file).expect("checked")
 }
 
 /// All bundled source modules, checked.
@@ -376,6 +510,7 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
     ) {
         match state.get(&module.file) {
             Some(2) => return,
+            Some(1) if is_source_module(module) => return,
             Some(1) => {
                 diagnostics.push(Diagnostic {
                     file: Arc::from(module.file.as_str()),
@@ -548,10 +683,54 @@ fn position_text(file: Name, pos: ms_syntax::Pos) -> String {
 }
 
 impl Loader<'_> {
+    /// The canonical symbol of an `extern type` declared in a bundled source module.
+    fn register_extern_type(&mut self, module: &ModRef, d: &DeclRef) -> Result<(), String> {
+        let name = d.name();
+        if !d.type_params().is_empty() {
+            return Err(format!(
+                "extern types cannot be generic yet: {}",
+                position_text(module.file, d.pos())
+            ));
+        }
+        let id = n(&format!("@std/{name}"));
+        let s = Rc::new(Sym {
+            name,
+            id,
+            kind: SymKind::Type,
+            module: module.file,
+            native: name,
+            export: d.decl().export,
+            ty: RefCell::new(None),
+            variables: RefCell::new(Vec::new()),
+            decl: Some(d.clone()),
+        });
+        let def = Definition::new(&s, Kind::Native);
+        let mut t = Type::new(name, id, Kind::Native);
+        t.def = Some(def);
+        *s.ty.borrow_mut() = Some(Rc::new(t));
+        if world(|w| w.symbols.contains_key(&name)) {
+            return Err(format!("duplicate standard type {name}"));
+        }
+        world(|w| w.symbols.insert(name, s));
+        Ok(())
+    }
+
     fn register(&mut self, module: &ModRef) -> Result<(), String> {
         world(|w| w.sources.push(module.clone()));
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
+            for d in &module.decls {
+                match &d.decl().kind {
+                    DeclKind::Record(r) if r.external => self.register_extern_type(module, d)?,
+                    DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+                        if d.decl().export =>
+                    {
+                        let stub = source_type_symbol(module, d);
+                        world(|w| w.source_types.insert((module.file, d.name()), stub));
+                    }
+                    _ => {}
+                }
+            }
             world(|w| {
                 w.source_modules.insert(module.file, module.clone());
             });

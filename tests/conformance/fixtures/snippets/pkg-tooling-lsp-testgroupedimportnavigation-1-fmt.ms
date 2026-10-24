@@ -1,4 +1,4 @@
 # conform: tags=formatter,modules,parser,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/navigation_test.go:73 TestGroupedImportNavigation
-import {ListBuilder, MapBuilder} from "@std/collections.ms"
+from "@std/collections.ms" import ListBuilder, MapBuilder

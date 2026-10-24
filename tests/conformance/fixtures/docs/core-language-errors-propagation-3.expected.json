@@ -9,12 +9,53 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
         "position": {
           "file": "core-language-errors-propagation-3.ms",
           "line": 4,
-          "column": 28,
-          "offset": 186
+          "column": 29,
+          "offset": 187
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "position": {
+          "file": "core-language-errors-propagation-3.ms",
+          "line": 4,
+          "column": 47,
+          "offset": 205
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-propagation-3.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       },
       {
@@ -24,26 +65,26 @@
         "position": {
           "file": "core-language-errors-propagation-3.ms",
           "line": 4,
-          "column": 70,
-          "offset": 228
+          "column": 74,
+          "offset": 232
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding label; declare it with 'let label = ...' before use, define 'fn label(...)', or import it from a module",
+        "message": "unknown binding label; declare it with 'let label = ...' before use, define 'def label(...) -> T:', or import it from a module",
         "position": {
           "file": "core-language-errors-propagation-3.ms",
           "line": 5,
           "column": 46,
-          "offset": 289
+          "offset": 293
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-propagation-3.ms:4:28: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/core-language-errors-propagation-3.ms:4:70: resolution: unknown type DiscountError; declare it with 'type DiscountError:' / 'interface DiscountError:', declare it as a type parameter, or import it\n<DIR>/core-language-errors-propagation-3.ms:5:46: resolution: unknown binding label; declare it with 'let label = ...' before use, define 'fn label(...)', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-propagation-3.ms:4:29: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-propagation-3.ms:4:47: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-propagation-3.ms:4:74: resolution: unknown type DiscountError; declare it with 'type DiscountError:' / 'interface DiscountError:', declare it as a type parameter, or import it\n<DIR>/core-language-errors-propagation-3.ms:5:46: resolution: unknown binding label; declare it with 'let label = ...' before use, define 'def label(...) -> T:', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

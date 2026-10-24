@@ -1,13 +1,13 @@
 # conform: tags=diagnostics,modules,stdlib-fs,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=documentation/learn/tour.md:312
-import {filesystem, FileSystemError} from "@std/fs.ms"
+from "@std/fs.ms" import filesystem, FileSystemError
 
-fn copy_notes() Result[Unit, FileSystemError]:
-    with source = try filesystem().open("notes.txt", flags: "r", mode: 0):
+def copy_notes() -> Result[Unit, FileSystemError]:
+    with try filesystem().open("notes.txt", flags: "r", mode: 0) as source:
         let contents = try source.read_file(max_bytes: 1048576)
         try filesystem().write_file_bytes(
-            path: "backup.txt", data: contents, replace: true
+            path: "backup.txt", data: contents, replace: True
         )
 
-    return ok(unit)
+    return ok(())

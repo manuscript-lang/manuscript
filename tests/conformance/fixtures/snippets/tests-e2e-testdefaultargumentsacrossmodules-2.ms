@@ -1,10 +1,10 @@
 # conform: tags=control-flow,diagnostics,modules,stdlib-testing,testing,tier-core
 # conform: phase=check
 # conform: origin=tests/e2e/e2e_test.go:510 TestDefaultArgumentsAcrossModules
-import defaulted from "./library.ms"
-import {expect_true, fail} from "@std/testing.ms"
+from "./library.ms" import defaulted
+from "@std/testing.ms" import expect_true, fail
 
-fn private_value() Int:
+def private_value() -> Int:
     return 99
 
 test "defaults use their declaration module":

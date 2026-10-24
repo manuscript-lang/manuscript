@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module",
+        "message": "unknown binding missing; declare it with 'let missing = ...' before use, define 'def missing(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testpipelinechecksskippedbooleanoperands-1.ms",
           "line": 4,
-          "column": 35,
-          "offset": 187
+          "column": 39,
+          "offset": 191
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpipelinechecksskippedbooleanoperands-1.ms:4:35: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpipelinechecksskippedbooleanoperands-1.ms:4:39: resolution: unknown binding missing; declare it with 'let missing = ...' before use, define 'def missing(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,7 +4,7 @@
 type Node:
     next: Optional[Node]
 
-export fn main() Int:
+export def main() -> Int:
     let node = Node(none)
     node.next = some(node)
     return node.hash()

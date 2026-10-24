@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn consume(value: Result[Int, Error]) Unit: unit\n\nfn caller() Unit:\n    consume(operation())\n"
+    "fmt": "def consume(value: Result[Int, Error]) -> Unit: ()\n\ndef caller() -> Unit:\n    consume(operation())\n"
   }
 }

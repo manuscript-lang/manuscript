@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn caller() Unit:\n    operation()\n"
+    "fmt": "def caller() -> Unit:\n    operation()\n"
   }
 }

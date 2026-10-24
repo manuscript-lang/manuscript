@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding box; declare it with 'let box = ...' before use, define 'fn box(...)', or import it from a module",
+        "message": "unknown binding box; declare it with 'let box = ...' before use, define 'def box(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-36.ms",
           "line": 8,
           "column": 5,
-          "offset": 228
+          "offset": 232
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "pkg-tooling-format-testformatexpressionlayouts-36.ms",
           "line": 8,
           "column": 9,
-          "offset": 232
+          "offset": 236
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-36.ms:8:5: resolution: unknown binding box; declare it with 'let box = ...' before use, define 'fn box(...)', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-36.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-36.ms:8:5: resolution: unknown binding box; declare it with 'let box = ...' before use, define 'def box(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-36.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

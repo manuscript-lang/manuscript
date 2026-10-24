@@ -1,7 +1,7 @@
 # conform: tags=modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-members-match-dynamic-calls.ms
-import {expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_true
 
 test "string and float members":
     let text = "héllo"

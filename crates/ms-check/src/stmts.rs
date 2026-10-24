@@ -123,7 +123,9 @@ impl Checker {
                 None => self.check_if(cond, body, else_body),
             },
             StmtKind::While { cond, body } => self.check_while(cond, body),
-            StmtKind::For { name, iter, body } => self.check_for(s, *name, iter, body),
+            StmtKind::For {
+                name, iter, body, ..
+            } => self.check_for(s, *name, iter, body),
             StmtKind::With { name, value, body } => self.check_with(s, *name, value, body),
         }
     }
@@ -208,7 +210,7 @@ impl Checker {
                         );
                     } else {
                         let msg = self.unknown_name(name);
-                        self.res_error(s.pos, msg);
+                        self.res_error_name(s.pos, name.len(), msg);
                     }
                     self.expression(value, None);
                     return (true, false);
@@ -422,7 +424,7 @@ impl Checker {
         } else if candidates.len() > 1 {
             self.type_error(
                 s.pos,
-                "with cleanup operation is ambiguous; wrap the value in an explicit contract view, e.g. Closeable(value: x)",
+                "with cleanup operation is ambiguous; bind the value to a Closeable-typed let first, e.g. let view: Closeable = x",
             );
         }
         let old = self.scope.clone();

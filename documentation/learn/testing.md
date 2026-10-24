@@ -11,9 +11,9 @@ Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
-fn add(a: Int, b: Int) Int:
+def add(a: Int, b: Int) -> Int:
     return a + b
 
 test "addition":
@@ -42,7 +42,7 @@ ms test ms.toml --json
 - A manifest run discovers `test.ms` and `*_test.ms` files below the project root, plus tests in imports ([discovery rules](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery)).
 - `ms test file.ms` runs that module and its imports only.
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
-- Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
+- Import app code with a relative path, e.g. `from "./src/math.ms" import add` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
 - A bare `expect_equal(...)` checks nothing: always write `try expect_equal(...)`.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
@@ -51,8 +51,8 @@ ms test ms.toml --json
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {parse, JsonError} from "@std/json.ms"
-import {expect_equal, expect_ok, expect_error, expect_some} from "@std/testing.ms"
+from "@std/json.ms" import parse, JsonError
+from "@std/testing.ms" import expect_equal, expect_ok, expect_error, expect_some
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -90,20 +90,20 @@ All assertions return `Result`, so use `try`:
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {TestHooks, expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import TestHooks, expect_equal
 
 type Counter:
     count: Int
 
-fn make_fixture() Counter:
+def make_fixture() -> Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    var fn before_each() Unit:
+    var def before_each() -> Unit:
         self.count = 0
 
 test "increments":

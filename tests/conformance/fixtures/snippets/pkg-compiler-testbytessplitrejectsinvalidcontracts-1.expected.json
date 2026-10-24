@@ -9,19 +9,60 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "message": "unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes",
         "position": {
           "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
           "line": 4,
-          "column": 16,
-          "offset": 174
+          "column": 17,
+          "offset": 175
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "position": {
+          "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+          "line": 4,
+          "column": 32,
+          "offset": 190
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:16: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:17: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:32: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {TextError} from \"@std/core.ms\"\n\ntype Input:\n    names: List[Optional[String]]\n\nlet input = Input([none, some(\"Ada\")])\nlet nested: List[List[Int]] = [[], [1]]\nlet success: Result[Int, TextError] = ok(1)\nlet failure: Result[Int, TextError] = error(TextError(\"unavailable\"))\n# Rejected: the result error type cannot be inferred from ok's payload.\nlet incomplete = ok(1)\n"
+    "fmt": "from \"@std/core.ms\" import TextError\n\ntype Input:\n    names: List[Optional[String]]\n\nlet input = Input([none, some(\"Ada\")])\nlet nested: List[List[Int]] = [[], [1]]\nlet success: Result[Int, TextError] = ok(1)\nlet failure: Result[Int, TextError] = error(TextError(\"unavailable\"))\n# Rejected: the result error type cannot be inferred from ok's payload.\nlet incomplete = ok(1)\n"
   }
 }

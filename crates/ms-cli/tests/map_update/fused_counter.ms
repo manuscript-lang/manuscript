@@ -1,4 +1,4 @@
-export fn main() Int:
+export def main() -> Int:
     var m = Map[String, Int]()
     var r = Map[String, Int]()
     var n = Map[Int, Int]()

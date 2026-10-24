@@ -21,27 +21,27 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
-| `Comparable` | Values have an order: `a.compare(Comparable(value: b))` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
+| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data and functions qualify; interface views, regular expressions and resource handles do not |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
-`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, explicit views (`Equal(value: x)`), and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
+`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
 ```manuscript
 type Key:
     id: Int
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
-        return true
+    def equals(other: Equal) -> Bool:
+        return True
 
-fn accepts(value: Equal) Unit:
+def accepts(value: Equal) -> Unit:
     return
 
-fn use_view() Unit:
+def use_view() -> Unit:
     accepts(Equal(Key(1)))
 ```
 
@@ -51,10 +51,10 @@ fn use_view() Unit:
 type Box[T]:
     value: T
 
-fn identity[T](value: T) T:
+def identity[T](value: T) -> T:
     return value
 
-fn same[T: Equal](left: T, right: T) Bool:
+def same[T: Equal](left: T, right: T) -> Bool:
     return left == right
 
 let box = Box[Int](1)
@@ -77,7 +77,7 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-fn parse[T = String](text: String) Optional[T]:
+def parse[T = String](text: String) -> Optional[T]:
     return none
 
 let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
@@ -91,7 +91,7 @@ Inference runs first; a parameter it leaves undetermined takes its default, for 
 A call may omit type arguments when its arguments and expected result uniquely determine every parameter. Evidence is gathered in order: independently typed arguments, then the expected result, then callbacks with known inputs. Repeated occurrences must agree. Bounds are checked after substitution. No common supertype, union, or numeric widening is inferred.
 
 ```manuscript
-fn choose[T](first: T, second: T) T:
+def choose[T](first: T, second: T) -> T:
     return first
 
 let value = choose(1, 2)  # T = Int
@@ -102,19 +102,19 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-import {TextError} from "@std/core.ms"
-fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
+from "@std/core.ms" import TextError
+def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 
-fn first() Result[Int, TextError]: fail("empty")  # T = Int
+def first() -> Result[Int, TextError]: fail("empty")  # T = Int
 let failed: Result[Int, TextError] = fail("empty")
 ```
 
-Matching adds no numeric conversions, implicit interface views, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
+Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. A domain error implementing `Error` still widens to `Error`, so a `Result[T, Error]` parameter infers `T` from `Result[Int, Failure]`. Success types and other Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `Optional[T]` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
 ```manuscript
-fn count[T](values: List[T]) Int:
+def count[T](values: List[T]) -> Int:
     return 0
 
 let known = count[Int]([])
@@ -130,7 +130,7 @@ A generic body is checked once against its declared bounds, which expose only th
 
 ```manuscript
 # Rejected at declaration: missing Equal bound.
-fn unchecked_same[T](left: T, right: T) Bool:
+def unchecked_same[T](left: T, right: T) -> Bool:
     return left == right
 
 type Keys[T: Hashable]:
@@ -148,10 +148,10 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
 ```manuscript
-fn repeat[T](value: T) Never:
+def repeat[T](value: T) -> Never:
     return repeat[T](value)  # Regular specialization; allowed.
 
-fn grow[T](value: T) Never:
+def grow[T](value: T) -> Never:
     return grow[List[T]]([value])  # Rejected: expanding specialization.
 ```
 

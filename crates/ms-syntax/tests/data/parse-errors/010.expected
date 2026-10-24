@@ -1,1 +1,1 @@
-error parse 4:24:100 "every fn declares its result type after the parameter list, e.g. fn f() Unit:"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

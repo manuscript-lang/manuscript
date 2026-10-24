@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/lexer/lexer_test.go:132 TestDelimiterContinuationMayDedentBelowSuite
-fn f() Int:
-    if true:
+def f() -> Int:
+    if True:
         let x = [1]
         return 0
 

@@ -1,9 +1,9 @@
 # conform: tags=formatter,match,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/checker/hints_test.go:37 TestDiagnosticsStateCauseAndFix
-fn f(o: Optional[Int]) Int:
+def f(o: Optional[Int]) -> Int:
     match o:
-        Some(v):
+        case Some(v):
             return v
-        None:
+        case None:
             return 0

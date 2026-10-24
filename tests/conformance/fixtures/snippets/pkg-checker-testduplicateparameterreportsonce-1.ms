@@ -1,5 +1,5 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/duplicate_parameter_test.go:15 TestDuplicateParameterReportsOnce
-fn f(a: Int, a: Int) Int:
+def f(a: Int, a: Int) -> Int:
     return a

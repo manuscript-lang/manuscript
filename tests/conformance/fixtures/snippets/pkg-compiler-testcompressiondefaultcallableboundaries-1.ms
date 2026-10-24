@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,generics,modules,stdlib-bytes,stdlib-compress,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/compiler/compression_defaults_test.go:10 TestCompressionDefaultCallableBoundaries
-import {compress, CompressionFormat, CompressionError} from "@std/archive.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/archive.ms" import compress, CompressionFormat, CompressionError
+from "@std/bytes.ms" import Bytes
 
-fn forward[T](item: T) T: item
+def forward[T](item: T) -> T: item

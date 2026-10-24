@@ -7,7 +7,7 @@ use crate::Format;
 use crate::stream::{Decoder, Encoder, Poll};
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_std_core::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::ffi::{Fail, ObjRef, Object, Out, Status, abi_handle, native};
 
 /// `decoder_poll` status: no output yet, feed more input.
 pub const POLL_NEED_INPUT: u8 = 64;
@@ -135,7 +135,7 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
-    use ms_std_core::{ObjCell, VecVal, bytes_ref, new_string, write_bytes};
+    use ms_rt::ffi::{ObjCell, VecVal, bytes_ref, new_string, write_bytes};
 
     fn bytes(b: &[u8]) -> VecVal {
         let mut v = MaybeUninit::<VecVal>::uninit();
@@ -162,7 +162,7 @@ mod tests {
             );
             assert_eq!(
                 msrt_compress_decompress(packed.as_ptr(), &f, 1, 16, plain.as_mut_ptr()),
-                ms_std_core::STATUS_LIMIT_EXCEEDED
+                ms_rt::ffi::STATUS_LIMIT_EXCEEDED
             );
             assert_eq!(
                 msrt_compress_decompress(packed.as_ptr(), &f, 0, 0, plain.as_mut_ptr()),
@@ -177,7 +177,7 @@ mod tests {
             ] {
                 ms_rt::vec::msrt_bytes_drop(v);
             }
-            ms_std_core::str_release(&f);
+            ms_rt::ffi::str_release(&f);
         }
     }
 
@@ -191,7 +191,7 @@ mod tests {
         unsafe {
             assert_eq!(
                 msrt_compress_encoder_new(&f, 10, enc.as_mut_ptr()),
-                ms_std_core::STATUS_INVALID_INPUT
+                ms_rt::ffi::STATUS_INVALID_INPUT
             );
             assert_eq!(msrt_compress_encoder_new(&f, 6, enc.as_mut_ptr()), 0);
             let enc = enc.assume_init();

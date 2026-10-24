@@ -1,9 +1,20 @@
-import {expect_true} from "@std/testing.ms"
-import {
-    abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate
-} from "@std/math.ms"
+from "@std/testing.ms" import expect_true
+from "@std/math.ms" import (
+    abs,
+    abs_int,
+    atan2,
+    ceil,
+    floor,
+    max,
+    min,
+    pow,
+    remainder,
+    round,
+    sqrt,
+    truncate
+)
 
-fn viaValue(f: fn(value: Float) Float, x: Float) Float: f(value: x)
+def viaValue(f: Callable[[Float], Float], x: Float) -> Float: f(x)
 
 test "typed math":
     try expect_true((sqrt(value: 9.0) == 3.0))

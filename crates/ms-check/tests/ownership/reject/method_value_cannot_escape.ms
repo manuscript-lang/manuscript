@@ -1,2 +1,2 @@
-fn adder(var xs: List[Int]) fn(value: Int) Unit:
+def adder(var xs: List[Int]) -> Callable[[Int], Unit]:
     return xs.append  # error: cannot be returned

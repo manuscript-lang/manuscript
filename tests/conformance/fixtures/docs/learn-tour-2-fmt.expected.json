@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/testing.ms\"\n\ntest \"unread message count\":\n    let customer = \"Sam\"\n    var unread = 2\n    unread += 1\n\n    let message = \"{customer}, you have {unread} unread messages.\"\n    let enabled: Bool = true\n    try expect_equal(enabled, true)\n    try expect_equal(message, \"Sam, you have 3 unread messages.\")\n"
+    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ntest \"unread message count\":\n    let customer = \"Sam\"\n    var unread = 2\n    unread += 1\n\n    let message = f\"{customer}, you have {unread} unread messages.\"\n    let enabled: Bool = True\n    try expect_equal(enabled, True)\n    try expect_equal(message, \"Sam, you have 3 unread messages.\")\n"
   }
 }

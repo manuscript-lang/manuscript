@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 test "receiver before index":
     let values = [7]
@@ -6,10 +6,10 @@ test "receiver before index":
     let index: Optional[Int] = some(0)
     let result = values.get(
         match index:
-            some(i):
+            case some(i):
                 calls += 1
                 i
-            none: 0
+            case none: 0
     )
     try expect_equal(result, 7)
     try expect_equal(calls, 1)

@@ -25,18 +25,14 @@ macro_rules! sym_prefix {
         ""
     };
 }
-// Linked so its `msstd_math_*` exports ship in the runtime library.
-extern crate ms_std_fs;
-extern crate ms_std_io;
-extern crate ms_std_math;
-extern crate ms_std_process;
-extern crate ms_std_time;
 
 pub mod alloc;
 pub mod bits;
 pub mod desc;
 pub mod fault;
+pub mod ffi;
 pub mod global;
+pub mod glue;
 pub mod io;
 pub mod map;
 #[cfg(any(test, all(target_os = "linux", target_env = "musl")))]
@@ -67,7 +63,3 @@ mod model_tests;
 
 #[cfg(test)]
 mod testutil;
-
-// Drives files, processes and signals through the ABI, which Miri cannot model.
-#[cfg(all(test, not(miri)))]
-mod std_natives;

@@ -1,22 +1,22 @@
 # conform: tags=control-flow,formatter,generics,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
-import {expect_equal} from "@std/testing.ms"
-import range from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/collections.ms" import range
 
-fn ident[T](x: T) T:
+def ident[T](x: T) -> T:
     return x
 
-fn countdown[T](x: T, n: Int) Int:
+def countdown[T](x: T, n: Int) -> Int:
     if n == 0:
         return 0
 
     return 1 + countdown(x, n - 1)
 
-fn twice[T](x: T) T:
+def twice[T](x: T) -> T:
     return ident(ident(x))
 
-fn depth() Int:
+def depth() -> Int:
     return countdown("s", 5)
 
 test "static specializations are reused across calls":

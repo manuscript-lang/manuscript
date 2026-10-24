@@ -13,14 +13,14 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
           "line": 4,
-          "column": 8,
-          "offset": 181
+          "column": 35,
+          "offset": 208
         },
         "end": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
           "line": 4,
-          "column": 12,
-          "offset": 185
+          "column": 39,
+          "offset": 212
         },
         "fix": {
           "position": {
@@ -31,9 +31,9 @@
           },
           "end": {
             "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
-            "line": 5,
-            "column": 1,
-            "offset": 213
+            "line": 4,
+            "column": 27,
+            "offset": 200
           },
           "replacement": ""
         }
@@ -45,14 +45,14 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
           "line": 5,
-          "column": 8,
-          "offset": 220
+          "column": 35,
+          "offset": 247
         },
         "end": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
           "line": 5,
-          "column": 12,
-          "offset": 224
+          "column": 39,
+          "offset": 251
         },
         "fix": {
           "position": {
@@ -63,9 +63,9 @@
           },
           "end": {
             "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
-            "line": 6,
-            "column": 1,
-            "offset": 252
+            "line": 5,
+            "column": 27,
+            "offset": 239
           },
           "replacement": ""
         }
@@ -77,15 +77,15 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-12.ms",
           "line": 5,
-          "column": 8,
-          "offset": 220
+          "column": 35,
+          "offset": 247
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:4:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:8: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:8: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

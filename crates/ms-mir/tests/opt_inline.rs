@@ -284,6 +284,24 @@ fn growth_budget_limits_auto_inlining() {
 }
 
 #[test]
+fn constant_bonus_survives_continuation_splits_without_marking_call_results_constant() {
+    let mut src = String::from("module \"constant-bonus\"\nentry @main\n");
+    src.push_str("fn @bump(%x: int) -> int {\nb0:\n  %one: int = iconst 1\n  %r: int = iadd %x, %one\n  ret %r\n}\n");
+    src.push_str("fn @threshold(%x: int) -> int {\nb0:\n  %v0: int = iadd %x, %x\n");
+    // One instruction above the ordinary limit; multiple call sites prevent the single-use bonus.
+    for i in 1..=opt::inline::BASE_THRESHOLD {
+        src.push_str(&format!("  %v{i}: int = iadd %v{}, %x\n", i - 1));
+    }
+    src.push_str(&format!("  ret %v{}\n}}\n", opt::inline::BASE_THRESHOLD));
+    src.push_str("fn @main() -> int {\nb0:\n  %early: int = iconst 1\n  %result: int = call @bump (%early)\n  %late: int = iconst 2\n  %a: int = call @threshold (%early)\n  %b: int = call @threshold (%late)\n  %c: int = call @threshold (%result)\n  %ab: int = iadd %a, %b\n  %abc: int = iadd %ab, %c\n  ret %abc\n}\n");
+    let before = module(&src);
+    let after = inlined(&src);
+    assert_eq!(calls_to(&after, "bump"), 0);
+    assert_eq!(calls_to(&after, "threshold"), 1);
+    assert_eq!(outcome(&before), outcome(&after));
+}
+
+#[test]
 fn closures_and_methods_are_not_inline_candidates_and_survive() {
     let m = inlined(include_str!("fixtures-opt/dead.mir"));
     assert!(has_func(&m, "add"));

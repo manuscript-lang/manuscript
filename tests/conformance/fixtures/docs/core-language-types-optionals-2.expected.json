@@ -38,23 +38,12 @@
           "column": 15,
           "offset": 305
         }
-      },
-      {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected Optional[String], found String",
-        "position": {
-          "file": "core-language-types-optionals-2.ms",
-          "line": 9,
-          "column": 31,
-          "offset": 394
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-optionals-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:5:33: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:7:15: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/core-language-types-optionals-2.ms:9:31: type: expected Optional[String], found String\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-optionals-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:5:33: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-optionals-2.ms:7:15: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

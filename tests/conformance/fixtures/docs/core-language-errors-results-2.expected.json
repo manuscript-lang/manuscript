@@ -9,30 +9,71 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
         "position": {
           "file": "core-language-errors-results-2.ms",
           "line": 4,
-          "column": 28,
-          "offset": 198
+          "column": 29,
+          "offset": 199
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding discount; declare it with 'let discount = ...' before use, define 'fn discount(...)', or import it from a module",
+        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "position": {
+          "file": "core-language-errors-results-2.ms",
+          "line": 4,
+          "column": 47,
+          "offset": 217
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-2.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding discount; declare it with 'let discount = ...' before use, define 'def discount(...) -> T:', or import it from a module",
         "position": {
           "file": "core-language-errors-results-2.ms",
           "line": 5,
           "column": 20,
-          "offset": 252
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-2.ms:4:28: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n<DIR>/core-language-errors-results-2.ms:5:20: resolution: unknown binding discount; declare it with 'let discount = ...' before use, define 'fn discount(...)', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-2.ms:4:29: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-2.ms:4:47: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-2.ms:5:20: resolution: unknown binding discount; declare it with 'let discount = ...' before use, define 'def discount(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

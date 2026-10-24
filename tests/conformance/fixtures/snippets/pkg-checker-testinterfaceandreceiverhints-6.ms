@@ -2,12 +2,12 @@
 # conform: phase=check
 # conform: origin=pkg/checker/interface_hints_test.go:22 TestInterfaceAndReceiverHints
 interface Read[T]:
-    fn get() T
+    def get() -> T
 
-type Box[T]:
+type Box[T: Clonable]:
     item: T
 
 impl Read[T] for Box[T]:
-    fn get() T: self.item
+    def get() -> T: self.item.clone()
 
-fn read() Read[Int]: Box(1)
+def read() -> Read[Int]: Box(1)

@@ -1,39 +1,44 @@
 # conform: tags=control-flow,faults,formatter,interpolation,modules,optional,parser,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
-import {expect_equal, expect_false, fail} from "@std/testing.ms"
-import {
-    headers, HttpClientOptions, HttpError, HttpExchange, HttpMethod, HttpServerOptions
-} from "@std/http.ms"
-import {borrow_body, reader, next_event} from "@std/sse.ms"
-import network from "@std/net.ms"
+from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/http.ms" import (
+    headers,
+    HttpClientOptions,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpServerOptions
+)
+from "@std/sse.ms" import body_stream, reader, next_event
+from "@std/net.ms" import network
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
+def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = headers()
     try sent.append("Content-Type", "text/event-stream".to_bytes())
     try exchange.send_headers(200, sent)
     exchange.write("event: greet\r\ndata: h").get()
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
-    exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
+    exchange.write_bytes(f"\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
     exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
-    return ok(unit)
+    return ok(())
 
-test "HTTP response bodies decode as SSE without being closed by the reader":
-    with server = try network().serve_stream(
-        "127.0.0.1:0", stream_events, HttpServerOptions()
-    ):
-        with client = try network().http_client(HttpClientOptions()):
-            with response = try client.request(
-                HttpMethod.Get, "http://{server.address()}/", headers()
-            ):
-                var events = try reader(borrow_body(response))
-                let first = (try next_event(var events)).get()
-                let second = (try next_event(var events)).get()
-                if first.event != "greet" or first.data != "h\u{e9}!": return fail(
-                    "first event {first.data}"
-                )
+test "HTTP response bodies decode as SSE and close with the reader":
+    with try network().serve_stream("127.0.0.1:0", stream_events, HttpServerOptions()) as server:
+        with try network().http_client(HttpClientOptions()) as client:
+            let response = try client.request(
+                HttpMethod.Get, f"http://{server.address()}/", headers()
+            )
+            let status = response.metadata().status
+            var events = try reader(body_stream(response))
+            let first = (try next_event(var events)).get()
+            let second = (try next_event(var events)).get()
+            if first.event != "greet" or first.data != f"h\u{e9}!": return fail(
+                f"first event {first.data}"
+            )
 
-                try expect_false(second.event != "message" or second.data != "second")
-                try expect_false((try next_event(var events)).is_some())
-                try expect_equal(response.metadata().status, 200)
+            try expect_false(second.event != "message" or second.data != "second")
+            try expect_false((try next_event(var events)).is_some())
+            events.close()
+            try expect_equal(status, 200)

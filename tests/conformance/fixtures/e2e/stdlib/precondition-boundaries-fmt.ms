@@ -1,13 +1,13 @@
 # conform: tags=faults,formatter,modules,optional,parser,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {PriorityQueue, Queue} from "@std/queue.ms"
-import from_int from "@std/math.ms"
-import {parse_int, NumberError} from "@std/math.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/bytes.ms" import Bytes, BytesBuilder
+from "@std/queue.ms" import PriorityQueue, Queue
+from "@std/math.ms" import from_int
+from "@std/math.ms" import parse_int, NumberError
 
-fn compare(left: Int, right: Int) Int: left - right
+def compare(left: Int, right: Int) -> Int: left - right
 
 test "byte updates retain relative bounds and immutable storage":
     let bytes = Bytes([0, 255])

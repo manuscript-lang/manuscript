@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import {now, close_output} from \"./helper.ms\"\nimport stdout from \"@std/io.ms\"\nimport clock from \"@std/time.ms\"\n\nexport fn main() Int:\n    let before = now()\n    if clock().now() - before < 0.milliseconds:\n        return 1\n\n    close_output()\n\n    let cause = match stdout().write(\"\"):\n        ok(_):\n            return 3\n        error(cause): cause\n\n    match cause:\n        Closed:\n            return 0\n        _:\n            return 4\n"
+    "fmt": "from \"./helper.ms\" import now, close_output\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import clock\n\nexport def main() -> Int:\n    let before = now()\n    if clock().now() - before < 0.milliseconds:\n        return 1\n\n    close_output()\n\n    let cause = match stdout().write(\"\"):\n        case ok(_):\n            return 3\n        case error(cause): cause\n\n    match cause:\n        case Closed:\n            return 0\n        case _:\n            return 4\n"
   }
 }

@@ -20,30 +20,60 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding expect_equal; add: import expect_equal from \"@std/testing.ms\"",
+        "message": "unknown binding expect_equal; add: from \"@std/testing.ms\" import expect_equal",
         "position": {
           "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
           "line": 7,
           "column": 13,
           "offset": 253
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/testing.ms\" import expect_equal\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding fail; add: import fail from \"@std/testing.ms\"",
+        "message": "unknown binding fail; add: from \"@std/testing.ms\" import fail",
         "position": {
           "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
           "line": 10,
           "column": 9,
           "offset": 295
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/testing.ms\" import fail\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:7:13: resolution: unknown binding expect_equal; add: import expect_equal from \"@std/testing.ms\"\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:10:9: resolution: unknown binding fail; add: import fail from \"@std/testing.ms\"\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:7:13: resolution: unknown binding expect_equal; add: from \"@std/testing.ms\" import expect_equal\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:10:9: resolution: unknown binding fail; add: from \"@std/testing.ms\" import fail\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

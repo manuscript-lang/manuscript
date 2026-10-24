@@ -66,6 +66,7 @@
           // Capture groups carry the scopes; text between them stays plain.
           let at = cursor;
           for (const [group, kind] of rule.captures) {
+            if (!match.indices[group]) continue;
             const [from, to] = match.indices[group];
             add(source.slice(at, from));
             add(source.slice(from, to), kind);

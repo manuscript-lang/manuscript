@@ -178,6 +178,8 @@ pub struct Checker {
     pub(crate) standard_declarations: bool,
     pub(crate) deferred_default_bounds: Vec<DeferredBound>,
     pub(crate) id_scope: String,
+    /// Mutually importing bundled source modules checked together.
+    pub(crate) group: Vec<ModRef>,
     pub(crate) p: Program,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
@@ -214,6 +216,7 @@ impl Checker {
             standard_declarations: false,
             deferred_default_bounds: Vec::new(),
             id_scope: String::new(),
+            group: Vec::new(),
             p: Program::default(),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
@@ -268,13 +271,14 @@ impl Checker {
     // ------------------------------------------------------------ diagnostics
 
     fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let marker = format!("; add: import {name} from ");
+        let suffix = format!(" import {name}");
         let file = self.current_file();
         let _ = pos;
-        self.p
-            .diagnostics
-            .iter()
-            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&marker))
+        self.p.diagnostics.iter().any(|d| {
+            d.file.as_ref() == file.as_str()
+                && d.message.contains("; add: from ")
+                && d.message.ends_with(&suffix)
+        })
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -406,12 +410,20 @@ impl Checker {
         self.p.methods.extend(stdlib::standard_implementations());
         let mut checked: Vec<ModRef> = Vec::new();
         for module in &modules {
+            if !self.group.is_empty() && self.group.iter().any(|g| g.file == module.file) {
+                continue;
+            }
             if stdlib::is_source_module(module) && Some(module.file) != bundled {
                 self.adopt_checked(module, bundled.is_some());
                 continue;
             }
             self.check_module(module);
             checked.push(module.clone());
+        }
+        if !self.group.is_empty() {
+            let group = self.group.clone();
+            self.check_group(&group);
+            checked.extend(group);
         }
         self.p.modules = modules;
         crate::passes::finish_modules(&checked);
@@ -473,6 +485,71 @@ impl Checker {
         self.declaration_checks(module);
     }
 
+    fn enter_module(&mut self, module: &ModRef) {
+        self.module = Some(module.clone());
+        self.names = self.p.symbols[&module.file].clone();
+        self.scope = Scope::new(None);
+    }
+
+    /// Checks mutually importing bundled modules in lockstep: every module declares its
+    /// symbols before any module imports, resolves signatures or checks bodies.
+    fn check_group(&mut self, group: &[ModRef]) {
+        for module in group {
+            self.module = Some(module.clone());
+            self.names = Rc::new(RefCell::new(HashMap::new()));
+            self.p.symbols.insert(module.file, self.names.clone());
+            self.scope = Scope::new(None);
+            for name in PRIMITIVE_NAMES {
+                let nm = n(name);
+                let s = Rc::new(Sym {
+                    name: nm,
+                    id: nm,
+                    kind: SymKind::Type,
+                    module: n(""),
+                    native: n(""),
+                    export: true,
+                    ty: RefCell::new(Some(primitive(name))),
+                    variables: RefCell::new(Vec::new()),
+                    decl: None,
+                });
+                self.names.borrow_mut().insert(nm, s);
+            }
+            self.add_standard_prelude();
+            self.declare_symbols(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.import_symbols(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.declare_type_variables(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.resolve_signatures(module);
+            self.check_constant_cycles(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            for d in &module.decls {
+                if matches!(d.decl().kind, DeclKind::Impl(_)) {
+                    self.implementation(d);
+                }
+            }
+        }
+        for module in group {
+            self.enter_module(module);
+            self.check_test_fixture(module);
+            self.check_defaults(module);
+            self.check_bodies(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.declaration_checks(module);
+        }
+    }
+
     fn import_symbols(&mut self, module: &ModRef) {
         for item in &module.imports {
             let path = item.path.as_ref();
@@ -525,6 +602,35 @@ impl Checker {
                 continue;
             }
             let name = d.name();
+            if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
+                // An opaque runtime type: the loader registered its canonical symbol.
+                let canonical = stdlib::is_source_module(module)
+                    .then(|| stdlib::standard_symbol(name.as_str()))
+                    .flatten()
+                    .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
+                match canonical {
+                    Some(s) => self.add_symbol(name, s, d.pos()),
+                    None => self.type_error(
+                        d.pos(),
+                        "extern type is available only in bundled standard modules; declare a record or alternative instead",
+                    ),
+                }
+                continue;
+            }
+            if matches!(
+                d.decl().kind,
+                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_)
+            ) {
+                // A bundled module's exported types were declared when it was registered.
+                let predeclared = stdlib::is_source_module(module)
+                    .then(|| stdlib::source_type(module.file, name))
+                    .flatten()
+                    .filter(|s| s.decl.as_ref().is_some_and(|sd| sd.same(d)));
+                if let Some(s) = predeclared {
+                    self.add_symbol(name, s, d.pos());
+                    continue;
+                }
+            }
             let id = self.unique("symbol");
             let kind = match &d.decl().kind {
                 DeclKind::Fn(_) | DeclKind::Const(_) => None,
@@ -532,6 +638,11 @@ impl Checker {
                 DeclKind::Alternative(_) => Some(Kind::Alternative),
                 DeclKind::Interface(_) => Some(Kind::Contract),
                 _ => None,
+            };
+            // An `extern fn` calls the native symbol named after it.
+            let native = match &d.decl().kind {
+                DeclKind::Fn(f) if f.external => n(&format!("extern:{name}")),
+                _ => n(""),
             };
             let s = Rc::new(Sym {
                 name,
@@ -542,7 +653,7 @@ impl Checker {
                     SymKind::Fn
                 },
                 module: module.file,
-                native: n(""),
+                native,
                 export: d.decl().export,
                 ty: RefCell::new(None),
                 variables: RefCell::new(Vec::new()),
@@ -737,7 +848,9 @@ impl Checker {
                         self.expression(default, Some(&typ));
                         let is_none =
                             matches!(&default.kind, ExprKind::Name(nm) if nm.as_str() == "none");
-                        if typ.id != "@std/Optional" || !is_none {
+                        // Bundled interfaces are implemented by the runtime, which fills any default.
+                        let bundled = stdlib::is_source_module(module);
+                        if !bundled && (typ.id != "@std/Optional" || !is_none) {
                             self.type_error(
                                 param.pos,
                                 "interface defaults must be Optional.none; write '= none' or remove the default",
@@ -753,6 +866,11 @@ impl Checker {
     fn check_bodies(&mut self, module: &ModRef) {
         for d in &module.decls {
             match &d.decl().kind {
+                DeclKind::Fn(f) if f.external => {
+                    if let Some(s) = self.own_symbol(d) {
+                        self.check_extern_signature(f, &s.ty(), d.pos());
+                    }
+                }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
                     if let Some(s) = self.own_symbol(d) {
                         let t = s.ty();
@@ -903,7 +1021,7 @@ impl Checker {
                     s.ty()
                 } else {
                     let msg = self.unknown_type_message(name);
-                    self.res_error(t.pos, msg);
+                    self.res_error_name(t.pos, name.len(), msg);
                     self.unknown_type = true;
                     return invalid();
                 };
@@ -952,6 +1070,68 @@ impl Checker {
                 self.m().facts_mut().type_refs.insert(t.id, r.clone());
                 r
             }
+        }
+    }
+
+    /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
+    /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
+    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
+        // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
+        if self.module.as_ref().is_some_and(stdlib::is_source_module) {
+            return;
+        }
+        if !f.type_params.is_empty() {
+            self.type_error(
+                pos,
+                "an extern fn cannot be generic; declare the concrete types the native symbol takes",
+            );
+        }
+        const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
+        const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];
+        for (p, ty) in f.params.iter().zip(&t.params) {
+            if p.mutable {
+                self.type_error(
+                    p.pos,
+                    format!(
+                        "extern parameter {} cannot be var; a native borrows its arguments",
+                        p.name
+                    ),
+                );
+            } else if p.default.is_some() {
+                self.type_error(
+                    p.pos,
+                    format!("extern parameter {} cannot have a default; the native symbol takes every argument", p.name),
+                );
+            } else if ty.ty.id != "<invalid>" && !ARGUMENTS.contains(&ty.ty.id.as_str()) {
+                self.type_error(
+                    p.pos,
+                    format!("extern parameter {} has type {}, which cannot cross the native boundary; use Int, Float, Bool, or String", p.name, ty.ty.name),
+                );
+            }
+        }
+        let result = t.result_ty();
+        if result.id == "<invalid>" {
+            return;
+        }
+        if result.is_std("Result") && result.args.len() == 2 {
+            let (ok, error) = (&result.args[0], &result.args[1]);
+            let cases = cases(error);
+            if !RESULTS.contains(&ok.id.as_str()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern Result value has type {}, which cannot cross the native boundary; use Int, Float, Bool, String, or Unit", ok.name),
+                );
+            } else if cases.is_empty() || cases.iter().any(|c| !c.fields.is_empty()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern error type {} must be an alternative whose cases carry no payload; the native returns the status 1 + the case index", error.name),
+                );
+            }
+        } else if !RESULTS.contains(&result.id.as_str()) {
+            self.type_error(
+                f.result.pos,
+                format!("extern result has type {}, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them", result.name),
+            );
         }
     }
 
@@ -1160,7 +1340,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
+                "make_fixture must be a nongeneric zero-argument function; declare def make_fixture() -> ConcreteFixture",
             );
             return;
         }
@@ -1224,7 +1404,7 @@ impl Checker {
     }
 }
 
-fn hex(s: &str) -> String {
+pub(crate) fn hex(s: &str) -> String {
     let mut out = String::with_capacity(s.len() * 2);
     for b in s.bytes() {
         out.push_str(&format!("{b:02x}"));

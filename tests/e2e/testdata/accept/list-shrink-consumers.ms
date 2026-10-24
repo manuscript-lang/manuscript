@@ -1,9 +1,9 @@
-import {expect_equal, expect_false, expect_true} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_true
 
 type Visits:
     count: Int
 
-fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
+def mutate[T](var values: List[T], mode: String, fill: List[T]) -> Unit:
     if mode == "remove":
         values.remove(0)
     if mode == "splice":
@@ -15,16 +15,16 @@ fn mutate[T](var values: List[T], mode: String, fill: List[T]) Unit:
         values.splice(start: 0, delete_count: 0, replacement: fill.clone())
         values.splice(start: 0, delete_count: 0, replacement: fill)
 
-fn step[T](
+def step[T](
     var seen: List[T], var visits: Visits, var values: List[T], value: T, mode: String,
     fill: List[T]
-) Unit:
+) -> Unit:
     seen.append(value)
     if visits.count == 0:
         mutate(values: var values, mode: mode, fill: fill)
     visits.count = visits.count + 1
 
-fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) Result[
+def observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) -> Result[
     List[T], Error
 ]:
     var seen: List[T] = []
@@ -35,7 +35,7 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
             values
             .clone()
             .for_each(
-                fn(value: T): step(
+                lambda (value: T): step(
                     var seen, var visits, var values, value, mode, fill.clone()
                 )
             )
@@ -47,7 +47,7 @@ fn observe[T](var values: List[T], mode: String, fill: List[T], callback: Bool) 
     visits.count | try expect_equal(3)
     return ok(seen)
 
-fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
+def remaining[T](mode: String, items: List[T], fill: List[T]) -> List[T]:
     var out = items
     if mode == "remove": out.remove(0)
     if mode == "splice": out.splice(
@@ -64,7 +64,7 @@ fn remaining[T](mode: String, items: List[T], fill: List[T]) List[T]:
     return out
 
 test "Int consumers see the full snapshot while the live list shrinks":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = [1, 2, 3]
             let clone = values.clone()
@@ -84,7 +84,7 @@ test "Int consumers see the full snapshot while the live list shrinks":
             ) | try expect_false
 
 test "Float consumers see the full snapshot while the live list shrinks":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = [1.5, 2.5, 3.5]
             let clone = values.clone()
@@ -104,7 +104,7 @@ test "Float consumers see the full snapshot while the live list shrinks":
             ) | try expect_false
 
 test "String consumers see the full snapshot while the live list shrinks":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = ["a", "bb", "ccc"]
             let clone = values.clone()
@@ -125,7 +125,7 @@ type Payload:
     value: Int
 
 test "record consumers keep independent copies after shrink":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last = Payload(3)
             var values = [Payload(1), Payload(2), last.clone()]
@@ -144,13 +144,13 @@ type Choice:
     case number(value: Int)
     case label(value: String)
 
-fn score(value: Choice) Int:
+def score(value: Choice) -> Int:
     match value:
-        number(count): return count
-        label(text): return text.length()
+        case number(count): return count
+        case label(text): return text.length()
 
 test "alternative consumers retain tags and payloads after shrink":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             let first: Choice = number(1)
             let second: Choice = label("bb")
@@ -167,7 +167,7 @@ test "alternative consumers retain tags and payloads after shrink":
             (not (total == wanted and seen == snapshot and values == want)) | try expect_false
 
 test "nested list consumers keep independent inner lists after shrink":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last = [3]
             var values = [[1], [2], last.clone()]
@@ -190,7 +190,7 @@ test "map and folds consume snapshots of the live list":
         mapped
         .clone()
         .map(
-            fn(value):
+            lambda value:
                 if visits.count == 0: mapped.remove(0)
                 visits.count = visits.count + 1
                 return value + 10
@@ -207,7 +207,8 @@ test "map and folds consume snapshots of the live list":
         .clone()
         .fold(
             0,
-            fn(accumulator, value):
+            lambda accumulator,
+            value:
                 if visits.count == 0: folded.splice(
                     start: 0, delete_count: 3, replacement: []
                 )
@@ -226,7 +227,8 @@ test "map and folds consume snapshots of the live list":
         .clone()
         .fold_right(
             0,
-            fn(accumulator, value):
+            lambda accumulator,
+            value:
                 if visits.count == 0: reversed.remove(0)
                 visits.count = visits.count + 1
                 return accumulator * 10 + value
@@ -236,26 +238,19 @@ test "map and folds consume snapshots of the live list":
     (backwards == 321 and reversed == [2, 3] and visits.count == 3) | try expect_true
 
 interface ReadValue:
-    fn read() Int
+    def read() -> Int
 
 impl ReadValue for Payload:
-    fn read() Int: self.value
+    def read() -> Int: self.value
 
 test "interface view consumers dispatch after shrink":
-    for callback in [false, true]:
+    for callback in [False, True]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last_record = Payload(3)
-            var values = [
-                ReadValue(Payload(1)), ReadValue(Payload(2)),
-                ReadValue(last_record.clone())
-            ]
+            var values = [Payload(1), Payload(2), last_record.clone()]
             let clone = values.clone()
-            let want = remaining(mode, values.clone(), [ReadValue(Payload(9))])
-            let seen = (
-                try observe(
-                    var values, mode, [ReadValue(Payload(9))], callback
-                )
-            )
+            let want = remaining(mode, values.clone(), [Payload(9)])
+            let seen = (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
             for value in seen: total = total + value.read()
@@ -268,7 +263,7 @@ test "find returns the value passed to a mutating predicate":
     var forward = [1, 2, 3]
 
     let found = forward.clone().find(
-        fn(value):
+        lambda value:
             forward.remove(0)
             return value == 1
     )
@@ -281,7 +276,7 @@ test "find returns the value passed to a mutating predicate":
         replaced
         .clone()
         .find(
-            fn(value):
+            lambda value:
                 replaced.set(0, 9)
                 return value == 1
         )
@@ -295,7 +290,7 @@ test "find returns the value passed to a mutating predicate":
         reverse
         .clone()
         .find_last(
-            fn(value):
+            lambda value:
                 if value == 2: reverse.remove(1)
                 return value == 2
         )
@@ -309,7 +304,7 @@ test "find returns the value passed to a mutating predicate":
         last_replaced
         .clone()
         .find_last(
-            fn(value):
+            lambda value:
                 last_replaced.set(2, 9)
                 return value == 3
         )
@@ -323,7 +318,7 @@ test "find returns the value passed to a mutating predicate":
         indexes
         .clone()
         .find_index(
-            fn(value):
+            lambda value:
                 indexes.remove(0)
                 return value == 1
         )
@@ -335,7 +330,7 @@ test "find returns the value passed to a mutating predicate":
         reverse_indexes
         .clone()
         .find_last_index(
-            fn(value):
+            lambda value:
                 if value == 2: reverse_indexes.remove(1)
                 return value == 2
         )
@@ -349,7 +344,7 @@ test "find returns the value passed to a mutating predicate":
         records
         .clone()
         .find(
-            fn(value):
+            lambda value:
                 let matches = value.value == 1
                 records.set(0, Payload(9))
                 return matches

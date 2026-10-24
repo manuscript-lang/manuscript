@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,lists,modules,mutation,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/compound-assignment.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Counter:
     count: Int
@@ -10,7 +10,7 @@ type Counter:
 type Outer:
     inner: Counter
 
-fn tally(values: List[Int]) Int:
+def tally(values: List[Int]) -> Int:
     var total = 0
     for value in values:
         total += value

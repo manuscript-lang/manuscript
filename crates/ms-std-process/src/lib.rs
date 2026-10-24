@@ -37,11 +37,11 @@ pub(crate) fn environment_guard() -> std::sync::MutexGuard<'static, ()> {
 
 use alloc::vec::Vec;
 use command::Subprocess;
-use ms_rt_abi::{STATUS_INVALID_INPUT, StrVal};
-use ms_std_core::{
+use ms_rt::ffi::{
     Bytes, IntList, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, Str, StrMap, StringList,
     Text, TextList, abi_handle, abi_record, argv, native, start_nanos,
 };
+use ms_rt_abi::{STATUS_INVALID_INPUT, StrVal};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::fs_status;
 use ms_std_io::stream::Stream;
@@ -163,7 +163,7 @@ fn info_or_default() -> control::Info {
 native! {
     /// The text of the last `FAILED` result.
     fn msstd_process_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     safe fn msstd_process_monotonic_time() -> i64 {
@@ -523,95 +523,4 @@ mod exec {
             message: Some(m),
         })
     }
-}
-
-/// Stand-ins for the runtime symbols the crate links against, so its unit tests link alone.
-#[cfg(test)]
-#[allow(unsafe_code)]
-mod runtime_stubs {
-    #[unsafe(no_mangle)]
-    pub static msrt_cancel_flag: u8 = 0;
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn msrt_cancelled() -> ! {
-        panic!("cancelled")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_io_flush() {}
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_task_sleep(ns: i64) -> u32 {
-        std::thread::sleep(std::time::Duration::from_nanos(ns.max(0) as u64));
-        0
-    }
-
-    /// Blocks the thread in `poll`: unit tests run on many threads, without the scheduler.
-    #[cfg(unix)]
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
-        let mut p = libc::pollfd {
-            fd,
-            events: if events & 2 != 0 {
-                libc::POLLOUT
-            } else {
-                libc::POLLIN
-            },
-            revents: 0,
-        };
-        let ms = if timeout_ns < 0 {
-            -1
-        } else {
-            ((timeout_ns + 999_999) / 1_000_000) as i32
-        };
-        // SAFETY: `p` is one valid entry.
-        if unsafe { libc::poll(&mut p, 1, ms) } == 0 {
-            8
-        } else {
-            events
-        }
-    }
-
-    /// One task, so blocking calls run inline and the token calls below are never reached.
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_task_count() -> usize {
-        1
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_token_new(_: u32) -> u64 {
-        unreachable!("tests run blocking calls inline")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_token_park(_: u64, _: i64, _: *mut u64) -> u32 {
-        unreachable!("tests run blocking calls inline")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_token_post_remote(_: u64, _: u64) {
-        unreachable!("tests run blocking calls inline")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_token_free(_: u64) {
-        unreachable!("tests run blocking calls inline")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_heap_stats(out: *mut i64) {
-        // SAFETY: tests pass two writable words.
-        unsafe {
-            out.write(1);
-            out.add(1).write(2);
-        }
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_start_nanos() -> i64 {
-        0
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_argv(_: *mut ms_rt_abi::VecVal) {}
 }

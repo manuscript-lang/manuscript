@@ -6,18 +6,18 @@ type Optional[T]:
     case none
 
 impl Optional[T]:
-    fn is_some() Bool:
+    def is_some() -> Bool: ...
 
-    fn is_none() Bool:
+    def is_none() -> Bool: ...
 
-    fn get(default: Optional[T] = none) T:
+    def get(default: Optional[T] = none) -> T: ...
 
-    fn map[U](transform: fn(value: T) U) Optional[U]:
+    def map[U](transform: Callable[[T], U]) -> Optional[U]: ...
 
-    fn and_then[U](transform: fn(value: T) Optional[U]) Optional[U]:
+    def and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]: ...
 
-    fn or_else(create: fn() Optional[T]) Optional[T]:
+    def or_else(create: Callable[[], Optional[T]]) -> Optional[T]: ...
 
-    fn ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]:
+    def ok_or[E: Error = MissingValue](cause: Optional[E] = none) -> Result[T, E]: ...
 
-    fn ok_or_else[E: Error](create: fn() E) Result[T, E]:
+    def ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]: ...

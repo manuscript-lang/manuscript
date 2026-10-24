@@ -449,6 +449,9 @@ impl<'a> FnLower<'a> {
         if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
             return self.builder_method(e, view, m, recv_expr, &method);
         }
+        if m.receiver.is_std("Shared") {
+            return self.shared_method(e, view, recv_expr, &method);
+        }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
@@ -782,15 +785,6 @@ impl<'a> FnLower<'a> {
             || t.is_std("Bytes")
         {
             return self.construct_collection(view, mt);
-        }
-        if matches!(self.b.m.types.kind(mt), TyKind::Iface(_)) {
-            // `Shape(value: x)`: an explicit interface view.
-            let [a] = view.arguments.as_slice() else {
-                return Err(Error::new("an interface view takes one value"));
-            };
-            let x = self.expr(a.expr)?;
-            let from = self.ety(a.expr);
-            return self.fit_ty(x, &from, mt);
         }
         // Parameter names and types of the constructor.
         let params: Vec<ct::Param> = match case {

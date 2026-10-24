@@ -13,33 +13,12 @@ use ms_syntax::ast::*;
 /// String operations `fn(String) -> String` and their runtime symbols.
 /// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
 /// the runtime wants the case index (else the lowercase case name).
-const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
-    (
-        "string/form_normalize",
-        "msrt_string_normalize_kind",
-        "kind",
-        true,
-    ),
-    ("archive/format_pack", "msrt_archive_pack", "format", false),
-    (
-        "archive/format_unpack",
-        "msrt_archive_unpack",
-        "format",
-        false,
-    ),
-    (
-        "archive/format_compress",
-        "msrt_compress_compress",
-        "format",
-        false,
-    ),
-    (
-        "archive/format_decompress",
-        "msrt_compress_decompress",
-        "format",
-        false,
-    ),
-];
+const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[(
+    "string/form_normalize",
+    "msrt_string_normalize_kind",
+    "kind",
+    true,
+)];
 
 const STRING_TO_STRING: &[(&str, &str)] = &[
     ("string/reverse", "msrt_string_reverse"),
@@ -139,6 +118,62 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
+        if let Some(symbol) = native.strip_prefix("extern:") {
+            if !sym.module.as_str().starts_with("@std/") {
+                return self.extern_call(e, view, symbol, sym);
+            }
+            // Time values are plain words: reading one is not a runtime call.
+            if let Some(field) = match symbol {
+                "msstd_time_duration_to_nanoseconds" => Some(None),
+                "msstd_time_timestamp_unix_seconds" => Some(Some(0)),
+                "msstd_time_timestamp_nanoseconds" => Some(Some(1)),
+                _ => None,
+            } {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let value = self.borrow(args[0].val);
+                self.at(e.pos);
+                let v = match field {
+                    None => value,
+                    Some(index) => {
+                        let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(value)).clone()
+                        else {
+                            return Err(Error::new("Timestamp is not a record"));
+                        };
+                        self.b.rec_get(rid, index, value)
+                    }
+                };
+                return Ok(Val { v, own: false });
+            }
+            // Codec streams are built by the compiler: the format name, the input, and the limit.
+            if matches!(
+                symbol,
+                "msstd_archive_compress_stream" | "msstd_archive_decompress_stream"
+            ) {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                let decode = symbol == "msstd_archive_decompress_stream";
+                return self.codec_stream(args[0].val, &args[1..], decode, result);
+            }
+            // A symbol that still has a hand-lowered native identity keeps it.
+            if let Some(legacy) = ms_check::stdlib::native_for_symbol(symbol) {
+                return self.native_function(e, view, &legacy, params, sym);
+            }
+            // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
+            let args = self.native_args(view)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+            let result = self.emty(e)?;
+            self.at(e.pos);
+            return self.rt_function(symbol, params, &args, result);
+        }
         match native {
             "collections/range" => {
                 let args = self.native_args(view)?;
@@ -224,11 +259,7 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
-            "collections/map_from_entries"
-            | "crypto/sha256"
-            | "crypto/sha384"
-            | "crypto/sha512"
-            | "crypto/derive_key" => {
+            "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
@@ -355,6 +386,7 @@ impl<'a> FnLower<'a> {
                 | "math/max_of"
                 | "math/min_of"
                 | "time/duration"
+                | "shared/share"
                 | "core/category"
                 | "math/bit_and"
                 | "math/bit_or"
@@ -405,6 +437,12 @@ impl<'a> FnLower<'a> {
             let cty = self.ty_of(cause);
             let f = self.cx.category_fn(self.b.m, cty, result);
             let v = self.b.call(f, &[cause]);
+            return Ok(Val { v, own: true });
+        }
+        if native == "shared/share" {
+            // The payload moves into a refcounted box; copies of the handle retain it.
+            let payload = self.owned(args[0].val);
+            let v = self.shared_new(payload, result);
             return Ok(Val { v, own: true });
         }
         if native == "time/duration" {
@@ -1489,14 +1527,6 @@ impl<'a> FnLower<'a> {
                 v: self.borrow(recv),
                 own: false,
             }));
-        }
-        if m.receiver.is_std("ClientResponse") && name == "metadata" {
-            let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(recv.v)).clone() else {
-                return Err(Error::new("ClientResponse is not a record"));
-            };
-            let r = self.borrow(recv);
-            let v = self.b.rec_get(rid, 0, r);
-            return Ok(Some(Val { v, own: false }));
         }
         let field = match name.as_str() {
             "unix_seconds" => 0,

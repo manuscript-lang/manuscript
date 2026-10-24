@@ -5,7 +5,7 @@ type Counter:
     value: Int
 
 impl Counter:
-    fn overflow() Int:
+    def overflow() -> Int:
         return self.value * self.value
 
 test "inherent fault frame":

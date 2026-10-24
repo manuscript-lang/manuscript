@@ -1,10 +1,10 @@
 # conform: tags=closures,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/int_bounds_test.go:60 TestScalarIntBoundsIsolateBranchesAndClosures
-fn probe(value: Int) Int:
+def probe(value: Int) -> Int:
     var sum = 0
     sum = value
 
-    let callback = fn() Int:
+    let callback = lambda () -> Int:
         return sum + value
     return callback()

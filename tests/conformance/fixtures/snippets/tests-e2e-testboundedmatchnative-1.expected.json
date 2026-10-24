@@ -13,74 +13,74 @@
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 21,
-          "column": 15,
-          "offset": 512
+          "column": 16,
+          "offset": 522
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 21,
-          "column": 34,
-          "offset": 531
+          "column": 38,
+          "offset": 544
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
           "column": 19,
-          "offset": 580
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
-        "position": {
-          "file": "tests-e2e-testboundedmatchnative-1.ms",
-          "line": 24,
-          "column": 36,
           "offset": 597
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
-          "column": 53,
+          "column": 36,
           "offset": 614
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
-          "line": 26,
-          "column": 8,
-          "offset": 660
+          "line": 24,
+          "column": 53,
+          "offset": 631
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
+        "position": {
+          "file": "tests-e2e-testboundedmatchnative-1.ms",
+          "line": 26,
+          "column": 8,
+          "offset": 677
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 28,
           "column": 8,
-          "offset": 751
+          "offset": 768
         }
       },
       {
@@ -91,25 +91,40 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 30,
           "column": 16,
-          "offset": 846
+          "offset": 863
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testboundedmatchnative-1.ms",
+            "line": 30,
+            "column": 16,
+            "offset": 863
+          },
+          "end": {
+            "file": "tests-e2e-testboundedmatchnative-1.ms",
+            "line": 30,
+            "column": 21,
+            "offset": 868
+          },
+          "replacement": "shapes"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 36,
           "column": 16,
-          "offset": 941
+          "offset": 958
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testboundedmatchnative-1.ms:21:15: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:21:34: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:36: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:53: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:26:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:28:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:30:16: resolution: unknown binding Shape; did you mean 'shapes'?\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:36:16: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...)', or import it from a module\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testboundedmatchnative-1.ms:21:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:21:38: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:36: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:24:53: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:26:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:28:8: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:30:16: resolution: unknown binding Shape; did you mean 'shapes'?\n<DIR>/tests-e2e-testboundedmatchnative-1.ms:36:16: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

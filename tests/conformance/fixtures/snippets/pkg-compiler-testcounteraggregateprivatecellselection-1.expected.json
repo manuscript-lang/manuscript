@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...)', or import it from a module",
+        "message": "unknown binding cell; declare it with 'let cell = ...' before use, define 'def cell(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testcounteraggregateprivatecellselection-1.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-1.ms:4:13: resolution: unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcounteraggregateprivatecellselection-1.ms:4:13: resolution: unknown binding cell; declare it with 'let cell = ...' before use, define 'def cell(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

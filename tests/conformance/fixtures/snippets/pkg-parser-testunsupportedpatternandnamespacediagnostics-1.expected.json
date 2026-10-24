@@ -3,26 +3,7 @@
   "phase": "parse",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "diagnostics": [
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "string-literal match patterns are unsupported; match arms select alternative cases or concrete types, so compare strings with 'if command == \"report\":' and 'else' instead",
-        "position": {
-          "file": "pkg-parser-testunsupportedpatternandnamespacediagnostics-1.ms",
-          "line": 6,
-          "column": 9,
-          "offset": 222
-        },
-        "end": {
-          "file": "pkg-parser-testunsupportedpatternandnamespacediagnostics-1.ms",
-          "line": 6,
-          "column": 18,
-          "offset": 231
-        }
-      }
-    ],
-    "fmt": null,
-    "fmt_exit_code": 1
+    "diagnostics": [],
+    "fmt": "def f(command: String) -> Int:\n    match command:\n        case \"réport\": return 1\n\n    return 0\n"
   }
 }

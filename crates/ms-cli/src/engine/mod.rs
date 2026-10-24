@@ -61,6 +61,7 @@ impl<L: Lower> Engine<L> {
         compiled: &mut Compiled,
         output: &Path,
         kind: BuildType,
+        link: &[String],
     ) -> Result<(), String> {
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
@@ -69,7 +70,14 @@ impl<L: Lower> Engine<L> {
                 None => runtime::embedded()?,
             },
         };
-        ms_build::build_executable(&mut compiled.module, output, profile(kind), &runtime)?;
+        let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
+        ms_build::build_executable(
+            &mut compiled.module,
+            output,
+            profile(kind),
+            &runtime,
+            &extra,
+        )?;
         write_metadata(output, kind);
         Ok(())
     }
@@ -285,7 +293,7 @@ fn library_failure(graph: &Graph) -> Failure {
             file: file.as_str().into(),
             pos,
             phase: Phase::Resolution,
-            message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export fn main() Int from that file, or use check, lint, or test for the library".to_string(),
+            message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export def main() -> Int from that file, or use check, lint, or test for the library".to_string(),
             end: None,
             fix: None,
         }],

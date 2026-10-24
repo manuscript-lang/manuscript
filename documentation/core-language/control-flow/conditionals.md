@@ -8,7 +8,7 @@ weight = 1
 `if` runs a block when a `Bool` condition is true; `else` runs otherwise.
 
 ```manuscript
-fn status(active: Bool) String:
+def status(active: Bool) -> String:
     if active:
         return "Active"
     else:
@@ -18,7 +18,7 @@ fn status(active: Bool) String:
 A short branch can be one simple statement on the same line:
 
 ```manuscript
-fn status(active: Bool) String:
+def status(active: Bool) -> String:
     if active: return "Active"
     else: return "Inactive"
 ```
@@ -28,15 +28,15 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 - Conditions must be `Bool`; numbers and text have no truth values.
 - `if` is a statement, not an expression.
 - The condition is evaluated once; at most one branch runs.
-- `else` and `else if` start on their own line, aligned with `if`. There is no `elif`.
+- `elif` and `else` start on their own line, aligned with `if`.
 - Each branch has its own scope; assignments to an outer `var` persist.
-- An `else if` chain tests in order and stops at the first match.
+- An `elif` chain tests in order and stops at the first match.
 
 ```manuscript
-fn classify(value: Int) String:
+def classify(value: Int) -> String:
     if value < 0:
         return "negative"
-    else if value == 0:
+    elif value == 0:
         return "zero"
     else:
         return "positive"
@@ -46,21 +46,21 @@ fn classify(value: Int) String:
 
 ## If as an expression
 
-`if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
+`a if c else b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and chains nest in the final `else`. It has the lowest expression precedence and is right-associative:
 
 ```manuscript
-fn sign(value: Int) Int:
-    return if value < 0: -1 else if value == 0: 0 else: 1
+def sign(value: Int) -> Int:
+    return -1 if value < 0 else 0 if value == 0 else 1
 ```
 
-The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
+The branches are expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 
 `if let name = expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 ```manuscript
-fn greeting(name: Optional[String]) String:
+def greeting(name: Optional[String]) -> String:
     if let value = name:
         return "Hello, " + value
     else:
@@ -68,8 +68,8 @@ fn greeting(name: Optional[String]) String:
 ```
 
 ```manuscript
-import {TextError} from "@std/core.ms"
-fn port(lookup: Result[Int, TextError]) Int:
+from "@std/core.ms" import TextError
+def port(lookup: Result[Int, TextError]) -> Int:
     if let value = lookup:
         return value
     return 8080
@@ -77,18 +77,18 @@ fn port(lookup: Result[Int, TextError]) Int:
 
 `if var name = expression:` binds the payload as a mutable borrow of the value it came from (for example `if var entry = entries.get(key):` then `entry.count = entry.count + 1` changes the value in `entries`). The origin must be `var`, and nothing else may use it until the last use of `name`. The entry is changed in place, not copied, for scalar payloads too: `if var n = counts.get(key): n += 1` updates `counts`. Supported on `get` of a map and on `first`, `last` and `get` of a list.
 
-A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
+A present `0`, `False`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
 
 ## Validating inputs
 
 Validate with an early return:
 
 ```manuscript
-fn nonnegative(value: Int) Bool:
+def nonnegative(value: Int) -> Bool:
     if value < 0:
-        return false
+        return False
 
-    return true
+    return True
 ```
 
 [Expected failures](../errors/results.md) uses this shape to reject invalid input with a domain error.

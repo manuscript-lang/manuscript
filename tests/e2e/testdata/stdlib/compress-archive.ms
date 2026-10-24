@@ -1,7 +1,7 @@
-import {expect_equal} from "@std/testing.ms"
-import {compress, decompress, CompressionError} from "@std/archive.ms"
-import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/archive.ms" import compress, decompress, CompressionError
+from "@std/archive.ms" import pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError
+from "@std/bytes.ms" import Bytes
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
@@ -25,8 +25,8 @@ test "compression formats roundtrip and enforce expanded byte budgets":
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
     let entries = [
-        ArchiveEntry("a.txt", "hello".to_bytes(), directory: false),
-        ArchiveEntry("b.txt", "bye".to_bytes(), directory: false)
+        ArchiveEntry("a.txt", "hello".to_bytes(), directory: False),
+        ArchiveEntry("b.txt", "bye".to_bytes(), directory: False)
     ]
 
     for format in ["zip", "tar"]:
@@ -48,5 +48,5 @@ test "archives reject traversal paths":
     let invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
-        let entries = [ArchiveEntry(path, "".to_bytes(), directory: false)]
+        let entries = [ArchiveEntry(path, "".to_bytes(), directory: False)]
         try expect_equal(pack(entries, "zip"), invalid)

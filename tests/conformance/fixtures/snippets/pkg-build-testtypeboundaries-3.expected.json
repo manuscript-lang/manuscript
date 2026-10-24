@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "equality requires Equal operands; fn() Int has no equality, so add 'impl Equal for fn() Int:' or compare fields",
+        "message": "equality requires Equal operands; Callable[[], Int] has no equality, so add 'impl Equal for Callable[[], Int]:' or compare fields",
         "position": {
           "file": "pkg-build-testtypeboundaries-3.ms",
           "line": 5,
           "column": 18,
-          "offset": 189
+          "offset": 202
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testtypeboundaries-3.ms:5:18: type: equality requires Equal operands; fn() Int has no equality, so add 'impl Equal for fn() Int:' or compare fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testtypeboundaries-3.ms:5:18: type: equality requires Equal operands; Callable[[], Int] has no equality, so add 'impl Equal for Callable[[], Int]:' or compare fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Shape, found Int (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)",
+        "message": "expected Shape, found Int (in the return value); use a concrete value implementing Shape",
         "position": {
           "file": "pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-1.ms",
           "line": 7,
-          "column": 15,
-          "offset": 243
+          "column": 19,
+          "offset": 251
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-1.ms:7:15: type: expected Shape, found Int (in the return value); use a concrete value implementing Shape and create its explicit interface view with Shape(value: ...)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-1.ms:7:19: type: expected Shape, found Int (in the return value); use a concrete value implementing Shape\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

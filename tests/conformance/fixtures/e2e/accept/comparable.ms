@@ -1,20 +1,20 @@
 # conform: tags=control-flow,decimal,generics,interfaces,lists,match,modules,optional,records,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/comparable.ms
-import {expect_true} from "@std/testing.ms"
-import {max, max_of, min, min_of} from "@std/math.ms"
-import Decimal from "@std/decimal.ms"
+from "@std/testing.ms" import expect_true
+from "@std/math.ms" import max, max_of, min, min_of
+from "@std/decimal.ms" import Decimal
 
 type Version:
     major: Int
 
 impl Comparable for Version:
-    fn compare(other: Comparable) Int:
+    def compare(other: Comparable) -> Int:
         match other:
-            Version(value): return self.major - value.major
-            _: return 0
+            case Version(value): return self.major - value.major
+            case _: return 0
 
-fn larger[T: Comparable](left: T, right: T) T:
+def larger[T: Comparable](left: T, right: T) -> T:
     return max(left, right)
 
 test "max and min over built-in types":
@@ -34,9 +34,9 @@ test "a source impl drives max, min, and generic bounds":
     try expect_true((larger(Version(5), Version(2)).major == 5))
 
 test "compare through an explicit view":
-    let left = Comparable(1)
-    try expect_true((left.compare(Comparable(2)) < 0))
-    try expect_true(((Comparable(Version(3)).compare(Comparable(Version(3))) == 0)))
+    let left: Comparable = 1
+    try expect_true((left.compare(2) < 0))
+    try expect_true(((Version(3).compare(Version(3)) == 0)))
 
 test "max_of and min_of over a list":
     let numbers = [3, 9, 2]

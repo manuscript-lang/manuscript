@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module",
+        "message": "unknown binding value; declare it with 'let value = ...' before use, define 'def value(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-checker-testdefaultargumentboundaries-3.ms",
           "line": 4,
-          "column": 19,
-          "offset": 159
+          "column": 20,
+          "offset": 160
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-3.ms:4:19: resolution: unknown binding value; declare it with 'let value = ...' before use, define 'fn value(...)', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-3.ms:4:20: resolution: unknown binding value; declare it with 'let value = ...' before use, define 'def value(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

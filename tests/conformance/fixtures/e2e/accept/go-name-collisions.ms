@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,generics,interfaces,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/go-name-collisions.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Spelled:
     x_: Int
@@ -10,26 +10,26 @@ type Spelled:
     aB: Int
 
 interface Methods:
-    fn foo_bar() Int
-    fn fooBar() Int
+    def foo_bar() -> Int
+    def fooBar() -> Int
 
 impl Methods for Spelled:
-    fn foo_bar() Int:
+    def foo_bar() -> Int:
         return self.x_
 
-    fn fooBar() Int:
+    def fooBar() -> Int:
         return self.x
 
-fn string(value: Int) Int:
+def string(value: Int) -> Int:
     return value + 1
 
-fn int(value: Int) Int:
+def int(value: Int) -> Int:
     return value + 2
 
-fn float64(value: Int) Int:
+def float64(value: Int) -> Int:
     return value + 3
 
-fn nil(value: Int) Int:
+def nil(value: Int) -> Int:
     return value + 4
 
 test "field names that differ only in underscores stay distinct":
@@ -42,11 +42,11 @@ test "field names that differ only in underscores stay distinct":
     try expect_equal(value, Spelled(1, 2, 3, 4))
 
 test "operation names that differ only in underscores stay distinct":
-    let methods = Methods(Spelled(1, 2, 3, 4))
+    let methods: Methods = Spelled(1, 2, 3, 4)
     try expect_false(methods.foo_bar() != 1 or methods.fooBar() != 2)
 
 test "functions named like Go predeclared identifiers still lower":
-    let text = "{string(1)}{int(1)}{float64(1)}{nil(1)}"
+    let text = f"{string(1)}{int(1)}{float64(1)}{nil(1)}"
     let floats = [1.5, 2.5]
     try expect_false(text != "2345" or floats.length() != 2)
 
@@ -63,10 +63,10 @@ type Shape:
 type Shape_Circle:
     radius: String
 
-fn side(shape: Shape) Int:
+def side(shape: Shape) -> Int:
     match shape:
-        Circle(radius): return radius
-        Square(side): return side
+        case Circle(radius): return radius
+        case Square(side): return side
 
 test "declared names stay apart from instantiation and case names":
     let boxed = Box[Int](1)
@@ -76,41 +76,41 @@ test "declared names stay apart from instantiation and case names":
     try expect_equal(Shape_Circle("r").radius, "r")
 
 interface Counter:
-    fn count() Int
+    def count() -> Int
 
 type Tally:
     total: Int
 
 impl Counter for Tally:
-    fn count() Int:
+    def count() -> Int:
         return self.total
 
 type Counter_Tally:
     other: Int
 
-fn clone_Tally(tally: Tally) Int:
+def clone_Tally(tally: Tally) -> Int:
     return tally.total + 1
 
 test "view and helper names stay apart from declared names":
     let tally = Tally(1)
     let copy = tally.clone()
-    let view = Counter(tally)
+    let view: Counter = tally
     try expect_false(view.count() != 1 or Counter_Tally(2).other != 2)
     try expect_false(copy.total != 1 or clone_Tally(tally) != 2)
 
 interface Reporter:
-    fn describe() String
-    fn receiver() String
+    def describe() -> String
+    def receiver() -> String
 
 impl Reporter for Tally:
-    fn describe() String:
-        return "describe {self.total}"
+    def describe() -> String:
+        return f"describe {self.total}"
 
-    fn receiver() String:
-        return "receiver {self.total}"
+    def receiver() -> String:
+        return f"receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
-    let reporter = Reporter(Tally(3))
+    let reporter: Reporter = Tally(3)
     try expect_false(
         (
             reporter.describe() != "describe 3"

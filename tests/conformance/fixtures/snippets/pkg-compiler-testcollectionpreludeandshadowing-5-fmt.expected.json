@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn identity[List, Map, Set](left: List, right: Map, other: Set) Set: other\n"
+    "fmt": "def identity[List, Map, Set](left: List, right: Map, other: Set) -> Set: other\n"
   }
 }

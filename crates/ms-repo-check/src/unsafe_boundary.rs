@@ -7,7 +7,9 @@ const ALLOWED: &[&str] = &[
     "crates/ms-rt/",     // raw memory behind the C ABI compiled code links against
     "crates/ms-std-",    // C ABI shims (ffi.rs) of the standard-library native crates
     "crates/ms-rt-abi/", // C-layout types and extern fn pointer types
-    "crates/ms-cli/src/process.rs", // libc signal/kill; std has no signal API
+    "crates/ms-rt-hot/", // the runtime's pure helpers: raw views of the same memory, inlined into programs
+    "crates/ms-native/tests/std_natives.rs", // drives the exported natives through the C ABI with raw runtime values
+    "crates/ms-cli/src/process.rs",          // libc signal/kill; std has no signal API
     "crates/ms-cli/tests/terminal.rs", // libc pseudo-terminal to drive RawTerminal end to end; std has no pty API
 ];
 

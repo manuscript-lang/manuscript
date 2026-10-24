@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe(input: ReadStream, visits: List[Int]) Bool:\n"
+    "fmt": "def probe(input: ReadStream, visits: List[Int]) -> Bool: ...\n"
   }
 }

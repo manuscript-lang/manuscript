@@ -1,45 +1,45 @@
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_true, fail} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_true, fail
 
-fn identity[T](value: T) T:
+def identity[T](value: T) -> T:
     return value
 
-fn probe() Result[Unit, Error]:
-    let first = fn() Result[Int, TextError]:
+def probe() -> Result[Unit, Error]:
+    let first = lambda () -> Result[Int, TextError]:
         return ok(3)
-    let second = fn():
-        return true
+    let second = lambda:
+        return True
     let number = identity(first)()
     let flag = second()
     (flag) | try expect_true
 
     match number:
-        ok(value):
+        case ok(value):
             try expect_equal(value, 3)
-        error(_):
+        case error(_):
             return fail(message: "Unexpected case")
 
-    return ok(unit)
+    return ok(())
 
 test "typed callback helper":
     match probe():
-        ok(_):
-            let completed = unit
-        error(_):
+        case ok(_):
+            let completed = ()
+        case error(_):
             return fail(message: "Unexpected case")
 
 type Code:
     number: Int
 
 impl Error for Code:
-    fn message() String: "code {self.number}"
+    def message() -> String: f"code {self.number}"
 
-fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
+def describe(outcome: Result[Int, Code]) -> Result[Int, TextError]:
     match outcome:
-        ok(value):
+        case ok(value):
             return ok(value)
-        error(cause):
-            return error(TextError("Error {cause.number}"))
+        case error(cause):
+            return error(TextError(f"Error {cause.number}"))
 
 test "explicit error conversion":
     let failed: Result[Int, Code] = error(Code(7))

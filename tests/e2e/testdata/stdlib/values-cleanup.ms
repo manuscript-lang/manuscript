@@ -1,21 +1,21 @@
-import {expect_equal, expect_false, expect_not_equal, expect_ok, fail} from "@std/testing.ms"
-import Closeable from "@std/core.ms"
-import JsonError from "@std/json.ms"
-import filesystem from "@std/fs.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, expect_ok, fail
+from "@std/core.ms" import Closeable
+from "@std/json.ms" import JsonError
+from "@std/fs.ms" import filesystem
+from "@std/bytes.ms" import Bytes
 
 type Key:
     id: Int
     label: String
 
 impl Equal for Key:
-    fn equals(other: Equal) Bool:
+    def equals(other: Equal) -> Bool:
         match other:
-            Key(value): return self.id == value.id
-            _: return false
+            case Key(value): return self.id == value.id
+            case _: return False
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+    def hash() -> Int: self.id
 
 type Resource:
     dir: String
@@ -24,22 +24,22 @@ type Resource:
 # Resources own their state, so close records order through the filesystem:
 # resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
-    var fn close() Unit:
+    var def close() -> Unit:
         let fs = filesystem()
-        let inner_closed = fs.read_file("{self.dir}/2").is_ok()
-        fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
+        let inner_closed = fs.read_file(f"{self.dir}/2").is_ok()
+        fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
 
-fn leave(dir: String) Int:
-    with outer = Resource(dir.clone(), 1):
-        with inner = Resource(dir, 2):
+def leave(dir: String) -> Int:
+    with Resource(dir.clone(), 1) as outer:
+        with Resource(dir, 2) as inner:
             return 42
 
-fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
+def propagate(result: Result[Int, JsonError]) -> Result[Int, JsonError]:
     let found = try result
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let create = fn(): some(42)
+    let create = lambda: some(42)
     let present: Optional[Int] = some(0)
     let missing: Optional[Int] = none
     try expect_equal(present.or_else(create).get(), 0)
@@ -56,13 +56,13 @@ test "Result propagation and Error views preserve concrete causes":
     let expected: Result[Int, JsonError] = ok(4)
     try expect_equal(propagate(success), expected)
 
-    let view = Error(JsonError.InvalidData)
+    let view: Error = JsonError.InvalidData
     try expect_not_equal(view.message().byte_length(), 0)
 
     match view:
-        JsonError(cause):
+        case JsonError(cause):
             try expect_equal(cause, JsonError.InvalidData)
-        _: return fail("error receiver erased")
+        case _: return fail("error receiver erased")
 
 test "custom equality and hashing define map key identity":
     let first = Key(1, "first")
@@ -77,8 +77,10 @@ test "custom equality and hashing define map key identity":
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()
 
-    with temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
+    with (fs.temporary("manuscript-cleanup-") | try expect_ok) as temporary:
         let dir = temporary.path()
         try expect_equal(leave(dir.clone()), 42)
-        try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-        try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+        try expect_equal((try fs.read_file(f"{dir}/1")), Bytes([116, 114, 117, 101]))
+        try expect_equal(
+            (try fs.read_file(f"{dir}/2")), Bytes([102, 97, 108, 115, 101])
+        )

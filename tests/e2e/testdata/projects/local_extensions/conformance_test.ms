@@ -1,9 +1,9 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {first_view, first_method, first_generic, first_resource} from "./first.ms"
-import {second_view, second_method, second_generic, second_resource} from "./second.ms"
-import {Item, Resource} from "./domain.ms"
-import {Read, read_view} from "./contracts.ms"
-import ListBuilder from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "./first.ms" import first_view, first_method, first_generic, first_resource
+from "./second.ms" import second_view, second_method, second_generic, second_resource
+from "./domain.ms" import Item, Resource
+from "./contracts.ms" import Read, read_view
+from "@std/collections.ms" import ListBuilder
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
@@ -12,12 +12,7 @@ test "views and functions retain local implementations across modules":
     let first = first_view(item)
     let second = second_view(item)
     (first.get() != 12 or second.get() != 22) | try expect_false
-    try expect_false(
-        (
-            read_view(Read[Int](first)) != 12
-            or read_view(Read[Int](second)) != 22
-        )
-    )
+    try expect_false((read_view(first) != 12 or read_view(second) != 22))
 
     let first_call = first_method(item)
     let second_call = second_method(item)
@@ -29,10 +24,10 @@ test "views and functions retain local implementations across modules":
 
     var events = ListBuilder[Int]()
     let resource = Resource(events)
-    with first_close = first_resource(resource.clone()):
-        let active = true
-    with second_close = second_resource(resource):
-        let active = true
+    with first_resource(resource.clone()) as first_close:
+        let active = True
+    with second_resource(resource) as second_close:
+        let active = True
 
     let values = events.freeze()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

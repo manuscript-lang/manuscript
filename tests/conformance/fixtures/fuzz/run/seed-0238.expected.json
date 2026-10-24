@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 70,
     "stdout": "i1 = 41\nf2 = 619.657\nb3 = false\nb4 = false\nb5 = false\nf6 = 19373738.802353077\ni8 = -67455\ns9 = [42]\ni10 = 41\nfib(38) = 39088169\ni11 = -67455\ni12 = 0\ngcd(4156, 450) = 2\ni13 = 0\n",
-    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0238.ms:76 in main\n"
+    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0238.ms:81 in main\n"
   }
 }

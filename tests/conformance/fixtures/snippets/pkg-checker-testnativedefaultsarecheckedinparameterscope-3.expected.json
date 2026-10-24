@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding second; declare it with 'let second = ...' before use, define 'fn second(...)', or import it from a module",
+        "message": "unknown binding second; declare it with 'let second = ...' before use, define 'def second(...) -> T:', or import it from a module",
         "position": {
           "file": "pkg-checker-testnativedefaultsarecheckedinparameterscope-3.ms",
           "line": 4,
-          "column": 19,
-          "offset": 181
+          "column": 20,
+          "offset": 182
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-3.ms:4:19: resolution: unknown binding second; declare it with 'let second = ...' before use, define 'fn second(...)', or import it from a module\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-3.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-3.ms:4:20: resolution: unknown binding second; declare it with 'let second = ...' before use, define 'def second(...) -> T:', or import it from a module\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-3.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

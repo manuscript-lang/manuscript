@@ -1,36 +1,39 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/defaults.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
-import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
-import {Commands, Subprocess, CommandOutput, CommandError, commands} from "@std/process.ms"
-import Bytes from "@std/bytes.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
+from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
+from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands
+from "@std/bytes.ms" import Bytes
 
-fn forward[T](item: T) T: item
+def forward[T](item: T) -> T: item
 
 type Capture:
     last: Bytes
     calls: Int
 
 impl Commands for Capture:
-    fn run(
+    def run(
         program: String,
         arguments: List[String],
         input: Bytes,
         max_output_bytes: Optional[Int],
         timeout: Optional[Duration]
-    ) Result[CommandOutput, CommandError]:
+    ) -> Result[CommandOutput, CommandError]:
         self.last = input
         self.calls += 1
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
+    def spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
-import Duration from "@std/time.ms"
+from "@std/time.ms" import Duration
 
-fn generic_run[T: Commands](service: T) Result[Bytes, Error]:
+def generic_run[T: Commands](service: T) -> Result[Bytes, Error]:
     return ok((try service.run("fake", [])).stdout)
 
 type Override:
@@ -43,10 +46,10 @@ test "bound receiver is captured before supplied arguments":
     let index: Optional[Int] = some(0)
     let output = try selected.run(
         match index:
-            some(_):
+            case some(_):
                 selected = second
                 "fake"
-            none: "fake"
+            case none: "fake"
         ,
         []
     )
@@ -55,16 +58,19 @@ test "bound receiver is captured before supplied arguments":
     )
 
 impl Commands for Override:
-    fn run(
+    def run(
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration]
-    ) Result[CommandOutput, CommandError]:
+    ) -> Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]:
+    def spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
@@ -120,21 +126,21 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_false(
         (
             base64_encode(bytes) != "/w=="
-            or base64_encode(bytes, false) != "/w=="
+            or base64_encode(bytes, False) != "/w=="
         )
     )
-    try expect_equal(base64_encode(bytes, true), "_w==")
+    try expect_equal(base64_encode(bytes, True), "_w==")
 
     let encode = base64_encode
     let copied = encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: fn(data: Bytes, url_safe: Bool) String = encode
-    try expect_equal(typed(bytes, false), "/w==")
+    let typed: Callable[[Bytes, Bool], String] = encode
+    try expect_equal(typed(bytes, False), "/w==")
     try expect_false(
         (
             (try base64_decode("/w==")) != bytes
-            or (try base64_decode("_w==", true)) != bytes
+            or (try base64_decode("_w==", True)) != bytes
         )
     )
 

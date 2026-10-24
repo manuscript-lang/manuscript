@@ -1,30 +1,30 @@
 # conform: tags=lists,tier-stdlib
 # conform: phase=run
 # conform: origin=perf: sorting with a named comparator is compiled with the program; results must match the runtime sort, including for inconsistent comparators
-import {stdout} from "@std/io.ms"
+from "@std/io.ms" import stdout
 
-fn up(left: Int, right: Int) Int:
+def up(left: Int, right: Int) -> Int:
     if left < right: return -1
     if left > right: return 1
 
     return 0
 
-fn down(left: Int, right: Int) Int:
+def down(left: Int, right: Int) -> Int:
     return right - left
 
-fn fup(left: Float, right: Float) Int:
+def fup(left: Float, right: Float) -> Int:
     if left < right: return -1
     if left > right: return 1
 
     return 0
 
-fn bad(left: Int, right: Int) Int:
+def bad(left: Int, right: Int) -> Int:
     return 1
 
-fn mod3(left: Int, right: Int) Int:
+def mod3(left: Int, right: Int) -> Int:
     return left % 3 - right % 3
 
-fn main_run() Int:
+def main_run() -> Int:
     var seed = 12345
     var sum = 0
     var n = 0
@@ -65,6 +65,6 @@ fn main_run() Int:
 
     return sum
 
-export fn main() Int:
-    let _w = stdout().write("{main_run()}\n")
+export def main() -> Int:
+    let _w = stdout().write(f"{main_run()}\n")
     return 0

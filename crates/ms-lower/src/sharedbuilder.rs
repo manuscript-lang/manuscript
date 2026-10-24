@@ -73,16 +73,25 @@ impl<'a> FnLower<'a> {
 
     /// Faults with "builder is sealed" when the flag at `sealed` is set.
     fn fault_if_sealed(&mut self, sealed: Value) {
+        self.fault_if_flag(sealed, true, "builder is sealed");
+    }
+
+    /// Faults with `message` when the flag at `flag` equals `when`.
+    fn fault_if_flag(&mut self, flag: Value, when: bool, message: &str) {
         let flag = self
             .b
-            .emit(Op::Load, &[sealed], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
+            .emit(Op::Load, &[flag], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
             .expect("load");
         let (bad, good) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(flag, bad, &[], good, &[]);
+        if when {
+            self.b.br_if(flag, bad, &[], good, &[]);
+        } else {
+            self.b.br_if(flag, good, &[], bad, &[]);
+        }
         self.b.seal_block(bad);
         self.b.seal_block(good);
         self.b.switch_to(bad);
-        let msg = self.b.str_lit("builder is sealed");
+        let msg = self.b.str_lit(message);
         let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
             name: "msrt_fault_string".to_string(),
             params: vec![Param {
@@ -165,5 +174,85 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let result = self.emty(e)?;
         self.builder_call(name, handle, &m.ty.params, &args, result)
+    }
+}
+
+impl<'a> FnLower<'a> {
+    /// A method of a user-facing `Shared[T]`: a box holding `{taken, value}`. `take` moves the
+    /// value out and marks the box in use; `put` moves it back. A second `take`, or a `get`, while
+    /// the value is out faults, which is the runtime check of the single mutable borrow.
+    pub(crate) fn shared_method(
+        &mut self,
+        e: &ms_syntax::ast::Expr,
+        view: &ms_check::hir::CallView<'_>,
+        recv_expr: &ms_syntax::ast::Expr,
+        name: &str,
+    ) -> Result<Val, Error> {
+        let recv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        let args = self.native_args(view)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::UNIT));
+        }
+        let handle = self.borrow(recv);
+        self.at(e.pos);
+        let result = self.emty(e)?;
+        let rec = self.builder_rec(self.ty_of(handle))?;
+        let value_ty = self.b.m.records[rec.index()].fields[1].1;
+        let addr = self
+            .b
+            .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
+            .expect("addr");
+        let field = |s: &mut Self, i: u32| {
+            s.b.emit(Op::PtrField, &[addr], Imm::Field(rec, i), Some(MTy::PTR))
+                .expect("field")
+        };
+        let taken = field(self, 0);
+        let value = field(self, 1);
+        match name {
+            "get" => {
+                self.fault_if_flag(taken, true, "shared value is in use");
+                let v = self
+                    .b
+                    .emit(Op::Load, &[value], Imm::Ty(value_ty), Some(value_ty))
+                    .expect("load");
+                Ok(Val { v, own: false })
+            }
+            "take" => {
+                self.fault_if_flag(taken, true, "shared value is in use");
+                let yes = self.b.bconst(true);
+                self.b.emit(Op::Store, &[taken, yes], Imm::None, None);
+                let v = self.take_slot(value, value_ty);
+                Ok(Val { v, own: true })
+            }
+            "put" => {
+                self.fault_if_flag(taken, false, "shared value was not taken");
+                let arg = args
+                    .first()
+                    .ok_or_else(|| Error::new("put without a value"))?;
+                let owned = self.owned(arg.val);
+                self.b.emit(Op::Put, &[value, owned], Imm::None, None);
+                let no = self.b.bconst(false);
+                self.b.emit(Op::Store, &[taken, no], Imm::None, None);
+                let _ = result;
+                Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                })
+            }
+            _ => Err(Error::new("unknown Shared method")),
+        }
+    }
+
+    /// `share(value)`: a new box holding the value, not taken.
+    pub(crate) fn shared_new(&mut self, payload: Value, handle: MTy) -> Value {
+        let rec = self.builder_rec(handle).expect("shared handle");
+        let free = self.b.bconst(false);
+        let state = self.b.rec_new(rec, &[free, payload]);
+        self.b
+            .emit(Op::SharedNew, &[state], Imm::None, Some(handle))
+            .expect("shared result")
     }
 }

@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=internal/cli/analysis_test.go:203 TestAnalysisCollectionRangesAndSymlinkConfinement
 # header
-import {ListBuilder, List} from "@std/collections.ms"
+from "@std/collections.ms" import ListBuilder, List
 
-fn update(items: ListBuilder[Int]) Int:
+def update(items: ListBuilder[Int]) -> Int:
     return 0

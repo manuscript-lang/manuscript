@@ -19,6 +19,7 @@ use crate::ir::Module;
 pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
+pub mod lastuse;
 pub mod optparam;
 pub mod range;
 pub mod reserve;
@@ -85,6 +86,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     }
     reserve::run(m);
     check(m, "reserve");
+    lastuse::run(m);
+    check(m, "lastuse");
     simplify::run(m);
     check(m, "simplify");
 }

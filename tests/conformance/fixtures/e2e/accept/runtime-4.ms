@@ -1,23 +1,24 @@
 # conform: tags=control-flow,interfaces,modules,optional,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-4.ms
-import {expect_equal, expect_false} from "@std/testing.ms"
-import Bytes from "@std/bytes.ms"
-import File from "@std/io.ms"
-import IoError from "@std/io.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/bytes.ms" import Bytes
+from "@std/io.ms" import File
+from "@std/io.ms" import IoError
 
 type ClosedFile:
     marker: Unit
 
 impl File for ClosedFile:
-    fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
+    def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
         return error(IoError.Closed)
 
-    fn close() Unit:
+    def close() -> Unit:
         return
 
 test "contract-valued cleanup":
-    with file = File(ClosedFile(unit)):
+    let opened: File = ClosedFile(())
+    with opened as file:
         let read = file.read(1)
         try expect_false(read.is_ok())
         try expect_equal(read.err(), IoError.Closed)

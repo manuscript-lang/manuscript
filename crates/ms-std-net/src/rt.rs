@@ -4,34 +4,17 @@
 //! atomic); background threads of this crate never touch this module.
 
 use crate::sys::{self, Borrowed};
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::Ordering;
 
-unsafe extern "C" {
-    static msrt_cancel_flag: AtomicU8;
-    fn msrt_cancelled() -> !;
-    fn msrt_shield_enter();
-    fn msrt_shield_exit();
-    fn msrt_task_current() -> u64;
-    fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>);
-    fn msrt_task_spawn(
-        entry: unsafe extern "C-unwind" fn(*mut u8),
-        arg: *mut u8,
-        flags: u32,
-        stack_bytes: usize,
-    ) -> u64;
-    // The first argument is the raw socket handle (`sys::Raw`: a file descriptor on Unix, the
-    // `SOCKET` as `u64` on Windows).
-    fn msrt_task_wait_fd(fd: sys::Raw, events: u32, timeout_ns: i64) -> u32;
-    fn msrt_task_sleep(ns: i64) -> u32;
-    #[cfg(unix)]
-    fn msrt_task_forget_fd(fd: i32);
-    fn msrt_token_new(flags: u32) -> u64;
-    fn msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32;
-    fn msrt_token_post(id: u64, value: u64);
-    fn msrt_token_free(id: u64);
-    fn msrt_cleanup_push(f: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> usize;
-    fn msrt_cleanup_discard(handle: usize);
-}
+use ms_rt::fault::{
+    msrt_cancel_flag, msrt_cancelled, msrt_cleanup_discard, msrt_cleanup_push, msrt_shield_enter,
+    msrt_shield_exit,
+};
+use ms_rt::task::{
+    msrt_task_current, msrt_task_forget_fd, msrt_task_set_prepark, msrt_task_sleep,
+    msrt_task_spawn, msrt_task_wait_fd, msrt_token_free, msrt_token_new, msrt_token_park,
+    msrt_token_post,
+};
 
 /// Registers `f(arg)` on the running task's cleanup stack: it runs if a fault or cancellation
 /// leaves the task's guard, which skips destructors. Call [`cleanup_discard`] on normal exit.
@@ -45,41 +28,36 @@ pub unsafe fn cleanup_push(f: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8
 
 /// Drops the action behind `handle` (and newer pending ones) without running it.
 pub fn cleanup_discard(handle: usize) {
-    // SAFETY: plain call on the runtime thread.
-    unsafe { msrt_cleanup_discard(handle) }
+    msrt_cleanup_discard(handle)
 }
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
 pub fn cancel_requested() -> bool {
-    // SAFETY: the flag is a static `u8` the runtime updates from a signal handler; atomics
-    // have the layout of the integer and relaxed loads are what the ABI prescribes.
-    unsafe { msrt_cancel_flag.load(Ordering::Relaxed) != 0 }
+    // The flag is a static `u8` the runtime updates from a signal handler; atomics have the
+    // layout of the integer and relaxed loads are what the ABI prescribes.
+    msrt_cancel_flag.load(Ordering::Relaxed) != 0
 }
 
 /// Unwinds the program through the runtime's cancellation path when a stop was requested.
 pub fn check_cancel() {
     if cancel_requested() {
-        // SAFETY: runs cleanups and exits; never returns.
-        unsafe { msrt_cancelled() }
+        msrt_cancelled()
     }
 }
 
 /// Runs the runtime's cancellation path (cleanups, then exit).
 pub fn cancelled() -> ! {
-    // SAFETY: runs cleanups and exits; never returns.
-    unsafe { msrt_cancelled() }
+    msrt_cancelled()
 }
 
 /// Shields the running task from SIGINT/SIGTERM cancellation until `unshield`.
 pub fn shield() {
-    // SAFETY: plain counter update on the runtime thread.
-    unsafe { msrt_shield_enter() }
+    msrt_shield_enter()
 }
 
 /// Ends one `shield`.
 pub fn unshield() {
-    // SAFETY: plain counter update on the runtime thread.
-    unsafe { msrt_shield_exit() }
+    msrt_shield_exit()
 }
 
 /// Id of the running task.
@@ -103,16 +81,16 @@ pub const WAIT_KEEP: u32 = 32;
 /// Ends the registration a [`WAIT_KEEP`] wait left on `fd`; call it before `fd` closes.
 #[cfg(unix)]
 pub fn forget_fd(fd: i32) {
-    // SAFETY: plain update of the runtime poller's records.
-    unsafe { msrt_task_forget_fd(fd) }
+    msrt_task_forget_fd(fd)
 }
 
 /// Parks the running task until `sock` is ready for `events` (1 read, 2 write) or the
 /// timeout (negative: none) passes. Returns the runtime's ready bits. The only caller of
-/// `msrt_task_wait_fd`: a change of its handle type is confined to this function and `sys::Raw`.
+/// `msrt_task_wait_fd`: a change of its handle type is confined to this function and `sys::Raw`. (The
+/// runtime reads the low 32 bits, as it always has on Windows.)
 pub fn wait_fd(sock: Borrowed<'_>, events: u32, timeout_ns: i64) -> u32 {
     // SAFETY: parks the current task; no Rust borrow is held across the call by contract.
-    unsafe { msrt_task_wait_fd(sys::raw(sock), events, timeout_ns) }
+    unsafe { msrt_task_wait_fd(sys::raw(sock) as _, events, timeout_ns) }
 }
 
 /// Parks the running task for `ns` nanoseconds without watching a socket. Returns the
@@ -128,8 +106,7 @@ pub fn install_prepark_hook() {
     unsafe extern "C-unwind" fn hook() {
         crate::http::server::give_up_reactor_role();
     }
-    // SAFETY: `hook` follows the runtime's hook ABI and stays valid for the process lifetime.
-    unsafe { msrt_task_set_prepark(Some(hook)) };
+    msrt_task_set_prepark(Some(hook));
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.

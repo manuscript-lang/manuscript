@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected end of statement, found name 'Point'; there is no 'new': construct a value by calling the type, Name(field: value)",
+        "position": {
+          "file": "foreign-new.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 146
+        },
+        "end": {
+          "file": "foreign-new.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 151
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

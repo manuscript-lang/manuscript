@@ -1,14 +1,14 @@
-import {expect_true} from "@std/testing.ms"
-import {stdout} from "@std/io.ms"
-import {clock} from "@std/time.ms"
+from "@std/testing.ms" import expect_true
+from "@std/io.ms" import stdout
+from "@std/time.ms" import clock
 
 type Boom:
     code: Int
 
 impl Error for Boom:
-    fn message() String: "boom {self.code}"
+    def message() -> String: f"boom {self.code}"
 
-fn describe(e: Error) String: e.message()
+def describe(e: Error) -> String: e.message()
 
 test "repeated calls through one site":
     let c = clock()
@@ -27,5 +27,5 @@ test "repeated calls through one site":
         try expect_true((out.write(data: "x").is_ok()))
         n = n + 1
 
-    try expect_true((describe(e: Error(value: Boom(code: 1))) == "boom 1"))
-    try expect_true((describe(e: Error(value: Boom(code: 2))) == "boom 2"))
+    try expect_true((describe(e: Boom(code: 1)) == "boom 1"))
+    try expect_true((describe(e: Boom(code: 2)) == "boom 2"))

@@ -163,13 +163,19 @@ impl Checker {
         }
         let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
+        // A bundled module may add methods to the `extern type` it declares.
+        let own_extern = receiver.kind == Kind::Native
+            && nominal
+                .as_ref()
+                .is_some_and(|s| s.module == self.current_file());
         let foreign_native = nominal
             .as_ref()
             .is_some_and(|s| !s.native.as_str().is_empty())
-            && !self.standard_declarations;
+            && !self.standard_declarations
+            && !own_extern;
         if nominal.is_none()
             || foreign_native
-            || !matches!(receiver.kind, Kind::Record | Kind::Alternative)
+            || !(own_extern || matches!(receiver.kind, Kind::Record | Kind::Alternative))
         {
             if receiver.id != "<invalid>" {
                 self.type_error(
@@ -328,11 +334,11 @@ impl Checker {
                 && method.mutating
                 && !contract_mutates
             {
-                let (have, want) = ("var fn", "fn");
+                let (have, want) = ("var def", "def");
                 self.type_error(
                     method.pos,
                     format!(
-                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
+                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var def` in the interface too",
                         method.func.name
                     ),
                 );
@@ -390,7 +396,9 @@ impl Checker {
                                 args: Vec::new(),
                             },
                         },
+                        result_ref: false,
                         body: Vec::new(),
+                        external: false,
                     }),
                 });
                 let local = receiver_module_differs(self, &receiver);
@@ -869,8 +877,15 @@ impl Checker {
             );
         }
         format!(
-            "with requires an explicit Closeable implementation or a contract declaring close() Unit; {name} has none, so add 'impl Closeable for {name}:' with var fn close() Unit"
+            "with requires an explicit Closeable implementation or a contract declaring close() -> Unit; {name} has none, so add 'impl Closeable for {name}:' with var def close() -> Unit"
         )
+    }
+
+    /// Whether a concrete `actual` converts implicitly to the interface `expected`.
+    pub(crate) fn interface_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
+        expected.kind == Kind::Contract
+            && actual.kind != Kind::Contract
+            && self.implements(actual, expected)
     }
 
     /// Whether the Error boundary accepts `actual` where `expected` is written.

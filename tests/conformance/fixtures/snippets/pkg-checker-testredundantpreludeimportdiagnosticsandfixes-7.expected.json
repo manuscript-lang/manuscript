@@ -14,26 +14,26 @@
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 5,
           "column": 5,
-          "offset": 210
+          "offset": 237
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7.ms",
           "line": 5,
           "column": 9,
-          "offset": 214
+          "offset": 241
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7.ms",
             "line": 5,
             "column": 5,
-            "offset": 210
+            "offset": 237
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-7.ms",
             "line": 6,
             "column": 6,
-            "offset": 234
+            "offset": 261
           },
           "replacement": "  # collection\n    "
         }

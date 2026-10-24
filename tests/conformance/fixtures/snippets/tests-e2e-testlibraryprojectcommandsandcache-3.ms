@@ -1,9 +1,9 @@
 # conform: tags=control-flow,diagnostics,modules,stdlib-fs,stdlib-testing,testing,tier-io,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/library_project_test.go:32 TestLibraryProjectCommandsAndCache
-import value from "@lib/value.ms"
-import filesystem from "@std/fs.ms"
-import fail from "@std/testing.ms"
+from "@lib/value.ms" import value
+from "@std/fs.ms" import filesystem
+from "@std/testing.ms" import fail
 
 test "root":
     if value() != 3: return fail("bad value")

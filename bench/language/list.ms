@@ -1,7 +1,7 @@
-import panic from "@std/core.ms"
-import range from "@std/collections.ms"
+from "@std/core.ms" import panic
+from "@std/collections.ms" import range
 
-export fn main() Int:
+export def main() -> Int:
     let values = [1, 2, 3, 4, 5, 6, 7, 8]
     var sum = 0
     for i in range(0, 5000000):

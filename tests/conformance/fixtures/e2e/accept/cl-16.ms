@@ -1,13 +1,13 @@
 # conform: tags=faults,generics,lists,modules,optional,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-16.ms
-import {TextError} from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_equal, expect_false
 
 type Input:
     names: List[Optional[String]]
 
-fn outcome_value(outcome: Result[Int, TextError]) Int:
+def outcome_value(outcome: Result[Int, TextError]) -> Int:
     return outcome.get(-1)
 
 test "data constructor context":
@@ -25,7 +25,7 @@ type Box[T]:
 type Request:
     box: Box[Optional[Int]]
 
-fn select[T](first: T, second: T) T:
+def select[T](first: T, second: T) -> T:
     return first
 
 test "nested constructor arguments receive inferred context":

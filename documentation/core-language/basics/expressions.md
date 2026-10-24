@@ -21,11 +21,13 @@ Rows are ordered from highest to lowest precedence.
 | `not` | Right to left; its operand includes comparisons |
 | `and` | Left to right, short circuit |
 | `or` | Left to right, short circuit |
+| Conditional `a if c else b` | Right to left; below `or`, above the pipe |
 | Pipe `\|` | Left to right; lowest precedence, see [pipe flows](#pipe-flows) |
 
 ```ebnf
 Expression    = Pipe ;
-Pipe          = OrExpression, { "|", PipeStep } ;
+Pipe          = Conditional, { "|", PipeStep } ;
+Conditional   = OrExpression, [ "if", OrExpression, "else", Conditional ] ;
 PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] | Postfix-from-dot ) | "try" ;
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
@@ -38,13 +40,14 @@ Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | Ca
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
-              | "true" | "false" | "unit" | "self" | Name
+              | "True" | "False" | "(", ")" | "self" | Name
               | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression | MatchExpression ;
 SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
 MapEntry      = Expression, ":", Expression ;
-FunctionExpression = "fn", "(", [ CallbackParameters ], ")", [ Type ], FunctionSuite ;
+FunctionExpression = "lambda", [ CallbackParameters ], FunctionSuite
+                   | "lambda", "(", [ CallbackParameters ], ")", [ "->", Type ], FunctionSuite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                   MatchArm, { MatchArm }, DEDENT ;
 ```
@@ -55,7 +58,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 - `not a == b` means `not (a == b)`.
 - `try read() + 1` means `(try read()) + 1`; write `try (expression)` to propagate a larger expression.
 - Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.get(index)`, a `T` accepting negative indexes that faults out of range. `values[index] = x` and `values[index] += x` are the `set` mutator (`values.set(index, x)`); the receiver must be a `var`. Slicing is unsupported.
-- Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors and [contract views](../types/contracts.md#explicit-contract-views) may omit the label: `Box(3)`, `some(3)`, `Payments(card)`. A view needs an explicit implementation and exactly one `value` argument.
+- Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors may omit the label: `Box(3)`, `some(3)`. An interface is never constructed; see [interface conversion](../types/contracts.md#interface-conversion).
 
 ## Pipe flows
 
@@ -71,7 +74,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 | `x \| try` | `try x`: unwrap the value so far |
 
 ```manuscript
-fn load(path: String) Result[Config, ConfigError]:
+def load(path: String) -> Result[Config, ConfigError]:
     let config = try read(path)
         | try parse
         | normalize
@@ -127,7 +130,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ## Evaluation
 
-- Subexpressions evaluate left to right, each once. The right side of `false and ...` and `true or ...` is skipped but must still type-check.
+- Subexpressions evaluate left to right, each once. The right side of `False and ...` and `True or ...` is skipped but must still type-check.
 - A call evaluates its callable or receiver first, then arguments in written order (not parameter order).
 - Indexing evaluates the receiver, then the index.
 - List elements and map entries evaluate in written order, key before value ([collections](../types/collections.md)).
@@ -138,7 +141,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 ## Examples
 
 ```manuscript
-fn calculated(value: Int, active: Bool) Int:
+def calculated(value: Int, active: Bool) -> Int:
     let product = 1 + 2 * 3             # 7
     let same = not value == product     # not (value == product)
     if active and same:
@@ -147,7 +150,7 @@ fn calculated(value: Int, active: Bool) Int:
 ```
 
 ```manuscript
-fn invalid(value: Int, ratio: Float) Bool:
+def invalid(value: Int, ratio: Float) -> Bool:
     let mixed = value + ratio           # Type error: exact numeric types differ.
     return 0 < value < 10               # Syntax error: comparison chain.
 ```

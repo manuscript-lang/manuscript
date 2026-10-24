@@ -1,17 +1,17 @@
-import {TextError} from "@std/core.ms"
-import {expect_true} from "@std/testing.ms"
+from "@std/core.ms" import TextError
+from "@std/testing.ms" import expect_true
 
-fn step(var log: List[String], name: String, n: Int) Result[Int, TextError]:
+def step(var log: List[String], name: String, n: Int) -> Result[Int, TextError]:
     log.append(value: name.clone())
     if n < 0:
         return error(cause: TextError(name))
 
     return ok(value: n)
 
-fn add(x: Int, y: Int) Int:
+def add(x: Int, y: Int) -> Int:
     return x + y
 
-fn sum(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
+def sum(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
     let v = (
         (try step(log: var log, name: "a", n: a))
         + (try step(log: var log, name: "b", n: b))
@@ -19,7 +19,7 @@ fn sum(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
     log.append(value: "done")
     return ok(value: v)
 
-fn arguments(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
+def arguments(var log: List[String], a: Int, b: Int) -> Result[Int, TextError]:
     return ok(
         value: add(
             x: try step(log: var log, name: "x", n: a),
@@ -27,13 +27,13 @@ fn arguments(var log: List[String], a: Int, b: Int) Result[Int, TextError]:
         )
     )
 
-fn effect_first(var log: List[String], a: Int) Result[Int, TextError]:
+def effect_first(var log: List[String], a: Int) -> Result[Int, TextError]:
     log.append(value: "before")
 
     let v = add(x: 1, y: try step(log: var log, name: "s", n: a))
     return ok(value: v)
 
-fn loop(var log: List[String], n: Int) Result[Int, TextError]:
+def loop(var log: List[String], n: Int) -> Result[Int, TextError]:
     var total = 0
     var i = 0
 
@@ -43,12 +43,12 @@ fn loop(var log: List[String], n: Int) Result[Int, TextError]:
 
     return ok(value: total)
 
-fn joined(var log: List[String]) Result[String, TextError]:
+def joined(var log: List[String]) -> Result[String, TextError]:
     return ok(
-        value: "{try step(log: var log, name: "p", n: 1)}-{try step(log: var log, name: "q", n: -1)}"
+        value: f"{try step(log: var log, name: "p", n: 1)}-{try step(log: var log, name: "q", n: -1)}"
     )
 
-fn text(log: List[String]) String:
+def text(log: List[String]) -> String:
     return log.join(separator: ",")
 
 test "nested try":

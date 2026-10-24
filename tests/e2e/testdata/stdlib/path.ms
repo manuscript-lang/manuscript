@@ -1,5 +1,5 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
-import {posix, win32, PathError, dirname, basename_without} from "@std/fs.ms"
+from "@std/testing.ms" import expect_equal, expect_false
+from "@std/fs.ms" import posix, win32, PathError, dirname, basename_without
 
 test "POSIX paths normalize resolve parse and match without host access":
     let paths = posix()
@@ -29,5 +29,5 @@ test "module dirname and basename_without follow the host dialect":
 
 test "glob matching rejects NUL in the path as it does in the pattern":
     let invalid: Result[Bool, PathError] = error(PathError.InvalidInput)
-    try expect_equal(posix().matches_glob("a\u{0}b", "*"), invalid)
-    try expect_equal(posix().matches_glob("ab", "*\u{0}"), invalid)
+    try expect_equal(posix().matches_glob(f"a\u{0}b", "*"), invalid)
+    try expect_equal(posix().matches_glob("ab", f"*\u{0}"), invalid)
