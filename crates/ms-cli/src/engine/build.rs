@@ -5,7 +5,7 @@ use std::path::Path;
 use ms_driver::Lower;
 use ms_project::gopath;
 
-use super::{Failure, RustBackend, compile};
+use super::{Engine, Failure, compile};
 use crate::backend::{BackendResult, BuildRequest, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -34,7 +34,7 @@ fn artifacts(output: &str, executable_built: bool) -> Vec<(&'static str, String,
 }
 
 pub(super) fn build<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &BuildRequest,
     io: &mut Io,
 ) -> BackendResult {

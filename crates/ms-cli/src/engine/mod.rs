@@ -5,10 +5,7 @@
 //! ms_driver::load_file -> check_graph -> Lower -> optimize -> ms-clif -> link with ms-native
 //! ```
 //!
-//! [`RustBackend`] is generic over the [`Lower`] stage so the CLI does not
-//! depend on HIR to MIR lowering landing, and tests can inject a lowering.
-//! Commands that this engine does not serve keep the trait's "not yet
-//! implemented" default.
+//! [`Engine`] is generic over the [`Lower`] stage so tests can inject a lowering.
 
 mod build;
 mod run;
@@ -18,6 +15,11 @@ pub mod testing;
 mod tooling;
 mod watch;
 
+pub use search::search_symbol;
+pub use tooling::{
+    analysis, diagram, drop_redundant_labels, format_source, inspect_command as inspect, review,
+};
+
 use std::path::{Path, PathBuf};
 
 use ms_driver::{
@@ -26,8 +28,7 @@ use ms_driver::{
 };
 
 use crate::backend::{
-    AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest, BuildType, DiagramRequest,
-    FormatFailure, FormatFile, Io, OutputRequest, ReviewRequest, RunRequest, SearchSymbolRequest,
+    BackendError, BackendResult, BuildRequest, BuildType, Io, OutputRequest, RunRequest,
     TestRequest,
 };
 use crate::diagnostic::{CommandDiagnostic, Position};
@@ -35,23 +36,23 @@ use crate::json::Json;
 use crate::util::plural;
 
 /// The `ms` engine for native builds. `L` turns a checked program into MIR.
-pub struct RustBackend<L: Lower> {
+pub struct Engine<L: Lower> {
     pub lowering: L,
     /// The native static library to link; `MS_RT_LIB`, then the archive
     /// embedded in `ms` (see [`runtime`]), when unset.
     pub runtime: Option<PathBuf>,
 }
 
-impl<L: Lower> RustBackend<L> {
-    pub fn new(lowering: L) -> RustBackend<L> {
-        RustBackend {
+impl<L: Lower> Engine<L> {
+    pub fn new(lowering: L) -> Engine<L> {
+        Engine {
             lowering,
             runtime: None,
         }
     }
 
     /// Link against `runtime` instead of searching for it.
-    pub fn with_runtime(mut self, runtime: impl Into<PathBuf>) -> RustBackend<L> {
+    pub fn with_runtime(mut self, runtime: impl Into<PathBuf>) -> Engine<L> {
         self.runtime = Some(runtime.into());
         self
     }
@@ -76,34 +77,26 @@ impl<L: Lower> RustBackend<L> {
     }
 }
 
-impl<L: Lower> Backend for RustBackend<L> {
-    fn build(&self, request: &BuildRequest, io: &mut Io) -> BackendResult {
+impl<L: Lower> Engine<L> {
+    pub fn build(&self, request: &BuildRequest, io: &mut Io) -> BackendResult {
         build::build(self, request, io)
     }
 
-    fn run(&self, request: &RunRequest, io: &mut Io) -> BackendResult {
+    pub fn run(&self, request: &RunRequest, io: &mut Io) -> BackendResult {
         if request.watch {
             return watch::run(self, request, io);
         }
         run::run(self, request, io)
     }
 
-    fn test(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
+    pub fn test(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
         if request.watch {
             return watch::test(self, request, io);
         }
         testing::test(self, request, io)
     }
 
-    fn check(&self, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
-        tooling::analysis(request, io)
-    }
-
-    fn lint(&self, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
-        tooling::analysis(request, io)
-    }
-
-    fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
+    pub fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
         let compiled = match compile(self, &request.filename, BuildType::Release, false) {
             Ok(compiled) => compiled,
             Err(failure) => return Ok(failure.report(io)),
@@ -120,57 +113,25 @@ impl<L: Lower> Backend for RustBackend<L> {
             text.as_bytes(),
         ))
     }
+}
 
-    fn inspect(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
-        tooling::inspect_command(request, io)
-    }
-
-    fn diagram(&self, request: &DiagramRequest, io: &mut Io) -> BackendResult {
-        tooling::diagram(request, io)
-    }
-
-    fn review(&self, request: &ReviewRequest, io: &mut Io) -> BackendResult {
-        tooling::review(request, io)
-    }
-
-    fn format_source(&self, file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
-        tooling::format_source(file, source)
-    }
-
-    fn search_symbol(&self, request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
-        search::search_symbol(request, io)
-    }
-
-    fn guide(&self, io: &mut Io) -> BackendResult {
-        let _ = write!(io.stdout, "{}", ms_guide::cheatsheet());
-        Ok(0)
-    }
-
-    fn drop_redundant_labels(
-        &self,
-        file: &FormatFile,
-        source: &str,
-    ) -> Result<String, FormatFailure> {
-        tooling::drop_redundant_labels(file, source)
-    }
-
-    /// The server reads the process stdin itself: the supervisor's reader runs
-    /// on its own thread and needs a `'static` stream.
-    fn lsp(&self, io: &mut Io) -> BackendResult {
-        let served = if std::env::var_os(LSP_WORKER).is_some() {
-            ms_lsp::serve(std::io::stdin(), &mut *io.stdout)
-        } else {
-            ms_lsp::supervise(std::io::stdin(), &mut *io.stdout, || {
-                let exe = std::env::current_exe().unwrap_or_else(|_| "ms".into());
-                let mut command = std::process::Command::new(exe);
-                command.arg("lsp").env(LSP_WORKER, "1");
-                command
-            })
-        };
-        match served {
-            Ok(()) => Ok(0),
-            Err(message) => Err(BackendError::Failed(format!("ms lsp: {message}"))),
-        }
+/// Serve the language server until the client disconnects. The server reads
+/// the process stdin itself: the supervisor's reader runs on its own thread
+/// and needs a `'static` stream.
+pub fn lsp(io: &mut Io) -> BackendResult {
+    let served = if std::env::var_os(LSP_WORKER).is_some() {
+        ms_lsp::serve(std::io::stdin(), &mut *io.stdout)
+    } else {
+        ms_lsp::supervise(std::io::stdin(), &mut *io.stdout, || {
+            let exe = std::env::current_exe().unwrap_or_else(|_| "ms".into());
+            let mut command = std::process::Command::new(exe);
+            command.arg("lsp").env(LSP_WORKER, "1");
+            command
+        })
+    };
+    match served {
+        Ok(()) => Ok(0),
+        Err(message) => Err(BackendError(format!("ms lsp: {message}"))),
     }
 }
 
@@ -255,7 +216,7 @@ pub(crate) struct Compiled {
 /// Load, check and lower `filename` for an executable (`tests == false`) or a
 /// test executable.
 pub(crate) fn compile<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     filename: &str,
     kind: BuildType,
     tests: bool,

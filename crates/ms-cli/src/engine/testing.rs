@@ -32,7 +32,7 @@ use ms_driver::FAILURE_MARKER;
 /// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
-use super::{RustBackend, TempDir, compile};
+use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -170,7 +170,7 @@ impl Out<'_, '_> {
 }
 
 pub(super) fn test<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &TestRequest,
     io: &mut Io,
 ) -> BackendResult {

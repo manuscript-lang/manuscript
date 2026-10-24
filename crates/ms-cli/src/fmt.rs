@@ -1,12 +1,13 @@
 //! `ms fmt`: target resolution, de-duplication, reporting and in-place writes.
-//! The formatter itself is the backend's [`Backend::format_source`].
+//! The formatter itself is [`engine::format_source`].
 
 use std::collections::BTreeMap;
 
 use ms_project::{Project, ProjectError, discover_modules, gopath, read_project, source_path};
 
-use crate::backend::{Backend, FormatFailure, FormatFile, Io};
+use crate::backend::{FormatFailure, FormatFile, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
+use crate::engine;
 use crate::json::Json;
 use crate::util::{emit_json, file_error, format_cwd, format_display};
 
@@ -23,7 +24,7 @@ enum FmtError {
     Plain(String),
 }
 
-pub fn run_format(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
+pub fn run_format(args: &[String], io: &mut Io) -> i32 {
     let (mut check, mut structured, mut positional, mut drop_labels) = (false, false, false, false);
     let mut targets: Vec<String> = Vec::new();
     for arg in args {
@@ -104,7 +105,7 @@ pub fn run_format(args: &[String], backend: &dyn Backend, io: &mut Io) -> i32 {
             path: path.clone(),
             display: display.clone(),
         };
-        let (state, error) = format_file(backend, &file, check, drop_labels);
+        let (state, error) = format_file(&file, check, drop_labels);
         files_report.push((display, state));
         if let Some(error) = error {
             report(io, &path, error);
@@ -195,7 +196,6 @@ fn path_error(op: &'static str, path: &str, error: &std::io::Error) -> ms_projec
 }
 
 fn format_file(
-    backend: &dyn Backend,
     file: &FormatFile,
     check: bool,
     drop_labels: bool,
@@ -233,12 +233,12 @@ fn format_file(
     };
     let mut text = source.clone();
     if drop_labels {
-        match backend.drop_redundant_labels(file, &text) {
+        match engine::drop_redundant_labels(file, &text) {
             Ok(changed) => text = changed,
             Err(failure) => return ("error", Some(failure_error(failure, file))),
         }
     }
-    let formatted = match backend.format_source(file, &text) {
+    let formatted = match engine::format_source(file, &text) {
         Ok(formatted) => formatted,
         Err(failure) => return ("error", Some(failure_error(failure, file))),
     };

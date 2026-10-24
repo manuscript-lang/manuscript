@@ -84,8 +84,8 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }
-    crate::gosort::slice(&mut findings, |a, b| {
-        (a.file.as_ref(), a.pos.offset, a.code) < (b.file.as_ref(), b.pos.offset, b.code)
+    findings.sort_by(|a, b| {
+        (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))
     });
     findings
 }

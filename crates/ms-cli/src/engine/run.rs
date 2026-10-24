@@ -4,12 +4,12 @@ use std::process::Command;
 
 use ms_driver::Lower;
 
-use super::{RustBackend, TempDir, compile};
+use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
 use crate::process::{exit_code, wait_with_signals};
 
 pub(super) fn run<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &RunRequest,
     io: &mut Io,
 ) -> BackendResult {

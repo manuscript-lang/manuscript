@@ -77,7 +77,7 @@ fn facts_of(checked: &Checked) -> Facts {
 }
 
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
-pub(super) fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+pub fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     if !request.watch {
         return Ok(analysis_once(request, io).0);
     }
@@ -317,7 +317,7 @@ fn source_program(
     Ok(checked)
 }
 
-pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
+pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
     let checked = match source_program(&request.filename, &request.output, request.json, io) {
         Ok(checked) => checked,
         Err(done) => return done,
@@ -330,7 +330,7 @@ pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendRe
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
 
-pub(super) fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
+pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
     let checked = match source_program(&request.filename, &request.output, request.json, io) {
         Ok(checked) => checked,
         Err(done) => return done,
@@ -382,7 +382,7 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
     write_output(io, &request.output, text.as_bytes())
 }
 
-pub(super) fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
+pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
     let head = match accepted(&request.filename, &Overlay::new()) {
         Ok(head) => head,
         Err(failure) => return Ok(failure.report(io)),
@@ -564,10 +564,7 @@ fn locate_diff_path(root: &str, path: &str, deleted: bool) -> String {
     }
 }
 
-pub(super) fn drop_redundant_labels(
-    file: &FormatFile,
-    source: &str,
-) -> Result<String, FormatFailure> {
+pub fn drop_redundant_labels(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
     let checked = analyze(&file.path, &Overlay::new());
     let program = checked.program.as_ref().filter(|_| checked.success());
     let Some(program) = program else {
@@ -592,7 +589,7 @@ pub(super) fn drop_redundant_labels(
 }
 
 /// `ms fmt`: the formatter in `ms-syntax`; source that does not parse is reported, never rewritten.
-pub(super) fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+pub fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
     let name: std::sync::Arc<str> = file.display.as_str().into();
     ms_syntax::format::format(&name, source)
         .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))

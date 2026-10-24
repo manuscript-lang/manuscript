@@ -6,7 +6,6 @@ pub mod diagram;
 pub mod diff;
 pub mod facts;
 pub mod flow;
-pub mod gosort;
 pub mod inspect;
 pub mod json;
 pub mod labels;

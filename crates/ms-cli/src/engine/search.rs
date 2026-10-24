@@ -24,7 +24,7 @@ struct Described {
     std: bool,
 }
 
-pub(super) fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
+pub fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> BackendResult {
     if request.names.is_empty() {
         let _ = write!(io.stdout, "{}", ms_guide::index());
         return Ok(0);
@@ -32,7 +32,7 @@ pub(super) fn search_symbol(request: &SearchSymbolRequest, io: &mut Io) -> Backe
     let query = request.names.join(" ");
     let limit = request.limit;
     let (matches, total) = search_symbols(".", &request.names.concat(), limit)
-        .map_err(|e| BackendError::Failed(format!("ms search_symbol: {e}")))?;
+        .map_err(|e| BackendError(format!("ms search_symbol: {e}")))?;
     if request.names.len() == 1
         && !request.json
         && !matches.iter().any(|m| name_rank(&m.name, &query) == 0)
