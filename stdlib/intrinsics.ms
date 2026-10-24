@@ -141,6 +141,10 @@ interface IntOperations:
     def to_decimal() -> Decimal
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     def compare(other: Int) -> Int
+    # Returns the absolute value; the most negative Int has none and faults like any overflow.
+    def abs() -> Int
+    # Returns -1, 0 or 1 as this value is negative, zero or positive.
+    def sign() -> Int
     # Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
     def to_int64() -> Int64
     # Converts to Int8, or returns none when the value is outside Int8's range.
@@ -171,6 +175,10 @@ interface FloatOperations:
     def is_finite() -> Bool
     # Returns -1, 0 or 1 in a total order: -0.0 equals 0.0, and NaN is equal to NaN and greater than every other value, including +Inf.
     def compare(other: Float) -> Int
+    # Returns the absolute value; NaN stays NaN and -0.0 becomes 0.0.
+    def abs() -> Float
+    # Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
+    def sign() -> Float
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
     # Converts to Float32, rounding to the nearest binary32 value; large magnitudes become infinity.
@@ -187,6 +195,10 @@ interface Int8Operations:
     def to_decimal() -> Decimal
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     def compare(other: Int8) -> Int
+    # Returns the absolute value; the most negative Int8 has none and faults like any overflow.
+    def abs() -> Int8
+    # Returns -1, 0 or 1 as this value is negative, zero or positive.
+    def sign() -> Int
     # Converts to Int16; every value fits, so no check is needed.
     def to_int16() -> Int16
     # Converts to Int32; every value fits, so no check is needed.
@@ -209,6 +221,10 @@ interface Int16Operations:
     def to_decimal() -> Decimal
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     def compare(other: Int16) -> Int
+    # Returns the absolute value; the most negative Int16 has none and faults like any overflow.
+    def abs() -> Int16
+    # Returns -1, 0 or 1 as this value is negative, zero or positive.
+    def sign() -> Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
     def to_int8() -> Optional[Int8]
     # Converts to Int32; every value fits, so no check is needed.
@@ -231,6 +247,10 @@ interface Int32Operations:
     def to_decimal() -> Decimal
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     def compare(other: Int32) -> Int
+    # Returns the absolute value; the most negative Int32 has none and faults like any overflow.
+    def abs() -> Int32
+    # Returns -1, 0 or 1 as this value is negative, zero or positive.
+    def sign() -> Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
     def to_int8() -> Optional[Int8]
     # Converts to Int16, or returns none when the value is outside Int16's range.
@@ -250,6 +270,10 @@ interface Float32Operations:
     def is_finite() -> Bool
     # Returns -1, 0 or 1 in a total order: -0.0 equals 0.0, and NaN is equal to NaN and greater than every other value, including +Inf.
     def compare(other: Float32) -> Int
+    # Returns the absolute value; NaN stays NaN and -0.0 becomes 0.0.
+    def abs() -> Float32
+    # Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
+    def sign() -> Float32
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
     # Converts to Float64; every Float32 converts exactly.
