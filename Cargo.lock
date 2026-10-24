@@ -1000,6 +1000,7 @@ dependencies = [
  "ms-rt",
  "ms-syntax",
  "ms-tooling",
+ "object",
  "regex",
 ]
 
