@@ -15,6 +15,7 @@ stats = []
 [dependencies]
 memchr = "2.8.3"
 ms-rt-abi = { path = "../ms-rt-abi" }
+ms-rt-hot = { path = "../ms-rt-hot" }
 ms-std-rt = { path = "../ms-std-rt" }
 ms-std-math = { path = "../ms-std-math" }
 ms-std-time = { path = "../ms-std-time" }

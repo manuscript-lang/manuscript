@@ -9,7 +9,7 @@ weight = 4
 
 ## Build and run
 
-`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. `rust-toolchain.toml` also installs the musl targets that Linux programs link against; Windows builds also need the `x86_64-pc-windows-gnullvm` or `aarch64-pc-windows-gnullvm` target (`rustup target add`). Building `ms` needs a C compiler (`ring` compiles C sources) and a static `lld` (see Linking below); running `ms` needs neither. Nothing else is required, but the native runtime (`ms-native`) is an explicit step: `make runtime` (`cargo xtask runtime`) builds it into `target/ms-native/libms_native.a`, and `ms-cli`'s build script only embeds that archive (or the one `MS_NATIVE_LIB` names), failing with this command when it is missing. Rerun it after changing `ms-rt`, `ms-rt-abi`, or any `ms-std-*` crate.
+`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. `rust-toolchain.toml` also installs the musl targets that Linux programs link against; Windows builds also need the `x86_64-pc-windows-gnullvm` or `aarch64-pc-windows-gnullvm` target (`rustup target add`). Building `ms` needs a C compiler (`ring` compiles C sources) and a static `lld` (see Linking below); running `ms` needs neither. Nothing else is required, but the native runtime (`ms-native`) is an explicit step: `make runtime` (`cargo xtask runtime`) builds it into `target/ms-native/libms_native.a`, and `ms-cli`'s build script only embeds that archive (or the one `MS_NATIVE_LIB` names), failing with this command when it is missing. Rerun it after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
 
 ```sh
 cargo xtask runtime
@@ -52,6 +52,7 @@ Under Miri the allocator takes its arena from the heap in place of `mmap` (and i
 | `ms-mir` | MIR representation, ownership elaboration, optimizer, verifier, text format, interpreter |
 | `ms-clif` | MIR to Cranelift object code, line tables, perf map, and the embedded lld, LLVM tools and startup files that `ms build` links with |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
+| `ms-rt-hot` | The runtime's pure helpers (map probes, string compare and hash), also linked as LLVM IR into release programs so they inline |
 | `ms-std-*` | One crate per native standard module |
 | `ms-lower` | Checked HIR to MIR, including native standard calls |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
