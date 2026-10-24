@@ -25,7 +25,7 @@ export MS_RT_LIB
 
 if [ "$#" -eq 0 ]; then
     # shellcheck disable=SC2046 # corpus paths hold no spaces
-    set -- $(grep -rl 'fn main' --include='*.ms' tests/conformance/fixtures/fuzz/run tests/conformance/fixtures/e2e tests/conformance/fixtures/examples | sort)
+    set -- $(grep -rl 'def main' --include='*.ms' tests/conformance/fixtures/fuzz/run tests/conformance/fixtures/e2e tests/conformance/fixtures/examples | sort)
 fi
 
 scratch=$(mktemp -d)
