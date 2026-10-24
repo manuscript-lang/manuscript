@@ -109,14 +109,14 @@ fn tree_size(value: YamlValue) Int:
         ArrayValue(values):
             for item in values: total += tree_size(item)
         ObjectValue(values):
-            for entry in values: total += tree_size(entry.value)
+            for entry in values: total += tree_size(entry.value.clone())
         _: unit
 
     return total
 
 # Records an anchor and the size of its value so aliases can be charged before they are copied.
 fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
-    context.anchors.add(name, value)
+    context.anchors.add(name.clone(), value.clone())
     context.sizes.add(name, tree_size(value))
 
 # Counts an alias expansion against the value budget before the aliased value is copied, so
@@ -145,12 +145,12 @@ fn invalid(context: Context, reason: String) YamlError:
     return YamlError.InvalidData(line: context.index + 1, column: 1, reason: reason)
 
 fn peek(flow: Flow) String:
-    return flow.chars.get(flow.pos, default: "")
+    return flow.chars.get(flow.pos, default: "").clone()
 
 fn advance(var flow: Flow) String:
     let c = peek(flow)
     if c != "": flow.pos += 1
-    return c
+    return c.clone()
 
 fn flow_space(var flow: Flow) Unit:
     while (peek(flow) == " " or peek(flow) == "\t" or peek(flow) == "\n"): advance(
@@ -270,7 +270,7 @@ fn digit_text(text: String) Bool:
     return true
 
 fn numeric(text: String) Bool:
-    var clean = text
+    var clean = text.clone()
     if clean.starts_with("+") or clean.starts_with("-"): clean = (
         clean
         .slice(1, clean.scalar_length())
@@ -325,7 +325,7 @@ fn plain(text: String) YamlValue:
     if (text == "false" or text == "False" or text == "FALSE"): return YamlValue.BoolValue(
         false
     )
-    if numeric(text): return YamlValue.NumberValue(text)
+    if numeric(text.clone()): return YamlValue.NumberValue(text)
 
     return YamlValue.StringValue(text)
 
@@ -346,7 +346,9 @@ fn merge(
     let values = match value:
         ObjectValue(entries):
             for entry in entries:
-                if not target.contains(entry.key): target.add(entry.key, entry.value)
+                if not target.contains(entry.key): target.add(
+                    entry.key.clone(), entry.value.clone()
+                )
             return ok(unit)
         ArrayValue(values): values
         _: return error(
@@ -383,7 +385,7 @@ fn fold_plain(text: String) String:
             blanks += 1
             continue
 
-        if first: result = trimmed
+        if first: result = trimmed.clone()
         else if blanks == 0: result = result.concat(" ").concat(trimmed)
         else:
             var breaks = ""
@@ -414,7 +416,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
         flow.context.values -= 1
 
         let value = try flow_value(var flow, depth, key: false)
-        define_anchor(var flow.context, name, value)
+        define_anchor(var flow.context, name, value.clone())
         return ok(value)
 
     if c == "*":
@@ -424,7 +426,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
         if let size = flow.context.sizes.get(name):
             try charge(var flow.context, size)
         if let value = flow.context.anchors.get(name):
-            return ok(value)
+            return ok(value.clone())
 
         return error(flow_invalid(flow, "unknown or recursive alias"))
 
@@ -514,7 +516,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) Result[YamlValue, YamlError
                 flow_invalid(flow, "duplicate mapping key")
             )
 
-            explicit.add(name)
+            explicit.add(name.clone())
 
             if name == "<<" and not quoted_key:
                 try merge(
@@ -612,7 +614,7 @@ fn boundary(text: String, colon: Bool) Int:
                 index == 0
                 or " \t\n:[\{,".contains((chars.get((index - 1))))
             )
-        ): quote = c
+        ): quote = c.clone()
         else if c == "[" or c == "\{": depth += 1
         else if c == "]" or c == "\}": depth -= 1
         else if (
@@ -645,11 +647,11 @@ fn uncomment(text: String) String:
     let index = boundary(text, colon: false)
 
     if index < 0:
-        if not complete(text): return text
+        if not complete(text): return text.clone()
 
-        return text.trim_end()
+        return text.trim_end().clone()
 
-    return text.slice(0, index).get("").trim_end()
+    return text.slice(0, index).get("").trim_end().clone()
 
 fn indent(text: String) Int:
     var result = 0
@@ -699,7 +701,7 @@ fn complete(text: String) Bool:
                 index == 0
                 or " \t\n:[\{,".contains((chars.get((index - 1))))
             )
-        ): quote = c
+        ): quote = c.clone()
         else if c == "[" or c == "\{": depth += 1
         else if c == "]" or c == "\}": depth -= 1
 
@@ -710,7 +712,7 @@ fn complete(text: String) Bool:
 fn inline_value(var context: Context, text: String, depth: Int) Result[
     YamlValue, YamlError
 ]:
-    var joined = text
+    var joined = text.clone()
     let line = context.index
     let structured = (
         text.starts_with("[")
@@ -744,8 +746,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
         line: line,
         context: Context(
             lines: [], final_break: context.final_break, index: context.index,
-            limits: context.limits, values: context.values, anchors: context.anchors,
-            sizes: context.sizes
+            limits: context.limits, values: context.values,
+            anchors: context.anchors.clone(), sizes: context.sizes.clone()
         ),
         delimited: false
     )
@@ -754,8 +756,8 @@ fn inline_value(var context: Context, text: String, depth: Int) Result[
     if peek(flow) != "": return error(flow_invalid(flow, "unexpected trailing text"))
 
     context.values = flow.context.values
-    context.anchors = flow.context.anchors
-    context.sizes = flow.context.sizes
+    context.anchors = flow.context.anchors.clone()
+    context.sizes = flow.context.sizes.clone()
     return ok(result)
 
 fn block_string(var context: Context, header: String, base: Int) Result[
@@ -885,13 +887,13 @@ fn block_string(var context: Context, header: String, base: Int) Result[
 fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool
 ) Result[YamlValue, YamlError]:
-    var remainder = text.trim_start()
+    var remainder = text.trim_start().clone()
     var anchor = ""
 
     if remainder.starts_with("&"):
         var flow = Flow(
-            chars: remainder.split(""), pos: 1, line: context.index, context: context,
-            delimited: false
+            chars: remainder.split(""), pos: 1, line: context.index,
+            context: context.clone(), delimited: false
         )
         anchor = try anchor_name(var flow)
         remainder = (
@@ -908,7 +910,7 @@ fn block_value(
         result = try block_string(var context, remainder.trim_end(), base)
     else if remainder != "":
         if not "['\"\{*&!".contains(remainder.get(0)):
-            remainder = remainder.trim_end()
+            remainder = remainder.trim_end().clone()
 
             var joined = StringBuilder()
             joined.append(remainder)
@@ -925,7 +927,7 @@ fn block_value(
                     probe += 1
                     continue
 
-                let next = uncomment(line)
+                let next = uncomment(line.clone())
                 if next.trim() == "" or indent(next) <= base: break
 
                 context.index = probe
@@ -975,7 +977,7 @@ fn block_value(
         else:
             try count(var context, depth)
 
-    if anchor != "": define_anchor(var context, anchor, result)
+    if anchor != "": define_anchor(var context, anchor, result.clone())
     return ok(result)
 
 fn pad(width: Int) String:
@@ -1058,7 +1060,7 @@ fn sequence_items(
             )
             level = chain.length()
 
-            var nested = frames.get(level - 1)
+            var nested = frames.get(level - 1).clone().clone()
             try sequence_items(
                 context: var context, values: var nested, base: innermost,
                 depth: (depth + level)
@@ -1068,7 +1070,7 @@ fn sequence_items(
             level -= 1
 
             while level >= 1:
-                nested = frames.get(level - 1)
+                nested = frames.get(level - 1).clone()
                 nested.append(value)
                 try sequence_items(
                     context: var context, values: var nested,
@@ -1147,7 +1149,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
             if quoted_key:
                 var flow = Flow(
                     chars: name.split(""), pos: 0, line: (context.index + 1),
-                    context: context, delimited: false
+                    context: context.clone(), delimited: false
                 )
                 name = try quoted(var flow)
                 if flow.pos != flow.chars.length(): return error(
@@ -1171,7 +1173,7 @@ fn block(var context: Context, base: Int, depth: Int) Result[YamlValue, YamlErro
                 invalid(context, "duplicate mapping key")
             )
 
-            explicit.add(name)
+            explicit.add(name.clone())
 
             let text = (
                 content
@@ -1214,7 +1216,9 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Result[Unit, Yam
         ArrayValue(values):
             for item in values: try validate(var context, item, (depth + 1))
         ObjectValue(values):
-            for entry in values: try validate(var context, entry.value, (depth + 1))
+            for entry in values: try validate(
+                var context, entry.value.clone(), (depth + 1)
+            )
         _: unit
 
     return ok(unit)
@@ -1326,7 +1330,7 @@ export fn parse(
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
     context.values = 0
-    try validate(var context, result, 1)
+    try validate(var context, result.clone(), 1)
     return ok(result)
 
 fn hex4(code: Int) String:
@@ -1385,7 +1389,7 @@ fn scalar_text(value: YamlValue) Result[String, YamlError]:
         BoolValue(flag): return ok(flag.to_string())
         StringValue(text): return ok(quote_text(text))
         NumberValue(text):
-            if not valid_number(text): return error(YamlError.InvalidInput)
+            if not valid_number(text.clone()): return error(YamlError.InvalidInput)
 
             return ok(text)
         ArrayValue(values):
@@ -1409,23 +1413,23 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
     match value:
         ArrayValue(values):
             for item in values:
-                if is_block(item):
+                if is_block(item.clone()):
                     out.append(indent.concat("-\n"))
                     try emit_block(var out, item, indent.concat("  "))
                 else:
-                    let text = try scalar_text(item)
+                    let text = try scalar_text(item.clone())
                     out.append(indent.concat("- ").concat(text).concat("\n"))
 
             return ok(unit)
         ObjectValue(values):
             for entry in values.entries():
-                let key = format_key(entry.key)
+                let key = format_key(entry.key.clone())
 
-                if is_block(entry.value):
+                if is_block(entry.value.clone()):
                     out.append(indent.concat(key).concat(":\n"))
-                    try emit_block(var out, entry.value, indent.concat("  "))
+                    try emit_block(var out, entry.value.clone(), indent.concat("  "))
                 else:
-                    let text = try scalar_text(entry.value)
+                    let text = try scalar_text(entry.value.clone())
                     out.append(
                         indent.concat(key).concat(": ").concat(
                             text
@@ -1445,9 +1449,9 @@ export fn stringify(
 
     var out = StringBuilder()
 
-    if is_block(value): try emit_block(var out, value, "")
+    if is_block(value.clone()): try emit_block(var out, value, "")
     else:
-        let text = try scalar_text(value)
+        let text = try scalar_text(value.clone())
         out.append(text.concat("\n"))
 
     let text = out.freeze()

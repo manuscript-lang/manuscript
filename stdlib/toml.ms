@@ -124,14 +124,14 @@ fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
     put(var reader, id, key, Node.TableArray(ids))
 
 fn peek(reader: Reader) String:
-    return reader.chars.get(reader.pos, default: "")
+    return reader.chars.get(reader.pos, default: "").clone()
 
 fn ahead(reader: Reader, offset: Int) String:
-    return reader.chars.get(reader.pos + offset, default: "")
+    return reader.chars.get(reader.pos + offset, default: "").clone()
 
 fn advance(var reader: Reader) String:
     let c = peek(reader)
-    if c == "": return c
+    if c == "": return c.clone()
 
     reader.pos += 1
 
@@ -141,7 +141,7 @@ fn advance(var reader: Reader) String:
     else:
         reader.column += 1
 
-    return c
+    return c.clone()
 
 fn invalid(reader: Reader, reason: String) TomlError:
     return TomlError.InvalidData(
@@ -366,7 +366,8 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 
     while index < keys.length() - 1:
         current = try child(
-            reader: var reader, parent: current, key: (keys.get(index)), dotted: true
+            reader: var reader, parent: current, key: (keys.get(index).clone()),
+            dotted: true
         )
         index += 1
 
@@ -386,7 +387,9 @@ fn seal(var reader: Reader, value: Node) Unit:
 
             state.sealed = true
             store_flags(var reader, id, state)
-            for entry in reader.entries.get(id): seal(var reader, entry.value)
+            for entry in reader.entries.get(id).clone(): seal(
+                var reader, entry.value.clone()
+            )
         ArrayNode(values):
             for item in values: seal(var reader, item)
         _: return unit
@@ -496,7 +499,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
     if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
     if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
 
-    var clean = text
+    var clean = text.clone()
     var signed = false
 
     if clean.starts_with("+") or clean.starts_with("-"):
@@ -556,7 +559,7 @@ fn scalar(reader: Reader, text: String) Result[Node, TomlError]:
             if parts.length() > 2: return error(invalid(reader, "invalid float"))
 
             if parts.length() == 2:
-                var exponent = parts.get(1)
+                var exponent = parts.get(1).clone()
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(1, exponent.scalar_length())
@@ -650,7 +653,7 @@ fn read_value(var reader: Reader, depth: Int) Result[Node, TomlError]:
         advance(var reader)
 
         let node = Node.TableNode(result)
-        seal(var reader, node)
+        seal(var reader, node.clone())
         return ok(node)
 
     var text = ""
@@ -705,11 +708,11 @@ fn materialize(var reader: Reader, node: Node, depth: Int) Result[TomlValue, Tom
         Leaf(value): return ok(value)
         TableNode(id):
             var entries = Map[String, TomlValue]()
-            for entry in reader.entries.get(id):
+            for entry in reader.entries.get(id).clone():
                 entries.add(
-                    entry.key,
+                    entry.key.clone(),
                     try materialize(
-                        var reader, entry.value, (depth + 1)
+                        var reader, entry.value.clone(), (depth + 1)
                     )
                 )
             return ok(TomlValue.TableValue(entries))
@@ -800,7 +803,7 @@ export fn parse(
 
             while index < keys.length() - 1:
                 parent = try child(
-                    reader: var reader, parent: parent, key: (keys.get(index)),
+                    reader: var reader, parent: parent, key: (keys.get(index).clone()),
                     dotted: false
                 )
                 index += 1
@@ -921,8 +924,8 @@ fn inline_value(value: TomlValue) String:
         TableValue(values):
             var parts: List[String] = []
             for entry in values.entries(): parts.append(
-                format_key(entry.key).concat(" = ").concat(
-                    inline_value(entry.value)
+                format_key(entry.key.clone()).concat(" = ").concat(
+                    inline_value(entry.value.clone())
                 )
             )
             if parts.is_empty(): return "\{\}"
@@ -934,7 +937,7 @@ fn table_items(values: List[TomlValue]) List[Map[String, TomlValue]]:
 
     for item in values:
         match item:
-            TableValue(table): tables.append(table)
+            TableValue(table): tables.append(table.clone())
             _: return []
 
     return tables
@@ -956,7 +959,9 @@ fn section_kind(value: TomlValue) Int:
         ArrayValue(elements):
             if (
                 not elements.is_empty()
-                and table_items(elements).length() == elements.length()
+                and table_items(
+                    elements.clone()
+                ).length() == elements.length()
             ): return 2
 
             return 0
@@ -966,21 +971,23 @@ fn emit_one(
     var writer: Writer, path: List[String], brackets: String,
     table: Map[String, TomlValue]
 ) Unit:
-    if brackets == "[[": emit_header(var writer, "[[".concat(dotted(path)).concat("]]"))
-    else: emit_header(var writer, "[".concat(dotted(path)).concat("]"))
+    if brackets == "[[": emit_header(
+        var writer, "[[".concat(dotted(path.clone())).concat("]]")
+    )
+    else: emit_header(var writer, "[".concat(dotted(path.clone())).concat("]"))
 
     emit_table(var writer, path, table)
 
 fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) Unit:
     for entry in values.entries():
-        if section_kind(entry.value) == 0: (
+        if section_kind(entry.value.clone()) == 0: (
             writer
             .out
             .append(
                 (
-                    format_key(entry.key)
+                    format_key(entry.key.clone())
                     .concat(" = ")
-                    .concat(inline_value(entry.value))
+                    .concat(inline_value(entry.value.clone()))
                     .concat("\n")
                 )
             )
@@ -988,16 +995,17 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 
     for entry in values.entries():
         var child = path.clone()
-        child.append(entry.key)
+        child.append(entry.key.clone())
 
         match entry.value:
             TableValue(table): emit_one(
                 writer: var writer, path: child, brackets: "[", table: table
             )
             ArrayValue(elements):
-                if section_kind(entry.value) == 2:
-                    for table in table_items(elements): emit_one(
-                        writer: var writer, path: child, brackets: "[[", table: table
+                if section_kind(entry.value.clone()) == 2:
+                    for table in table_items(elements.clone()): emit_one(
+                        writer: var writer, path: child.clone(), brackets: "[[",
+                        table: table
                     )
             _: unit
 
@@ -1010,7 +1018,7 @@ fn datetimes_valid(value: TomlValue) Bool:
             return true
         TableValue(values):
             for entry in values.entries():
-                if not datetimes_valid(entry.value): return false
+                if not datetimes_valid(entry.value.clone()): return false
             return true
         _: return true
 
@@ -1023,7 +1031,7 @@ export fn stringify(
         if limit < 0: return error(TomlError.InvalidInput)
 
     let root = match value:
-        TableValue(values): values
+        TableValue(values): values.clone()
         _: return error(TomlError.InvalidInput)
 
     if not datetimes_valid(value): return error(TomlError.InvalidInput)

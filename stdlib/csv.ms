@@ -58,7 +58,7 @@ export fn parse(
         )
 
         cells += row.length()
-        rows.append(row)
+        rows.append(row.clone())
 
     return ok(rows)
 
@@ -131,7 +131,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
         else:
             return ok(none)
 
-    var line = first.get()
+    var line = first.get().clone()
     var row = List[String]()
     var cell = List[Int]()
     var at = 0
@@ -170,7 +170,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
                 let following = take_line(var reader)
                 if not following.is_some(): return error(CsvError.InvalidData)
 
-                line = following.get()
+                line = following.get().clone()
                 at = 0
                 continue
 
@@ -250,10 +250,10 @@ fn needs_quotes(field: String, delimiter: Int) Bool:
 fn replaced(text: String, old: String, new: String) String:
     if let result = text.replace_all(old, new): return result
 
-    return text
+    return text.clone()
 
 fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
-    if not needs_quotes(field, delimiter): return field
+    if not needs_quotes(field, delimiter): return field.clone()
 
     var quoted = replaced(field, "\"", "\"\"")
     if crlf: quoted = replaced(replaced(quoted, "\r\n", "\n"), "\n", "\r\n")

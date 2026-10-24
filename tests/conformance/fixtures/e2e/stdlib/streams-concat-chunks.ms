@@ -10,10 +10,10 @@ fn say(text: String) Unit:
 # A stream is a value: concat must read its inputs in place so each keeps its position across chunks.
 export fn main() Int:
     let data = "hello world".to_bytes()
-    let joined = concat([from_bytes(data, 4), from_bytes(data, 4)])
+    let joined = concat([from_bytes(data.clone(), 4), from_bytes(data.clone(), 4)])
     let all = read_all(joined).get()
     say("joined {all.length()}\n")
 
-    let again = concat([from_bytes(data, 3), from_bytes(data, 5)])
-    say("digest {digest(again, HashAlgorithm.Sha256).get().length()}\n")
+    var again = concat([from_bytes(data.clone(), 3), from_bytes(data, 5)])
+    say("digest {digest(var again, HashAlgorithm.Sha256).get().length()}\n")
     return 0
