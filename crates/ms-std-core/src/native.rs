@@ -512,6 +512,12 @@ impl<T: AbiHandle> ObjBox<T> {
         unsafe { &mut (*self.0).value }
     }
 
+    /// Whether this box holds the only reference to the object.
+    pub fn is_unique(&self) -> bool {
+        // SAFETY: `self` holds a reference, so the object is live.
+        unsafe { (*self.0).header.rc == 1 }
+    }
+
     /// Another reference to the object, for returning to Manuscript.
     pub fn share(&self) -> ObjShare<T> {
         ObjShare(self.0)
@@ -544,6 +550,26 @@ impl<T: AbiHandle> IntoAbi for ObjShare<T> {
         // SAFETY: `self.0` is a live object; the caller receives its own reference.
         unsafe { msrt_retain(self.0.cast()) };
         self.0
+    }
+}
+
+/// A runtime object returned to Manuscript: a new one, or another reference to one that Rust
+/// keeps, as when a native hands out a cached handle.
+pub enum Handed<T: AbiHandle> {
+    New(Object<T>),
+    Shared(ObjShare<T>),
+}
+
+impl<T: AbiHandle> AbiType for Handed<T> {
+    type Raw = *mut ObjCell<T>;
+}
+impl<T: AbiHandle> IntoAbi for Handed<T> {
+    type Raw = *mut ObjCell<T>;
+    fn into_raw(self) -> *mut ObjCell<T> {
+        match self {
+            Handed::New(o) => o.into_raw(),
+            Handed::Shared(s) => s.into_raw(),
+        }
     }
 }
 

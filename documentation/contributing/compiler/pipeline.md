@@ -18,7 +18,7 @@ The checker builds typed HIR once and later stages read its facts, so lowering a
 | Lower | `ms-lower` | Evaluation order, exit cleanup, defaults, call shape | MIR |
 | Optimize and verify | `ms-mir` | Inlining, copy elimination, range facts, verification | Optimized MIR |
 | Generate code | `ms-clif` | Machine code, line tables | Object file |
-| Link | `ms-driver`, `ms-native` | Runtime and standard crates | Native executable |
+| Link | `ms-build`, `ms-native` | Runtime and standard crates | Native executable |
 
 Consumers go through the checker's public API (the HIR and its ownership facts), so storage can change freely. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) records the crates and their order.
 

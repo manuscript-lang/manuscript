@@ -7,12 +7,12 @@ cargo build --release -p ms-cli
 target/release/ms-conform run --ms target/release/ms --tag tier-core --phase run
 ```
 
-Loading, optimizing, code generation and linking live in `ms-driver`; this crate only lowers.
+Loading, optimizing, code generation and linking live in `ms-build`; this crate only lowers.
 
 ## Strategy
 
 - **Instances.** Every source callable is lowered once per substitution of its type variables (`Cx::function_for`); bodies are queued and lowered on demand from `main`.
-- **Ownership (v1).** Locals are SSA variables; a type that needs drop is `Own`. Reading a local in an owning position copies it, owned temporaries used only as borrows are dropped at statement end, scopes drop their locals on every exit (return, break, continue). Parameters are `Borrow`. Last-use moves replace copies later.
+- **Ownership (v1).** Locals are SSA variables; a type that needs drop is `Own`. Reading a local in an owning position copies it unless it is a last use, where copy elimination turns the copy into a move; owned temporaries used only as borrows are dropped at statement end, scopes drop their locals on every exit (return, break, continue). Parameters take `Borrow`, `Own` or `Var` modes from the ownership pass (`ms-check/OWNERSHIP.md`).
 - **Defaults** are evaluated by the caller in the callee's module context.
 - **Natives** become runtime calls (`native.rs`: `PLAIN_STRING`, descriptor-based list calls) or short MIR sequences (`list.reversed`, `get` with default). `stdout()`/`stderr()` are interface values over MIR-built vtables.
 - **Runtime calls** that follow the ABI conventions (`rtcall.rs`) are marshalled from the symbol's declared signature in `ms-rt/SYMBOLS.md`: descriptors, flattened optionals, `out` pointers and `u8` statuses become `Result`/`Optional` values.
@@ -22,4 +22,4 @@ Loading, optimizing, code generation and linking live in `ms-driver`; this crate
 
 ## Not yet lowered
 
-`with`, destructuring, Map/Set literals and natives, `expect_fault` and `skip` (they need a catchable fault in the runtime), test fixtures and hooks, `Bytes` text forms, and the remaining native methods. The lowerer reports each as `unsupported ...`; the conformance run lists what still fails. Fixtures that mutate through non-`var` methods rely on reference semantics and differ by design (value semantics, `design-contract.md`).
+Some native methods and shapes, such as collection constructors, a few `min`/`max` operand types and unrecognized native functions. The lowerer reports each as `unsupported ...`; the conformance run lists what still fails. Fixtures that mutate through non-`var` methods rely on reference semantics and differ by design (value semantics, `design-contract.md`).

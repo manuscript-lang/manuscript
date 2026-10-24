@@ -5,7 +5,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
+.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
 
 setup: tools
 
@@ -20,7 +20,11 @@ verify: check lint repo-check unit docs-check licenses-check
 
 verify-full: verify conform e2e book-check dist-check
 
-check:
+# Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
+runtime:
+	cargo xtask runtime
+
+check: runtime
 	cargo fmt --all --check
 	cargo clippy --workspace --all-targets -- -D warnings
 
@@ -36,13 +40,13 @@ lint:
 repo-check:
 	cargo run --release --locked -q -p ms-repo-check
 
-unit:
+unit: runtime
 	cargo nextest run --workspace
 	cargo test --workspace --doc
 
 test: unit conform
 
-build:
+build: runtime
 	cargo build --release --locked -p ms-cli
 
 # The run, check and test phases of the frozen conformance corpus against the Rust `ms`, excluding fixtures whose

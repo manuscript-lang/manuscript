@@ -17,6 +17,7 @@ if [ "$(uname -s)" = Linux ]; then
     export "CC_$(echo "$target" | tr - _)=${CC:-cc}"
 fi
 CARGO_TARGET_DIR="$stats_target" cargo build --release --locked -q -p ms-native --features ms-rt/stats ${target:+--target "$target"}
+cargo xtask runtime >/dev/null
 cargo build --release --locked -q -p ms-cli
 ms="$repository/target/release/ms"
 MS_RT_LIB="$stats_target/$release/libms_native.a"

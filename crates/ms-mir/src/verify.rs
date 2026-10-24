@@ -2,18 +2,18 @@
 //!
 //! # Ownership rules
 //!
-//! The reference-count discipline is checked as a linear-type property on
-//! values of reference-counted types:
+//! Ownership is checked as a linear-type property on values whose type
+//! needs a drop:
 //!
-//! * A value is *owned* when it is defined by an instruction that returns a
-//!   count (see [`Module::result_mode`]), is a parameter with [`Mode::Own`],
+//! * A value is *owned* when it is defined by an instruction that returns an
+//!   owned value (see [`Module::result_mode`]), is a parameter with [`Mode::Own`],
 //!   or is a block parameter with [`Mode::Own`]. Everything else is *borrowed*.
 //! * Consuming positions (see [`arg_modes`]) require an owned operand and
 //!   remove it from the live set. Borrowing positions accept either kind but
 //!   an owned value must still be live.
 //! * The live set must be identical on every edge into a block (after the
 //!   edge's arguments are consumed) and empty at `ret`. `fault` and
-//!   `unreachable` end the program, so counts held at that point are ignored.
+//!   `unreachable` end the program, so values held at that point are ignored.
 
 use crate::ir::*;
 use crate::types::{Ty, TyKind};
@@ -132,7 +132,7 @@ pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(),
     }
 }
 
-/// For each argument of `inst`, whether the position consumes a reference count.
+/// For each argument of `inst`, whether the position consumes an owned value.
 pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     let n = inst.args.len();
     let all = |mode: Mode| vec![mode; n];
@@ -1257,7 +1257,7 @@ impl Verifier<'_> {
                         }
                     }
                 }
-                // A condition or scrutinee is never reference counted, so `live` is unchanged.
+                // A condition or scrutinee never needs a drop, so `live` is unchanged.
                 match &entry_state[t.block.index()] {
                     None => entry_state[t.block.index()] = Some(after),
                     Some(prev) if *prev == after => {}

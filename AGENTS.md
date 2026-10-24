@@ -20,7 +20,7 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 | Syntax, types, calls, imports, interfaces, language semantics | [language-design](skills/language-design/SKILL.md) |
 | Syntax nodes, lexer/parser, checking, lowering, module resolution, build pins/cache, native toolchain | [compiler](skills/compiler/SKILL.md) |
 | Execution, resources, cancellation, cleanup, native dispatch, standard declarations, bindings, API design | [runtime](skills/runtime/SKILL.md) |
-| Formatter, lint, inspection, LSP, VS Code, CLI, debugger | [tooling](skills/tooling/SKILL.md) |
+| Formatter, lint, inspection, LSP, VS Code, CLI, profiling | [tooling](skills/tooling/SKILL.md) |
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Documentation revamps, marketing landing page, onboarding, reading order, or quality audits | [improve-documentation](skills/improve-documentation/SKILL.md), then documentation |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |

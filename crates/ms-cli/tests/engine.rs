@@ -7,15 +7,15 @@ use ms_rt as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use ms_build::{Lower, Module, Native};
 use ms_cli::backend::Io;
 use ms_cli::engine::RustBackend;
-use ms_driver::{Lower, LowerOptions, Module, Native};
 
 /// A lowering that ignores the program and returns fixed MIR.
 struct Fixed(&'static str);
 
 impl Lower for Fixed {
-    fn lower(&self, _: &ms_check::Program, _: &str, _: &LowerOptions) -> Result<Module, String> {
+    fn lower(&self, _: &ms_check::Program, _: &str) -> Result<Module, String> {
         ms_mir::parse::parse_module(self.0).map_err(|e| e.to_string())
     }
 }
@@ -158,7 +158,7 @@ fn imports_load_in_dependency_order() {
 fn unavailable_lowering_is_a_lowering_diagnostic() {
     let dir = scratch("unavailable");
     let source = write(&dir, "main.ms", MAIN);
-    let backend = RustBackend::new(ms_driver::Unavailable);
+    let backend = RustBackend::new(ms_build::Unavailable);
     let (status, _, err) = ms(&backend, &["build", &source]);
     assert_eq!(status, 1);
     assert!(

@@ -20,10 +20,8 @@ mod watch;
 
 use std::path::{Path, PathBuf};
 
-use ms_driver::{
-    CheckRequest, Diagnostic, Graph, LoadOptions, Lower, LowerOptions, Phase, Pos, check_graph,
-    load_file,
-};
+use ms_build::Lower;
+use ms_driver::{CheckRequest, Diagnostic, Graph, LoadOptions, Phase, Pos, check_graph, load_file};
 
 use crate::backend::{
     AnalysisRequest, Backend, BackendError, BackendResult, BuildRequest, BuildType, DiagramRequest,
@@ -65,12 +63,12 @@ impl<L: Lower> RustBackend<L> {
     ) -> Result<(), String> {
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
-            None => match ms_driver::runtime_override()? {
+            None => match ms_build::runtime_override()? {
                 Some(runtime) => runtime,
                 None => runtime::embedded()?,
             },
         };
-        ms_driver::build_executable(&mut compiled.module, output, profile(kind), &runtime)?;
+        ms_build::build_executable(&mut compiled.module, output, profile(kind), &runtime)?;
         write_metadata(output, kind);
         Ok(())
     }
@@ -104,7 +102,7 @@ impl<L: Lower> Backend for RustBackend<L> {
     }
 
     fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
-        let compiled = match compile(self, &request.filename, BuildType::Release, false) {
+        let compiled = match compile(self, &request.filename, false) {
             Ok(compiled) => compiled,
             Err(failure) => return Ok(failure.report(io)),
         };
@@ -245,7 +243,7 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
 
 /// A checked and lowered program.
 pub(crate) struct Compiled {
-    pub module: ms_driver::Module,
+    pub module: ms_build::Module,
     /// Full `module::name` identities in index order (test executables only).
     pub tests: Vec<String>,
     pub source_root: String,
@@ -257,7 +255,6 @@ pub(crate) struct Compiled {
 pub(crate) fn compile<L: Lower>(
     backend: &RustBackend<L>,
     filename: &str,
-    kind: BuildType,
     tests: bool,
 ) -> Result<Compiled, Failure> {
     let graph = load_file(filename, LoadOptions { tests });
@@ -284,15 +281,12 @@ pub(crate) fn compile<L: Lower>(
     let Some(program) = &checked.program else {
         return Err(failure(checked.diagnostics, &checked.source_root));
     };
-    let options = LowerOptions {
-        debug: kind == BuildType::Debug,
-    };
     let lowered = if tests {
-        backend.lowering.lower_tests(program, &entry, &options)
+        backend.lowering.lower_tests(program, &entry)
     } else {
         backend
             .lowering
-            .lower(program, &entry, &options)
+            .lower(program, &entry)
             .map(|module| (module, Vec::new()))
     };
     match lowered {
@@ -338,11 +332,11 @@ fn library_failure(graph: &Graph) -> Failure {
 }
 
 /// Map the CLI's build levels onto the code generator's.
-pub(crate) fn profile(kind: BuildType) -> ms_driver::Profile {
+pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
     match kind {
-        BuildType::Debug => ms_driver::Profile::Debug,
-        BuildType::Release => ms_driver::Profile::Release,
-        BuildType::MinSizeRel => ms_driver::Profile::MinSizeRel,
+        BuildType::Debug => ms_build::Profile::Debug,
+        BuildType::Release => ms_build::Profile::Release,
+        BuildType::MinSizeRel => ms_build::Profile::MinSizeRel,
     }
 }
 

@@ -22,6 +22,7 @@ if [ -n "$exe" ]; then
     cat tests/e2e/expect-fail.txt tests/e2e/expect-fail.windows.txt >"$expected"
 fi
 
+cargo xtask runtime >/dev/null
 cargo build --locked -q -p ms-cli
 
 if [ "$#" -gt 0 ]; then

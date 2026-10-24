@@ -1,27 +1,19 @@
-//! The Manuscript build driver: source to native executable.
+//! The Manuscript front-end driver: file name to checked program.
 //!
 //! ```text
-//! load (ms-project, ms-syntax) -> check (ms-check) -> lower (seam) -> optimize (ms-mir)
-//!   -> ms-clif -> link with ms-rt
+//! load (ms-project, ms-syntax) -> check (ms-check)
 //! ```
 //!
-//! The command line (`ms-cli`) owns arguments, output formats and exit
-//! statuses; this crate owns everything between a file name and an executable.
+//! Lowering, optimization, code generation and linking live in `ms-build`, so
+//! tools that only read programs (the language server) do not link a code
+//! generator. The command line (`ms-cli`) owns arguments, output formats and
+//! exit statuses.
 
-// Links the msrt_* runtime symbols that the standard-library crates reference.
-#[cfg(test)]
-use ms_rt as _;
 pub mod compile;
 pub mod load;
-pub mod lower;
-pub mod native;
 
 pub use compile::{CheckRequest, Checked, check_graph, check_graph_at};
 pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};
-pub use lower::{Lower, LowerOptions, Native, Unavailable};
-pub use ms_lower::{FAILURE_MARKER, SKIP_MARKER};
-pub use ms_mir::ir::Module;
-pub use native::{Profile, build_executable, runtime_override};
 
 /// The syntax types diagnostics are made of.
 pub use ms_syntax::{Diagnostic, Phase, Pos};

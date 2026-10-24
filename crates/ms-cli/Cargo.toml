@@ -20,6 +20,7 @@ ms-check = { path = "../ms-check" }
 ms-json = { path = "../ms-json" }
 ms-project = { path = "../ms-project" }
 ms-driver = { path = "../ms-driver" }
+ms-build = { path = "../ms-build" }
 ms-mir = { path = "../ms-mir" }
 ms-syntax = { path = "../ms-syntax" }
 ms-lsp = { path = "../ms-lsp" }
