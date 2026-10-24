@@ -670,6 +670,10 @@ impl FnLower<'_> {
         mt: MTy,
         earlier: &[(ct::Name, Value)],
     ) -> Result<Option<Value>, Error> {
+        if ty.id.as_str() == "Unit" {
+            // `Unit` has no JSON form: encoding omits the member and decoding restores it.
+            return Ok(Some(self.b.unit()));
+        }
         if case.is_some() {
             return Ok(ty.is_std("Optional").then(|| self.none_owned(mt)));
         }

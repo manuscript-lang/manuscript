@@ -16,6 +16,7 @@ pub mod control;
 #[allow(unsafe_code)]
 mod control_windows;
 pub mod envfile;
+pub mod fork;
 #[allow(unsafe_code)] // socketpair, named pipes and environment removal
 pub mod ipc;
 #[cfg(unix)]

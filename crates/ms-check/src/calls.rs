@@ -325,6 +325,7 @@ impl Checker {
                 None => {
                     let c = self.expression(callee, None);
                     i.method = c.method.clone();
+                    self.check_process_entry(callee, args, c.method.as_ref());
                     if c.native_str() != "index" {
                         // An indexed callee (callbacks[0](2)) must not make the call itself lower as an index.
                         i.native = c.native;
@@ -349,6 +350,46 @@ impl Checker {
             callable = c;
         }
         self.finish_call(e, callee, args, i, signature, callable)
+    }
+
+    /// `ProcessGroup.spawn` runs its entry again in another process of this executable, which
+    /// finds the function by its code and cannot carry captured values: the entry must name a
+    /// top-level function.
+    fn check_process_entry(
+        &mut self,
+        callee: &Expr,
+        args: &[Argument],
+        method: Option<&MethodRef>,
+    ) {
+        let Some(m) = method else {
+            return;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return;
+        };
+        if name.as_str() != "spawn"
+            || !m
+                .receiver
+                .is_source_type("@std/processes.ms", "ProcessGroup")
+        {
+            return;
+        }
+        let Some(entry) = args
+            .iter()
+            .find(|a| a.name.is_none_or(|n| n.as_str() == "entry"))
+        else {
+            return;
+        };
+        let named = match &entry.value.kind {
+            ExprKind::Apply { left, .. } => self.function_symbol(left).is_some(),
+            _ => self.function_symbol(&entry.value).is_some(),
+        };
+        if !named {
+            self.type_error(
+                entry.value.pos,
+                "process entry must name a top-level def: it runs again in another process, which cannot carry a lambda or the values it captures; move the work into a def taking the channel".to_string(),
+            );
+        }
     }
 
     fn finish_call(

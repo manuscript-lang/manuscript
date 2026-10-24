@@ -85,13 +85,14 @@ fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
 #[cfg(windows)]
 static INHERIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// Starts `program` with `args` and the given standard streams, and with the child's end of `ipc`
-/// as described in `crate::ipc`; `Unavailable` when it is missing.
+/// Starts `program` with `args`, the given standard streams, the extra variables `env`, and the
+/// child's end of `ipc` as described in `crate::ipc`; `Unavailable` when it is missing.
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
     [stdin, stdout, stderr]: [StdStream; 3],
     ipc: Option<&ChildEnd>,
+    env: &[(&str, &[u8])],
 ) -> Res<Child> {
     let failed = |e: i32| {
         let mut m = b"fork/exec ".to_vec();
@@ -108,6 +109,9 @@ pub fn start(
     cmd.stdin(stdin.stdio().map_err(failed)?);
     cmd.stdout(stdout.stdio().map_err(failed)?);
     cmd.stderr(stderr.stdio().map_err(failed)?);
+    for (name, value) in env {
+        cmd.env(name, os_string(value));
+    }
     if let Some(end) = ipc {
         cmd.env(crate::ipc::ENV, os_string(&end.env_value()));
         #[cfg(unix)]
