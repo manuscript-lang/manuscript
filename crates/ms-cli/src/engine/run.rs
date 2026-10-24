@@ -47,7 +47,12 @@ pub(super) fn run<L: Lower>(
         }
     };
     let executable = directory.0.join("program");
-    if let Err(message) = backend.link(&mut compiled, &executable, request.build_type) {
+    if let Err(message) = backend.link(
+        &mut compiled,
+        &executable,
+        request.build_type,
+        &request.link,
+    ) {
         let _ = writeln!(io.stderr, "{message}");
         return Ok(1);
     }

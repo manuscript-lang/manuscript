@@ -391,6 +391,7 @@ impl Checker {
                             },
                         },
                         body: Vec::new(),
+                        external: false,
                     }),
                 });
                 let local = receiver_module_differs(self, &receiver);

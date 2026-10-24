@@ -71,7 +71,14 @@ pub fn build_executable(
     output: &Path,
     profile: Profile,
     runtime: &Path,
+    extra: &[PathBuf],
 ) -> Result<(), String> {
+    if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
+        return Err(format!(
+            "--link {} does not name a file; pass an object (.o) or static library (.a)",
+            missing.display()
+        ));
+    }
     if let Err(errors) = ms_mir::verify::verify_module(module) {
         let text: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
         return Err(format!(
@@ -108,7 +115,8 @@ pub fn build_executable(
         return Err(format!("cannot write {}: {error}", object_path.display()));
     }
     // The functions LLVM compiled link beside the Cranelift object, ahead of the runtime.
-    let mut inputs = vec![runtime];
+    let mut inputs: Vec<&Path> = extra.iter().map(PathBuf::as_path).collect();
+    inputs.push(runtime);
     if let Some(llvm) = parts.llvm {
         if let Err(error) = std::fs::write(&llvm_path, llvm) {
             cleanup();

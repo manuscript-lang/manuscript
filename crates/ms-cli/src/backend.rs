@@ -88,12 +88,16 @@ pub struct BuildRequest {
     pub output: String,
     pub build_type: BuildType,
     pub json: bool,
+    /// Extra objects and static libraries to link (`--link`).
+    pub link: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
 pub struct RunRequest {
     pub filename: String,
     pub build_type: BuildType,
+    /// Extra objects and static libraries to link (`--link`).
+    pub link: Vec<String>,
     pub watch: bool,
     /// Report the run as one JSON document, with a runtime fault as structured data.
     pub json: bool,
@@ -109,6 +113,8 @@ pub struct RunRequest {
 pub struct TestRequest {
     pub filename: String,
     pub build_type: BuildType,
+    /// Extra objects and static libraries to link (`--link`).
+    pub link: Vec<String>,
     pub json: bool,
     pub watch: bool,
     pub arguments: Vec<String>,

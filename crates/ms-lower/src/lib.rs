@@ -19,6 +19,7 @@ mod codecstream;
 mod cx;
 mod eq;
 mod expr;
+mod external;
 mod fixture;
 mod fsinfo;
 mod fswalk;

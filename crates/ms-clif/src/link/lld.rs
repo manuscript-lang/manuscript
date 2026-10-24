@@ -91,8 +91,19 @@ pub fn link(object: &Path, inputs: &[&Path], out: &Path, strip: bool) -> Result<
     } else {
         stderr.trim_end().to_string()
     };
+    // A symbol outside the runtime's `msrt_`/`msstd_` names is an `extern fn` nobody linked.
+    let foreign = detail.lines().find_map(|line| {
+        let name = line.split_once("undefined symbol: ")?.1.trim();
+        (!name.starts_with("msrt_") && !name.starts_with("msstd_")).then_some(name)
+    });
+    let advice = match foreign {
+        Some(name) => format!(
+            "{name} is not part of the Manuscript runtime; if an extern fn declares it, pass the object or static library that defines it with --link <file>"
+        ),
+        None => "A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error".to_string(),
+    };
     Err(Error(format!(
-        "linking failed ({}); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:\n{detail}",
+        "linking failed ({}); the linker output follows. {advice}:\n{detail}",
         o.status
     )))
 }

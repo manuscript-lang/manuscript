@@ -92,6 +92,7 @@ Options:
   -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)
   --json              Emit one versioned build result and artifact inventory
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -124,6 +125,7 @@ Options:
   --json                Capture output and emit one versioned result; a runtime fault is reported as data (no --watch)
   --watch               Rebuild and restart after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -153,6 +155,7 @@ Options:
   --shuffle <seed>     Shuffle with a reproducible integer seed
   --watch              Rebuild and rerun after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 

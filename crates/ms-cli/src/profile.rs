@@ -403,6 +403,7 @@ pub fn run_profile(
         output: program.clone(),
         build_type,
         json: false,
+        link: Vec::new(),
     };
     let status = {
         let mut build_io = Io {
