@@ -95,6 +95,17 @@ unsafe extern "C-unwind" {
 }
 
 unsafe extern "C-unwind" {
+    fn msrt_process_on_exit(hook: extern "C" fn());
+}
+
+/// Runs `hook` once when the program ends, after output is flushed, whether `main` returns or
+/// the program exits.
+pub fn on_exit(hook: extern "C" fn()) {
+    // SAFETY: provided by `ms-rt`; registering takes no other state.
+    unsafe { msrt_process_on_exit(hook) }
+}
+
+unsafe extern "C-unwind" {
     fn msrt_task_sleep(ns: i64) -> u32;
     #[cfg(unix)]
     fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32;

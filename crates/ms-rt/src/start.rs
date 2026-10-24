@@ -277,6 +277,7 @@ pub unsafe extern "C-unwind" fn msrt_start(
         crate::profile::start();
         run_on_big_stack();
         crate::io::flush_stdout();
+        crate::process::run_exit_hooks();
         crate::profile::finish();
         #[cfg(feature = "stats")]
         crate::task::reset_for_tests();
