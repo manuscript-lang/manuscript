@@ -1,10 +1,14 @@
 from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
 
 def ascending(xs: List[Int]) -> List[Int]:
-    return xs.sorted(compare: lambda (left: Int, right: Int) -> Int: return left - right)
+    return xs.sorted(
+        compare: lambda (left: Int, right: Int) -> Int: return left - right
+    )
 
 def descending(xs: List[Int]) -> List[Int]:
-    return xs.sorted(compare: lambda (left: Int, right: Int) -> Int: return right - left)
+    return xs.sorted(
+        compare: lambda (left: Int, right: Int) -> Int: return right - left
+    )
 
 test "a difference comparator sorts by value":
     ascending([5, -3, 9, 0, -3, 7]) | try expect_equal([-3, -3, 0, 5, 7, 9])

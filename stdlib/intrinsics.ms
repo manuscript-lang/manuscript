@@ -44,7 +44,10 @@ interface StringOperations:
     # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     def lower() -> String
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
-    def repeat(count: Int, max_bytes: Optional[Int] = none) -> Result[String, StringError]
+    def repeat(
+        count: Int,
+        max_bytes: Optional[Int] = none
+    ) -> Result[String, StringError]
     # Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
     # Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
     # An empty old matches at scalar boundaries, and inserted text is not searched again.
@@ -59,7 +62,11 @@ interface StringOperations:
     # The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
     def replace_n(old: String, new: String, max_replacements: Int) -> String
     # Compatibility spelling for replace_first, including its explicit replacement cap.
-    def replace(old: String, new: String, max_replacements: Optional[Int] = none) -> String
+    def replace(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int] = none
+    ) -> String
     # Returns the number of Unicode scalar values in the string.
     def scalar_length() -> Int
     # Returns each Unicode scalar value as an integer.

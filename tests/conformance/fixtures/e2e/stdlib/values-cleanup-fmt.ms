@@ -84,4 +84,6 @@ test "Closeable cleanup runs in reverse order before return delivery":
         let dir = temporary.path()
         try expect_equal(leave(dir), 42)
         try expect_equal((try fs.read_file(f"{dir}/1")), Bytes([116, 114, 117, 101]))
-        try expect_equal((try fs.read_file(f"{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+        try expect_equal(
+            (try fs.read_file(f"{dir}/2")), Bytes([102, 97, 108, 115, 101])
+        )

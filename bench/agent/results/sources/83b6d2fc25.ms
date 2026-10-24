@@ -1352,7 +1352,9 @@ def run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[St
 
 # Brings `name` up to date, discarding whether it changed.
 def visit(var st: St, var mk: Mk, name: String, needed: String) -> Result[Unit, Fatal]:
-    return update(var st, var mk, name, needed).map(lambda (changed: Bool) -> Unit: return ())
+    return update(var st, var mk, name, needed).map(
+        lambda (changed: Bool) -> Unit: return ()
+    )
 
 def parse_only(var st: St, lines: List[String]) -> Result[Unit, Fatal]:
     return parse(var st, lines).map(lambda (mk: Mk) -> Unit: return ())

@@ -147,4 +147,7 @@ impl CompressionFormat:
     # Returns a stream of decompressed bytes, reading `input` chunk by chunk.
     # Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
     # Closing the result closes `input`.
-    def decompress_stream(input: ReadStream, max_bytes: Optional[Int] = none) -> ReadStream: ...
+    def decompress_stream(
+        input: ReadStream,
+        max_bytes: Optional[Int] = none
+    ) -> ReadStream: ...

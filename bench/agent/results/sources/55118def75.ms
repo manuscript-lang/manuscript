@@ -390,7 +390,11 @@ def display_name(qual: String, name: String) -> String:
 
     return f"{qual}.{name}"
 
-def resolve_col(scope: List[ScopeCol], qual: String, name: String) -> Result[Int, SqlError]:
+def resolve_col(
+    scope: List[ScopeCol],
+    qual: String,
+    name: String
+) -> Result[Int, SqlError]:
     var found = -1
     var hits = 0
 

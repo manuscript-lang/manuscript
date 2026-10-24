@@ -1,7 +1,16 @@
 from "@std/testing.ms" import expect_equal
 from "@std/encoding.ms" import (
-    base64_encode, base64_decode, hex_encode, hex_decode, EncodingError, utf16_encode,
-    utf16_decode, latin1_encode, latin1_decode, ascii_encode, ascii_decode
+    base64_encode,
+    base64_decode,
+    hex_encode,
+    hex_decode,
+    EncodingError,
+    utf16_encode,
+    utf16_decode,
+    latin1_encode,
+    latin1_decode,
+    ascii_encode,
+    ascii_decode
 )
 from "@std/bytes.ms" import Bytes
 

@@ -210,7 +210,9 @@ def report(var ledger: Ledger) -> List[String]:
         ledger
         .accounts
         .keys()
-        .sorted(lambda (left: String, right: String) -> Int: left.compare(right))
+        .sorted(
+            lambda (left: String, right: String) -> Int: left.compare(right)
+        )
     )
 
     for id in ids:

@@ -41,7 +41,10 @@ export interface Commands:
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
     # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; stdin, stdout, and stderr are OS pipes. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-    def spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]
+    def spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]
 
 # A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
 # kills the child's process group, joins it, and closes all three streams.
@@ -111,7 +114,10 @@ export interface ProcessControl:
     def environment() -> Result[Map[String, String], ProcessError]
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
-    def set_environment(name: String, value: Optional[String]) -> Result[Unit, ProcessError]
+    def set_environment(
+        name: String,
+        value: Optional[String]
+    ) -> Result[Unit, ProcessError]
     # Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
     # Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
     def load_environment(

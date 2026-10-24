@@ -214,7 +214,9 @@ test "list methods mutate explicit clones and remain typed":
     original.keys() | try expect_equal([0, 1, 2, 3])
     (original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3)))
     original.to_set().values() | try expect_equal([3, 1, 2])
-    try expect_equal([[1, 2], [], [3]].flat_map(transform: lambda value: value), [1, 2, 3])
+    try expect_equal(
+        [[1, 2], [], [3]].flat_map(transform: lambda value: value), [1, 2, 3]
+    )
     alias | try expect_equal([3, 1, 2, 1])
 
 test "map enumeration, merge, and clear preserve insertion order":
@@ -253,7 +255,8 @@ test "map enumeration, merge, and clear preserve insertion order":
     var observed_values: List[Int] = []
 
     merged.for_each(
-        lambda key, value:
+        lambda key,
+        value:
             observed_keys.append(key)
             observed_values.append(value)
     )

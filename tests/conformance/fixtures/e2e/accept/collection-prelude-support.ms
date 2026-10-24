@@ -50,7 +50,9 @@ test "public collection support types retain their standard runtime identities":
         case OutOfRange: ()
         case _: return fail("scrutinee directed pattern")
 
-    let grouped: Map[Int, List[Int]] = group(values, lambda (value: Int) -> Int: value % 2)
+    let grouped: Map[Int, List[Int]] = group(
+        values, lambda (value: Int) -> Int: (value % 2)
+    )
     let distinct: Set[Int] = unique(values)
     try expect_false(grouped.get(1).get() != [3] or distinct.values() != [3, 4])
     try expect_equal(index(values, 4).get(), 1)

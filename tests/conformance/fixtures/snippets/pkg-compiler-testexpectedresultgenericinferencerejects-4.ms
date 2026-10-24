@@ -4,6 +4,8 @@
 def required(value: Int) -> Int: value
 
 def first() -> Unit:
-    var callback: Callable[[Int], Int] = from_callback(lambda: lambda (value: Int = 4): value)
+    var callback: Callable[[Int], Int] = from_callback(
+        lambda: lambda (value: Int = 4): value
+    )
     callback = required
     callback()

@@ -45,7 +45,9 @@ export def main() -> Int:
 
     let s8 = "x"
     say(f"s8 = [{s8}]")
-    say(f"{(l3.get(0) + i2)} {i2} {((l3.get(0) + i2) < i2)} sum {(l3.get(0) + i2) + i2}")
+    say(
+        f"{(l3.get(0) + i2)} {i2} {((l3.get(0) + i2) < i2)} sum {(l3.get(0) + i2) + i2}"
+    )
 
     let b9 = (("42" == "gamma".replace("ms", s1)) or False)
     say(f"b9 = {b9}")

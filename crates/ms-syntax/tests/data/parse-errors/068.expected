@@ -1,1 +1,1 @@
-error parse 2:17:31 "a number has at most one decimal point and member access needs a name; write the number once, e.g. 1.2"
+error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"

@@ -24,9 +24,12 @@ export def bench_binary() -> Unit:
     )
 
     bench(
-        "encoding.hex_encode", blob.length(), lambda () -> Int: return hex_encode(blob).length()
+        "encoding.hex_encode", blob.length(),
+        lambda () -> Int: return hex_encode(blob).length()
     )
-    bench("crypto.sha256", blob.length(), lambda () -> Int: return sha256(blob).length())
+    bench(
+        "crypto.sha256", blob.length(), lambda () -> Int: return sha256(blob).length()
+    )
 
     bench(
         "bytes.builder",

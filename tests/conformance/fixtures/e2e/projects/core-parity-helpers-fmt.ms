@@ -22,7 +22,10 @@ export def locate_set[T: Hashable](values: Set[T], needle: T) -> Optional[T]:
     let find = values.find
     return find(lambda value: value == needle)
 
-export def convert[T, E: Error](value: Optional[T], create: Callable[[], E]) -> Result[T, E]:
+export def convert[T, E: Error](
+    value: Optional[T],
+    create: Callable[[], E]
+) -> Result[T, E]:
     return value.ok_or_else[E](create)
 
 export def remap_keys[K: Hashable, V, W: Hashable](

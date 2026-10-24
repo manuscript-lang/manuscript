@@ -748,7 +748,9 @@ def bind_args(var m: Machine, id: Int, args: List[Value]) -> Result[Int, Fail]:
 
 # Calls any procedure from a non-tail position.
 # Calls any procedure from a non-tail position; `d` is the current call depth.
-def apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) -> Result[Value, Fail]:
+def apply_proc(var m: Machine, f: Value, args: List[Value], d: Int) -> Result[
+    Value, Fail
+]:
     if f.tag == TAG_PRIM:
         return call_prim(var m, f.num, args, d)
     if f.tag != TAG_CLO:
@@ -891,7 +893,9 @@ def sf_if(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, 
 
     return ok(done_step(void_v()))
 
-def sf_define(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
+def sf_define(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[
+    Step, Fail
+]:
     if items.length() < 3:
         return error(bad_form("define"))
 
@@ -1000,7 +1004,9 @@ def sf_let(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step,
 
     return ok(next_step(body_form(var m, items, 2), fid))
 
-def sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[Step, Fail]:
+def sf_named_let(var m: Machine, items: List[Value], env: Int, d: Int) -> Result[
+    Step, Fail
+]:
     if items.length() < 4:
         return error(bad_form("let"))
 
@@ -1375,7 +1381,9 @@ def prim_dispatch(var m: Machine, op: Int, name: String, args: List[Value]) -> R
 
     return predicates_and_lists(var m, op, name, args)
 
-def arith(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[Value, Fail]:
+def arith(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
+    Value, Fail
+]:
     if op == P_ADD:
         var acc = 0
         var i = 0
@@ -1416,7 +1424,9 @@ def arith(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[Va
 
     return ok(num_v(acc))
 
-def compare(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[Value, Fail]:
+def compare(var m: Machine, op: Int, name: String, args: List[Value]) -> Result[
+    Value, Fail
+]:
     var nums = List[Int]()
     for v in args:
         nums.append(try int_arg(m, name, v))

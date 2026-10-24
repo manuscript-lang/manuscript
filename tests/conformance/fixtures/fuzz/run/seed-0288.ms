@@ -12,9 +12,7 @@ export def main() -> Int:
     let i1 = (((46 + 47) / 32) + 24)
     say(f"i1 = {i1}")
 
-    let b2 = ((f"{(i1 % i1)}:" + "héllo") + ("brace{s}" + "brace{s}")).starts_with(
-        "ms"
-    )
+    let b2 = ((f"{(i1 % i1)}:" + "héllo") + ("brace{s}" + "brace{s}")).starts_with("ms")
     say(f"b2 = {b2}")
 
     let i3 = i1

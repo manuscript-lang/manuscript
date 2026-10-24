@@ -27,7 +27,10 @@ def generic_tree[T: FileSystem](
 ) -> Result[Unit, FileSystemError]:
     return fs.copy_tree(source, destination)
 
-def generic_directory[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSystemError]:
+def generic_directory[T: FileSystem](
+    fs: T,
+    path: String
+) -> Result[Unit, FileSystemError]:
     return fs.create_directory(path)
 
 def generic_remove[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSystemError]:
@@ -36,7 +39,9 @@ def generic_remove[T: FileSystem](fs: T, path: String) -> Result[Unit, FileSyste
 def rejected(result: Result[Unit, FileSystemError]) -> Result[Unit, Error]:
     match result:
         case error(_): return ok(())
-        case ok(_): return error(TextError("exclusive or nonrecursive operation succeeded"))
+        case ok(_): return error(
+            TextError("exclusive or nonrecursive operation succeeded")
+        )
 
     return ok(())
 

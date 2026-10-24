@@ -3,8 +3,15 @@
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/http.ms" import (
-    headers, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpExchange,
-    HttpError, HttpClientOptions, HttpServerOptions
+    headers,
+    HttpHeaders,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpExchange,
+    HttpError,
+    HttpClientOptions,
+    HttpServerOptions
 )
 from "@std/net.ms" import network
 from "@std/bytes.ms" import Bytes
@@ -165,11 +172,7 @@ test "empty options and an omitted request body use checked defaults":
             address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
         ) | try expect_ok
     ) as server:
-        with (
-            network().http_client(
-                options: HttpClientOptions()
-            ) | try expect_ok
-        ) as client:
+        with (network().http_client(options: HttpClientOptions()) | try expect_ok) as client:
             with (
                 client.request(
                     method: HttpMethod.Get, url: f"http://{server.address()}/",

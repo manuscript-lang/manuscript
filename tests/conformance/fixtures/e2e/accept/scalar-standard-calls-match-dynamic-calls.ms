@@ -3,7 +3,18 @@
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 from "@std/testing.ms" import expect_true
 from "@std/math.ms" import (
-    abs, abs_int, atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate
+    abs,
+    abs_int,
+    atan2,
+    ceil,
+    floor,
+    max,
+    min,
+    pow,
+    remainder,
+    round,
+    sqrt,
+    truncate
 )
 
 def viaValue(f: Callable[[Float], Float], x: Float) -> Float: f(x)

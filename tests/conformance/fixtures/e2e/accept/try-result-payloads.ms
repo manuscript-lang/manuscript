@@ -74,7 +74,9 @@ def tail_cleanup(
         let value = try visit(result, var visits)
         return ok(value)
 
-def function_tail(result: Result[Callable[[], Int], TextError]) -> Result[Callable[[], Int], TextError]:
+def function_tail(
+    result: Result[Callable[[], Int], TextError]
+) -> Result[Callable[[], Int], TextError]:
     let value = try result
     return ok(value)
 

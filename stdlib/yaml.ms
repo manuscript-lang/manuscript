@@ -780,11 +780,7 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
         offset += 1
 
         if (c == "+" or c == "-") and mode == "": mode = c
-        elif "123456789".contains(c) and explicit == 0: explicit = (
-            c
-            .parse_int()
-            .get()
-        )
+        elif "123456789".contains(c) and explicit == 0: explicit = (c.parse_int().get())
         else: return error(
             YamlError.InvalidData(
                 line: header_line, column: header_column + offset,
@@ -1209,7 +1205,9 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
         indentless: False
     )
 
-def validate(var context: Context, value: YamlValue, depth: Int) -> Result[Unit, YamlError]:
+def validate(var context: Context, value: YamlValue, depth: Int) -> Result[
+    Unit, YamlError
+]:
     try count(var context, depth)
 
     match value:

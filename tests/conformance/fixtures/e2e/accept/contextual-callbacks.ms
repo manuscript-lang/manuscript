@@ -8,7 +8,9 @@ def apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)
 
 def chain[T, U](first: Callable[[], T], second: Callable[[T], U]) -> U: second(first())
 
-def with_result[T](transform: Callable[[], Result[T, TextError]]) -> Result[T, TextError]: transform()
+def with_result[T](
+    transform: Callable[[], Result[T, TextError]]
+) -> Result[T, TextError]: transform()
 
 def checked() -> Result[Int, TextError]: ok(3)
 

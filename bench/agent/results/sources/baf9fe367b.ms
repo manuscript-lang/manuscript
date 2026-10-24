@@ -115,7 +115,11 @@ def tree_hash(tree: Map[String, String]) -> String:
         text = text + f"{name} {hex16(fnv(tree.get_or(name, "")))}\n"
     return hex16(fnv(text))
 
-def commit_id(tree: Map[String, String], parents: List[String], message: String) -> String:
+def commit_id(
+    tree: Map[String, String],
+    parents: List[String],
+    message: String
+) -> String:
     var text = f"tree {tree_hash(tree)}\n"
     for parent in parents:
         text = text + f"parent {parent}\n"
@@ -857,7 +861,10 @@ def cmd_log(repo: Repo, args: List[String]) -> Result[Unit, Fail]:
 
         var line = f"{short(c.id)} {c.message}"
         if c.parents.length() == 2:
-            line = line + f" (merge {short(c.parents.get(0))} {short(c.parents.get(1))})"
+            line = (
+                line
+                + f" (merge {short(c.parents.get(0))} {short(c.parents.get(1))})"
+            )
         say(line)
         shown += 1
 

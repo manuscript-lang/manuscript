@@ -697,7 +697,9 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     reader.column = end_column
     return result
 
-def materialize(var reader: Reader, node: Node, depth: Int) -> Result[TomlValue, TomlError]:
+def materialize(var reader: Reader, node: Node, depth: Int) -> Result[
+    TomlValue, TomlError
+]:
     try budget(reader, depth)
     reader.values += 1
     if not within(reader.values, reader.limits.max_values): return error(

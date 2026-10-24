@@ -2,8 +2,16 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/crypto-rsa.ms
 from "@std/crypto.ms" import (
-    CryptoError, HashAlgorithm, public_key_der, rsa_generate, rsa_sign, rsa_verify,
-    rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt
+    CryptoError,
+    HashAlgorithm,
+    public_key_der,
+    rsa_generate,
+    rsa_sign,
+    rsa_verify,
+    rsa_sign_pss,
+    rsa_verify_pss,
+    rsa_encrypt,
+    rsa_decrypt
 )
 from "@std/bytes.ms" import Bytes
 from "@std/testing.ms" import expect_equal, expect_true, expect_false

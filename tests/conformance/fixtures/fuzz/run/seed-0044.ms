@@ -42,5 +42,7 @@ export def main() -> Int:
 
     let i9 = ((49 + (i6 * 49)) - s8.length())
     say(f"i9 = {i9}")
-    say(f"{i9} {(i5 - (i9 + i9))} {(i9 < (i5 - (i9 + i9)))} sum {i9 + (i5 - (i9 + i9))}")
+    say(
+        f"{i9} {(i5 - (i9 + i9))} {(i9 < (i5 - (i9 + i9)))} sum {i9 + (i5 - (i9 + i9))}"
+    )
     return 0

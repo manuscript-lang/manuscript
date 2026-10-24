@@ -83,9 +83,7 @@ test "JSON stringify encodes records in declaration order and omits none fields"
     let named = "{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
     try expect_equal((try encoded(request)), named)
     try expect_equal((try encoded(Box[Int](1, none))), "{\"first\":1}")
-    try expect_equal(
-        (try encoded(Box[Int](1, some(2)))), "{\"first\":1,\"second\":2}"
-    )
+    try expect_equal((try encoded(Box[Int](1, some(2)))), "{\"first\":1,\"second\":2}")
 
 test "JSON stringify encodes alternatives and nested optionals":
     let scene = Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
@@ -261,9 +259,7 @@ test "JSON stringify omits interface values and monotonic instants":
     try expect_equal(stringify(()), invalid)
 
     let failed: Result[Int, JsonError] = error(JsonError.LimitExceeded)
-    try expect_equal(
-        (try encoded(failed)), "{\"error\":{\"cause\":\"LimitExceeded\"}}"
-    )
+    try expect_equal((try encoded(failed)), "{\"error\":{\"cause\":\"LimitExceeded\"}}")
 
 type Event:
     case Created(id: Int)
@@ -287,9 +283,7 @@ type Feed:
     events: List[Event]
 
 test "JSON stringify lets JsonEncode override the structural encoding of an alternative":
-    try expect_equal(
-        (try encoded(Event.Created(1))), "{\"type\":\"created\",\"id\":1}"
-    )
+    try expect_equal((try encoded(Event.Created(1))), "{\"type\":\"created\",\"id\":1}")
 
     let feed = Feed([Event.Created(1), Event.Deleted(2)])
     let expected = "{\"events\":[{\"type\":\"created\",\"id\":1},{\"type\":\"deleted\",\"id\":2}]}"
@@ -379,9 +373,7 @@ test "JSON parse decodes alternatives and generic records":
     try expect_equal(parse[Shape]("\"Circle\""), invalid)
     try expect_equal(parse[Shape]("{\"Dot\":{}}"), invalid)
     try expect_equal(parse[Shape]("\"Square\""), invalid)
-    try expect_equal(
-        parse[Shape]("{\"Circle\":{\"radius\":1},\"Dot\":{}}"), invalid
-    )
+    try expect_equal(parse[Shape]("{\"Circle\":{\"radius\":1},\"Dot\":{}}"), invalid)
 
     let scene: Scene = try parse[Scene](
         "{\"shape\":\"Dot\",\"shapes\":[{\"Rect\":{\"width\":1,\"height\":2}}]}"

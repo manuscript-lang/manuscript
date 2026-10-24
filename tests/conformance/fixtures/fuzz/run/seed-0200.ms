@@ -45,7 +45,9 @@ export def main() -> Int:
 
     let l9 = [22, (-21), (-16), 11, (-3)]
     say(f"l9 = {l9} len {l9.length()}")
-    say(f"{i3} {(i5 / (i3 * i5))} {(i3 < (i5 / (i3 * i5)))} sum {i3 + (i5 / (i3 * i5))}")
+    say(
+        f"{i3} {(i5 / (i3 * i5))} {(i3 < (i5 / (i3 * i5)))} sum {i3 + (i5 / (i3 * i5))}"
+    )
 
     var acc10 = 0
 

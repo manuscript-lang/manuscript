@@ -1,6 +1,12 @@
 from "./domain.ms" import Key, Cause
 from "./helpers.ms" import (
-    transform_set, lookup, locate_map, locate_set, convert, remap_keys, remap_values
+    transform_set,
+    lookup,
+    locate_map,
+    locate_set,
+    convert,
+    remap_keys,
+    remap_values
 )
 
 impl Equal for Key:

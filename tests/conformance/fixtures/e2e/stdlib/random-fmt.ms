@@ -60,7 +60,8 @@ test "float shuffle and choice use the supplied entropy":
     let values = [1, 2, 3, 4, 5]
     let shuffled = try shuffle(entropy(), values)
     try expect_equal(
-        shuffled.sorted(lambda (left: Int, right: Int) -> Int: left - right), [1, 2, 3, 4, 5]
+        shuffled.sorted(lambda (left: Int, right: Int) -> Int: left - right),
+        [1, 2, 3, 4, 5]
     )
     try expect_equal(try choice(Entropy(value: zero), [7, 8, 9]), some(7))
     try expect_equal(try choice(entropy(), List[Int]()), none)

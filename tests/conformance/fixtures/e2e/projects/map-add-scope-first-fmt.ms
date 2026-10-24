@@ -8,7 +8,10 @@ from "@std/testing.ms" import expect_equal
 impl Equal for Key:
     def equals(other: Equal) -> Bool:
         match other:
-            case Key(other): return (self.code == other.code or self.code == -other.code)
+            case Key(other): return (
+                self.code == other.code
+                or self.code == -other.code
+            )
             case _: return False
 
 impl Hashable for Key:

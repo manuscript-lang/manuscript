@@ -19,7 +19,10 @@ impl Commands for Capture:
     ) -> Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]:
+    def spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 from "@std/time.ms" import Duration
@@ -40,7 +43,10 @@ impl Commands for Override:
     ) -> Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(program: String, arguments: List[String]) -> Result[Subprocess, CommandError]:
+    def spawn(
+        program: String,
+        arguments: List[String]
+    ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":

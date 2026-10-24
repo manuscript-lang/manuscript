@@ -528,7 +528,9 @@ def check_data_size(a: Asm) -> Result[Int, AsmError]:
 
     return ok(0)
 
-def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[Int, AsmError]:
+def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[
+    Int, AsmError
+]:
     if a.section == 1:
         return error(AsmError(msg: "instruction in data section"))
 
@@ -579,7 +581,9 @@ def data_word(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
     a.dcount += words
     return check_data_size(a)
 
-def data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) -> Result[Int, AsmError]:
+def data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) -> Result[
+    Int, AsmError
+]:
     if a.section == 0:
         return error(AsmError(msg: "data directive in text section"))
 

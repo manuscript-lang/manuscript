@@ -1,7 +1,14 @@
 from "@std/testing.ms" import expect_equal, expect_false, fail
 from "@std/time.ms" import (
-    timestamp, parse_timestamp, from_calendar, local_zone, Timestamp, TimeError, clock,
-    wall_clock, sleep
+    timestamp,
+    parse_timestamp,
+    from_calendar,
+    local_zone,
+    Timestamp,
+    TimeError,
+    clock,
+    wall_clock,
+    sleep
 )
 
 test "timestamps preserve nanoseconds and shift across epoch":

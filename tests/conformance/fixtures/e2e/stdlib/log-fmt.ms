@@ -3,8 +3,15 @@
 # conform: origin=tests/e2e/testdata/stdlib/log.ms
 from "@std/testing.ms" import expect_equal, expect_error, expect_false
 from "@std/log.ms" import (
-    Transport, LogLevel, LogError, create, record, bind, stream_transport,
-    stdout_transport, file_transport
+    Transport,
+    LogLevel,
+    LogError,
+    create,
+    record,
+    bind,
+    stream_transport,
+    stdout_transport,
+    file_transport
 )
 from "@std/io.ms" import WriteStream, IoError
 from "@std/json.ms" import JsonValue

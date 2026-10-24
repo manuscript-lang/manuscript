@@ -56,7 +56,13 @@ export def bench_list() -> Unit:
         "list.sorted",
         100000,
         lambda () -> Int:
-            return (data.sorted(lambda (left: Int, right: Int) -> Int: left - right).length())
+            return (
+                data
+                .sorted(
+                    lambda (left: Int, right: Int) -> Int: left - right
+                )
+                .length()
+            )
     )
 
     bench(

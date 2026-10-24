@@ -3,7 +3,12 @@
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
 from "@std/testing.ms" import expect_equal, expect_false, fail
 from "@std/http.ms" import (
-    headers, HttpClientOptions, HttpError, HttpExchange, HttpMethod, HttpServerOptions
+    headers,
+    HttpClientOptions,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpServerOptions
 )
 from "@std/sse.ms" import borrow_body, reader, next_event
 from "@std/net.ms" import network
@@ -20,9 +25,7 @@ def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return ok(())
 
 test "HTTP response bodies decode as SSE without being closed by the reader":
-    with try network().serve_stream(
-        "127.0.0.1:0", stream_events, HttpServerOptions()
-    ) as server:
+    with try network().serve_stream("127.0.0.1:0", stream_events, HttpServerOptions()) as server:
         with try network().http_client(HttpClientOptions()) as client:
             with try client.request(
                 HttpMethod.Get, f"http://{server.address()}/", headers()

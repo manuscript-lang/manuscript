@@ -20,7 +20,9 @@ export def main() -> Int:
 
     let i2 = l1.length()
     say(f"i2 = {i2}")
-    say(f"{((34 % i2) / i2)} {i2} {(((34 % i2) / i2) < i2)} sum {((34 % i2) / i2) + i2}")
+    say(
+        f"{((34 % i2) / i2)} {i2} {(((34 % i2) / i2) < i2)} sum {((34 % i2) / i2) + i2}"
+    )
 
     let b3 = (((i2 - (-15)) * l1.length()) > ((i2 + 36) + 16))
     say(f"b3 = {b3}")

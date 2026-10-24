@@ -15,7 +15,10 @@ export def main() -> Int:
     let i2 = (-42)
     say(f"i2 = {i2}")
 
-    let s3 = (f"{(i1 - i1)}:" + ((f"{(i1 / (-35))}:" + "delta") + ("ms" + "line\nbreak")))
+    let s3 = (
+        f"{(i1 - i1)}:"
+        + ((f"{(i1 / (-35))}:" + "delta") + ("ms" + "line\nbreak"))
+    )
     say(f"s3 = [{s3}]")
     say(f"{(-13)} {i2} {((-13) < i2)} sum {(-13) + i2}")
 

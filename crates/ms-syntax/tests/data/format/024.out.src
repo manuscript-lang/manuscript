@@ -1,14 +1,14 @@
-import {TextError} from "@std/core.ms"
-import {stdout, stdin, read_line, ReadStream} from "@std/io.ms"
-import {clock, Instant} from "@std/time.ms"
-import {StringBuilder} from "@std/string.ms"
+from "@std/core.ms" import TextError
+from "@std/io.ms" import stdout, stdin, read_line, ReadStream
+from "@std/time.ms" import clock, Instant
+from "@std/string.ms" import StringBuilder
 
 interface Counter:
-    fn bump(by: Int) Int
+    def bump(by: Int) -> Int
 
 type Acc:
     total: Int
 
 impl Counter for Acc:
-    fn bump(by: Int) Int:
+    def bump(by: Int) -> Int:
         self.total += by

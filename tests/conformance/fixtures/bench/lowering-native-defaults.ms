@@ -32,7 +32,10 @@ def command_explicit() -> Result[CommandOutput, CommandError]:
 def command_omitted() -> Result[CommandOutput, CommandError]:
     return commands().run(program: "", arguments: [])
 
-def command_bind() -> Callable[[String, List[String], Bytes, Optional[Int], Optional[Duration]], Result[CommandOutput, CommandError]]:
+def command_bind() -> Callable[
+    [String, List[String], Bytes, Optional[Int], Optional[Duration]],
+    Result[CommandOutput, CommandError]
+]:
     return commands().run
 
 def filesystem_setup() -> FileSystem: filesystem()

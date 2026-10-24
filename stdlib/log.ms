@@ -78,7 +78,11 @@ export interface Logger:
     def fatal(message: String) -> Result[Unit, LogError]
     # Writes a record whose fields are the members of `fields`, a JSON object in text form.
     # Text that is not a JSON object returns `InvalidData`. Prefer `record`, which builds the text.
-    def log_json(level: LogLevel, message: String, fields: String) -> Result[Unit, LogError]
+    def log_json(
+        level: LogLevel,
+        message: String,
+        fields: String
+    ) -> Result[Unit, LogError]
     # Returns a logger that adds the members of `fields`, a JSON object in text form, to each
     # record. Text that is not a JSON object returns `InvalidData`. Prefer `bind`.
     def child_json(fields: String) -> Result[Logger, LogError]
@@ -123,7 +127,11 @@ def now_ms() -> Int:
     let now = wall_clock().now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
-def stream_write(stream: WriteStream, gate: LogGate, data: String) -> Result[Unit, LogError]:
+def stream_write(
+    stream: WriteStream,
+    gate: LogGate,
+    data: String
+) -> Result[Unit, LogError]:
     if gate.is_shut(): return error(LogError.Closed)
 
     let written = stream.write(data)
@@ -240,7 +248,11 @@ impl Logger for StdLogger:
     def fatal(message: String) -> Result[Unit, LogError]:
         return emit(self, 5, message)
 
-    def log_json(level: LogLevel, message: String, fields: String) -> Result[Unit, LogError]:
+    def log_json(
+        level: LogLevel,
+        message: String,
+        fields: String
+    ) -> Result[Unit, LogError]:
         return emit_json(self, level_index(level), message, fields)
 
     def child_json(fields: String) -> Result[Logger, LogError]:

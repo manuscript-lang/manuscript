@@ -212,7 +212,9 @@ def report_cmd(store: Store) -> Unit:
     for sku in store.stock.keys().sorted(compare_text):
         let stock = store.stock.get_or(sku, 0)
         let price = store.prices.get_or(sku, 0)
-        emit(f"{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}")
+        emit(
+            f"{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}"
+        )
 
     var placed = 0
     var shipped = 0

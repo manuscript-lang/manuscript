@@ -88,7 +88,9 @@ test "List parity operations support generic and bound use":
     let pop: Callable[[], Optional[Int]] = values.pop
     let popped = pop()
     let count = values.count
-    try expect_false(popped != some(3) or count(lambda (value: Int) -> Bool: value > 0) != 2)
+    try expect_false(
+        popped != some(3) or count(lambda (value: Int) -> Bool: value > 0) != 2
+    )
 
 test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []

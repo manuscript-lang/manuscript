@@ -88,7 +88,10 @@ export def bench_numbers() -> Unit:
         100000,
         lambda () -> Int:
             var q = PriorityQueue[Int](
-                compare: lambda (left: Int, right: Int) -> Int: (left - right)
+                compare: lambda (left: Int, right: Int) -> Int: (
+                    left
+                    - right
+                )
             )
             for i in range(0, 50000):
                 q.enqueue((i * 7919) % 10007)

@@ -73,7 +73,8 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 
     var mapped = map_values(
         source.clone(),
-        lambda k, v:
+        lambda k,
+        v:
             seen.append(k.label + v.count.to_string())
             return v
     )
@@ -96,7 +97,8 @@ test "Map key transformation retains first equal keys and last values":
 
     var mapped = map_keys(
         source.clone(),
-        lambda k, v:
+        lambda k,
+        v:
             let key = Key(k % 2, k.to_string())
             created.append(key.clone())
             return key
@@ -123,7 +125,8 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let bound = source.clone().map_keys[String]
 
     let mapped = bound(
-        transform: lambda k, v:
+        transform: lambda k,
+        v:
             seen.append(k)
             return k.to_string()
     )
@@ -135,7 +138,9 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     let map = values.clone().map[Optional[Int]]
     try expect_true((map(lambda k, v: none).get("a").get().is_none()))
 
-    let nested = values.map(lambda k, v: Result[Int, TextError].error(TextError("nested")))
+    let nested = values.map(
+        lambda k, v: Result[Int, TextError].error(TextError("nested"))
+    )
     nested.get("a").get().err().message() | try expect_equal("nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
@@ -144,7 +149,8 @@ test "empty transformations skip callbacks and allocate independent storage":
 
     var mapped = source.map[Counter](
         (
-            lambda k, v:
+            lambda k,
+            v:
                 empty_calls.append(1)
                 return Counter(0)
         )
@@ -155,7 +161,8 @@ test "empty transformations skip callbacks and allocate independent storage":
 
     var keyed = source.map_keys[Key](
         (
-            lambda k, v:
+            lambda k,
+            v:
                 empty_calls.append(1)
                 return Key(0, "unused")
         )
@@ -174,7 +181,9 @@ test "Map reverse fold and last match retain ordered snapshots":
     var folded = reverse_map(
         source.clone(),
         initial.clone(),
-        lambda acc, k, v:
+        lambda acc,
+        k,
+        v:
             var next = acc
             next.append(k + v.count.to_string())
             return next
@@ -186,11 +195,16 @@ test "Map reverse fold and last match retain ordered snapshots":
 
     var seen: List[String] = []
     let find = source.clone().find_last
-    var found = find(
-        predicate: lambda k, v:
-            seen.append(k)
-            return k == "a"
-    ).get().clone()
+    var found = (
+        find(
+            predicate: lambda k,
+            v:
+                seen.append(k)
+                return k == "a"
+        )
+        .get()
+        .clone()
+    )
     (seen != ["c", "a"] or found.key != "a") | try expect_false
 
     var edited = found.value.clone()
@@ -209,7 +223,8 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
     var folded = reverse_set(
         source.clone(),
         initial.clone(),
-        lambda acc, v:
+        lambda acc,
+        v:
             var next = acc
             next.append(v.label)
             return next
@@ -239,7 +254,9 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 
     var map_result = map_fold(
         step: (
-            lambda acc, k, v:
+            lambda acc,
+            k,
+            v:
                 empty_calls.append(1)
                 return acc
         ),
@@ -253,7 +270,8 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
     var set_result = set_fold(
         initial.clone(),
         (
-            lambda acc, v:
+            lambda acc,
+            v:
                 empty_calls.append(1)
                 return acc
         )
@@ -268,7 +286,8 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             empty_map
             .find_last(
                 (
-                    lambda k, v:
+                    lambda k,
+                    v:
                         empty_calls.append(1)
                         return False
                 )
@@ -297,7 +316,8 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             not (
                 values
                 .find_last(
-                    lambda k, v:
+                    lambda k,
+                    v:
                         seen_map.append(k)
                         return False
                 )

@@ -165,11 +165,16 @@ impl WriteStream for MappedWriter:
 
 # Applies `transform` to each written chunk before writing to `output`. Empty results write nothing.
 # Flush and close pass through to `output`.
-export def map_writer(output: WriteStream, transform: Callable[[Bytes], Bytes]) -> WriteStream:
+export def map_writer(
+    output: WriteStream,
+    transform: Callable[[Bytes], Bytes]
+) -> WriteStream:
     return WriteStream(value: MappedWriter(output, transform))
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export def digest(var input: ReadStream, algorithm: HashAlgorithm) -> Result[Bytes, IoError]:
+export def digest(var input: ReadStream, algorithm: HashAlgorithm) -> Result[
+    Bytes, IoError
+]:
     let hasher = algorithm.hasher()
 
     while True:

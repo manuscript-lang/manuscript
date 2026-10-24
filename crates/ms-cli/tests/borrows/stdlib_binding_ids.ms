@@ -12,11 +12,13 @@ export def main() -> Int:
     var b = a.clone()
     var m = Map[String, String]()
     var cnt = Map[String, Int]()
+
     for w in ["a", "b", "a", "c", "b", "a"]:
         if var n = cnt.get(w):
             n += 1
         else:
             cnt.add(w, 1)
+
     var d = Deque[String]()
     for i in range(0, 50):
         if i % 2 == 0:

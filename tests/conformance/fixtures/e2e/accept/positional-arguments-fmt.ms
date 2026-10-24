@@ -115,13 +115,7 @@ test "methods native APIs function values and contextual labels":
     let copied = subtract
     let typed: Callable[[Int, Int], Int] = copied
     var mutable = typed
-    try expect_false(
-        (
-            copied(10, 3) != 7
-            or typed(10, 3) != 7
-            or mutable(10, 3) != 7
-        )
-    )
+    try expect_false((copied(10, 3) != 7 or typed(10, 3) != 7 or mutable(10, 3) != 7))
 
     let contextual: Callable[[Int, Int], Int] = lambda x, y: x - y
     try expect_false(
@@ -189,7 +183,10 @@ test "mutable callable value is captured before arguments":
     let result = selected(
         match some(0):
             case some(_):
-                selected = lambda (amount: Int, deduction: Int) -> Int: amount + deduction
+                selected = lambda (amount: Int, deduction: Int) -> Int: (
+                    amount
+                    + deduction
+                )
                 10
             case none: 10
         ,

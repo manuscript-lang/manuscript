@@ -9,6 +9,9 @@ def collect[T, U](
 
 def first() -> Unit:
     let result = collect(
-        items: [1, 2], step: lambda (value: Int) -> Result[List[Int], MissingError]: ok([value])
+        items: [1, 2],
+        step: lambda (value: Int) -> Result[List[Int], MissingError]: ok(
+            [value]
+        )
     )
     let unrelated: Int = "wrong"

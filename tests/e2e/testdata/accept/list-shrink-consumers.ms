@@ -207,7 +207,8 @@ test "map and folds consume snapshots of the live list":
         .clone()
         .fold(
             0,
-            lambda accumulator, value:
+            lambda accumulator,
+            value:
                 if visits.count == 0: folded.splice(
                     start: 0, delete_count: 3, replacement: []
                 )
@@ -226,7 +227,8 @@ test "map and folds consume snapshots of the live list":
         .clone()
         .fold_right(
             0,
-            lambda accumulator, value:
+            lambda accumulator,
+            value:
                 if visits.count == 0: reversed.remove(0)
                 visits.count = visits.count + 1
                 return accumulator * 10 + value

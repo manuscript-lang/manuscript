@@ -71,4 +71,6 @@ test "find over owned elements keeps the hit":
     let rows = [[1], [2], [3, 3]]
     try expect_equal(rows.find(lambda (value: List[Int]): value[0] == 2), some([2]))
     try expect_equal(rows.find(lambda (value: List[Int]): value[0] == 9), none)
-    try expect_equal(rows.find_last(lambda (value: List[Int]): value[0] > 1), some([3, 3]))
+    try expect_equal(
+        rows.find_last(lambda (value: List[Int]): value[0] > 1), some([3, 3])
+    )

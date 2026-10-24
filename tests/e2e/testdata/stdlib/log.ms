@@ -1,7 +1,14 @@
 from "@std/testing.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true
 from "@std/log.ms" import (
-    Transport, LogLevel, LogError, create, record, bind, stream_transport,
-    stdout_transport, file_transport
+    Transport,
+    LogLevel,
+    LogError,
+    create,
+    record,
+    bind,
+    stream_transport,
+    stdout_transport,
+    file_transport
 )
 from "@std/io.ms" import IoError
 from "@std/json.ms" import JsonValue

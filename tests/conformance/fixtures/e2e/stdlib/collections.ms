@@ -3,7 +3,13 @@
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
 from "@std/testing.ms" import expect_equal, expect_false
 from "@std/collections.ms" import (
-    ListBuilder, MapBuilder, SetBuilder, range, range_by, filled, map_from_entries,
+    ListBuilder,
+    MapBuilder,
+    SetBuilder,
+    range,
+    range_by,
+    filled,
+    map_from_entries,
     flatten
 )
 

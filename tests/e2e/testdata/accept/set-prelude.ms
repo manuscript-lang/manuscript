@@ -18,7 +18,9 @@ test "set construction and methods need no import":
 
     let other = Set[Int]([4, 2])
     try expect_equal(values.union(other).values(), [3, 2, 4])
-    try expect_equal(values.filter(lambda (value: Int) -> Bool: value > 2).values(), [3])
+    try expect_equal(
+        values.filter(lambda (value: Int) -> Bool: value > 2).values(), [3]
+    )
     try expect_equal(values.map(lambda (value: Int) -> Int: value * 2).values(), [6, 4])
 
     let nested: List[Set[Int]] = [values.clone()]

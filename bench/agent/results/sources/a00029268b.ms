@@ -1168,7 +1168,11 @@ def parse_filter(app: App, text: String) -> Result[Expr, Fail]:
     var ps = Parser(toks: toks, pos: 0)
     let e = try parse_or(var ps, app)
     if ps.pos < ps.toks.length():
-        return error(Fail(msg: f"query: unexpected token '{ps.toks.get(ps.pos).value}'"))
+        return error(
+            Fail(
+                msg: f"query: unexpected token '{ps.toks.get(ps.pos).value}'"
+            )
+        )
 
     return ok(e)
 
@@ -1488,7 +1492,11 @@ def cmp_issues(states: List[String], keys: List[SortKey], a: Issue, b: Issue) ->
 
     return a.id.compare(b.id)
 
-def sort_issues(states: List[String], keys: List[SortKey], xs: List[Issue]) -> List[Issue]:
+def sort_issues(
+    states: List[String],
+    keys: List[SortKey],
+    xs: List[Issue]
+) -> List[Issue]:
     var out: List[Issue] = []
 
     for x in xs:

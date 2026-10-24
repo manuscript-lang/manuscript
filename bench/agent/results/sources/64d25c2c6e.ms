@@ -253,7 +253,12 @@ def cmd_report(var shop: Shop, parts: List[String]) -> Unit:
         if order.status == "cancelled":
             cancelled += 1
 
-    for sku in shop.stock.keys().sorted(lambda (a: String, b: String) -> Int: a.compare(b)):
+    for sku in (
+        shop
+        .stock
+        .keys()
+        .sorted(lambda (a: String, b: String) -> Int: a.compare(b))
+    ):
         let stock = shop.stock.get_or(sku, 0)
         let price = shop.price.get_or(sku, 0)
         emit(

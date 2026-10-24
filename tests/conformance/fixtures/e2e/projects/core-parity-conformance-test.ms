@@ -3,13 +3,27 @@
 # conform: origin=tests/e2e/testdata/projects/core_parity/conformance_test.ms
 from "@std/testing.ms" import expect_equal, expect_false, expect_true
 from "./first.ms" import (
-    first_mapped, first_bound_map, first_generic_map, first_lookup, first_failure,
-    first_queries, first_converted, first_folded, first_key_transform, first_bound_keys,
+    first_mapped,
+    first_bound_map,
+    first_generic_map,
+    first_lookup,
+    first_failure,
+    first_queries,
+    first_converted,
+    first_folded,
+    first_key_transform,
+    first_bound_keys,
     first_value_transform
 )
 from "./second.ms" import (
-    second_mapped, second_failure, second_queries, second_converted, second_folded,
-    second_key_transform, second_bound_keys, second_value_transform
+    second_mapped,
+    second_failure,
+    second_queries,
+    second_converted,
+    second_folded,
+    second_key_transform,
+    second_bound_keys,
+    second_value_transform
 )
 from "./domain.ms" import Key, Cause
 

@@ -22,14 +22,23 @@ def choose(value: Choice) -> String:
 
 def count() -> Int:
     return apply(
-        value: 2, transform: lambda (value: Int) -> Int: return (value + 10 + 20 + 30 + 40)
+        value: 2,
+        transform: lambda (value: Int) -> Int: return (
+            value
+            + 10
+            + 20
+            + 30
+            + 40
+        )
     )
 
 test "compact formatting preserves behavior":
     let values = [1, 2, 2, 4, 3, 6]  # Keep this list compact.
     let nested = [[1, 2], [3, 4]]
     let invalid = ["", "[1,", "{\"a\" 1}", "tru", "[1] x", "\"abc"]
-    let mapped = [1, 2, 3, 4, 5, 6].map(transform: lambda (value: Int) -> Int: return value + 1)
+    let mapped = [1, 2, 3, 4, 5, 6].map(
+        transform: lambda (value: Int) -> Int: return (value + 1)
+    )
     values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])
     nested | try expect_equal(expected: [[1, 2], [3, 4]])
     invalid.length() | try expect_equal(expected: 6)

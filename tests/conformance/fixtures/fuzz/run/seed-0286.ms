@@ -29,7 +29,9 @@ export def main() -> Int:
         acc5 += stepacc5 * stepacc5 + 3
 
     say(f"acc5 = {acc5}")
-    say(f"{18} {(i1 * (i1 + i1))} {(18 < (i1 * (i1 + i1)))} sum {18 + (i1 * (i1 + i1))}")
+    say(
+        f"{18} {(i1 * (i1 + i1))} {(18 < (i1 * (i1 + i1)))} sum {18 + (i1 * (i1 + i1))}"
+    )
 
     let i6 = (((-i1) * (i1 + i1)) + ((i1 - i1) * (-29)))
     say(f"i6 = {i6}")

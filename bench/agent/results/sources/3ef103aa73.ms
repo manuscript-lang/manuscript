@@ -1071,7 +1071,11 @@ def shift_formula(raw: String, column_shift: Int, row_shift: Int) -> String:
 
     return raw
 
-def shift_address(address: Address, column_shift: Int, row_shift: Int) -> Optional[String]:
+def shift_address(
+    address: Address,
+    column_shift: Int,
+    row_shift: Int
+) -> Optional[String]:
     var col = address.col
     if not address.col_absolute:
         col = address.col + column_shift
@@ -1440,7 +1444,9 @@ impl Sheet:
 
             return Number(value: best)
 
-        let sorted = numbers.sorted(lambda (a: Float, b: Float) -> Int: return a.compare(b))
+        let sorted = numbers.sorted(
+            lambda (a: Float, b: Float) -> Int: return a.compare(b)
+        )
         let count = sorted.length()
         if count % 2 == 1:
             return Number(value: sorted.get(count / 2))

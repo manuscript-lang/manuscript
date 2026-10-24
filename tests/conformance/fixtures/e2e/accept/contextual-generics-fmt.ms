@@ -37,7 +37,9 @@ def record[T](var events: Events, value: Int) -> Optional[T]:
     events.values.append(value)
     return none
 
-def combine[T](var events: Events, first: Optional[T], second: Optional[T]) -> Optional[T]:
+def combine[T](var events: Events, first: Optional[T], second: Optional[T]) -> Optional[
+    T
+]:
     events.values.append(3)
     return first
 

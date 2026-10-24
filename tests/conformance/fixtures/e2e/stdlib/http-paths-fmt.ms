@@ -7,8 +7,13 @@ from "@std/core.ms" import TextError
 from "@std/http.ms" import headers, HttpMethod
 from "./support/http.ms" import text_headers, list_headers
 from "@std/http.ms" import (
-    HttpRequest, HttpResponse, HttpExchange, HttpError, HttpServerOptions,
-    HttpClientOptions, HttpHeaders
+    HttpRequest,
+    HttpResponse,
+    HttpExchange,
+    HttpError,
+    HttpServerOptions,
+    HttpClientOptions,
+    HttpHeaders
 )
 from "@std/net.ms" import network
 from "@std/net.ms" import TlsOptions
@@ -88,9 +93,7 @@ def check_paths(base: String) -> Result[Unit, Error]:
     return ok(())
 
 test "buffered routes validate original input and decode once":
-    with (
-        network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok
-    ) as server:
+    with (network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok) as server:
         (try check_paths(f"http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":

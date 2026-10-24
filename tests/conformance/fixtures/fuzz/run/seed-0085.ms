@@ -9,7 +9,9 @@ def say(text: String) -> Unit:
     let written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
-    say(f"{(-8)} {(-((-8) * 11))} {((-8) < (-((-8) * 11)))} sum {(-8) + (-((-8) * 11))}")
+    say(
+        f"{(-8)} {(-((-8) * 11))} {((-8) < (-((-8) * 11)))} sum {(-8) + (-((-8) * 11))}"
+    )
 
     let b1 = (
         ("MiXeD CaSe" == "quote\"d".replace("gamma", "Tab\there"))

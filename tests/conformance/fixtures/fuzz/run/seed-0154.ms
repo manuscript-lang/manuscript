@@ -15,10 +15,7 @@ def fact(n: Int) -> Int:
     return n * fact(n - 1)
 
 export def main() -> Int:
-    let s1 = (
-        ("brace{s}" + "brace{s}")
-        + "naïve".upper().replace("beta", "MiXeD CaSe")
-    )
+    let s1 = (("brace{s}" + "brace{s}") + "naïve".upper().replace("beta", "MiXeD CaSe"))
     say(f"s1 = [{s1}]")
 
     let i2 = (17 + ((-24) % ((-24) + 477523994480)))

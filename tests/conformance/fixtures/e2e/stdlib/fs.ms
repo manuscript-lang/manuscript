@@ -39,9 +39,9 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
             ) | try expect_fs_error(FileSystemError.LimitExceeded)
         )
         (
-            fs.glob(
-                path: root, pattern: "{a.txt,[}"
-            ) | try expect_fs_error(FileSystemError.InvalidInput)
+            fs.glob(path: root, pattern: "{a.txt,[}") | try expect_fs_error(
+                FileSystemError.InvalidInput
+            )
         )
 
         let options = GlobOptions(

@@ -383,10 +383,9 @@ test "YAML documents BOM CRLF empty input and version directive":
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
-        "a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2",
-        "a:\n  b: 1\n c: 2", "[1,", "[1,,2]", "{a: 1 b: 2}", "\"\\uD800\"", "\"\\q\"",
-        "'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
-        "---\na: 1\n---\nb: 2", "a: |0\n  text"
+        "a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2", "a:\n  b: 1\n c: 2",
+        "[1,", "[1,,2]", "{a: 1 b: 2}", "\"\\uD800\"", "\"\\q\"", "'unterminated",
+        "*missing", "a: &loop [*loop]", "<<: 1", "---\na: 1\n---\nb: 2", "a: |0\n  text"
     ]:
         let cause = match parse(text: text):
             case ok(_): return fail(f"invalid YAML accepted: {text}")

@@ -33,8 +33,8 @@ def decode(input: Bytes, size: Int) -> Result[List[String], Error]:
 test "JSON decoder preserves values split at every chunk size":
     let source = "{\"a\":\"é🙂\\u00e9\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}\n\"s\"[1]{\"b\":2}  42"
     let expected = [
-        "{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}",
-        "\"s\"", "[1]", "{\"b\":2}", "42"
+        "{\"a\":\"é🙂é\\\"x}{\",\"n\":9007199254740993,\"l\":[1,[true,null]]}", "\"s\"",
+        "[1]", "{\"b\":2}", "42"
     ]
     let input = source.to_bytes()
     for size in range(1, input.length() + 1):

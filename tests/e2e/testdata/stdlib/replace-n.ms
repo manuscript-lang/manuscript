@@ -49,7 +49,8 @@ impl CappedReplacement for TextAdapter:
 
 test "explicit and bound views retain method contracts and callable field shadowing":
     let adapter = TextAdapter(
-        "aaaa", lambda (old: String, new: String, max_replacements: Int) -> String: "field"
+        "aaaa",
+        lambda (old: String, new: String, max_replacements: Int) -> String: "field"
     )
     try expect_equal(adapter.replace_n("a", "b", 2), "field")
 

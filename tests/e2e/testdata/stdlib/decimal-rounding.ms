@@ -28,9 +28,7 @@ test "decimal rounding modes include signed ties and coarse scales":
     let fixed = 25.5d.to_fixed
     try expect_equal((try fixed(2)), "25.50")
 
-    let rounded: Callable[[Int, Optional[RoundingMode]], Result[
-        Decimal, NumberError
-    ]] = 2.5d.round
+    let rounded: Callable[[Int, Optional[RoundingMode]], Result[Decimal, NumberError]] = 2.5d.round
     try expect_equal((try rounded(0, RoundingMode.HalfEven)), 2d)
 
 test "decimal scale extremes and invalid requests return typed errors":

@@ -1,1 +1,1 @@
-error parse 7:5:114 "a type declares only fields or cases; write its methods in an 'impl Flag:' block, or implement an interface with 'impl <Interface> for Flag:'"
+error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"

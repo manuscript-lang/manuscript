@@ -38,7 +38,9 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
 
-    let mapped = a.map(transform: lambda (value: Folded) -> Folded: return Folded(name: "z"))
+    let mapped = a.map(
+        transform: lambda (value: Folded) -> Folded: return Folded(name: "z")
+    )
     (mapped.length() == 1) | try expect_true
 
 test "builder":
@@ -63,7 +65,9 @@ test "sealed map and set builders fault through every spelling":
     let map_builder = MapBuilder[String, Int]()
     let map_add = map_builder.add
     let map_sealed = map_builder.freeze()
-    (try expect_fault(lambda: map_add("a", 1))) | try expect_contains("builder is sealed")
+    (try expect_fault(lambda: map_add("a", 1))) | try expect_contains(
+        "builder is sealed"
+    )
     (try expect_fault(lambda: map_builder.add("a", 1))) | try expect_contains(
         "builder is sealed"
     )

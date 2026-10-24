@@ -27,7 +27,13 @@ test "inlined callbacks":
     let evens = items.filter(lambda (v: Int) -> Bool: v % 2 == 0)
     try expect_true((evens.length() == 3))
     try expect_true((points.filter(lambda (p: Point) -> Bool: p.x > 2).length() == 2))
-    try expect_true((items.fold(initial: 0, step: lambda (a: Int, v: Int) -> Int: a + v) == 10))
+    try expect_true(
+        (
+            items.fold(
+                initial: 0, step: lambda (a: Int, v: Int) -> Int: a + v
+            ) == 10
+        )
+    )
     try expect_true(
         (
             items.fold(

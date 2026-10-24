@@ -208,7 +208,11 @@ export interface FileSystem:
     def hard_link(source: String, destination: String) -> Result[Unit, FileSystemError]
     # Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
     # Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
-    def open(path: String, flags: String, mode: Int) -> Result[FileHandle, FileSystemError]
+    def open(
+        path: String,
+        flags: String,
+        mode: Int
+    ) -> Result[FileHandle, FileSystemError]
     # Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
     # A path that is not a directory returns InvalidInput.
     def open_directory(path: String) -> Result[Directory, FileSystemError]
@@ -255,7 +259,9 @@ export interface FileHandle:
     # Safe to call repeatedly; later operations return Closed.
     def close() -> Unit
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
-    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], FileSystemError]
+    def read(
+        max_bytes: Optional[Int] = none
+    ) -> Result[Optional[Bytes], FileSystemError]
     # Writes the UTF-8 text at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
     def write(data: String) -> Result[Unit, FileSystemError]
     # Writes all bytes at the current position, with the same rules as write.
@@ -277,9 +283,15 @@ export interface FileHandle:
     def read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
     # Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
     # `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns InvalidInput.
-    def read_vectors(sizes: List[Int], offset: Int) -> Result[List[Bytes], FileSystemError]
+    def read_vectors(
+        sizes: List[Int],
+        offset: Int
+    ) -> Result[List[Bytes], FileSystemError]
     # Writes every buffer; offset -1 uses the current position.
-    def write_vectors(buffers: List[Bytes], offset: Int) -> Result[Unit, FileSystemError]
+    def write_vectors(
+        buffers: List[Bytes],
+        offset: Int
+    ) -> Result[Unit, FileSystemError]
     # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
     # Other origins return InvalidInput; the OS validates the resulting offset.
     def seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
@@ -298,7 +310,10 @@ export interface FileHandle:
     # Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
     def chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
     # Sets the access and modification times of the open file. Returns Unsupported on hosts without descriptor timestamps.
-    def set_times(accessed: Timestamp, modified: Timestamp) -> Result[Unit, FileSystemError]
+    def set_times(
+        accessed: Timestamp,
+        modified: Timestamp
+    ) -> Result[Unit, FileSystemError]
     # Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
     # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded.
     def read_lines(

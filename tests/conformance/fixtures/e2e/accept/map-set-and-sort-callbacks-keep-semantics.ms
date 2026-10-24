@@ -14,16 +14,21 @@ test "map callbacks":
     let sums = m.map(lambda (key: String, value: Int) -> Int: key.length() + value)
     try expect_true((sums.get("bb") == some(4)))
     try expect_true(
-        (m.filter(lambda (key: String, value: Int) -> Bool: value > 1).length() == 2)
+        (
+            m.filter(
+                lambda (key: String, value: Int) -> Bool: value > 1
+            ).length() == 2
+        )
     )
     try expect_true(
         (
             m.fold(
                 initial: 0,
-                step: lambda (accumulator: Int, key: String, value: Int) -> Int: (
-                    accumulator
-                    + value
-                )
+                step: lambda (
+                    accumulator: Int,
+                    key: String,
+                    value: Int
+                ) -> Int: (accumulator + value)
             ) == 6
         )
     )
@@ -31,10 +36,11 @@ test "map callbacks":
         (
             m.fold_right(
                 initial: 0,
-                step: lambda (accumulator: Int, key: String, value: Int) -> Int: (
-                    accumulator * 10
-                    + value
-                )
+                step: lambda (
+                    accumulator: Int,
+                    key: String,
+                    value: Int
+                ) -> Int: (accumulator * 10 + value)
             ) == 321
         )
     )

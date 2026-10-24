@@ -3,8 +3,16 @@
 # conform: origin=tests/e2e/testdata/stdlib/url.ms
 from "@std/testing.ms" import expect_equal, expect_false, fail
 from "@std/net.ms" import (
-    parse, format, resolve, encode_component, decode_component, parse_query,
-    format_query, QueryEntry, Url, UrlError
+    parse,
+    format,
+    resolve,
+    encode_component,
+    decode_component,
+    parse_query,
+    format_query,
+    QueryEntry,
+    Url,
+    UrlError
 )
 
 test "URL canonicalization and relative references":
@@ -69,7 +77,9 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
         let bad = Url(scheme.clone(), "host", none, "/path", "", "")
-        if format(bad) != invalid_text: return fail(f"invalid scheme accepted: {scheme}")
+        if format(bad) != invalid_text: return fail(
+            f"invalid scheme accepted: {scheme}"
+        )
 
         try expect_equal(resolve(bad, "/next"), invalid_url)
 

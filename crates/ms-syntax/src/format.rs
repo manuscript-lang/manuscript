@@ -1310,7 +1310,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
                 return;
             };
             let tokens = self.tokens;
-            if tokens[start].kind == Tok::String {
+            if matches!(tokens[start].kind, Tok::String | Tok::Def) {
                 return;
             }
             let mut start = start;
@@ -1331,10 +1331,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
                         start += 1;
                     }
                 }
-                StmtKind::Bind { .. }
-                | StmtKind::Assign { .. }
-                | StmtKind::With { .. }
-                | StmtKind::For { .. } => {
+                StmtKind::With { .. } => start += 1,
+                StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
                     let target = if matches!(s.kind, StmtKind::For { .. }) {
                         Tok::In
                     } else {

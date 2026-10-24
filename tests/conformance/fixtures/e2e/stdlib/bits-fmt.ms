@@ -3,9 +3,21 @@
 # conform: origin=tests/e2e/testdata/stdlib/bits.ms
 from "@std/testing.ms" import expect_equal, expect_fault
 from "@std/math.ms" import (
-    bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right, shift_right_unsigned,
-    rotate_left, rotate_right, count_ones, leading_zeros, trailing_zeros, wrapping_add,
-    wrapping_subtract, wrapping_multiply
+    bit_and,
+    bit_or,
+    bit_xor,
+    bit_not,
+    shift_left,
+    shift_right,
+    shift_right_unsigned,
+    rotate_left,
+    rotate_right,
+    count_ones,
+    leading_zeros,
+    trailing_zeros,
+    wrapping_add,
+    wrapping_subtract,
+    wrapping_multiply
 )
 from "@std/math.ms" import max_int, min_int
 

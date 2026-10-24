@@ -635,7 +635,9 @@ def run(
             let list = options.clone()
             return choice_from(var c, list, 0, pos, caps, k)
         case Capture(index, body):
-            let close = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[List[Int]]:
+            let close = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[
+                List[Int]
+            ]:
                 var set = after.clone()
                 set.set(2 * index, pos)
                 set.set(2 * index + 1, p)
@@ -662,7 +664,9 @@ def run(
 
             return none
         case Look(body, negate):
-            let keep = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[List[Int]]:
+            let keep = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[
+                List[Int]
+            ]:
                 return some(after)
             let found = run(var c, body, pos, caps, keep)
 
@@ -766,7 +770,9 @@ def exec(var c: Ctx, start: Int, full: Bool) -> Optional[List[Int]]:
         var begin = blank.clone()
         begin.set(0, s)
 
-        let finish = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[List[Int]]:
+        let finish = lambda (var c: Ctx, p: Int, after: List[Int]) -> Optional[
+            List[Int]
+        ]:
             if full and p != c.text.length():
                 return none
 

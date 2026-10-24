@@ -40,7 +40,9 @@ test "list callbacks":
             ) == 10
         )
     )
-    try expect_true((items.count(predicate: lambda (value: Int) -> Bool: value > 1) == 3))
+    try expect_true(
+        (items.count(predicate: lambda (value: Int) -> Bool: value > 1) == 3)
+    )
 
     var retained = List[Callable[[], Int]]()
     for value in items:

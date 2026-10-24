@@ -6,7 +6,7 @@ type Box:
 def describe(n: Int) -> String:
     return match n:
         case 0: "zero"
-        case -1: "minus"
+        case - 1: "minus"
         case _: "other"
 
 def pick(flag: Bool) -> Int:

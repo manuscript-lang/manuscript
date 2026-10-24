@@ -57,12 +57,14 @@ test "Bytes split optional limits truncate parts":
     try expect_equal(data.split(separator, 9999999), expected)
     try expect_equal(data.split(Bytes([]), 2), [Bytes([1]), Bytes([0])])
 
-def split_then[T](data: Bytes, separator: Bytes, transform: Callable[[List[Bytes]], T]) -> T:
+def split_then[T](
+    data: Bytes,
+    separator: Bytes,
+    transform: Callable[[List[Bytes]], T]
+) -> T:
     return data.split(separator) | transform
 
-def call_split(
-    operation: Callable[[Bytes, Optional[Int]], List[Bytes]]
-) -> List[Bytes]:
+def call_split(operation: Callable[[Bytes, Optional[Int]], List[Bytes]]) -> List[Bytes]:
     return operation(Bytes([0]), some(2))
 
 test "Bytes split bound methods and generic forwarding retain contracts":

@@ -68,7 +68,12 @@ def vigenere_shifts(key: String) -> Optional[List[Int]]:
 
     return shifts
 
-def transform(text: String, cipher: String, decrypt: Bool, key: String) -> Optional[String]:
+def transform(
+    text: String,
+    cipher: String,
+    decrypt: Bool,
+    key: String
+) -> Optional[String]:
     var out = ""
 
     if cipher == "caesar":

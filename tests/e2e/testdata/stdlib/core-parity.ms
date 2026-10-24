@@ -34,7 +34,10 @@ def chain_result[T, E: Error, U](
 def map_optional[T, U](value: Optional[T], transform: Callable[[T], U]) -> Optional[U]:
     return value.map(transform)
 
-def map_set[T: Hashable, U: Hashable](values: Set[T], transform: Callable[[T], U]) -> Set[U]:
+def map_set[T: Hashable, U: Hashable](
+    values: Set[T],
+    transform: Callable[[T], U]
+) -> Set[U]:
     return values.map[U](transform)
 
 test "core parity operations are callable":
@@ -46,7 +49,9 @@ test "core parity operations are callable":
     try expect_equal(failure.or_else(lambda cause: cause.message().scalar_length()), 6)
     try expect_equal(success.map(lambda n: n + 1).get(), 3)
 
-    let chained: Result[String, TextError] = success.and_then(lambda n: ok(n.to_string()))
+    let chained: Result[String, TextError] = success.and_then(
+        lambda n: ok(n.to_string())
+    )
     try expect_equal(chained.get(), "2")
 
     let present: Optional[Int] = some(2)
@@ -60,7 +65,9 @@ test "core parity operations are callable":
     try expect_equal(values.filter(lambda k, v: k == "b" and v == 2).length(), 1)
 
     let members = Set[Int]([2, 3])
-    try expect_false(members.is_empty() or members.filter(lambda n: n == 2).length() != 1)
+    try expect_false(
+        members.is_empty() or members.filter(lambda n: n == 2).length() != 1
+    )
     try expect_equal(members.map(lambda n: n.to_string()).values(), ["2", "3"])
 
 def unexpected_text(value: Int) -> String:
@@ -156,7 +163,9 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let missing: Optional[Counter] = none
     let transform = lambda (value: Counter) -> Counter:
         return Counter(value.calls + 1)
-    let unexpected = lambda (value: Counter) -> Counter: panic("map must not run for none")
+    let unexpected = lambda (value: Counter) -> Counter: panic(
+        "map must not run for none"
+    )
     try expect_false(not (map_optional(missing.clone(), unexpected).is_none()))
 
     let mapped = present.clone().map(transform)
@@ -174,7 +183,9 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     try expect_false(not (absent.is_none()))
 
     let create = lambda () -> Optional[Counter]: some(Counter(5))
-    let unexpected_create = lambda () -> Optional[Counter]: panic("fallback must stay lazy")
+    let unexpected_create = lambda () -> Optional[Counter]: panic(
+        "fallback must stay lazy"
+    )
     let bound = present.clone().or_else
     try expect_equal(bound(unexpected_create).get().calls, 0)
 

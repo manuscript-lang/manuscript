@@ -36,7 +36,9 @@ export def main() -> Int:
 
     let i7 = ((((-6) / i1) + ((-39) % i4)) * i1)
     say(f"i7 = {i7}")
-    say(f"{l5.get(1)} {l3.get(0)} {(l5.get(1) < l3.get(0))} sum {l5.get(1) + l3.get(0)}")
+    say(
+        f"{l5.get(1)} {l3.get(0)} {(l5.get(1) < l3.get(0))} sum {l5.get(1) + l3.get(0)}"
+    )
 
     var acc8 = 0
 

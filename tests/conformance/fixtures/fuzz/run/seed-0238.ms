@@ -38,7 +38,12 @@ export def main() -> Int:
     say(f"b3 = {b3}")
 
     let b4 = (
-        ("gamma".replace("quote\"d", "hello world") != (f"{(i1 * (-16))}:" + ""))
+        (
+            "gamma".replace("quote\"d", "hello world") != (
+                f"{(i1 * (-16))}:"
+                + ""
+            )
+        )
         and "alpha".is_empty()
     )
     say(f"b4 = {b4}")

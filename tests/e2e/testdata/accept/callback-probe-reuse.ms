@@ -8,7 +8,9 @@ def choose[T](first: Callable[[], T], second: Callable[[], T]) -> T: first()
 def optional[T, U](value: T, transform: Optional[Callable[[T], U]]) -> U:
     return transform.get()(value)
 
-def with_result[T](transform: Callable[[], Result[T, TextError]]) -> Result[T, TextError]: transform()
+def with_result[T](
+    transform: Callable[[], Result[T, TextError]]
+) -> Result[T, TextError]: transform()
 
 type Callback[T, U]:
     transform: Callable[[T], U]

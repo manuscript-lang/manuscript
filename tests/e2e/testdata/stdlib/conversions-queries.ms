@@ -20,7 +20,10 @@ def counted(var counter: Counter) -> Counter:
 def require_value[T, E: Error](value: Optional[T], cause: E) -> Result[T, E]:
     return value.ok_or(cause)
 
-def require_lazy[T, E: Error](value: Optional[T], create: Callable[[], E]) -> Result[T, E]:
+def require_lazy[T, E: Error](
+    value: Optional[T],
+    create: Callable[[], E]
+) -> Result[T, E]:
     return value.ok_or_else[E](create)
 
 def success_only[T, E: Error](value: Result[T, E]) -> Optional[T]:
@@ -138,7 +141,9 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
     var visits = reduce_map(
         values.clone(),
         initial.clone(),
-        lambda acc, k, v:
+        lambda acc,
+        k,
+        v:
             var next = acc
             next.append(k + v.calls.to_string())
             return next
@@ -153,7 +158,9 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 
     var untouched = fold(
         step: (
-            lambda acc, k, v:
+            lambda acc,
+            k,
+            v:
                 empty_calls.append(1)
                 return acc
         ),
@@ -181,7 +188,8 @@ test "Map find returns fresh entry shells with copied payloads":
     var visits: List[String] = []
     let found = locate(
         values.clone(),
-        lambda k, v:
+        lambda k,
+        v:
             visits.append(k.clone())
             return k == "a"
     ).get()
@@ -207,7 +215,8 @@ test "Map find returns fresh entry shells with copied payloads":
             empty
             .find(
                 (
-                    lambda k, v:
+                    lambda k,
+                    v:
                         empty_calls.append(1)
                         return False
                 )
@@ -226,7 +235,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
         (
             not (
                 some(
-                    lambda k, v:
+                    lambda k,
+                    v:
                         seen.append(k)
                         values.remove("a")
                         values.add("c", 99)
@@ -247,7 +257,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
     try expect_false(
         (
             every(
-                predicate: lambda k, v:
+                predicate: lambda k,
+                v:
                     seen.append(k)
                     values.remove("a")
                     values.add("c", 99)
@@ -261,7 +272,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
     try expect_false(
         values.some(
             (
-                lambda k, v:
+                lambda k,
+                v:
                     empty_calls.append(1)
                     return False
             )
@@ -271,7 +283,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
         (
             values.every(
                 (
-                    lambda k, v:
+                    lambda k,
+                    v:
                         empty_calls.append(1)
                         return True
                 )
@@ -281,7 +294,10 @@ test "Map predicates short circuit over snapshots including empty receivers":
 
     let complete: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     try expect_false(
-        (complete.some(lambda k, v: False) or not (complete.every(lambda k, v: True)))
+        (
+            complete.some(lambda k, v: False)
+            or not (complete.every(lambda k, v: True))
+        )
     )
     empty_calls.is_empty() | try expect_true
 
@@ -309,7 +325,8 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
     var visits = reduce_set(
         values.clone(),
         initial.clone(),
-        lambda acc, v:
+        lambda acc,
+        v:
             var next = acc
             next.append(v.label.clone())
             return next
@@ -324,7 +341,8 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
     var empty_result = bound_empty(
         initial.clone(),
         (
-            lambda acc, v:
+            lambda acc,
+            v:
                 empty_calls.append(1)
                 return acc
         )
@@ -427,7 +445,9 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
 
     let complete = Set[Int]([2, 1])
-    try expect_false(complete.some(lambda v: False) or not (complete.every(lambda v: True)))
+    try expect_false(
+        complete.some(lambda v: False) or not (complete.every(lambda v: True))
+    )
     try expect_true((complete.find(lambda v: False).is_none()))
     empty_calls.is_empty() | try expect_true
 
@@ -437,7 +457,8 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             map.some(
-                lambda k, v:
+                lambda k,
+                v:
                     map_visits.append(k)
                     return False
             )
@@ -449,7 +470,8 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
         (
             not (
                 map.every(
-                    lambda k, v:
+                    lambda k,
+                    v:
                         map_visits.append(k)
                         return True
                 )
@@ -463,7 +485,8 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             not (
                 map
                 .find(
-                    lambda k, v:
+                    lambda k,
+                    v:
                         map_visits.append(k)
                         return False
                 )

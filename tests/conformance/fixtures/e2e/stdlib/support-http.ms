@@ -10,7 +10,9 @@ export def text_headers(fields: Map[String, String]) -> Result[HttpHeaders, Http
         let appended = try (result.append(name, fields.get(name).get().to_bytes()))
     return ok(result)
 
-export def list_headers(fields: Map[String, List[String]]) -> Result[HttpHeaders, HttpError]:
+export def list_headers(
+    fields: Map[String, List[String]]
+) -> Result[HttpHeaders, HttpError]:
     let result = headers()
     for name in fields.keys():
         for item in fields.get(name).get():

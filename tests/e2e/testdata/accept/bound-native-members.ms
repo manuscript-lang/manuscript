@@ -35,7 +35,9 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
 
-    let mapped = a.map(transform: lambda (value: Folded) -> Folded: return Folded(name: "z"))
+    let mapped = a.map(
+        transform: lambda (value: Folded) -> Folded: return Folded(name: "z")
+    )
     (mapped.length() == 1) | try expect_true
 
 test "builder":

@@ -34,5 +34,7 @@ export def main() -> Int:
 
     let l7 = l6.filter(lambda x: x > (-5))
     say(f"l7 = {l7} len {l7.length()}")
-    say(f"{(i4 * i3)} {l7.get(0)} {((i4 * i3) < l7.get(0))} sum {(i4 * i3) + l7.get(0)}")
+    say(
+        f"{(i4 * i3)} {l7.get(0)} {((i4 * i3) < l7.get(0))} sum {(i4 * i3) + l7.get(0)}"
+    )
     return 0

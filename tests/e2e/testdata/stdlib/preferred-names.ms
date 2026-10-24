@@ -114,13 +114,21 @@ test "set names mutate in place keep order and no-op membership":
     try expect_equal(optional.values(), [some(9)])
 
 interface FirstReplacement:
-    def replace_first(old: String, new: String, max_replacements: Optional[Int]) -> String
+    def replace_first(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int]
+    ) -> String
 
 type TextAdapter:
     text: String
 
 impl FirstReplacement for TextAdapter:
-    def replace_first(old: String, new: String, max_replacements: Optional[Int]) -> String:
+    def replace_first(
+        old: String,
+        new: String,
+        max_replacements: Optional[Int]
+    ) -> String:
         return self.text.replace_first(old, new, max_replacements)
 
 test "explicit views and bound views preserve native mutation":
