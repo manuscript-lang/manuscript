@@ -19,8 +19,9 @@ User code cannot run two things at once. The runtime already has stackful corout
 | Runtime support: task scopes (`msrt_scope_*`) with kill timers, closure-typed `extern` parameters, task-owned closures released on return or cancellation | 2 | built |
 | Docs chapter, conformance fixture, LSP snapshots | 1 to 3 | built |
 | `Channel[T]`: `send` moves a value in, `receive` returns an owned value, `close`; single thread | 4 | planned |
-| Diagnostics: `go f()`, `spawn(...)` as a free function, `Promise`, `setTimeout`, a `TaskGroup` outside `with`, a `ref` borrow captured by a spawned closure; `async`/`await` text mentions `TaskGroup` | 5 | planned |
-| Cheat sheet (`ms guide`) entry; `ms diagram` task tree and spawn-scope fault traces | 5, 6 | planned |
+| Diagnostics: `go f()`, `spawn(...)` as a free function, `Promise`, `Future`, `Thread`, `setTimeout`; `async`/`await` text mentions `TaskGroup`. A borrow or a reused value captured by a spawned closure is already rejected by the existing closure-capture checks (fixture `task-capture-reuse`). A `TaskGroup` outside `with` stays legal: it can be closed by hand | 5 | built |
+| Cheat sheet (`ms guide`) entry | 5 | built |
+| `ms diagram --view tasks` (task groups and the work each spawn starts); a fault in a task reports `task started by:` with the spawner's frames | 6 | built |
 | Catching a child fault in the parent instead of ending the program | later | open item |
 
 ## What is excluded

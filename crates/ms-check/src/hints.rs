@@ -480,6 +480,11 @@ impl Checker {
                     "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
                 );
             }
+            "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
+                return format!(
+                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" inside 'with', e.g. group.spawn(lambda: work(), timeout: some(duration(...)))"
+                );
+            }
             "print" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
                     "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"

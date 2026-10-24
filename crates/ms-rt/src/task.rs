@@ -86,6 +86,8 @@ struct Task {
     owned: *mut ms_rt_abi::Obj,
     /// When the task is cancelled for running too long, or `NO_DEADLINE`.
     kill_at: i64,
+    /// Frames of the code that started a group task, for the fault report.
+    started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
 }
@@ -426,6 +428,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             fatal: false,
             owned: null_mut(),
             kill_at: NO_DEADLINE,
+            started_by: Vec::new(),
             timed_out: false,
         });
     }
@@ -736,7 +739,7 @@ extern "C" fn task_main() -> ! {
             let mut msg = crate::string::NO_STR;
             (*t).status = fault::msrt_guard_call(entry, (*t).arg, &mut msg);
             if (*t).status == 1 && (*t).fatal {
-                fault::exit_with_report(&msg);
+                fault::exit_with_report(&msg, &(*t).started_by);
             }
             (*t).msg = msg;
         }
@@ -1053,6 +1056,7 @@ pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i
         let h = msrt_task_spawn(closure_entry, closure.cast(), SPAWN_FATAL, TASK_GROUP_STACK);
         let t = lookup(h);
         (*t).owned = closure.cast();
+        (*t).started_by = fault::capture_frames();
         if limit_ns >= 0 {
             let at = clock_ns().saturating_add(limit_ns);
             (*t).kill_at = at;

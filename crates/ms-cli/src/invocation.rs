@@ -30,7 +30,9 @@ pub const VALUE_OPTIONS: &[&str] = &[
 ];
 
 /// The `--view` names of `ms diagram`.
-pub const VIEWS: &[&str] = &["calls", "effects", "errors", "modules", "flow", "scope"];
+pub const VIEWS: &[&str] = &[
+    "calls", "effects", "errors", "modules", "flow", "scope", "tasks",
+];
 
 /// Commands that accept `--json`.
 pub const JSON_COMMANDS: &[&str] = &[

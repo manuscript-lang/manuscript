@@ -283,6 +283,46 @@ fn flow_view_expands_calls_and_scope_prunes() {
 }
 
 #[test]
+fn tasks_view_keeps_groups_and_spawned_work() {
+    let load = fact("r.ms", "fn", "load", 3);
+    let spawn = Node {
+        kind: "spawn".into(),
+        label: "spawn  group.spawn(lambda: fetch(1))".into(),
+        children: vec![Node {
+            kind: "call".into(),
+            label: "call fetch".into(),
+            ..Node::default()
+        }],
+        ..Node::default()
+    };
+    let with = Node {
+        kind: "with".into(),
+        label: "with TaskGroup[Int]() as group  [closed on exit]".into(),
+        children: vec![
+            spawn,
+            Node {
+                kind: "call".into(),
+                label: "call TaskGroup.results".into(),
+                ..Node::default()
+            },
+        ],
+        ..Node::default()
+    };
+    let other = Node {
+        kind: "call".into(),
+        label: "call unrelated".into(),
+        ..Node::default()
+    };
+    let mut facts = facts_of(vec![load.clone()]);
+    facts.flows.insert(load.key.clone(), vec![other, with]);
+    let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
+    assert_eq!(
+        tasks,
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with TaskGroup[Int]() as group  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
+    );
+}
+
+#[test]
 fn mark_and_explain() {
     let (base, head) = (program(false), program(true));
     let findings = compare_facts(&base, &head, &input(&[8]));
