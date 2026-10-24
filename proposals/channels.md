@@ -3,15 +3,15 @@
 ## Summary
 
 - Problem: `proposals/taskgroup.md` stage 4 plans one-way `Sender[T]`/`Receiver[T]`; a two-way conversation needs two pairs, and process IPC needs a different type per direction. Earlier drafts here needed tuples, mirror marks, atomics or word intrinsics.
-- Change: `Channel[In, Out]` (sends `In`, receives `Out`) is Manuscript code that frames JSON messages over one duplex byte pipe. The same code runs at every level; only the pipe's endpoints differ.
+- Change: `Channel[In, Out]` (sends `In`, receives `Out`) is Manuscript code that frames JSON messages over a duplex byte stream. The same code runs at every level; tasks and workers use an in-memory pipe, processes a socketpair or named pipe.
 - Only `spawn` creates channels: the child's entry gets one end, and `spawn` returns the child's handle (`Task`, `Worker`, `Process`) whose `channel` field is the other end.
-- Cost: no new Rust primitives beyond the duplex pipe the child-processes work already builds; messages are copied and encoded (unmeasured).
+- Cost: one small Rust primitive, an in-memory duplex byte pipe exposed as streams; the OS pipe comes from the child-processes work. Messages are copied and encoded (unmeasured).
 - Decision requested: final sign-off.
 
 ## Status
 
 - Proposal, 2026-10-24, against `main` at `6361798f`. Nothing implemented.
-- Direction (Chinmay, 2026-10-24): "channels should be bidirectional"; keep `Channel` uppercase; "having spawn create them is fine"; "spawn should return the handle to what was spawned, not the channel. Channel can be a field on that return type"; "i want majority of things in ms"; on the atomics design, "this is getting too complicated, whats a simple way?", then "yes" to framed JSON over a byte pipe everywhere.
+- Direction (Chinmay, 2026-10-24): "channels should be bidirectional"; keep `Channel` uppercase; "having spawn create them is fine"; "spawn should return the handle to what was spawned, not the channel. Channel can be a field on that return type"; "i want majority of things in ms"; on the atomics design, "this is getting too complicated, whats a simple way?", then "yes" to framed JSON over a byte pipe everywhere; "tasks and workers should be just in memory, no socket, use socket pair only for processes".
 - Superseded drafts: `channel_pair` tuple (no tuples), `peer()`/`create_mirror` (needs a mark), `AtomicWords` ring (too complex). Kept in git history.
 - Review: an earlier draft had a skeptical subagent review; this version needs a fresh one.
 
@@ -73,9 +73,13 @@ flowchart TB
   U["user code: channel.send / receive / close"]
   C["@std/channels.ms (Manuscript): frame + stringify / parse"]
   S["ReadStream / WriteStream (existing @std/io.ms)"]
-  P["duplex pipe: socketpair (Unix) / owner-only named pipe (Windows)"]
+  M["in-memory duplex pipe (tasks, workers)"]
+  P["socketpair (Unix) / owner-only named pipe (Windows) (processes)"]
   G["group spawn (Manuscript): create pipe, hand one end to the child, return handle"]
-  U --> C --> S --> P
+  U --> C --> S
+  S --> M
+  S --> P
+  G --> M
   G --> P
 ```
 
@@ -84,10 +88,11 @@ flowchart TB
 | `Channel[In, Out]`, `send`/`receive`/`close`, `Closed` | Manuscript | generic source type; no externs needed |
 | Framing | Manuscript | 4-byte LE length, 1 kind byte (message / close / result), UTF-8 JSON body; encode with `stringify`, decode with `parse` |
 | Byte transport | existing `ReadStream`/`WriteStream` (`stdlib/io.ms:63-81`) | waiting is ordinary stream I/O through the poller |
-| Duplex pipe creation | Rust, shared with `proposals/child-processes.md` (`crates/ms-std-process/src/ipc.rs`) | socketpair on Unix, owner-only named pipe on Windows; `pair()` for a child process, `local_pair()` for two ends in one process; each end is a `ReadStream`/`WriteStream` pair. The Manuscript-facing native is needed at stage 2 |
+| In-memory pipe (tasks, workers) | Rust, new and small | two byte buffers (one per direction) behind a lock, each end a `ReadStream`/`WriteStream`; a reader parks on a token and the writer posts it (`msrt_token_post`, or `post_remote` when the peer is another isolate). One primitive for both levels; no OS handles |
+| OS pipe (processes) | Rust, from `proposals/child-processes.md` (`crates/ms-std-process/src/ipc.rs`) | socketpair on Unix (fd 3, env `MS_IPC`), owner-only named pipe on Windows; each end a `ReadStream`/`WriteStream` pair |
 | Group `spawn` wiring | Manuscript | tasks: both ends stay in this process; workers: the child end goes to the worker isolate (its own poller); processes: the child end is inherited (fd 3, env `MS_IPC`) |
 
-- One pipe kind for all three levels. Tasks also use a socketpair, so there is no separate in-memory pipe and no new park/wake externs; the cost is a syscall per message between tasks (unmeasured).
+- Two pipe kinds, one framing: in memory for tasks and workers, OS pipe for processes. `@std/channels.ms` sees only streams.
 - Result frame: for processes the child's return value travels as a `result` kind frame on the same pipe; tasks and workers return results through their group as before.
 - Child death: EOF without a result frame makes `result()` return an error carrying the exit status; the parent does not fault.
 
@@ -105,7 +110,8 @@ flowchart TB
 | Component | Change | Test |
 | --- | --- | --- |
 | `stdlib/channels.ms` (new) | `Channel`, `Closed`, framing | conformance: order, drain-then-none, closed send, drop closes, malformed frame |
-| duplex pipe (with child-processes) | socketpair / named pipe exposed as streams | Linux, macOS, Windows |
+| `crates/ms-rt` (or `ms-std-io`) | in-memory duplex pipe as streams, same-isolate and cross-isolate wake | runtime tests; cross-thread stress on 3 platforms |
+| OS pipe (with child-processes) | socketpair / named pipe exposed as streams | Linux, macOS, Windows |
 | group stdlib modules | `spawn(entry)` returns a handle with a `channel` field | one fixture body for all three groups |
 | `crates/ms-check` | method type parameters, or none with a free `spawn` | accept/reject fixtures |
 | syntax, lowering, formatter, LSP, CLI | unchanged | none |
@@ -121,30 +127,30 @@ flowchart TB
 
 - **Do nothing (one-way `Sender`/`Receiver`).** Two types, two handles per conversation.
 - **Move values in memory (atomics ring, word intrinsics).** No copies, but new runtime primitives and a lock-free ring to get right; rejected as too complex. Can return later behind the same API if a measurement shows the need.
-- **In-memory pipe for tasks.** Avoids syscalls but needs park/wake externs; deferred until measured.
+- **Socketpair for every level.** One pipe kind, but a syscall per message and OS handles for in-process channels; rejected by the owner.
 - **User-created pairs (`channel_pair`, `create_mirror`).** Need tuples or a mark; rejected.
 
 ## Drawbacks
 
 - Every message is copied and encoded, even between tasks; reverses the workers' "send memory rather than a codec" direction for channel payloads (`proposals/worker-threads.md:14`).
 - Only JSON-encodable payloads.
-- A pipe per channel uses two file descriptors (or handles on Windows) per child.
+- A process channel uses OS handles per child; in-process channels use none.
 - Prior art: Unix pipes and sockets; Node's process IPC (JSON over a pipe); Erlang distribution (serialized messages). Manuscript differs by typing each direction and creating ends only in `spawn`.
 
 ## Staging and verification
 
-0. Spike: method type parameters vs free `spawn`; duplex pipe as streams on all three platforms.
+0. Spike: method type parameters vs free `spawn`; in-memory pipe as streams with cross-isolate wake.
 1. Docs.
 2. `Channel` + `TaskGroup.spawn(entry)` (after TaskGroup stages 2-3 and the capture-drop fix).
-3. `ProcessGroup` (same pipe, inherited end).
-4. `WorkerGroup` (same pipe, end handed to the isolate).
+3. `ProcessGroup` (OS pipe, inherited end).
+4. `WorkerGroup` (in-memory pipe, end handed to the isolate).
 
 Gate per stage: `make conform`, `make verify` on Linux, macOS and Windows; the same fixture body passes for each group added so far; no test disabled on any platform. Record message throughput for tasks at stage 2.
 
 ## Open questions
 
 - Before approval (decider: Chinmay): method type parameters or a free `spawn(group, entry)`; recommend the checker feature if small.
-- During implementation: frame size limit; whether a measured gap justifies an in-memory task path.
+- During implementation: frame size limit; in-memory pipe buffer limit (backpressure).
 
 ## Future possibilities
 
