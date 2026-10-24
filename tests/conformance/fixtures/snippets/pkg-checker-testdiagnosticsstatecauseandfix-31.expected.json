@@ -15,6 +15,21 @@
           "line": 8,
           "column": 32,
           "offset": 290
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/http.ms\" import HttpMethod\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 8,
           "column": 51,
           "offset": 309
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/http.ms\" import HttpMethod\n"
         }
       }
     ],

@@ -15,6 +15,21 @@
           "line": 4,
           "column": 37,
           "offset": 199
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testparsetypeargument-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testparsetypeargument-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/json.ms\" import JsonError\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 5,
           "column": 12,
           "offset": 222
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testparsetypeargument-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testparsetypeargument-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/csv.ms\" import parse\n"
         }
       }
     ],

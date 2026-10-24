@@ -15,6 +15,21 @@
           "line": 9,
           "column": 27,
           "offset": 361
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/time.ms\" import Duration\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 10,
           "column": 17,
           "offset": 394
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import Datagram\n"
         }
       },
       {
@@ -37,6 +67,21 @@
           "line": 10,
           "column": 27,
           "offset": 404
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import NetworkError\n"
         }
       },
       {
@@ -48,6 +93,21 @@
           "line": 14,
           "column": 27,
           "offset": 505
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/time.ms\" import Duration\n"
         }
       },
       {
@@ -59,6 +119,21 @@
           "line": 15,
           "column": 23,
           "offset": 544
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import NetworkError\n"
         }
       },
       {
@@ -70,6 +145,21 @@
           "line": 17,
           "column": 15,
           "offset": 592
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
         }
       },
       {
@@ -81,6 +171,21 @@
           "line": 19,
           "column": 27,
           "offset": 650
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/time.ms\" import Duration\n"
         }
       },
       {
@@ -92,6 +197,21 @@
           "line": 20,
           "column": 23,
           "offset": 689
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import NetworkError\n"
         }
       }
     ],

@@ -26,6 +26,21 @@
           "line": 7,
           "column": 13,
           "offset": 253
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/testing.ms\" import expect_equal\n"
         }
       },
       {
@@ -37,6 +52,21 @@
           "line": 10,
           "column": 9,
           "offset": 295
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testclitestfixtureinterruptcleansup-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/testing.ms\" import fail\n"
         }
       }
     ],

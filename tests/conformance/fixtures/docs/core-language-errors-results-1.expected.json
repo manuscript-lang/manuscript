@@ -15,6 +15,21 @@
           "line": 14,
           "column": 21,
           "offset": 485
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 14,
           "column": 39,
           "offset": 503
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       },
       {
@@ -37,6 +67,21 @@
           "line": 14,
           "column": 58,
           "offset": 522
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-errors-results-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       }
     ],

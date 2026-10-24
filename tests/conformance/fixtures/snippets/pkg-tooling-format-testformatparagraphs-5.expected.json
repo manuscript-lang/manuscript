@@ -15,6 +15,21 @@
           "line": 5,
           "column": 19,
           "offset": 228
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-format-testformatparagraphs-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-tooling-format-testformatparagraphs-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/csv.ms\" import parse\n"
         }
       },
       {

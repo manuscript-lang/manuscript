@@ -15,6 +15,21 @@
           "line": 4,
           "column": 18,
           "offset": 167
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testknownstandardtypeimporthint-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testknownstandardtypeimporthint-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/collections.ms\" import SetBuilder\n"
         }
       }
     ],

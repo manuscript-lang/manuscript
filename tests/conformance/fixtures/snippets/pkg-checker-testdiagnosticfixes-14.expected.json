@@ -15,6 +15,21 @@
           "line": 5,
           "column": 13,
           "offset": 167
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/collections.ms\" import SetBuilder\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 6,
           "column": 13,
           "offset": 197
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/collections.ms\" import SetBuilder\n"
         }
       },
       {
@@ -37,6 +67,21 @@
           "line": 7,
           "column": 13,
           "offset": 227
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/queue.ms\" import Queue\n"
         }
       },
       {
@@ -48,6 +93,21 @@
           "line": 8,
           "column": 13,
           "offset": 252
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticfixes-14.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/queue.ms\" import Queue\n"
         }
       }
     ],

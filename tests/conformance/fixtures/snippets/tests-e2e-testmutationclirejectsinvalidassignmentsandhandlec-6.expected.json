@@ -15,6 +15,21 @@
           "line": 4,
           "column": 15,
           "offset": 188
+        },
+        "fix": {
+          "position": {
+            "file": "tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "tests-e2e-testmutationclirejectsinvalidassignmentsandhandlec-6.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/net.ms\" import Connection\n"
         }
       }
     ],

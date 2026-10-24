@@ -15,6 +15,21 @@
           "line": 7,
           "column": 20,
           "offset": 219
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-68.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-tooling-format-testformatexpressionlayouts-68.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/process.ms\" import CommandError\n"
         }
       }
     ],

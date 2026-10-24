@@ -15,6 +15,21 @@
           "line": 5,
           "column": 47,
           "offset": 269
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/core.ms\" import TextError\n"
         }
       },
       {
@@ -26,6 +41,21 @@
           "line": 5,
           "column": 61,
           "offset": 283
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/testing.ms\" import fail\n"
         }
       }
     ],
