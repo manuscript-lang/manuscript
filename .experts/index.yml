@@ -18,6 +18,7 @@ experts:
       - "crates/ms-clif/**"
       - "crates/ms-linker/**"
       - "crates/ms-driver/**"
+      - "crates/ms-build/**"
       - "crates/ms-native/**"
       - "crates/ms-project/**"
       - "documentation/contributing/compiler/**"

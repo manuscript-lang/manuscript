@@ -3,10 +3,10 @@
 //!
 //! # The test executable protocol
 //!
-//! The lowering builds one executable per `ms test` ([`ms_driver::Lower::lower_tests`])
+//! The lowering builds one executable per `ms test` ([`ms_build::Lower::lower_tests`])
 //! and returns the test names in index order. `exe <index> [program arguments]`
 //! runs test number `index` and exits: status 0 means passed; status 1 with
-//! the failure marker (`ms_driver::FAILURE_MARKER`) on standard error means
+//! the failure marker (`ms_build::FAILURE_MARKER`) on standard error means
 //! the test returned an error, and the text after the marker is the message;
 //! any other status (a fault, abort or signal) is a failure described by how
 //! the process ended, with its standard error text after the marker-free part.
@@ -24,10 +24,10 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use ms_driver::Lower;
+use ms_build::Lower;
 use ms_project::gopath;
 
-use ms_driver::FAILURE_MARKER;
+use ms_build::FAILURE_MARKER;
 
 /// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
@@ -182,7 +182,7 @@ pub(super) fn test<L: Lower>(
             return Ok(2);
         }
     };
-    let mut compiled = match compile(backend, &request.filename, request.build_type, true) {
+    let mut compiled = match compile(backend, &request.filename, true) {
         Ok(compiled) => compiled,
         Err(failure) => {
             if !structured {

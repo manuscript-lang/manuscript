@@ -29,7 +29,7 @@ Add crate `ms-llvm`: lowers verified MIR to textual LLVM IR (`.ll`), compiles it
 
 Stages, each its own PR, each differential-tested against the Cranelift output on the same MIR:
 
-1. `ms-llvm` crate, flag plumbing in `ms-driver`/`ms-cli`, scalar subset (Int/Float/Bool, branches, calls, checked ops, faults), kernels `collatz` and `mul_const`. Gate: output equal to Cranelift, timings recorded.
+1. `ms-llvm` crate, flag plumbing in `ms-build`/`ms-cli`, scalar subset (Int/Float/Bool, branches, calls, checked ops, faults), kernels `collatz` and `mul_const`. Gate: output equal to Cranelift, timings recorded.
 2. Aggregates and lists: records, alternatives, optionals, list ops, strings, rc `drop`/`copy`. Kernels sieve, life, matmul, nbody, trees.
 3. Closures, interfaces, cleanup stack, externs and stdlib calls; run the conformance corpus under `--backend llvm`.
 4. Debug info and perf map parity.

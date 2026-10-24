@@ -7,7 +7,7 @@ cargo build --release -p ms-cli
 target/release/ms-conform run --ms target/release/ms --tag tier-core --phase run
 ```
 
-Loading, optimizing, code generation and linking live in `ms-driver`; this crate only lowers.
+Loading, optimizing, code generation and linking live in `ms-build`; this crate only lowers.
 
 ## Strategy
 

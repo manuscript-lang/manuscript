@@ -18,14 +18,14 @@ weight = 1
     -> link with ms-native (ms-rt and the ms-std-* crates) -> executable
 ```
 
-1. `ms-cli` validates options and picks a command; `ms-driver` owns everything between a file name and an executable.
+1. `ms-cli` validates options and picks a command; `ms-driver` loads and checks, `ms-build` lowers, generates code and links.
 2. `ms-project` reads `ms.toml` and `[aliases]` and resolves imports to canonical, root-confined paths, including editor overlays.
 3. `ms-driver` loads the module graph: it follows imports, detects cycles, and returns the modules in dependency order.
 4. `ms-syntax` parses strictly, or with recovery for editor analysis. Standard declarations use the same parser.
 5. `ms-check` loads standard declarations on first use. It resolves declarations, nominal types, bounds, implementations, control flow, captures, cleanup, effects, and ownership, and keeps what lowering, docs, and editors need.
 6. Check, lint, inspect, diagram, and review stop after checking. Formatting uses only the syntax crate.
 7. `ms-lower` turns checked HIR into MIR; `ms-mir` optimizes and verifies it. See [lowering](compiler/lowering/_index.md).
-8. `ms-clif` emits object code and `ms-driver` links it with the embedded native runtime: every platform uses the bundled `lld` (musl on Linux, generated SDK stubs on macOS, the mingw-w64 CRT on Windows).
+8. `ms-clif` emits object code and `ms-build` links it with the embedded native runtime: every platform uses the bundled `lld` (musl on Linux, generated SDK stubs on macOS, the mingw-w64 CRT on Windows).
 
 ## Know what each crate owns
 
@@ -36,7 +36,8 @@ weight = 1
 | `ms-lower`, `ms-mir`, `ms-clif` | Checked HIR to MIR; optimizer and verifier; Cranelift and LLVM code generation |
 | `ms-rt`, `ms-rt-abi`, `ms-native` | Runtime, C-layout ABI types, and the static library embedded in `ms` |
 | `ms-std-*` | One crate per native standard module |
-| `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, build and link |
+| `ms-project`, `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
+| `ms-build` | Lowering seam, optimization, native codegen and link |
 | `ms-tooling`, `ms-guide`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
 
