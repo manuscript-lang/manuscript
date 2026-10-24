@@ -254,6 +254,31 @@ fn native_tests_run_one_process_each() {
     assert!(json.contains("\"passed\": 1"), "{json}");
 }
 
+/// A runtime fault is structured data under `--json` for `ms run` and `ms test`.
+#[test]
+fn runtime_fault_is_reported_as_json() {
+    let dir = scratch("fault-json");
+    let source = write(
+        &dir,
+        "boom.ms",
+        "fn div(a: Int, b: Int) Int: a / b\n\nexport fn main() Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
+    );
+    let backend = RustBackend::new(Native);
+    let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
+    assert_eq!(status, 70, "{err}");
+    for needle in [
+        "\"kind\": \"division_by_zero\"",
+        "\"cleanups_ran\": true",
+        "\"function\": \"div\"",
+        "\"line\": 1",
+    ] {
+        assert!(json.contains(needle), "{needle} missing in {json}");
+    }
+    let (status, json, _) = ms(&backend, &["test", &source, "--json"]);
+    assert_eq!(status, 1, "{json}");
+    assert!(json.contains("\"kind\": \"division_by_zero\""), "{json}");
+}
+
 /// `ms test ms.toml` runs the project's `test.ms` and `*_test.ms`, not only the entry module.
 #[test]
 fn project_test_runs_test_files() {
