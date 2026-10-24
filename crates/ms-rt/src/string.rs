@@ -337,11 +337,11 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
 unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
     // SAFETY: `s` live; range validated.
     unsafe {
-        let text = bytes(s);
-        if a == 0 && b == scalar_count(s) {
+        let (text, n) = (bytes(s), scalar_count(s));
+        if a == 0 && b == n {
             return cloned(&*s);
         }
-        if scalar_count(s) == text.len() {
+        if n == text.len() {
             return from_bytes(&text[a..b]);
         }
         let (ao, bo) = (scalar_offset(s, a), scalar_offset(s, b));
@@ -585,6 +585,12 @@ pub fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     if needle.len() > hay.len() {
         return None;
     }
+    if needle.len() == 1 && hay.len() < SHORT_HAY {
+        return memchr_short(needle[0], hay);
+    }
+    if hay.len() < SHORT_HAY {
+        return find_short(hay, needle);
+    }
     if needle.len() == 1 {
         return memchr(needle[0], hay);
     }
@@ -615,10 +621,52 @@ impl<'a> Needle<'a> {
     #[inline]
     fn find(&self, hay: &[u8]) -> Option<usize> {
         match self {
+            Needle::Byte(b) if hay.len() < SHORT_HAY => memchr_short(*b, hay),
             Needle::Byte(b) => memchr(*b, hay),
+            Needle::Bytes(f) if hay.len() < SHORT_HAY => find_short(hay, f.needle()),
             Needle::Bytes(f) => f.find(hay),
         }
     }
+}
+
+/// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
+/// than the scan.
+const SHORT_HAY: usize = 32;
+
+/// `find` for a short haystack and a non-empty needle.
+#[inline]
+fn find_short(hay: &[u8], needle: &[u8]) -> Option<usize> {
+    let (&first, rest) = needle.split_first()?;
+    let last = hay.len().checked_sub(needle.len())?;
+    let mut i = 0;
+    while i <= last {
+        i += memchr_short(first, &hay[i..=last])?;
+        if hay[i + 1..i + needle.len()] == *rest {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// `memchr` for a short haystack: eight bytes per step, testing each word for a byte equal to
+/// `c` with the zero-byte trick.
+#[inline]
+fn memchr_short(c: u8, hay: &[u8]) -> Option<usize> {
+    const LO: u64 = 0x0101_0101_0101_0101;
+    const HI: u64 = 0x8080_8080_8080_8080;
+    let pat = LO * c as u64;
+    let (chunks, rest) = hay.as_chunks::<8>();
+    let mut at = 0;
+    for w in chunks {
+        let x = u64::from_le_bytes(*w) ^ pat;
+        let hit = x.wrapping_sub(LO) & !x & HI;
+        if hit != 0 {
+            return Some(at + hit.trailing_zeros() as usize / 8);
+        }
+        at += 8;
+    }
+    rest.iter().position(|&b| b == c).map(|p| at + p)
 }
 
 /// First index of `c` in `hay` (the `memchr` crate picks SSE2, AVX2 or NEON at run time).
@@ -1965,6 +2013,17 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_values(s: *const StrVal, out:
         } else {
             alloc::alloc(n * 8)
         } as *mut i64;
+        if n == text.len() {
+            for (k, &c) in text.iter().enumerate() {
+                *p.add(k) = c as i64;
+            }
+            *out = VecVal {
+                ptr: p as *mut u8,
+                len: n,
+                cap: n,
+            };
+            return;
+        }
         let (mut i, mut k) = (0, 0);
         while i < text.len() {
             let (c, w) = utf8::decode(&text[i..]);
@@ -1995,6 +2054,10 @@ pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
             let n = *(v.ptr as *const i64).add(i);
             if !(0..=0x10FFFF).contains(&n) || (0xD800..=0xDFFF).contains(&n) {
                 return STATUS_INVALID_INPUT;
+            }
+            if n < 0x80 {
+                b.push(n as u8);
+                continue;
             }
             let w = utf8::encode(n as u32, &mut tmp);
             b.extend_from_slice(&tmp[..w]);
@@ -2232,6 +2295,30 @@ pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn short_searches_agree_with_a_naive_scan() {
+        let naive = |h: &[u8], n: &[u8]| {
+            (0..=h.len().saturating_sub(n.len())).find(|&i| h[i..].starts_with(n))
+        };
+        let hay = b"a,bb,,ccc,a,bb\x80,,ccc,a,bb,,ccc,x";
+        for len in 0..hay.len() {
+            let h = &hay[..len];
+            for n in [
+                &b","[..],
+                b"bb",
+                b",,c",
+                b"x",
+                b"\x80",
+                b"zz",
+                b"ccc,a,bb\x80,,c",
+            ] {
+                let want = if n.len() > h.len() { None } else { naive(h, n) };
+                assert_eq!(find(h, n), want, "find {n:?} in {h:?}");
+                assert_eq!(Needle::new(n).find(h), want, "needle {n:?} in {h:?}");
+            }
+        }
+    }
 
     #[test]
     fn concat_parts_joins_and_skips_empties() {
