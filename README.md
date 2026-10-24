@@ -118,7 +118,7 @@ def demo() -> Int:
 `cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
 ```
 
-Cleanup follows the same ownership. `with file = try files.open("data.txt"):` closes the resource at the end of the block, including when an error occurs.
+Cleanup follows the same ownership. `with try files.open("data.txt") as file:` closes the resource at the end of the block, including when an error occurs.
 
 ### Errors
 
