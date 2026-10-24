@@ -7,7 +7,7 @@ def boom(xs: List[Int]) -> Int:
 
 def load() -> Int:
     with TaskGroup[Int]() as group:
-        let task = group.spawn(lambda: boom([1]))
+        let task = group.spawn(lambda ch: boom([1]))
         task.result()
     return 0
 

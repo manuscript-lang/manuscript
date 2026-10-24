@@ -8,7 +8,7 @@ use crate::isolate;
 use crate::task::msrt_token_post_remote;
 use core::ffi::c_void;
 use ms_rt_abi::StrVal;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Entry of a worker: called on the worker's main task with the argument block.
@@ -23,7 +23,12 @@ struct Worker {
     thread: Mutex<Option<std::thread::JoinHandle<()>>>,
     /// The worker's isolate slot once it runs, for cancellation.
     slot: AtomicUsize,
-    outcome: Mutex<(u8, Vec<u8>)>,
+    /// The status, then a report in a system block of its own: it outlives the worker's arena.
+    outcome: Mutex<(u8, usize, usize)>,
+    /// The pipe end the worker owns; closed when the worker ends, however it ends.
+    end: AtomicI64,
+    /// The remote token of the caller that spawned through [`msrt_worker_start`].
+    done: AtomicU64,
 }
 
 static WORKERS: Mutex<Vec<Option<Arc<Worker>>>> = Mutex::new(Vec::new());
@@ -78,7 +83,9 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
     let worker = Arc::new(Worker {
         thread: Mutex::new(None),
         slot: AtomicUsize::new(NO_SLOT),
-        outcome: Mutex::new((0, Vec::new())),
+        outcome: Mutex::new((0, 0, 0)),
+        end: AtomicI64::new(0),
+        done: AtomicU64::new(0),
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
@@ -134,11 +141,28 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
     w.slot.store(isolate::id(), Ordering::Release);
     // SAFETY: this thread is the new isolate's only one.
     let outcome = unsafe { crate::task::run_worker_task(entry, arg) };
-    *w.outcome.lock().unwrap_or_else(|e| e.into_inner()) = outcome.clone();
+    let (status, report) = outcome;
+    let mut block = (0usize, 0usize);
+    if !report.is_empty() {
+        // SAFETY: a system block holding a copy of the report.
+        unsafe {
+            let p = crate::sys::malloc(report.len()).cast::<u8>();
+            if !p.is_null() {
+                core::ptr::copy_nonoverlapping(report.as_ptr(), p, report.len());
+                block = (p as usize, report.len());
+            }
+        }
+    }
+    drop(report);
+    *w.outcome.lock().unwrap_or_else(|e| e.into_inner()) = (status, block.0, block.1);
     crate::task::teardown();
     isolate::unregister();
     crate::alloc::release_arena();
-    msrt_token_post_remote(done, outcome.0 as u64 + 1);
+    let end = w.end.load(Ordering::Acquire);
+    if end != 0 {
+        crate::pipe::msrt_pipe_close(end);
+    }
+    msrt_token_post_remote(done, status as u64 + 1);
 }
 
 /// Asks the worker to stop: its main task sees a pending cancellation at its next poll or wait.
@@ -166,19 +190,141 @@ pub unsafe extern "C-unwind" fn msrt_worker_join(handle: u64, msg_out: *mut StrV
         let _ = t.join();
     }
     WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
-    let (status, report) =
+    let (status, ptr, len) =
         core::mem::take(&mut *w.outcome.lock().unwrap_or_else(|e| e.into_inner()));
-    if !msg_out.is_null() {
-        // SAFETY: writable by contract.
+    let report = if ptr == 0 {
+        crate::string::NO_STR
+    } else {
+        // SAFETY: the block holds `len` bytes and is ours once.
         unsafe {
-            *msg_out = if report.is_empty() {
-                crate::string::NO_STR
-            } else {
-                crate::string::from_bytes(&report)
-            };
+            let s = crate::string::from_bytes(core::slice::from_raw_parts(ptr as *const u8, len));
+            crate::sys::free(ptr as *mut c_void);
+            s
         }
+    };
+    if msg_out.is_null() {
+        // SAFETY: an owned string nobody reads.
+        unsafe { crate::string::release_opt(&report) };
+    } else {
+        // SAFETY: writable by contract.
+        unsafe { *msg_out = report };
     }
     status
+}
+
+crate::isolate_static! {
+    /// The pipe end this isolate's worker owns, or 0 outside a worker.
+    static END: i64 = 0;
+}
+
+/// The pipe end the calling worker was started with, or 0 outside a worker.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_worker_end() -> i64 {
+    // SAFETY: this isolate's state.
+    unsafe { *END.ptr() }
+}
+
+/// What a started entry needs: the pipe end and a capture-free closure's code and drop entries.
+#[repr(C)]
+struct StartArg {
+    end: i64,
+    code: *const u8,
+    drop: Option<ms_rt_abi::DropFn>,
+}
+
+/// The worker's main task: rebuilds the entry closure in this isolate's arena and calls it.
+unsafe extern "C-unwind" fn closure_main(arg: *mut u8) {
+    // SAFETY: `arg` is the system block `msrt_worker_start` made; the closure has no captures,
+    // so a header and the code pointer are all of it.
+    unsafe {
+        let a = arg.cast::<StartArg>().read();
+        crate::sys::free(arg.cast());
+        *END.ptr() = a.end;
+        let size = core::mem::size_of::<ms_rt_abi::Closure>();
+        let c = crate::alloc::alloc(size).cast::<ms_rt_abi::Closure>();
+        c.write(ms_rt_abi::Closure {
+            hdr: ms_rt_abi::Obj {
+                rc: 1,
+                drop: a.drop,
+            },
+            code: a.code,
+        });
+        let code: unsafe extern "C-unwind" fn(*mut ms_rt_abi::Closure) =
+            core::mem::transmute(a.code);
+        code(c);
+        crate::obj::release(c.cast());
+    }
+}
+
+/// Starts a worker that runs `entry`, a closure without captures (a named `def`), and owns the
+/// pipe end `end`, which is closed when the worker ends. Returns the handle, or 0 when the
+/// worker could not start. [`msrt_worker_wait`] collects it.
+///
+/// # Safety
+/// `entry` is a live capture-free closure.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_worker_start(
+    entry: *mut ms_rt_abi::Closure,
+    end: i64,
+) -> i64 {
+    // SAFETY: `entry` is live by contract; the block is freed by the worker or on failure.
+    unsafe {
+        let block = crate::sys::malloc(core::mem::size_of::<StartArg>()).cast::<StartArg>();
+        if block.is_null() {
+            crate::fault::fatal(b"out of memory");
+        }
+        block.write(StartArg {
+            end,
+            code: (*entry).code,
+            drop: (*entry).hdr.drop,
+        });
+        let done = crate::task::msrt_token_new(crate::task::TOKEN_REMOTE);
+        let handle = msrt_worker_spawn(closure_main, block.cast(), done);
+        if handle == 0 {
+            crate::task::msrt_token_free(done);
+            return 0;
+        }
+        if let Some(w) = find(handle) {
+            w.end.store(end, Ordering::Release);
+            w.done.store(done, Ordering::Release);
+        }
+        handle as i64
+    }
+}
+
+/// Waits for the worker `handle` to end and collects it. Returns a string: the outcome digit
+/// (`0` returned, `1` fault, `2` cancelled) followed by the fault report, if any.
+///
+/// # Safety
+/// `out` is writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) {
+    let Some(w) = find(handle as u64) else {
+        crate::fault::fault(b"wait: no such worker");
+    };
+    let done = w.done.load(Ordering::Acquire);
+    // SAFETY: the token is this isolate's; parked once, then freed.
+    let cancelled = unsafe {
+        let woke = crate::task::msrt_token_park(done, -1, core::ptr::null_mut());
+        crate::task::msrt_token_free(done);
+        woke != 0
+    };
+    let mut report = crate::string::NO_STR;
+    // SAFETY: `report` is writable.
+    let status = unsafe { msrt_worker_join(handle as u64, &mut report) };
+    let mut text = vec![b'0' + status];
+    // SAFETY: an owned string or the empty one.
+    unsafe {
+        if !report.is_empty() {
+            text.extend_from_slice(crate::string::bytes(&report));
+        }
+        crate::string::release_opt(&report);
+    }
+    // SAFETY: `out` is writable by contract.
+    unsafe { *out = crate::string::from_bytes(&text) };
+    if cancelled {
+        crate::fault::msrt_cancelled();
+    }
 }
 
 #[cfg(test)]
