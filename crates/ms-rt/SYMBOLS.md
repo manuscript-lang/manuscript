@@ -661,6 +661,15 @@ msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns:
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
 msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
+msstd_process_fork( runner: *mut Closure, stdin: i64, stdout: i64, stderr: i64, out: *mut *mut Handle<Forked>, ) -> u8
+msstd_process_forked_link(h: *mut Handle<Forked>) -> *mut Handle<IpcLink>
+msstd_process_forked_wait(h: *mut Handle<Forked>, timeout_ns: i64, out: *mut i64) -> u8
+msstd_process_forked_signal(h: *mut Handle<Forked>, force: u8)
+msstd_process_forked_close(h: *mut Handle<Forked>)
+msstd_process_ipc_child() -> *mut Handle<IpcLink>
+msstd_process_ipc_read(h: *mut Handle<IpcLink>, max: i64, out: *mut VecVal)
+msstd_process_ipc_write(h: *mut Handle<IpcLink>, data: *const VecVal) -> u8
+msstd_process_ipc_close(h: *mut Handle<IpcLink>)
 msstd_process_elapsed(out: *mut i64) -> u8
 msstd_process_environment_map(out: *mut ms_rt_abi::MapVal) -> u8
 msstd_process_info_pid() -> i64

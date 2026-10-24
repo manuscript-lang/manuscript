@@ -486,6 +486,7 @@ mod tests {
             &args,
             [StdStream::Null, StdStream::Inherit, StdStream::Inherit],
             Some(&end),
+            &[],
         )
         .unwrap();
         drop(end);

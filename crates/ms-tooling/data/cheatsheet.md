@@ -35,3 +35,4 @@ test "addition":
 - A def returning part of a parameter or the receiver writes `ref` before its result type (`def name() -> ref String`); `let ref x = a.b` borrows a place; `for ref x in xs:` and `match ref v:` mark borrows.
 - Closures may change captures. `with try ... as f:` closes `f` at block end.
 - Concurrency has no async/await: `with TaskGroup[T]() as g:` (`@std/tasks.ms`), `g.spawn(lambda: f(x))` gives a `Task`; `t.result()` or `g.results()` waits; leaving the block cancels unfinished tasks. Timeouts are opt-in.
+- Child processes: `with ProcessGroup[T, In, Out]() as g:` (`@std/processes.ms`), `g.spawn(entry)` runs the top-level `def entry(ch: Channel[Out, In]) -> T` in a new process of the same executable and gives `Result[Process, CommandError]`; values cross as JSON; `p.channel` talks to it, `p.result()` waits; a child fault is `ProcessError.Exited(70)`.

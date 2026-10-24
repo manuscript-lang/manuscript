@@ -11,6 +11,7 @@
 ## Status
 
 - **Approved** by Chinmay on 2026-10-24 ("great, let's build it"). Written against `main` at `6361798f`; TaskGroup (#1166) has since landed on `main`.
+- Stage 3 (processes) implemented in `stdlib/processes.ms`; see `proposals/child-processes.md` Status for the built shape.
 - Stage 2 (tasks) implemented. Choices made while building it:
   - `TaskTransport` lives in `stdlib/tasks.ms`, unexported, so only `spawn` makes task channels.
   - A token lasts for one wait (`msrt_channel_token/park/post`, `crates/ms-rt/src/channel.rs`): no token outlives its wait, so a late post is dropped and nothing needs freeing at close.
