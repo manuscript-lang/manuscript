@@ -3,14 +3,14 @@
 ## Summary
 
 - Only `Int` (i64) and `Float` (f64) exist, so every number stored in a `List`, record or map takes 8 bytes.
-- Add `Int8`, `Int16`, `Int32`, `Int64`, `Float32`, `Float64`, stored packed, and make `Int` mean `Int32` and `Float` mean `Float32`.
+- Add `Int8`, `Int16`, `Int32`, `Int64`, `Float32`, `Float64`, stored packed, and make `Int` mean `Int32`. `Float` stays `Float64`.
 - **Cost: changing the default from 64 to 32 bits is a breaking semantic change.** It narrows overflow, literal ranges and every stdlib signature that returns or takes a 64-bit quantity (time, file sizes, hashes, lengths), and it changes `Float` precision from about 15.9 to 7.2 decimal digits.
 - Review outcome: the flip has no memory measurement yet, and `Float32` as default is the weakest part. Recommendation: `Int = Int32`, `Float = Float64`.
-- Decision requested: approve the sized types (stages 1–4), and separately approve or reject the default flip (stage 5), which is the only breaking stage and is gated on a `bench/` measurement.
+- Decision (Chinmay, 2026-10-24): `Int = Int32`, `Float = Float64`. Stage 5 (the `Int` flip) is the only breaking stage and stays gated on a `bench/` measurement.
 
 ## Status
 
-- Proposal, 2026-10-24, written against `df8ebe59`. Not implemented. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
+- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stages: none landed yet. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
 - Direction (Chinmay, 2026-10-24): "lets add specific number types in the stdlib, we need to have 8, 16, 32, 64 style numeric types so we can reduce memory usage, default to 32 for Int/Float".
 
 ## Problem
@@ -36,13 +36,13 @@
 ### Types
 
 - Six primitives: `Int8`, `Int16`, `Int32`, `Int64`, `Float32`, `Float64`. They are in the prelude with `Int` and `Float`.
-- `Int` is an alias of `Int32` and `Float` an alias of `Float32`. The alias is one entry in the checker's primitive table (`crates/ms-check/src/types.rs` `primitive`), not a second type: `Int` and `Int32` are the same type everywhere, including diagnostics.
+- `Int` is an alias of `Int32` and `Float` an alias of `Float64`. The alias is one entry in the checker's primitive table (`crates/ms-check/src/types.rs` `primitive`), not a second type: `Int` and `Int32` are the same type everywhere, including diagnostics.
 - MIR: `TyKind::Int` becomes `TyKind::Int(Width)` and `TyKind::Float` becomes `TyKind::Float(Width)`, with `Width` one of `W8, W16, W32, W64`. Layout derives size, alignment and the Cranelift/LLVM type from `Width`; no other pass names a width.
 
 ```
              before                      after
   Int  --- i64, 8 bytes         Int = Int32 --- i32, 4 bytes
-  Float -- f64, 8 bytes         Float = Float32 -- f32, 4 bytes
+  Float -- f64, 8 bytes         Float = Float64 -- f64, 8 bytes (unchanged)
                                 Int8/16/64, Float64 --- packed to their width
 ```
 
@@ -104,17 +104,17 @@ let d = b + c
 
 - **Overflow.** `Int` faults at 2,147,483,647. Programs that sum, multiply or count past 2^31 fault where they ran before; this is a programming fault, not a compile error, so existing code can fail at run time.
 - **Literals.** `3_000_000_000` and every literal outside the 32-bit range become compile errors; code needs `Int64`.
-- **Float.** `Float32` has about 7 decimal digits. `0.1 + 0.2`, accumulations, `Decimal.to_float`, JSON numbers and `@std/math` (all binary64 today: `stdlib/math.ms`) change results. `Float` literals that round to infinity in binary32 (above about 3.4e38) become errors.
+- **Float.** Unchanged: `Float` stays binary64, so `@std/math`, `Decimal.to_float` and JSON numbers keep their results. `Float32` is opt-in.
 - **Stdlib surface.** `length()` and indexes stay `Int` (lists above 2^31 elements are not supported), but these must be re-typed `Int64` or they truncate: `Duration`/`Instant` nanoseconds (64-bit by the current spec; the `.seconds`/`.milliseconds` members take `Int`, so with a 32-bit `Int` the source count is limited to about 68 years of seconds but only about 24 days of milliseconds), file sizes and offsets in `@std/fs`, `hash()` in `core.ms:160`, `@std/random`, `@std/time`, byte counts in `@std/io`, `@std/net`. The inventory is 740 `Int` mentions in `stdlib/*.ms` and 48 `"Int"`/`"Float"` string checks in 18 files under `crates/` (`grep -rn '"Int"\|"Float"' crates`); each needs a decision, not a search-and-replace.
-- **Existing programs and benchmarks.** Everything in `bench/` and `tests/conformance` that uses `Int` as 64-bit changes meaning. Benchmark numbers move in both directions (smaller data, more sign-extension for indexing, `Float32` software conversions for math); none of this is measured.
-- **Mitigation.** Stages 1–4 add the types with `Int = Int64` and `Float = Float64` and change no existing behavior. The flip lands last, as one PR, so it can be reverted or dropped.
+- **Existing programs and benchmarks.** Everything in `bench/` and `tests/conformance` that uses `Int` as 64-bit changes meaning. Benchmark numbers move in both directions (smaller data, more sign-extension for indexing); none of this is measured.
+- **Mitigation.** Stages 1–4 add the types with `Int = Int64` (and `Float = Float64` throughout) and change no existing behavior. The flip lands last, as one PR, so it can be reverted or dropped.
 
 ## Alternatives
 
 - **Do nothing.** Keeps 8 bytes per number and no range types. Zero cost; does not meet the request.
-- **Float32 default as requested.** Set aside as the plan: halves float storage but changes precision to ~7 digits and every `@std/math` result. Still possible if the owner confirms after stage 4.
+- **Float32 default.** Rejected by the owner (2026-10-24): halves float storage but changes precision to ~7 digits and every `@std/math` result.
 - **Sized types only, default stays 64-bit (stages 1–4).** Delivers the memory reduction for anyone who writes `List[Int8]`, with no break. Does not meet "default to 32". Smallest version that proves the benefit; recommended stopping point if stage 5 is not approved.
-- **`Int = Int32`, `Float = Float64`.** Halves default integer storage and keeps float precision and `@std/math` unchanged. Breaks overflow and literal ranges only. Recommended over the requested `Float32` default; see Open questions.
+- **`Int = Int32`, `Float = Float64`.** Halves default integer storage and keeps float precision and `@std/math` unchanged. Breaks overflow and literal ranges only. Chosen by the owner.
 - **Platform-sized `Int`.** Already the documented text for 32-bit targets, but behavior differing by target breaks the parity rule and was never implemented.
 - **Suffixed literals (`5i8`).** Rejected for the first version: contextual literal typing covers the cases with no lexer change.
 - **Generic `Int[N]`.** More general, but needs const generics, which the language does not have.
@@ -133,15 +133,16 @@ let d = b + c
 2. **Native codegen.** Cranelift and LLVM per-width ops, overflow, descriptors, extern ABI. Gate: e2e fixtures per width on Linux, macOS, Windows.
 3. **Packed storage.** Lists, records, maps, optionals use the width; runtime sort, hash, equality per width. Gate: runtime unit tests per width, leak check, and a measurement of `List[Int8]` against `List[Int]` for memory and time.
 4. **Stdlib and docs.** Math conversions, `Int64` where quantities need it, generated reference. Gate: `make docs`, `make verify`.
-5. **Default flip.** Prerequisite: a `bench/` run of flipped programs against stage 4. Alias `Int` to `Int32`, `Float` to `Float32`, update stdlib signatures and literal ranges, migrate tests and benchmarks. Gate: `make verify-full`, `bench` comparison against stage 4, explicit owner approval after reading that comparison.
+5. **Default flip.** Prerequisite: a `bench/` run of flipped programs against stage 4. Alias `Int` to `Int32` (`Float` stays `Float64`), update stdlib signatures and literal ranges, migrate tests and benchmarks. Gate: `make verify-full`, `bench` comparison against stage 4, explicit owner approval after reading that comparison.
 
 ## Open questions
 
 - Resolve before approval (decider: Chinmay):
-  - Float default: `Float32` as requested, or `Float64` with only `Int` narrowed? Recommendation: keep `Float = Float64`; the 4-byte saving rarely outweighs silent precision loss and every math function is binary64. Float32 stays available explicitly.
+  - Float default: resolved, `Float = Float64` (owner, 2026-10-24).
   - Approve the contextual numeric literal rule? Recommendation: yes.
   - Unsigned types (`UInt8` ... `UInt64`)? Recommendation: out of scope here; add later with the same `Width` plumbing, since byte data (`Bytes`) wants `UInt8`.
   - Which stdlib quantities become `Int64` in stage 5? Recommendation: time, file sizes and offsets, `hash`, random, net/io byte counts.
+  - Math without casts (owner question, 2026-10-24). Generic bounds exist (`stdlib/math.ms:262` `max[T: Comparable]`), so `min`, `max`, `min_of`, `max_of` already work on every width once each width implements `Comparable`. `abs`, `sqrt`, `pow` and the rest cannot be generic: a generic body is checked against its bounds only (`generics.md`, "checked once"), has no operator bounds and no static constructors, so it cannot do arithmetic or call a per-width native on `T`. Recommendation: (1) `abs` and `sign` become receiver methods on each integer and float width, declared once; (2) transcendental functions stay `Float64`, which is the default `Float`, so only explicit `Float32` users call `to_float64()`; (3) no operator-interface or specialization mechanism in this proposal.
 - Resolve during implementation: conversion method naming (`to_int64()` against `Int64(x)`), record field reordering for padding (recommendation: no).
 
 ## Rejected ideas
