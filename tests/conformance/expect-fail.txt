@@ -1,7 +1,5 @@
 # Fixtures the Rust `ms` still differs on (make conform). Remove entries as they are fixed.
 # run: -20: a callee inlined into main loses its fault frame and the caller line.
-snippets/tests-e2e-testfaultsourcelocations-20
 # check/lsp/examples fixtures that depend on lint, inspect or LSP output of the Go tools.
 # test: modules owned by the standard-library threads (fs, net, html, random, terminal, host, math ordering, test CLI shape).
-snippets/tests-e2e-testclitestfilefixturelistanddefaulthooks-1
 # test: language/runtime differences: value-semantics changes (closures copy captured vars, receivers are read at call time), unsupported ordering of some types, fault-frame text, and others to triage.

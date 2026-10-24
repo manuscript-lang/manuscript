@@ -1,3 +1,6 @@
+# conform: tags=aliasing,closures,control-flow,interfaces,interpolation,lists,match,modules,mutation,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
+# conform: phase=run
+# conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 from "@std/core.ms" import TextError
 from "@std/testing.ms" import expect_equal, fail
 from "@std/io.ms" import stderr
