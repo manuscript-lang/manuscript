@@ -343,7 +343,7 @@ impl Cx {
         }
         if t.is_std("Shared") {
             let payload = self.lower_ty(m, &t.args[0])?;
-            return Ok(m.types.obj("Shared", vec![payload]));
+            return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));
         }
         // A collection builder is a shared handle over its accumulating collection.
         if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
