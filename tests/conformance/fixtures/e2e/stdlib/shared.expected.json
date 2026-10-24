@@ -28,19 +28,24 @@
           "index": 3,
           "name": "shared.ms::a second take while the payload is out faults",
           "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "shared.ms::a box dropped while its payload is out does not free the payload twice",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::take and put change the payload every holder sees\nPASS shared.ms::take and put change the payload every holder sees\nRUN shared.ms::a second take while the payload is out faults\nPASS shared.ms::a second take while the payload is out faults\n4 tests, 0 failed\n",
+      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::take and put change the payload every holder sees\nPASS shared.ms::take and put change the payload every holder sees\nRUN shared.ms::a second take while the payload is out faults\nPASS shared.ms::a second take while the payload is out faults\nRUN shared.ms::a box dropped while its payload is out does not free the payload twice\nPASS shared.ms::a box dropped while its payload is out does not free the payload twice\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
