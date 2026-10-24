@@ -256,17 +256,17 @@ fn blocks_in_loops(f: &Func) -> Vec<bool> {
     cyclic(&adj)
 }
 
-fn const_values(f: &Func) -> HashSet<Value> {
-    f.blocks
+fn const_values(blocks: &[BlockData]) -> impl Iterator<Item = Value> + '_ {
+    blocks
         .iter()
         .flat_map(|b| b.insts.iter())
         .filter(|i| matches!(i.op, Op::IConst | Op::FConst | Op::BConst))
         .filter_map(|i| i.res)
-        .collect()
 }
 
 fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool {
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
+    let mut consts: HashSet<Value> = const_values(&m.funcs[fi].blocks).collect();
     let mut grown = 0usize;
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
@@ -292,7 +292,6 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
                     if sites[gi] == 1 {
                         limit += SINGLE_CALLER_BONUS;
                     }
-                    let consts = const_values(&m.funcs[fi]);
                     limit +=
                         CONST_ARG_BONUS * inst.args.iter().filter(|a| consts.contains(a)).count();
                     size <= limit && grown + size <= budget
@@ -305,6 +304,9 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             let callee = m.funcs[gi].clone();
             let ret_own = m.needs_drop(callee.ret);
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
+            // Only the call definition is replaced; existing constants keep their IDs when
+            // the tail moves. Fresh callee definitions follow the continuation block.
+            consts.extend(const_values(&m.funcs[fi].blocks[cont + 1..]));
             work.push(cont);
             changed = true;
             // The rest of this block now lives in `cont`.
