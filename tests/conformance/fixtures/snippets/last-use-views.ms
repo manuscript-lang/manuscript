@@ -1,23 +1,23 @@
 # conform: tags=strings,lists,maps,records,control-flow,stdlib-testing,testing,tier-core
 # conform: phase=test
-import {expect_equal} from "@std/testing.ms"
-import {range} from "@std/collections.ms"
+from "@std/testing.ms" import expect_equal
+from "@std/collections.ms" import range
 
 type Box:
     name: String
     items: List[Int]
 
 impl Box:
-    fn label() ref String: self.name
+    def label() -> ref String: self.name
 
-    fn all() ref List[Int]: self.items
+    def all() -> ref List[Int]: self.items
 
 # Churn that reuses freed memory, so a view of a value freed too early reads garbage.
-fn churn(n: Int) Int:
+def churn(n: Int) -> Int:
     var total = 0
 
     for i in range(0, n):
-        let junk = "junk-{i}-junk-{i}-junk-{i}"
+        let junk = f"junk-{i}-junk-{i}-junk-{i}"
         total += junk.length()
 
     return total
@@ -27,7 +27,7 @@ test "a trim view keeps its source until the view's last use":
     let view = source.trim()
     let n = churn(200)
     try expect_equal(view, "hello, world")
-    try expect_equal(n > 0, true)
+    try expect_equal(n > 0, True)
 
 test "a source whose last use is early is not needed by later work":
     let text = "alpha beta gamma".clone()
@@ -35,7 +35,7 @@ test "a source whose last use is early is not needed by later work":
     let count = words.length()
     let n = churn(200)
     try expect_equal(count, 3)
-    try expect_equal(n > 0, true)
+    try expect_equal(n > 0, True)
 
 test "a ref result borrows its argument until the result's last use":
     let box = Box(name: "boxed".clone(), items: [1, 2, 3])
@@ -44,7 +44,7 @@ test "a ref result borrows its argument until the result's last use":
     let n = churn(200)
     try expect_equal(label, "boxed")
     try expect_equal(items.length(), 3)
-    try expect_equal(n > 0, true)
+    try expect_equal(n > 0, True)
 
 test "a view carried around a loop stays valid":
     let names = ["  a  ".clone(), " bb ".clone(), "ccc".clone()]
@@ -58,7 +58,7 @@ test "a view carried around a loop stays valid":
             longest = view.clone()
 
     try expect_equal(longest, "ccc")
-    try expect_equal(total > 0, true)
+    try expect_equal(total > 0, True)
 
 test "a value used only inside one branch is freed on the other path":
     let data = [10, 20, 30]
@@ -70,7 +70,7 @@ test "a value used only inside one branch is freed on the other path":
         else:
             sum += churn(5)
 
-    try expect_equal(sum > 20, true)
+    try expect_equal(sum > 20, True)
 
 test "map keys read after the map's earlier uses stay valid":
     var m = Map[String, Int]()
@@ -85,4 +85,4 @@ test "map keys read after the map's earlier uses stay valid":
     let n = churn(100)
     try expect_equal(size, 2)
     try expect_equal(seen, 6)
-    try expect_equal(n > 0, true)
+    try expect_equal(n > 0, True)
