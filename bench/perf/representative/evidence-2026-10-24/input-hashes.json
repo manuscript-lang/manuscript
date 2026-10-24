@@ -1,0 +1,52 @@
+{
+  "c25-log-analyzer": {
+    "main.ms": "3842d6dbf7d0931de48e5d965dfd76c58166eb709937cf3386eab42020abf0b4",
+    "stdin": "7eee77f791d3ef91c9186891225408be701cecdce83039abf9e2c65bd380d272",
+    "expected": "7fbff9e512aae1268f83c236cb52691315e62f7010f261da5475359897967d7f"
+  },
+  "c13-inventory-orders": {
+    "main.ms": "c11951a89c02e0802a518abe2e8e229aa62e90e9e0c76e66d95b3f83dbc93271",
+    "stdin": "f942c0a2eed2c0cb46255c99488f614d95ebe9eef3ba59d73c409816dbc7cacb",
+    "expected": "fe986e9fdbf77cf01ab47db13cde18db9c6642767db472919f7a549605f6865b"
+  },
+  "c03-csv-group-sum": {
+    "main.ms": "a723a2f31fecf02a1f90f2f977f408eeea8153b20557a4fdfdfa0c8f18a0b21f",
+    "stdin": "56bdada0a0e6bca11c81f7d1e017f00360aed402d43538c1607eea8055495115",
+    "expected": "9a8e4d3601b62f9110dc808c80caec76b274ccab8f702287ca099148364530a9"
+  },
+  "hello": {
+    "main.ms": "4a123bcd5438be46429e6b1f6ba745962f89c5812b4119df9af932201a16b113",
+    "stdin": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "expected": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03"
+  },
+  "rules-100": {
+    "main.ms": "b6d8092ebe83cf903e75712873c9359a520c7207e9bb092999cdc9a683b2deaf",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "230ac272f24cfbc7834eb95e781e0ffc552d337da1958d2fce09b993a2c27146"
+  },
+  "rules-200": {
+    "main.ms": "86717b1f4e1f1cb79064fcdfd9a4257e1376fd81ee9d5f8cfb4c59ea2131830d",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "0f8a3eec58c0e6ecc0c9fc9ab9092146b0d428853da1c9824ed6d7423fa5dfe2"
+  },
+  "rules-400": {
+    "main.ms": "1e0b36f19be622edb1e2746b7341c90a474ae8f8486b4fa827da904ea47ea233",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "1d4a97704f421dae951ab465875b969b69a6c99e6390fe3d28d1ee43d036f29c"
+  },
+  "rules-1000": {
+    "main.ms": "e7897a14c7e823f6b4cfa3105b772e936d075947684d3ab1e8e0c94e1f7b9c72",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "2eef46b403861c622a39c219aee7693ee59b47ba88f956f61f02a5dd23f05126"
+  },
+  "rules-2000": {
+    "main.ms": "c4dfa3544af1da0bdcf23c7f631987f5b59700d70a24d0f39a2b131885d7cccb",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "ee99730b86d60b7ddaabdc808430d1fcc8cff6b2d212b7905ade4f3ddd682750"
+  },
+  "rules-4000": {
+    "main.ms": "024d2fb9e41eccc07508ab213f16c1e852f5917b94d672d77decd9f0ccb5d93f",
+    "stdin": "54183f4323f377b737433a1e98229ead0fdc686f93bab057ecb612daa94002b5",
+    "expected": "7a3a168a74320d3af5ec954e29a61ca032a01beb82d1f1763affe8a019e451f3"
+  }
+}

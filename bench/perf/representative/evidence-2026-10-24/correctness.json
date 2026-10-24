@@ -1,0 +1,72 @@
+[
+  {
+    "case": "c03-csv-group-sum",
+    "optimized_mir_sha256": "36bb326c3ea9a6b0e4a97076325648ad1df920a9a713ab89ccb7be1ab331b5d6",
+    "native_sha256": "a5fc26c6c99b722b914606228272550828c7311445f9175b6b2f47d9aea12e85",
+    "native_bytes": 709896,
+    "checked_reference_cases": 39
+  },
+  {
+    "case": "c13-inventory-orders",
+    "optimized_mir_sha256": "4f51b987a9102130007aef0d71fb34db809ef180376520763d5bcafacc71b520",
+    "native_sha256": "b8b9213090964715ad28a976e50dd18a33652fae6ecf8b1543d3f2060d55b646",
+    "native_bytes": 751032,
+    "checked_reference_cases": 42
+  },
+  {
+    "case": "c25-log-analyzer",
+    "optimized_mir_sha256": "ae3ec4df7c5d3c0039ef308d347f4da2f8ad8cf6f47c4a878fc23dab3f933f09",
+    "native_sha256": "489b6a8e755130b05e77bba7a6b4518730992730e5d6a9d743a5c0616fd52a20",
+    "native_bytes": 727600,
+    "checked_reference_cases": 42
+  },
+  {
+    "case": "hello",
+    "optimized_mir_sha256": "6e4d8a2b2f71d7497b4278fd903bd334e761590e5f64517bb6fd3fa9b3cd32fa",
+    "native_sha256": "e68e0433b4c1a6a66d4bad7ecb2536b0f577fce5ff13ccb326a45e5c2c719d1a",
+    "native_bytes": 567048,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-100",
+    "optimized_mir_sha256": "f392876a31ea9683082945c41a1ad35c9f42a3d98053ee325e4d4cfa71a92f74",
+    "native_sha256": "a3f92616dad408375508ff28a9ed4336c23a1b8d6da66410cec800663b2edc32",
+    "native_bytes": 638472,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-1000",
+    "optimized_mir_sha256": "7044b593f4346643af059f946280483dcdcdc93412b16f31ca39651407383751",
+    "native_sha256": "81ae0d9a3aa636bb74c94e3a12a98a7093688eec5d8760e4ae77019e5a0974d9",
+    "native_bytes": 743648,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-200",
+    "optimized_mir_sha256": "51fdae6347b9a5a82afabbe332601da378bf6801392ac7dbea8c64f80483f885",
+    "native_sha256": "d274b09d5856715867af21ba0769d995ed39f23ff2e900a5b569fd0c3b0a5f1f",
+    "native_bytes": 650040,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-2000",
+    "optimized_mir_sha256": "71be186e9dcf52834a8c20df71b36f3dc206b1eb3bb0d1b69e79ccccc7e61e22",
+    "native_sha256": "cbc75abc0e3b28c5dae8bd1f94ac49e3830926de8d7ed05f641d01895b984abc",
+    "native_bytes": 862648,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-400",
+    "optimized_mir_sha256": "182485af08be08e4e5ce4a4ed93f1b1af8a8cfa66880d0614527a15d49d06342",
+    "native_sha256": "f2954fffd046dfcede242206ddf1fb916479a964944f2d6574a8109e56170785",
+    "native_bytes": 673456,
+    "checked_reference_cases": 0
+  },
+  {
+    "case": "rules-4000",
+    "optimized_mir_sha256": "b612ba024c0c68b9237a1bdc26aa6caa5e8263d3cb79b492227e8c6bacc4150d",
+    "native_sha256": "c4094df9884d84cb588feb9a9dac5f832bfdaa1de6d0edb41d1cca1856b1a040",
+    "native_bytes": 1084680,
+    "checked_reference_cases": 0
+  }
+]

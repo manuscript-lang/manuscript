@@ -22,7 +22,7 @@ Version 0.1 already delivers the core of this premise. The vision below is still
 
 - **A small, regular language.** Statically typed, with `let`/`var`, nominal `type`s with alternatives, exhaustive `match`, `Optional`, `Result` with `try`, generics, and `impl` blocks. The surface is Python-aligned (`def add(a: Int, b: Int) -> Int:`, `lambda`, `elif`, `from "p" import A`).
 - **Scoped cleanup.** `with` closes resources at block end, and cancellation and shutdown run cleanup deterministically.
-- **No concurrency yet.** Concurrency is intentionally absent until it can be designed from the ground up.
+- **No concurrency yet.** The planned model is structured: scoped tasks in a `TaskGroup`, `Channel[T]` that moves values, no async/await, and later workers and processes behind the same channel API (`proposals/taskgroup.md`). Not shipped.
 - **One self-contained binary.** `ms` checks, formats, lints, tests, builds, and profiles. The Rust compiler lowers checked source to MIR and emits native object code through Cranelift, or through LLVM for Linux and macOS release builds; the runtime and standard library are embedded in `ms`. Linking uses host tools; see the [toolchain requirements](documentation/contributing/rust-toolchain.md#build-and-run).
 - **Structured evidence for agents.** `--json` output from `check`, `lint`, `test`, `build`, and `inspect`; `ms search_symbol`, `ms guide`, `ms verify`, `ms review`, and `ms diagram` give deterministic views of a program and of a change.
 - **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables; there is no embedded debugger or debug adapter.
@@ -62,7 +62,7 @@ This does not mean that a compiler or diagram can prove every program correct. T
 
 The Manuscript experience brings the essential development tools together: compiling, building, testing, profiling, and debugging ship in one `ms` binary, and `ms build` produces a standalone native executable. The work ahead is making deployment as seamless as the development loop, so these pieces feel like one workflow rather than a collection of unrelated tools.
 
-Keeping the language core small matters. Manuscript has no special asynchronous syntax, so programs use functions and receive values. Concurrency is intentionally absent until it can be designed correctly from the ground up.
+Keeping the language core small matters. Manuscript has no special asynchronous syntax, so programs use functions and receive values. Concurrency is absent today; the planned design is scoped tasks, not async syntax (`proposals/taskgroup.md`).
 
 ### An ecosystem agents can help expand
 
