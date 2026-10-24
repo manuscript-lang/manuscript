@@ -87,6 +87,7 @@ const RT_DATA: &[(&str, bool)] = &[
     ("msrt_stack_limit", true),
     ("msrt_ascii_chars", false),
     ("msrt_desc_int", false),
+    ("msrt_desc_float32", false),
     ("msrt_desc_float", false),
     ("msrt_desc_bool", false),
     ("msrt_desc_string", false),
@@ -100,12 +101,23 @@ fn clif_type(c: char) -> ir::Type {
     }
 }
 
-/// Cranelift type of a leaf.
+/// Cranelift type of a leaf in a register.
 pub fn leaf_type(l: Leaf) -> ir::Type {
     match l {
-        Leaf::I64 => types::I64,
-        Leaf::F64 => types::F64,
+        Leaf::I64 | Leaf::N8 | Leaf::N16 | Leaf::N32 => types::I64,
+        Leaf::F64 | Leaf::F32 => types::F64,
         Leaf::I8 => types::I8,
+    }
+}
+
+/// Cranelift type of a leaf in memory.
+pub fn mem_type(l: Leaf) -> ir::Type {
+    match l {
+        Leaf::N8 => types::I8,
+        Leaf::N16 => types::I16,
+        Leaf::N32 => types::I32,
+        Leaf::F32 => types::F32,
+        _ => leaf_type(l),
     }
 }
 
@@ -397,9 +409,10 @@ impl<'m> Gen<'m> {
         let (key, scope) = (ty, ty.scope());
         let ty = ty.unscoped();
         let builtin = match m.types.kind(ty) {
-            // Sized numbers keep a 64-bit slot (and the `Int`/`Float` glue) until storage is packed.
-            TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => Some("msrt_desc_int"),
-            TyKind::Float | TyKind::Float32 => Some("msrt_desc_float"),
+            // `Int8`..`Int32` are plain bits of their width and take the `POD` path below.
+            TyKind::Int => Some("msrt_desc_int"),
+            TyKind::Float => Some("msrt_desc_float"),
+            TyKind::Float32 => Some("msrt_desc_float32"),
             TyKind::Bool => Some("msrt_desc_bool"),
             TyKind::Str => Some("msrt_desc_string"),
             TyKind::Bytes => Some("msrt_desc_bytes"),

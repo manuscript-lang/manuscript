@@ -20,6 +20,7 @@ msrt_bits_wrapping_subtract(left: i64, right: i64) -> i64
 msrt_bits_wrapping_multiply(left: i64, right: i64) -> i64
 msrt_desc_int (data)
 msrt_desc_float (data)
+msrt_desc_float32 (data)
 msrt_desc_bool (data)
 msrt_desc_string (data)
 msrt_desc_bytes (data)

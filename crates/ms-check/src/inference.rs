@@ -2,6 +2,7 @@
 //! callback return inference it shares.
 
 use crate::checker::{CheckedArgument, Checker};
+use crate::exprs::is_plain_literal;
 use crate::hints::{arity_mismatch_hint, label_mismatch_hint};
 use crate::syntax::*;
 use crate::types::Param;
@@ -164,6 +165,9 @@ impl Checker {
         for arg in args {
             if matches!(arg.value.kind, ExprKind::Lambda(_)) {
                 pending.push(*arg);
+            } else if is_plain_literal(arg.value) && sized_number(parameter_type(params, arg.name))
+            {
+                // The literal takes the parameter's own sized type when it is checked.
             } else if !self.contextual(arg.value)
                 && let Some(actual) = self.independent_argument(arg.value)
             {
@@ -430,4 +434,11 @@ impl Checker {
 
 fn parameter_type(params: &[Param], name: Name) -> Option<Ty> {
     params.iter().find(|p| p.name == name).map(|p| p.ty.clone())
+}
+
+/// Whether `t` is a sized integer or `Float32`, which a number literal takes as its own type.
+fn sized_number(t: Option<Ty>) -> bool {
+    t.is_some_and(|t| {
+        (int_bits(&t).is_some() && t.id != "Int") || (float_bits(&t) == Some(32) && t.id != "Float")
+    })
 }
