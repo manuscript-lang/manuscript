@@ -16,7 +16,7 @@ The reserved words are:
 
 ```manuscript
 and break case continue else export false fixture fn for if
-impl import in interface let match not or return self test true try type
+impl import in interface let match not or ref return self test true try type
 unit var while with
 ```
 
@@ -120,13 +120,15 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", Type, NEWLINE ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      Type, FunctionSuite ;
+                      ResultType, FunctionSuite ;
+ResultType    = [ "ref" ], Type ;
+(* `ref` marks a result that lends part of a borrowed parameter or the receiver; see ownership. A function type has no `ref`. *)
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", Type, FunctionSuite ;
+MethodDeclaration = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
 FunctionSuite = ":", (Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or return unit succeeds; try or return error(...) fails it. *)
@@ -168,7 +170,7 @@ Statement     = SimpleStatement, NEWLINE
               | WithStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
-Binding       = ("let" | "var"), ( BindingEntry
+Binding       = ("let" | "var"), [ "ref" ], ( BindingEntry
               | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
 BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;

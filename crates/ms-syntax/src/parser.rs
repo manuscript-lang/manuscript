@@ -636,7 +636,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the type that follows a parameter list, rejecting the removed
     /// `->` and a missing type with the form to write instead.
-    fn result_type(&mut self) -> PResult<TypeRef> {
+    fn result_type(&mut self) -> PResult<(bool, TypeRef)> {
         self.no_arrow()?;
         let t = self.peek();
         if t.kind == Tok::Colon || t.kind == Tok::Newline {
@@ -645,7 +645,8 @@ impl<'a> Parser<'a> {
                 "every fn declares its result type after the parameter list, e.g. fn f() Unit:",
             );
         }
-        self.typ()
+        let by_ref = self.take(Tok::Ref);
+        Ok((by_ref, self.typ()?))
     }
 
     fn no_arrow(&mut self) -> PResult<()> {
@@ -667,7 +668,15 @@ impl<'a> Parser<'a> {
         if self.take(Tok::Fn) {
             let pos = self.previous().pos;
             let params = self.parameters(false, false)?;
-            let result = Box::new(self.result_type()?);
+            let at = self.peek();
+            let (by_ref, result) = self.result_type()?;
+            if by_ref {
+                return self.fail(
+                    at,
+                    "a function type cannot return a 'ref'; only a declared fn or method can lend",
+                );
+            }
+            let result = Box::new(result);
             let id = self.id();
             return Ok(TypeRef {
                 id,
@@ -806,7 +815,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let params = self.parameters(true, false)?;
-        let result = self.result_type()?;
+        let (result_ref, result) = self.result_type()?;
         let body = if body {
             self.statement_suite(false, true)?
         } else {
@@ -821,6 +830,7 @@ impl<'a> Parser<'a> {
                 type_params,
                 params,
                 result,
+                result_ref,
                 body,
             },
             mutating,
@@ -837,13 +847,14 @@ impl<'a> Parser<'a> {
                 let name = self.need(Tok::Name)?;
                 let type_params = self.type_params()?;
                 let params = self.parameters(true, false)?;
-                let result = self.result_type()?;
+                let (result_ref, result) = self.result_type()?;
                 let body = self.statement_suite(false, true)?;
                 DeclKind::Fn(Func {
                     name: self.sym(name),
                     type_params,
                     params,
                     result,
+                    result_ref,
                     body,
                 })
             }
@@ -1131,7 +1142,12 @@ impl<'a> Parser<'a> {
 
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
+        let by_ref = self.take(Tok::Ref);
+        let at = self.peek();
         let pattern = self.pattern()?;
+        if by_ref && !matches!(pattern.kind, PatternKind::Name(_)) {
+            return self.fail(at, "`ref` binds a single name, e.g. `let ref x = a.b`");
+        }
         let mut ty = None;
         if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
             ty = Some(self.typ()?);
@@ -1144,6 +1160,7 @@ impl<'a> Parser<'a> {
             pos,
             kind: StmtKind::Bind {
                 mutable,
+                by_ref,
                 pattern,
                 ty,
                 value,

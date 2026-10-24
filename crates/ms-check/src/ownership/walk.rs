@@ -808,10 +808,11 @@ impl Walker<'_> {
         match &s.kind {
             StmtKind::Bind {
                 mutable,
+                by_ref,
                 pattern,
                 value,
                 ..
-            } => self.bind(s, *mutable, pattern, value),
+            } => self.bind(s, *mutable, *by_ref, pattern, value),
             StmtKind::Assign { target, value, .. } => self.assign(s, target, value),
             StmtKind::Call(e) => self.expr(e, Demand::Discard),
             StmtKind::Return(e) => {
@@ -933,7 +934,7 @@ impl Walker<'_> {
             .collect();
     }
 
-    fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
+    fn bind(&mut self, s: &Stmt, mutable: bool, by_ref: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
             let scrutinee = self.scrutinee(s.id, value);
             let role = if mutable { Role::Var } else { Role::Pattern };
@@ -945,6 +946,17 @@ impl Walker<'_> {
             return;
         };
         let role = if mutable { Role::Var } else { Role::Let };
+        if by_ref && self.projection_origins(value).is_none() {
+            let text = self.expr_text(value);
+            let kw = if mutable { "var" } else { "let" };
+            self.error(
+                pattern.pos,
+                format!(
+                    "`{kw} ref {}` borrows part of a value (`a.b`, `xs[i]`) or the result of a call that returns `ref`; `{text}` is an owned value, so drop `ref`",
+                    b.name
+                ),
+            );
+        }
         if !mutable {
             self.let_pos.insert(b.uid, s.pos);
         }
@@ -1072,9 +1084,31 @@ impl Walker<'_> {
             }
             return true;
         }
+        if self.declared_ref(value) {
+            // A `ref` result cannot silently become a copy: `var` needs one place to write to.
+            let text = self.expr_text(value);
+            self.error(
+                pattern.pos,
+                format!(
+                    "`var {}` cannot borrow `{text}` mutably: it does not return one plain field path of its only argument; copy it with `{text}.{COPY}()` to own it, or bind it with `let`",
+                    b.name
+                ),
+            );
+        }
         self.expr(value, Demand::Read);
         self.declare(b, role, Perm::Mutable, None, false);
         true
+    }
+
+    /// Whether the called function or method declares a `ref` result.
+    fn declared_ref(&self, call: &Expr) -> bool {
+        let func = match self.cx.m.resolution(call) {
+            Resolution::Method(m) => m.decl.clone(),
+            Resolution::Function(s) => s.decl.clone().map(crate::syntax::FuncRef::of_decl),
+            _ => None,
+        };
+        func.and_then(|f| f.func().map(|f| f.result_ref))
+            .unwrap_or(false)
     }
 
     fn expr_lambda_binding(&mut self, value: &Expr, b: &BindingRef, role: Role, mutable: bool) {
