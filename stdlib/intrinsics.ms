@@ -67,6 +67,10 @@ interface StringOperations:
     # Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length().
     # Negative, inverted, or out-of-range bounds return StringError.OutOfRange.
     fn slice_scalars(start: Int, end: Int) Result[String, StringError]
+    # Returns the first min(count, scalar_length()) Unicode scalars; a negative count is a programming fault.
+    fn take(count: Int) String
+    # Returns the scalars after the first min(count, scalar_length()); a negative count is a programming fault.
+    fn drop(count: Int) String
     # Splits exact separators, truncating parts to a supplied nonnegative cap; zero returns [], negatives fault.
     # Empty text with a nonempty separator yields [""]; an empty separator splits into scalars.
     fn split(separator: String, max_parts: Optional[Int] = none) List[String]

@@ -83,6 +83,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         other => other,
     };
     let name = match (m.types.kind(recv), name) {
+        (TyKind::Str, "drop") => "drop_n",
         (TyKind::List(elem), "join") if matches!(m.types.kind(*elem), TyKind::Int) => "join_int",
         _ => name,
     };
