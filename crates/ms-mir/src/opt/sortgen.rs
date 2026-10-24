@@ -87,6 +87,37 @@ pub fn run(m: &mut Module) -> bool {
                 changed = true;
                 continue;
             }
+            if elem == Ty::INT
+                && let Some(desc) = difference_order(m, g)
+            {
+                let call = &m.funcs[fi].blocks[bi].insts[ii];
+                let Imm::Ext(e) = call.imm else { continue };
+                let mut def = m.externs[e.index()].clone();
+                def.name = "msrt_list_sorted_by_difference".to_string();
+                def.params.push(Param {
+                    ty: Ty::INT,
+                    mode: Mode::Borrow,
+                });
+                let ext = m.add_extern(def);
+                let f = &mut m.funcs[fi];
+                let flag = f.new_value(Ty::INT);
+                let loc = f.blocks[bi].insts[ii].loc;
+                let call = &mut f.blocks[bi].insts[ii];
+                call.imm = Imm::Ext(ext);
+                call.args.push(flag);
+                f.blocks[bi].insts.insert(
+                    ii,
+                    Inst {
+                        op: Op::IConst,
+                        args: vec![],
+                        imm: Imm::Int(desc as i64),
+                        res: Some(flag),
+                        loc,
+                    },
+                );
+                changed = true;
+                continue;
+            }
             let sort = *made.entry(g).or_insert_with(|| build(m, g, elem));
             rewrite(&mut m.funcs[fi], bi, ii, sort, elem);
             changed = true;
@@ -116,16 +147,10 @@ fn word_elem(m: &Module, thunk: FuncId, g: FuncId) -> Option<Ty> {
     (shaped && (elem == Ty::INT || elem == Ty::FLOAT)).then_some(elem)
 }
 
-/// Whether `g(env, a, b)` for `Int`s is exactly "a before b" (`Some(false)`) or "b before a"
-/// (`Some(true)`), where "before" means a negative result.
-///
-/// The body may only compare the two arguments with each other, branch on those comparisons
-/// and return constants, so its result depends on nothing but the ordering of `a` and `b` and
-/// trying the three orderings decides every input. Anything else (arithmetic, calls, a
-/// comparison against a constant) yields `None`.
-fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
+/// The function that decides `g(env, a, b)` and its two element parameters: a closure that
+/// only forwards its two arguments to a named function is that function.
+fn comparator(m: &Module, g: FuncId) -> Option<(&Func, Value, Value)> {
     let closure = &m.funcs[g.index()];
-    // A closure that only forwards its two arguments to a named function is that function.
     let (g, skip) = match (
         closure.blocks.as_slice(),
         closure.blocks[0].params.as_slice(),
@@ -146,6 +171,43 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
     let [a, b] = &g.blocks[0].params[skip..] else {
         return None;
     };
+    Some((g, a.value, b.value))
+}
+
+/// Whether `g(env, a, b)` for `Int`s is exactly `a - b` (`Some(false)`) or `b - a`
+/// (`Some(true)`), checked for overflow: a single block that subtracts one argument from the
+/// other and returns the difference.
+fn difference_order(m: &Module, g: FuncId) -> Option<bool> {
+    let (g, a, b) = comparator(m, g)?;
+    let [only] = g.blocks.as_slice() else {
+        return None;
+    };
+    let mut sub = only
+        .insts
+        .iter()
+        .filter(|i| !matches!(i.op, Op::DepthEnter | Op::DepthLeave));
+    let (Some(i), None, Term::Ret(Some(r))) = (sub.next(), sub.next(), &only.term) else {
+        return None;
+    };
+    if i.op != Op::ISubChk || i.res != Some(*r) {
+        return None;
+    }
+    match i.args.as_slice() {
+        [x, y] if (*x, *y) == (a, b) => Some(false),
+        [x, y] if (*x, *y) == (b, a) => Some(true),
+        _ => None,
+    }
+}
+
+/// Whether `g(env, a, b)` for `Int`s is exactly "a before b" (`Some(false)`) or "b before a"
+/// (`Some(true)`), where "before" means a negative result.
+///
+/// The body may only compare the two arguments with each other, branch on those comparisons
+/// and return constants, so its result depends on nothing but the ordering of `a` and `b` and
+/// trying the three orderings decides every input. Anything else (arithmetic, calls, a
+/// comparison against a constant) yields `None`.
+fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
+    let (g, a, b) = comparator(m, g)?;
     let negative = |x: i64, y: i64| -> Option<bool> {
         // `Err` marks the two arguments, which may only be compared with each other.
         #[derive(Clone, Copy)]
@@ -154,8 +216,8 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
             Num(i64),
         }
         let mut env: HashMap<Value, V> = HashMap::new();
-        env.insert(a.value, V::Arg(x));
-        env.insert(b.value, V::Arg(y));
+        env.insert(a, V::Arg(x));
+        env.insert(b, V::Arg(y));
         let mut block = 0usize;
         for _ in 0..64 {
             let bd = &g.blocks[block];

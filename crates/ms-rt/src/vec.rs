@@ -1076,6 +1076,40 @@ pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
     }
 }
 
+/// `sorted` over `Int`s by a comparator that returns `left - right` (or `right - left` when
+/// `desc != 0`). When no two elements differ by more than an `Int` holds, every difference has
+/// the sign of the integer order, so this is the integer sort. Otherwise the comparator runs as
+/// written, faulting where a subtraction overflows.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    cmp: CmpFn,
+    env: *mut u8,
+    desc: i64,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract: `v` holds `len` words.
+    unsafe {
+        copy_list(v, &*d, out);
+        let o = &mut *out;
+        if o.len < 2 {
+            return;
+        }
+        let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
+        let (lo, hi) = s
+            .iter()
+            .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+        if hi.checked_sub(lo).is_none() {
+            msrt_list_sort_in_place(out, d, cmp, env);
+        } else if desc != 0 {
+            s.sort_unstable_by(|a, b| b.cmp(a));
+        } else {
+            s.sort_unstable();
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_sorted(
     v: *const VecVal,
