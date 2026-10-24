@@ -5,11 +5,10 @@ from "@std/tasks.ms" import TaskGroup
 def boom(xs: List[Int]) -> Int:
     return xs.get(5)
 
-def load() -> Int:
+# The spawn is in main so the started-by frames are the same where the runtime can only recover
+# the first generated frame (Windows): the spawn and the callers inlined into it.
+export def main() -> Int:
     with TaskGroup[Int]() as group:
         let task = group.spawn(lambda ch: boom([1]))
         task.result()
     return 0
-
-export def main() -> Int:
-    return load()
