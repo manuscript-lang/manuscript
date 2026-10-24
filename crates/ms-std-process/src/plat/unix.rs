@@ -116,21 +116,70 @@ impl Waiter {
     }
 }
 
-/// Without pidfds the caller checks the child in slices.
+/// One descriptor that becomes readable when the child exits or one of `run`'s pipes is ready:
+/// a kqueue over the child's exit kqueue and the parent's pipe ends, so the task parks on all of
+/// them at once.
 #[cfg(not(target_os = "linux"))]
-pub enum Waiter {}
+pub struct Waiter {
+    set: Fd,
+    exit: sys::Fd,
+}
 
 #[cfg(not(target_os = "linux"))]
 impl Waiter {
-    pub fn new(_exit: Option<sys::Fd>, _pipes: [sys::Fd; 3]) -> Option<Waiter> {
-        None
+    /// `None` without an exit descriptor (the child had exited before it could be watched);
+    /// the caller checks in slices. Closing a pipe end removes it from the set.
+    pub fn new(exit: Option<sys::Fd>, pipes: [sys::Fd; 3]) -> Option<Waiter> {
+        let exit = exit?;
+        // SAFETY: plain system call.
+        let set = unsafe { libc::kqueue() };
+        if set < 0 {
+            return None;
+        }
+        // SAFETY: plain fcntl call on the new descriptor.
+        unsafe { libc::fcntl(set, libc::F_SETFD, libc::FD_CLOEXEC) };
+        let waiter = Waiter { set: Fd(set), exit };
+        let filters = [libc::EVFILT_WRITE, libc::EVFILT_READ, libc::EVFILT_READ];
+        for (fd, filter) in [(exit, libc::EVFILT_READ)]
+            .into_iter()
+            .chain(pipes.into_iter().zip(filters))
+        {
+            if fd >= 0 && waiter.change(fd, filter, libc::EV_ADD) != 0 {
+                return None;
+            }
+        }
+        Some(waiter)
     }
 
+    fn change(&self, fd: sys::Fd, filter: i16, flags: u16) -> i32 {
+        // SAFETY: a zeroed `kevent` is valid; `change` outlives the call.
+        unsafe {
+            let mut change: libc::kevent = core::mem::zeroed();
+            change.ident = fd as libc::uintptr_t;
+            change.filter = filter;
+            change.flags = flags;
+            libc::kevent(
+                self.set.0,
+                &change,
+                1,
+                core::ptr::null_mut(),
+                0,
+                core::ptr::null(),
+            )
+        }
+    }
+
+    /// Stops watching the child once it is reaped; its descriptor stays readable.
     pub fn exited(&mut self) {
-        match *self {}
+        if self.exit >= 0 {
+            self.change(self.exit, libc::EVFILT_READ, libc::EV_DELETE);
+            self.exit = -1;
+        }
     }
 
-    pub fn park(&self, _timeout_ns: i64) {
-        match *self {}
+    /// Parks the task until something in the set is ready or `timeout_ns` passes (negative: no
+    /// limit).
+    pub fn park(&self, timeout_ns: i64) {
+        ms_rt::glue::task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns);
     }
 }
