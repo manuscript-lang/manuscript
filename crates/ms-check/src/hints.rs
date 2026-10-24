@@ -420,7 +420,7 @@ impl Checker {
         }
         if name == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write '()' for an empty block or match arm"
             );
         }
         match name.as_str() {

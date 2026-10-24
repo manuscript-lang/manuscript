@@ -1403,21 +1403,21 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match n.as_str() {
-                        "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
+                        "pass" => return self.fail(t, "'pass' is not a keyword; write '()' for an empty block or match arm"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes"));
                         }
                         "throw" | "raise" | "catch" => {
-                            return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'"));
+                            return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a def returning Result and handle it with 'try' or 'if let'"));
                         }
-                        "elif" | "elseif" => return self.fail(t, "'elif' is not a keyword; write 'else if <condition>:' for a further branch"),
-                        "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"),
-                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")),
-                        "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
+                        "elseif" => return self.fail(t, "'elseif' is not a keyword; write 'elif <condition>:' for a further branch"),
+                        "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'elif' for plain values"),
+                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a def returning Result and handle it with 'try' or 'if let'")),
+                        "loop" => return self.fail(t, "'loop' is not a keyword; write 'while True:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
-                        "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
+                        "class" => return self.fail(t, "'class' is not a keyword inside a def; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
-                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly")),
                         _ => {}

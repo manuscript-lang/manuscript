@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level",
+        "message": "'class' is not a keyword inside a def; declare a record with 'type Name:' at module level",
         "position": {
           "file": "foreign-class.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 134
         },
         "end": {
           "file": "foreign-class.ms",
           "line": 5,
           "column": 10,
-          "offset": 135
+          "offset": 139
         }
       }
     ],

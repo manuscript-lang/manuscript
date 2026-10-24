@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'throw' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'",
+        "message": "'throw' is not a keyword; failures are values, so return error(...) from a def returning Result and handle it with 'try' or 'if let'",
         "position": {
           "file": "foreign-throw.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 134
         },
         "end": {
           "file": "foreign-throw.ms",
           "line": 5,
           "column": 10,
-          "offset": 135
+          "offset": 139
         }
       }
     ],

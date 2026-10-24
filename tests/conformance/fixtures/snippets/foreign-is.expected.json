@@ -12,13 +12,13 @@
           "file": "foreign-is.ms",
           "line": 5,
           "column": 15,
-          "offset": 146
+          "offset": 150
         },
         "end": {
           "file": "foreign-is.ms",
           "line": 5,
           "column": 17,
-          "offset": 148
+          "offset": 152
         }
       }
     ],

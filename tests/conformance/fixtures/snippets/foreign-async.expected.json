@@ -12,13 +12,13 @@
           "file": "foreign-async.ms",
           "line": 5,
           "column": 5,
-          "offset": 130
+          "offset": 134
         },
         "end": {
           "file": "foreign-async.ms",
           "line": 5,
           "column": 10,
-          "offset": 135
+          "offset": 139
         }
       }
     ],
