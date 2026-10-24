@@ -984,11 +984,7 @@ impl Checker {
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
     fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
-        if self
-            .module
-            .as_ref()
-            .is_some_and(stdlib::is_source_module)
-        {
+        if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
         }
         const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
