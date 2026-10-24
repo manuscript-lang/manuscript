@@ -1514,7 +1514,7 @@ impl Error for E:
 fn error_value() Error: E("bad input")
 fn identity(this: Int) Int: this
 fn f() Int: this
-resolution	1	13	12	unknown binding this; declare it with 'let this = ...' before use, define 'fn this(...)', or import it from a moduleexport type Sq:
+resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
     s: Int
 interface Shape:
     fn area() Int

@@ -372,6 +372,11 @@ impl Checker {
                 "{message}; the receiver in an impl method is 'self'; write self instead of this"
             );
         }
+        if name == "this" {
+            return format!(
+                "{message}; there is no 'this'; inside an impl method the receiver is 'self'"
+            );
+        }
         if name == "pass" {
             return format!(
                 "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"

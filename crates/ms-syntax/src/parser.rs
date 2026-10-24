@@ -413,7 +413,14 @@ impl<'a> Parser<'a> {
                 "there is no arrow function; anonymous functions are written fn(x: Int) Int: x + 1",
             );
         }
+        let prev_new = self.at > 0 && self.text(self.previous()) == "new";
         let hint = match t.kind {
+            Tok::Name if self.text(t) == "is" => {
+                "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is"
+            }
+            Tok::Name if prev_new => {
+                "; there is no 'new': construct a value by calling the type, Name(field: value)"
+            }
             Tok::If => {
                 "; there is no inline conditional expression: declare 'var name = ...' and assign it in each branch of an if/else, or use 'match'"
             }
@@ -1313,6 +1320,10 @@ impl<'a> Parser<'a> {
                         "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")),
                         "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
+                        "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
+                        "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
+                        "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly")),
                         _ => {}
                     }
