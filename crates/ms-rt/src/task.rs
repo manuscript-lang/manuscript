@@ -11,6 +11,7 @@
 //! thread posts to with `msrt_token_post`, and any other thread with `msrt_token_post_remote`.
 use crate::alloc;
 use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
+use crate::isolate;
 use crate::sys;
 use core::cmp::Reverse;
 use core::ptr::null_mut;
@@ -118,10 +119,8 @@ struct Sched {
     remote_tokens: usize,
 }
 
-/// Posts from other threads, delivered by the scheduler on the runtime thread.
-static INBOX: std::sync::Mutex<Vec<(u64, u64)>> = std::sync::Mutex::new(Vec::new());
-/// Whether `INBOX` may hold posts; spares the scheduler the lock when nothing was posted.
-static INBOX_FULL: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+/// Token generations are 20 bits: the id's high 12 bits name the owning isolate (see `isolate`).
+const GEN_MASK: u32 = 0xf_ffff;
 
 crate::isolate_static! {
     static SCHED: Sched = Sched {
@@ -955,7 +954,10 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
 fn token_mut(s: &mut Sched, id: u64) -> Option<&mut Token> {
     let idx = (id & 0xffff_ffff) as usize;
     let k = s.tokens.get_mut(idx.checked_sub(1)?)?;
-    (k.live && k.gen_ as u64 == id >> 32).then_some(k)
+    (k.live
+        && k.gen_ as u64 == (id >> 32) & GEN_MASK as u64
+        && (id >> isolate::ID_SHIFT) as usize == isolate::id())
+    .then_some(k)
 }
 
 /// Records a post to `id` and wakes its waiter. A post to a freed token, or to one that holds
@@ -988,11 +990,7 @@ unsafe fn post(id: u64, value: u64, remote: bool) {
 
 /// Delivers the posts other threads made since the last call.
 unsafe fn deliver_remote_posts() {
-    if !INBOX_FULL.swap(false, Ordering::Acquire) {
-        return;
-    }
-    let posts = std::mem::take(&mut *INBOX.lock().unwrap_or_else(|e| e.into_inner()));
-    for (id, value) in posts {
+    for (id, value) in isolate::take_posts() {
         // SAFETY: runs on the runtime thread.
         unsafe { post(id, value, true) };
     }
@@ -1025,12 +1023,16 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
             }
         };
         let k = &mut s.tokens[idx];
-        k.gen_ = k.gen_.wrapping_add(1).max(1);
+        k.gen_ = k.gen_.wrapping_add(1) & GEN_MASK;
+        if k.gen_ == 0 {
+            k.gen_ = 1;
+        }
         k.live = true;
         k.remote = remote;
         k.waiter = 0;
         k.posted = None;
-        let id = (k.gen_ as u64) << 32 | (idx as u64 + 1);
+        let id =
+            (isolate::id() as u64) << isolate::ID_SHIFT | (k.gen_ as u64) << 32 | (idx as u64 + 1);
         if remote {
             s.remote_tokens += 1;
         }
@@ -1113,12 +1115,7 @@ pub unsafe extern "C-unwind" fn msrt_token_post(id: u64, value: u64) {
 /// interrupts a scheduler that is blocked. Touches no runtime state but a locked queue.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_token_post_remote(id: u64, value: u64) {
-    INBOX
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .push((id, value));
-    INBOX_FULL.store(true, Ordering::Release);
-    kick();
+    isolate::post_remote(id, value);
 }
 
 /// Ends `id`: later posts to it are dropped and its slot is reused. Faults while a task waits
@@ -1182,8 +1179,7 @@ pub fn reset_for_tests() {
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;
-        INBOX_FULL.store(false, Ordering::Relaxed);
-        INBOX.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        isolate::clear_posts();
     }
 }
 

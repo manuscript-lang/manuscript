@@ -68,6 +68,8 @@ fn grace_expired() -> ! {
 /// # Safety
 /// Single threaded globals set by `msrt_start` before the thread exists.
 unsafe fn run_main() {
+    crate::alloc::claim_arena(true);
+    crate::isolate::set_main();
     // SAFETY: as documented.
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
@@ -167,8 +169,6 @@ mod os {
     }
 
     extern "C" fn thread_main(_: *mut c_void) -> *mut c_void {
-        #[cfg(target_os = "linux")]
-        crate::alloc::claim_arena();
         install_overflow_handler();
         // SAFETY: see `run_main`.
         unsafe { run_main() };

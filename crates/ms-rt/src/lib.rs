@@ -34,6 +34,7 @@ pub mod ffi;
 pub mod global;
 pub mod glue;
 pub mod io;
+pub mod isolate;
 pub mod map;
 #[cfg(any(test, all(target_os = "linux", target_env = "musl")))]
 pub mod mem;
