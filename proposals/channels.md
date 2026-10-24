@@ -67,11 +67,13 @@ record Frame:
 
 def render(ch: Channel[String, Frame]) -> Int:   # child end: receives Frame, sends String
     var count = 0
-    while true:
-        guard let frame = ch.receive() else:
-            break
-        count += 1
-        ch.send("done {frame.id}")
+    var open = True
+    while open:
+        if let frame = ch.receive():
+            count += 1
+            ch.send("done")
+        else:
+            open = False
     return count
 
 def run(frames: List[Frame]) -> Result[Int, TaskError]:
@@ -143,25 +145,29 @@ from "@std/channels.ms" import Channel
 
 def squares() -> List[Int]:
     var mine = Channel[Int, Int](4)
-    guard var theirs = mine.peer() else:
-        return []
+    if let theirs = mine.peer():
+        return drive(mine, theirs)
+    return []
+
+def drive(mine: Channel[Int, Int], theirs: Channel[Int, Int]) -> List[Int]:
     with TaskGroup[Unit]() as group:
         group.spawn(lambda: serve(theirs))
         var out: List[Int] = []
-        for n in range(5):
+        for n in range(0, 5):
             mine.send(n)
-            guard let sq = mine.receive() else:
-                break
-            out.append(sq)
+            if let square = mine.receive():
+                out.append(square)
         mine.close()
         group.wait()
         return out
 
 def serve(ch: Channel[Int, Int]) -> Unit:
-    while true:
-        guard let n = ch.receive() else:
-            return
-        ch.send(n * n)
+    var open = True
+    while open:
+        if let n = ch.receive():
+            ch.send(n * n)
+        else:
+            open = False
 ```
 
 Rejected: a channel payload that cannot cross a worker (illustrative text):
