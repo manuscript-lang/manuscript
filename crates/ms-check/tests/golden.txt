@@ -1691,12 +1691,12 @@ resolution	1	33	32	unknown type Layer32; declare it with 'type Layer32:' / 'inte
     let x = 1
     let y: Int = x.foo
     return y
-resolution	3	20	49	unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_string_radixdef g(v: Int) -> Int:
+resolution	3	20	49	unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef g(v: Int) -> Int:
     return v
 def f() -> Int:
     let x = 1
     return g(v: x.foo())
-resolution	5	19	83	unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
+resolution	5	19	83	unknown or ambiguous member foo on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Int = True) -> Int: ...
 type	1	20	19	expected Int, found Bool
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(first: Int = second, second: Int = 1) -> Int: ...
@@ -4627,10 +4627,10 @@ def run(n: Int) -> Int:
 def run(n: Int) -> Int:
     let a = n |.size()|try.m()| .k
     return a
-resolution	2	17	40	unknown or ambiguous member size on Int; available: compare, to_decimal, to_float, to_string_radixdef run(n: Int) -> Int:
+resolution	2	17	40	unknown or ambiguous member size on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef run(n: Int) -> Int:
     let a = n | .size() | try .m() | .k
     return a
-resolution	2	18	41	unknown or ambiguous member size on Int; available: compare, to_decimal, to_float, to_string_radixdef f() -> Int:
+resolution	2	18	41	unknown or ambiguous member size on Int; available: compare, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f() -> Int:
     for mode in [1]:
         if not (
                 mode == 2

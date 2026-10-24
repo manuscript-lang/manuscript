@@ -876,6 +876,47 @@ impl<'a> FnLower<'a> {
         })
     }
 
+    /// A sized integer or `Float32` as `Int` or `Float`; other values unchanged.
+    fn widen_numeric(&mut self, v: Val) -> Val {
+        let t = self.ty_of(v.v);
+        let to = if self.b.m.types.is_int(t) {
+            MTy::INT
+        } else if self.b.m.types.is_float(t) {
+            MTy::FLOAT
+        } else {
+            return v;
+        };
+        if t == to {
+            return v;
+        }
+        Val {
+            v: self.b.conv(v.v, to),
+            own: false,
+        }
+    }
+
+    /// `to_int8()` ... `to_float64()`: widening is exact, narrowing an integer yields an
+    /// optional, and a float conversion rounds to the target.
+    fn numeric_conversion(&mut self, e: &Expr, recv: Val) -> Result<Val, Error> {
+        let x = self.borrow(recv);
+        let from = self.ty_of(x);
+        let result = self.emty(e)?;
+        let types = &self.b.m.types;
+        let v = if let Some(inner) = self.b.m.opt_inner(result) {
+            self.b.inarrow_opt(x, inner)
+        } else if types.is_float(result) {
+            let float = if types.is_int(from) { self.b.i2f(x) } else { x };
+            if self.ty_of(float) == result {
+                float
+            } else {
+                self.b.conv(float, result)
+            }
+        } else {
+            self.b.conv(x, result)
+        };
+        Ok(Val { v, own: false })
+    }
+
     pub fn native_method(
         &mut self,
         e: &Expr,
@@ -1032,6 +1073,17 @@ impl<'a> FnLower<'a> {
         }
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
+        }
+        if matches!(
+            native,
+            "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
+        ) {
+            return self.numeric_conversion(e, recv);
+        }
+        // Other operations on a sized number run on its 64-bit kind.
+        let recv = self.widen_numeric(recv);
+        for a in &mut args {
+            a.val = self.widen_numeric(a.val);
         }
         if let Some(sym) = m
             .name()

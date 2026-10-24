@@ -8,7 +8,11 @@
   },
   "intrinsic_receivers": {
     "Float": "FloatOperations",
+    "Float32": "Float32Operations",
     "Int": "IntOperations",
+    "Int16": "Int16Operations",
+    "Int32": "Int32Operations",
+    "Int8": "Int8Operations",
     "String": "StringOperations"
   },
   "native_types": {

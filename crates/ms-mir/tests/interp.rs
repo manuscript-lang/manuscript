@@ -397,3 +397,28 @@ b0:
 "#;
     assert_eq!(run(src), -3 + -1 + 2);
 }
+
+#[test]
+fn sized_numeric_conversions() {
+    let src = r#"module "sized"
+entry @main
+fn @main() -> int {
+b0:
+  %big: int = iconst 70000
+  %small: int = iconst 100
+  %none16: opt<int16> = inarrow.opt %big
+  %some16: opt<int16> = inarrow.opt %small
+  %a: bool = opt.is_some %none16
+  %b: bool = opt.is_some %some16
+  %w: int = conv %small
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %ra: int = select %a, %one, %zero
+  %rb: int = select %b, %one, %zero
+  %t: int = iadd %w, %ra
+  %r: int = iadd %t, %rb
+  ret %r
+}
+"#;
+    assert_eq!(run(src), 101);
+}

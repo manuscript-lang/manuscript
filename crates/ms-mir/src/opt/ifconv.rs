@@ -177,6 +177,8 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
         | Op::FAbs
         | Op::I2F
         | Op::F32Round
+        | Op::Conv
+        | Op::INarrowOpt
         | Op::B2I
         | Op::Select => true,
         // Positive literals exclude both zero and MIN / -1.

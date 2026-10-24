@@ -512,6 +512,25 @@ impl Verifier<'_> {
                     "narrow.chk takes a sized int and yields the same type",
                 )
             }
+            Op::Conv => {
+                arity(1)?;
+                let to = res;
+                want(
+                    to.is_some_and(|r| {
+                        (m.types.is_int(t(0)) && m.types.is_int(r))
+                            || (m.types.is_float(t(0)) && m.types.is_float(r))
+                    }),
+                    "conv takes an int or float and yields another type of the same kind",
+                )
+            }
+            Op::INarrowOpt => {
+                arity(1)?;
+                let inner = res.and_then(|r| m.opt_inner(r));
+                want(
+                    m.types.is_int(t(0)) && inner.is_some_and(|i| m.types.is_int(i)),
+                    "inarrow.opt takes an int and yields an optional int",
+                )
+            }
             Op::F32Round => {
                 arity(1)?;
                 want(
@@ -588,7 +607,7 @@ impl Verifier<'_> {
                 arity(1)?;
                 let opt = res.and_then(|r| m.opt_inner(r));
                 want(
-                    t(0) == Ty::FLOAT && opt == Some(Ty::INT),
+                    m.types.is_float(t(0)) && opt == Some(Ty::INT),
                     "f2i.opt converts float to opt<int>",
                 )
             }

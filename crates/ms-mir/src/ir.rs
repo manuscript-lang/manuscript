@@ -265,6 +265,8 @@ pub enum Op {
     IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
     NarrowChk, F32Round,
+    // Conversions: `Conv` retypes a number to another type of its kind (rounding to binary32 for `Float32`); `INarrowOpt` yields some(value) when an int fits the smaller type.
+    Conv, INarrowOpt,
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
     And, Or, Xor, Shl, Sshr, Not,
     // Comparisons.
@@ -386,7 +388,7 @@ impl Op {
     pub const ALL: &'static [Op] = &[
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
-        Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round,
+        Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
@@ -422,6 +424,8 @@ impl Op {
             Op::IntOverflowIf => ("int_overflow.if", K::None, false, effects!(faults)),
             Op::NarrowChk => ("narrow.chk", K::None, true, effects!(faults)),
             Op::F32Round => ("f32.round", K::None, true, effects!()),
+            Op::Conv => ("conv", K::None, true, effects!()),
+            Op::INarrowOpt => ("inarrow.opt", K::None, true, effects!()),
             Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
             Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
             Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
