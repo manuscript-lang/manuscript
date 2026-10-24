@@ -2,7 +2,7 @@
 members = ["crates/*"]
 exclude = ["experiments"]
 # A bare `cargo build/test/check` covers the compiler and tools. The native runtime (`ms-native` and
-# the `ms-std-*` crates) is built and embedded by `ms-cli`'s build script; test it with `-p` or
+# the `ms-std-*` crates) is built by `cargo xtask runtime` and embedded by `ms-cli`'s build script; test it with `-p` or
 # `--workspace`.
 default-members = [
     "crates/ms-check",

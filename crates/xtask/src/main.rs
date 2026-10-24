@@ -1,0 +1,135 @@
+//! Repository build steps, run as `cargo xtask <step>`.
+//!
+//! `runtime` builds `ms-native` (the runtime plus every `ms-std-*` crate) once and leaves the stripped
+//! archive at `target/ms-native/libms_native.a`, where `ms-cli`'s build script embeds it.
+
+use std::path::{Path, PathBuf};
+use std::process::{Command, ExitCode};
+
+fn main() -> ExitCode {
+    match std::env::args().nth(1).as_deref() {
+        Some("runtime") => match runtime() {
+            Ok(archive) => {
+                println!("{}", archive.display());
+                ExitCode::SUCCESS
+            }
+            Err(message) => {
+                eprintln!("xtask runtime: {message}");
+                ExitCode::FAILURE
+            }
+        },
+        _ => {
+            eprintln!("usage: cargo xtask runtime");
+            ExitCode::from(2)
+        }
+    }
+}
+
+/// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
+fn runtime() -> Result<PathBuf, String> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let out = root.join("target/ms-native");
+    let target = out.join("build");
+    // Linux programs are static musl executables and Windows programs mingw-w64 (gnullvm) ones, all
+    // linked by the bundled lld, so the runtime is built for that target. `ring`'s C sources need a C
+    // compiler (llvm-mingw's clang on Windows): building the runtime needs one, using `ms` does not.
+    let arch = std::env::consts::ARCH;
+    let triple = match std::env::consts::OS {
+        "linux" => Some(format!("{arch}-unknown-linux-musl")),
+        "windows" => Some(format!("{arch}-pc-windows-gnullvm")),
+        _ => None,
+    };
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let mut command = Command::new(cargo);
+    command
+        .args([
+            "build",
+            "--release",
+            "--locked",
+            "-p",
+            "ms-native",
+            "--manifest-path",
+        ])
+        .arg(root.join("Cargo.toml"))
+        .env("CARGO_TARGET_DIR", &target)
+        // The runtime ships without debug info; symbol names are enough for the profiler.
+        .env("CARGO_PROFILE_RELEASE_DEBUG", "0")
+        .env_remove("RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("CARGO_ENCODED_RUSTFLAGS")
+        .env_remove("RUSTFLAGS");
+    if let Some(triple) = &triple {
+        let cc = format!("CC_{}", triple.replace('-', "_"));
+        if std::env::var_os(&cc).is_none() {
+            command.env(cc, c_compiler(&root, triple, arch));
+        }
+        command.args(["--target", triple]);
+    }
+    let status = command.status().map_err(|e| format!("run cargo: {e}"))?;
+    if !status.success() {
+        return Err("building ms-native failed".to_string());
+    }
+    let release = match &triple {
+        Some(triple) => target.join(triple).join("release"),
+        None => target.join("release"),
+    };
+    let built = release.join("libms_native.a");
+    let archive = out.join("libms_native.a");
+    std::fs::copy(&built, &archive).map_err(|e| format!("copy {}: {e}", built.display()))?;
+    strip_debug(&archive);
+    Ok(archive)
+}
+
+/// The C compiler for the runtime's C sources: `cc` where the target is Linux, else llvm-mingw's clang
+/// (`MS_MINGW`, else the tree `scripts/fetch-mingw.sh` leaves in `target/llvm-bundle/mingw`).
+fn c_compiler(root: &Path, triple: &str, arch: &str) -> PathBuf {
+    if !triple.contains("windows") {
+        return PathBuf::from("cc");
+    }
+    let mingw = std::env::var_os("MS_MINGW")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| root.join("target/llvm-bundle/mingw"));
+    mingw.join("bin").join(format!("{arch}-w64-mingw32-clang"))
+}
+
+/// Drops the debug sections the toolchain's precompiled std, core and alloc objects carry (about 4 MB
+/// of every linked program). Without a strip tool the archive is kept as built. Windows keeps the
+/// archive whole: `llvm-strip` is the only strip tool there, and it rewrites some members (the ring
+/// assembly objects) so that `ld` rejects the archive when they are linked.
+fn strip_debug(archive: &Path) {
+    if cfg!(windows) {
+        return;
+    }
+    let flag = if cfg!(target_os = "macos") {
+        "-S"
+    } else {
+        "--strip-debug"
+    };
+    // GNU `strip` first on Linux: `llvm-strip --strip-debug` rewrites the GCC-built objects of `ring`
+    // (`.group` sections) into files GNU ld refuses ("file format not recognized"), so every program
+    // that linked TLS or crypto failed wherever LLVM binutils were installed.
+    let tools = if cfg!(target_os = "linux") {
+        ["strip", "llvm-strip"]
+    } else {
+        ["llvm-strip", "strip"]
+    };
+    let original = archive.with_extension("unstripped");
+    if std::fs::copy(archive, &original).is_err() {
+        return;
+    }
+    for tool in tools {
+        let stripped = Command::new(tool)
+            .arg(flag)
+            .arg(archive)
+            .status()
+            .is_ok_and(|status| status.success());
+        if stripped {
+            let _ = std::fs::remove_file(&original);
+            return;
+        }
+        // A failed tool may have left a partial file: start the next one from the original.
+        if std::fs::copy(&original, archive).is_err() {
+            return;
+        }
+    }
+    let _ = std::fs::remove_file(&original);
+}

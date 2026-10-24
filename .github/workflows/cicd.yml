@@ -183,6 +183,8 @@ jobs:
         with:
           path: ${{ runner.temp }}/llvm-debug-23.1.1
           key: ${{ steps.llvm-debug.outputs.cache-primary-key }}
+      - name: Build the native runtime
+        run: cargo xtask runtime
       - name: Format and clippy
         if: matrix.full
         run: |
