@@ -3,19 +3,18 @@
 ## Summary
 
 - Problem: a program uses one core, and cannot run Manuscript code in another long-lived process that it talks to with typed messages.
-- Change: `ProcessGroup` in `@std/processes.ms` starts a child process (a re-exec of the same binary) at a named top-level `def`. The child is a long-lived peer: the parent and child exchange typed messages in both directions over `Channel[T]` endpoints. Messages are JSON over a dedicated IPC channel (not stdio).
-- A `Process[In, Out]` is the typed sibling of `Subprocess`: same lifecycle (`wait`, `terminate`, `kill`, `close`), same `Stdio` choice per stream, plus one channel pair. There is no result type and no `T` on the group.
+- Change: `ProcessGroup` in `@std/processes.ms` starts a child process (a re-exec of the same binary) at a named top-level `def`. The child is a long-lived peer: the parent and child exchange typed messages in both directions over one bidirectional channel. Messages are JSON over a dedicated IPC channel (not stdio).
+- A `Process[In, Out]` is the typed sibling of `Subprocess`: same lifecycle (`wait`, `terminate`, `kill`, `close`), same `Stdio` choice per stream, plus `send`, `receive` and `close_input`. The child's entry takes the other end of the same channel. There is no result type and no `T` on the group.
 - `fork` is JS `child_process.fork`, not POSIX `fork(2)`: spawn the same binary, select an entry, connect a channel. No parent state is copied.
 - Cost: an entry table, a start-path hook, an IPC-backed channel endpoint in the runtime, and a stdlib module. No new compiler codecs, no change to runtime globals (unlike `proposals/worker-threads.md`).
-- Decision requested: approve the stage 1 measurement and the open questions below.
+- Approved (Chinmay, 2026-10-24) with the recommended answers to the open questions; the endpoint type follows the bidirectional channel proposal.
 
 ## Status
 
-- Proposal, no code. Checked against `origin/main` 8de0b942d (2026-10-24).
-- Direction (Chinmay, 2026-10-24): `worker_threads`-style model extended to processes, with fork; separate proposal from threads; all platforms in the first release; no "sendable" concept; JSON if raw memory cannot work; dedicated group type; IPC must not use stdio or a TCP port (JS style); child streams forwarded to the parent's and configurable independently; the design must be more coherent than Node; processes are long-lived and talk over channels, so a `Child[T]` result type is wrong.
-- Siblings: `proposals/taskgroup.md` (scope, `Channel[T]`), `proposals/worker-threads.md`. The worker proposal still has a result-returning `WorkerGroup[T]`; the same objection (workers are long-lived too) probably applies there. Raised with the coordinator, not changed here.
-- `Channel[T](capacity)` (worker proposal, coordinator) and `channel[T](capacity)` (`proposals/taskgroup.md:41`) differ in spelling; this proposal follows whichever the TaskGroup revision settles.
-- Reviews: three independent subagent reviews of earlier drafts (see Review outcome); this version, after the redesign around channels, needs a fourth before approval.
+- Approved, no code. Checked against `origin/main` 6361798f9 (2026-10-24).
+- Direction (Chinmay, 2026-10-24): `worker_threads`-style model extended to processes, with fork; separate proposal from threads; all platforms in the first release; no "sendable" concept; JSON if raw memory cannot work; dedicated group type; IPC must not use stdio or a TCP port (JS style); child streams forwarded to the parent's and configurable independently; the design must be more coherent than Node; processes are long-lived and talk over channels, so a `Child[T]` result type is wrong; `Process` has `send` and `receive` directly rather than `to_child`/`from_child` fields; channels are bidirectional, so the entry takes one channel end rather than a `Receiver` and a `Sender` (bidirectional channels are a separate proposal).
+- Siblings: `proposals/taskgroup.md` (scope, channels), `proposals/worker-threads.md`, and the bidirectional channel proposal (separate thread). This proposal writes the child's end as `Channel[Send, Receive]` (sends `Send`, receives `Receive`); it adopts whatever spelling that proposal settles. The worker proposal still has a result-returning `WorkerGroup[T]`; the same objection (workers are long-lived too) probably applies there. Raised with the coordinator, not changed here.
+- Reviews: four independent subagent reviews (see Review outcome).
 
 ## Problem
 
@@ -32,7 +31,7 @@
 ## Goals and non-goals
 
 - Goals:
-  - one model for starting, talking to and stopping a child: the same `with`, `Stdio` and `Channel[T]` as elsewhere;
+  - one model for starting, talking to and stopping a child: the same `with`, `Stdio` and channels as elsewhere;
   - child stopped when the scope exits, so no child outlives its `with`;
   - child death observable as data (exit status), not a parent fault;
   - Linux, macOS and Windows.
@@ -40,7 +39,7 @@
   - POSIX `fork()` or any copy of parent state;
   - shared memory;
   - sending handles, closures or `Shared` values in messages;
-  - more than one channel pair per process in v1;
+  - more than one channel per process in v1;
   - changing single-process behavior.
 
 ## Design
@@ -49,15 +48,15 @@
 
 ```manuscript
 from "@std/processes.ms" import ProcessGroup
-from "@std/tasks.ms" import Sender, Receiver
+from "@std/tasks.ms" import Channel
 
 type HashConfig:
     algorithm: String
 
-def hasher(input: Receiver[Bytes], output: Sender[String], argument: HashConfig):
+def hasher(parent: Channel[String, Bytes], argument: HashConfig):
     while True:
-        if let chunk = input.receive():
-            output.send(digest(argument.algorithm, chunk))
+        if let chunk = parent.receive():
+            parent.send(digest(argument.algorithm, chunk))
         else:
             break
 
@@ -66,10 +65,10 @@ def hash_all(chunks: List[Bytes]) -> List[String]:
     with ProcessGroup() as group:
         let worker = group.spawn(hasher, HashConfig(algorithm="sha256"))
         for chunk in chunks:
-            worker.to_child.send(chunk.clone())
-            if let digest = worker.from_child.receive():
+            worker.send(chunk.clone())
+            if let digest = worker.receive():
                 digests.append(digest)
-        worker.to_child.close()
+        worker.close_input()
         worker.wait()
     return digests
 ```
@@ -78,39 +77,39 @@ Illustrative: `digest` is a placeholder; `if let` is the documented unwrap (`doc
 
 - `ProcessGroup`: `Closeable`, no type parameter. `close()` stops every still-running child (cancel, grace period, kill) and joins it.
 - `spawn(entry, argument, stdin: Stdio = Stdio.Inherit, stdout: Stdio = Stdio.Inherit, stderr: Stdio = Stdio.Inherit) -> Process[In, Out]`.
-  - `entry` is a named top-level `export def f(input: Receiver[In], output: Sender[Out], argument: A)` (the shape `proposals/worker-threads.md:188` expects), from any module; one binary, so a function item identifies it, with no path string.
+  - `entry` is a named top-level `export def f(parent: Channel[Out, In], argument: A)`, from any module; `proposals/worker-threads.md:188` uses a `Receiver` and `Sender` pair and should move to one channel end too; one binary, so a function item identifies it, with no path string.
   - The entry returns when its work is done; returning is a normal exit (status 0).
 - `Process[In, Out]`:
-  - `to_child: Sender[In]` and `from_child: Receiver[Out]`: ordinary channel endpoints, with the transport being the IPC connection.
+  - `send(value: In)`, `receive() -> Optional[Out]`, `close_input()`: the parent's end of the channel, with the transport being the IPC connection. `close_input()` closes the parent-to-child direction; `close()` keeps its `Subprocess` meaning (stop the process).
   - `wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]`: the exit status, as `Subprocess.wait` (`stdlib/process.ms:69`). A nonzero status is data.
   - `terminate()`, `kill()`, `close()`: as `Subprocess`.
 - `Stdio`: `Inherit` (default: the child gets the parent's descriptor, so logs go wherever the parent's go), `Null`. `Pipe` (returns the stream on `Process`, as `Subprocess` does) is deferred.
-- Rejected at the call site (illustrative text): `spawn(lambda: serve(x), 1)` -> "process entry must be a named top-level def taking (Receiver, Sender, argument); lambdas and captures cannot run in another process".
-- `A`, `In`, `Out` need a JSON form; whether that is checked at the call is an open question.
+- Rejected at the call site (illustrative text): `spawn(lambda: serve(x), 1)` -> "process entry must be a named top-level def taking (Channel, argument); lambdas and captures cannot run in another process".
+- `A`, `In`, `Out` need a JSON form; types without one are rejected at the call (decision 4).
 
 ### Semantics
 
 - Start: the parent creates the IPC channel, then runs `info().executable` through `Commands.spawn`'s start path (`crates/ms-std-process/src/spawn.rs:61`) with env `MS_ENTRY=<index>` and `MS_IPC=<fd or pipe name>`; stdin, stdout and stderr follow the `Stdio` arguments.
 - Start hook: `msrt_start` (`crates/ms-rt/src/start.rs:263`) checks `MS_ENTRY` before `main`. If set, it clears both variables from the environment seen by user code, adopts the IPC endpoint, reads the argument frame, and runs the entry as the main task. User `print` and stdio are untouched.
-- Entry table: each `spawn` instantiation registers `(index, thunk)`. The thunk is generic Manuscript in `@std/processes.ms`: `parse[A]` the argument, bind the IPC-backed `Receiver[In]` and `Sender[Out]`, call the entry. Lowering instantiates generics per type argument list (`crates/ms-lower/src/lib.rs:4-5`), so the existing `stringify`/`parse` intrinsics (`ms-lower/src/native.rs:208`, `json.rs`) need no new codec code. The table is an index, not a hash: parent and child are one binary.
+- Entry table: each `spawn` instantiation registers `(index, thunk)`. The thunk is generic Manuscript in `@std/processes.ms`: `parse[A]` the argument, bind the IPC-backed `Channel[Out, In]`, call the entry. Lowering instantiates generics per type argument list (`crates/ms-lower/src/lib.rs:4-5`), so the existing `stringify`/`parse` intrinsics (`ms-lower/src/native.rs:208`, `json.rs`) need no new codec code. The table is an index, not a hash: parent and child are one binary.
 - IPC channel (JS style, as Node's `NODE_CHANNEL_FD`; no TCP port):
   - Unix (Linux and macOS): `socketpair(AF_UNIX, SOCK_STREAM)`; the parent keeps one end `CLOEXEC`, the other is `dup2`'d to a fixed descriptor in `pre_exec` (async-signal-safe, so sound in a multithreaded parent) and its number is `MS_IPC`. Both ends are nonblocking and wait in the existing poller (epoll, kqueue).
   - Windows: the parent creates a named pipe with a random name (`\\.\pipe\ms-ipc-<random>`, first-instance flag, DACL limited to the current user, one accepted connection) and puts the name in `MS_IPC`; the child opens it by name, so no handle inheritance or handle list is needed. The Windows poller waits on sockets only and counts other handles as ready at once (`poller.rs:210-215`), so pipe waits use the same slice polling `Subprocess` already uses: `PeekNamedPipe` in 2 ms slices (`crates/ms-std-process/src/plat/windows.rs:20`, `wait_io` at `:33`).
   - One framing layer sits over both transports.
   - Descriptor rules: the parent closes its copy of the child's end right after spawn (otherwise it holds both ends and never sees EOF when the child dies); the child sets `CLOEXEC` on the inherited descriptor when it adopts it, so its own children do not keep the socket open; when the entry returns the runtime flushes pending outbound frames and the `close` frame before exiting.
-- Frames: a 4-byte little-endian length, a 1-byte kind, then UTF-8 JSON. Kinds: `argument`, `message`, `close` (end of one direction's channel). A channel id is added with more than one pair (stage 4).
+- Frames: a 4-byte little-endian length, a 1-byte kind, then UTF-8 JSON. Kinds: `argument`, `message`, `close` (end of one direction's channel). A channel id is added with more than one channel (stage 4).
 - Backpressure: each direction has a bounded buffer of `capacity` messages (default 64, a `spawn` parameter `capacity: Int = 64`). The runtime reads the IPC connection into the receiving endpoint's buffer only while it has room; when full it stops reading, the OS buffer fills, and the peer's `send` waits. Two peers that both block in `send` deadlock, as with any bounded channels; the example avoids it by alternating, and cancellation still breaks it.
 - Channel semantics follow `proposals/taskgroup.md:41-45`:
   - `send` consumes the value and waits when the pipe or the peer's buffer is full; it is a cancellation point;
   - `receive` returns an owned value, or `none` once the peer has closed its sender and the buffer is empty;
-  - closing `to_child` (or dropping the last clone) delivers end-of-input; the child's `receive` then returns `none`. `proposals/taskgroup.md:44` closes a channel only by dropping the last sender and has no `Sender.close()`; because `to_child` lives in a field of `Process`, this proposal needs an explicit `Sender.close()` added in TaskGroup stage 4, and the close frame is sent when the last clone drops or `close()` is called;
+  - `close_input()` delivers end-of-input; the child's `receive` then returns `none`. The child closes its sending direction by returning from the entry or with the channel end's close. `proposals/taskgroup.md:44` closes a channel only by dropping the last sender; the bidirectional channel proposal must provide an explicit close of one direction;
   - a leaked sender (the capture-drop gap, `proposals/taskgroup.md:49`) delays end-of-input but not the stop path, which uses connection EOF;
   - `send` after the peer is gone returns a closed result (final shape decided with TaskGroup stage 4).
 - Transfer: JSON, not raw memory.
   - Strings, lists, maps and records hold heap pointers, and `Map`/`Set` carry a hash index, so only plain-bits values (`KIND_POD`, `crates/ms-rt-abi/src/lib.rs:343`) could be copied as bytes.
   - `TypeDesc` (`lib.rs:367`) has no field layout for records and alternatives (`KIND_CUSTOM`, `lib.rs:351`), so a binary codec is new compiler work.
   - Supported: records, alternatives, `Optional`, `Result`, `List`/`Set`/`Map`, `Bytes` (base64), `Int`, `BigInt`, `Decimal`.
-  - What JSON does with a no-form value (`stdlib/json.ms:~119-122`): a record field is omitted, a list element becomes `null`, a map value is omitted, a root returns `InvalidData`. A `Listener` in a record is dropped silently unless open question 4 is accepted.
+  - What JSON does with a no-form value (`stdlib/json.ms:~119-122`): a record field is omitted, a list element becomes `null`, a map value is omitted, a root returns `InvalidData`. A `Listener` in a record is rejected at the call site (decision 4).
   - `JsonEncode.to_json` types encode custom but cannot decode (`json.ms:~88-90`), so they cannot cross.
   - Losses documented, not patched: `NaN` and infinities become `null`; `Map` keys limited to JSON's key types.
 - Stop:
@@ -119,9 +118,9 @@ Illustrative: `digest` is a placeholder; `if let` is the documented unwrap (`doc
   - Unix children run in their own process group (`spawn.rs:86`); Windows uses `CREATE_NEW_PROCESS_GROUP` (`spawn.rs:92`) plus a job object.
 - Orphans: a parent killed without cleanup closes the connection (the OS closes the socket end or pipe handle); the child sees EOF and cancels. Same path as `close`.
 - Death is data:
-  - A child fault runs its cleanups, writes the fault text to its stderr, and exits 70. `wait()` returns 70; `from_child.receive()` returns `none`; `to_child.send` returns closed. The parent keeps running.
+  - A child fault runs its cleanups, writes the fault text to its stderr, and exits 70. `wait()` returns 70; `receive()` returns `none`; `send` returns closed. The parent keeps running.
   - A child killed by a signal reports -1, as `Subprocess.wait`.
-  - This differs from `TaskGroup` v1 (a child fault ends the process), because crash isolation is the reason to use a process and `Commands` already treats exit status as data. Open question 2.
+  - This differs from `TaskGroup` v1 (a child fault ends the process), because crash isolation is the reason to use a process and `Commands` already treats exit status as data. Decision 2.
 - Waiting for exit: pidfd on Linux (`spawn.rs:136`); elsewhere slice polling (`command.rs:5-17`).
 - Environment and working directory are inherited.
 
@@ -131,8 +130,8 @@ sequenceDiagram
   participant C as child (same exe)
   P->>C: exec info().executable, env MS_ENTRY, MS_IPC
   P->>C: argument frame
-  P-->>C: message frames (to_child)
-  C-->>P: message frames (from_child)
+  P-->>C: message frames (Process.send)
+  C-->>P: message frames (child channel send)
   P->>C: close frame (end of input)
   C->>P: close frame, exit 0
   P->>C: on group close: IPC EOF (cancel), kill after grace
@@ -147,15 +146,15 @@ sequenceDiagram
 
 | Component | Change | Risk / test |
 | --- | --- | --- |
-| `crates/ms-check` | process entry rule: named top-level def `(Receiver[In], Sender[Out], A)`, diagnostics | conformance reject cases |
+| `crates/ms-check` | process entry rule: named top-level def `(Channel[Out, In], A)`, diagnostics | conformance reject cases |
 | `crates/ms-lower`, `ms-mir`, `ms-clif` | entry table: each `spawn` instantiation registers `(index, thunk)`; no new codecs | e2e fixture on 3 platforms |
-| `crates/ms-rt` | start hook for `MS_ENTRY`; IPC-backed channel endpoint (a second transport for the endpoint objects of TaskGroup stage 4: parked-waiter token per endpoint, framing, close); connection-EOF cancel | cancel, EOF, backpressure, malformed-frame tests |
+| `crates/ms-rt` | start hook for `MS_ENTRY`; IPC-backed channel end (a second transport for the bidirectional channel: parked-waiter token per direction, framing, close); connection-EOF cancel | cancel, EOF, backpressure, malformed-frame tests |
 | `crates/ms-std-process` | `spawn::start` gains env, per-stream inherit/null modes (today three pipe descriptors only, `spawn.rs:61`) and an extra inherited descriptor; socketpair with `pre_exec` on Unix, named pipe on Windows; job object at creation with `KILL_ON_JOB_CLOSE` | per-crate tests incl. Windows |
 | `stdlib/processes.ms`, `bindings.json` | `ProcessGroup`, `Process`, `Stdio`, entry thunk in Manuscript | `make docs`, extern parity |
-| `stdlib/process.ms` | unchanged in v1; sharing `Stdio` with `Commands.spawn` is open question 1 | - |
+| `stdlib/process.ms` | unchanged in stage 3; sharing `Stdio` with `Commands.spawn` (decision 1) is its own stage | - |
 | `crates/ms-std-json` | unchanged | round-trip tests for supported types |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
-| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime.md`, `proposals/taskgroup.md` (drop `spawn_worker` string form and sendable text; line 65 still scopes processes in a `TaskGroup`; add `Sender.close()`) | `make repo-check`, `make book-check` |
+| Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime.md`, `proposals/taskgroup.md` (drop `spawn_worker` string form and sendable text; line 65 still scopes processes in a `TaskGroup`) | `make repo-check`, `make book-check` |
 | Conformance | start, ping-pong, backpressure, close and EOF, cancel, child death as data, JSON edge values | `make conform` |
 
 ## Examples
@@ -163,13 +162,13 @@ sequenceDiagram
 - End-to-end: `hash_all` above, run over 100 MB of chunks in stage 1.
 - Supervised helper: the parent starts a `Process`, sends requests as they arrive, and `with` stops the helper at scope exit; if the helper dies, `receive()` returns `none` and the parent can respawn it.
 - Manual recipe (works today, the do-nothing baseline; illustrative, not run): re-exec `executable_path()` with a `--child` marker through `commands.spawn`, write `stringify(request)` lines to the child's stdin and read `parse` lines from its stdout. The child's own prints would corrupt the channel, and typed lifecycle is hand-written.
-- Rejected (illustrative, if open question 4 is accepted): `group.spawn(serve, listener)` with `listener: Listener` -> "process argument cannot be sent: `Listener` has no JSON form". Without it the field is silently omitted.
+- Rejected (illustrative, decision 4): `group.spawn(serve, listener)` with `listener: Listener` -> "process argument cannot be sent: `Listener` has no JSON form".
 
 ## Alternatives
 
 - Do nothing, and document the manual recipe: gives typed JSON, scoped kill through `with` and a result over stdio on all three platforms. Lost: an entry that is a function item, typed messages in both directions without owning the child's stdout, lifecycle shared with the other groups.
 - A result-returning `Child[T]` with `results()`: rejected by the owner; processes are long-lived and talk over channels.
-- Smallest version: one process, one channel pair, no `Stdio` choice beyond inherit. This proposal's v1 keeps the pair and `Stdio`, because inherit-by-default and no stdout takeover are the points.
+- Smallest version: one process, one channel, no `Stdio` choice beyond inherit. This proposal's v1 keeps the channel and `Stdio`, because inherit-by-default and no stdout takeover are the points.
 - Frames on the child's stdin and stdout: rejected by the owner. A child's own writes to descriptor 1 would corrupt frames.
 - Loopback TCP socket with a token: rejected by the owner (no port).
 - POSIX `fork()`: rejected; the runtime is multithreaded (a blocking pool; `fork()` keeps one thread and inherits held locks, the poller and coroutine stacks), unavailable on Windows, and breaks single ownership at OS level.
@@ -186,13 +185,13 @@ sequenceDiagram
 - Process start cost per child (exec of the whole binary), and JSON encode/decode and a socket hop per message; all unmeasured.
 - An IPC-backed channel endpoint is real runtime work, a second implementation of the channel endpoint beside the in-process one.
 - Two transports (Unix socketpair, Windows named pipe) under one framing layer; Windows waits on the pipe in 2 ms slices, not by readiness.
-- Values with no JSON form are silently omitted inside records, lists and maps unless a call-site check is added.
-- Depends on TaskGroup stage 4 (`Sender`/`Receiver`); until it lands only the design can be reviewed.
+- The call-site JSON check is new checker work.
+- Depends on bidirectional channels (separate proposal) and TaskGroup stage 4; until they land only stages 1 and 2 can be built.
 - A third group type beside `TaskGroup` and `WorkerGroup`; learners hold three.
 
 ## Prior art
 
-- JavaScript `child_process.fork`: same-executable spawn with a dedicated IPC channel and `send`/`message`. Differs: function item entry, typed `Channel[T]` instead of untyped `send`, scoped group, `Stdio` shared by name with the rest, exit status as data.
+- JavaScript `child_process.fork`: same-executable spawn with a dedicated IPC channel and `send`/`message`. Differs: function item entry, typed bidirectional channel instead of untyped `send`, scoped group, `Stdio` shared by name with the rest, exit status as data.
 - Python `multiprocessing`: spawn start method, `Pipe`/`Queue`, pickled objects. Differs: JSON, no closures.
 - Erlang processes: long-lived, mailbox, links. Differs: OS processes, typed channels.
 - Go `os/exec` plus self-exec: manual; the do-nothing baseline.
@@ -209,22 +208,23 @@ sequenceDiagram
 - Each stage is its own PR with auto-merge. Pull requests run Linux only; for any stage touching platform code, run the workflow by hand on the branch for macOS and Windows before merging.
 1. Measure with a throwaway spike branch (nothing merged to main; `@std/processes.ms` and `@std/tasks.ms` do not exist yet, so this uses Rust micro-benchmarks and a hand-written `Commands.spawn` program): re-exec latency, JSON throughput for `List[Int]` and `Bytes`, and ping-pong round-trip latency through a socketpair (Unix) and a named pipe (Windows, manual run), against the manual recipe. Go/no-go (proposed, Chinmay confirms): start latency under 50 ms and round trip under 1 ms on Unix; otherwise document the recipe and stop.
 2. Platform prerequisites: job object at creation with `KILL_ON_JOB_CLOSE`; `spawn::start` env, per-stream `Stdio`, extra descriptor; socketpair and named pipe plumbing with tests.
-3. `ProcessGroup.spawn` and `Process`: entry table and start hook, IPC-backed channel endpoints, frames, argument, stop and orphan paths, death as data, diagnostics, docs and cheat sheet, conformance. Needs TaskGroup stage 4 (`Sender`/`Receiver`) landed.
-4. Extensions as demand shows: `Stdio.Pipe`, more than one channel pair (endpoints in arguments, a channel id in the frame), environment and working-directory overrides.
+3. `ProcessGroup.spawn` and `Process`: entry table and start hook, IPC-backed channel endpoints, frames, argument, stop and orphan paths, death as data, diagnostics, docs and cheat sheet, conformance. Needs bidirectional channels and TaskGroup stage 4 landed.
+4. Extensions as demand shows: `Stdio.Pipe`, more than one channel (channel ends in arguments, a channel id in the frame), environment and working-directory overrides.
 
 ## Open questions
 
-- Resolve before approval (decider: Chinmay):
-  1. Share one `Stdio` type (`Inherit`, `Null`, `Pipe`) and one lifecycle shape between `Commands.spawn` and `ProcessGroup.spawn`, which changes the existing `Commands` API (recommended for coherence), or leave `Commands` alone.
-  2. Child death as data, with the parent surviving (recommended), or the TaskGroup v1 rule that a child fault ends the parent.
-  3. Leaving the `with` block stops running children (recommended: services must not leak), or waits for them to exit.
-  4. Call-site check: reject types with no JSON form (resource, closure, `Shared`, handle) as an ordinary type error, the same boundary check `proposals/worker-threads.md` uses and not a user-visible concept (recommended), or accept JSON's silent omission.
-  5. One channel pair per process in v1 (recommended), or endpoints in the spawn argument now.
+- Decided (Chinmay, 2026-10-24, recommended answers accepted):
+  1. One `Stdio` type (`Inherit`, `Null`, `Pipe`) and one lifecycle shape shared by `Commands.spawn` and `ProcessGroup.spawn`; this changes the existing `Commands` API.
+  2. Child death is data; the parent survives.
+  3. Leaving the `with` block stops running children.
+  4. Types with no JSON form (resource, closure, `Shared`, handle) are rejected at the call site as an ordinary type error, the same boundary check `proposals/worker-threads.md` uses; no user-visible concept.
+  5. One channel per process in v1.
+  6. `Process` has `send`, `receive`, `close_input` directly; the entry takes one bidirectional channel end.
 - Resolve during implementation:
   - Windows named pipe by name (recommended) or an anonymous pipe passed by inherited handle (needs a handle list in `CreateProcess`).
   - Grace period default (proposed 5 s) and whether it is a parameter.
   - Whether connection EOF cancellation needs a poll hook on the child's main task.
-  - Final shape of `send` to a closed peer (with TaskGroup stage 4).
+  - Final shape of `send` to a closed peer (with the bidirectional channel proposal).
 
 ## Rejected ideas
 
@@ -254,3 +254,4 @@ sequenceDiagram
   - descriptor rules added (parent closes the child's end, child sets `CLOEXEC`, flush on exit);
   - citations corrected; `pid()`, `ProcessGroup.wait()` and the frame channel id cut;
   - stage 1 is a throwaway spike, since the stdlib modules do not exist yet.
+- Owner direction after the fourth review: `send`/`receive` on `Process` instead of `to_child`/`from_child`; bidirectional channels (separate proposal), so the entry takes one channel end; open questions resolved with the recommended answers.
