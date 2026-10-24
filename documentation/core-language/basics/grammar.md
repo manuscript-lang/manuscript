@@ -182,9 +182,9 @@ CallStatement = Expression ;
 IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
                 [ "else", (Suite | IfStatement) ] ;
 WhileStatement = "while", Expression, Suite ;
-ForStatement  = "for", Name, "in", Expression, Suite ;
+ForStatement  = "for", [ "ref" ], Name, "in", Expression, Suite ;
 WithStatement = "with", Name, "=", Expression, Suite ;
-MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
+MatchExpression = "match", [ "ref" ], Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
 MatchArm      = (CasePattern | LiteralPattern | "_"), ArmSuite ;
 LiteralPattern = [ "-" ], Number | String | "true" | "false" ;
