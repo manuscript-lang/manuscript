@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export interface Read[T]:\n    def get() -> T\n\nexport def invoke[T: Read[Int]](value: T) -> Int:\n    return value.get()\n\nexport def relay[T: Read[Int]](value: T) -> Int:\n    return invoke(value)\n\nexport def as_view[T: Read[Int]](value: T) -> Read[Int]:\n    return Read[Int](value)\n\nexport def read_view(value: Read[Int]) -> Int:\n    return value.get()\n"
+    "fmt": "export interface Read[T]:\n    def get() -> T\n\nexport def invoke[T: Read[Int]](value: T) -> Int:\n    return value.get()\n\nexport def relay[T: Read[Int]](value: T) -> Int:\n    return invoke(value)\n\nexport def as_view[T: Read[Int]](value: T) -> Read[Int]:\n    return value\n\nexport def read_view(value: Read[Int]) -> Int:\n    return value.get()\n"
   }
 }
