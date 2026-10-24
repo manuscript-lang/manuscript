@@ -2,25 +2,25 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":2,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":3,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":4,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":5,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":4,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":5,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":6,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":7,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":8,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":9,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":10,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":11,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":10,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":11,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":12,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":13,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":14,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":15,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":14,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":15,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":16,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":17,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":18,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":19,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":20,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":21,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":22,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":21,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":22,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":23,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":24,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":25,"jsonrpc":"2.0"}
@@ -68,212 +68,229 @@
 {"id":67,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":15,"line":13},"start":{"character":10,"line":13}}}}
 {"id":68,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":15,"line":13},"start":{"character":10,"line":13}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":69,"jsonrpc":"2.0"}
-{"id":70,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":14},"start":{"character":7,"line":14}}}}
-{"id":71,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":14},"start":{"character":7,"line":14}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":72,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":70,"jsonrpc":"2.0"}
+{"id":71,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":13,"line":14},"start":{"character":8,"line":14}}}}
+{"id":72,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":13,"line":14},"start":{"character":8,"line":14}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":73,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":74,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":74,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":75,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":76,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":77,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":78,"jsonrpc":"2.0"}
-{"id":79,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":17},"start":{"character":7,"line":17}}}}
-{"id":80,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":17},"start":{"character":7,"line":17}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":81,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":82,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":78,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":79,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":80,"jsonrpc":"2.0"}
+{"id":81,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":12,"line":17},"start":{"character":8,"line":17}}}}
+{"id":82,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":12,"line":17},"start":{"character":8,"line":17}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":83,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":84,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":85,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":86,"jsonrpc":"2.0"}
-{"id":87,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":85,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":86,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":87,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":88,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":89,"jsonrpc":"2.0"}
-{"id":90,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}}
+{"id":89,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":21,"line":18},"start":{"character":20,"line":18}}}}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":90,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":91,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":92,"jsonrpc":"2.0"}
-{"id":93,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}}
+{"id":92,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":30,"line":18},"start":{"character":29,"line":18}}}}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":93,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":94,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":95,"jsonrpc":"2.0"}
-{"id":96,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":97,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":98,"jsonrpc":"2.0"}
-{"id":99,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}}
-{"id":100,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":101,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":102,"jsonrpc":"2.0"}
-{"id":103,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}}
-{"id":104,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":105,"jsonrpc":"2.0"}
-{"id":106,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":21},"start":{"character":7,"line":21}}}}
-{"id":107,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":21},"start":{"character":7,"line":21}}}}
+{"id":95,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":39,"line":18},"start":{"character":38,"line":18}}}}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":96,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":97,"jsonrpc":"2.0"}
+{"id":98,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":48,"line":18},"start":{"character":47,"line":18}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":99,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":100,"jsonrpc":"2.0"}
+{"id":101,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}}
+{"id":102,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":20},"start":{"character":5,"line":20}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":103,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":104,"jsonrpc":"2.0"}
+{"id":105,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}}
+{"id":106,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":20},"start":{"character":15,"line":20}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":107,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":108,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":109,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":110,"jsonrpc":"2.0"}
+{"id":109,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":13,"line":21},"start":{"character":8,"line":21}}}}
+{"id":110,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":13,"line":21},"start":{"character":8,"line":21}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":111,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":112,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":113,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":114,"jsonrpc":"2.0"}
-{"id":115,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}}
-{"id":116,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":24},"start":{"character":3,"line":24}}}}
-{"id":117,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":8,"line":24},"start":{"character":7,"line":24}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":115,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":116,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":117,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":118,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":119,"jsonrpc":"2.0"}
-{"id":120,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":16,"line":24},"start":{"character":15,"line":24}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":121,"jsonrpc":"2.0"}
+{"id":119,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":7,"line":24},"start":{"character":4,"line":24}}}}
+{"id":120,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":7,"line":24},"start":{"character":4,"line":24}}}}
+{"id":121,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":9,"line":24},"start":{"character":8,"line":24}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":122,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":123,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":124,"jsonrpc":"2.0"}
+{"id":124,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":17,"line":24},"start":{"character":16,"line":24}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":125,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":126,"jsonrpc":"2.0"}
-{"id":127,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}}
-{"id":128,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}}
-{"id":129,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":17,"line":25},"start":{"character":16,"line":25}}}}
-{"id":130,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":21,"line":25},"start":{"character":20,"line":25}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":131,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":132,"jsonrpc":"2.0"}
-{"id":133,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}}
-{"id":134,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":127,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":128,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":129,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":130,"jsonrpc":"2.0"}
+{"id":131,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}}
+{"id":132,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":13,"line":25},"start":{"character":8,"line":25}}}}
+{"id":133,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":17,"line":25},"start":{"character":16,"line":25}}}}
+{"id":134,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":21,"line":25},"start":{"character":20,"line":25}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":135,"jsonrpc":"2.0"}
-{"id":136,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":28},"start":{"character":3,"line":28}}}}
-{"id":137,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":28},"start":{"character":3,"line":28}}}}
-{"id":138,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":28},"start":{"character":8,"line":28}}}}
-{"id":139,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":28},"start":{"character":8,"line":28}}}}
-{"id":140,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":28},"start":{"character":15,"line":28}}}}
-{"id":141,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":28},"start":{"character":15,"line":28}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":142,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":143,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":144,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":145,"jsonrpc":"2.0"}
-{"id":146,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}}
-{"id":147,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":136,"jsonrpc":"2.0"}
+{"id":137,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}}
+{"id":138,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":26},"start":{"character":11,"line":26}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":139,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":140,"jsonrpc":"2.0"}
+{"id":141,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":8,"line":28},"start":{"character":4,"line":28}}}}
+{"id":142,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":8,"line":28},"start":{"character":4,"line":28}}}}
+{"id":143,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":14,"line":28},"start":{"character":9,"line":28}}}}
+{"id":144,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":14,"line":28},"start":{"character":9,"line":28}}}}
+{"id":145,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":21,"line":28},"start":{"character":16,"line":28}}}}
+{"id":146,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":21,"line":28},"start":{"character":16,"line":28}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":147,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":148,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":149,"jsonrpc":"2.0"}
-{"id":150,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":16,"line":30},"start":{"character":15,"line":30}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":151,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":152,"jsonrpc":"2.0"}
-{"id":153,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":20,"line":31},"start":{"character":19,"line":31}}}}
-{"id":154,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":24,"line":31},"start":{"character":23,"line":31}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":150,"jsonrpc":"2.0"}
+{"id":151,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}}
+{"id":152,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":29},"start":{"character":10,"line":29}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":153,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":154,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":155,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":156,"jsonrpc":"2.0"}
-{"id":157,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":16,"line":32},"start":{"character":15,"line":32}}}}
+{"id":157,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":21,"line":30},"start":{"character":20,"line":30}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":158,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":159,"jsonrpc":"2.0"}
-{"id":160,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":20,"line":33},"start":{"character":19,"line":33}}}}
-{"id":161,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":24,"line":33},"start":{"character":23,"line":33}}}}
+{"id":160,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":20,"line":31},"start":{"character":19,"line":31}}}}
+{"id":161,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":24,"line":31},"start":{"character":23,"line":31}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":162,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":163,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":164,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":165,"jsonrpc":"2.0"}
-{"id":166,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":37},"start":{"character":3,"line":37}}}}
-{"id":167,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":37},"start":{"character":3,"line":37}}}}
-{"id":168,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":13,"line":37},"start":{"character":12,"line":37}}}}
-{"id":169,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":37},"start":{"character":15,"line":37}}}}
-{"id":170,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":37},"start":{"character":15,"line":37}}}}
+{"id":166,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":21,"line":32},"start":{"character":20,"line":32}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":167,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":168,"jsonrpc":"2.0"}
+{"id":169,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":20,"line":33},"start":{"character":19,"line":33}}}}
+{"id":170,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":24,"line":33},"start":{"character":23,"line":33}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":171,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":172,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":173,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":174,"jsonrpc":"2.0"}
-{"id":175,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":9,"line":38},"start":{"character":8,"line":38}}}}
-{"id":176,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":13,"line":38},"start":{"character":12,"line":38}}}}
-{"id":177,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}
-{"id":178,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":179,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":180,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":181,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":182,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":175,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":176,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":177,"jsonrpc":"2.0"}
+{"id":178,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":12,"line":37},"start":{"character":4,"line":37}}}}
+{"id":179,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":12,"line":37},"start":{"character":4,"line":37}}}}
+{"id":180,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":14,"line":37},"start":{"character":13,"line":37}}}}
+{"id":181,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":21,"line":37},"start":{"character":16,"line":37}}}}
+{"id":182,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":21,"line":37},"start":{"character":16,"line":37}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":183,"jsonrpc":"2.0"}
-{"id":184,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":22,"line":39},"start":{"character":21,"line":39}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":184,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":185,"jsonrpc":"2.0"}
-{"id":186,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":29,"line":39},"start":{"character":28,"line":39}}}}
-{"id":187,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":31,"line":39},"start":{"character":30,"line":39}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":188,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":189,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":190,"jsonrpc":"2.0"}
-{"id":191,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}}
-{"id":192,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":41},"start":{"character":10,"line":41}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":186,"jsonrpc":"2.0"}
+{"id":187,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":9,"line":38},"start":{"character":8,"line":38}}}}
+{"id":188,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":13,"line":38},"start":{"character":12,"line":38}}}}
+{"id":189,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}
+{"id":190,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":18,"line":38},"start":{"character":14,"line":38}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":191,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":192,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":193,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":194,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":195,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":196,"jsonrpc":"2.0"}
-{"id":197,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}}}}
-{"id":198,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}}
-{"id":199,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}}
-{"id":200,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":19,"line":42},"start":{"character":18,"line":42}}}}
-{"id":201,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":25,"line":42},"start":{"character":24,"line":42}}}}
+{"id":197,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":23,"line":39},"start":{"character":22,"line":39}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":198,"jsonrpc":"2.0"}
+{"id":199,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":30,"line":39},"start":{"character":29,"line":39}}}}
+{"id":200,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":32,"line":39},"start":{"character":31,"line":39}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":201,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":202,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":203,"jsonrpc":"2.0"}
-{"id":204,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
-{"id":205,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":206,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":204,"jsonrpc":"2.0"}
+{"id":205,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":15,"line":41},"start":{"character":11,"line":41}}}}
+{"id":206,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":15,"line":41},"start":{"character":11,"line":41}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":207,"jsonrpc":"2.0"}
-{"id":208,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":9,"line":44},"start":{"character":8,"line":44}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":208,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":209,"jsonrpc":"2.0"}
-{"id":210,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":44},"start":{"character":13,"line":44}}}}
-{"id":211,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":44},"start":{"character":13,"line":44}}}}
-{"id":212,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}}
-{"id":213,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}}
-{"id":214,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":15,"line":45},"start":{"character":14,"line":45}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":215,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":210,"jsonrpc":"2.0"}
+{"id":211,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}}}}
+{"id":212,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}}
+{"id":213,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":17,"line":42},"start":{"character":12,"line":42}}}}
+{"id":214,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":19,"line":42},"start":{"character":18,"line":42}}}}
+{"id":215,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":25,"line":42},"start":{"character":24,"line":42}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":216,"jsonrpc":"2.0"}
-{"id":217,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":47},"start":{"character":8,"line":47}}}}
-{"id":218,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":47},"start":{"character":8,"line":47}}}}
-{"id":219,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":47},"start":{"character":17,"line":47}}}}
-{"id":220,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":47},"start":{"character":17,"line":47}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":217,"jsonrpc":"2.0"}
+{"id":218,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
+{"id":219,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":220,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":221,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":222,"jsonrpc":"2.0"}
-{"id":223,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":48},"start":{"character":11,"line":48}}}}
-{"id":224,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":48},"start":{"character":11,"line":48}}}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":225,"jsonrpc":"2.0"}
-{"id":226,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":50},"start":{"character":3,"line":50}}}}
-{"id":227,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":50},"start":{"character":3,"line":50}}}}
-{"id":228,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":50},"start":{"character":7,"line":50}}}}
-{"id":229,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":50},"start":{"character":7,"line":50}}}}
+{"id":222,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":9,"line":44},"start":{"character":8,"line":44}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":223,"jsonrpc":"2.0"}
+{"id":224,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":44},"start":{"character":13,"line":44}}}}
+{"id":225,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":44},"start":{"character":13,"line":44}}}}
+{"id":226,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}}
+{"id":227,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":228,"jsonrpc":"2.0"}
+{"id":229,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":16,"line":45},"start":{"character":15,"line":45}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":230,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":231,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":232,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":233,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":234,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":235,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":236,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":237,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":238,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":239,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":240,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":241,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":242,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":243,"jsonrpc":"2.0"}
-{"id":244,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":29,"line":51},"start":{"character":25,"line":51}}}}
-{"id":245,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":29,"line":51},"start":{"character":25,"line":51}}}}
+{"id":232,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":47},"start":{"character":8,"line":47}}}}
+{"id":233,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":47},"start":{"character":8,"line":47}}}}
+{"id":234,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":47},"start":{"character":17,"line":47}}}}
+{"id":235,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":47},"start":{"character":17,"line":47}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":236,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":237,"jsonrpc":"2.0"}
+{"id":238,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":48},"start":{"character":11,"line":48}}}}
+{"id":239,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":48},"start":{"character":11,"line":48}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":240,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":241,"jsonrpc":"2.0"}
+{"id":242,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":50},"start":{"character":4,"line":50}}}}
+{"id":243,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":50},"start":{"character":4,"line":50}}}}
+{"id":244,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":50},"start":{"character":8,"line":50}}}}
+{"id":245,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":50},"start":{"character":8,"line":50}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":246,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":247,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":248,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":248,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":249,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":250,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":251,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":250,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":251,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":252,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":253,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":253,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":254,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":255,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":256,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":257,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":258,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":256,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":257,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":258,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":259,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":260,"jsonrpc":"2.0"}
-{"id":261,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":55},"start":{"character":21,"line":55}}}}
-{"id":262,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":55},"start":{"character":21,"line":55}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":260,"jsonrpc":"2.0"}
+{"id":261,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":51},"start":{"character":26,"line":51}}}}
+{"id":262,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":51},"start":{"character":26,"line":51}}}}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":263,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":264,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":265,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":266,"jsonrpc":"2.0"}
-{"id":267,"jsonrpc":"2.0","result":{"documentChanges":[{"edits":[{"newText":"renamed","range":{"end":{"character":20,"line":28},"start":{"character":15,"line":28}}},{"newText":"renamed","range":{"end":{"character":10,"line":8},"start":{"character":5,"line":8}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]}}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":268,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":269,"jsonrpc":"2.0"}
-{"id":270,"jsonrpc":"2.0","result":[]}
-{"id":271,"jsonrpc":"2.0","result":[{"newText":"import stdout from \"@std/io.ms\"\nimport {expect_equal} from \"@std/testing.ms\"\n\n# A point in the plane.\ntype Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Square(side: Int)\n    case Empty\n\ninterface Named:\n    fn label() String\n\nimpl Point:\n    fn norm() Int:\n        return self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n    fn label() String:\n        return \"point\"\n\nfn add(a: Int, b: Int) Int:\n    let total = a + b\n    return total\n\nfn area(shape: Shape) Int:\n    match shape:\n        Circle(r):\n            return r * r * 3\n        Square(s):\n            return s * s\n        _:\n            return 0\n\nfn describe(p: Point) String:\n    let n = p.norm()\n    return \"norm is {n} at {p.x}\"\n\nexport fn main() Int:\n    let p = Point(x: 1, y: 2)\n    let values = [1, 2, 3]\n    for v in values:\n        say(\"{v}\")\n\n    let result = add(1, 2)\n    return result\n\nfn say(text: String) Result[Unit, Error]:\n    try stdout().write(\"{text}\\n\")\n    return stdout().flush()\n\ntest \"addition\":\n    try expect_equal(add(1, 2), 3)\n","range":{"end":{"character":0,"line":56},"start":{"character":0,"line":0}}}]}
-{"id":272,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":25}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":38}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":42}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":43}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":47}}]}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":266,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":267,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":268,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":269,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":270,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":271,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":272,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":273,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":274,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":275,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":276,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":277,"jsonrpc":"2.0"}
+{"id":278,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":55},"start":{"character":21,"line":55}}}}
+{"id":279,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":55},"start":{"character":21,"line":55}}}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":280,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":281,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":282,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":283,"jsonrpc":"2.0"}
+{"id":284,"jsonrpc":"2.0","result":{"documentChanges":[{"edits":[{"newText":"renamed","range":{"end":{"character":21,"line":28},"start":{"character":16,"line":28}}},{"newText":"renamed","range":{"end":{"character":10,"line":8},"start":{"character":5,"line":8}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]}}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":285,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":286,"jsonrpc":"2.0"}
+{"id":287,"jsonrpc":"2.0","result":[]}
+{"id":288,"jsonrpc":"2.0","result":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/testing.ms\" import expect_equal\n\n# A point in the plane.\ntype Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Square(side: Int)\n    case Empty\n\ninterface Named:\n    def label() -> String\n\nimpl Point:\n    def norm() -> Int:\n        return self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n    def label() -> String:\n        return \"point\"\n\ndef add(a: Int, b: Int) -> Int:\n    let total = a + b\n    return total\n\ndef area(shape: Shape) -> Int:\n    match shape:\n        case Circle(r):\n            return r * r * 3\n        case Square(s):\n            return s * s\n        case _:\n            return 0\n\ndef describe(p: Point) -> String:\n    let n = p.norm()\n    return f\"norm is {n} at {p.x}\"\n\nexport def main() -> Int:\n    let p = Point(x: 1, y: 2)\n    let values = [1, 2, 3]\n    for v in values:\n        say(f\"{v}\")\n\n    let result = add(1, 2)\n    return result\n\ndef say(text: String) -> Result[Unit, Error]:\n    try stdout().write(f\"{text}\\n\")\n    return stdout().flush()\n\ntest \"addition\":\n    try expect_equal(add(1, 2), 3)\n","range":{"end":{"character":0,"line":56},"start":{"character":0,"line":0}}}]}
+{"id":289,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":25}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":38}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":42}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":43}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":47}}]}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":42},"start":{"character":8,"line":42}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":45},"start":{"character":8,"line":45}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS2002","message":"module does not export unused; @std/json.ms exports: JsonEncode, JsonError, JsonLimits, JsonValue, parse, stringify; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"@std/json.ms\"'","range":{"end":{"character":13,"line":2},"start":{"character":7,"line":2}},"severity":1,"source":"manuscript"},{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":44,"line":0},"start":{"character":44,"line":0}},"severity":2,"source":"manuscript-lint"},{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}
-{"id":273,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import {expect_equal} from \"@std/testing.ms\"\nimport stdout from \"@std/io.ms\"\nimport unused from \"@std/json.ms\"\n\nfn main() Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"diagnostics":[{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":44,"line":0},"start":{"character":44,"line":0}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"","range":{"end":{"character":47,"line":0},"start":{"character":44,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Remove trailing whitespace"},{"diagnostics":[{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"\n","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Insert final newline"},{"edit":{"documentChanges":[{"edits":[{"newText":"import stdout from \"@std/io.ms\"\nimport unused from \"@std/json.ms\"\nimport {expect_equal} from \"@std/testing.ms\"   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":274,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import stdout from \"@std/io.ms\"\nimport unused from \"@std/json.ms\"\nimport {expect_equal} from \"@std/testing.ms\"   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":275,"jsonrpc":"2.0","result":[{"newText":"import {expect_equal} from \"@std/testing.ms\"\nimport stdout from \"@std/io.ms\"\nimport unused from \"@std/json.ms\"\n\nfn main() Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}]}
-{"id":276,"jsonrpc":"2.0","result":null}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS2002","message":"module does not export unused; @std/json.ms exports: JsonEncode, JsonError, JsonLimits, JsonValue, parse, stringify; namespace imports are unsupported, so import individual exports with 'import { Name, OtherName } from \"@std/json.ms\"'","range":{"end":{"character":33,"line":2},"start":{"character":27,"line":2}},"severity":1,"source":"manuscript"},{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":42,"line":0},"start":{"character":42,"line":0}},"severity":2,"source":"manuscript-lint"},{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}
+{"id":290,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"diagnostics":[{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":42,"line":0},"start":{"character":42,"line":0}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"","range":{"end":{"character":45,"line":0},"start":{"character":42,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Remove trailing whitespace"},{"diagnostics":[{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"\n","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Insert final newline"},{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":291,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":292,"jsonrpc":"2.0","result":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}]}
+{"id":293,"jsonrpc":"2.0","result":null}

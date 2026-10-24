@@ -140,7 +140,7 @@ fn crashed_worker_is_replaced_and_state_replayed() {
                     obj([
                         ("uri", uri.into()),
                         ("version", 1usize.into()),
-                        ("text", "fn answer() Int:\n    return 1\n".into()),
+                        ("text", "def answer() -> Int:\n    return 1\n".into()),
                     ]),
                 )]),
             ),

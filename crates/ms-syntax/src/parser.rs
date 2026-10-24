@@ -154,10 +154,9 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("export"),
             "write 'export' before the declaration to make it visible to other modules",
         ),
-        "use" | "require" | "include" | "using" => (
-            None,
-            "imports read: from \"path.ms\" import name, other",
-        ),
+        "use" | "require" | "include" | "using" => {
+            (None, "imports read: from \"path.ms\" import name, other")
+        }
         "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
         | "module" => (
             None,
@@ -654,7 +653,10 @@ impl<'a> Parser<'a> {
 
     fn typ_inner(&mut self) -> PResult<TypeRef> {
         let first = self.peek();
-        if first.kind == Tok::Name && self.text(first) == "Callable" && self.ahead(1).kind == Tok::LBracket {
+        if first.kind == Tok::Name
+            && self.text(first) == "Callable"
+            && self.ahead(1).kind == Tok::LBracket
+        {
             self.at += 2;
             self.need(Tok::LBracket)?;
             let mut params = Vec::new();
@@ -1299,7 +1301,11 @@ impl<'a> Parser<'a> {
                 } else if self.take(Tok::Else) {
                     if self.kind() == Tok::If {
                         let c = self.peek();
-                        return self.fail_fix(c, "there is no 'else if'; write 'elif <condition>:' for a further branch", "elif");
+                        return self.fail_fix(
+                            c,
+                            "there is no 'else if'; write 'elif <condition>:' for a further branch",
+                            "elif",
+                        );
                     }
                     else_body = self.suite()?;
                 }
@@ -1346,7 +1352,10 @@ impl<'a> Parser<'a> {
                 let value = self.expression(0)?;
                 let as_tok = self.peek();
                 if as_tok.kind != Tok::Name || self.text(as_tok) != "as" {
-                    return self.fail(as_tok, "expected 'as'; with binds its resource as: with open(path) as file:");
+                    return self.fail(
+                        as_tok,
+                        "expected 'as'; with binds its resource as: with open(path) as file:",
+                    );
                 }
                 self.at += 1;
                 let name = self.need(Tok::Name)?;
@@ -2316,7 +2325,11 @@ impl<'a> Parser<'a> {
             }
             if self.kind() != Tok::Case {
                 let t = self.peek();
-                return self.fail_fix(t, "match arms start with 'case', e.g. case Paid(receipt):", &format!("case {}", self.text(t)));
+                return self.fail_fix(
+                    t,
+                    "match arms start with 'case', e.g. case Paid(receipt):",
+                    &format!("case {}", self.text(t)),
+                );
             }
             self.at += 1;
             let start = self.peek();
