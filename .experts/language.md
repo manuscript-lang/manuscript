@@ -122,7 +122,7 @@ Verify: replace a defaulted function with a required-argument function through a
 
 Decision (user, under reference semantics): ordinary record fields and collections are mutable. The user rejected immutable replacement APIs and instance freezing in favor of an explicit duplicate operation (`.clone()`). Preserve `let`/`var` binding rules independently of object mutation. Do not manufacture copies of sockets, files, locks, or other native service handles.
 
-Superseded in part: under value semantics `let` is deeply immutable, aliasing is gone, `.clone()` is deep and is being renamed `.copy()`, and resources are move-only and never copied. The statements that aliases observe mutation, that a clone's nested references stay shared, and that a cloned record may retain a handle reference no longer hold. Treat [ownership notes](../crates/ms-check/OWNERSHIP.md) as authoritative; fixtures tagged `aliasing` in the conformance corpus are excluded for this reason.
+Superseded in part: under value semantics `let` is deeply immutable, aliasing is gone, `.clone()` is deep (the `.copy()` rename was dropped; `Clonable` landed in #1134), and resources are move-only and never copied. The statements that aliases observe mutation, that a clone's nested references stay shared, and that a cloned record may retain a handle reference no longer hold. Treat [ownership notes](../crates/ms-check/OWNERSHIP.md) as authoritative; fixtures tagged `aliasing` in the conformance corpus are excluded for this reason.
 
 Apply when: changing fields, collection updates, copies, or equality.
 Evidence: [record contract](../documentation/core-language/types/records.md#mutation-and-cloning); [collection contract](../documentation/core-language/types/collections.md#mutation-and-copies); [mutation fixture](../tests/e2e/testdata/accept/mutation.ms); [ownership notes](../crates/ms-check/OWNERSHIP.md).
@@ -254,3 +254,40 @@ Decision: `let (` / `var (` declare several bindings of one kind, one entry per 
 Apply when: changing binding grammar, formatter layout of declarations, or destructuring.
 Evidence: [grouping rules](../documentation/core-language/basics/bindings.md#grouping-bindings), [destructuring](../documentation/core-language/types/destructuring.md), [module constants](../documentation/core-language/modules/declarations.md), [binding groups fixture](../tests/e2e/testdata/accept/binding-groups.ms).
 Verify: `let (` entries evaluate in order with earlier ones in scope, `export let (` exports every entry, and `let (a, b) = pair` still fails with the not-a-binding-pattern diagnostic.
+
+### `ref` marks borrows; reference types stay out
+
+Decision: the reference-syntax spike recommended no marker (inference plus `Clonable` instead), and Chinmay overrode it: a result that lends part of a borrowed parameter is written `ref T`, and a binding that borrows a place is `let ref x = a.b` / `var ref x = xs[i]` (#1137, #1142). Loops and matches over a parameter borrow it unless a payload or loop variable is moved out (#1128). `ref` is not a type: it appears only in a declared result type or a binding, never in function types, fields, elements or type arguments, so there are no lifetimes to teach. The marker is staged: an unmarked lending function still lends by inference.
+
+Apply when: changing result types, bindings, interface operation agreement, or the ownership pass.
+Evidence: [ownership notes](../crates/ms-check/OWNERSHIP.md), [grammar](../documentation/core-language/basics/grammar.md).
+Verify: `fn list() ref List[Int]` must return part of a parameter; `let ref x` on an owned value, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
+
+### `Clonable` replaces ad hoc copying in generic code
+
+Decision: `Clonable` is a prelude interface whose `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data and functions qualify; interface views, regular expressions and resource handles do not. Deque, Queue and sorted collections are vetted against it.
+
+Apply when: writing generic stdlib code that stores or returns borrowed elements.
+Evidence: [generics](../documentation/core-language/types/generics.md), [declarations](../documentation/core-language/modules/declarations.md).
+Verify: a `[T: Clonable]` function can return `xs[0].clone()`; a resource handle fails the bound.
+
+### `extern fn` binds native symbols; planned natives stay labeled
+
+Decision: `extern fn name(...) T` declares a bodiless function whose symbol is its Manuscript name, linked with `--link` (#1136, #1138). It may be exported and may return `Result` with a payload-free error type; it cannot be generic, take defaults or `var` parameters, or be a method. Wrap an extern in an ordinary function to rename it. Planned and not shipped: `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` (#1133 marks them planned in the docs).
+
+Apply when: adding natives or user-facing FFI; do not document planned items as available.
+Evidence: [native functions](../documentation/core-language/functions/native-functions.md), [extern parity script](../scripts/extern-parity.py).
+Verify: `extern fn labs(value: Int) Int` calls `labs`; a generic or method extern is rejected.
+
+### Methods before free functions
+
+Decision (Chinmay's preference): do not add "random" free functions to the standard library or examples; put the operation on the type it acts on. Free functions remain for operations with no natural receiver, and `|` flows compose them.
+
+Apply when: naming new stdlib API or reviewing examples.
+Verify: a new operation on a `String`, `List` or `Map` is a method, not a module function taking that value.
+
+### Interfaces convert implicitly; construction is removed
+
+Status: in flight (PR #1135, not yet on main as of this note). Decision: a value converts to an interface at a typed binding or argument (`let v: Shape = x`), and `Shape(value: x)` / `Shape(x)` fail with "cannot be constructed"; about 260 stdlib and fixture uses were migrated. Re-check the checker before relying on either spelling.
+
+Apply when: touching interface views, generic matching, or conversion diagnostics.
