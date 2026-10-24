@@ -167,7 +167,7 @@ pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
 ///
 /// # Safety
 /// Single threaded runtime state.
-#[cfg(any(windows, test))]
+#[cfg(windows)]
 pub(crate) unsafe fn set_stack_bounds(lo: usize, hi: usize) {
     // SAFETY: single threaded access to the runtime globals.
     unsafe {
