@@ -120,6 +120,15 @@ unsafe extern "system" {
         establisher: *mut usize,
         pointers: *mut c_void,
     ) -> *mut c_void;
+    fn RegisterWaitForSingleObject(
+        wait: *mut HANDLE,
+        object: HANDLE,
+        callback: unsafe extern "system" fn(*mut c_void, u8),
+        context: *mut c_void,
+        ms: DWORD,
+        flags: DWORD,
+    ) -> BOOL;
+    fn UnregisterWaitEx(wait: HANDLE, event: HANDLE) -> BOOL;
 }
 
 unsafe extern "C" {
@@ -577,4 +586,40 @@ pub unsafe fn sample_thread(thread: *mut c_void) -> Option<(usize, usize)> {
 pub unsafe fn close_handle(h: *mut c_void) {
     // SAFETY: the caller owns the handle.
     unsafe { CloseHandle(h) };
+}
+
+/// Runs `callback(context)` once on a thread-pool thread when `object` is signalled. Returns
+/// the wait to pass to [`unregister_wait`], or null when it cannot be registered.
+///
+/// # Safety
+/// `object` stays open until the wait is unregistered.
+pub unsafe fn register_wait(
+    object: *mut c_void,
+    callback: unsafe extern "system" fn(*mut c_void, u8),
+    context: *mut c_void,
+) -> *mut c_void {
+    const WT_EXECUTEONLYONCE: DWORD = 0x8;
+    let mut wait: HANDLE = core::ptr::null_mut();
+    // SAFETY: `wait` is writable; the caller keeps `object` open.
+    let ok = unsafe {
+        RegisterWaitForSingleObject(
+            &mut wait,
+            object,
+            callback,
+            context,
+            INFINITE,
+            WT_EXECUTEONLYONCE,
+        )
+    };
+    if ok == 0 { core::ptr::null_mut() } else { wait }
+}
+
+/// Ends a wait from [`register_wait`], returning after its callback, if running, has finished.
+///
+/// # Safety
+/// `wait` came from `register_wait` and is unregistered once.
+pub unsafe fn unregister_wait(wait: *mut c_void) {
+    // INVALID_HANDLE_VALUE: block until a running callback returns.
+    // SAFETY: forwarded from the caller.
+    unsafe { UnregisterWaitEx(wait, -1isize as HANDLE) };
 }

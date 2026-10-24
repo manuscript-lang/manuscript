@@ -242,10 +242,14 @@ mod imp {
         views: HashMap<usize, TcpStream>,
         /// Adopted named pipes, by handle; registered until dropped.
         pipes: HashMap<usize, NamedPipe>,
+        /// Thread-pool waits on kernel objects (a child process), by object handle.
+        objects: HashMap<usize, usize>,
     }
 
     static STATE: Global<Option<State>> = Global::new(None);
     static WAKER: Mutex<Option<Arc<Waker>>> = Mutex::new(None);
+    /// Watched objects that became signalled, filled by thread-pool callbacks.
+    static SIGNALLED: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 
     fn state() -> &'static mut State {
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -265,6 +269,7 @@ mod imp {
                 events: Events::with_capacity(32),
                 views: HashMap::new(),
                 pipes: HashMap::new(),
+                objects: HashMap::new(),
             };
             Ok((state, waker))
         };
@@ -309,7 +314,7 @@ mod imp {
 
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
-        if s.pipes.contains_key(&(sock & !3)) {
+        if s.pipes.contains_key(&(sock & !3)) || s.objects.contains_key(&sock) {
             return Watch::Armed;
         }
         release(s, sock);
@@ -378,6 +383,47 @@ mod imp {
         }
     }
 
+    unsafe extern "system" fn signalled(object: *mut core::ffi::c_void, _: u8) {
+        SIGNALLED
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(object as usize);
+        kick();
+    }
+
+    /// Watches the waitable kernel object `handle` (a process): a task waiting on it for
+    /// reading wakes once it is signalled. False when the wait cannot be registered.
+    ///
+    /// # Safety
+    /// `handle` stays open until [`object_drop`].
+    pub unsafe fn object_watch(handle: usize) -> bool {
+        let s = state();
+        if s.objects.contains_key(&handle) {
+            return true;
+        }
+        // SAFETY: the caller keeps `handle` open until `object_drop`.
+        let wait =
+            unsafe { crate::sys::register_wait(handle as *mut _, signalled, handle as *mut _) };
+        if wait.is_null() {
+            return false;
+        }
+        s.objects.insert(handle, wait as usize);
+        true
+    }
+
+    /// Ends the watch on `handle`; the caller may close it afterwards.
+    pub fn object_drop(handle: usize) {
+        let Some(wait) = state().objects.remove(&handle) else {
+            return;
+        };
+        // SAFETY: registered by `object_watch` and removed from the map, so unregistered once.
+        unsafe { crate::sys::unregister_wait(wait as *mut _) };
+        SIGNALLED
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .retain(|&h| h != handle);
+    }
+
     pub unsafe fn wait(_: i32, timeout_ms: i32, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
         let timeout = (timeout_ms >= 0).then(|| Duration::from_millis(timeout_ms as u64));
@@ -408,10 +454,25 @@ mod imp {
             out[count] = Ready { fd: sock, bits };
             count += 1;
         }
+        let mut objects = SIGNALLED.lock().unwrap_or_else(|e| e.into_inner());
+        while count < out.len() {
+            let Some(handle) = objects.pop() else { break };
+            if s.objects.contains_key(&handle) {
+                out[count] = Ready {
+                    fd: handle,
+                    bits: WAIT_READ,
+                };
+                count += 1;
+            }
+        }
+        if !objects.is_empty() {
+            // No room this round: the next wait returns at once for the rest.
+            kick();
+        }
         Some(count)
     }
 }
 
 pub use imp::{close, create, forget, kick, unwatch, wait, watch};
 #[cfg(windows)]
-pub use imp::{pipe_adopt, pipe_drop, pipe_read, pipe_write};
+pub use imp::{object_drop, object_watch, pipe_adopt, pipe_drop, pipe_read, pipe_write};

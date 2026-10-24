@@ -19,6 +19,9 @@ pub struct Child {
     pub code: Option<i64>,
     #[cfg(windows)]
     job: isize,
+    /// Whether the runtime poller watches the process handle, so drop ends that watch.
+    #[cfg(windows)]
+    watched: bool,
     /// A descriptor that becomes readable when the child exits, or -1: a pidfd on Linux (none
     /// before 5.3), a kqueue watching the pid on Apple platforms.
     #[cfg(unix)]
@@ -267,6 +270,7 @@ impl Child {
                 inner,
                 code: None,
                 job: job as isize,
+                watched: false,
             }
         }
         #[cfg(unix)]
@@ -293,12 +297,21 @@ impl Child {
     /// when the platform cannot wait on the child, so the caller checks it in slices instead.
     pub fn park_until_exit(&mut self, timeout_ns: i64) -> bool {
         #[cfg(unix)]
-        if let Some(fd) = self.exit_fd() {
+        {
+            let Some(fd) = self.exit_fd() else {
+                return false;
+            };
             ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, timeout_ns);
-            return true;
+            true
         }
-        let _ = timeout_ns;
-        false
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            self.watched = true;
+            let handle = self.inner.as_raw_handle() as isize;
+            // SAFETY: the process handle stays open until drop, which ends the watch first.
+            unsafe { ms_rt::glue::object::wait(handle, timeout_ns) }.is_some()
+        }
     }
 
     /// Reaps the child when it has exited; reports whether it has.
@@ -367,6 +380,10 @@ impl Child {
 #[cfg(windows)]
 impl Drop for Child {
     fn drop(&mut self) {
+        if self.watched {
+            use std::os::windows::io::AsRawHandle;
+            ms_rt::glue::object::forget(self.inner.as_raw_handle() as isize);
+        }
         // SAFETY: the job handle is ours and closed once.
         unsafe { windows_sys::Win32::Foundation::CloseHandle(self.job as _) };
     }
