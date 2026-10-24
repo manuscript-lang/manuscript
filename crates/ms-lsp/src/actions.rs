@@ -199,7 +199,7 @@ pub fn editor_actions(
     let lines: Vec<&str> = d.text.split_inclusive('\n').collect();
     let mut edits = Vec::new();
     let mut at = 0;
-    let is_import = |line: &str| line.trim().starts_with("import ");
+    let is_import = |line: &str| line.trim().starts_with("from \"");
     while at < lines.len() {
         if !is_import(lines[at]) {
             at += 1;
@@ -271,12 +271,15 @@ fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Jso
         .filter(|i| i.pos.offset == selected.pos.offset)
         .count();
     if count == 1 {
+        // The declaration ends at the name, or at the `)` closing a group.
         let mut end_line = selected.name_pos.line;
-        for token in &tokens {
-            if token.pos.offset >= selected.pos.offset && token.kind == Tok::String {
-                end_line = token.pos.line;
-                break;
-            }
+        let after = tokens
+            .iter()
+            .position(|t| t.pos.offset as usize == offset)
+            .map_or(tokens.len(), |at| at + 1);
+        let mut rest = tokens[after..].iter().filter(|t| t.kind != Tok::Comma);
+        if let Some(close) = rest.next().filter(|t| t.kind == Tok::RParen) {
+            end_line = close.pos.line;
         }
         let r = Range {
             start: line_range(&d.text, selected.pos.line as usize - 1).start,

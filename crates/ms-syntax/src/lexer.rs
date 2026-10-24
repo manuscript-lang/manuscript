@@ -389,7 +389,10 @@ impl Scanner<'_> {
                     self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
-                if b == b'.' && self.at(self.offset + 1) == Some(b'.') && self.at(self.offset + 2) == Some(b'.') {
+                if b == b'.'
+                    && self.at(self.offset + 1) == Some(b'.')
+                    && self.at(self.offset + 2) == Some(b'.')
+                {
                     let start = self.offset;
                     self.advance();
                     self.advance();
@@ -712,7 +715,13 @@ impl Scanner<'_> {
                         return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
                     }
                     self.advance();
-                } else if !(if fstring { &b"\"\\nrt{}"[..] } else { &b"\"\\nrt"[..] }).contains(&c) {
+                } else if !(if fstring {
+                    &b"\"\\nrt{}"[..]
+                } else {
+                    &b"\"\\nrt"[..]
+                })
+                .contains(&c)
+                {
                     let escape = if c.is_ascii_graphic() {
                         format!(" \\{}", char::from(c))
                     } else {
