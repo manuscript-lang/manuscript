@@ -507,6 +507,8 @@ mod process {
     #[test]
     fn memory_usage_reports_heap_and_resident() {
         let _g = lock();
+        // The heap figures describe the calling isolate's arena.
+        ms_rt::alloc::claim_arena(true);
         let blocks: std::vec::Vec<*mut u8> = (0..1000).map(|_| ms_rt::alloc::alloc(64)).collect();
         let mut out = std::mem::MaybeUninit::<MemoryOut>::uninit();
         // SAFETY: `out` is writable.

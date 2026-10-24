@@ -9,16 +9,16 @@
 //! open files) stay in this process.
 
 use crate::fault;
-use crate::global::Global;
+use crate::global::Process;
 use crate::string;
 use ms_rt_abi::StrVal;
 
 /// Registers saved by `msrt_trap_begin`: callee-saved integer and vector registers, the stack
 /// pointer and the return address (30 words on x64, 21 on arm64).
-static BUF: Global<[usize; 32]> = Global::new([0; 32]);
+static BUF: Process<[usize; 32]> = Process::new([0; 32]);
 /// Whether the operation faulted, and the report it produced.
-static FAULTED: Global<bool> = Global::new(false);
-static REPORT: Global<Vec<u8>> = Global::new(Vec::new());
+static FAULTED: Process<bool> = Process::new(false);
+static REPORT: Process<Vec<u8>> = Process::new(Vec::new());
 
 extern "C" fn prepare() {
     crate::io::flush_stdout();

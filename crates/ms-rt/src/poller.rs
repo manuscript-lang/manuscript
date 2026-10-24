@@ -59,7 +59,6 @@ static WAKE_FD: AtomicI32 = AtomicI32::new(-1);
 #[cfg(unix)]
 mod imp {
     use super::*;
-    use crate::global::Global;
     use mio::unix::SourceFd;
     use mio::unix::pipe;
     use mio::{Events, Poll, Token};
@@ -80,7 +79,9 @@ mod imp {
         _wake_tx: pipe::Sender,
     }
 
-    static STATE: Global<Option<State>> = Global::new(None);
+    crate::isolate_static! {
+        static STATE: Option<State> = None;
+    }
 
     fn state() -> &'static mut State {
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -97,7 +98,16 @@ mod imp {
             let (tx, mut rx) = pipe::new()?;
             poll.registry()
                 .register(&mut rx, WAKE_TOKEN, mio::Interest::READABLE)?;
-            WAKE_FD.store(tx.as_raw_fd(), Ordering::Relaxed);
+            let fd = tx.as_raw_fd();
+            if crate::isolate::is_main() {
+                WAKE_FD.store(fd, Ordering::Relaxed);
+            }
+            crate::isolate::set_wake(Some(Box::new(move || {
+                let one = 1u8;
+                // SAFETY: writes one byte from a live local; `close` unsets this closure
+                // before the descriptor is closed, and a full pipe already holds a wake-up.
+                unsafe { sys::write(fd, core::ptr::addr_of!(one).cast(), 1) };
+            })));
             Ok(State {
                 poll,
                 events: Events::with_capacity(64),
@@ -144,7 +154,10 @@ mod imp {
     }
 
     pub unsafe fn close(_: i32) {
-        WAKE_FD.store(-1, Ordering::Relaxed);
+        if crate::isolate::is_main() {
+            WAKE_FD.store(-1, Ordering::Relaxed);
+        }
+        crate::isolate::set_wake(None);
         // SAFETY: only the scheduler thread reaches the poller state.
         unsafe { *STATE.ptr() = None };
     }
@@ -217,7 +230,6 @@ mod imp {
     //! A handle that is not a socket cannot be registered and counts as ready at once.
 
     use super::*;
-    use crate::global::Global;
     use mio::net::TcpStream;
     use mio::{Events, Poll, Token, Waker};
     use std::collections::HashMap;
@@ -234,7 +246,9 @@ mod imp {
         views: HashMap<usize, TcpStream>,
     }
 
-    static STATE: Global<Option<State>> = Global::new(None);
+    crate::isolate_static! {
+        static STATE: Option<State> = None;
+    }
     static WAKER: Mutex<Option<Arc<Waker>>> = Mutex::new(None);
 
     fn state() -> &'static mut State {
@@ -260,7 +274,12 @@ mod imp {
             Ok((s, waker)) => {
                 // SAFETY: only the scheduler thread reaches the poller state.
                 unsafe { *STATE.ptr() = Some(s) };
-                *WAKER.lock().unwrap_or_else(|e| e.into_inner()) = Some(waker);
+                if crate::isolate::is_main() {
+                    *WAKER.lock().unwrap_or_else(|e| e.into_inner()) = Some(waker.clone());
+                }
+                crate::isolate::set_wake(Some(Box::new(move || {
+                    let _ = waker.wake();
+                })));
             }
             Err(_) => fault::fault(b"cannot create the I/O poller"),
         }
@@ -275,7 +294,10 @@ mod imp {
     }
 
     pub unsafe fn close(_: i32) {
-        *WAKER.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        if crate::isolate::is_main() {
+            *WAKER.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        }
+        crate::isolate::set_wake(None);
         // SAFETY: only the scheduler thread reaches the poller state.
         unsafe { *STATE.ptr() = None };
     }

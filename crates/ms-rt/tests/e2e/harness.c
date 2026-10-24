@@ -22,7 +22,7 @@ extern void msrt_io_write_stdout(void *s);
 extern void msrt_fault(const char *p, size_t n) __attribute__((noreturn));
 extern size_t msrt_cleanup_push(void (*f)(void *), void *arg);
 extern int64_t msrt_string_length(void *s);
-extern uintptr_t msrt_stack_limit;
+extern uintptr_t *msrt_isolate_hdr(void);
 extern void msrt_fault_depth(void) __attribute__((noreturn));
 extern void msrt_args(VecVal *out);
 extern uint8_t msrt_guard_call(void (*code)(void *), void *data, void **msg_out);
@@ -55,7 +55,7 @@ __attribute__((noinline)) int64_t busy(void) {
 
 static int64_t deep(int64_t n) {
     char marker;
-    if ((uintptr_t)&marker < msrt_stack_limit) msrt_fault_depth();
+    if ((uintptr_t)&marker < *msrt_isolate_hdr()) msrt_fault_depth();
     return n == 0 ? 0 : deep(n - 1) + 1;
 }
 

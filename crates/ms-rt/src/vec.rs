@@ -1891,7 +1891,9 @@ mod tests {
         assert_eq!(alloc::live_blocks(), before);
     }
 
-    static ZERO_COPIES: crate::global::Global<usize> = crate::global::Global::new(0);
+    crate::isolate_static! {
+        static ZERO_COPIES: usize = 0;
+    }
 
     unsafe extern "C" fn copy_zero(_src: *const u8, _dst: *mut u8) {
         // SAFETY: tests hold the runtime-global lock.

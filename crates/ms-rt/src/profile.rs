@@ -5,7 +5,7 @@
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
 use crate::fault::{STACK_HI, STACK_LO, TABLES, find_func};
-use crate::global::Global;
+use crate::global::Process;
 use crate::num;
 use crate::sys;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -19,10 +19,10 @@ const MAX_FRAMES: usize = 128;
 const SAMPLE_WORDS: usize = MAX_FRAMES + 1;
 
 static ENABLED: AtomicUsize = AtomicUsize::new(0);
-static BUFFER: Global<*mut usize> = Global::new(core::ptr::null_mut());
+static BUFFER: Process<*mut usize> = Process::new(core::ptr::null_mut());
 static COUNT: AtomicUsize = AtomicUsize::new(0);
 static DROPPED: AtomicUsize = AtomicUsize::new(0);
-static PATH: Global<&'static [u8]> = Global::new(b"");
+static PATH: Process<&'static [u8]> = Process::new(b"");
 
 #[cfg(unix)]
 mod regs {
@@ -149,8 +149,8 @@ mod sampler {
     use super::*;
     use core::ffi::c_void;
 
-    static TARGET: Global<*mut c_void> = Global::new(core::ptr::null_mut());
-    static SAMPLER: Global<*mut c_void> = Global::new(core::ptr::null_mut());
+    static TARGET: Process<*mut c_void> = Process::new(core::ptr::null_mut());
+    static SAMPLER: Process<*mut c_void> = Process::new(core::ptr::null_mut());
 
     unsafe extern "system" fn run(_: *mut c_void) -> u32 {
         let ms = (1000 / parse_hz()).max(1) as u32;

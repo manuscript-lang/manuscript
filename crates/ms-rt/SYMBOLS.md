@@ -33,7 +33,7 @@ msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64
 msrt_hash_int(v: i64) -> i64
 msrt_hash_bytes(p: *const u8, len: usize) -> i64
 msrt_hash_combine(a: i64, b: i64) -> i64
-msrt_cancel_flag (data)
+msrt_isolate_hdr() -> *mut Hdr
 msrt_fault(msg: *const u8, len: usize) -> !
 msrt_fault_string(s: *const StrVal) -> !
 msrt_fault_depth() -> !
@@ -193,6 +193,19 @@ msrt_bool_to_string(v: u8, out: *mut StrVal)
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_string_quote(s: *const StrVal, out: *mut StrVal)
 msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -> u64
+msrt_worker_arg_new(p: *const u8, len: usize) -> *mut u8
+msrt_worker_arg_take(block: *mut u8, out: *mut StrVal)
+msrt_worker_spawn(entry: Entry, arg: *mut u8, done: u64) -> u64
+msrt_worker_cancel(handle: u64)
+msrt_worker_join(handle: u64, msg_out: *mut StrVal) -> u8
+msrt_worker_end() -> i64
+msrt_worker_start(entry: *mut Closure, end: i64) -> i64
+msrt_worker_wait(handle: i64, out: *mut StrVal)
+msrt_pipe_new() -> i64
+msrt_pipe_peer(end: i64) -> i64
+msrt_pipe_send(end: i64, message: *const StrVal) -> i64
+msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
+msrt_pipe_close(end: i64)
 msrt_task_yield()
 msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
@@ -816,7 +829,6 @@ msrt_list_sort_ints(v: *mut VecVal, desc: i64)
 msrt_list_sorted_by_difference( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, desc: i64, out: *mut VecVal, )
 msrt_shield_enter()
 msrt_shield_exit()
-msrt_stack_limit (data)
 msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal)
 msrt_string_char_width(s: *const StrVal, at: i64) -> i64
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64

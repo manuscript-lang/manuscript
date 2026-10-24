@@ -1,15 +1,15 @@
 //! Buffered standard output and unbuffered standard error.
-use crate::global::Global;
+use crate::global::Process;
 use crate::sys;
 use ms_rt_abi::{StrVal, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
-static OUT: Global<Vec<u8>> = Global::new(Vec::new());
+static OUT: Process<Vec<u8>> = Process::new(Vec::new());
 /// 0 unknown, 1 pipe/file, 2 terminal.
-static TTY: Global<u8> = Global::new(0);
+static TTY: Process<u8> = Process::new(0);
 
 /// Bit 0: standard output was closed; bit 1: standard error was closed.
-static CLOSED: Global<u8> = Global::new(0);
+static CLOSED: Process<u8> = Process::new(0);
 
 pub fn flush_stdout() {
     // SAFETY: single threaded access to the output buffer (the fault path may
