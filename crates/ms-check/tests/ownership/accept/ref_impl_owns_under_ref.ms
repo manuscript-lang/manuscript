@@ -5,5 +5,5 @@ type Item:
     name: String
 
 impl Shows for Item:
-    fn view() String:  # error: the result kinds must agree
+    fn view() String:
         return self.name.clone()

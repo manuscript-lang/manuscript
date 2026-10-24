@@ -1,11 +1,11 @@
 interface Named:
-    fn names() List[String]
+    fn names() ref List[String]
 
 type Box:
     items: List[String]
 
 impl Named for Box:
-    fn names() List[String]:
+    fn names() ref List[String]:
         return self.items
 
 fn keep(n: Named) List[List[String]]:

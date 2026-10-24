@@ -226,16 +226,37 @@ impl Hir<'_> {
             end: None,
             fix: None,
         };
+        let insert_ref = |mut d: Diagnostic, at: ms_syntax::Pos| {
+            d.fix = Some(ms_syntax::DiagnosticFix {
+                pos: at,
+                end: at,
+                replacement: "ref ".to_string(),
+            });
+            d
+        };
         let mut out = Vec::new();
         for c in callables {
             let Some(f) = c.func.func() else { continue };
-            if !f.result_ref || f.body.is_empty() {
+            if f.body.is_empty() {
                 continue;
             }
             let lends = summaries
                 .get(&(c.module.file, c.id()))
                 .is_some_and(|s| !s.result.slots.is_empty());
-            if !lends {
+            if lends && !f.result_ref {
+                out.push(insert_ref(
+                    diag(
+                        c.module.file,
+                        f.result.pos,
+                        format!(
+                            "`{}` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`",
+                            f.name
+                        ),
+                    ),
+                    f.result.pos,
+                ));
+            }
+            if f.result_ref && !lends {
                 out.push(diag(
                     c.module.file,
                     f.result.pos,
@@ -263,17 +284,14 @@ impl Hir<'_> {
                 .find(|o| o.name == f.name)
                 .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
             let Some(declared) = declared else { continue };
-            if declared != f.result_ref {
-                let (has, lacks) = if declared {
-                    ("a `ref`", "an owned")
-                } else {
-                    ("an owned", "a `ref`")
-                };
+            // A `ref` operation lets an implementation lend or own; an owning operation must not
+            // be implemented by a lender, since callers of the contract treat its result as owned.
+            if f.result_ref && !declared {
                 out.push(diag(
                     m.module,
                     f.result.pos,
                     format!(
-                        "`{}` implements an operation that returns {has} result, but this method returns {lacks}; the result kinds must agree",
+                        "`{}` implements an operation that returns an owned result, but this method returns `ref`; declare `ref` on the interface operation or return an owned copy",
                         f.name
                     ),
                 ));

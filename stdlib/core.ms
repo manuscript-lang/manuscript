@@ -2,7 +2,7 @@
 # A contract for expected failures that can provide a human-readable message.
 export interface Error:
     # Returns a human-readable description of this expected error.
-    fn message() String
+    fn message() ref String
 
 # An error that carries only intentional text, for callers that have no domain error to return.
 export type TextError:

@@ -2,7 +2,7 @@ type Box:
     items: List[Int]
 
 impl Box:
-    fn list() List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
 fn f() List[Int]:

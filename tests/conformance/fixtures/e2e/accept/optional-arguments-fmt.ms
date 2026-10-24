@@ -28,7 +28,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    fn message() String: self.detail
+    fn message() ref String: self.detail
 
 type Notice:
     failure: Optional[Error]
