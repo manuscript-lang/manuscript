@@ -54,7 +54,8 @@ test "concat tee and writer helpers":
 
 test "digest hashes a stream incrementally":
     let data = "stream me, please".to_bytes()
-    let hashed = try digest(from_bytes(data, 3), HashAlgorithm.Sha256)
+    var input = from_bytes(data.clone(), 3)
+    let hashed = try digest(var input, HashAlgorithm.Sha256)
     if hashed != sha256(data): return panic("stream digest")
 
 test "compression streams round trip all formats":
@@ -63,7 +64,7 @@ test "compression streams round trip all formats":
     for format in [
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
-        let packed = format.compress_stream(from_bytes(text, 5))
+        let packed = format.compress_stream(from_bytes(text.clone(), 5))
         let restored = format.decompress_stream(packed)
         if (try read_all(restored)) != text: return panic(
             "compression stream roundtrip"
@@ -73,10 +74,13 @@ test "compression streams round trip all formats":
         CompressionFormat
         .Gzip
         .decompress_stream(
-            CompressionFormat.Gzip.compress_stream(from_bytes(text)), some(4)
+            CompressionFormat.Gzip.compress_stream(
+                from_bytes(text.clone())
+            ),
+            some(4)
         )
     )
     if read_all(limited).is_ok(): return panic("decompression budget")
 
-    let garbage = CompressionFormat.Gzip.decompress_stream(from_bytes(text))
+    let garbage = CompressionFormat.Gzip.decompress_stream(from_bytes(text.clone()))
     if read_all(garbage).is_ok(): return panic("invalid data")

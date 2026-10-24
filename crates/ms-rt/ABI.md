@@ -11,6 +11,7 @@ the earlier Go runtime has been removed.
 _(Newest first. Anything that alters a layout, signature or ownership rule is
 recorded here before it is committed.)_
 
+- **extern (ABI_VERSION unchanged).** `extern fn` declarations call a native symbol of the same name under the conventions below, for scalars, borrowed `String` arguments, and `Int`/`Float`/`Bool`/`String`/`Unit` results, or `Result[T, E]` as a `u8` status (`n` names the `n`th case of a payload-free `E`) plus `out` (`documentation/core-language/functions/native-functions.md`). `crates/ms-rt-abi/include/ms_abi.h` is the C view of `StrVal` for such natives; `msrt_string_from_bytes` is how they build owned string results.
 - **v3 (collection creator evidence).** `MapVal` appends a static key descriptor pointer (56 bytes).
   `msrt_map_stamp` captures creator-module equality and hashing without replacing existing evidence;
   clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null
@@ -55,7 +56,7 @@ recorded here before it is committed.)_
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
-  Only `Shared[T]`-style objects and closures keep an `Obj` header and a count.
+  Only `Shared` boxes (internal today, used for builder handles; the source type `Shared[T]` is planned) and closures keep an `Obj` header and a count.
   `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words at v2, seven since v3) living in the owner's slot;
@@ -69,7 +70,7 @@ recorded here before it is committed.)_
   Clone becomes explicit `msrt_list_copy` / `msrt_slot_copy`. The sections below
   describe v2 only.
 - **v2.1 (implemented runtime, `ABI_VERSION` 2).** Everything below is implemented and tested in `ms-rt`;
-  `SYMBOLS.md` lists every exported symbol with its Rust signature (regenerate with `python3 crates/ms-rt/gen-symbols.py`).
+  `SYMBOLS.md` lists every exported symbol with its Rust signature. It is kept by hand; the `runtime_symbol_catalogue_matches_archive` test fails when it and the runtime archive disagree, and `stdlib/bindings.json` (`runtime_symbols`) names the symbol of each native function.
   - Strings: owned, immutable, uniquely owned buffers; empty and one-ASCII-byte results are static strings (tag `10`).
     The scalar count of the long string last measured is cached in a one-entry hint with a position for sequential indexing.
   - Optional/fallible conventions as in section 1: `Optional[Int]` result = `u8` present + `out: *mut i64`; `Optional[String]` = `OptStr { value: StrVal }` (16 bytes; none is a static empty string with a null `ptr`) through `out`, or a `present: u8` result with `out: *mut StrVal`
@@ -141,7 +142,7 @@ recorded here before it is committed.)_
 Obj { rc: usize @0, drop: fn(*mut Obj) @8 }       16 bytes; pointers point here
 ```
 
-`Shared[T]`/`Weak[T]` boxes, closures and runtime handle objects have a header. A `String` has no header
+`Shared` boxes (and planned `Weak[T]`), closures and runtime handle objects have a header. A `String` has no header
 and no count (section 3). `rc` starts at 1; retain is
 `rc += 1`; release is `rc -= 1; if rc == 0 { drop(obj) }`. Static and literal objects
 live in writable data with `rc = STATIC_RC` (2^62). `drop(obj)` drops what the

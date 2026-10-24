@@ -485,9 +485,9 @@ impl<'a> FnLower<'a> {
     // -------------------------------------------------------------- locals
 
     /// Whether the ownership checker vetted this function, so a lexical borrow cannot outlive a
-    /// change to its source. Embedded standard-library source is not vetted.
+    /// change to its source. Standard-library modules not yet vetted are exempt.
     pub fn ownership_checked(&self) -> bool {
-        ms_check::ownership::is_user_module(self.hir.data.file)
+        ms_check::ownership::is_vetted(self.hir.data.file)
     }
 
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.

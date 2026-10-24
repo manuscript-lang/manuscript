@@ -1,0 +1,4 @@
+export fn main() Int:
+    for (const x of xs):
+        return 1
+    return 0

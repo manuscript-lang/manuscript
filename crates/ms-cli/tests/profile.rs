@@ -1,22 +1,31 @@
 #![cfg(unix)]
-//! `ms profile` end to end with a fake build engine: the "executable" is a
+//! `ms profile` end to end with a fake build function: the "executable" is a
 //! shell script that writes folded stacks to `$MS_PROFILE`.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
 use ms_rt as _;
 use std::os::unix::fs::PermissionsExt;
 
-use ms_cli::backend::{Backend, BackendResult, BuildRequest, Io};
+use ms_cli::backend::{BackendResult, BuildRequest, Io};
+use ms_cli::invocation::{parse_invocation, validate};
 
-struct ScriptBuild;
+fn script_build(request: &BuildRequest, _io: &mut Io) -> BackendResult {
+    let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\necho hello \"$@\"\nexit 3\n";
+    std::fs::write(&request.output, script).unwrap();
+    std::fs::set_permissions(&request.output, std::fs::Permissions::from_mode(0o755)).unwrap();
+    Ok(0)
+}
 
-impl Backend for ScriptBuild {
-    fn build(&self, request: &BuildRequest, _io: &mut Io) -> BackendResult {
-        let script = "#!/bin/sh\nprintf '# hz=99\\nmain;work 30\\nmain;io 10\\n' > \"$MS_PROFILE\"\necho hello \"$@\"\nexit 3\n";
-        std::fs::write(&request.output, script).unwrap();
-        std::fs::set_permissions(&request.output, std::fs::Permissions::from_mode(0o755)).unwrap();
-        Ok(0)
-    }
+/// `Err` carries the status of an invocation that was rejected before the profile ran.
+fn profile(args: &[String], io: &mut Io) -> Result<i32, i32> {
+    let mut inv = parse_invocation(args, io)?;
+    let plan = validate(&mut inv, io)?;
+    Ok(ms_cli::profile::run_profile(
+        &inv,
+        plan.build_type,
+        &script_build,
+        io,
+    ))
 }
 
 fn ms(args: &[&str]) -> (i32, String, String) {
@@ -29,7 +38,7 @@ fn ms(args: &[&str]) -> (i32, String, String) {
             stdout: &mut out,
             stderr: &mut err,
         };
-        ms_cli::run(&args, &ScriptBuild, &mut io)
+        profile(&args, &mut io).unwrap_or_else(|status| status)
     };
     (
         status,

@@ -4,6 +4,7 @@
 use crate::Error;
 use std::path::{Path, PathBuf};
 
+mod bundled;
 mod lld;
 pub(crate) use lld::llvm_tools;
 

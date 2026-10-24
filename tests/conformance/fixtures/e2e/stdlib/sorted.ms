@@ -23,7 +23,8 @@ test "add get replace remove":
 test "string keys order lexicographically":
     var map = SortedMap[String, Int]()
     for word in ["pear", "apple", "fig"]:
-        map.add(word, word.length())
+        let size = word.length()
+        map.add(word, size)
     try expect_equal(map.keys(), ["apple", "fig", "pear"])
 
 test "first last floor ceiling and pops":

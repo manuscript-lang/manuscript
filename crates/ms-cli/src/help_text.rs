@@ -94,6 +94,7 @@ Options:
   -o, --output <path>  Executable path (default: ./program; ./program.exe on Windows)
   --json              Emit one versioned build result and artifact inventory
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -116,15 +117,17 @@ Examples:
   ms emit ms.toml -o main.mir
 "#;
 
-pub const HELP_RUN: &str = r#"Usage: ms run <file.ms|ms.toml> [options] [-- program arguments]
+pub const HELP_RUN: &str = r#"Usage: ms run <file.ms|ms.toml> [--json] [options] [-- program arguments]
 
 Build a temporary executable and run its exported main() Int.
 Arguments after -- are passed unchanged to the application; its exit status is returned.
 Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
 
 Options:
+  --json                Capture output and emit one versioned result; a runtime fault is reported as data (no --watch)
   --watch               Rebuild and restart after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 
@@ -154,6 +157,7 @@ Options:
   --shuffle <seed>     Shuffle with a reproducible integer seed
   --watch              Rebuild and rerun after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
   Default build type: Release
   -h, --help  Show this help without executing the command
 

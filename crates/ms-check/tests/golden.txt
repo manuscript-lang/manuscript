@@ -1397,9 +1397,9 @@ fn f() Int:
 resolution	2	19	30	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?fn f() Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, to_bytes, trim, trim_end, trim_start, upperfn f() String:
-    return [1].join(separator: ",")
-resolution	2	16	30	unknown or ambiguous member join on List[Int]; join is only available on List[String]; convert the elements first, e.g. xs.map(transform: fn(value: Int) String: "{value}").join(separator: ",")fn double(n: Int) Int:
+resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperfn f() String:
+    return [1.5].join(separator: ",")
+resolution	2	18	32	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn(value: Float) String: "{value}").join(separator: ",")fn double(n: Int) Int:
     return n * 2
 fn f() Int:
     return [1, 2].map(double).length()
@@ -2519,7 +2519,7 @@ resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before u
 type	3	11	43	arithmetic requires numeric operandsfn f() Unit:
     var value = 1
     value += 1.5
-type	3	11	41	operator operands require the same independently known type, found Int + Float; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f(value: Val) Unit:
+type	3	11	41	operator operands require the same independently known type, found Int + Float; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])fn f(value: Val) Unit:
     value.val += true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:

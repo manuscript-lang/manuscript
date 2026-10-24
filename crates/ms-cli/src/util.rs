@@ -1,6 +1,6 @@
 //! Helpers shared by the command implementations.
 
-use ms_project::{ProjectError, gopath};
+use ms_driver::project::{ProjectError, gopath};
 
 use crate::backend::Io;
 use crate::json::Json;

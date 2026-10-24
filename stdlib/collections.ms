@@ -148,8 +148,8 @@ impl List[T]:
     # Returns a new list of `ListEntry` records pairing each zero-based index with its element, in order.
     fn entries() List[ListEntry[T]]:
 
-    # Concatenates the strings with `separator` between neighbors; an empty list returns an empty string.
-    # Available only on List[String].
+    # Concatenates the strings (or the decimal text of the integers) with `separator` between neighbors; an empty list returns an empty string.
+    # Available only on List[String] and List[Int].
     fn join(separator: String) String:
 
     # Adds `value` at the end in place.

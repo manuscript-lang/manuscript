@@ -141,6 +141,8 @@ pub fn call_modes(
         origin: ResultOrigin::default(),
     };
     match m.resolution(call) {
+        // An interface view copies what it wraps, so its operand is only read.
+        Resolution::Constructor { ty, .. } if ty.kind == Kind::Contract => borrow_all(None),
         Resolution::Constructor { .. } => CallModes {
             arguments: vec![ParamMode::Consume; args.len()],
             ..borrow_all(None)

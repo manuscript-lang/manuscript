@@ -7,9 +7,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::project::{Overlay, Project, ProjectError, gopath};
 use ms_check::types::{Name, n};
 use ms_check::{ImportMap, ModRef};
-use ms_project::{Overlay, Project, ProjectError, gopath};
 use ms_syntax::{Diagnostic, Phase, Pos};
 
 /// What to load besides the modules reachable from the entry.
@@ -52,8 +52,8 @@ pub struct Graph {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// A loading failure that is not yet a diagnostic: diagnostics, which pass through import edges unchanged, from plain errors,
-/// which each edge wraps with its own position.
+/// Diagnostics pass through import edges unchanged; plain errors and cycles
+/// acquire the position of the edge that encountered them.
 enum Failure {
     Diagnostic(Box<Diagnostic>),
     Error(ProjectError),
@@ -61,6 +61,14 @@ enum Failure {
 }
 
 impl Failure {
+    fn into_diagnostic(self, file: &Arc<str>, cycle_pos: Pos) -> Diagnostic {
+        match self {
+            Failure::Diagnostic(d) => *d,
+            Failure::Error(e) => from_error(file, &e),
+            Failure::Cycle(m) => resolution(file, cycle_pos, m),
+        }
+    }
+
     fn message(&self) -> String {
         match self {
             Failure::Diagnostic(d) => d.message.clone(),
@@ -116,7 +124,7 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
     if let Some(module) = &editor.module {
         config.entry = module.clone();
     }
-    let overlay = match ms_project::canonical_overlay(&config.root, &editor.overlay) {
+    let overlay = match crate::project::canonical_overlay(&config.root, &editor.overlay) {
         Ok(overlay) => overlay,
         Err(error) => {
             graph.diagnostics = vec![from_error(&Arc::from(filename), &error)];
@@ -134,7 +142,7 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
     };
     let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
-        let entry = match ms_project::source_path(&config.root, &config.entry, &overlay) {
+        let entry = match crate::project::source_path(&config.root, &config.entry, &overlay) {
             Ok(entry) => entry,
             Err(error) => {
                 loader.graph.diagnostics = vec![from_error(&file, &error)];
@@ -146,18 +154,16 @@ pub fn load_editor_file(filename: &str, options: LoadOptions, editor: &EditorOpt
             Err(failure) => {
                 // An incomplete strict graph cannot be checked.
                 loader.graph.modules.clear();
-                let d = match failure {
-                    Failure::Diagnostic(d) => *d,
-                    Failure::Error(e) => from_error(&file, &e),
-                    Failure::Cycle(m) => resolution(&file, start(), m),
-                };
-                loader.graph.diagnostics.push(d);
+                loader
+                    .graph
+                    .diagnostics
+                    .push(failure.into_diagnostic(&file, start()));
                 return graph;
             }
         }
     }
     if manifest && (library || options.tests || editor.project_sources) {
-        match ms_project::discover_modules_with_overlay(
+        match crate::project::discover_modules_with_overlay(
             &config,
             library || editor.project_sources,
             &overlay,
@@ -183,7 +189,7 @@ fn manifest_pos(config: &Project) -> Pos {
 fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectError)> {
     let absolute = gopath::abs(filename).map_err(|e| (String::new(), e))?;
     if gopath::base(&absolute) == "ms.toml" {
-        let (config, error) = ms_project::read_project_partial(&absolute);
+        let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
             Some(error) => Err((config.root, error)),
             None => Ok((config, true)),
@@ -271,17 +277,14 @@ struct Loader<'a> {
 impl Loader<'_> {
     fn add_discovered(&mut self, files: &[String]) {
         for file in files {
-            let result = ms_project::source_path(&self.config.root, file, self.overlay)
+            let result = crate::project::source_path(&self.config.root, file, self.overlay)
                 .map_err(Failure::Error)
                 .and_then(|canonical| self.visit(&canonical));
             if let Err(failure) = result {
                 let logical: Arc<str> = Arc::from(file.as_str());
-                let d = match failure {
-                    Failure::Diagnostic(d) => *d,
-                    Failure::Error(e) => from_error(&logical, &e),
-                    Failure::Cycle(m) => resolution(&logical, start(), m),
-                };
-                self.graph.diagnostics.push(d);
+                self.graph
+                    .diagnostics
+                    .push(failure.into_diagnostic(&logical, start()));
             }
         }
     }
@@ -347,12 +350,9 @@ impl Loader<'_> {
             match self.import_module(canonical, file, item) {
                 Ok(target) => resolved.push((item.id, target)),
                 Err(failure) if self.recover => {
-                    let d = match failure {
-                        Failure::Diagnostic(d) => *d,
-                        Failure::Error(e) => from_error(file, &e),
-                        Failure::Cycle(m) => resolution(file, item.pos, m),
-                    };
-                    self.graph.diagnostics.push(d);
+                    self.graph
+                        .diagnostics
+                        .push(failure.into_diagnostic(file, item.pos));
                 }
                 Err(failure) => return Err(failure),
             }
@@ -371,14 +371,15 @@ impl Loader<'_> {
         file: &Arc<str>,
         item: &ms_syntax::Import,
     ) -> Result<Name, Failure> {
-        let target = ms_project::resolve_import(self.config, importer, &item.path, self.overlay)
-            .map_err(|e| {
-                Failure::Diagnostic(Box::new(resolution(
-                    file,
-                    item.pos,
-                    explain_path_error(&e, &item.path),
-                )))
-            })?;
+        let target =
+            crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
+                .map_err(|e| {
+                    Failure::Diagnostic(Box::new(resolution(
+                        file,
+                        item.pos,
+                        explain_path_error(&e, &item.path),
+                    )))
+                })?;
         self.visit(&target).map_err(|failure| match failure {
             Failure::Diagnostic(d) => Failure::Diagnostic(d),
             other => Failure::Diagnostic(Box::new(resolution(file, item.pos, other.message()))),

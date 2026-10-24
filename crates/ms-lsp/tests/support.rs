@@ -23,8 +23,9 @@ impl Workspace {
             &root,
         );
         // The project's spelling: Windows `canonicalize` yields a verbatim `\\?\` path.
-        let root = ms_project::gopath::eval_symlinks(root.to_str().expect("utf-8 temp dir"))
-            .expect("workspace");
+        let root =
+            ms_driver::project::gopath::eval_symlinks(root.to_str().expect("utf-8 temp dir"))
+                .expect("workspace");
         Workspace {
             root: PathBuf::from(root),
         }

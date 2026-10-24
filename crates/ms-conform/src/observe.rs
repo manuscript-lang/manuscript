@@ -259,6 +259,21 @@ fn strip_durations(report: &mut Json) {
     }
 }
 
+/// Drops the structured `fault` that `ms test --json` adds beside the failure text; the
+/// recorded oracle never reported it, and the failure text already carries the same facts.
+fn strip_faults(report: &mut Json) {
+    report.remove("fault");
+    if let Json::Obj(fields) = report {
+        for (_, v) in fields.iter_mut() {
+            match v {
+                Json::Arr(items) => items.iter_mut().for_each(strip_faults),
+                Json::Obj(_) => strip_faults(v),
+                _ => {}
+            }
+        }
+    }
+}
+
 fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     let mut args: Vec<&str> = vec!["test", entry, "--json"];
     if !fx.args.is_empty() {
@@ -267,6 +282,7 @@ fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     }
     let out = ctx.invoke(fx, &args, work, &fx.stdin);
     let mut report = parse_json_output(&out, work);
+    strip_faults(&mut report);
     let mut keys = BTreeSet::new();
     shape(&report, "", &mut keys);
     strip_durations(&mut report);

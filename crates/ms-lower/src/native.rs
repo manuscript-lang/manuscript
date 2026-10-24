@@ -122,15 +122,6 @@ const PATH_FUNCTIONS: [&str; 15] = [
     "matches_glob",
 ];
 
-fn native_alias(native: &str) -> &str {
-    match native {
-        "sleep" => "time/sleep",
-        "collections/filled" => "list/filled",
-        "collections/range_by" => "list/range_by",
-        other => other,
-    }
-}
-
 /// An evaluated argument of a native call.
 #[derive(Clone, Copy)]
 pub(crate) struct NArg {
@@ -148,6 +139,9 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
+        if let Some(symbol) = native.strip_prefix("extern:") {
+            return self.extern_call(e, view, symbol, params);
+        }
         match native {
             "collections/range" => {
                 let args = self.native_args(view)?;
@@ -375,7 +369,7 @@ impl<'a> FnLower<'a> {
                 | "math/wrapping_add"
                 | "math/wrapping_subtract"
                 | "math/wrapping_multiply"
-        ) || crate::rtcall::function_symbol(native_alias(native)).is_some()
+        ) || crate::rtcall::function_symbol(native).is_some()
     }
 
     /// A native function applied to evaluated arguments (borrowed by the callee).
@@ -453,7 +447,7 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
             return self.finish_rt_call(sym, &sig, true, vals, result);
         }
-        let sym = crate::rtcall::function_symbol(native_alias(native))
+        let sym = crate::rtcall::function_symbol(native)
             .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
         self.rt_function(&sym, params, args, result)
     }

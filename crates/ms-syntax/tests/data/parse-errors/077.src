@@ -1,0 +1,4 @@
+export fn main() Int:
+    for x of xs:
+        return 1
+    return 0

@@ -3,9 +3,9 @@
 use std::path::Path;
 
 use ms_build::Lower;
-use ms_project::gopath;
+use ms_driver::project::gopath;
 
-use super::{Failure, RustBackend, compile};
+use super::{Engine, Failure, compile};
 use crate::backend::{BackendResult, BuildRequest, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
@@ -34,7 +34,7 @@ fn artifacts(output: &str, executable_built: bool) -> Vec<(&'static str, String,
 }
 
 pub(super) fn build<L: Lower>(
-    backend: &RustBackend<L>,
+    backend: &Engine<L>,
     request: &BuildRequest,
     io: &mut Io,
 ) -> BackendResult {
@@ -115,7 +115,12 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(&mut compiled, Path::new(&output), request.build_type) {
+    if let Err(message) = backend.link(
+        &mut compiled,
+        Path::new(&output),
+        request.build_type,
+        &request.link,
+    ) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if structured {

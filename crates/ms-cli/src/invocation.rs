@@ -5,7 +5,7 @@
 use crate::backend::{BuildType, Io};
 use crate::regexp;
 use crate::util::{required_value, resolve_input, split_value_option, usage_error};
-use ms_project::strconv::quote;
+use ms_driver::project::strconv::quote;
 
 /// Long options that take a value (also accepted as `--flag=value`).
 pub const VALUE_OPTIONS: &[&str] = &[
@@ -26,6 +26,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--depth",
     "--diff",
     "--top",
+    "--link",
 ];
 
 /// The `--view` names of `ms diagram`.
@@ -36,6 +37,7 @@ pub const JSON_COMMANDS: &[&str] = &[
     "check",
     "lint",
     "test",
+    "run",
     "build",
     "profile",
     "inspect",
@@ -54,6 +56,8 @@ pub struct Invocation {
     pub analysis: bool,
     pub targets: Vec<String>,
     pub output: String,
+    /// `--link`: extra objects and static libraries for `extern fn` symbols.
+    pub link: Vec<String>,
     pub format_check: bool,
     pub structured: bool,
     pub watch: bool,
@@ -272,6 +276,15 @@ fn parse_options(
                         }
                     },
                 }
+            }
+            "--link" => {
+                let Some(value) = required_value(args, &mut i, value, inline) else {
+                    return Err(usage_error(
+                        io,
+                        "--link requires a path argument, e.g. --link native/libgreet.a",
+                    ));
+                };
+                inv.link.push(value.to_string());
             }
             "-o" | "--output" | "--out-dir" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
@@ -502,6 +515,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             return Err(2);
         }
     };
+    if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test"]) {
+        return Err(usage_error(
+            io,
+            format!("--link requires build, run, or test, not {command}; remove the flag"),
+        ));
+    }
     if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "profile"]) {
         return Err(usage_error(
             io,
@@ -529,6 +548,7 @@ pub fn requests_help(args: &[String]) -> bool {
         "--repeat",
         "--shuffle",
         "--top",
+        "--link",
     ];
     let mut i = 0;
     while i < args.len() {

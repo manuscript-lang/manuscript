@@ -222,7 +222,7 @@ jobs:
           cargo build --locked -p ms-cli 2>&1 | tee "$reports/build.log"
       - name: Native Windows project paths
         if: runner.os == 'Windows'
-        run: cargo test --locked -p ms-project --test windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+        run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
       - name: Release builds use the bundled LLVM tools
         run: |
           set -euo pipefail

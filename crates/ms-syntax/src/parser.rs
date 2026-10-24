@@ -110,6 +110,8 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type".into()
             } else if found == Tok::LParen {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
+            } else if found_text == "_" {
+                "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
             } else if found.as_str() == found_text {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
@@ -160,8 +162,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("import"),
             "imports read: import {name} from \"path.ms\"",
         ),
-        "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
-        | "module" => (
+        "static" | "private" | "internal" | "async" | "package" | "namespace" | "module" => (
             None,
             "there is no such modifier; top level holds only import, let, fn, type, interface, impl, and test, optionally prefixed by export",
         ),
@@ -820,6 +821,7 @@ impl<'a> Parser<'a> {
                 params,
                 result,
                 body,
+                external: false,
             },
             mutating,
         })
@@ -843,6 +845,31 @@ impl<'a> Parser<'a> {
                     params,
                     result,
                     body,
+                    external: false,
+                })
+            }
+            Tok::Extern => {
+                self.at += 1;
+                self.need(Tok::Fn)?;
+                let name = self.need(Tok::Name)?;
+                if self.kind() == Tok::LBracket {
+                    let t = self.peek();
+                    return self.fail(t, "an extern fn cannot be generic; declare the concrete types the native symbol takes");
+                }
+                let params = self.parameters(true, false)?;
+                let result = self.result_type()?;
+                if self.kind() == Tok::Colon {
+                    let t = self.peek();
+                    return self.fail(t, "an extern fn has no body; remove the ':'");
+                }
+                self.end()?;
+                DeclKind::Fn(Func {
+                    name: self.sym(name),
+                    type_params: Vec::new(),
+                    params,
+                    result,
+                    body: Vec::new(),
+                    external: true,
                 })
             }
             Tok::Let => {
@@ -1245,7 +1272,15 @@ impl<'a> Parser<'a> {
             }
             Tok::For => {
                 self.at += 1;
+                if self.kind() == Tok::LParen {
+                    let c = self.peek();
+                    return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \"@std/collections.ms\"");
+                }
                 let name = self.need(Tok::Name)?;
+                if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
+                    let c = self.peek();
+                    return self.fail(c, "for uses 'in', not 'of'; write 'for item in items:'");
+                }
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
                     return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value");

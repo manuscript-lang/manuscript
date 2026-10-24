@@ -148,6 +148,12 @@ export interface Comparable:
     # Orders this value against another in the same domain: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
     fn compare(other: Comparable) Int
 
+# A type whose values can be duplicated. Plain data and functions are Clonable; resource handles are not.
+# There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
+export interface Clonable:
+    # Returns an independent deep copy of this value.
+    fn clone() Clonable
+
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
     # Returns a stable hash consistent with `equals` for the same value.

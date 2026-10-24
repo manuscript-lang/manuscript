@@ -533,6 +533,11 @@ impl Checker {
                 DeclKind::Interface(_) => Some(Kind::Contract),
                 _ => None,
             };
+            // An `extern fn` calls the native symbol named after it.
+            let native = match &d.decl().kind {
+                DeclKind::Fn(f) if f.external => n(&format!("extern:{name}")),
+                _ => n(""),
+            };
             let s = Rc::new(Sym {
                 name,
                 id,
@@ -542,7 +547,7 @@ impl Checker {
                     SymKind::Fn
                 },
                 module: module.file,
-                native: n(""),
+                native,
                 export: d.decl().export,
                 ty: RefCell::new(None),
                 variables: RefCell::new(Vec::new()),
@@ -753,6 +758,11 @@ impl Checker {
     fn check_bodies(&mut self, module: &ModRef) {
         for d in &module.decls {
             match &d.decl().kind {
+                DeclKind::Fn(f) if f.external => {
+                    if let Some(s) = self.own_symbol(d) {
+                        self.check_extern_signature(f, &s.ty());
+                    }
+                }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
                     if let Some(s) = self.own_symbol(d) {
                         let t = s.ty();
@@ -831,7 +841,10 @@ impl Checker {
                 .sym(p.name)
                 .is_some_and(|s| s.module.as_str().is_empty())
                 || self.scope.types.borrow().contains_key(&p.name)
-                || matches!(p.name.as_str(), "Equal" | "Comparable" | "Hashable");
+                || matches!(
+                    p.name.as_str(),
+                    "Equal" | "Comparable" | "Hashable" | "Clonable"
+                );
             if intrinsic {
                 self.res_error(
                     p.pos,
@@ -949,6 +962,58 @@ impl Checker {
                 self.m().facts_mut().type_refs.insert(t.id, r.clone());
                 r
             }
+        }
+    }
+
+    /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
+    /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
+    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty) {
+        const ARGUMENTS: [&str; 4] = ["Int", "Float", "Bool", "String"];
+        const RESULTS: [&str; 5] = ["Int", "Float", "Bool", "String", "Unit"];
+        for (p, ty) in f.params.iter().zip(&t.params) {
+            if p.mutable {
+                self.type_error(
+                    p.pos,
+                    format!(
+                        "extern parameter {} cannot be var; a native borrows its arguments",
+                        p.name
+                    ),
+                );
+            } else if p.default.is_some() {
+                self.type_error(
+                    p.pos,
+                    format!("extern parameter {} cannot have a default; the native symbol takes every argument", p.name),
+                );
+            } else if ty.ty.id != "<invalid>" && !ARGUMENTS.contains(&ty.ty.id.as_str()) {
+                self.type_error(
+                    p.pos,
+                    format!("extern parameter {} has type {}, which cannot cross the native boundary; use Int, Float, Bool, or String", p.name, ty.ty.name),
+                );
+            }
+        }
+        let result = t.result_ty();
+        if result.id == "<invalid>" {
+            return;
+        }
+        if result.is_std("Result") && result.args.len() == 2 {
+            let (ok, error) = (&result.args[0], &result.args[1]);
+            let cases = cases(error);
+            if !RESULTS.contains(&ok.id.as_str()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern Result value has type {}, which cannot cross the native boundary; use Int, Float, Bool, String, or Unit", ok.name),
+                );
+            } else if cases.is_empty() || cases.iter().any(|c| !c.fields.is_empty()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern error type {} must be an alternative whose cases carry no payload; the native returns the status 1 + the case index", error.name),
+                );
+            }
+        } else if !RESULTS.contains(&result.id.as_str()) {
+            self.type_error(
+                f.result.pos,
+                format!("extern result has type {}, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them", result.name),
+            );
         }
     }
 

@@ -61,3 +61,6 @@ __pycache__/
 /target/
 /target-rs/
 .claude/worktrees/
+
+# Debug dump written by MS_KEEP_LL=1
+/*.ll

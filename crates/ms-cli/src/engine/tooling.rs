@@ -5,8 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::time::{Duration, Instant, SystemTime};
 
+use ms_driver::project::{Overlay, ProjectError, gopath};
 use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
-use ms_project::{Overlay, ProjectError, gopath};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
 use ms_tooling::diff::{DiffFile, parse_diff, removed_content, reverse_apply};
@@ -77,7 +77,7 @@ fn facts_of(checked: &Checked) -> Facts {
 }
 
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
-pub(super) fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+pub fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     if !request.watch {
         return Ok(analysis_once(request, io).0);
     }
@@ -120,10 +120,12 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             return (1, Vec::new());
         }
     };
-    let mut analyzed = Vec::new();
     let mut files = Vec::new();
-    let mut issues = selection.diagnostics.clone();
     let mut fixes: Vec<(String, ms_driver::DiagnosticFix)> = Vec::new();
+    let mut diagnostics = selection.diagnostics.clone();
+    let mut findings = Vec::new();
+    let mut summaries = Vec::new();
+    let mut root = String::new();
     for input in &selection.inputs {
         let checked = analyze_with(&input.path, &Overlay::new(), check, check);
         if request.fix {
@@ -131,9 +133,34 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         }
         files.extend(watched_files(&input.path, &checked));
         for issue in &checked.diagnostics {
-            issues.push(placed(&selection, &checked.source_root, issue));
+            diagnostics.push(placed(&selection, &checked.source_root, issue));
         }
-        analyzed.push(checked);
+        if selection.inputs.len() == 1 && !selection.collection {
+            root.clone_from(&checked.source_root);
+        }
+        let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
+            continue;
+        };
+        if check {
+            if !request.json {
+                summaries.push(checked_line(input, &checked));
+            }
+            continue;
+        }
+        for finding in ms_tooling::lint::lint_modules(program) {
+            let at = Position {
+                file: finding.file.to_string(),
+                line: finding.pos.line as usize,
+                column: finding.pos.column as usize,
+                offset: finding.pos.offset as usize,
+            };
+            findings.push(CommandDiagnostic {
+                code: finding.code.to_string(),
+                message: finding.message,
+                position: selection.position(&checked.source_root, &at),
+                ..CommandDiagnostic::default()
+            });
+        }
     }
     if request.fix {
         let (applied, edited) = apply_fixes(fixes, io);
@@ -151,31 +178,12 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             return analysis_once(&rerun, io);
         }
     }
-    let mut diagnostics = issues.clone();
-    for (input, checked) in selection.inputs.iter().zip(&analyzed) {
-        let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
-            continue;
-        };
-        if check {
-            if !request.json {
-                let _ = writeln!(io.stdout, "{}", checked_line(input, checked));
-            }
-            continue;
-        }
-        for finding in ms_tooling::lint::lint_modules(program) {
-            let at = Position {
-                file: finding.file.to_string(),
-                line: finding.pos.line as usize,
-                column: finding.pos.column as usize,
-                offset: finding.pos.offset as usize,
-            };
-            diagnostics.push(CommandDiagnostic {
-                code: finding.code.to_string(),
-                message: finding.message,
-                position: selection.position(&checked.source_root, &at),
-                ..CommandDiagnostic::default()
-            });
-        }
+    // Keep compiler diagnostics ahead of lint findings and defer output until
+    // every input has been checked, without retaining their checked programs.
+    let has_errors = !diagnostics.is_empty();
+    diagnostics.extend(findings);
+    for summary in summaries {
+        let _ = writeln!(io.stdout, "{summary}");
     }
     if selection.collection {
         diagnostics = ordered(diagnostics);
@@ -190,14 +198,10 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             files,
         );
     }
-    let root = match analyzed.as_slice() {
-        [only] if !selection.collection => only.source_root.as_str(),
-        _ => "",
-    };
     for issue in &diagnostics {
         let mut position = issue.position.clone();
         if !root.is_empty() && !gopath::is_abs(&position.file) {
-            position.file = gopath::join(&[root, &position.file]);
+            position.file = gopath::join(&[&root, &position.file]);
         }
         let label = if issue.phase.is_empty() {
             &issue.code
@@ -206,7 +210,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         };
         let _ = writeln!(io.stderr, "{position}: {label}: {}", issue.message);
     }
-    if !issues.is_empty() {
+    if has_errors {
         let count = diagnostics.iter().filter(|d| !d.phase.is_empty()).count();
         let _ = writeln!(
             io.stderr,
@@ -403,7 +407,7 @@ fn source_program(
     Ok(checked)
 }
 
-pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
+pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
     let checked = match source_program(&request.filename, &request.output, request.json, io) {
         Ok(checked) => checked,
         Err(done) => return done,
@@ -416,7 +420,7 @@ pub(super) fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendRe
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
 
-pub(super) fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
+pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
     let checked = match source_program(&request.filename, &request.output, request.json, io) {
         Ok(checked) => checked,
         Err(done) => return done,
@@ -468,7 +472,7 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
     write_output(io, &request.output, text.as_bytes())
 }
 
-pub(super) fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
+pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
     let head = match accepted(&request.filename, &Overlay::new()) {
         Ok(head) => head,
         Err(failure) => return Ok(failure.report(io)),
@@ -650,10 +654,7 @@ fn locate_diff_path(root: &str, path: &str, deleted: bool) -> String {
     }
 }
 
-pub(super) fn drop_redundant_labels(
-    file: &FormatFile,
-    source: &str,
-) -> Result<String, FormatFailure> {
+pub fn drop_redundant_labels(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
     let checked = analyze(&file.path, &Overlay::new());
     let program = checked.program.as_ref().filter(|_| checked.success());
     let Some(program) = program else {
@@ -678,7 +679,7 @@ pub(super) fn drop_redundant_labels(
 }
 
 /// `ms fmt`: the formatter in `ms-syntax`; source that does not parse is reported, never rewritten.
-pub(super) fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
+pub fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
     let name: std::sync::Arc<str> = file.display.as_str().into();
     ms_syntax::format::format(&name, source)
         .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))

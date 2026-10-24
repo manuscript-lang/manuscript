@@ -4,7 +4,6 @@
 //! through [`Inspection::rows`].
 
 use crate::collect::{CallRow, EntityRow, InspectionRows};
-use crate::gosort;
 use crate::json::Json;
 use crate::sha256;
 use crate::walk::walk_module;
@@ -121,7 +120,7 @@ pub fn inspect(program: &Program) -> Inspection {
     for module in &modules {
         locals(module, &mut result);
     }
-    gosort::slice(&mut result.locals, |a, b| a.go_id < b.go_id);
+    result.locals.sort_by(|a, b| a.go_id.cmp(&b.go_id));
 
     let mut symbol_ids: HashMap<usize, String> = HashMap::new();
     for module in &modules {
@@ -238,9 +237,9 @@ pub fn inspect(program: &Program) -> Inspection {
             }
         }
     }
-    gosort::slice(&mut result.sources, |a, b| a.file < b.file);
-    gosort::slice(&mut result.entities, |a, b| a.id < b.id);
-    gosort::slice(&mut result.calls, |a, b| a.id < b.id);
+    result.sources.sort_by(|a, b| a.file.cmp(&b.file));
+    result.entities.sort_by(|a, b| a.id.cmp(&b.id));
+    result.calls.sort_by(|a, b| a.id.cmp(&b.id));
     result.build_id = sha256::hex(result.to_json().compact(ms_json::Escape::GoHtml).as_bytes());
     result
 }
