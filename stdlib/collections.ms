@@ -20,7 +20,7 @@ impl List[T]:
     fn clone() List[T]:
 
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
-    fn get(index: Int, default: Optional[T] = none) T:
+    fn get(index: Int, default: Optional[T] = none) ref T:
 
     # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns false.
     fn contains(value: T) Bool:
@@ -32,10 +32,10 @@ impl List[T]:
     fn last_index_of(value: T) Optional[Int]:
 
     # Returns the first element, or none when the list is empty.
-    fn first() Optional[T]:
+    fn first() ref Optional[T]:
 
     # Returns the last element, or none when the list is empty.
-    fn last() Optional[T]:
+    fn last() ref Optional[T]:
 
     # Reports whether the list has no elements.
     fn is_empty() Bool:
@@ -184,7 +184,7 @@ impl Map[T, U]:
     fn map_keys[W: Hashable](transform: fn(key: T, value: U) W) Map[W, U]:
 
     # Returns the stored value or an eagerly evaluated fallback without inserting.
-    fn get_or(key: T, fallback: U) U:
+    fn get_or(key: T, fallback: U) ref U:
 
     # Reduces entries in insertion order, starting with initial.
     fn fold[A](initial: A, step: fn(accumulator: A, key: T, value: U) A) A:
@@ -236,7 +236,7 @@ impl Map[T, U]:
     fn contains(key: T) Bool:
 
     # Returns the value stored for an equal key, or none when the key is absent.
-    fn get(key: T) Optional[U]:
+    fn get(key: T) ref Optional[U]:
 
     # Returns the number of entries.
     fn length() Int:

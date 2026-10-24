@@ -81,7 +81,7 @@ impl Optional[T]:
     fn is_none() Bool:
 
     # Returns the payload, or `default` when this is `none`. Without a default, `none` raises a fault.
-    fn get(default: Optional[T] = none) T:
+    fn get(default: Optional[T] = none) ref T:
 
     # Transforms a present payload; none remains absent.
     fn map[U](transform: fn(value: T) U) Optional[U]:
@@ -120,10 +120,10 @@ impl Result[T, E]:
     fn is_error() Bool:
 
     # Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
-    fn get(default: Optional[T] = none) T:
+    fn get(default: Optional[T] = none) ref T:
 
     # Returns the error payload; faults when this is successful.
-    fn err() E:
+    fn err() ref E:
 
     # Calls create once with the original error only when this is an error.
     fn or_else(create: fn(cause: E) T) T:
