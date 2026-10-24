@@ -4,6 +4,7 @@
 //! stream, or the null device. The child leads its own process group on Unix; on Windows it starts
 //! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
 //! including anything it starts right away.
+use crate::ipc::ChildEnd;
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_FAILED, STATUS_UNAVAILABLE};
 use ms_std_fs::err::{Fail, Res, describe};
@@ -80,11 +81,17 @@ fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
     }
 }
 
-/// Starts `program` with `args` and the given standard streams; `Unavailable` when it is missing.
+/// Held while a child starts, so an IPC end made inheritable reaches only its own child.
+#[cfg(windows)]
+static INHERIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Starts `program` with `args` and the given standard streams, and with the child's end of `ipc`
+/// as described in `crate::ipc`; `Unavailable` when it is missing.
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
     [stdin, stdout, stderr]: [StdStream; 3],
+    ipc: Option<&ChildEnd>,
 ) -> Res<Child> {
     let failed = |e: i32| {
         let mut m = b"fork/exec ".to_vec();
@@ -101,6 +108,31 @@ pub fn start(
     cmd.stdin(stdin.stdio().map_err(failed)?);
     cmd.stdout(stdout.stdio().map_err(failed)?);
     cmd.stderr(stderr.stdio().map_err(failed)?);
+    if let Some(end) = ipc {
+        cmd.env(crate::ipc::ENV, os_string(&end.env_value()));
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            let fd = end.end.0;
+            // SAFETY: only async-signal-safe calls between fork and exec.
+            unsafe {
+                cmd.pre_exec(move || {
+                    let target = crate::ipc::CHILD_FD;
+                    // `dup2` clears close-on-exec on the copy; a descriptor already in place
+                    // keeps its flag, so clear it.
+                    let r = if fd == target {
+                        libc::fcntl(fd, libc::F_SETFD, 0)
+                    } else {
+                        libc::dup2(fd, target)
+                    };
+                    if r < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                    Ok(())
+                });
+            }
+        }
+    }
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -115,7 +147,20 @@ pub fn start(
         // Suspended until `Child::new` has put it in its job.
         cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED);
     }
-    match cmd.spawn() {
+    // The child's IPC end is inheritable only while this child starts, and every start holds
+    // the lock, so no other child started here inherits it.
+    #[cfg(windows)]
+    let _held = INHERIT.lock().unwrap_or_else(|e| e.into_inner());
+    #[cfg(windows)]
+    if let Some(end) = ipc {
+        end.end.inherit(true).map_err(failed)?;
+    }
+    let spawned = cmd.spawn();
+    #[cfg(windows)]
+    if let Some(end) = ipc {
+        let _ = end.end.inherit(false);
+    }
+    match spawned {
         Ok(inner) => Ok(Child::new(inner)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
