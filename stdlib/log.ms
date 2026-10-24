@@ -123,34 +123,6 @@ fn now_ms() Int:
     let now = wall_clock().now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
-fn stream_write(stream: WriteStream, gate: LogGate, data: String) Result[Unit, LogError]:
-    if gate.is_shut(): return error(LogError.Closed)
-
-    let written = stream.write(data)
-    if written.is_error(): return error(LogError.Io(written.err()))
-
-    return ok(unit)
-
-fn stream_write_bytes(
-    stream: WriteStream,
-    gate: LogGate,
-    data: Bytes
-) Result[Unit, LogError]:
-    if gate.is_shut(): return error(LogError.Closed)
-
-    let written = stream.write_bytes(data)
-    if written.is_error(): return error(LogError.Io(written.err()))
-
-    return ok(unit)
-
-fn stream_flush(stream: WriteStream, gate: LogGate) Result[Unit, LogError]:
-    if gate.is_shut(): return error(LogError.Closed)
-
-    let flushed = stream.flush()
-    if flushed.is_error(): return error(LogError.Io(flushed.err()))
-
-    return ok(unit)
-
 # Writes to a byte stream the caller owns; closing the transport leaves the stream open.
 type StreamTransport:
     stream: WriteStream
@@ -158,13 +130,28 @@ type StreamTransport:
 
 impl Transport for StreamTransport:
     fn write(data: String) Result[Unit, LogError]:
-        return stream_write(self.stream, self.gate, data)
+        if self.gate.is_shut(): return error(LogError.Closed)
+
+        let written = self.stream.write(data)
+        if written.is_error(): return error(LogError.Io(written.err()))
+
+        return ok(unit)
 
     fn write_bytes(data: Bytes) Result[Unit, LogError]:
-        return stream_write_bytes(self.stream, self.gate, data)
+        if self.gate.is_shut(): return error(LogError.Closed)
+
+        let written = self.stream.write_bytes(data)
+        if written.is_error(): return error(LogError.Io(written.err()))
+
+        return ok(unit)
 
     fn flush() Result[Unit, LogError]:
-        return stream_flush(self.stream, self.gate)
+        if self.gate.is_shut(): return error(LogError.Closed)
+
+        let flushed = self.stream.flush()
+        if flushed.is_error(): return error(LogError.Io(flushed.err()))
+
+        return ok(unit)
 
     fn close() Unit:
         self.gate.shut()
@@ -172,22 +159,21 @@ impl Transport for StreamTransport:
 # Appends to a file the transport opened, and closes it with the transport.
 type FileTransport:
     file: FileHandle
-    stream: WriteStream
-    gate: LogGate
+    inner: StreamTransport
 
 impl Transport for FileTransport:
     fn write(data: String) Result[Unit, LogError]:
-        return stream_write(self.stream, self.gate, data)
+        return self.inner.write(data)
 
     fn write_bytes(data: Bytes) Result[Unit, LogError]:
-        return stream_write_bytes(self.stream, self.gate, data)
+        return self.inner.write_bytes(data)
 
     fn flush() Result[Unit, LogError]:
-        return stream_flush(self.stream, self.gate)
+        return self.inner.flush()
 
     fn close() Unit:
-        if not self.gate.is_shut():
-            self.gate.shut()
+        if not self.inner.gate.is_shut():
+            self.inner.close()
             self.file.close()
 
 # The logger behind the `Logger` interface: shared encoder state plus the transport it writes to.
@@ -195,53 +181,49 @@ type StdLogger:
     state: LogState
     transport: Transport
 
-fn emit(logger: StdLogger, level: Int, message: String) Result[Unit, LogError]:
-    let encoded = logger.state.line(level, message, now_ms())
-    if encoded.is_error(): return error(core_error(encoded.err()))
+impl StdLogger:
+    fn emit(level: Int, message: String) Result[Unit, LogError]:
+        let encoded = self.state.line(level, message, now_ms())
+        if encoded.is_error(): return error(core_error(encoded.err()))
 
-    return send(logger, encoded.get())
+        return self.send(encoded.get())
 
-fn emit_json(
-    logger: StdLogger,
-    level: Int,
-    message: String,
-    fields: String
-) Result[Unit, LogError]:
-    let encoded = logger.state.line_json(level, message, fields, now_ms())
-    if encoded.is_error(): return error(core_error(encoded.err()))
+    fn emit_json(level: Int, message: String, fields: String) Result[Unit, LogError]:
+        let encoded = self.state.line_json(level, message, fields, now_ms())
+        if encoded.is_error(): return error(core_error(encoded.err()))
 
-    return send(logger, encoded.get())
+        return self.send(encoded.get())
 
-# A filtered record encodes to no text and never reaches the transport.
-fn send(logger: StdLogger, text: String) Result[Unit, LogError]:
-    if text == "": return ok(unit)
+    # A filtered record encodes to no text and never reaches the transport.
+    fn send(text: String) Result[Unit, LogError]:
+        if text == "": return ok(unit)
 
-    return logger.transport.write(text)
+        return self.transport.write(text)
 
 impl Logger for StdLogger:
     fn log(level: LogLevel, message: String) Result[Unit, LogError]:
-        return emit(self, level_index(level), message)
+        return self.emit(level_index(level), message)
 
     fn trace(message: String) Result[Unit, LogError]:
-        return emit(self, 0, message)
+        return self.emit(0, message)
 
     fn debug(message: String) Result[Unit, LogError]:
-        return emit(self, 1, message)
+        return self.emit(1, message)
 
     fn info(message: String) Result[Unit, LogError]:
-        return emit(self, 2, message)
+        return self.emit(2, message)
 
     fn warn(message: String) Result[Unit, LogError]:
-        return emit(self, 3, message)
+        return self.emit(3, message)
 
     fn error(message: String) Result[Unit, LogError]:
-        return emit(self, 4, message)
+        return self.emit(4, message)
 
     fn fatal(message: String) Result[Unit, LogError]:
-        return emit(self, 5, message)
+        return self.emit(5, message)
 
     fn log_json(level: LogLevel, message: String, fields: String) Result[Unit, LogError]:
-        return emit_json(self, level_index(level), message, fields)
+        return self.emit_json(level_index(level), message, fields)
 
     fn child_json(fields: String) Result[Logger, LogError]:
         let child = self.state.child(fields)
@@ -320,7 +302,11 @@ export fn file_transport(path: String) Result[Transport, LogError]:
     if opened.is_error(): return error(LogError.FileSystem(opened.err()))
 
     let file = opened.get()
-    return ok(Transport(FileTransport(file, file.writer(), new_gate())))
+    return ok(
+        Transport(
+            FileTransport(file, StreamTransport(file.writer(), new_gate()))
+        )
+    )
 
 impl Error for LogError:
     # Returns the preserved I/O/filesystem cause message, or a logging-prefixed diagnostic.
