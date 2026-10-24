@@ -782,6 +782,11 @@ pub extern "C-unwind" fn msrt_fault_int_overflow() -> ! {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_fault_int_range() -> ! {
+    fault(b"Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type")
+}
+
+#[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_div_zero() -> ! {
     fault(b"Int./: division by zero; right must be nonzero, found 0")
 }

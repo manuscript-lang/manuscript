@@ -19,14 +19,14 @@ impl FnLower<'_> {
         a: Value,
         b: Value,
     ) -> Result<Value, Error> {
-        if t == MTy::INT {
+        if self.b.m.types.is_int(t) {
             let (lt, gt) = (self.b.icmp(Cc::Lt, a, b), self.b.icmp(Cc::Gt, a, b));
             let (one, zero, minus) = (self.b.iconst(1), self.b.iconst(0), self.b.iconst(-1));
             let upper = self.b.select(gt, one, zero);
             return Ok(self.b.select(lt, minus, upper));
         }
         let sym = match self.b.m.types.kind(t) {
-            TyKind::Float => "msrt_float_compare",
+            TyKind::Float | TyKind::Float32 => "msrt_float_compare",
             TyKind::Str => "msrt_string_compare",
             TyKind::Obj(n, _) if n == "BigInt" => "msstd_bigint_compare",
             _ => {

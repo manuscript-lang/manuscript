@@ -10,7 +10,7 @@
 
 ## Status
 
-- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stages: none landed yet. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
+- Approved 2026-10-24 for staged implementation with `Int = Int32` and `Float = Float64` (card answer "Int32, Float64"). Written against `df8ebe59`. Stage 1 implemented 2026-10-24 (PR for this branch); stages 2 to 5 pending. Skeptical review: done 2026-10-24; findings folded in below (review ran on the first draft).
 - Direction (Chinmay, 2026-10-24): "lets add specific number types in the stdlib, we need to have 8, 16, 32, 64 style numeric types so we can reduce memory usage, default to 32 for Int/Float".
 
 ## Problem
@@ -37,7 +37,9 @@
 
 - Six primitives: `Int8`, `Int16`, `Int32`, `Int64`, `Float32`, `Float64`. They are in the prelude with `Int` and `Float`.
 - `Int` is an alias of `Int32` and `Float` an alias of `Float64`. The alias is one entry in the checker's primitive table (`crates/ms-check/src/types.rs` `primitive`), not a second type: `Int` and `Int32` are the same type everywhere, including diagnostics.
-- MIR: `TyKind::Int` becomes `TyKind::Int(Width)` and `TyKind::Float` becomes `TyKind::Float(Width)`, with `Width` one of `W8, W16, W32, W64`. Layout derives size, alignment and the Cranelift/LLVM type from `Width`; no other pass names a width.
+- MIR (as implemented in stage 1): `TyKind::Int8`, `Int16`, `Int32` and `Float32` join `Int` (64-bit) and `Float`. `Int` stays the 64-bit kind; stage 5 changes which checker name maps to it, not the MIR kind.
+- Registers: every integer is an `i64` and every float an `f64` in registers and calls, whatever its width. A sized integer is kept in range by a `narrow.chk` op after each arithmetic op, with the width read from the operand's MIR type. A `Float32` is kept rounded by the `f32.round` op. Only storage (stage 3) changes the width.
+- Consequence: the extern ABI, runtime natives, the Windows adapter and the LLVM translator keep passing `i64` and `f64`; no `f32` or narrow integer crosses a call boundary. This replaces the earlier plan of per-width register types.
 
 ```
              before                      after
@@ -57,7 +59,7 @@
   - `to_float()` and `to_decimal()` remain, defined on every integer type.
 - **Equality, hashing, ordering.** Same-type only. `Int32` keys in maps hash by value; `Int64` and `Int32` are different key types.
 - **Memory.** Packed width applies in lists, record fields, map keys and values, and optionals. A record of `Int8, Int32, Int8` follows the existing record layout rules (alignment padding); the proposal does not add field reordering.
-- **Native ABI.** Today externs carry only `Int`, `Float`, `Bool`, `String`, `Unit` (`crates/ms-rt/ABI.md`); no `i8/i16/i32/f32` crosses it. Narrow integers are passed and returned widened to a 64-bit slot by the generated code (callee never trusts upper bits; caller re-narrows), which avoids the SysV and Win64 differences in who extends narrow ints. `Float32` is not widened: it travels as `f32` in an XMM register on every platform, and the Windows adapter (stage 2) must be checked and tested for it. Unverified: needs the adapter source read and a per-platform e2e test before stage 2 lands.
+- **Native ABI.** Sized values cross extern calls as `i64` and `f64` words (see Types), so no narrow integer or `f32` reaches a calling convention and the Windows adapter is unaffected. A native receiving a sized value that was not range-checked cannot exist: only checked values are produced.
 
 ### Examples
 
@@ -129,8 +131,8 @@ let d = b + c
 
 ## Staging and verification
 
-1. **Types, no layout change.** Six primitives and aliases (`Int = Int64`, `Float = Float64`), per-width arithmetic and range checks, contextual literals, conversions, MIR `Width` (with the matching `layout.rs` and `cg.rs` edits so the workspace compiles; non-64 widths are rejected in codegen until stage 2). Existing programs behave identically. Gate: `make conform` new accept/reject cases.
-2. **Native codegen.** Cranelift and LLVM per-width ops, overflow, descriptors, extern ABI. Gate: e2e fixtures per width on Linux, macOS, Windows.
+1. **Types, no layout change (implemented).** Checker names, ranges, contextual literals (including the other operand of an operator), `narrow.chk` and `f32.round`, `Float32` printing (`msrt_float32_to_string`), `msrt_fault_int_range`; conversions are not part of it. Six primitives and aliases (`Int = Int64`, `Float = Float64`). Existing programs behave identically. Gate: `make conform` new accept/reject cases.
+2. **Conversions and receivers.** `to_int8()` ... `to_float64()`, `compare`, `to_string_radix`, `to_decimal` on every width via `bindings.json` and `intrinsics.ms`. Native codegen needs no stage of its own (see Types).
 3. **Packed storage.** Lists, records, maps, optionals use the width; runtime sort, hash, equality per width. Gate: runtime unit tests per width, leak check, and a measurement of `List[Int8]` against `List[Int]` for memory and time.
 4. **Stdlib and docs.** Math conversions, `Int64` where quantities need it, generated reference. Gate: `make docs`, `make verify`.
 5. **Default flip.** Prerequisite: a `bench/` run of flipped programs against stage 4. Alias `Int` to `Int32` (`Float` stays `Float64`), update stdlib signatures and literal ranges, migrate tests and benchmarks. Gate: `make verify-full`, `bench` comparison against stage 4, explicit owner approval after reading that comparison.

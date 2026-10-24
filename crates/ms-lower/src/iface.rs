@@ -213,7 +213,7 @@ impl Cx {
         let c = b
             .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
             .expect("load");
-        let r = if data_ty == MTy::INT {
+        let r = if b.m.types.is_int(data_ty) {
             let (lt, gt) = (
                 b.icmp(ms_mir::ir::Cc::Lt, a, c),
                 b.icmp(ms_mir::ir::Cc::Gt, a, c),
@@ -222,7 +222,7 @@ impl Cx {
             let upper = b.select(gt, one, zero);
             b.select(lt, minus, upper)
         } else {
-            let sym = if data_ty == MTy::FLOAT {
+            let sym = if b.m.types.is_float(data_ty) {
                 "msrt_float_compare"
             } else {
                 "msrt_string_compare"
@@ -547,7 +547,7 @@ impl Cx {
 /// How a built-in type orders itself as `Comparable`: its runtime comparison function, or the
 /// empty name for a type the IR compares directly.
 fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
-    if t == MTy::INT || t == MTy::FLOAT {
+    if m.types.is_int(t) || m.types.is_float(t) {
         return Some("");
     }
     if t == MTy::STR {
@@ -612,7 +612,7 @@ fn build_builtin_compare(
         .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
         .expect("load");
     let sign = if sym.is_empty() {
-        let (gt, lt) = if data_ty == MTy::INT {
+        let (gt, lt) = if b.m.types.is_int(data_ty) {
             (b.icmp(Cc::Gt, me, you), b.icmp(Cc::Lt, me, you))
         } else {
             (b.fcmp(Cc::Gt, me, you), b.fcmp(Cc::Lt, me, you))

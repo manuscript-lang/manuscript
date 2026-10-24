@@ -42,6 +42,7 @@ msrt_fault_unwrap_none() -> !
 msrt_fault_result_get() -> !
 msrt_fault_result_err() -> !
 msrt_fault_int_overflow() -> !
+msrt_fault_int_range() -> !
 msrt_fault_div_zero() -> !
 msrt_fault_rem_zero() -> !
 msrt_fault_div_overflow(a: i64, b: i64) -> !
@@ -186,6 +187,7 @@ msrt_string_normalize( s: *const StrVal, form: *const StrVal, has_max: u8, max: 
 msrt_string_normalize_kind( s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_int_to_string(v: i64, out: *mut StrVal)
 msrt_float_to_string(v: f64, out: *mut StrVal)
+msrt_float32_to_string(v: f64, out: *mut StrVal)
 msrt_bool_to_string(v: u8, out: *mut StrVal)
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_string_quote(s: *const StrVal, out: *mut StrVal)

@@ -99,8 +99,8 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         TyKind::Str => "string",
         TyKind::List(_) => "list",
         TyKind::Bytes => "bytes",
-        TyKind::Int => "int",
-        TyKind::Float => "float",
+        TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => "int",
+        TyKind::Float | TyKind::Float32 => "float",
         TyKind::Obj(n, _) if n == "Map" => "map",
         TyKind::Obj(n, _) if n == "Set" => "set",
         _ => return None,
@@ -224,11 +224,11 @@ impl FnLower<'_> {
         }
         let types = &self.b.m.types;
         let int_key = match types.kind(a[0]) {
-            TyKind::Int => true,
+            _ if types.is_int(a[0]) => true,
             TyKind::Str => false,
             _ => return None,
         };
-        let scalar = matches!(types.kind(a[1]), TyKind::Int | TyKind::Float);
+        let scalar = types.is_int(a[1]) || types.is_float(a[1]);
         let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
         match (sym, int_key) {
             ("msrt_map_add", true) if scalar => Some("msrt_map_add_w8"),

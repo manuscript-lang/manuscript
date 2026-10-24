@@ -31,18 +31,14 @@ fn scalar_inner(m: &Module, f: &Func, v: Value) -> Option<Ty> {
     let TyKind::Opt(inner) = m.types.kind(f.ty(v)) else {
         return None;
     };
-    matches!(
-        m.types.kind(*inner),
-        TyKind::Int | TyKind::Bool | TyKind::Float
-    )
-    .then_some(*inner)
+    (matches!(m.types.kind(*inner), TyKind::Bool) || m.types.is_scalar(*inner)).then_some(*inner)
 }
 
 fn const_of(m: &Module, ty: Ty, loc: crate::ir::Loc, f: &mut Func) -> Inst {
     let res = f.new_value(ty);
     let (op, imm) = match m.types.kind(ty) {
         TyKind::Bool => (Op::BConst, Imm::Bool(false)),
-        TyKind::Float => (Op::FConst, Imm::Float(0f64.to_bits())),
+        TyKind::Float | TyKind::Float32 => (Op::FConst, Imm::Float(0f64.to_bits())),
         _ => (Op::IConst, Imm::Int(0)),
     };
     Inst {

@@ -45,6 +45,14 @@ pub enum TyKind {
     Int,
     /// `Float`, an IEEE 754 binary64.
     Float,
+    /// `Int8`: a signed integer in 8 bits, held in a 64-bit register until stored.
+    Int8,
+    /// `Int16`: a signed integer in 16 bits, held in a 64-bit register until stored.
+    Int16,
+    /// `Int32`: a signed integer in 32 bits, held in a 64-bit register until stored.
+    Int32,
+    /// `Float32`: an IEEE 754 binary32, held rounded in a binary64 register until stored.
+    Float32,
     /// `String`: an owned two-word UTF-8 value.
     Str,
     /// `Bytes`: an owned byte string.
@@ -71,7 +79,7 @@ pub enum TyKind {
     Iface(IfaceId),
 }
 
-/// Interning table for [`TyKind`]. The first seven entries are fixed.
+/// Interning table for [`TyKind`]. The first eleven entries are fixed.
 #[derive(Clone, Debug)]
 pub struct TyTable {
     kinds: Vec<TyKind>,
@@ -93,6 +101,14 @@ impl Ty {
     pub const BYTES: Ty = Ty(5);
     /// Raw pointer-sized word.
     pub const PTR: Ty = Ty(6);
+    /// `Int8`.
+    pub const INT8: Ty = Ty(7);
+    /// `Int16`.
+    pub const INT16: Ty = Ty(8);
+    /// `Int32`.
+    pub const INT32: Ty = Ty(9);
+    /// `Float32`.
+    pub const FLOAT32: Ty = Ty(10);
 
     const SCOPE_SHIFT: u32 = 20;
 
@@ -135,6 +151,10 @@ impl TyTable {
             TyKind::Str,
             TyKind::Bytes,
             TyKind::Ptr,
+            TyKind::Int8,
+            TyKind::Int16,
+            TyKind::Int32,
+            TyKind::Float32,
         ] {
             t.intern(k);
         }
@@ -210,15 +230,49 @@ impl TyTable {
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
-            TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Ptr => false,
+            TyKind::Unit | TyKind::Bool | TyKind::Ptr => false,
+            k if Self::scalar_kind(k) => false,
             TyKind::Opt(inner) => self.is_rc(*inner),
             _ => true,
         }
     }
 
-    /// Whether `ty` is `Int`, `Float` or `Bool`, which are stored inline.
+    fn scalar_kind(k: &TyKind) -> bool {
+        matches!(
+            k,
+            TyKind::Int
+                | TyKind::Int8
+                | TyKind::Int16
+                | TyKind::Int32
+                | TyKind::Float
+                | TyKind::Float32
+        )
+    }
+
+    /// Whether `ty` is a number or `Bool`, which are stored inline.
     pub fn is_scalar(&self, ty: Ty) -> bool {
-        matches!(self.kind(ty), TyKind::Bool | TyKind::Int | TyKind::Float)
+        matches!(self.kind(ty), TyKind::Bool) || Self::scalar_kind(self.kind(ty))
+    }
+
+    /// Whether `ty` is an integer of any width.
+    pub fn is_int(&self, ty: Ty) -> bool {
+        self.int_bits(ty).is_some()
+    }
+
+    /// Whether `ty` is a float of either width.
+    pub fn is_float(&self, ty: Ty) -> bool {
+        matches!(self.kind(ty), TyKind::Float | TyKind::Float32)
+    }
+
+    /// Bit width of an integer type; `Int` is 64.
+    pub fn int_bits(&self, ty: Ty) -> Option<u32> {
+        match self.kind(ty) {
+            TyKind::Int => Some(64),
+            TyKind::Int8 => Some(8),
+            TyKind::Int16 => Some(16),
+            TyKind::Int32 => Some(32),
+            _ => None,
+        }
     }
 
     /// Whether `ty` is a single-word heap reference (never null).

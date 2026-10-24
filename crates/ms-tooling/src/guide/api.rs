@@ -76,6 +76,12 @@ fn primitive_documentation(id: &str) -> &'static str {
             "Signed whole numbers with checked arithmetic; overflow and division by zero fault."
         }
         "Float" => "Binary floating-point values, including signed zero, infinities and NaN.",
+        "Int8" => "Signed 8-bit whole numbers (-128 to 127); arithmetic faults when the result leaves the range.",
+        "Int16" => "Signed 16-bit whole numbers (-32768 to 32767); arithmetic faults when the result leaves the range.",
+        "Int32" => "Signed 32-bit whole numbers (-2147483648 to 2147483647); arithmetic faults when the result leaves the range.",
+        "Int64" => "Signed 64-bit whole numbers; the same type as Int while Int is 64 bits wide.",
+        "Float32" => "Binary32 floating-point values; each operation rounds to binary32, and literals need a Float32 type to adopt it.",
+        "Float64" => "Binary64 floating-point values; the same type as Float.",
         "String" => {
             "UTF-8 text indexed by Unicode scalar values; byte_length counts encoded bytes instead."
         }

@@ -40,9 +40,16 @@ pub fn run(m: &mut Module) -> bool {
 /// Whether dropping a value of `t` only frees memory.
 fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> bool {
     match m.types.kind(t) {
-        TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float | TyKind::Str | TyKind::Bytes => {
-            true
-        }
+        TyKind::Unit
+        | TyKind::Bool
+        | TyKind::Int
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::Float
+        | TyKind::Float32
+        | TyKind::Str
+        | TyKind::Bytes => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => {
@@ -111,10 +118,7 @@ fn function(m: &Module, f: &mut Func) -> bool {
 }
 
 fn is_scalar(m: &Module, t: crate::types::Ty) -> bool {
-    matches!(
-        m.types.kind(t),
-        TyKind::Unit | TyKind::Bool | TyKind::Int | TyKind::Float
-    )
+    matches!(m.types.kind(t), TyKind::Unit) || m.types.is_scalar(t)
 }
 
 /// Moves the drops of `v`; false when the candidate is left as it was.

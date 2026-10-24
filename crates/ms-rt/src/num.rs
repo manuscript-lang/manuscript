@@ -189,7 +189,18 @@ fn float_syntax(t: &[u8]) -> bool {
 fn shortest(v: f64) -> (Vec<u8>, i32) {
     let mut s = Vec::new();
     let _ = write!(s, "{v:e}");
-    let text = s.as_slice();
+    split_scientific(&s)
+}
+
+/// The same for a finite positive binary32 value.
+fn shortest32(v: f32) -> (Vec<u8>, i32) {
+    let mut s = Vec::new();
+    let _ = write!(s, "{v:e}");
+    split_scientific(&s)
+}
+
+fn split_scientific(s: &[u8]) -> (Vec<u8>, i32) {
+    let text = s;
     let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
     let mut digits = Vec::new();
     for &c in &text[..epos] {
@@ -269,6 +280,18 @@ pub fn float_to_string(v: f64) -> Vec<u8> {
         let (digits, exp) = shortest(v.abs());
         render_decimal(digits.as_slice(), exp, v < 0.0, &mut out);
     }
+    out
+}
+
+/// `Float32.to_string`: the shortest digits that round-trip through binary32.
+pub fn float32_to_string(v: f64) -> Vec<u8> {
+    let x = v as f32;
+    if x.is_nan() || x.is_infinite() || x == 0.0 {
+        return float_to_string(f64::from(x));
+    }
+    let mut out = Vec::new();
+    let (digits, exp) = shortest32(x.abs());
+    render_decimal(digits.as_slice(), exp, x < 0.0, &mut out);
     out
 }
 

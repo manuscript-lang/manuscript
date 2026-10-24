@@ -16,8 +16,8 @@ use ms_syntax::ast::Expr;
 /// The runtime parameter type a flattened optional payload is passed as.
 fn payload_kind(kind: &TyKind, t: MTy) -> &'static str {
     match kind {
-        _ if t == MTy::INT => "i64",
-        _ if t == MTy::FLOAT => "f64",
+        TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => "i64",
+        TyKind::Float | TyKind::Float32 => "f64",
         _ if t == MTy::STR => "*const StrVal",
         TyKind::Alt(_) => "i64",
         _ => "u8",

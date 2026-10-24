@@ -151,20 +151,27 @@ impl<'a> FnLower<'a> {
             None => self.ety(e),
         };
         match t.id.as_str() {
-            "Int" => {
+            "Int" | "Int8" | "Int16" | "Int32" | "Int64" => {
                 let n: i128 = parse_int(text)
                     .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
                 let n = if negate { -n } else { n };
-                let v = self.b.iconst(
-                    i64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?,
-                );
+                let n = i64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?;
+                let ty = self.mty(&t)?;
+                let v = self.b.iconst_ty(n, ty);
                 Ok(Val { v, own: false })
             }
-            "Float" => {
+            "Float" | "Float32" | "Float64" => {
                 let f: f64 = text
                     .parse()
                     .map_err(|_| Error::new(format!("bad float literal {text}")))?;
-                let v = self.b.fconst(if negate { -f } else { f });
+                let f = if negate { -f } else { f };
+                let f = if ct::float_bits(&t) == Some(32) {
+                    f64::from(f as f32)
+                } else {
+                    f
+                };
+                let ty = self.mty(&t)?;
+                let v = self.b.fconst_ty(f, ty);
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
@@ -398,10 +405,11 @@ impl<'a> FnLower<'a> {
                     let v = self.call_runtime("msstd_decimal_negate", &[a], t)?;
                     return Ok(Val { v, own: false });
                 }
-                let v = if t == MTy::FLOAT {
+                let v = if self.b.m.types.is_float(t) {
                     self.b.unop(Op::FNeg, x.v)
                 } else {
-                    self.b.unop(Op::INegChk, x.v)
+                    let v = self.b.unop(Op::INegChk, x.v);
+                    self.narrow(v, &self.hir.ty(operand))
                 };
                 Ok(Val { v, own: false })
             }
@@ -432,7 +440,8 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let out = match op {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
-                self.arithmetic(op, t, l, r)?
+                let v = self.arithmetic(op, t, l, r)?;
+                self.narrow(v, &self.hir.ty(left))
             }
             BinaryOp::Eq | BinaryOp::Ne => {
                 let saved = self.scope_override;
@@ -460,8 +469,20 @@ impl<'a> FnLower<'a> {
         Ok(self.val(out, true))
     }
 
+    /// Brings a 64-bit result back to its sized type: integers fault when out of range,
+    /// binary32 floats round. Default-width and 64-bit types pass through.
+    fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
+        if ct::int_bits(t).is_some_and(|bits| bits < 64) {
+            return self.b.narrow_chk(v);
+        }
+        if ct::float_bits(t) == Some(32) {
+            return self.b.f32_round(v);
+        }
+        v
+    }
+
     fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
-        if t == MTy::INT {
+        if self.b.m.types.is_int(t) {
             let o = match op {
                 BinaryOp::Add => Op::IAddChk,
                 BinaryOp::Sub => Op::ISubChk,
@@ -471,7 +492,7 @@ impl<'a> FnLower<'a> {
             };
             return Ok(self.b.binop(o, l.v, r.v));
         }
-        if t == MTy::FLOAT {
+        if self.b.m.types.is_float(t) {
             let o = match op {
                 BinaryOp::Add => Op::FAdd,
                 BinaryOp::Sub => Op::FSub,
@@ -517,10 +538,10 @@ impl<'a> FnLower<'a> {
     }
 
     fn compare(&mut self, cc: Cc, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
-        if t == MTy::INT {
+        if self.b.m.types.is_int(t) {
             return Ok(self.b.icmp(cc, l.v, r.v));
         }
-        if t == MTy::FLOAT {
+        if self.b.m.types.is_float(t) {
             return Ok(self.b.fcmp(cc, l.v, r.v));
         }
         if t == MTy::STR {

@@ -8,8 +8,8 @@
 //! | --- | --- |
 //! | `Unit` | none |
 //! | `Bool` | `i8` |
-//! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
-//! | `Float` | `f64` |
+//! | `Int`, `Int8`, `Int16`, `Int32`, `Ptr`, closures, `Shared[T]` | `i64` |
+//! | `Float`, `Float32` | `f64` |
 //! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
@@ -252,8 +252,13 @@ impl<'m> Layouts<'m> {
         match self.m.types.kind(ty) {
             TyKind::Unit => plain(vec![]),
             TyKind::Bool => plain(vec![I8]),
-            TyKind::Int | TyKind::Ptr | TyKind::Fn(..) => plain(vec![I64]),
-            TyKind::Float => plain(vec![F64]),
+            TyKind::Int
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::Ptr
+            | TyKind::Fn(..) => plain(vec![I64]),
+            TyKind::Float | TyKind::Float32 => plain(vec![F64]),
             TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
             TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
