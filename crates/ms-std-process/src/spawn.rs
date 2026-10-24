@@ -18,9 +18,10 @@ pub struct Child {
     pub code: Option<i64>,
     #[cfg(windows)]
     job: isize,
-    /// A pidfd that becomes readable when the child exits, or -1 before Linux 5.3.
-    #[cfg(target_os = "linux")]
-    pidfd: i32,
+    /// A descriptor that becomes readable when the child exits, or -1: a pidfd on Linux (none
+    /// before 5.3), a kqueue watching the pid on Apple platforms.
+    #[cfg(unix)]
+    exit: i32,
 }
 
 #[cfg(unix)]
@@ -154,6 +155,38 @@ fn resume(pid: u32) {
     }
 }
 
+/// A pidfd for the unreaped child `pid`, or -1 before Linux 5.3.
+#[cfg(target_os = "linux")]
+fn exit_descriptor(pid: libc::pid_t) -> i32 {
+    // SAFETY: plain system call; the child is unreaped, so its pid is still its own.
+    unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) as i32 }
+}
+
+/// A kqueue with one `EVFILT_PROC`/`NOTE_EXIT` event for the unreaped child `pid`. The event is
+/// never retrieved, so once the child exits the kqueue stays readable, as a pidfd does.
+#[cfg(all(unix, not(target_os = "linux")))]
+fn exit_descriptor(pid: libc::pid_t) -> i32 {
+    // SAFETY: plain system calls; `change` outlives the `kevent` call.
+    unsafe {
+        let kq = libc::kqueue();
+        if kq < 0 {
+            return -1;
+        }
+        libc::fcntl(kq, libc::F_SETFD, libc::FD_CLOEXEC);
+        let mut change: libc::kevent = core::mem::zeroed();
+        change.ident = pid as libc::uintptr_t;
+        change.filter = libc::EVFILT_PROC;
+        change.flags = libc::EV_ADD;
+        change.fflags = libc::NOTE_EXIT;
+        // A child that already exited cannot be watched (`ESRCH`); the caller's next reap sees it.
+        if libc::kevent(kq, &change, 1, core::ptr::null_mut(), 0, core::ptr::null()) < 0 {
+            libc::close(kq);
+            return -1;
+        }
+        kq
+    }
+}
+
 fn exit_code(status: std::process::ExitStatus) -> i64 {
     #[cfg(windows)]
     {
@@ -187,25 +220,22 @@ impl Child {
                 job: job as isize,
             }
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(unix)]
         {
-            // SAFETY: plain system call; the child is unreaped, so its pid is still its own.
-            let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, inner.id() as libc::pid_t, 0) };
+            let exit = exit_descriptor(inner.id() as libc::pid_t);
             Child {
                 inner,
                 code: None,
-                pidfd: fd as i32,
+                exit,
             }
         }
-        #[cfg(not(any(windows, target_os = "linux")))]
-        Child { inner, code: None }
     }
 
     /// A descriptor that becomes readable when the child exits, when the platform has one.
     pub fn exit_fd(&self) -> Option<sys::Fd> {
-        #[cfg(target_os = "linux")]
-        if self.pidfd >= 0 {
-            return Some(self.pidfd);
+        #[cfg(unix)]
+        if self.exit >= 0 {
+            return Some(self.exit);
         }
         None
     }
@@ -293,11 +323,11 @@ impl Drop for Child {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 impl Drop for Child {
     fn drop(&mut self) {
-        if self.pidfd >= 0 {
-            let _ = sys::close(self.pidfd);
+        if self.exit >= 0 {
+            let _ = sys::close(self.exit);
         }
     }
 }

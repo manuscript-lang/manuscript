@@ -2,9 +2,9 @@
 //!
 //! Children start in their own process group (a job object on Windows) so a kill reaches the
 //! whole tree.
-//! Waiting parks the task on the child's exit and its pipes at once (Linux pidfds); elsewhere it
-//! checks in short slices that park the task. Either way other tasks run and a pending
-//! cancellation kills the tree and unwinds.
+//! Waiting parks the task on the child's exit and its pipes at once (a pidfd on Linux, a kqueue
+//! on macOS); on Windows it checks in short slices that park the task. Either way other tasks
+//! run and a pending cancellation kills the tree and unwinds.
 use alloc::vec::Vec;
 use ms_rt::glue::{cancel_pending, cancelled};
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
@@ -396,6 +396,8 @@ mod tests {
         assert_eq!(sys::read(p.stdout.0, &mut buf).unwrap(), 4);
         p.stop();
         let mut sleeper = spawn(b"sleep", &args(&["30"]), [STDIO_PIPE; 3]).unwrap();
+        // Waits park on the child's exit (pidfd or kqueue) instead of checking in slices.
+        assert!(sleeper.child.exit_fd().is_some());
         sleeper.child.signal(false);
         assert_eq!(sleeper.wait(Some(5_000_000_000)).unwrap(), -1);
     }
