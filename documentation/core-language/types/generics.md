@@ -23,6 +23,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
 | `Comparable` | Values have an order: `a.compare(Comparable(value: b))` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
+| `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data and functions qualify; interface views, regular expressions and resource handles do not |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.

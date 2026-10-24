@@ -831,7 +831,10 @@ impl Checker {
                 .sym(p.name)
                 .is_some_and(|s| s.module.as_str().is_empty())
                 || self.scope.types.borrow().contains_key(&p.name)
-                || matches!(p.name.as_str(), "Equal" | "Comparable" | "Hashable");
+                || matches!(
+                    p.name.as_str(),
+                    "Equal" | "Comparable" | "Hashable" | "Clonable"
+                );
             if intrinsic {
                 self.res_error(
                     p.pos,
