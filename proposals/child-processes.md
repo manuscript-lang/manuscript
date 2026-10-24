@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: a program uses one core, and cannot run a Manuscript function in another process with a typed argument, a typed result and scoped lifetime.
-- Change (v1): `ProcessGroup[T].spawn(entry, argument)` in `@std/processes.ms` re-execs the same binary, runs a named top-level `def` there, and returns its result. The argument and result are JSON frames over a dedicated IPC connection (not stdio); the child's stdin, stdout and stderr are inherited by default. The group joins or kills children at the end of `with`.
+- Change (v1): `ProcessGroup[T].spawn(entry, argument)` in `@std/processes.ms` re-execs the same binary, runs a named top-level `def` there, and returns its result. The argument and result are JSON frames over a dedicated IPC connection (not stdio); the child's stdin, stdout and stderr are forwarded to the parent's by default and configurable independently. The group joins or kills children at the end of `with`.
 - Change (stage 3, after TaskGroup channels land): `fork` adds a `Sender`/`Receiver` pair over the same pipes. This is JS `child_process.fork`, not POSIX `fork(2)`: no parent state is copied.
 - Cost: an entry table, a start-path hook in `ms-rt`, a dedicated IPC channel in `ms-std-process`, and a small stdlib module over the existing `Commands.spawn`. No compiler codecs, no poller change, no change to runtime globals (unlike `proposals/worker-threads.md`). Whole cost is process start plus JSON per value.
 - Decision requested: approve the stage 1 measurement and the four open questions, including whether to build this or document the manual recipe.
@@ -60,7 +60,7 @@ def hash_all(chunks: List[Bytes]) -> Result[List[String], TaskError]:
 ```
 
 - `ProcessGroup[T]`: `Closeable`; every child returns `T`.
-- `spawn(entry, argument, timeout: Optional[Duration] = none, inherit_streams: Bool = true) -> Child[T]`: entry `def f(argument: A) -> R`; same signature as `WorkerGroup.spawn`, so switching from threads to processes is a one-word change.
+- `spawn(entry, argument, timeout: Optional[Duration] = none, stdin: Stdio = Stdio.Inherit, stdout: Stdio = Stdio.Inherit, stderr: Stdio = Stdio.Inherit) -> Child[T]`: entry `def f(argument: A) -> R`; same signature as `WorkerGroup.spawn`, so switching from threads to processes is a one-word change.
 - `Child[T].result() -> Result[T, TaskError]`; `results() -> Result[List[T], TaskError]` in spawn order; `wait() -> Result[Unit, TaskError]` for `T = Unit`; `close()` stops then joins.
 - `entry` is a named top-level `export def`, from any module; one binary, so a function item identifies it, with no path string.
 - Rejected at the call site (illustrative text): `spawn(lambda: f(x), 1)` -> "child entry must be a named top-level def; lambdas and captures cannot run in another process".
@@ -69,7 +69,7 @@ def hash_all(chunks: List[Bytes]) -> Result[List[String], TaskError]:
 
 ### Semantics
 
-- Start: the parent creates the IPC channel, then runs `info().executable` through `Commands.spawn`'s start path (`crates/ms-std-process/src/spawn.rs:61`) with env `MS_ENTRY=<index>` and `MS_IPC=<fd or pipe name>`. stdin, stdout and stderr follow `inherit_streams` (below).
+- Start: the parent creates the IPC channel, then runs `info().executable` through `Commands.spawn`'s start path (`crates/ms-std-process/src/spawn.rs:61`) with env `MS_ENTRY=<index>` and `MS_IPC=<fd or pipe name>`. stdin, stdout and stderr follow the `Stdio` arguments (below).
 - Start hook: `msrt_start` (`crates/ms-rt/src/start.rs:263`) checks `MS_ENTRY` before `main`. If set, it clears both variables from the environment seen by user code, adopts the IPC endpoint, and runs the entry as the main task. User `print` and stdio are untouched.
 - Entry table: each `spawn` instantiation registers `(index, thunk)`. The thunk is generic Manuscript in `@std/processes.ms`: read frame, `parse[A]`, call entry, `stringify[R]`, write frame. Lowering instantiates generics per type argument list (`crates/ms-lower/src/lib.rs:4-5`), so the existing `stringify`/`parse` intrinsics (`ms-lower/src/native.rs:208`, `json.rs`) need no new codec code. The table is an index, not a hash: parent and child are one binary.
 - Transfer: JSON, not raw memory.
@@ -90,7 +90,7 @@ def hash_all(chunks: List[Bytes]) -> Result[List[String], TaskError]:
   - Unix children run in their own process group (`spawn.rs:86`); Windows uses `CREATE_NEW_PROCESS_GROUP` (`spawn.rs:92`) plus a job object.
 - Orphans: a parent killed without cleanup closes the channel (the OS closes the socket end or pipe handle); the child sees EOF and cancels. This is the same path as `close`.
 - Fault: the child runs its cleanups, writes the fault text to stderr (inherited), exits 70 without a result frame. The parent faults naming the entry and status after the group stops and joins siblings (TaskGroup's v1 abort rule). A child killed by a signal reports -1 and counts as a fault unless the group killed it.
-- Stdio: `spawn(..., inherit_streams: Bool = true)`. True (default, as JS `fork`) passes the parent's stdin, stdout and stderr to the child, so the child's `print` and logs reach the parent's locations. False connects all three to the null device. Environment and working directory are inherited. Piping a child's output back to the parent is deferred.
+- Stdio: each of `stdin`, `stdout`, `stderr` is set on its own. `Stdio.Inherit` (default, as JS `fork`) gives the child the parent's descriptor, so the child's `print` and logs go wherever the parent's go (terminal, file, or a supervisor's pipe) with no copying by the runtime. `Stdio.Null` connects that stream to the null device. A `Stdio.Pipe` mode that returns the stream to the parent (as `Subprocess` does) is deferred. Environment and working directory are inherited.
 - Waiting for exit: pidfd on Linux; elsewhere the task polls in 2 ms slices (`command.rs:5-17`, `POLL_MS`). IPC reads and writes park on the socket in the existing poller on every platform.
 - A later `spawn_catching` returning `Result[R, ChildFault]` needs no runtime hook, because the parent observes exit status. Not in v1.
 
@@ -117,7 +117,7 @@ sequenceDiagram
 | `crates/ms-check` | function-item entry rule for `spawn`, signature check, diagnostics | conformance reject cases |
 | `crates/ms-lower`, `ms-mir`, `ms-clif` | entry table: each `spawn` instantiation registers `(index, thunk)`; no new codecs | e2e spawn fixture on 3 platforms |
 | `crates/ms-rt` | start hook for `MS_ENTRY`, adopt the IPC endpoint, channel-EOF cancel; no stdio change | cancel, fault, EOF tests |
-| `crates/ms-std-process` | `spawn::start` gains env, an inherit/null stdio mode and an extra inherited descriptor (today three pipe descriptors only, `spawn.rs:61`); socketpair with `pre_exec` on Unix, named pipe on Windows; Windows job object at creation with `KILL_ON_JOB_CLOSE` | per-crate tests incl. Windows |
+| `crates/ms-std-process` | `spawn::start` gains env, a per-stream inherit/null mode (std `Stdio::inherit`/`null` per stream) and an extra inherited descriptor (today three pipe descriptors only, `spawn.rs:61`); socketpair with `pre_exec` on Unix, named pipe on Windows; Windows job object at creation with `KILL_ON_JOB_CLOSE` | per-crate tests incl. Windows |
 | `stdlib/processes.ms`, `bindings.json` | `ProcessGroup`, `Child`, entry thunk in Manuscript | `make docs`, extern parity |
 | `crates/ms-std-json` | unchanged | round-trip tests for supported types |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
@@ -189,14 +189,14 @@ def main():
 
 - Each stage is its own PR with auto-merge. Pull requests run Linux only; for any stage touching platform code, run the workflow by hand on the branch for macOS and Windows before merging.
 1. Measure: re-exec latency, JSON throughput for `List[Int]` and `Bytes` through pipes, and the manual recipe above, on Linux and (manual run) macOS and Windows. Go/no-go (proposed, Chinmay confirms): start latency under 50 ms and throughput within 10x a raw pipe; otherwise document the recipe and stop.
-2. `ProcessGroup.spawn`: Windows job object fix, env, inherit mode and extra descriptor in `spawn::start`, socketpair and named pipe, start hook, entry table, frames, channel-EOF cancel, fault surfacing, diagnostics, docs and cheat sheet, conformance, three-platform verification. One PR, or two if the job-object fix is reviewed first.
+2. `ProcessGroup.spawn`: Windows job object fix, env, per-stream inherit/null modes and extra descriptor in `spawn::start`, socketpair and named pipe, start hook, entry table, frames, channel-EOF cancel, fault surfacing, diagnostics, docs and cheat sheet, conformance, three-platform verification. One PR, or two if the job-object fix is reviewed first.
 3. `fork` with `Sender`/`Receiver` over the same pipes, once TaskGroup stage 4 lands and its capture-drop gap (`proposals/taskgroup.md:49`) is fixed; frames gain a channel id and a close marker.
 
 ## Open questions
 
 - Resolve before approval (decider: Chinmay):
   - Build `ProcessGroup` (recommended: the recipe lacks typed entry, group results and fault surfacing, and v1 is small), or only document the manual recipe.
-  - Default of `inherit_streams` (recommended: true, as JS `fork`), and whether v1 needs a way to pipe child output back (recommended: no, deferred).
+  - `Stdio` modes in v1: `Inherit` (default) and `Null` per stream, with `Pipe` deferred (recommended), or add `Pipe` now.
   - Windows named pipe by name (recommended) or an anonymous pipe passed by inherited handle (needs a handle list in `CreateProcess`).
   - Call-site check: reject `spawn` types containing a part with no JSON form (resource, closure, `Shared`, handle) as an ordinary type error, the same boundary check `proposals/worker-threads.md` uses and not a user-visible concept (recommended); or accept JSON's silent omission.
   - v1 is `spawn` only and `fork` waits for channels (recommended), or build `fork` first.
@@ -227,4 +227,4 @@ def main():
   - per-entry codecs were cut: a generic stdlib thunk reuses `stringify`/`parse` (generics instantiate per type; confirmed in `ms-lower/src/lib.rs:4-5`);
   - `fork` and its channel frames moved to stage 3;
   - seven stages became three, and the do-nothing recipe is now a stated alternative and an open question.
-- Fourth review (owner direction, 2026-10-24): stdio must not carry frames, and no TCP port. The channel is JS style: an inherited socketpair on Unix, a named pipe on Windows, one framing layer. `inherit_streams` (default true) lets the child's output reach the parent's locations. Cancel and orphan detection use channel EOF.
+- Fourth review (owner direction, 2026-10-24): stdio must not carry frames, and no TCP port. The channel is JS style: an inherited socketpair on Unix, a named pipe on Windows, one framing layer. The child's stdin, stdout and stderr are forwarded to the parent's (`Stdio.Inherit`, the default) and configurable independently (`Inherit` or `Null`; owner direction). Cancel and orphan detection use channel EOF.
