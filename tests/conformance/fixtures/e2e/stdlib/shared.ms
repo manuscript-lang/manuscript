@@ -76,3 +76,24 @@ test "a second take while the payload is out faults":
 
     try expect_equal(message, "shared value is in use")
     shared.put(held)
+
+def append_seven(shared: Shared[List[Int]]) -> Unit:
+    var items = shared.take()
+    items.append(7)
+    shared.put(items)
+
+def drop_while_taken() -> Unit:
+    let shared: Shared[List[Int]] = share([])
+    append_seven(shared)
+    let taken = shared.take()
+    if taken.length() != 1:
+        return
+
+test "a box dropped while its payload is out does not free the payload twice":
+    drop_while_taken()
+    var first = [1, 2, 3, 4]
+    let second = [5, 6, 7, 8]
+    first.append(9)
+    first[0] = 0
+    try expect_equal(first, [0, 2, 3, 4, 9])
+    try expect_equal(second, [5, 6, 7, 8])

@@ -462,7 +462,22 @@ impl<'a, 'm> Lower<'a, 'm> {
                 if self.g.m.needs_drop(ty) {
                     let leaves = self.g.lay.leaves(ty);
                     let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
-                    self.drop_value(ty, &vs);
+                    if self.is_shared_box(ty) {
+                        // `take` moved the payload out and left its bits behind; the new owner
+                        // drops it, so a box dropped while taken must not drop it again.
+                        let (_, at, _) = self.fields_of(ty)[0];
+                        let off = self.g.lay.mem(ty).offsets.get(at).copied().unwrap_or(0);
+                        let taken = self.b.ins().load(
+                            types::I8,
+                            flags(),
+                            obj,
+                            (SHARED_VALUE + off as i64) as i32,
+                        );
+                        let held = self.b.ins().icmp_imm_s(IntCC::Equal, taken, 0);
+                        self.if_then(held, |s| s.drop_value(ty, &vs));
+                    } else {
+                        self.drop_value(ty, &vs);
+                    }
                 }
                 self.free(obj);
                 self.b.ins().return_(&[]);
@@ -1154,6 +1169,13 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.vals[v.index()] = self.load_leaves(h.addr, 0, &leaves);
             }
         }
+    }
+
+    /// Whether `ty` is the `{taken, value}` record of a user-facing `Shared[T]` (a builder's
+    /// `{sealed, items}` keeps owning its items once sealed).
+    fn is_shared_box(&self, ty: Ty) -> bool {
+        let m = self.g.m;
+        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].name.starts_with("Shared#"))
     }
 
     fn is_wide(&self, ty: Ty) -> bool {
