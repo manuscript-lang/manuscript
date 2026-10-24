@@ -43,7 +43,7 @@ type Options:
 let options = Options(count: 5)  # total defaults to 6
 ```
 
-A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `()`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
@@ -51,13 +51,13 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    var fn increment() Unit
+    var def increment() -> Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var fn increment() Unit:
+    var def increment() -> Unit:
         self.val = self.val + 1
 ```
 
@@ -97,16 +97,16 @@ Records and alternatives may refer to themselves or each other directly, with no
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-fn evaluate(expr: Expr) Int:
+def evaluate(expr: Expr) -> Int:
     match expr:
-        Num(value): return value
-        Add(left, right): return evaluate(left) + evaluate(right)
+        case Num(value): return value
+        case Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
@@ -118,7 +118,7 @@ A linked record ends with an absent successor; a link owns its successor, so a c
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/core.ms"
+from "@std/core.ms" import panic
 
 type Node:
     value: Int

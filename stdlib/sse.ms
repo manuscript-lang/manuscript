@@ -63,11 +63,11 @@ type Decoder:
     line_bytes: Int
     # Internal: bytes counted against the event budget.
     event_bytes: Int
-    # Internal: true when the previous byte was CR, so an immediately following LF is part of the same ending.
+    # Internal: True when the previous byte was CR, so an immediately following LF is part of the same ending.
     carriage: Bool
-    # Internal: true once the first line has been assembled and the byte order mark has been considered.
+    # Internal: True once the first line has been assembled and the byte order mark has been considered.
     started: Bool
-    # Internal: true while field lines have arrived since the last blank line.
+    # Internal: True while field lines have arrived since the last blank line.
     open_block: Bool
     # Internal: the pending `event:` value, empty when unset.
     event_type: String
@@ -75,7 +75,7 @@ type Decoder:
     data: List[String]
     # Internal: the first failure, repeated by later calls.
     failure: Optional[SseError]
-    # Internal: true after `finish`.
+    # Internal: True after `finish`.
     closed: Bool
 
 impl Error for SseError:
@@ -267,7 +267,7 @@ export type SseReader:
     next: Int
     # Internal: requested read size, none for the stream default.
     chunk_bytes: Optional[Int]
-    # Internal: true after a clean end of stream.
+    # Internal: True after a clean end of stream.
     finished: Bool
 
 # Wraps a stream in an event reader. Supplied limits and chunk size must be positive.

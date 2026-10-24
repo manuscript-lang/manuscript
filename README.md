@@ -18,33 +18,33 @@ Agents write the code and people understand it. It is statically typed, compiles
 Typed JSON, optional values, error propagation with `try`, and a test in one file:
 
 ```manuscript
-import {parse, stringify} from "@std/json.ms"
-import expect_equal from "@std/testing.ms"
+from "@std/json.ms" import parse, stringify
+from "@std/testing.ms" import expect_equal
 
 type Order:
     customer: String
     cents: Int
     coupon: Optional[String]
 
-fn discount(order: Order) Int:
+def discount(order: Order) -> Int:
     if let code = order.coupon:
-        return if code == "SAVE10": order.cents / 10 else: 0
+        return order.cents / 10 if code == "SAVE10" else 0
     else:
         return 0
 
-fn summary(text: String) Result[String, Error]:
+def summary(text: String) -> Result[String, Error]:
     let orders = try parse[List[Order]](text)
     var total = 0
     for order in orders:
         total += order.cents - discount(order)
-    return ok("{orders.length()} orders, {total / 100} dollars")
+    return ok(f"{orders.length()} orders, {total / 100} dollars")
 
 test "orders from JSON":
     let sam = Order(customer: "Sam", cents: 5000, coupon: some("SAVE10"))
     let ana = Order(customer: "Ana", cents: 2500, coupon: none)
     let text = try stringify([sam, ana])
     try expect_equal(try summary(text), "2 orders, 70 dollars")
-    try expect_equal(summary("not json").is_error(), true)
+    try expect_equal(summary("not json").is_error(), True)
 ```
 
 Run it with `ms test`. `parse[List[Order]]` reads text into your types and returns a `Result`, `try` passes any error to the caller, and `Optional` fields unwrap with `if let`.
@@ -56,25 +56,25 @@ Run it with `ms test`. `parse[List[Order]]` reads text into your types and retur
 A `|` flow passes each result to the next call, so a sequence of steps reads from top to bottom. A `try` step unwraps a `Result` or returns its error.
 
 ```manuscript
-import expect_equal from "@std/testing.ms"
+from "@std/testing.ms" import expect_equal
 
 type Reading:
     sensor: String
     celsius: Float
 
-fn hot(readings: List[Reading]) List[Reading]:
+def hot(readings: List[Reading]) -> List[Reading]:
     return readings.filter(
-        fn(reading: Reading) Bool:
+        lambda (reading: Reading) -> Bool:
             return reading.celsius > 30.0
     )
 
-fn names(readings: List[Reading]) String:
+def names(readings: List[Reading]) -> String:
     return readings.map(
-        fn(reading: Reading) String:
+        lambda (reading: Reading) -> String:
             return reading.sensor
     ).join(", ")
 
-fn alert(readings: List[Reading]) String:
+def alert(readings: List[Reading]) -> String:
     return readings | hot | names
 
 test "pipe flow":
@@ -95,16 +95,16 @@ The compiler checks this on every program, with no lifetime annotations. It infe
 type Cart:
     items: List[String]
 
-fn add(var cart: Cart, item: String) Unit:
+def add(var cart: Cart, item: String) -> Unit:
     cart.items.append(item)
 
-fn count(cart: Cart) Int:
+def count(cart: Cart) -> Int:
     return cart.items.length()
 
-fn pay(cart: Cart) Cart:
+def pay(cart: Cart) -> Cart:
     return cart
 
-fn demo() Int:
+def demo() -> Int:
     var cart = Cart(items: [])
     add(var cart, "book")
     let seen = count(cart)
