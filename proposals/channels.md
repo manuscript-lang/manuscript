@@ -105,7 +105,8 @@ flowchart TB
 
 - `Channel[In, Out]` holds one of `Local`, `Thread` or `Process` state; `send`/`receive` dispatch on it. One public type; the transport is never visible.
 - Why an `Atomic[Int]` cell alone is not enough: the ring state must be reachable from two isolates (`Shared`'s count is non-atomic) and a typed value must become a word to sit in a slot. `AtomicWords` covers the first and the counters; `into_word`/`from_word` cover the second. All stay internal to `@std`, so users get no shared memory, as the TaskGroup plan states. Exposing them is a separate decision.
-- Close and leftover values: the last end to close drains the remaining slots with `from_word[T]` and drops them; generic Manuscript code knows `T`, so the runtime never needs a drop function for the payload.
+- Close and leftover values: the last end to close (decided by `fetch_add` on an open-ends word, never by a token post, since a post to an exited isolate is dropped) drains the remaining slots with `from_word[T]` and drops them; generic Manuscript code knows `T`, so the runtime never needs a drop function for the payload.
+- Entry: for `WorkerGroup` and `ProcessGroup` the entry must be a named top-level `def` (the worker/process boundary rejects closures and `ref` captures, per their proposals); `TaskGroup` also accepts a lambda.
 - Open: `Queue[T]` requires `T: Clonable` (`stdlib/queue.ms`); channel payloads would inherit that bound unless the local transport uses a move-only queue. Verify in stage 0.
 
 ### Groups wire the ends in `spawn`
