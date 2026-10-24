@@ -96,7 +96,7 @@ def main() -> Int:
 
 - Task: any type (same thread).
 - Worker: the worker-boundary check from `proposals/worker-threads.md` (no `Resource`, `Shared`, closures, `ref`).
-- Process: a new checker rule on `ProcessGroup.connect`: `In`, `Out` and `T` must be plain data (scalars, `String`, `Bytes`, lists, sets, maps with scalar or `String` keys, records, alternatives, `Optional`, `Result`) with no custom `JsonEncode`. Needed because `stringify` accepts every type today: a record with a `Callable` field encodes as `{}`, `some(none)` comes back as `none`, `NaN` becomes `null` (all tested). Non-finite `Float` at send is `Broken`.
+- Process: a new checker rule on `ProcessGroup.spawn`: `In`, `Out` and `T` must be plain data (scalars, `String`, `Bytes`, lists, sets, maps with scalar or `String` keys, records, alternatives, `Optional`, `Result`) with no custom `JsonEncode`. Needed because `stringify` accepts every type today: a record with a `Callable` field encodes as `{}`, `some(none)` comes back as `none`, `NaN` becomes `null` (all tested). Non-finite `Float` at send is `Broken`.
 
 ## Semantics
 
@@ -104,7 +104,7 @@ def main() -> Int:
 - Process close order: `Process.close()` closes the channel, which the child sees as cancel (`proposals/child-processes.md:85`); call `result()` before `close()` to wait for a result.
 - Faults: unchanged per group (tasks and workers abort the process; processes per their proposal). The shared fixture body covers messages and close, not faults.
 - Deadlocks: two peers that both send into full queues park forever; with `TOKEN_REMOTE` the scheduler cannot report it (`task.rs:610`). Documented, not detected.
-- Windows: the process pipe polls with `PeekNamedPipe` in 1 ms steps and treats writes as ready (`plat/windows.rs:29-55`): about 1 ms per message and no backpressure on full. Overlapped pipe I/O, or a loopback socket as child-processes first planned, is a decision for that thread.
+- Windows: no polling. The channel pipe is an owner-only named pipe opened for overlapped I/O and registered with the runtime poller through `mio::windows::NamedPipe` (`mio` already builds with `os-ext`, `crates/ms-rt/Cargo.toml:19`), so reads and writes park and wake like sockets on Unix, with backpressure. The 1 ms polling in `crates/ms-std-process/src/plat/windows.rs:29-55` is only today's anonymous stdio pipes and is not used for channels (Chinmay, 2026-10-24: "i don't want random polling").
 
 ## Components touched
 
@@ -149,8 +149,7 @@ Gate: `make conform`, `make verify` on Linux, macOS and Windows with `ms build`,
 
 ## Open questions (decider: Chinmay)
 
-1. Windows process pipe: overlapped I/O or loopback socket (child-processes thread).
-2. `spawn` typing: method type parameters in the checker, or a free `spawn(group, entry)`.
+1. `spawn` typing: method type parameters in the checker, or a free `spawn(group, entry)`.
 
 ## Decided (Chinmay, 2026-10-24)
 
