@@ -22,21 +22,24 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/shared.ms` gives several owners one immutable, reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow. Nothing changes the value through a `Shared`, so state that holders update lives inside the value's own handles. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner.
+`Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
+
+To change the value, `take()` it out, change the local, and `put` it back. One holder at a time can have it out. A second `take`, or a `get`, while it is out is a fault, so the single mutable borrow is checked when the program runs. Keep `take` and `put` in one function with no early exit between them, since only `put` returns the value. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner.
 
 ```
 import {share, Shared} from "@std/shared.ms"
 
-type Settings:
-    name: String
+type Counter:
+    values: List[Int]
 
-fn describe(settings: Shared[Settings]) String:
-    return settings.get().name
+impl Counter:
+    var fn bump() Unit:
+        self.values.append(1)
 
-fn main_example() String:
-    let settings = share(Settings("prod"))
-    let again = settings
-    return describe(again) + describe(settings)
+fn bump(shared: Shared[Counter]) Unit:
+    var counter = shared.take()
+    counter.bump()
+    shared.put(counter)
 ```
 
 ## References inside other values

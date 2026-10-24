@@ -21,8 +21,7 @@ test "levels filter, fields nest under data, and bound fields merge":
     with directory = try fs.temporary("manuscript-log-"):
         let path = "{directory.path()}/events.ndjson"
 
-        with transport = try file_transport(path):
-            let logger = try create(transport, LogLevel.Warn, false)
+        with logger = try create(try file_transport(path), LogLevel.Warn, false):
             try expect_equal(logger.enabled(LogLevel.Info), false)
             try logger.info("filtered")
             try logger.warn("warn")
@@ -46,9 +45,9 @@ test "limits, invalid levels, and closed transports are errors":
     with directory = try fs.temporary("manuscript-log-"):
         let path = "{directory.path()}/events.ndjson"
         let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
-        let transport = try file_transport(path)
-        let logger = try create(
-            transport, timestamp: false, max_bytes: line.to_bytes().length()
+        var logger = try create(
+            try file_transport(path), timestamp: false,
+            max_bytes: line.to_bytes().length()
         )
         try logger.info("x")
 
@@ -58,10 +57,13 @@ test "limits, invalid levels, and closed transports are errors":
         let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
         try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
         try expect_equal(
-            try expect_error(create(transport, max_bytes: -1)), LogError.InvalidInput
+            try expect_error(
+                create(try file_transport(path), max_bytes: -1)
+            ),
+            LogError.InvalidInput
         )
-        transport.close()
-        transport.close()
+        logger.close()
+        logger.close()
 
         let closed: Result[Unit, LogError] = error(LogError.Closed)
         try expect_equal(logger.info("x"), closed)

@@ -11,38 +11,36 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
     let bindings = Service("api")
 
     if (mode == "file" or mode == "missing"):
-        with transport = try file_transport(path):
-            let logger = try create(transport, timestamp: false)
-                | try bind(bindings)
+        with root = try create(try file_transport(path), timestamp: false):
+            let logger = try bind(root, bindings)
             try emit(logger)
             try logger.flush()
 
         return ok(unit)
 
-    with transport = stdout_transport():
-        if mode == "limit":
-            let logger = try create(transport, max_bytes: 1)
+    if mode == "limit":
+        with logger = try create(stdout_transport(), max_bytes: 1):
             try logger.info("too large")
-        else:
-            let logger = try create(transport)
-                | try bind(bindings)
+    else if mode == "closed":
+        var root = try create(stdout_transport())
+        let logger = try bind(root, bindings)
+        root.close()
+        try logger.info("closed")
+    else:
+        with root = try create(stdout_transport()):
+            let logger = try bind(root, bindings)
 
             if mode == "invalid":
                 try record(
                     logger, level: LogLevel.Info, message: "invalid",
                     fields: JsonValue.NumberValue("NaN")
                 )
-            else if mode == "closed":
-                transport.close()
-                try logger.info("closed")
             else:
                 try emit(logger)
                 try logger.flush()
 
-    with transport = stdout_transport():
-        let logger = try create(transport, timestamp: false)
+    with logger = try create(stdout_transport(), timestamp: false):
         try logger.info("still open")
-
     return ok(unit)
 
 export fn main() Int:

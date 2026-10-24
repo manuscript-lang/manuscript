@@ -91,6 +91,9 @@ export interface Logger:
     fn set_level(level: LogLevel) Unit
     # Flushes the logger's transport.
     fn flush() Result[Unit, LogError]
+    # Closes the transport this logger shares with its children, so every one of them reports `Closed`
+    # afterwards. A `with` binding calls it on every exit.
+    var fn close() Unit
 
 # Level indexes shared with the encoder: Trace is 0 and Silent is 6.
 fn level_index(level: LogLevel) Int:
@@ -247,6 +250,11 @@ impl Logger for StdLogger:
         self.transport.put(transport)
         return flushed
 
+    var fn close() Unit:
+        var transport = self.transport.take()
+        transport.close()
+        self.transport.put(transport)
+
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
 #
 # A record, map, or `JsonValue` object contributes its members at the top level of the record.
@@ -276,7 +284,9 @@ export fn bind[T](logger: Logger, bindings: T) Result[Logger, LogError]:
 
     return logger.child_json(object_text(text.get()))
 
-# Creates a logger. Defaults to `Info`, timestamps enabled, and no record-size limit.
+# Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
+# Child loggers from `bind` share the transport; closing any of them (`with logger = create(...)`
+# closes on every exit) closes it for all.
 export fn create(
     transport: Transport,
     level: Optional[LogLevel] = none,
