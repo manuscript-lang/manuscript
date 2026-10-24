@@ -805,7 +805,7 @@ impl D {
         match &d.kind {
             DeclKind::Fn(f) => self.decl_fields(
                 d.pos,
-                "fn",
+                if f.external { "extern fn" } else { "fn" },
                 f.name.as_str(),
                 e,
                 false,

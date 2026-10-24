@@ -175,10 +175,6 @@ impl Ownership {
 /// standard library, is checked and lowered under the same rules. Fix a module, then delete
 /// its entry.
 const UNVETTED: &[&str] = &[
-    // Generic containers: ownership needs `.clone()` on an unconstrained type parameter.
-    "@std/deque.ms",
-    "@std/queue.ms",
-    "@std/sorted.ms",
     // Transports share one stream handle through non-`var` methods.
     "@std/log.ms",
     // `borrow_body` stores a response body it only means to borrow; a resource handle has no

@@ -3,7 +3,7 @@ import {range} from "@std/collections.ms"
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
 # Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
-export type Deque[T]:
+export type Deque[T: Clonable]:
     # Ring-buffer storage; `none` marks unused slots. Internal state: use the operations, not this field.
     slots: List[Optional[T]] = []
     # Index in `slots` of the front value. Internal state.
@@ -67,7 +67,7 @@ impl Deque[T]:
         if self.size == 0:
             return none
 
-        let value = self.slots.get(self.start)
+        let value = self.slots.get(self.start).clone()
         self.slots.set(self.start, none)
         self.start += 1
         if self.start == self.slots.length():
@@ -81,7 +81,7 @@ impl Deque[T]:
             return none
 
         let index = self.slot_of(self.size - 1)
-        let value = self.slots.get(index)
+        let value = self.slots.get(index).clone()
         self.slots.set(index, none)
         self.size -= 1
         return value
@@ -119,5 +119,5 @@ impl Deque[T]:
         var out: List[T] = []
         for index in range(0, self.size):
             if let value = self.slots.get(self.slot_of(index)):
-                out.append(value)
+                out.append(value.clone())
         return out

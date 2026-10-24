@@ -475,6 +475,7 @@ impl Completer<'_> {
                     "impl",
                     "import",
                     "export",
+                    "extern",
                     "test",
                 ];
             }

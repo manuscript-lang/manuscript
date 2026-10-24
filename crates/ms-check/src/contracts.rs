@@ -392,6 +392,7 @@ impl Checker {
                         },
                         result_ref: false,
                         body: Vec::new(),
+                        external: false,
                     }),
                 });
                 let local = receiver_module_differs(self, &receiver);
@@ -430,7 +431,7 @@ impl Checker {
         if receiver.id == contract.id {
             return same(receiver, contract);
         }
-        if contract.is_std("Equal") || contract.is_std("Hashable") {
+        if contract.is_std("Equal") || contract.is_std("Hashable") || contract.is_std("Clonable") {
             return self.property(receiver, contract.name.as_str(), None);
         }
         if receiver.kind == Kind::Variable {
@@ -454,6 +455,39 @@ impl Checker {
         contract.is_std("Comparable") && builtin_comparable(receiver)
     }
 
+    /// Whether `.clone()` is available for `t`: plain data is, resource handles and functions are not.
+    fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
+        match t.kind {
+            Kind::Variable => return t.bounds().iter().any(|b| b.is_std("Clonable")),
+            Kind::Contract => return false,
+            Kind::Function | Kind::Primitive => return true,
+            _ => {}
+        }
+        if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
+            return t
+                .args
+                .iter()
+                .all(|a| self.property_in(a, "Clonable", state));
+        }
+        if t.is_std("Regex") {
+            return false;
+        }
+        if t.kind == Kind::Native {
+            return t.is_std("Bytes")
+                || t.is_std("Decimal")
+                || t.is_std("BigInt")
+                || t.is_std("Duration")
+                || t.is_std("Instant")
+                || t.is_std("Timestamp");
+        }
+        if t.def.is_some() {
+            return fields(t)
+                .iter()
+                .all(|f| self.property_in(&f.ty, "Clonable", state));
+        }
+        true
+    }
+
     fn bounds_satisfied(&self, vars: &[Ty], s: &Subst) -> bool {
         for v in vars {
             let Some(a) = s.get(&v.id) else {
@@ -470,7 +504,7 @@ impl Checker {
 
     /// Whether `t` meets `bound`.
     pub(crate) fn satisfies(&self, t: &Ty, bound: &Ty) -> bool {
-        if bound.is_std("Equal") || bound.is_std("Hashable") {
+        if bound.is_std("Equal") || bound.is_std("Hashable") || bound.is_std("Clonable") {
             return self.property(t, bound.name.as_str(), None);
         }
         self.implements(t, bound)
@@ -512,6 +546,9 @@ impl Checker {
     }
 
     fn property_compute(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
+        if property == "Clonable" {
+            return self.clonable(t, state);
+        }
         if t.kind == Kind::Variable {
             return t
                 .bounds()
@@ -882,6 +919,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         };
     if name == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
+            || (t.kind == Kind::Variable && t.bounds().iter().any(|b| b.is_std("Clonable")))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
             || t.is_std("Map")
@@ -889,7 +927,10 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
             || t.is_std("Bytes"))
     {
         let mut owner = t.clone();
-        if matches!(t.kind, Kind::Record | Kind::Alternative | Kind::Primitive) {
+        if matches!(
+            t.kind,
+            Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
+        ) {
             owner = stdlib::standard_symbol("CloneOperations")?.ty();
         }
         let decl = stdlib::standard_method_declaration(&owner, name);
