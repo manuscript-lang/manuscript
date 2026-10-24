@@ -644,12 +644,18 @@ impl<T> Global<T> {
         Global(value)
     }
 
+    /// The value. A worker cannot reach it: it is state of the main isolate.
     pub fn get(&self) -> &T {
+        if crate::isolate::is_worker() {
+            crate::fault::fault(
+                b"this part of the standard library is only available on the main thread, not in a worker",
+            );
+        }
         &self.0
     }
 }
 
-// SAFETY: the runtime runs Manuscript code on one thread, the only one that reaches a `Global`.
+// SAFETY: only the main isolate reaches a `Global` (workers fault in `get`).
 unsafe impl<T> Sync for Global<T> {}
 
 /// A bare `STATUS_*` byte as an error.

@@ -136,6 +136,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
 /// # Safety
 /// See [`msrt_worker_spawn`].
 unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
+    isolate::mark_worker();
     crate::alloc::claim_arena(false);
     crate::start::install_thread_fault_handler();
     w.slot.store(isolate::id(), Ordering::Release);

@@ -3,7 +3,9 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/io.ms" import stdin
+from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
+from "@std/time.ms" import duration, sleep
 from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
 
 type Job:
@@ -43,6 +45,15 @@ def count_words() -> Unit:
 def explode() -> Unit:
     var ch = worker_channel[Int, Int]()
     panic("worker boom")
+
+def reads_stdin() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let input = stdin()
+
+def naps() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    sleep(duration(nanoseconds: 5000000))
+    ch.send(1)
 
 def wait_forever() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -150,3 +161,16 @@ test "sends after the worker ended report the channel closed":
         var worker = group.spawn(explode).get(none)
         let outcome = worker.join()
         expect_error(worker.channel.send(1))
+
+test "a worker sleeps without blocking its starter":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(naps).get(none)
+        expect_equal(worker.channel.receive(), ok(some(1)))
+        expect_ok(worker.join())
+
+test "standard input stays with the main thread":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(reads_stdin).get(none)
+        let outcome = worker.join()
+        expect_error(outcome)
+        expect_true(outcome.err().message().contains("main thread"))

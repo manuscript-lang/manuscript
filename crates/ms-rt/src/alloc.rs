@@ -756,10 +756,15 @@ mod std_heap {
     use std::alloc::System;
 
     /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
-    /// library out of the arena so leak checks see only program allocations.
+    /// library out of the arena so leak checks see only program allocations. A worker's arena
+    /// ends with the worker, and Rust code can keep what it allocates in process-wide state
+    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator.
     #[inline(always)]
     fn arena_ok(layout: Layout) -> bool {
-        !cfg!(feature = "stats") && layout.align() <= 16 && has_arena()
+        !cfg!(feature = "stats")
+            && layout.align() <= 16
+            && has_arena()
+            && !crate::isolate::is_worker()
     }
 
     /// Whether `p` is a small block of any isolate's arena.

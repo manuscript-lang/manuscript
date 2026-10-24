@@ -29,6 +29,22 @@ static REGISTRY: Mutex<Vec<Option<Arc<Inbox>>>> = Mutex::new(Vec::new());
 crate::isolate_static! {
     static CURRENT: Option<(usize, Arc<Inbox>)> = None;
     static MAIN: bool = false;
+    static WORKER: bool = false;
+}
+
+/// Marks the calling isolate as a worker: the runtime's process-wide services (standard input
+/// and output buffers, terminal state, exit hooks) belong to the main isolate, and the standard
+/// allocator for Rust code leaves its arena alone.
+pub fn mark_worker() {
+    // SAFETY: this isolate's state.
+    unsafe { *WORKER.ptr() = true };
+}
+
+/// Whether the calling isolate is a worker.
+#[inline(always)]
+pub fn is_worker() -> bool {
+    // SAFETY: this isolate's state.
+    unsafe { *WORKER.ptr() }
 }
 
 /// Marks the calling isolate as the main one, the target of signal-driven wake-ups.

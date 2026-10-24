@@ -5,7 +5,6 @@
 
 pub mod pool;
 
-use core::cell::UnsafeCell;
 use core::fmt::{self, Write};
 use core::sync::atomic::Ordering;
 use ms_rt_abi::{STATUS_FAILED, StrVal};
@@ -329,16 +328,15 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
     }
 }
 
-/// Diagnostic text of the most recent `STATUS_FAILED` result (the runtime is single-threaded).
-struct Failure(UnsafeCell<Vec<u8>>);
-// SAFETY: the runtime runs Manuscript code on one thread.
-unsafe impl Sync for Failure {}
-static FAILURE: Failure = Failure(UnsafeCell::new(Vec::new()));
+crate::isolate_static! {
+    /// Diagnostic text of the most recent `STATUS_FAILED` result of this isolate.
+    static FAILURE: Vec<u8> = Vec::new();
+}
 
 /// Records the text a later `failure_message` returns.
 pub fn record_failure(message: Vec<u8>) {
     // SAFETY: single-threaded runtime; no reference into FAILURE outlives a call.
-    unsafe { *FAILURE.0.get() = message };
+    unsafe { *FAILURE.ptr() = message };
 }
 
 /// Records `message` and returns `STATUS_FAILED`.
@@ -350,23 +348,20 @@ pub fn failed(message: &[u8]) -> u8 {
 /// A fresh string holding the most recently recorded failure text.
 pub fn failure_message() -> StrVal {
     // SAFETY: single-threaded runtime.
-    new_string(unsafe { &*FAILURE.0.get() })
+    new_string(unsafe { &*FAILURE.ptr() })
 }
 
-/// Read-ahead standard input (bytes and the offset of the first unread one) held between handles.
-struct StdinPending(UnsafeCell<(Vec<u8>, usize)>);
-// SAFETY: the runtime runs Manuscript code on one thread.
-unsafe impl Sync for StdinPending {}
-
-/// Standard-input bytes a dropped `stdin()` handle had read ahead (the runtime is single-threaded).
-static STDIN_PENDING: StdinPending = StdinPending(UnsafeCell::new((Vec::new(), 0)));
+crate::isolate_static! {
+    /// Read-ahead standard input a dropped `stdin()` handle left: the bytes, and the offset of the first unread one.
+    static STDIN_PENDING: (Vec<u8>, usize) = (Vec::new(), 0);
+}
 
 /// Keeps read-ahead standard input for the next `stdin()` handle: `bytes[head..]` is unread.
 ///
 /// The buffer is handed over without copying unless an earlier stash is still unread.
 pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
     // SAFETY: single-threaded runtime; no reference into STDIN_PENDING outlives a call.
-    let (held, held_head) = unsafe { &mut *STDIN_PENDING.0.get() };
+    let (held, held_head) = unsafe { &mut *STDIN_PENDING.ptr() };
     if *held_head >= held.len() {
         *held = bytes;
         *held_head = head;
@@ -378,7 +373,7 @@ pub fn stash_stdin_pending(bytes: Vec<u8>, head: usize) {
 /// Takes the read-ahead standard input a previous handle left, with the offset of its first unread byte.
 pub fn take_stdin_pending() -> (Vec<u8>, usize) {
     // SAFETY: single-threaded runtime.
-    unsafe { core::mem::take(&mut *STDIN_PENDING.0.get()) }
+    unsafe { core::mem::take(&mut *STDIN_PENDING.ptr()) }
 }
 
 /// Adds a reference to a runtime object.
