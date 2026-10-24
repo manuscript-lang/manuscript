@@ -291,11 +291,11 @@ and exits 70. Generated code must keep frame pointers (rbp / x29 chains) and mus
 not tail-call away frames; the runtime is built with `-C force-frame-pointers=yes`
 (`.cargo/config.toml`). Frames outside `FuncTable` are skipped.
 
-**Call depth.** `msrt_stack_limit: usize`, the lowest stack address recursion may
+**Call depth.** Generated code finds the running isolate's header block with `msrt_isolate_hdr() -> *mut u8` (one block per isolate thread). Word 0, `limit: usize`, is the lowest stack address recursion may
 reach (stack base plus a reserve of an eighth, 64 KiB to 1 MiB, and recursion may use at most the top 256 MiB of the stack; 0 = no
-limit). Recursive-cycle functions do `if sp < msrt_stack_limit { msrt_fault_depth() }`
+limit). Recursive-cycle functions do `if sp < hdr.limit { msrt_fault_depth() }`
 on entry; there is no work on return. After the fault the limit drops into the reserve so
-cleanups can run. **Cancellation.** `msrt_cancel_flag: u8` becomes the signal
+cleanups can run. **Cancellation.** The byte at offset 8, `cancel: u8`, becomes the signal
 number after SIGINT/SIGTERM (unless shielded). Loops and calls poll it (relaxed load)
 and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 143
 (SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
@@ -314,7 +314,7 @@ cancel shield and equality-cycle state, and returns 1 with the fault report (mes
 plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_out`
 (owned by the caller; may be null to discard). A stop request that reaches
 `msrt_cancelled` inside the guard runs the same cleanups and returns 2 with
-`*msg_out = null`; `msrt_cancel_flag` stays set so the caller should stop soon after.
+`*msg_out = null`; the cancel flag stays set so the caller should stop soon after.
 Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
 are untouched. Not unwound: values owned by the abandoned frames are only released
 through cleanup actions, so a fault leaks anything not under `with`; the HTTP server's handler thunk registers its request
@@ -365,7 +365,7 @@ should unwind with `msrt_cancelled()` (or return an error). Rules for natives:
 
 Cancellation: `SIGINT`/`SIGTERM` wake every parked task with `16`, the main task first, so its
 `msrt_cancelled()` runs its cleanups and exits 130/143. `msrt_task_cancel(h)` wakes one task
-and sets its cancellation request (`msrt_cancel_flag` is per task). When every task is parked
+and sets its cancellation request (the cancel flag is per task). When every task is parked
 with no descriptor or timer that can wake them, the runtime faults with "deadlock".
 
 Cost (release, x86_64): a yield-switch is about 40 ns between two tasks and about 90 ns across

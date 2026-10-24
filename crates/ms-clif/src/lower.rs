@@ -11,6 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_SLOT};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -225,6 +226,16 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
         };
         self.b.ins().symbol_value(types::I64, gv)
+    }
+
+    /// The running task's header block (see `ms_rt_abi::symbols::ISOLATE_HDR`).
+    fn task_hdr(&mut self) -> Value {
+        let os = self.g.module.isa().triple().operating_system;
+        if os == target_lexicon::OperatingSystem::Windows {
+            return self.rt_call("msrt_isolate_hdr", &[])[0];
+        }
+        let sp = self.b.ins().get_stack_pointer(types::I64);
+        self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1))
     }
 
     fn add_imm(&mut self, p: Value, off: i64) -> Value {
@@ -2215,17 +2226,16 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::Poll => {
                 if self.g.opts.poll {
-                    let d = self.g.rt_data("msrt_cancel_flag");
-                    let addr = self.data_addr(d);
+                    let hdr = self.task_hdr();
+                    let addr = self.add_imm(hdr, ISOLATE_HDR_CANCEL);
                     let v = self.b.ins().atomic_load(types::I8, flags(), addr);
                     self.fault_if(v, "msrt_cancelled", vec![]);
                 }
                 vec![]
             }
             Op::DepthEnter => {
-                let d = self.g.rt_data("msrt_stack_limit");
-                let addr = self.data_addr(d);
-                let limit = self.b.ins().load(types::I64, flags(), addr, 0);
+                let hdr = self.task_hdr();
+                let limit = self.b.ins().load(types::I64, flags(), hdr, 0);
                 let sp = self.b.ins().get_stack_pointer(types::I64);
                 let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
                 self.fault_if(over, "msrt_fault_depth", vec![]);

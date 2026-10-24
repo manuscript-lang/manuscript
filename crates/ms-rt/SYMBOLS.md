@@ -32,7 +32,7 @@ msrt_slot_hash(d: *const TypeDesc, slot: *const u8) -> i64
 msrt_hash_int(v: i64) -> i64
 msrt_hash_bytes(p: *const u8, len: usize) -> i64
 msrt_hash_combine(a: i64, b: i64) -> i64
-msrt_cancel_flag (data)
+msrt_isolate_hdr() -> *mut Hdr
 msrt_fault(msg: *const u8, len: usize) -> !
 msrt_fault_string(s: *const StrVal) -> !
 msrt_fault_depth() -> !
@@ -811,7 +811,6 @@ msrt_list_sort_ints(v: *mut VecVal, desc: i64)
 msrt_list_sorted_by_difference( v: *const VecVal, d: *const TypeDesc, cmp: CmpFn, env: *mut u8, desc: i64, out: *mut VecVal, )
 msrt_shield_enter()
 msrt_shield_exit()
-msrt_stack_limit (data)
 msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal)
 msrt_string_char_width(s: *const StrVal, at: i64) -> i64
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64

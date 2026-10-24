@@ -11,8 +11,35 @@
 
 typedef struct Obj { uint64_t rc; void (*drop)(struct Obj *); } Obj;
 
-uint8_t msrt_cancel_flag = 0;
-uintptr_t msrt_stack_limit = 0;
+/* The isolate header block: word 0 is the stack limit, byte 8 the cancel flag. */
+static struct { uintptr_t limit; uint8_t cancel; } isolate_hdr;
+void *msrt_isolate_hdr(void) { return &isolate_hdr; }
+#ifndef _WIN32
+#include <pthread.h>
+#include <sys/mman.h>
+/* Generated code finds its header block by masking the stack pointer, so `main` has to run on a
+   stack slot aligned to the runtime's slot size with the block at its base. */
+#define STACK_SLOT ((uintptr_t)256 << 20)
+static int64_t (*slot_main)(void);
+static int64_t slot_result;
+static void *slot_thread(void *arg) { (void)arg; slot_result = slot_main(); return 0; }
+static int64_t run_on_slot(int64_t (*f)(void)) {
+  char *raw = mmap(0, 2 * STACK_SLOT, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+  if (raw == MAP_FAILED) abort();
+  uintptr_t base = ((uintptr_t)raw + STACK_SLOT - 1) & ~(STACK_SLOT - 1);
+  memset((void *)base, 0, 64);
+  slot_main = f;
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setstack(&attr, (void *)(base + 65536), STACK_SLOT - 65536);
+  pthread_t th;
+  if (pthread_create(&th, &attr, slot_thread, 0) != 0) abort();
+  pthread_join(th, 0);
+  return slot_result;
+}
+#else
+static int64_t run_on_slot(int64_t (*f)(void)) { return f(); }
+#endif
 int64_t msrt_live_allocs = 0;
 
 #define MAX_CLEANUPS 256
@@ -171,7 +198,7 @@ int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
 #else
   clock_gettime(CLOCK_MONOTONIC, &t0);
 #endif
-  int64_t r = main_fn();
+  int64_t r = run_on_slot(main_fn);
 #ifdef _WIN32
   timespec_get(&t1, TIME_UTC);
 #else

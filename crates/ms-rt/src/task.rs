@@ -10,7 +10,7 @@
 //! A task can also park on a token (`msrt_token_park`): a one-shot slot that code on the runtime
 //! thread posts to with `msrt_token_post`, and any other thread with `msrt_token_post_remote`.
 use crate::alloc;
-use crate::fault::{self, Ctx, PENDING_SIGNAL, msrt_cancel_flag};
+use crate::fault::{self, Ctx, PENDING_SIGNAL, cancel_flag};
 use crate::isolate;
 use crate::sys;
 use core::cmp::Reverse;
@@ -36,10 +36,24 @@ pub const SPAWN_DETACHED: u32 = 1;
 /// scheduler waits for it instead of reporting a deadlock.
 pub const TOKEN_REMOTE: u32 = 1;
 
+/// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
+/// the slot, whose first page holds the task's `fault::Hdr` (see `stack::create`).
+#[cfg(unix)]
+pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
+#[cfg(unix)]
+const DEFAULT_STACK: usize = STACK_SLOT - (64 << 10);
+#[cfg(not(unix))]
 const DEFAULT_STACK: usize = 256 << 20;
+/// Largest stack a task can ask for.
+#[cfg(unix)]
+const MAX_STACK: usize = DEFAULT_STACK;
+#[cfg(not(unix))]
+const MAX_STACK: usize = usize::MAX;
 const MIN_STACK: usize = 128 << 10;
 #[cfg(unix)]
 const GUARD: usize = 64 << 10;
+#[cfg(unix)]
+const HDR_PAGE: usize = 4096;
 const STACK_POOL: usize = 32;
 const NO_DEADLINE: i64 = i64::MAX;
 const MIN_TIMER_LIMIT: usize = 1024;
@@ -282,26 +296,50 @@ mod stack {
         }
     }
 
-    /// Maps a stack of `len` bytes with a guard at the bottom; null on failure.
+    /// Reserves one `STACK_SLOT`-aligned slot whose top `len` bytes are the stack, with a guard
+    /// below them and the header page at the slot's base; null on failure. Address space only:
+    /// pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
-        let p = sys::map_anon(len);
-        if !p.is_null() {
-            // SAFETY: the lowest pages of the fresh mapping.
-            unsafe { sys::guard(p, GUARD) };
+        let raw = sys::map_anon(2 * STACK_SLOT);
+        if raw.is_null() {
+            return raw;
         }
-        p
+        let start = raw as usize;
+        let base = start.next_multiple_of(STACK_SLOT);
+        let end = start + 2 * STACK_SLOT;
+        // SAFETY: trims the unaligned head and tail of the reservation and guards the gap
+        // between the header page and the stack, all inside the fresh mapping.
+        unsafe {
+            if base > start {
+                sys::unmap(start as *mut u8, base - start);
+            }
+            if end > base + STACK_SLOT {
+                sys::unmap((base + STACK_SLOT) as *mut u8, end - base - STACK_SLOT);
+            }
+            let len = len.min(DEFAULT_STACK);
+            sys::guard(
+                (base + HDR_PAGE) as *mut u8,
+                STACK_SLOT - len + GUARD - HDR_PAGE,
+            );
+        }
+        base as *mut u8
     }
 
-    pub unsafe fn destroy(base: *mut u8, len: usize) {
-        // SAFETY: the caller guarantees the mapping is unused.
-        unsafe { sys::unmap(base, len) };
+    pub unsafe fn destroy(base: *mut u8, _len: usize) {
+        // SAFETY: the caller guarantees the slot is unused.
+        unsafe { sys::unmap(base, STACK_SLOT) };
     }
 
-    /// Stack bounds and initial context of a stack from [`create`].
-    pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize) {
-        let top = (base as usize + len) & !15;
-        // SAFETY: `top` ends a writable stack.
-        (base as usize + GUARD, top, unsafe { initial_sp(top) })
+    /// Stack bounds, initial context and header of a stack from [`create`].
+    pub unsafe fn prepare(base: *mut u8, len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
+        let top = (base as usize + STACK_SLOT) & !15;
+        let len = len.min(DEFAULT_STACK);
+        let hdr = base.cast::<fault::Hdr>();
+        // SAFETY: the header page is writable; `top` ends a writable stack.
+        unsafe {
+            hdr.write(fault::Hdr::new(0));
+            (top - len + GUARD, top, initial_sp(top), hdr)
+        }
     }
 
     /// The first task record of the thread needs no stack of its own.
@@ -338,8 +376,11 @@ mod stack {
     }
 
     /// Fibers carry their own bounds, which `task_main` records when it starts.
-    pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize) {
-        (0, 0, base as usize)
+    pub unsafe fn prepare(base: *mut u8, _len: usize) -> (usize, usize, usize, *mut fault::Hdr) {
+        let hdr = alloc::alloc(size_of::<fault::Hdr>()).cast::<fault::Hdr>();
+        // SAFETY: a fresh block of the right size.
+        unsafe { hdr.write(fault::Hdr::new(0)) };
+        (0, 0, base as usize, hdr)
     }
 
     /// Turns the calling thread into a fiber so it can be switched away from.
@@ -420,6 +461,8 @@ unsafe fn free_task(t: *mut Task) {
         let idx = ((*t).handle & 0xffff_ffff) as usize - 1;
         s.slots[idx].task = null_mut();
         s.free_slots.push(idx);
+        #[cfg(windows)]
+        alloc::free((*t).ctx.hdr_ptr().cast());
         core::ptr::drop_in_place(t);
         alloc::free(t as *mut u8);
     }
@@ -724,11 +767,16 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         let len = if stack_bytes == 0 {
             DEFAULT_STACK
         } else {
-            stack_bytes.max(MIN_STACK).next_multiple_of(4096)
+            stack_bytes
+                .max(MIN_STACK)
+                .next_multiple_of(4096)
+                .min(MAX_STACK)
         };
         let base = alloc_stack(len);
-        let (lo, hi, sp) = stack::prepare(base, len);
-        let t = new_task(Ctx::new(lo, hi));
+        let (lo, hi, sp, hdr) = stack::prepare(base, len);
+        let mut ctx = Ctx::new(lo, hi);
+        ctx.set_hdr(hdr);
+        let t = new_task(ctx);
         (*t).stack = base;
         (*t).stack_len = len;
         (*t).entry = Some(entry);
@@ -737,6 +785,26 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).sp = sp;
         sched().ready.push_back((*t).handle);
         (*t).handle
+    }
+}
+
+/// Runs `entry` as the isolate's main task and returns when it ends. The caller's own flow
+/// only waits, shielded from stop requests (they go to the main task, which cleans up and exits).
+///
+/// # Safety
+/// `entry` receives the token the caller waits on and must post it when it finishes.
+pub unsafe fn run_main_task(entry: Entry) {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        ensure_init();
+        let done = msrt_token_new(0);
+        let h = msrt_task_spawn(entry, done as usize as *mut u8, SPAWN_DETACHED, 0);
+        sched().main = lookup(h);
+        fault::msrt_shield_enter();
+        let mut value = 0;
+        while msrt_token_park(done, -1, &mut value) != 0 {}
+        fault::msrt_shield_exit();
+        msrt_token_free(done);
     }
 }
 
@@ -773,7 +841,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }
         let mut s = sched();
@@ -921,7 +989,7 @@ pub unsafe extern "C-unwind" fn msrt_task_join(handle: u64, msg_out: *mut StrVal
             fault::fault(b"join: the task is already being joined");
         }
         if (*t).state != State::Done {
-            if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+            if cancel_flag().load(Ordering::Relaxed) != 0 {
                 return 2;
             }
             before_park();
@@ -1072,7 +1140,7 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         if take(value_out) {
             return 0;
         }
-        if msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }
         before_park();
@@ -1573,7 +1641,7 @@ mod tests {
         // SAFETY: tests hold the global lock and run on the task that owns the live globals.
         unsafe {
             *fault::SHIELD.ptr() += 1;
-            msrt_cancel_flag.store(0, Ordering::Relaxed);
+            cancel_flag().store(0, Ordering::Relaxed);
             let r = f();
             *fault::SHIELD.ptr() -= 1;
             r

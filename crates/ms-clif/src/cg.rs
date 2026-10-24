@@ -72,6 +72,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_fault_unwrap_none", "", ""),
     ("msrt_fault_depth", "", ""),
     ("msrt_cancelled", "", ""),
+    ("msrt_isolate_hdr", "", "i"),
     ("msrt_cleanup_push", "ii", "i"),
     ("msrt_cleanup_run", "i", ""),
     ("msrt_start", "iiii", "i"),
@@ -82,8 +83,6 @@ const RT: &[(&str, &str, &str)] = &[
 
 /// Runtime data symbols: `(name, is_writable)`.
 const RT_DATA: &[(&str, bool)] = &[
-    ("msrt_cancel_flag", false),
-    ("msrt_stack_limit", true),
     ("msrt_ascii_chars", false),
     ("msrt_desc_int", false),
     ("msrt_desc_float", false),

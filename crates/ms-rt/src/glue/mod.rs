@@ -11,7 +11,7 @@ use core::sync::atomic::Ordering;
 use ms_rt_abi::{STATUS_FAILED, StrVal};
 use std::vec::Vec;
 
-use crate::fault::{msrt_cancel_flag, msrt_cancelled, msrt_fault};
+use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
 use crate::obj::{msrt_release, msrt_retain};
 use crate::string::msrt_string_from_bytes;
 
@@ -67,7 +67,7 @@ pub fn fault_fmt(args: fmt::Arguments<'_>) -> ! {
 
 /// Whether a stop request (SIGINT or SIGTERM) is pending.
 pub fn cancel_pending() -> bool {
-    msrt_cancel_flag.load(Ordering::Relaxed) != 0
+    cancel_flag().load(Ordering::Relaxed) != 0
 }
 
 /// Unwinds the program after a stop request; never returns.

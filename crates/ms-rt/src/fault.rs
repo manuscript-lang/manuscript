@@ -7,13 +7,98 @@ use core::sync::atomic::{AtomicU8, Ordering};
 use ms_rt_abi::{FuncEntry, LineEntry, MAX_FAULT_FRAMES, ScopeEntry, TABLES_WITH_SCOPES, Tables};
 use std::io::Write as _;
 
-/// Lowest stack address recursive calls may reach before they fault (0 = no limit); generated
-/// code compares the stack pointer against it on entry to a recursive function.
+/// The words generated code reads, one block per task stack. On Unix it sits at the base of the
+/// task's stack slot, which generated code finds by masking the stack pointer; elsewhere it is
+/// reached through `msrt_isolate_hdr`.
+#[repr(C)]
+pub struct Hdr {
+    /// Lowest stack address recursive calls may reach before they fault (0 = no limit);
+    /// generated code compares the stack pointer against it on entry to a recursive function.
+    pub limit: usize,
+    /// Non-zero (the signal number) once a stop was requested and not shielded.
+    pub cancel: AtomicU8,
+    /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
+    /// for the main isolate's running task, so it lives here and not in a thread-local.
+    pub shield: core::cell::Cell<u32>,
+}
+
+// SAFETY: `shield` is written by the owning isolate only and read racily as a single word by
+// stop-signal handlers, which tolerate a stale value (the next switch recomputes the flag).
+unsafe impl Sync for Hdr {}
+
+impl Hdr {
+    pub const fn new(limit: usize) -> Hdr {
+        Hdr {
+            limit,
+            cancel: AtomicU8::new(0),
+            shield: core::cell::Cell::new(0),
+        }
+    }
+}
+
+crate::isolate_static! {
+    /// The block of the thread's own flow, used until a task stack is switched to.
+    static ROOT_HDR: Hdr = Hdr::new(0);
+    /// The running task's block; null before the first switch (the root block then).
+    static CUR_HDR: *mut Hdr = core::ptr::null_mut();
+}
+
+/// The main isolate's running-task block, for stop-signal handlers that run on any thread.
+static MAIN_CUR: core::sync::atomic::AtomicPtr<Hdr> =
+    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
+
+/// The running task's block.
+#[inline(always)]
+pub(crate) fn cur_hdr() -> *mut Hdr {
+    // SAFETY: this isolate's state.
+    let p = unsafe { *CUR_HDR.ptr() };
+    if p.is_null() { ROOT_HDR.ptr() } else { p }
+}
+
+/// Generated code on targets without slot-aligned stacks finds the running task's [`Hdr`]
+/// through this call.
 #[unsafe(no_mangle)]
-pub static mut msrt_stack_limit: usize = 0;
-/// Non-zero (the signal number) once a stop was requested and not shielded.
-#[unsafe(no_mangle)]
-pub static msrt_cancel_flag: AtomicU8 = AtomicU8::new(0);
+pub extern "C" fn msrt_isolate_hdr() -> *mut Hdr {
+    cur_hdr()
+}
+
+/// The running task's cancel flag.
+#[inline(always)]
+pub fn cancel_flag() -> &'static AtomicU8 {
+    // SAFETY: the block lives as long as its stack.
+    unsafe { &(*cur_hdr()).cancel }
+}
+
+/// Makes the calling isolate the one stop signals are delivered to.
+pub fn set_main_hdr() {
+    MAIN_CUR.store(cur_hdr(), Ordering::Release);
+}
+
+/// Called by a stop-signal handler on any thread: raises the cancel flag of the main isolate's
+/// running task unless it is shielded.
+pub fn raise_main_cancel(sig: u8) {
+    let hdr = MAIN_CUR.load(Ordering::Acquire);
+    if hdr.is_null() {
+        return;
+    }
+    // SAFETY: a task block outlives its stack's use; `shield` is read as one word.
+    unsafe {
+        if core::ptr::read_volatile((*hdr).shield.as_ptr()) == 0 {
+            (*hdr).cancel.store(sig, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The cancellation-shield depth of the running task, as a place.
+pub(crate) struct ShieldRef;
+pub(crate) static SHIELD: ShieldRef = ShieldRef;
+impl ShieldRef {
+    #[inline(always)]
+    pub(crate) fn ptr(&self) -> *mut u32 {
+        // SAFETY: the block lives as long as its stack.
+        unsafe { (*cur_hdr()).shield.as_ptr() }
+    }
+}
 
 pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
 /// Lowest and highest valid stack addresses for frame walking (0 = unknown). Process-wide until
@@ -82,21 +167,19 @@ pub(crate) const fn stack_limit(lo: usize, hi: usize) -> usize {
 ///
 /// # Safety
 /// Single threaded runtime state.
+#[cfg(any(windows, test))]
 pub(crate) unsafe fn set_stack_bounds(lo: usize, hi: usize) {
     // SAFETY: single threaded access to the runtime globals.
     unsafe {
         *STACK_LO.ptr() = lo;
         *STACK_HI.ptr() = hi;
-        msrt_stack_limit = stack_limit(lo, hi);
+        (*cur_hdr()).limit = stack_limit(lo, hi);
     }
 }
 
 type CleanupFn = unsafe extern "C-unwind" fn(*mut u8);
 crate::isolate_static! {
     static CLEANUPS: Vec<(usize, usize)> = Vec::new();
-}
-crate::isolate_static! {
-    pub(crate) static SHIELD: u32 = 0;
 }
 pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
 crate::isolate_static! {
@@ -109,7 +192,7 @@ crate::isolate_static! {
 /// Stop request aimed at the running task (see `task`); 0 when none.
     static TASK_CANCEL: u8 = 0;
 }
-/// Value of `msrt_cancel_flag` when cancellation is not shielded.
+/// Value of the cancel flag when cancellation is not shielded.
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
@@ -122,7 +205,7 @@ pub(crate) fn set_live_task_cancel(v: u8) {
     unsafe {
         *TASK_CANCEL.ptr() = v;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
+            cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
 }
@@ -134,9 +217,9 @@ pub(crate) struct Ctx {
     secondary: Vec<Vec<u8>>,
     eq_pairs: Vec<(usize, usize)>,
     primary: Option<Vec<u8>>,
-    shield: u32,
     faulting: bool,
-    limit: usize,
+    /// The task's block (null until set: the root block).
+    hdr: *mut Hdr,
     cancel: u8,
     stack_lo: usize,
     stack_hi: usize,
@@ -151,9 +234,8 @@ impl Ctx {
             secondary: Vec::new(),
             eq_pairs: Vec::new(),
             primary: None,
-            shield: 0,
             faulting: false,
-            limit: stack_limit(stack_lo, stack_hi),
+            hdr: core::ptr::null_mut(),
             cancel: 0,
             stack_lo,
             stack_hi,
@@ -166,7 +248,26 @@ impl Ctx {
 
     /// Whether the task is inside a cleanup action that shields it from cancellation.
     pub(crate) fn shielded(&self) -> bool {
-        self.shield > 0
+        let hdr = if self.hdr.is_null() {
+            ROOT_HDR.ptr()
+        } else {
+            self.hdr
+        };
+        // SAFETY: the block lives as long as its stack.
+        unsafe { (*hdr).shield.get() > 0 }
+    }
+
+    /// The task's block (null for the root task before it ever ran).
+    #[cfg(windows)]
+    pub(crate) fn hdr_ptr(&self) -> *mut Hdr {
+        self.hdr
+    }
+
+    /// Binds the task to its block and gives it the recursion limit of its stack.
+    pub(crate) fn set_hdr(&mut self, hdr: *mut Hdr) {
+        self.hdr = hdr;
+        // SAFETY: the block was just prepared for this task.
+        unsafe { (*hdr).limit = stack_limit(self.stack_lo, self.stack_hi) };
     }
 }
 
@@ -207,13 +308,12 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         core::ptr::swap(SECONDARY.ptr(), &mut c.secondary);
         crate::desc::swap_eq_pairs(&mut c.eq_pairs);
         core::ptr::swap(PRIMARY.ptr(), &mut c.primary);
-        core::ptr::swap(SHIELD.ptr(), &mut c.shield);
         core::ptr::swap(FAULTING.ptr(), &mut c.faulting);
-        core::ptr::swap(core::ptr::addr_of_mut!(msrt_stack_limit), &mut c.limit);
+        core::ptr::swap(CUR_HDR.ptr(), &mut c.hdr);
         core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
         core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
-        msrt_cancel_flag.store(
+        cancel_flag().store(
             if *SHIELD.ptr() == 0 {
                 unshielded_cancel_flag()
             } else {
@@ -221,6 +321,9 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
             },
             Ordering::Relaxed,
         );
+        if crate::isolate::is_main() {
+            MAIN_CUR.store(cur_hdr(), Ordering::Release);
+        }
     }
 }
 
@@ -552,11 +655,11 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
     // registered by generated code with a valid function pointer.
     unsafe {
         *SHIELD.ptr() += 1;
-        msrt_cancel_flag.store(0, Ordering::Relaxed);
+        cancel_flag().store(0, Ordering::Relaxed);
         f(arg);
         *SHIELD.ptr() -= 1;
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
+            cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
 }
@@ -568,7 +671,7 @@ pub extern "C" fn msrt_shield_enter() {
     // SAFETY: single threaded access to the shield counter.
     unsafe {
         *SHIELD.ptr() += 1;
-        msrt_cancel_flag.store(0, Ordering::Relaxed);
+        cancel_flag().store(0, Ordering::Relaxed);
     }
 }
 
@@ -579,7 +682,7 @@ pub extern "C" fn msrt_shield_exit() {
     unsafe {
         *SHIELD.ptr() = (*SHIELD.ptr()).saturating_sub(1);
         if *SHIELD.ptr() == 0 {
-            msrt_cancel_flag.store(unshielded_cancel_flag(), Ordering::Relaxed);
+            cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
 }
@@ -732,7 +835,7 @@ pub extern "C-unwind" fn msrt_fault_depth() -> ! {
     // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
     unsafe {
         let lo = *STACK_LO.ptr();
-        msrt_stack_limit = if lo == 0 {
+        (*cur_hdr()).limit = if lo == 0 {
             0
         } else {
             lo + STACK_CLEANUP_RESERVE
@@ -923,9 +1026,9 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             .pop()
             .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
-        msrt_stack_limit = f.limit;
+        (*cur_hdr()).limit = f.limit;
         *SHIELD.ptr() = f.shield;
-        msrt_cancel_flag.store(
+        cancel_flag().store(
             if f.shield == 0 {
                 unshielded_cancel_flag()
             } else {
@@ -959,7 +1062,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
         (*GUARDS.ptr()).push(GuardFrame {
             jmp: buf as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
-            limit: msrt_stack_limit,
+            limit: (*cur_hdr()).limit,
             shield: *SHIELD.ptr(),
             eq_pairs: crate::desc::eq_len(),
             trap: true,
@@ -1149,7 +1252,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         (*GUARDS.ptr()).push(GuardFrame {
             jmp: core::ptr::addr_of_mut!(slot) as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
-            limit: msrt_stack_limit,
+            limit: (*cur_hdr()).limit,
             shield: *SHIELD.ptr(),
             eq_pairs: crate::desc::eq_len(),
             trap: false,
@@ -1172,7 +1275,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         }
         #[cfg(test)]
         {
-            let limit = msrt_stack_limit;
+            let limit = (*cur_hdr()).limit;
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
             (*GUARDS.ptr()).pop();
             match r {
@@ -1182,7 +1285,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                         fatal(b"unexpected panic in guard")
                     };
                     *FAULTING.ptr() = false;
-                    msrt_stack_limit = limit;
+                    (*cur_hdr()).limit = limit;
                     if p.0.starts_with("cancelled ") {
                         return GUARD_CANCELLED;
                     }
@@ -1321,10 +1424,10 @@ mod tests {
             swap_ctx(&mut saved);
             *SHIELD.ptr() = 2;
             *TASK_CANCEL.ptr() = 1;
-            msrt_cancel_flag.store(0, Ordering::Relaxed);
+            cancel_flag().store(0, Ordering::Relaxed);
             *STACK_LO.ptr() = 100;
             *STACK_HI.ptr() = 1000;
-            msrt_stack_limit = 200;
+            (*cur_hdr()).limit = 200;
             (*CLEANUPS.ptr()).push((0, 0));
             (*GUARDS.ptr()).push(GuardFrame {
                 jmp: 0,
@@ -1350,10 +1453,10 @@ mod tests {
             assert_eq!(*SHIELD.ptr(), 2);
             assert_eq!(*TASK_CANCEL.ptr(), 1);
             assert_eq!(PENDING_SIGNAL.load(Ordering::Relaxed), 15);
-            assert_eq!(msrt_cancel_flag.load(Ordering::Relaxed), 0);
+            assert_eq!(cancel_flag().load(Ordering::Relaxed), 0);
             assert_eq!(*STACK_LO.ptr(), 100);
             assert_eq!(*STACK_HI.ptr(), 1000);
-            let limit = msrt_stack_limit;
+            let limit = (*cur_hdr()).limit;
             assert_eq!(limit, 200);
 
             PENDING_SIGNAL.store(signal, Ordering::Relaxed);

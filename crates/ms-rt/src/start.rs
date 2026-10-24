@@ -8,10 +8,6 @@ use core::ffi::c_void;
 use core::sync::atomic::Ordering;
 use ms_rt_abi::{MAX_MAIN_EXIT, Tables, VecVal};
 
-/// Stack of the thread that runs `main` (deep recursion has to fit).
-const STACK_SIZE: usize = 1 << 30;
-#[cfg(unix)]
-const GUARD: usize = 1 << 16;
 /// Grace period after the first stop request before cleanup is abandoned.
 const CLEANUP_GRACE_SECS: u32 = 30;
 
@@ -44,12 +40,7 @@ fn stop_requested(sig: i32) {
         // SAFETY: ends the process without cleanup.
         unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
     }
-    // SAFETY: the shield counter and cancel flag are word-sized and only read here.
-    unsafe {
-        if *fault::SHIELD.ptr() == 0 {
-            fault::msrt_cancel_flag.store(sig as u8, Ordering::Relaxed);
-        }
-    }
+    fault::raise_main_cancel(sig as u8);
     arm_grace_timer();
     crate::task::kick();
 }
@@ -63,24 +54,58 @@ fn grace_expired() -> ! {
     unsafe { sys::_exit(ms_rt_abi::EXIT_FAULT) }
 }
 
-/// Runs the program's `main` and records its result; shared by both platforms' thread entries.
+/// The body of the main task: runs the program's `main` and records its result.
 ///
 /// # Safety
-/// Single threaded globals set by `msrt_start` before the thread exists.
-unsafe fn run_main() {
-    crate::alloc::claim_arena(true);
-    crate::isolate::set_main();
+/// Single threaded globals set by `msrt_start` before the thread exists; `done` is the token
+/// `run_main` waits on.
+unsafe extern "C-unwind" fn main_task(done: *mut u8) {
     // SAFETY: as documented.
     unsafe {
         let f = (*MAIN_FN.ptr()).unwrap_or_else(|| fault::fatal(b"missing main"));
         let value = f();
-        if fault::msrt_cancel_flag.load(Ordering::Relaxed) != 0 {
+        if fault::cancel_flag().load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
         }
         if !(0..=MAX_MAIN_EXIT).contains(&value) {
             fault::fault(b"main exit code must be between 0 and 125; return 0 for success or a small positive Int for failure (126 and above are reserved by shells)");
         }
         *MAIN_RESULT.ptr() = value;
+    }
+    // SAFETY: `done` is the live token `run_main` waits on.
+    unsafe { crate::task::msrt_token_post(done as usize as u64, 1) };
+}
+
+/// Runs `main` as the isolate's main task on a stack of its own and returns when it ends.
+///
+/// # Safety
+/// See [`main_task`].
+unsafe fn run_main() {
+    crate::alloc::claim_arena(true);
+    crate::isolate::set_main();
+    fault::set_main_hdr();
+    // SAFETY: this thread is the runtime thread; the root flow waits shielded so a stop request
+    // reaches the main task, not this wait.
+    unsafe { crate::task::run_main_task(main_task) };
+    #[cfg(feature = "stats")]
+    report_leaks();
+}
+
+/// Counting builds: sweeps the main isolate's scheduler state, then reports what is still live.
+/// Runs on the isolate's own thread, whose allocator and task state it reads.
+#[cfg(feature = "stats")]
+fn report_leaks() {
+    crate::task::reset_for_tests();
+    {
+        eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+        // SAFETY: the counters belong to this isolate.
+        let c = unsafe { *crate::string::STR_COUNTS.ptr() };
+        if c.iter().any(|n| *n != 0) {
+            eprintln!(
+                "ms-rt string drops: {} static, {} owned; copies: {} static, {} owned",
+                c[0], c[1], c[2], c[3]
+            );
+        }
     }
 }
 
@@ -175,19 +200,13 @@ mod os {
         core::ptr::null_mut()
     }
 
-    /// Runs `main` on a thread with a large stack and waits for it.
+    /// Runs `main` on a thread of its own and waits for it. The thread's stack only hosts the
+    /// scheduler; `main` runs on a task stack.
     pub unsafe fn run_on_big_stack() {
-        // SAFETY: one-time setup; the mapping outlives the thread.
+        // SAFETY: one-time setup before the thread exists.
         unsafe {
-            let stack = sys::map_anon(STACK_SIZE);
-            if stack.is_null() {
-                fault::fatal(b"cannot allocate the main stack");
-            }
-            sys::guard(stack, GUARD);
-            fault::set_stack_bounds(stack as usize + GUARD, stack as usize + STACK_SIZE);
             let mut attr = core::mem::zeroed::<sys::pthread_attr_buf>();
             sys::pthread_attr_init(&mut attr);
-            sys::pthread_attr_setstack(&mut attr, stack.add(GUARD).cast(), STACK_SIZE - GUARD);
             let mut tid = 0usize;
             if sys::pthread_create(&mut tid, &attr, thread_main, core::ptr::null_mut()) != 0 {
                 fault::fatal(b"cannot start the main thread");
@@ -229,22 +248,19 @@ mod os {
     }
 
     unsafe extern "system" fn thread_main(_: *mut c_void) -> u32 {
-        // SAFETY: see `run_main`; the bounds are written before any other code reads them.
+        // SAFETY: see `run_main`.
         unsafe {
-            let (lo, hi) = sys::stack_limits();
-            fault::set_stack_bounds(lo, hi);
             crate::profile::attach_runtime_thread();
             run_main();
         }
         0
     }
 
-    /// Runs `main` on a thread whose stack reserves `STACK_SIZE` bytes (committed as it grows)
-    /// and waits for it.
+    /// Runs `main` on a thread of its own and waits for it.
     pub unsafe fn run_on_big_stack() {
         // SAFETY: one-time setup before the thread exists.
         unsafe {
-            let thread = sys::thread_spawn(STACK_SIZE, thread_main);
+            let thread = sys::thread_spawn(0, thread_main);
             if thread.is_null() {
                 fault::fatal(b"cannot start the main thread");
             }
@@ -279,19 +295,6 @@ pub unsafe extern "C-unwind" fn msrt_start(
         crate::io::flush_stdout();
         crate::process::run_exit_hooks();
         crate::profile::finish();
-        #[cfg(feature = "stats")]
-        crate::task::reset_for_tests();
-        #[cfg(feature = "stats")]
-        {
-            eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
-            let c = *crate::string::STR_COUNTS.ptr();
-            if c.iter().any(|n| *n != 0) {
-                eprintln!(
-                    "ms-rt string drops: {} static, {} owned; copies: {} static, {} owned",
-                    c[0], c[1], c[2], c[3]
-                );
-            }
-        }
         *MAIN_RESULT.ptr() as i32
     }
 }

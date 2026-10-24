@@ -575,12 +575,18 @@ unsafe impl Sync for Tables {}
 
 /// Names of the data symbols generated code reads or writes directly.
 pub mod symbols {
-    /// `usize`: lowest stack address recursive calls may reach (0 = no limit). Inline protocol:
-    /// on entry to a recursive function compare the stack pointer against it and call
+    /// Function returning the running task's header block (`msrt_isolate_hdr() -> *mut u8`).
+    /// On Linux and macOS task stacks are [`STACK_SLOT`]-aligned slots with the block at the
+    /// slot's base, so generated code finds it by masking the stack pointer instead of calling.
+    /// Word 0 (`usize`) is the lowest stack address recursive calls may reach (0 = no limit): on
+    /// entry to a recursive function compare the stack pointer against it and call
     /// `msrt_fault_depth` when below.
-    pub const STACK_LIMIT: &str = "msrt_stack_limit";
-    /// `u8`: non-zero when a stop request (SIGINT, SIGTERM) is pending and not shielded.
-    pub const CANCEL_FLAG: &str = "msrt_cancel_flag";
+    pub const ISOLATE_HDR: &str = "msrt_isolate_hdr";
+    /// Size and alignment of a task stack slot (targets with slot-aligned stacks).
+    pub const STACK_SLOT: i64 = 256 << 20;
+    /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
+    /// pending and not shielded.
+    pub const ISOLATE_HDR_CANCEL: i64 = 8;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
     pub const DESC_BOOL: &str = "msrt_desc_bool";

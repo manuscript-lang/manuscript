@@ -33,7 +33,7 @@ release, cancellation) and never the other way around.
   in `.ms`: the compiler builds the vtable whose methods call the `msrt_net_*` symbols
   below with the handle as data pointer.
 - **Blocking.** Calls block the ms thread. While waiting they poll the cancel flag
-  (`msrt_cancel_flag`, 50 ms granularity) and call `msrt_cancelled()` when it is set,
+  (the isolate's cancel flag, 50 ms granularity) and call `msrt_cancelled()` when it is set,
   and they run queued HTTP server handlers on the same thread (see HTTP). Nothing else in
   this crate calls `msrt_*` from a helper thread.
 - **Names.** `msrt_net_<type>_<method>` (`msrt_net_connection_read`); free functions are
