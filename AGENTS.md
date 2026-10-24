@@ -24,6 +24,7 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 | Tutorials, exact rules, generated API reference, Hugo book/publication | [documentation](skills/documentation/SKILL.md) |
 | Documentation revamps, marketing landing page, onboarding, reading order, or quality audits | [improve-documentation](skills/improve-documentation/SKILL.md), then documentation |
 | Package organization, dependency policy, pins, CI, releases, repository cleanup | [repository-maintenance](skills/repository-maintenance/SKILL.md) |
+| Writing or revising a design proposal | [author-proposal](skills/author-proposal/SKILL.md) |
 | Opening or updating a pull request | [create-pr](skills/create-pr/SKILL.md) |
 | Filing or rewriting an issue | [create-issue](skills/create-issue/SKILL.md) |
 
@@ -36,7 +37,7 @@ Syntax changes usually need language-design, compiler, tooling, and documentatio
 
 ## Shared guidance and checks
 
-- Before any change that touches large parts of the codebase across multiple packages (for example a new representation, layer, or pass, or a restructure), write a short proposal and validate it yourself before implementing: the problem, the concrete benefit with evidence (measurements, or code the change removes), and the alternatives, including doing nothing. Have an independent skeptical reviewer subagent challenge the evidence and the do-nothing case, and build only if the proposal survives. Do not implement first to find out whether it helps. Ask the user only when the change alters the language or user-visible behavior.
+- Before any change that touches large parts of the codebase across multiple packages (for example a new representation, layer, or pass, or a restructure), write a short proposal in `proposals/` with [author-proposal](skills/author-proposal/SKILL.md) and validate it yourself before implementing: the problem, the concrete benefit with evidence (measurements, or code the change removes), and the alternatives, including doing nothing, after a pass on what can be simplified. Have an independent skeptical reviewer subagent challenge the evidence and the do-nothing case, and build only if the proposal survives. Do not implement first to find out whether it helps. Ask the user only when the change alters the language or user-visible behavior.
 - Nested `match` is an anti-pattern. Keep implementation, examples, and diagnostic remedies flat: bind a payload with an early exit, use compatible `try`, or call a small helper. `make repo-check` guards source and Markdown fences; intentional syntax/semantic regressions need a scoped test allowance with a reason. The grammar remains unchanged. See [flat match flow](documentation/core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 - Shared skills live in `skills/`; `.agents/skills/` and `.claude/skills/` link to the same folders for Codex and Claude discovery. Read selected `SKILL.md` files and relevant evidence links. Keep discovery links synchronized when adding, renaming, or removing skills.
 - `AGENTS.md` is the sole source of repository guidance. `CLAUDE.md` contains only `@AGENTS.md` so Claude Code, which loads `CLAUDE.md` and not `AGENTS.md`, reads the same file; add no other content to it.
