@@ -15,10 +15,17 @@ fn lock() -> MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-/// Runs `operation` in a trap (a forked child, the production fault path) and returns the fault
-/// text it raised, or `None` when it returned.
+/// Runs `operation` in a trap and returns the fault text it raised, or `None` when it returned.
+/// Unix traps in a forked child (the production fault path); Windows has no fork, so the
+/// operation runs in this frame under a setjmp-style guard and `msrt_trap_begin` returns twice.
+#[inline(never)]
 fn fault_of<R>(operation: impl FnOnce() -> R) -> Option<String> {
-    if trap::msrt_trap_begin() == 0 {
+    // SAFETY: this frame stays live until `msrt_trap_end` resumes after the call.
+    #[cfg(windows)]
+    let began = unsafe { trap::msrt_trap_begin() };
+    #[cfg(not(windows))]
+    let began = trap::msrt_trap_begin();
+    if began == 0 {
         operation();
         trap::msrt_trap_end();
     }

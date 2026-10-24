@@ -1,7 +1,7 @@
 //! The collection and text builders (`ListBuilder`, `MapBuilder`, `SetBuilder`, `StringBuilder`,
 //! `BytesBuilder`): shared handles that accumulate a value.
 //!
-//! A builder is a `Shared` cell holding `{sealed, items}`. Copies of the handle see every
+//! A builder is a `Shared` cell holding `{items, sealed}`. Copies of the handle see every
 //! append or add, and `freeze` seals the cell so later changes fault with "builder is sealed".
 
 use crate::Error;
@@ -31,8 +31,10 @@ pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
         Some(i) => m.types.rec(RecId(i as u32)),
         None => {
             let fields = vec![
-                ("sealed".to_string(), MTy::BOOL),
+                // The payload comes first: a field's address is read with the field's own layout,
+                // which matches its place in the record only when it starts the record.
                 ("items".to_string(), items),
+                ("sealed".to_string(), MTy::BOOL),
             ];
             m.add_record(&rec_name, fields).1
         }
@@ -55,7 +57,7 @@ impl<'a> FnLower<'a> {
     /// `ListBuilder[T]()`, `MapBuilder[K, V]()` and `SetBuilder[T]()`.
     pub(crate) fn construct_builder(&mut self, handle: MTy) -> Result<Val, Error> {
         let rec = self.builder_rec(handle)?;
-        let items_ty = self.b.m.records[rec.index()].fields[1].1;
+        let items_ty = self.b.m.records[rec.index()].fields[0].1;
         let items = match self.b.m.types.kind(items_ty).clone() {
             TyKind::List(elem) => self.b.list_lit(elem, &[]),
             // A text or byte builder accumulates an empty byte buffer.
@@ -63,7 +65,7 @@ impl<'a> FnLower<'a> {
             _ => self.map_new(items_ty)?,
         };
         let sealed = self.b.bconst(false);
-        let state = self.b.rec_new(rec, &[sealed, items]);
+        let state = self.b.rec_new(rec, &[items, sealed]);
         let v = self
             .b
             .emit(Op::SharedNew, &[state], Imm::None, Some(handle))
@@ -117,7 +119,7 @@ impl<'a> FnLower<'a> {
         result: MTy,
     ) -> Result<Val, Error> {
         let rec = self.builder_rec(self.ty_of(handle))?;
-        let items_ty = self.b.m.records[rec.index()].fields[1].1;
+        let items_ty = self.b.m.records[rec.index()].fields[0].1;
         let addr = self
             .b
             .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
@@ -126,8 +128,8 @@ impl<'a> FnLower<'a> {
             s.b.emit(Op::PtrField, &[addr], Imm::Field(rec, i), Some(MTy::PTR))
                 .expect("field")
         };
-        let sealed = field(self, 0);
-        let items = field(self, 1);
+        let items = field(self, 0);
+        let sealed = field(self, 1);
         if name == "freeze" {
             // Seal, then hand out a copy: the builder keeps its items for a second freeze.
             let yes = self.b.bconst(true);
@@ -178,7 +180,7 @@ impl<'a> FnLower<'a> {
 }
 
 impl<'a> FnLower<'a> {
-    /// A method of a user-facing `Shared[T]`: a box holding `{taken, value}`. `take` moves the
+    /// A method of a user-facing `Shared[T]`: a box holding `{value, taken}`. `take` moves the
     /// value out and marks the box in use; `put` moves it back. A second `take`, or a `get`, while
     /// the value is out faults, which is the runtime check of the single mutable borrow.
     pub(crate) fn shared_method(
@@ -200,7 +202,7 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let result = self.emty(e)?;
         let rec = self.builder_rec(self.ty_of(handle))?;
-        let value_ty = self.b.m.records[rec.index()].fields[1].1;
+        let value_ty = self.b.m.records[rec.index()].fields[0].1;
         let addr = self
             .b
             .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
@@ -209,8 +211,8 @@ impl<'a> FnLower<'a> {
             s.b.emit(Op::PtrField, &[addr], Imm::Field(rec, i), Some(MTy::PTR))
                 .expect("field")
         };
-        let taken = field(self, 0);
-        let value = field(self, 1);
+        let value = field(self, 0);
+        let taken = field(self, 1);
         match name {
             "get" => {
                 self.fault_if_flag(taken, true, "shared value is in use");
@@ -250,7 +252,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn shared_new(&mut self, payload: Value, handle: MTy) -> Value {
         let rec = self.builder_rec(handle).expect("shared handle");
         let free = self.b.bconst(false);
-        let state = self.b.rec_new(rec, &[free, payload]);
+        let state = self.b.rec_new(rec, &[payload, free]);
         self.b
             .emit(Op::SharedNew, &[state], Imm::None, Some(handle))
             .expect("shared result")

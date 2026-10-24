@@ -5,6 +5,8 @@ use crate::Error;
 use std::path::{Path, PathBuf};
 
 mod bundled;
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+mod fetch;
 mod lld;
 pub(crate) use bundled::RUNTIME_HOT_IR;
 pub(crate) use lld::llvm_tools;
