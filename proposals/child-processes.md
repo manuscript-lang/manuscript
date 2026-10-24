@@ -223,9 +223,7 @@ def main():
 - First review (against source), folded in: group kill is `SIGKILL`, so cleanup needs a cooperative stop; the Windows job object is assigned after spawn and lacks `KILL_ON_JOB_CLOSE`; there is no per-type clone to mirror, so a binary codec is new work; `spawn::start` has no extra-descriptor support; a leaked `Sender` delays EOF.
 - Second review (all `file:line` citations verified), folded in: JSON omits no-form fields rather than faulting; `ProcessGroup.process` duplicated `Commands.spawn` and was removed; `PDEATHSIG` fires on spawning-thread exit and was dropped; names aligned with the worker proposal; pull requests run Linux only.
 - Third review (simplification, asked by Chinmay), folded in:
-  - the table hash, the cancel frame and per-entry codecs were cut;
-  - the loopback socket was cut and the table hash and cancel frame were cut; see the fourth review for the channel that replaced stdio.
-  - the table hash and the cancel frame were cut;
+  - the table hash and the cancel frame were cut, and the original loopback socket with them (the fourth review set the channel that replaced stdio);
   - per-entry codecs were cut: a generic stdlib thunk reuses `stringify`/`parse` (generics instantiate per type; confirmed in `ms-lower/src/lib.rs:4-5`);
   - `fork` and its channel frames moved to stage 3;
   - seven stages became three, and the do-nothing recipe is now a stated alternative and an open question.
