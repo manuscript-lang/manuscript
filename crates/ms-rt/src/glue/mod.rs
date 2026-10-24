@@ -166,6 +166,67 @@ fn wait_fd_in_slices(fd: i32, events: u32, timeout_ns: i64) -> u32 {
     }
 }
 
+/// Windows overlapped named pipes driven by the runtime poller: reads and writes park the task
+/// until the pipe is ready, with no polling. A pipe handle is adopted once and then owned here.
+#[cfg(windows)]
+pub mod pipe {
+    use super::{WAIT_READ, WAIT_WRITE, cancelled};
+    use crate::task::{WAIT_CANCELLED, msrt_task_wait_fd};
+    use std::io::ErrorKind;
+
+    /// Takes over the overlapped pipe `handle`. False (and the handle still the caller's) when
+    /// it was not opened for overlapped I/O.
+    ///
+    /// # Safety
+    /// `handle` is an open named-pipe handle opened with `FILE_FLAG_OVERLAPPED`.
+    pub unsafe fn adopt(handle: isize) -> bool {
+        crate::task::ensure_poller();
+        // SAFETY: forwarded from the caller.
+        unsafe { crate::poller::pipe_adopt(handle as usize) }
+    }
+
+    fn park(key: isize, events: u32) {
+        // SAFETY: parks the current task; no Rust borrow is held across the call.
+        if unsafe { msrt_task_wait_fd(key as i32, events, -1) } & WAIT_CANCELLED != 0 {
+            cancelled();
+        }
+    }
+
+    /// Reads up to `buf.len()` bytes, parking until some arrive; 0 at end of stream (the other
+    /// end closed).
+    pub fn read(handle: isize, buf: &mut [u8]) -> std::io::Result<usize> {
+        loop {
+            super::poll_cancel();
+            match crate::poller::pipe_read(handle as usize, buf) {
+                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle, WAIT_READ),
+                Err(e) if e.kind() == ErrorKind::BrokenPipe => return Ok(0),
+                r => return r,
+            }
+        }
+    }
+
+    /// Writes all of `data`, parking while the pipe is busy. `BrokenPipe` once the other end
+    /// closed.
+    pub fn write(handle: isize, mut data: &[u8]) -> std::io::Result<()> {
+        while !data.is_empty() {
+            super::poll_cancel();
+            match crate::poller::pipe_write(handle as usize, data) {
+                Ok(n) => data = &data[n..],
+                // The writer waits on the handle plus one, so a reader can wait at the same time.
+                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle + 1, WAIT_WRITE),
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
+    /// Closes an adopted pipe. A read still pending is cancelled, and the handle itself closes
+    /// once the poller collects that cancellation, on the next wait of any task.
+    pub fn close(handle: isize) {
+        crate::poller::pipe_drop(handle as usize);
+    }
+}
+
 /// Parks the running task for `ns` nanoseconds so other tasks keep running, and unwinds the
 /// program when a stop request (or task cancellation) ends the wait early.
 pub fn task_sleep(ns: i64) {
