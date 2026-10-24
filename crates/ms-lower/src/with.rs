@@ -138,11 +138,18 @@ impl FnLower<'_> {
             .as_ref()
             .ok_or_else(|| Error::new("close without declaration"))?;
         let c = self.callable_of_decl(im.module, Some(decl.id()))?;
+        // The checked reference fixes an implementation's variables; its declaration keeps them.
+        let declared = self
+            .cx
+            .methods
+            .iter()
+            .find(|d| d.module == im.module && d.decl.as_ref().map(|x| x.id()) == Some(decl.id()))
+            .unwrap_or(&im);
         let mut subst = ct::Subst::new();
         if !ct::unify(
-            &im.receiver,
+            &declared.receiver,
             &ty,
-            &ct::variable_set(&im.variables),
+            &ct::variable_set(&declared.variables),
             &mut subst,
         ) {
             return Err(Error::new("cannot bind close receiver type"));

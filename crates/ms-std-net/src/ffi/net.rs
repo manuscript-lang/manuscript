@@ -51,6 +51,18 @@ native! {
         Ok(())
     }
 
+    /// `@std/json.ms` reading an `IpAddress` from its string form; the error text is dropped.
+    fn msrt_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
+        out.write(Object(IpH(crate::ip::parse_ip(text).map_err(|_| StatusCode(1))?)));
+        Ok(())
+    }
+
+    /// `@std/json.ms` reading a `Cidr` from its string form; the error text is dropped.
+    fn msrt_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
+        out.write(Object(Cidr::parse(text).map_err(|_| StatusCode(1))?));
+        Ok(())
+    }
+
     /// `contains_ip(cidr, address) -> Result[Bool, NetworkError]`.
     fn msrt_net_contains_ip(cidr: ObjRef<Cidr>, ip: ObjRef<IpH>, out: Out<bool>) -> Result<(), StatusCode> {
         out.write(cidr.contains(&ip));

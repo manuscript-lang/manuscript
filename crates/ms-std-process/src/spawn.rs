@@ -1,8 +1,9 @@
 //! Starting and reaping children with `std::process::Command`, on every platform.
 //!
-//! The child gets the given pipe ends as its standard streams (std duplicates them) and leads its
-//! own process group on Unix; on Windows it is put in a job object right after it starts, so a
-//! kill reaches its whole process tree.
+//! Each standard stream of the child is a given pipe end (std duplicates it), the parent's own
+//! stream, or the null device. The child leads its own process group on Unix; on Windows it starts
+//! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
+//! including anything it starts right away.
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_FAILED, STATUS_UNAVAILABLE};
 use ms_std_fs::err::{Fail, Res, describe};
@@ -33,8 +34,29 @@ fn os_string(bytes: &[u8]) -> OsString {
     OsString::from(alloc::string::String::from_utf8_lossy(bytes).into_owned())
 }
 
+/// Where a standard stream of the child goes.
+#[derive(Clone, Copy)]
+pub enum StdStream {
+    /// This pipe end, duplicated for the child.
+    Pipe(sys::Fd),
+    /// The parent's own stream.
+    Inherit,
+    /// The null device.
+    Null,
+}
+
+impl StdStream {
+    fn stdio(self) -> Result<Stdio, i32> {
+        match self {
+            StdStream::Pipe(fd) => duplicate(fd),
+            StdStream::Inherit => Ok(Stdio::inherit()),
+            StdStream::Null => Ok(Stdio::null()),
+        }
+    }
+}
+
 /// A duplicate of the pipe end, owned by the `Stdio` it is passed as.
-fn stdio(fd: sys::Fd) -> Result<Stdio, i32> {
+fn duplicate(fd: sys::Fd) -> Result<Stdio, i32> {
     #[cfg(unix)]
     {
         use std::os::fd::BorrowedFd;
@@ -57,13 +79,11 @@ fn stdio(fd: sys::Fd) -> Result<Stdio, i32> {
     }
 }
 
-/// Starts `program` with `args` and the given standard descriptors; `Unavailable` when it is missing.
+/// Starts `program` with `args` and the given standard streams; `Unavailable` when it is missing.
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
-    stdin: sys::Fd,
-    stdout: sys::Fd,
-    stderr: sys::Fd,
+    [stdin, stdout, stderr]: [StdStream; 3],
 ) -> Res<Child> {
     let failed = |e: i32| {
         let mut m = b"fork/exec ".to_vec();
@@ -77,9 +97,9 @@ pub fn start(
     };
     let mut cmd = Command::new(os_string(program));
     cmd.args(args.iter().map(|a| os_string(a)));
-    cmd.stdin(stdio(stdin).map_err(failed)?);
-    cmd.stdout(stdio(stdout).map_err(failed)?);
-    cmd.stderr(stdio(stderr).map_err(failed)?);
+    cmd.stdin(stdin.stdio().map_err(failed)?);
+    cmd.stdout(stdout.stdio().map_err(failed)?);
+    cmd.stderr(stderr.stdio().map_err(failed)?);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -88,13 +108,49 @@ pub fn start(
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        use windows_sys::Win32::System::Threading::{CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW};
-        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
+        use windows_sys::Win32::System::Threading::{
+            CREATE_NEW_PROCESS_GROUP, CREATE_NO_WINDOW, CREATE_SUSPENDED,
+        };
+        // Suspended until `Child::new` has put it in its job.
+        cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW | CREATE_SUSPENDED);
     }
     match cmd.spawn() {
         Ok(inner) => Ok(Child::new(inner)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
+    }
+}
+
+/// Resumes the threads of the suspended process `pid`: just its main thread, since it has run
+/// no code yet.
+#[cfg(windows)]
+fn resume(pid: u32) {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
+    };
+    use windows_sys::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
+    // SAFETY: a thread snapshot walked with a correctly sized entry; each opened thread handle is
+    // closed once.
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if snap == INVALID_HANDLE_VALUE {
+            return;
+        }
+        let mut entry: THREADENTRY32 = core::mem::zeroed();
+        entry.dwSize = core::mem::size_of::<THREADENTRY32>() as u32;
+        let mut more = Thread32First(snap, &mut entry) != 0;
+        while more {
+            if entry.th32OwnerProcessID == pid {
+                let thread = OpenThread(THREAD_SUSPEND_RESUME, 0, entry.th32ThreadID);
+                if !thread.is_null() {
+                    ResumeThread(thread);
+                    CloseHandle(thread);
+                }
+            }
+            more = Thread32Next(snap, &mut entry) != 0;
+        }
+        CloseHandle(snap);
     }
 }
 
@@ -124,6 +180,7 @@ impl Child {
                 // SAFETY: both handles are open.
                 unsafe { AssignProcessToJobObject(job, inner.as_raw_handle() as _) };
             }
+            resume(inner.id());
             Child {
                 inner,
                 code: None,

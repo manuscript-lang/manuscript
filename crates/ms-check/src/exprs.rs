@@ -54,9 +54,55 @@ fn is_ordering(op: BinaryOp) -> bool {
     )
 }
 
-/// Whether a type is Int, Float or Decimal.
+/// Whether a type is an integer of any width.
+pub(crate) fn integer(t: &Ty) -> bool {
+    int_bits(t).is_some()
+}
+
+/// Whether a type is an integer or float of any width, or Decimal.
 pub(crate) fn numeric(t: &Ty) -> bool {
-    t.id == "Int" || t.id == "Float" || t.is_std("Decimal")
+    integer(t) || float_bits(t).is_some() || t.is_std("Decimal")
+}
+
+/// An unsuffixed number literal, possibly negated.
+fn is_plain_literal(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Number(t) => !t.ends_with('d'),
+        ExprKind::Unary {
+            op: UnaryOp::Neg,
+            operand,
+        } => is_plain_literal(operand),
+        _ => false,
+    }
+}
+
+/// The sized number type a literal operand takes from the other operand, if any. Only a literal
+/// of the same kind adopts it, so a mismatch keeps the ordinary operand-type diagnostic.
+fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+    if !is_plain_literal(literal) {
+        return None;
+    }
+    let mut e = literal;
+    while let ExprKind::Unary { operand, .. } = &e.kind {
+        e = operand;
+    }
+    let ExprKind::Number(text) = &e.kind else {
+        return None;
+    };
+    let fractional = text.contains(['.', 'e', 'E']);
+    let sized_int = int_bits(other).is_some() && other.id != "Int";
+    let sized_float = float_bits(other).is_some() && other.id != "Float";
+    ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
+}
+
+/// Whether the decimal integer literal `text`, negated when `negated`, fits a signed type of `bits` bits.
+fn int_literal_fits(text: &str, negated: bool, bits: u32) -> bool {
+    let Ok(v) = text.parse::<i128>() else {
+        return false;
+    };
+    let v = if negated { -v } else { v };
+    let half = 1i128 << (bits - 1);
+    (-half..half).contains(&v)
 }
 
 fn is_time_operand(types: &[&Ty]) -> bool {
@@ -229,7 +275,9 @@ impl Checker {
         self.capture_scope(e);
         let mut i = Info::default();
         match &e.kind {
-            ExprKind::Number(text) => return self.infer_number(e, text.as_str(), i),
+            ExprKind::Number(text) => {
+                return self.infer_number(e, text.as_str(), expected, false, i);
+            }
             ExprKind::Bool(_) => i.ty = Some(bool_()),
             ExprKind::Unit => i.ty = Some(unit()),
             ExprKind::Text(parts) => return self.infer_text(parts, i),
@@ -247,7 +295,7 @@ impl Checker {
             ExprKind::List(items) => return self.infer_list(e, items, expected, i),
             ExprKind::Map(entries) => return self.infer_map_literal(e, entries, expected, i),
             ExprKind::Unary { op, operand } => {
-                return self.infer_unary(e, *op, operand, i);
+                return self.infer_unary(e, *op, operand, expected, i);
             }
             ExprKind::Binary { op, left, right } => {
                 return self.infer_binary(e, *op, left, right, i);
@@ -256,7 +304,14 @@ impl Checker {
         finish_info(i)
     }
 
-    fn infer_number(&mut self, e: &Expr, text: &str, mut i: Info) -> Info {
+    fn infer_number(
+        &mut self,
+        e: &Expr,
+        text: &str,
+        expected: Option<&Ty>,
+        negated: bool,
+        mut i: Info,
+    ) -> Info {
         if text.ends_with('d') {
             let ok = self
                 .sym(n("Decimal"))
@@ -276,22 +331,54 @@ impl Checker {
                 );
             }
         } else if text.contains(['.', 'e', 'E']) {
-            match text.parse::<f64>() {
-                Ok(v) if !v.is_infinite() => {}
-                _ => self.type_error(
+            // An expected sized float type gives the literal that type.
+            let narrow = expected.filter(|t| float_bits(t) == Some(32) && t.id != "Float");
+            match (text.parse::<f64>(), narrow) {
+                (Ok(v), Some(_)) if (v as f32).is_infinite() => self.type_error(
+                    e.pos,
+                    "Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)",
+                ),
+                (Ok(v), None) if v.is_infinite() => self.type_error(
                     e.pos,
                     "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)",
                 ),
-            }
-            i.ty = Some(primitive("Float"));
-        } else {
-            if text.parse::<i64>().is_err() {
-                self.type_error(
+                (Err(_), _) => self.type_error(
                     e.pos,
-                    "Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt",
-                );
+                    "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)",
+                ),
+                _ => {}
             }
-            i.ty = Some(primitive("Int"));
+            i.ty = Some(narrow.cloned().unwrap_or_else(|| primitive("Float")));
+        } else {
+            // An expected sized integer type gives the literal that type.
+            let sized = expected.filter(|t| int_bits(t).is_some() && t.id != "Int");
+            match sized {
+                Some(t) => {
+                    let bits = int_bits(t).unwrap_or(64);
+                    if !int_literal_fits(text, negated, bits) {
+                        let half = 1i128 << (bits - 1);
+                        self.type_error(
+                            e.pos,
+                            format!(
+                                "literal {}{text} is out of range for {t}; use a value between {} and {}",
+                                if negated { "-" } else { "" },
+                                -half,
+                                half - 1
+                            ),
+                        );
+                    }
+                    i.ty = Some(t.clone());
+                }
+                None => {
+                    if text.parse::<i64>().is_err() {
+                        self.type_error(
+                            e.pos,
+                            "Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt",
+                        );
+                    }
+                    i.ty = Some(primitive("Int"));
+                }
+            }
         }
         finish_info(i)
     }
@@ -717,7 +804,14 @@ impl Checker {
         finish_info(i)
     }
 
-    fn infer_unary(&mut self, e: &Expr, op: UnaryOp, operand: &Expr, mut i: Info) -> Info {
+    fn infer_unary(
+        &mut self,
+        e: &Expr,
+        op: UnaryOp,
+        operand: &Expr,
+        expected: Option<&Ty>,
+        mut i: Info,
+    ) -> Info {
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
             && t == "9223372036854775808"
@@ -731,6 +825,16 @@ impl Checker {
                 },
             );
             return i;
+        }
+        // A negated literal takes its sized type from the expected type; -128 fits Int8.
+        if op == UnaryOp::Neg
+            && let ExprKind::Number(t) = &operand.kind
+            && !t.ends_with('d')
+        {
+            let literal = self.infer_number(operand, t.as_str(), expected, true, Info::default());
+            self.set_info(operand, literal.clone());
+            i.ty = literal.ty.clone();
+            return finish_info(i);
         }
         let v = self.expression(operand, None);
         i.no_return = v.no_return;
@@ -822,8 +926,16 @@ impl Checker {
             i.ty = Some(bool_());
             return i;
         }
-        let a = self.expression(left, None);
-        let b = self.expression(right, None);
+        // An unsuffixed literal beside a sized number takes that number's type: `x / 2`, `x == 0`.
+        let (a, b) = if is_plain_literal(left) && !is_plain_literal(right) {
+            let b = self.expression(right, None);
+            let bt = b.t();
+            (self.expression(left, literal_hint(left, &bt)), b)
+        } else {
+            let a = self.expression(left, None);
+            let at = a.t();
+            (a, self.expression(right, literal_hint(right, &at)))
+        };
         let (at, bt) = (a.t(), b.t());
         let logical = matches!(op, BinaryOp::And | BinaryOp::Or);
         i.no_return = a.no_return || (!logical && b.no_return);
@@ -918,10 +1030,10 @@ impl Checker {
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
-                if op == BinaryOp::Rem && common.id != "Int" {
+                if op == BinaryOp::Rem && !integer(&common) {
                     self.type_error(
                         e.pos,
-                        format!("remainder requires Int operands, found {common}; convert to Int or use math functions"),
+                        format!("remainder requires integer operands, found {common}; convert to Int or use math functions"),
                     );
                 }
             }

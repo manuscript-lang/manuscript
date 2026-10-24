@@ -228,6 +228,7 @@ impl FlowBuilder<'_> {
             builder: self,
             out: Vec::new(),
             pending_try: false,
+            spawns: Vec::new(),
         };
         walk_expr(&mut collector, e);
         let mut out = collector.out;
@@ -264,6 +265,8 @@ struct Events<'a, 'b> {
     builder: &'a FlowBuilder<'b>,
     out: Vec<Node>,
     pending_try: bool,
+    /// Open `TaskGroup.spawn` calls: the expression and where its node sits in `out`.
+    spawns: Vec<(NodeId, usize)>,
 }
 
 impl Visitor for Events<'_, '_> {
@@ -287,11 +290,25 @@ impl Visitor for Events<'_, '_> {
             return;
         };
         let mut node = self.builder.at(node, x.pos);
+        if node.reference.ends_with("TaskGroup.spawn") || node.label == "call TaskGroup.spawn" {
+            // The started work runs as its own task: its calls belong under the spawn.
+            node.kind = "spawn".into();
+            node.label = format!("spawn  {}", self.builder.source(x.pos));
+            self.spawns.push((x.id, self.out.len()));
+        }
         if self.pending_try {
             node.label = format!("try {}", node.label);
             node.kind = "try".into();
             self.pending_try = false;
         }
         self.out.push(node);
+    }
+
+    fn leave_expr(&mut self, x: &Expr) {
+        if self.spawns.last().is_some_and(|(id, _)| *id == x.id) {
+            let (_, at) = self.spawns.pop().unwrap_or((x.id, 0));
+            let inside = self.out.split_off(at + 1);
+            self.out[at].children = inside;
+        }
     }
 }

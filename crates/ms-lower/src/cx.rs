@@ -223,8 +223,12 @@ impl Cx {
         match t.kind {
             Kind::Primitive => {
                 return match t.id.as_str() {
-                    "Int" => Ok(MTy::INT),
-                    "Float" => Ok(MTy::FLOAT),
+                    "Int" | "Int64" => Ok(MTy::INT),
+                    "Int8" => Ok(MTy::INT8),
+                    "Int16" => Ok(MTy::INT16),
+                    "Int32" => Ok(MTy::INT32),
+                    "Float" | "Float64" => Ok(MTy::FLOAT),
+                    "Float32" => Ok(MTy::FLOAT32),
                     "Bool" => Ok(MTy::BOOL),
                     "String" => Ok(MTy::STR),
                     "Unit" | "Never" => Ok(MTy::UNIT),

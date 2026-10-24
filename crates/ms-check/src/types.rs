@@ -493,6 +493,45 @@ pub fn primitive(name: &str) -> Ty {
 pub fn int() -> Ty {
     primitive("Int")
 }
+
+/// Bit width of `Int`; `Int64` or `Int32` is the same type as `Int` when it matches.
+pub const DEFAULT_INT_BITS: u32 = 64;
+/// Bit width of `Float`; `Float64` or `Float32` is the same type as `Float` when it matches.
+pub const DEFAULT_FLOAT_BITS: u32 = 64;
+
+/// The type identity a built-in type name denotes: the default-width names
+/// `Int64` and `Float64` are aliases of `Int` and `Float`.
+pub fn primitive_id(name: &'static str) -> &'static str {
+    match name {
+        "Int64" if DEFAULT_INT_BITS == 64 => "Int",
+        "Int32" if DEFAULT_INT_BITS == 32 => "Int",
+        "Float64" if DEFAULT_FLOAT_BITS == 64 => "Float",
+        "Float32" if DEFAULT_FLOAT_BITS == 32 => "Float",
+        other => other,
+    }
+}
+
+/// Bit width of an integer type, or none for any other type.
+pub fn int_bits(t: &Type) -> Option<u32> {
+    match t.id.as_str() {
+        "Int" => Some(DEFAULT_INT_BITS),
+        "Int8" => Some(8),
+        "Int16" => Some(16),
+        "Int32" => Some(32),
+        "Int64" => Some(64),
+        _ => None,
+    }
+}
+
+/// Bit width of a floating-point type, or none for any other type.
+pub fn float_bits(t: &Type) -> Option<u32> {
+    match t.id.as_str() {
+        "Float" => Some(DEFAULT_FLOAT_BITS),
+        "Float32" => Some(32),
+        "Float64" => Some(64),
+        _ => None,
+    }
+}
 /// `Bool`.
 pub fn bool_() -> Ty {
     primitive("Bool")

@@ -176,6 +176,9 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
         | Op::FSqrt
         | Op::FAbs
         | Op::I2F
+        | Op::F32Round
+        | Op::Conv
+        | Op::INarrowOpt
         | Op::B2I
         | Op::Select => true,
         // Positive literals exclude both zero and MIN / -1.
@@ -194,10 +197,8 @@ fn hoist(f: &mut Func, arm: &Arm, out: &mut Vec<Inst>) {
 }
 
 fn scalar(m: &Module, f: &Func, v: Value) -> bool {
-    matches!(
-        m.types.kind(f.values[v.index()]),
-        TyKind::Int | TyKind::Bool | TyKind::Float
-    )
+    let t = f.values[v.index()];
+    matches!(m.types.kind(t), TyKind::Bool) || m.types.is_scalar(t)
 }
 
 fn convert_one(m: &Module, f: &mut Func, positive: &HashSet<Value>) -> bool {

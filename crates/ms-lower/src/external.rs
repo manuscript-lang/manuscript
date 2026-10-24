@@ -16,8 +16,8 @@ use ms_syntax::ast::Expr;
 /// The runtime parameter type a flattened optional payload is passed as.
 fn payload_kind(kind: &TyKind, t: MTy) -> &'static str {
     match kind {
-        _ if t == MTy::INT => "i64",
-        _ if t == MTy::FLOAT => "f64",
+        TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => "i64",
+        TyKind::Float | TyKind::Float32 => "f64",
         _ if t == MTy::STR => "*const StrVal",
         TyKind::Alt(_) => "i64",
         _ => "u8",
@@ -124,6 +124,8 @@ impl FnLower<'_> {
             _ if matches!(t, MTy::INT | MTy::FLOAT | MTy::BOOL | MTy::STR) => vals.push(v),
             // A runtime handle is its own pointer.
             TyKind::Obj(..) => vals.push(v),
+            // A function value is lent as its closure object; a native that keeps it retains it.
+            TyKind::Fn(..) => vals.push(v),
             TyKind::Opt(inner) => {
                 let kind = self.b.m.types.kind(inner).clone();
                 let payload = payload_kind(&kind, inner);

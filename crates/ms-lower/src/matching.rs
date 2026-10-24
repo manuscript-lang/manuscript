@@ -73,7 +73,7 @@ impl FnLower<'_> {
         let s = self.b.use_var(sv);
         let sty = self.ty_of(s);
         let kind = self.b.m.types.kind(sty).clone();
-        let literal = sty == MTy::INT || sty == MTy::STR || sty == MTy::BOOL;
+        let literal = self.b.m.types.is_int(sty) || sty == MTy::STR || sty == MTy::BOOL;
         let tag = match &kind {
             TyKind::Alt(_) => self.b.alt_tag(s),
             TyKind::Opt(_) => {

@@ -205,6 +205,7 @@ fn llty(t: Type) -> &'static str {
         types::I16 => "i16",
         types::I32 => "i32",
         types::I64 => "i64",
+        types::F32 => "float",
         types::F64 => "double",
         _ => panic!("unsupported type {t}"),
     }
@@ -226,6 +227,7 @@ fn fault_function(name: &str) -> bool {
             | "msrt_fault_result_get"
             | "msrt_fault_result_err"
             | "msrt_fault_int_overflow"
+            | "msrt_fault_int_range"
             | "msrt_fault_div_zero"
             | "msrt_fault_rem_zero"
             | "msrt_fault_div_overflow"
@@ -892,6 +894,8 @@ impl<'a> Tr<'a> {
             Opcode::Uextend => format!("zext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Sextend => format!("sext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Ireduce => format!("trunc {} {a} to {}", llty(t), llty(rt)),
+            Opcode::Fdemote => format!("fptrunc double {a} to float"),
+            Opcode::Fpromote => format!("fpext float {a} to double"),
             Opcode::FcvtFromSint => format!("sitofp {} {a} to double", llty(t)),
             Opcode::FcvtToSintSat => {
                 format!("call {0} @llvm.fptosi.sat.{0}.f64(double {a})", llty(rt))

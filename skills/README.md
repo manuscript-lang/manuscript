@@ -7,8 +7,8 @@ of duplicated behavior, unnecessary work, special cases, and confusing layers.
 It uses the affected domain skills for contract checks.
 
 [Author proposal](author-proposal/SKILL.md) sets the structure, technical style,
-component-impact tables, examples, diagrams, and simplification pass for design
-proposals.
+grounding in the language, `ms check`-verified examples, component tables, and
+a simplification pass for design proposals.
 
 [Improve documentation](improve-documentation/SKILL.md) handles broad accuracy,
 marketing, and reader-journey improvements. [Documentation](documentation/SKILL.md)

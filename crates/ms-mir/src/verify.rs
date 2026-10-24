@@ -442,15 +442,15 @@ impl Verifier<'_> {
             Op::IConst => {
                 arity(0)?;
                 want(
-                    matches!(inst.imm, Imm::Int(_)) && res == Some(Ty::INT),
-                    "iconst yields int",
+                    matches!(inst.imm, Imm::Int(_)) && res.is_some_and(|r| m.types.is_int(r)),
+                    "iconst yields an int type",
                 )
             }
             Op::FConst => {
                 arity(0)?;
                 want(
-                    matches!(inst.imm, Imm::Float(_)) && res == Some(Ty::FLOAT),
-                    "fconst yields float",
+                    matches!(inst.imm, Imm::Float(_)) && res.is_some_and(|r| m.types.is_float(r)),
+                    "fconst yields a float type",
                 )
             }
             Op::BConst => {
@@ -487,8 +487,8 @@ impl Verifier<'_> {
             | Op::Sshr => {
                 arity(2)?;
                 want(
-                    t(0) == Ty::INT && t(1) == Ty::INT && res == Some(Ty::INT),
-                    "operands and result must be int",
+                    m.types.is_int(t(0)) && t(1) == t(0) && res == Some(t(0)),
+                    "operands and result must be one int type",
                 )
             }
             Op::IAddOverflow | Op::IMulOverflow => {
@@ -505,17 +505,50 @@ impl Verifier<'_> {
                     "overflow guard takes bool and has no result",
                 )
             }
+            Op::NarrowChk => {
+                arity(1)?;
+                want(
+                    matches!(m.types.int_bits(t(0)), Some(b) if b < 64) && res == Some(t(0)),
+                    "narrow.chk takes a sized int and yields the same type",
+                )
+            }
+            Op::Conv => {
+                arity(1)?;
+                let to = res;
+                want(
+                    to.is_some_and(|r| {
+                        (m.types.is_int(t(0)) && m.types.is_int(r))
+                            || (m.types.is_float(t(0)) && m.types.is_float(r))
+                    }),
+                    "conv takes an int or float and yields another type of the same kind",
+                )
+            }
+            Op::INarrowOpt => {
+                arity(1)?;
+                let inner = res.and_then(|r| m.opt_inner(r));
+                want(
+                    m.types.is_int(t(0)) && inner.is_some_and(|i| m.types.is_int(i)),
+                    "inarrow.opt takes an int and yields an optional int",
+                )
+            }
+            Op::F32Round => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::FLOAT32 && res == Some(Ty::FLOAT32),
+                    "operand and result must be float32",
+                )
+            }
             Op::INeg | Op::INegChk => {
                 arity(1)?;
                 want(
-                    t(0) == Ty::INT && res == Some(Ty::INT),
-                    "operand and result must be int",
+                    m.types.is_int(t(0)) && res == Some(t(0)),
+                    "operand and result must be one int type",
                 )
             }
             Op::And | Op::Or | Op::Xor => {
                 arity(2)?;
                 want(
-                    (t(0) == Ty::INT || t(0) == Ty::BOOL) && t(0) == t(1) && res == Some(t(0)),
+                    (m.types.is_int(t(0)) || t(0) == Ty::BOOL) && t(0) == t(1) && res == Some(t(0)),
                     "operands and result must be both int or both bool",
                 )
             }
@@ -532,7 +565,8 @@ impl Verifier<'_> {
                     return Err("missing condition".into());
                 };
                 let ok = t(0) == t(1)
-                    && (t(0) == Ty::INT || (t(0) == Ty::BOOL && matches!(cc, Cc::Eq | Cc::Ne)));
+                    && (m.types.is_int(t(0))
+                        || (t(0) == Ty::BOOL && matches!(cc, Cc::Eq | Cc::Ne)));
                 want(
                     ok && res == Some(Ty::BOOL),
                     "icmp compares two ints (or bools for eq/ne) and yields bool",
@@ -542,8 +576,8 @@ impl Verifier<'_> {
                 arity(2)?;
                 want(
                     matches!(inst.imm, Imm::Cc(_))
-                        && t(0) == Ty::FLOAT
-                        && t(1) == Ty::FLOAT
+                        && m.types.is_float(t(0))
+                        && t(1) == t(0)
                         && res == Some(Ty::BOOL),
                     "fcmp compares two floats and yields bool",
                 )
@@ -551,21 +585,21 @@ impl Verifier<'_> {
             Op::FAdd | Op::FSub | Op::FMul | Op::FDiv => {
                 arity(2)?;
                 want(
-                    t(0) == Ty::FLOAT && t(1) == Ty::FLOAT && res == Some(Ty::FLOAT),
-                    "operands and result must be float",
+                    m.types.is_float(t(0)) && t(1) == t(0) && res == Some(t(0)),
+                    "operands and result must be one float type",
                 )
             }
             Op::FNeg | Op::FSqrt | Op::FAbs => {
                 arity(1)?;
                 want(
-                    t(0) == Ty::FLOAT && res == Some(Ty::FLOAT),
-                    "operand and result must be float",
+                    m.types.is_float(t(0)) && res == Some(t(0)),
+                    "operand and result must be one float type",
                 )
             }
             Op::I2F => {
                 arity(1)?;
                 want(
-                    t(0) == Ty::INT && res == Some(Ty::FLOAT),
+                    m.types.is_int(t(0)) && res == Some(Ty::FLOAT),
                     "i2f converts int to float",
                 )
             }
@@ -573,7 +607,7 @@ impl Verifier<'_> {
                 arity(1)?;
                 let opt = res.and_then(|r| m.opt_inner(r));
                 want(
-                    t(0) == Ty::FLOAT && opt == Some(Ty::INT),
+                    m.types.is_float(t(0)) && opt == Some(Ty::INT),
                     "f2i.opt converts float to opt<int>",
                 )
             }

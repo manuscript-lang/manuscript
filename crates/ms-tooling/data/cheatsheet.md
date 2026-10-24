@@ -34,3 +34,4 @@ test "addition":
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
 - A def returning part of a parameter or the receiver writes `ref` before its result type (`def name() -> ref String`); `let ref x = a.b` borrows a place; `for ref x in xs:` and `match ref v:` mark borrows.
 - Closures may change captures. `with try ... as f:` closes `f` at block end.
+- Concurrency has no async/await: `with TaskGroup[T]() as g:` (`@std/tasks.ms`), `g.spawn(lambda: f(x))` gives a `Task`; `t.result()` or `g.results()` waits; leaving the block cancels unfinished tasks. Timeouts are opt-in.

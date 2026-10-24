@@ -141,6 +141,18 @@ interface IntOperations:
     def to_decimal() -> Decimal
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
     def compare(other: Int) -> Int
+    # Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
+    def to_int64() -> Int64
+    # Converts to Int8, or returns none when the value is outside Int8's range.
+    def to_int8() -> Optional[Int8]
+    # Converts to Int16, or returns none when the value is outside Int16's range.
+    def to_int16() -> Optional[Int16]
+    # Converts to Int32, or returns none when the value is outside Int32's range.
+    def to_int32() -> Optional[Int32]
+    # Converts to Float32, rounding to the nearest binary32 value.
+    def to_float32() -> Float32
+    # Converts to Float64, rounding to the nearest binary64 value.
+    def to_float64() -> Float64
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
@@ -161,3 +173,84 @@ interface FloatOperations:
     def compare(other: Float) -> Int
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
+    # Converts to Float32, rounding to the nearest binary32 value; large magnitudes become infinity.
+    def to_float32() -> Float32
+
+# Conversion operations for Int8, a signed 8-bit integer.
+interface Int8Operations:
+    # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    # A radix outside 2 through 36 is a programming fault.
+    def to_string_radix(radix: Int) -> String
+    # Converts to the nearest Float; every Int8 converts exactly.
+    def to_float() -> Float
+    # Converts to the exactly equal Decimal; no rounding occurs.
+    def to_decimal() -> Decimal
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    def compare(other: Int8) -> Int
+    # Converts to Int16; every value fits, so no check is needed.
+    def to_int16() -> Int16
+    # Converts to Int32; every value fits, so no check is needed.
+    def to_int32() -> Int32
+    # Converts to Int64; every value fits, so no check is needed.
+    def to_int64() -> Int64
+    # Converts to Float32, rounding to the nearest binary32 value.
+    def to_float32() -> Float32
+    # Converts to Float64, rounding to the nearest binary64 value.
+    def to_float64() -> Float64
+
+# Conversion operations for Int16, a signed 16-bit integer.
+interface Int16Operations:
+    # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    # A radix outside 2 through 36 is a programming fault.
+    def to_string_radix(radix: Int) -> String
+    # Converts to the nearest Float; every Int16 converts exactly.
+    def to_float() -> Float
+    # Converts to the exactly equal Decimal; no rounding occurs.
+    def to_decimal() -> Decimal
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    def compare(other: Int16) -> Int
+    # Converts to Int8, or returns none when the value is outside Int8's range.
+    def to_int8() -> Optional[Int8]
+    # Converts to Int32; every value fits, so no check is needed.
+    def to_int32() -> Int32
+    # Converts to Int64; every value fits, so no check is needed.
+    def to_int64() -> Int64
+    # Converts to Float32, rounding to the nearest binary32 value.
+    def to_float32() -> Float32
+    # Converts to Float64, rounding to the nearest binary64 value.
+    def to_float64() -> Float64
+
+# Conversion operations for Int32, a signed 32-bit integer.
+interface Int32Operations:
+    # Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    # A radix outside 2 through 36 is a programming fault.
+    def to_string_radix(radix: Int) -> String
+    # Converts to the nearest Float; every Int32 converts exactly.
+    def to_float() -> Float
+    # Converts to the exactly equal Decimal; no rounding occurs.
+    def to_decimal() -> Decimal
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    def compare(other: Int32) -> Int
+    # Converts to Int8, or returns none when the value is outside Int8's range.
+    def to_int8() -> Optional[Int8]
+    # Converts to Int16, or returns none when the value is outside Int16's range.
+    def to_int16() -> Optional[Int16]
+    # Converts to Int64; every value fits, so no check is needed.
+    def to_int64() -> Int64
+    # Converts to Float32, rounding to the nearest binary32 value.
+    def to_float32() -> Float32
+    # Converts to Float64, rounding to the nearest binary64 value.
+    def to_float64() -> Float64
+
+# Classification and conversion operations for Float32, a binary32 floating-point value.
+interface Float32Operations:
+    # Tests whether the value is NaN.
+    def is_nan() -> Bool
+    # Tests whether the value is neither NaN nor an infinity.
+    def is_finite() -> Bool
+    # Returns -1, 0 or 1 in a total order: -0.0 equals 0.0, and NaN is equal to NaN and greater than every other value, including +Inf.
+    def compare(other: Float32) -> Int
+    # Truncates toward zero, or returns none for nonfinite values or Int overflow.
+    def truncate_to_int() -> Optional[Int]
+    # Converts to Float64; every Float32 converts exactly.
+    def to_float64() -> Float64

@@ -26,7 +26,7 @@ pub fn or_none(text: &str) -> &str {
 /// roots are chosen by the view; otherwise the entity is the single root.
 pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result<Node, String> {
     let depth = if depth <= 0 {
-        if view == "flow" || view == "scope" {
+        if view == "flow" || view == "scope" || view == "tasks" {
             1
         } else {
             3
@@ -37,7 +37,7 @@ pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result
     if view == "modules" {
         return modules_view(facts, entity);
     }
-    if view == "flow" || view == "scope" {
+    if view == "flow" || view == "scope" || view == "tasks" {
         return flow_view(facts, view, entity, depth);
     }
     let roots = view_roots(facts, view, entity)?;
@@ -245,6 +245,9 @@ fn flow_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result<Node
     if view == "scope" {
         body = prune_scopes(&body, false);
     }
+    if view == "tasks" {
+        body = prune_tasks(&body);
+    }
     let mut header = Node {
         label: format!("{}  [{}] {}:{}", f.name, f.kind, f.file, f.line),
         reference: f.key.clone(),
@@ -319,6 +322,29 @@ fn prune_scopes(nodes: &[Node], in_scope: bool) -> Vec<Node> {
         let kids = prune_scopes(&n.children, in_scope || n.kind == "with");
         let exit = in_scope && (n.kind == "exit" || n.kind == "try");
         if n.kind == "with" || exit || !kids.is_empty() {
+            out.push(Node {
+                label: n.label.clone(),
+                kind: n.kind.clone(),
+                file: n.file.clone(),
+                line: n.line,
+                children: kids,
+                ..Node::default()
+            });
+        }
+    }
+    out
+}
+
+/// Keeps task groups (`with` scopes holding a spawn) and the work each spawn starts.
+fn prune_tasks(nodes: &[Node]) -> Vec<Node> {
+    let mut out = Vec::new();
+    for n in nodes {
+        if n.kind == "spawn" {
+            out.push(n.clone());
+            continue;
+        }
+        let kids = prune_tasks(&n.children);
+        if !kids.is_empty() {
             out.push(Node {
                 label: n.label.clone(),
                 kind: n.kind.clone(),

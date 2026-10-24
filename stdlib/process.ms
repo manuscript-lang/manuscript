@@ -47,6 +47,16 @@ export type CommandOutput:
     # Everything the child wrote to standard error, as raw bytes that may not be valid UTF-8.
     stderr: Bytes
 
+# Where a child's standard input, output, or error goes, chosen per stream.
+# `commands().spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
+export type Stdio:
+    # An OS pipe to the parent, read or written through the Subprocess's stream.
+    case Pipe
+    # The parent's own stream, so the child reads or writes it directly.
+    case Inherit
+    # The null device: input is at end of file, output is discarded.
+    case Null
+
 # Runs child programs with empty input by default, optional output bounds and timeout.
 export interface Commands:
     # Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
@@ -58,14 +68,18 @@ export interface Commands:
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
-    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; stdin, stdout, and stderr are OS pipes. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
     def spawn(
         program: String,
-        arguments: List[String]
+        arguments: List[String],
+        stdin: Stdio = Stdio.Pipe,
+        stdout: Stdio = Stdio.Pipe,
+        stderr: Stdio = Stdio.Pipe
     ) -> Result[Subprocess, CommandError]
 
-# A long-lived child process with live stdin, stdout, and stderr pipes. Closing it
+# A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 # kills the child's process group, joins it, and closes all three streams.
+# A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
 export interface Subprocess:
     # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
     def stdin() -> WriteStream

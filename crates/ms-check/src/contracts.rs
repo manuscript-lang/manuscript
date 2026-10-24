@@ -117,7 +117,13 @@ fn builtin_comparable(t: &Ty) -> bool {
     matches!(
         t.id.as_str(),
         "Int"
+            | "Int8"
+            | "Int16"
+            | "Int32"
+            | "Int64"
             | "Float"
+            | "Float32"
+            | "Float64"
             | "String"
             | "@std/Decimal"
             | "@std/BigInt"
@@ -590,7 +596,7 @@ impl Checker {
         }
         match t.kind {
             Kind::Function | Kind::Contract => return false,
-            Kind::Primitive => return t.id != "Float" || property != "Hashable",
+            Kind::Primitive => return float_bits(t).is_none() || property != "Hashable",
             _ => {}
         }
         if t.is_std("Decimal") || t.is_std("Bytes") || t.is_std("Duration") || t.is_std("Instant") {
@@ -841,7 +847,7 @@ impl Checker {
     /// collection types cannot take one, so they are told what to use instead.
     pub(crate) fn unsatisfied_message(&self, t: &Ty, bound: &Ty, alternative: &str) -> String {
         let prefix = format!("{t} does not satisfy {bound}; ");
-        if bound.is_std("Hashable") && t.id == "Float" {
+        if bound.is_std("Hashable") && float_bits(t).is_some() {
             return format!(
                 "{t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
             );

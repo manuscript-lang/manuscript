@@ -87,6 +87,10 @@ impl<'a> FnLower<'a> {
         if n != "Map" || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
             return Ok(None);
         }
+        // The fused update checks 64-bit overflow only; sized integers take the general path.
+        if ct::int_bits(&self.hir.ty(value)).is_some_and(|bits| bits < 64) {
+            return Ok(None);
+        }
         let read_is_left = read_left.is_some();
         let k = self.expr(key)?;
         if self.dead {

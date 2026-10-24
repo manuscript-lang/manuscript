@@ -4,7 +4,7 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal
 from "@std/process.ms" import arguments
 from "@std/process.ms" import system, endianness, end_of_line, os_type, dev_null
-from "@std/process.ms" import control, commands, CommandError, CommandOutput
+from "@std/process.ms" import control, commands, CommandError, CommandOutput, Stdio
 from "@std/io.ms" import read_line
 
 test "CLI test roots have empty arguments and host metadata agrees":
@@ -54,6 +54,19 @@ test "subprocess validation returns expected domain errors":
             ) != unavailable
         )
     )
+
+test "subprocess streams that are not piped are closed":
+    if os_type() == "windows": return
+
+    with try commands().spawn(
+        "sh", ["-c", "cat; echo done >&2"], stdin: Stdio.Null, stdout: Stdio.Null
+    ) as child:
+        try expect_equal((try child.wait()), 0)
+
+        let line = try read_line(child.stderr())
+        try expect_equal(line.get(""), "done")
+        try expect_false(child.stdout().read().is_ok())
+        try expect_false(child.stdin().write("x").is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return

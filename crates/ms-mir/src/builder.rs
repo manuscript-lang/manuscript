@@ -146,6 +146,14 @@ impl<'m> FuncBuilder<'m> {
     pub fn iconst(&mut self, v: i64) -> Value {
         self.val(Op::IConst, &[], Imm::Int(v), Ty::INT)
     }
+    /// `iconst` of a sized integer type.
+    pub fn iconst_ty(&mut self, v: i64, ty: Ty) -> Value {
+        self.val(Op::IConst, &[], Imm::Int(v), ty)
+    }
+    /// `fconst` of a float type; a `Float32` constant must already be binary32-exact.
+    pub fn fconst_ty(&mut self, v: f64, ty: Ty) -> Value {
+        self.val(Op::FConst, &[], Imm::Float(v.to_bits()), ty)
+    }
     /// `fconst`.
     pub fn fconst(&mut self, v: f64) -> Value {
         self.val(Op::FConst, &[], Imm::Float(v.to_bits()), Ty::FLOAT)
@@ -175,6 +183,23 @@ impl<'m> FuncBuilder<'m> {
     pub fn unop(&mut self, op: Op, a: Value) -> Value {
         let ty = self.ty(a);
         self.val(op, &[a], Imm::None, ty)
+    }
+    /// `narrow.chk`: faults unless a sized integer is within its type's range.
+    pub fn narrow_chk(&mut self, a: Value) -> Value {
+        self.unop(Op::NarrowChk, a)
+    }
+    /// `f32.round`: rounds a `Float32` to the nearest binary32 value.
+    pub fn f32_round(&mut self, a: Value) -> Value {
+        self.unop(Op::F32Round, a)
+    }
+    /// `conv`: the same number as another type of its kind. A `Float32` target rounds.
+    pub fn conv(&mut self, a: Value, to: Ty) -> Value {
+        self.val(Op::Conv, &[a], Imm::None, to)
+    }
+    /// `inarrow.opt`: `some(a)` as `Optional[to]` when `a` fits the smaller int type `to`.
+    pub fn inarrow_opt(&mut self, a: Value, to: Ty) -> Value {
+        let t = self.m.types.opt(to);
+        self.val(Op::INarrowOpt, &[a], Imm::None, t)
     }
     /// `icmp.cc`.
     pub fn icmp(&mut self, cc: Cc, a: Value, b: Value) -> Value {

@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "69900 -100 Optional.none Optional.none Optional.none 5000000000\n-100 70000 5000000000 -1 11170\n0.10000000149011612 0.1 false 0 Optional.some(0) 2.5\n-100\n",
+    "stderr": ""
+  }
+}

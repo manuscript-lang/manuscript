@@ -42,6 +42,7 @@ msrt_fault_unwrap_none() -> !
 msrt_fault_result_get() -> !
 msrt_fault_result_err() -> !
 msrt_fault_int_overflow() -> !
+msrt_fault_int_range() -> !
 msrt_fault_div_zero() -> !
 msrt_fault_rem_zero() -> !
 msrt_fault_div_overflow(a: i64, b: i64) -> !
@@ -186,6 +187,7 @@ msrt_string_normalize( s: *const StrVal, form: *const StrVal, has_max: u8, max: 
 msrt_string_normalize_kind( s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_int_to_string(v: i64, out: *mut StrVal)
 msrt_float_to_string(v: f64, out: *mut StrVal)
+msrt_float32_to_string(v: f64, out: *mut StrVal)
 msrt_bool_to_string(v: u8, out: *mut StrVal)
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_string_quote(s: *const StrVal, out: *mut StrVal)
@@ -450,6 +452,8 @@ msrt_json_add_string(d: *mut DocObj, text: *const StrVal) -> u32
 msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32
 msrt_json_add_object( d: *mut DocObj, keys: *const *const StrVal, ids: *const u32, n: i64, ) -> u32
 msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut StrVal, ) -> u8
+msrt_json_dec_ip(text: *const StrVal, out: *mut *mut Obj) -> u8
+msrt_json_dec_cidr(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_int(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrVal, out: *mut f64) -> u8
 msrt_json_add_float(d: *mut DocObj, v: f64) -> u32
@@ -650,7 +654,7 @@ msstd_process_memory_usage(out: *mut MemoryOut) -> u8
 msstd_process_info(out: *mut InfoOut) -> u8
 msstd_process_replace( program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
 msstd_process_command_run( program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8
-msstd_process_command_spawn( program: *const StrVal, arguments: *const VecVal, out: *mut *mut ChildHandle, ) -> u8
+msstd_process_command_spawn( program: *const StrVal, arguments: *const VecVal, stdin: i64, stdout: i64, stderr: i64, out: *mut *mut ChildHandle, ) -> u8
 msstd_process_subprocess_stream( h: *mut ChildHandle, which: i64, ) -> *mut Handle<Stream>
 msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns: i64, out: *mut i64, ) -> u8
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
@@ -815,6 +819,11 @@ msrt_string_char_at(s: *const StrVal, at: i64, out: *mut StrVal)
 msrt_string_char_width(s: *const StrVal, at: i64) -> i64
 msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64
 msrt_task_forget_fd(fd: i32)
+msrt_scope_new() -> i64
+msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_limit_ns: i64, ) -> i64
+msrt_scope_join(handle: i64, keep: i64) -> i64
+msrt_scope_wait(scope: i64) -> i64
+msrt_scope_close(scope: i64)
 msrt_token_free(id: u64)
 msrt_token_new(flags: u32) -> u64
 msrt_token_park( id: u64, timeout_ns: i64, value_out: *mut u64, ) -> u32

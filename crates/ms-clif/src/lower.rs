@@ -1616,6 +1616,59 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
                 vec![]
             }
+            Op::NarrowChk => {
+                let x = self.a(inst, 0)[0];
+                let bits = self
+                    .g
+                    .lay
+                    .m
+                    .types
+                    .int_bits(f.ty(inst.args[0]))
+                    .unwrap_or(64);
+                if checks {
+                    let half = 1i64 << (bits - 1);
+                    let (lo_k, hi_k) = (
+                        self.b.ins().iconst(types::I64, -half),
+                        self.b.ins().iconst(types::I64, half - 1),
+                    );
+                    let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
+                    let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
+                    let bad = self.b.ins().bor(lo, hi);
+                    self.fault_if(bad, "msrt_fault_int_range", vec![]);
+                }
+                vec![x]
+            }
+            Op::Conv => {
+                let x = self.a(inst, 0)[0];
+                let round = res_ty == Some(Ty::FLOAT32) && f.ty(inst.args[0]) != Ty::FLOAT32;
+                if round {
+                    let narrow = self.b.ins().fdemote(types::F32, x);
+                    vec![self.b.ins().fpromote(types::F64, narrow)]
+                } else {
+                    vec![x]
+                }
+            }
+            Op::INarrowOpt => {
+                let x = self.a(inst, 0)[0];
+                let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
+                let bits = inner
+                    .and_then(|i| self.g.lay.m.types.int_bits(i))
+                    .unwrap_or(64);
+                let half = 1i64 << (bits - 1);
+                let (lo_k, hi_k) = (
+                    self.b.ins().iconst(types::I64, -half),
+                    self.b.ins().iconst(types::I64, half - 1),
+                );
+                let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
+                let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
+                let ok = self.b.ins().band(ge, le);
+                vec![ok, x]
+            }
+            Op::F32Round => vec![{
+                let x = self.a(inst, 0)[0];
+                let narrow = self.b.ins().fdemote(types::F32, x);
+                self.b.ins().fpromote(types::F64, narrow)
+            }],
             Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
                 if !checks {
@@ -2921,7 +2974,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Unit
             | TyKind::Bool
             | TyKind::Int
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
             | TyKind::Float
+            | TyKind::Float32
             | TyKind::Ptr
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,
