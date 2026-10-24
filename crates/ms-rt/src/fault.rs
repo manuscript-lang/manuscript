@@ -504,10 +504,11 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
     #[cfg(target_arch = "x86_64")]
     if site[0] != 0 {
         let mut m = format!("WALKDBG ret={:x} rbp={:x} rsp={:x} lo={lo:x} hi={hi:x}\n", site[0], site[1], site[2]);
-        for i in 0..16usize {
+        for i in 0..40usize {
             let w = unsafe { *((site[2] + i * 8) as *const usize) };
-            m.push_str(&format!("  [rsp+{:x}]={w:x}\n", i * 8));
+            m.push_str(&format!(" {w:x}"));
         }
+        m.push('\n');
         sys::write_all(sys::STDERR, m.as_bytes());
     }
     // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
