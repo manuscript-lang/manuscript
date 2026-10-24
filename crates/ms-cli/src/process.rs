@@ -52,7 +52,8 @@ pub struct Waited {
 }
 
 /// SIGINT and SIGTERM are recorded instead of killing `ms` while this lives;
-/// the previous dispositions return on drop.
+/// the previous dispositions return on drop. Catch before spawning the child: a signal sent as
+/// soon as the child reports ready must not find the launcher still on the default disposition.
 pub struct Stops {
     old_int: usize,
     old_term: usize,
@@ -89,18 +90,18 @@ impl Drop for Stops {
 }
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM received meanwhile.
-pub fn wait_with_signals(child: &mut Child) -> std::io::Result<ExitStatus> {
-    wait_supervised(child, None, &mut || {}).map(|waited| waited.status)
+pub fn wait_with_signals(child: &mut Child, stops: &Stops) -> std::io::Result<ExitStatus> {
+    wait_supervised(child, stops, None, &mut || {}).map(|waited| waited.status)
 }
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM, killing it once `timeout`
 /// has elapsed, and calling `poll` about every 10 milliseconds (to drain pipes).
 pub fn wait_supervised(
     child: &mut Child,
+    stops: &Stops,
     timeout: Option<Duration>,
     poll: &mut dyn FnMut(),
 ) -> std::io::Result<Waited> {
-    let stops = Stops::catch();
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
     let mut last = None;
@@ -128,8 +129,7 @@ pub fn wait_supervised(
         poll();
         std::thread::sleep(Duration::from_millis(10));
     };
-    drop(stops);
-    // Hand the signal back to a surrounding `Stops` (the watch loops), which stops watching.
+    // Hand the signal back to the caller's `Stops` (and a surrounding one in the watch loops).
     if let Some(pending) = last {
         PENDING.store(pending, Ordering::SeqCst);
     }

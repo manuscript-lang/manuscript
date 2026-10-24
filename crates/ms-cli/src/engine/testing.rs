@@ -37,7 +37,7 @@ use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{EXIT_FAULT, Fault};
 use crate::json::Json;
-use crate::process::wait_supervised;
+use crate::process::{Stops, wait_supervised};
 use crate::profile::base64;
 use crate::util::emit_json;
 
@@ -407,6 +407,7 @@ impl Runner<'_> {
 
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
+        let stops = Stops::catch();
         let spawned = Command::new(self.executable)
             .arg(index.to_string())
             .args(&self.options.program)
@@ -422,7 +423,7 @@ impl Runner<'_> {
         let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
         let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
         let mut errors: Vec<u8> = Vec::new();
-        let waited = wait_supervised(&mut child, self.options.timeout, &mut || {
+        let waited = wait_supervised(&mut child, &stops, self.options.timeout, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
                 out.write(&chunk);
             }
