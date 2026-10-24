@@ -19,9 +19,9 @@ pub use core_time as logic;
 
 use alloc::string::String;
 use core_time::Ts;
+use ms_rt::ffi::{StatusCode, Str, abi_record, native};
+use ms_rt::glue::{fault, fault_fmt, poll_cancel, task_sleep};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
-use ms_std_core::{StatusCode, Str, abi_record, native};
-use ms_std_rt::{fault, fault_fmt, poll_cancel, task_sleep};
 
 abi_record! {
     #[derive(Clone, Copy)]

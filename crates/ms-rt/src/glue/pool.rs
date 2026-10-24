@@ -16,20 +16,15 @@
 //! or cancelled wait abandons a running job: its token is freed at once, and the pool thread
 //! hands the finished job back on a list that the runtime thread empties at the next submit.
 //! A job still queued is removed and dropped at once.
-extern crate std;
 
-use alloc::boxed::Box;
-use alloc::collections::VecDeque;
-use alloc::vec::Vec;
+use std::boxed::Box;
+use std::collections::VecDeque;
 use std::sync::{Condvar, Mutex, MutexGuard};
+use std::vec::Vec;
 
-unsafe extern "C-unwind" {
-    fn msrt_token_new(flags: u32) -> u64;
-    fn msrt_token_park(id: u64, timeout_ns: i64, value_out: *mut u64) -> u32;
-    safe fn msrt_token_post_remote(id: u64, value: u64);
-    fn msrt_token_free(id: u64);
-    fn msrt_task_count() -> usize;
-}
+use crate::task::{
+    msrt_task_count, msrt_token_free, msrt_token_new, msrt_token_park, msrt_token_post_remote,
+};
 
 /// The runtime's `TOKEN_REMOTE` flag and park results.
 const TOKEN_REMOTE: u32 = 1;
@@ -272,7 +267,7 @@ pub fn run<I: Send + Sync + 'static, O: Send + 'static>(
     // SAFETY: not given up, so the job is done.
     let output = if gave_up { None } else { unsafe { take(job) } };
     if got & WAIT_CANCELLED != 0 {
-        crate::cancelled();
+        crate::glue::cancelled();
     }
     output
 }
@@ -332,7 +327,7 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     // SAFETY: the job is done: the park ended with its post, or the loop above saw it.
     let output = unsafe { take(job) }.expect("a finished job holds its output");
     if got & WAIT_CANCELLED != 0 {
-        crate::cancelled();
+        crate::glue::cancelled();
     }
     output
 }
@@ -488,10 +483,10 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn the_pool_runs_caps_abandons_and_reaps() {
         assert_eq!(
-            run(Lane::General, alloc::vec![1u8, 2, 3], doubled, -1),
-            Some(alloc::vec![2, 4, 6])
+            run(Lane::General, std::vec![1u8, 2, 3], doubled, -1),
+            Some(std::vec![2, 4, 6])
         );
-        let caller = alloc::vec![7u8; 1 << 20];
+        let caller = std::vec![7u8; 1 << 20];
         assert_eq!(
             run_shielded(Lane::General, 3usize, &caller, summed),
             7 * (1 << 20) + 3
@@ -504,8 +499,8 @@ mod tests {
         std::thread::sleep(Duration::from_millis(400));
         assert_eq!(lock().finished.len(), 1);
         assert_eq!(
-            run(Lane::General, alloc::vec![1u8], doubled, -1),
-            Some(alloc::vec![2])
+            run(Lane::General, std::vec![1u8], doubled, -1),
+            Some(std::vec![2])
         );
         assert!(lock().finished.is_empty() && lock().abandoned.is_empty());
 
@@ -515,13 +510,13 @@ mod tests {
             assert_eq!(run(Lane::Dns, 200u64, slow_dns, 1_000_000), None);
         }
         assert_eq!(
-            run(Lane::General, alloc::vec![5u8], doubled, -1),
-            Some(alloc::vec![10])
+            run(Lane::General, std::vec![5u8], doubled, -1),
+            Some(std::vec![10])
         );
         std::thread::sleep(Duration::from_millis(200 * (threads() as u64 + 2)));
         assert!(MOST_DNS.load(Ordering::SeqCst) <= dns_cap());
         assert!(pool_threads() <= threads());
-        let _ = run(Lane::General, alloc::vec![0u8], doubled, -1);
+        let _ = run(Lane::General, std::vec![0u8], doubled, -1);
         let pool = lock();
         assert!(pool.queue.is_empty() && pool.abandoned.is_empty() && pool.finished.is_empty());
     }

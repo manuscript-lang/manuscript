@@ -25,17 +25,17 @@ pub mod watch;
 
 use alloc::vec::Vec;
 use err::{Fail, Res};
-use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NONE, StrVal};
-use ms_std_core::{
+use ms_rt::ffi::{
     BytesList, EntryFilter, IntList, ObjMut, ObjRef, ObjShare, Object, PairFilter, RecList,
     StatusCode, Str, Text, TextList, abi_record, native,
 };
+use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NONE, StrVal};
 use stream::Stream;
 
 /// A filesystem result as a status: a failure records its text for `msstd_fs_failure_message`.
 pub fn fs_status<T>(r: Res<T>) -> Result<T, StatusCode> {
     r.map_err(|Fail { status, message }| {
-        ms_std_rt::record_failure(message.unwrap_or_default());
+        ms_rt::glue::record_failure(message.unwrap_or_default());
         StatusCode(status)
     })
 }
@@ -147,7 +147,7 @@ abi_record! {
 native! {
     /// The text describing the last `STATUS_FAILED` result (a fresh string).
     fn msstd_fs_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     /// Reads a whole file as bytes.
@@ -499,7 +499,7 @@ native! {
         filter: Option<PairFilter>,
     ) -> Result<(), StatusCode> {
         let Some(clone) = walk::Clone::parse(clone.as_bytes()) else {
-            ms_std_rt::record_failure(Vec::new());
+            ms_rt::glue::record_failure(Vec::new());
             return Err(StatusCode(STATUS_INVALID_INPUT));
         };
         let (entries, bytes) = fs_status(lim(has_entries, entries).and_then(|e| Ok((e, lim(has_bytes, bytes)?))))?;
@@ -623,20 +623,4 @@ native! {
         let mut h = h;
         h.close()
     }
-}
-
-/// Stand-ins for the runtime symbols `ms-std-rt` links against, so the crate's unit tests link alone.
-#[cfg(test)]
-#[allow(unsafe_code)]
-mod runtime_stubs {
-    #[unsafe(no_mangle)]
-    pub static msrt_cancel_flag: u8 = 0;
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn msrt_cancelled() -> ! {
-        panic!("cancelled")
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C-unwind" fn msrt_io_flush() {}
 }

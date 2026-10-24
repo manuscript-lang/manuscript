@@ -158,7 +158,7 @@ impl Child {
     pub fn park_until_exit(&mut self, timeout_ns: i64) -> bool {
         #[cfg(unix)]
         if let Some(fd) = self.exit_fd() {
-            ms_std_rt::task_wait_fd(fd, ms_std_rt::WAIT_READ, timeout_ns);
+            ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, timeout_ns);
             return true;
         }
         let _ = timeout_ns;

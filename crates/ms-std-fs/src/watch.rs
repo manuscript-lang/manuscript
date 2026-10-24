@@ -8,8 +8,8 @@ use alloc::collections::BTreeMap;
 #[cfg(target_os = "linux")]
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
-use ms_std_rt::poll_cancel;
 
 const SLICE_MS: i32 = 50;
 
@@ -63,7 +63,7 @@ fn visit(
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
-    ms_std_rt::task_wait_fd(fd, ms_std_rt::WAIT_READ, -1);
+    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
@@ -71,7 +71,7 @@ fn wait_events(fd: sys::Fd) {
 
 fn sleep_slice() {
     #[cfg(not(test))]
-    ms_std_rt::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+    ms_rt::glue::task_sleep(i64::from(SLICE_MS) * 1_000_000);
     #[cfg(test)]
     sys::sleep_ms(SLICE_MS);
 }
@@ -368,7 +368,7 @@ enum Kind {
     Native(Native),
 }
 
-ms_std_core::abi_handle!(Watcher);
+ms_rt::ffi::abi_handle!(Watcher);
 
 /// A `FileWatcher`.
 pub struct Watcher {

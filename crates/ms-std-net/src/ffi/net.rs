@@ -4,11 +4,11 @@ use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
 use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
-use ms_rt_abi::STATUS_NONE;
-use ms_std_core::{
+use ms_rt::ffi::{
     Bytes, ErrOut, ObjBox, ObjRef, ObjShare, Object, Out, RecArray, StatusCode, Str, abi_handle,
     abi_record, native,
 };
+use ms_rt_abi::STATUS_NONE;
 use std::net::IpAddr;
 
 abi_handle!(Cidr);
@@ -107,7 +107,7 @@ native! {
     /// `Network.close()`; closing from a handler of a server this network owns faults.
     fn msrt_net_network_close(net: ObjRef<NetH>) -> () {
         if crate::http::server::Reactor::get().in_handler_of_network(&net) {
-            ms_std_core::fault("network cannot close from its own request");
+            ms_rt::ffi::fault("network cannot close from its own request");
         }
         net.close();
     }
@@ -396,11 +396,11 @@ fn _normalize(ip: IpAddr) -> IpAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ms_rt_abi::{StrVal, VecVal};
-    use ms_std_core::{
+    use ms_rt::ffi::{
         bytes_ref, new_string, read_string_list, str_ref, str_release, take_string,
         write_string_list,
     };
+    use ms_rt_abi::{StrVal, VecVal};
     use std::mem::MaybeUninit;
     use std::ptr::null_mut;
 

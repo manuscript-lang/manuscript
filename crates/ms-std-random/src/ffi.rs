@@ -2,7 +2,7 @@
 use crate::{Draw, Kind, RandomFail};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
+use ms_rt::ffi::{Mut, Own, Ref, Status, StrVal, abi_handle, native};
 
 abi_handle!(Draw);
 
@@ -13,7 +13,7 @@ impl Status for RandomFail {
             RandomFail::InvalidInput => ms_rt_abi::STATUS_INVALID_INPUT,
             RandomFail::LimitExceeded => ms_rt_abi::STATUS_LIMIT_EXCEEDED,
             RandomFail::Failed(m) => {
-                ms_std_rt::record_failure(m.into_bytes());
+                ms_rt::glue::record_failure(m.into_bytes());
                 ms_rt_abi::STATUS_FAILED
             }
         }
@@ -33,7 +33,7 @@ fn kind_of(kind: i64) -> Kind {
 native! {
     /// The text of the last `Failed` status (a fresh string).
     fn msstd_random_failure_message() -> out StrVal {
-        ms_std_rt::failure_message()
+        ms_rt::glue::failure_message()
     }
 
     /// `Entropy.bytes` of the operating-system source.
@@ -93,7 +93,7 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _;
-    use ms_std_core::VecVal; // links the msrt_* runtime symbols
+    use ms_rt::ffi::VecVal; // links the msrt_* runtime symbols
 
     #[test]
     fn os_bytes_bounds() {

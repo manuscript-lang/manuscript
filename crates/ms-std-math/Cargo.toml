@@ -9,10 +9,8 @@ description = "Manuscript standard-library natives for @std/math"
 crate-type = ["rlib"]
 
 [dependencies]
-ms-std-core = { path = "../ms-std-core" }
+ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
 
-[dev-dependencies]
-ms-rt = { path = "../ms-rt" }

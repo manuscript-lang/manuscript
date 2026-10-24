@@ -6,7 +6,7 @@
 use crate::Components;
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{Fail, OptInt, RecList, Str, abi_record, native};
+use ms_rt::ffi::{Fail, OptInt, RecList, Str, abi_record, native};
 
 abi_record! {
     /// `Url` record: `scheme, host, port: Optional[Int], path, query, fragment`.
@@ -99,9 +99,9 @@ native! {
 mod tests {
     use super::*;
     use core::mem::MaybeUninit;
+    use ms_rt::ffi::AbiRecord;
+    use ms_rt::ffi::{StrVal, VecVal, new_string, str_ref, take_string};
     use ms_rt_abi::STATUS_OK;
-    use ms_std_core::AbiRecord;
-    use ms_std_core::{StrVal, VecVal, new_string, str_ref, take_string};
 
     #[test]
     fn abi_roundtrip() {
@@ -131,10 +131,10 @@ mod tests {
                 r.query.as_ptr(),
                 r.fragment.as_ptr(),
             ] {
-                ms_std_core::str_release(&*o);
+                ms_rt::ffi::str_release(&*o);
             }
             for o in [text, s.assume_init()] {
-                ms_std_core::str_release(&o);
+                ms_rt::ffi::str_release(&o);
             }
         }
     }

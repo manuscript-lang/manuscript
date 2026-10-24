@@ -14,7 +14,7 @@ pub mod ffi;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 
 fn limit(max: Option<i64>) -> Result<usize, Fail> {
     match max {

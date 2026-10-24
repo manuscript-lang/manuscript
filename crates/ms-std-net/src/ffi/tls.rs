@@ -3,7 +3,7 @@
 use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
-use ms_std_core::{
+use ms_rt::ffi::{
     Bytes, BytesArray, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
     abi_record, native,
 };
@@ -173,8 +173,8 @@ native! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ms_rt::ffi::new_string;
     use ms_rt_abi::StrVal;
-    use ms_std_core::new_string;
 
     fn s(text: &str) -> *const StrVal {
         Box::leak(Box::new(new_string(text)))
@@ -211,7 +211,7 @@ mod tests {
                 msrt_tls_verify_certificates(s(pem), s(pem), s("nope.test"), &now),
                 4
             );
-            let m = ms_std_core::take_string(|o| msrt_tls_error_message(4, o));
+            let m = ms_rt::ffi::take_string(|o| msrt_tls_error_message(4, o));
             assert_eq!(m, "TLS: authentication failed");
         }
     }
