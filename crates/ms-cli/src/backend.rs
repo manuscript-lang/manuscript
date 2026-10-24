@@ -112,6 +112,8 @@ pub struct RunRequest {
     pub filename: String,
     pub build_type: BuildType,
     pub watch: bool,
+    /// Report the run as one JSON document, with a runtime fault as structured data.
+    pub json: bool,
     /// Program arguments (everything after `--`).
     pub arguments: Vec<String>,
 }

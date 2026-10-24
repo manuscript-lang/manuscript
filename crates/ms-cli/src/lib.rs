@@ -17,6 +17,7 @@ mod commands;
 pub mod diagnostic;
 mod duration;
 pub mod engine;
+pub mod fault;
 pub mod fmt;
 pub mod help;
 mod help_text;
@@ -150,6 +151,7 @@ fn run_source_command(args: &[String], usage: &str, backend: &dyn Backend, io: &
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
                 watch: inv.watch,
+                json: inv.structured,
                 arguments: inv.arguments.clone(),
             },
             io,

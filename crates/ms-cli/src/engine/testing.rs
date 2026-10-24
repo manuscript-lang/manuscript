@@ -35,6 +35,7 @@ pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 use super::{RustBackend, TempDir, compile};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
+use crate::fault::{EXIT_FAULT, Fault};
 use crate::json::Json;
 use crate::process::wait_supervised;
 use crate::profile::base64;
@@ -142,6 +143,7 @@ struct Case {
     name: String,
     status: Status,
     failure: String,
+    fault: Option<Fault>,
     duration: Duration,
 }
 
@@ -360,6 +362,13 @@ impl Runner<'_> {
                     case.status = Status::Skipped;
                     case.failure = why;
                 }
+                Ran::Faulted(why, fault) => {
+                    failed += 1;
+                    out.line(format!("FAIL {name}: {why}"));
+                    case.status = Status::Failed;
+                    case.failure = why;
+                    case.fault = Some(fault);
+                }
                 Ran::Failed(why) => {
                     failed += 1;
                     out.line(format!("FAIL {name}: {why}"));
@@ -451,6 +460,11 @@ impl Runner<'_> {
             return Ran::Passed;
         }
         let text = errors.trim_end_matches('\n');
+        if waited.status.code() == Some(EXIT_FAULT)
+            && let Some(fault) = Fault::parse(text)
+        {
+            return Ran::Faulted(text.to_string(), fault);
+        }
         if text.is_empty() {
             Ran::Failed(format!("test process {}", describe_exit(&waited.status)))
         } else {
@@ -461,7 +475,7 @@ impl Runner<'_> {
 
 /// Streams a child's pipe through a channel. The thread is detached: a
 /// grandchild that inherits the pipe must not hold the run up.
-fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
+pub(super) fn pipe_reader(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
     let (sender, receiver) = mpsc::channel::<Vec<u8>>();
     std::thread::spawn(move || {
         let mut buffer = [0u8; 8192];
@@ -478,6 +492,8 @@ enum Ran {
     Passed,
     Skipped(String),
     Failed(String),
+    /// The test process ended in a runtime fault: the report text and its parse.
+    Faulted(String, Fault),
     Cancelled,
 }
 
@@ -573,6 +589,7 @@ impl Document {
                 name: (*name).clone(),
                 status: Status::NotRun,
                 failure: String::new(),
+                fault: None,
                 duration: Duration::ZERO,
             })
             .collect();
@@ -614,6 +631,9 @@ impl Document {
                     if let Some(position) = failure_position(&case.failure) {
                         item = item.with("position", position.to_json());
                     }
+                }
+                if let Some(fault) = &case.fault {
+                    item = item.with("fault", fault.to_json());
                 }
                 item
             })

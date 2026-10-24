@@ -36,6 +36,7 @@ pub const JSON_COMMANDS: &[&str] = &[
     "check",
     "lint",
     "test",
+    "run",
     "build",
     "profile",
     "inspect",
