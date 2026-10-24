@@ -67,11 +67,6 @@ pub(crate) struct Input {
 
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
-    // Handle-backed values name their operations in the native identity.
-    if matches!(m.types.kind(recv), TyKind::Obj(n, _) if matches!(n.as_str(), "IpAddress" | "Cidr" | "HttpHeaders"))
-    {
-        return function_symbol(native);
-    }
     let name = native.rsplit('/').next().unwrap_or(native);
     let name = match name {
         "format_int" => "to_string_radix",
@@ -91,27 +86,6 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         .strip_prefix("map_")
         .or_else(|| name.strip_prefix("set_"))
         .unwrap_or(name);
-    if let TyKind::Rec(rid) = m.types.kind(recv) {
-        let record = m.records[rid.index()].name.as_str();
-        if matches!(record, "Timestamp" | "Instant") {
-            let name = native.rsplit('/').next().unwrap_or(native);
-            let prefixed = format!("msstd_time_{}_{name}", record.to_lowercase());
-            return [format!("msstd_time_{name}"), prefixed]
-                .into_iter()
-                .find(|sym| rt_sig(sym).is_some());
-        }
-    }
-    // `time/duration_seconds` is `Duration.to_seconds`: the runtime spells the conversions out.
-    if let Some(stem) = native.strip_prefix("time/") {
-        let spelled = stem
-            .split_once('_')
-            .map(|(ty, rest)| format!("msstd_time_{ty}_to_{rest}"));
-        let direct = format!("msstd_time_{stem}");
-        return [Some(direct), spelled]
-            .into_iter()
-            .flatten()
-            .find(|sym| rt_sig(sym).is_some());
-    }
     if matches!(m.types.kind(recv), TyKind::Obj(n, _) if n == "BigInt") {
         let name = if name == "format" {
             "to_string_radix"
@@ -145,18 +119,7 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 
 /// Native types whose methods are runtime symbols named after the type, and the module
 /// they live in: `msstd_time_timestamp_shift`, `msrt_regex_matches`.
-const TYPED_NATIVES: &[(&str, &str)] = &[
-    ("Timestamp", "time"),
-    ("Instant", "time"),
-    ("Duration", "time"),
-    ("Regex", "regex"),
-    ("Decimal", "decimal"),
-    ("IpAddress", "net"),
-    ("Cidr", "net"),
-    ("HttpHeaders", "http"),
-    ("LogState", "logcore"),
-    ("LogGate", "logcore"),
-];
+const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
 pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {

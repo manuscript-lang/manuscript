@@ -398,8 +398,8 @@ impl HashAlgorithm:
 
     # Creates an incremental hasher for this algorithm.
     def hasher() -> Hasher:
-        return Hasher(value: msrt_crypto_hasher_new(self))
+        return msrt_crypto_hasher_new(self)
 
     # Creates an incremental HMAC with this algorithm and key.
     def hmac_hasher(key: Bytes) -> Hasher:
-        return Hasher(value: msrt_crypto_hmac_hasher_new(self, key))
+        return msrt_crypto_hmac_hasher_new(self, key)

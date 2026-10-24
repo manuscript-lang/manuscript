@@ -13,33 +13,12 @@ use ms_syntax::ast::*;
 /// String operations `fn(String) -> String` and their runtime symbols.
 /// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
 /// the runtime wants the case index (else the lowercase case name).
-const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[
-    (
-        "string/form_normalize",
-        "msrt_string_normalize_kind",
-        "kind",
-        true,
-    ),
-    ("archive/format_pack", "msrt_archive_pack", "format", false),
-    (
-        "archive/format_unpack",
-        "msrt_archive_unpack",
-        "format",
-        false,
-    ),
-    (
-        "archive/format_compress",
-        "msrt_compress_compress",
-        "format",
-        false,
-    ),
-    (
-        "archive/format_decompress",
-        "msrt_compress_decompress",
-        "format",
-        false,
-    ),
-];
+const FORMAT_METHODS: &[(&str, &str, &str, bool)] = &[(
+    "string/form_normalize",
+    "msrt_string_normalize_kind",
+    "kind",
+    true,
+)];
 
 const STRING_TO_STRING: &[(&str, &str)] = &[
     ("string/reverse", "msrt_string_reverse"),
@@ -280,11 +259,7 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
-            "collections/map_from_entries"
-            | "crypto/sha256"
-            | "crypto/sha384"
-            | "crypto/sha512"
-            | "crypto/derive_key" => {
+            "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
