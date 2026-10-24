@@ -317,7 +317,7 @@ fn native_method_modes(
             let stored = p.ty.kind == Kind::Variable
                 || same(&p.ty, receiver)
                 || receiver.args.iter().any(|a| same(a, &p.ty));
-            if mutator && stored {
+            if (mutator && stored) || method.native.as_str() == "shared/put" {
                 ParamMode::Consume
             } else {
                 ParamMode::Borrow

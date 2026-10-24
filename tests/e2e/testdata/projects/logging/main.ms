@@ -1,48 +1,41 @@
-from "@std/log.ms" import Logger, LogLevel, create, bind, record, stdout_transport, file_transport
+from "@std/log.ms" import Logger, LogLevel, create, record, stdout_transport, file_transport
 from "@std/json.ms" import JsonValue
 from "@std/process.ms" import arguments
 from "@std/io.ms" import stderr
 from "./records.ms" import emit
 
-type Service:
-    service: String
-
 def exercise(mode: String, path: String) -> Result[Unit, Error]:
-    let bindings = Service("api")
-
     if (mode == "file" or mode == "missing"):
-        with try file_transport(path) as transport:
-            let logger = try create(transport, timestamp: False)
-                | try bind(bindings)
+        with try create(try file_transport(path), timestamp: False) as root:
+            let logger = try root.child_json("{\"service\":\"api\"}")
             try emit(logger)
             try logger.flush()
 
         return ok(())
 
-    with stdout_transport() as transport:
-        if mode == "limit":
-            let logger = try create(transport, max_bytes: 1)
+    if mode == "limit":
+        with try create(stdout_transport(), max_bytes: 1) as logger:
             try logger.info("too large")
-        else:
-            let logger = try create(transport)
-                | try bind(bindings)
+    elif mode == "closed":
+        var root = try create(stdout_transport())
+        let logger = try root.child_json("{\"service\":\"api\"}")
+        root.close()
+        try logger.info("closed")
+    else:
+        with try create(stdout_transport()) as root:
+            let logger = try root.child_json("{\"service\":\"api\"}")
 
             if mode == "invalid":
                 try record(
                     logger, level: LogLevel.Info, message: "invalid",
                     fields: JsonValue.NumberValue("NaN")
                 )
-            elif mode == "closed":
-                transport.close()
-                try logger.info("closed")
             else:
                 try emit(logger)
                 try logger.flush()
 
-    with stdout_transport() as transport:
-        let logger = try create(transport, timestamp: False)
+    with try create(stdout_transport(), timestamp: False) as logger:
         try logger.info("still open")
-
     return ok(())
 
 export def main() -> Int:
