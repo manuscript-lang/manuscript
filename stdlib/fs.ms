@@ -29,7 +29,10 @@ extern def msstd_fs_win32() -> PathOperations
 
 extern def msrt_path_basename_without(path: String, suffix: String) -> String
 
-extern def msrt_path_resolve(base: String, parts: List[String]) -> Result[String, PathError]
+extern def msrt_path_resolve(
+    base: String,
+    parts: List[String]
+) -> Result[String, PathError]
 
 extern def msrt_path_parse(path: String) -> PathParts
 
@@ -41,7 +44,10 @@ extern def msrt_path_delimiter() -> String
 
 extern def msrt_path_to_namespaced_path(path: String) -> String
 
-extern def msrt_path_matches_glob(path: String, pattern: String) -> Result[Bool, PathError]
+extern def msrt_path_matches_glob(
+    path: String,
+    pattern: String
+) -> Result[Bool, PathError]
 
 # Errors returned by filesystem operations. `Failed` retains the host error text.
 export type FileSystemError:
