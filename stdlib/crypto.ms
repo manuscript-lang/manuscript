@@ -110,7 +110,7 @@ export def ecdsa_sign(
     data: Bytes
 ) -> Result[Bytes, CryptoError]: ...
 
-# Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return false.
+# Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return False.
 export def ecdsa_verify(
     public_key: Bytes,
     hash: HashAlgorithm,

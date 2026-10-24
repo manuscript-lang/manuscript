@@ -346,7 +346,7 @@ export type TlsInfo:
     alpn: String
     # The peer's presented certificates as DER bytes, leaf first; empty when the peer sent none.
     peer_certificates: List[Bytes]
-    # True when the peer's certificate chain was verified against the configured roots; false when no peer chain was verified.
+    # True when the peer's certificate chain was verified against the configured roots; False when no peer chain was verified.
     verified: Bool
 
 # Client or server TLS settings, including roots, certificates, and ALPN protocols.
@@ -362,7 +362,7 @@ export type TlsOptions:
     private_key_pem: String
     # Application-layer protocols to offer or accept, in preference order, such as `h2` or `http/1.1`. Each must be 1 through 255 bytes; empty disables negotiation.
     alpn: List[String]
-    # Servers only: when true, a client must present a certificate that verifies against `roots_pem`. Setting it on a client configuration is rejected.
+    # Servers only: when True, a client must present a certificate that verifies against `roots_pem`. Setting it on a client configuration is rejected.
     require_client_certificate: Bool
 
 # Parses PEM certificates and optionally limits the number returned.
@@ -478,7 +478,7 @@ export interface WebSocket:
     def receive() -> Result[Optional[WebSocketMessage], WebSocketError]
     # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
     def send(data: String) -> Result[Unit, WebSocketError]
-    # Sends `data` as one message, a text frame when `text` is true and a binary frame (the default) otherwise.
+    # Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
     def send_bytes(data: Bytes, text: Bool = False) -> Result[Unit, WebSocketError]
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
@@ -488,7 +488,7 @@ export interface WebSocket:
 export type WebSocketMessage:
     # The message payload bytes; for a text message they are the UTF-8 encoding of the text.
     data: Bytes
-    # True when the peer sent a text frame, which guarantees `data` is valid UTF-8; false for a binary frame.
+    # True when the peer sent a text frame, which guarantees `data` is valid UTF-8; False for a binary frame.
     text: Bool
 
 # WebSocket message, timeout, TLS, and per-message compression settings.
@@ -499,7 +499,7 @@ export type WebSocketOptions:
     timeout: Optional[Duration] = none
     # TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
     tls: TlsOptions
-    # When true, offers per-message compression during the handshake; it applies only if the peer agrees.
+    # When True, offers per-message compression during the handshake; it applies only if the peer agrees.
     compression: Bool
 
 impl Error for WebSocketError:

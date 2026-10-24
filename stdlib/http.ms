@@ -156,9 +156,9 @@ export type HttpClientOptions:
     max_header_bytes: Optional[Int] = none
     # How long an idle pooled connection is kept before it is closed. none never expires it, and a negative duration is rejected.
     idle_timeout: Optional[Duration] = none
-    # When true, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when false (the default), bodies arrive exactly as sent.
+    # When True, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when False (the default), bodies arrive exactly as sent.
     decompress: Bool = False
-    # When true, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when false (the default), no cookies are stored or sent automatically.
+    # When True, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when False (the default), no cookies are stored or sent automatically.
     cookies: Bool = False
     # TLS trust and client-certificate settings for `https` requests. The host name is taken from each URL, so `server_name` is ignored.
     tls: TlsOptions = TlsOptions(
