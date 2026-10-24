@@ -275,17 +275,8 @@ export fn record[T](
 
     return logger.log_json(level, message, object_text(text.get()))
 
-# Returns a logger that adds `bindings` to each record, with the same field rules as `record`.
-# The child copies this logger's threshold, timestamp setting, record limit, and transport;
-# bound fields merge parent, then child, then per-call fields, with later values winning.
-export fn bind[T](logger: Logger, bindings: T) Result[Logger, LogError]:
-    let text = stringify(bindings)
-    if text.is_error(): return error(LogError.InvalidData)
-
-    return logger.child_json(object_text(text.get()))
-
 # Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
-# Child loggers from `bind` share the transport; closing any of them (`with logger = create(...)`
+# Child loggers from `child_json` share the transport; closing any of them (`with logger = create(...)`
 # closes on every exit) closes it for all.
 export fn create(
     transport: Transport,

@@ -1,18 +1,13 @@
-import {Logger, LogLevel, create, bind, record, stdout_transport, file_transport} from "@std/log.ms"
+import {Logger, LogLevel, create, record, stdout_transport, file_transport} from "@std/log.ms"
 import JsonValue from "@std/json.ms"
 import arguments from "@std/process.ms"
 import stderr from "@std/io.ms"
 import emit from "./records.ms"
 
-type Service:
-    service: String
-
 fn exercise(mode: String, path: String) Result[Unit, Error]:
-    let bindings = Service("api")
-
     if (mode == "file" or mode == "missing"):
         with root = try create(try file_transport(path), timestamp: false):
-            let logger = try bind(root, bindings)
+            let logger = try root.child_json("\{\"service\":\"api\"\}")
             try emit(logger)
             try logger.flush()
 
@@ -23,12 +18,12 @@ fn exercise(mode: String, path: String) Result[Unit, Error]:
             try logger.info("too large")
     else if mode == "closed":
         var root = try create(stdout_transport())
-        let logger = try bind(root, bindings)
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
         root.close()
         try logger.info("closed")
     else:
         with root = try create(stdout_transport()):
-            let logger = try bind(root, bindings)
+            let logger = try root.child_json("\{\"service\":\"api\"\}")
 
             if mode == "invalid":
                 try record(

@@ -1,7 +1,7 @@
 import {expect_equal, expect_error, expect_false, expect_ok, expect_true} from "@std/testing.ms"
 import {
-    Transport, LogLevel, LogError, create, record, bind, stream_transport,
-    stdout_transport, file_transport
+    Transport, LogLevel, LogError, create, record, stream_transport, stdout_transport,
+    file_transport
 } from "@std/log.ms"
 import IoError from "@std/io.ms"
 import JsonValue from "@std/json.ms"
@@ -109,8 +109,8 @@ test "child bindings snapshot values and merge without mutating inputs":
         let file = try filesystem().open(path: path, flags: "w", mode: 420)
 
         with root = try create(stream_transport(file.writer()), timestamp: false):
-            let logger = try bind(root, Service("api"))
-            let child = try bind(logger, Request(7))
+            let logger = try root.child_json("\{\"service\":\"api\"\}")
+            let child = try logger.child_json("\{\"request\":7\}")
             logger.set_level(LogLevel.Fatal)
             try expect_equal(child.level(), LogLevel.Info)
             try record(child, LogLevel.Info, "child", Service("worker"))
