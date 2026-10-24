@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal, expect_false
 from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
 from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
-from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands
+from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio
 from "@std/bytes.ms" import Bytes
 
 def forward[T](item: T) -> T: item
@@ -21,7 +21,10 @@ impl Commands for Capture:
 
     def spawn(
         program: String,
-        arguments: List[String]
+        arguments: List[String],
+        stdin: Stdio,
+        stdout: Stdio,
+        stderr: Stdio
     ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
@@ -45,7 +48,10 @@ impl Commands for Override:
 
     def spawn(
         program: String,
-        arguments: List[String]
+        arguments: List[String],
+        stdin: Stdio,
+        stdout: Stdio,
+        stderr: Stdio
     ) -> Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
