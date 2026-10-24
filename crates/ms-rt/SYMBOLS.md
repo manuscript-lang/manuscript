@@ -450,6 +450,8 @@ msrt_json_add_string(d: *mut DocObj, text: *const StrVal) -> u32
 msrt_json_add_array(d: *mut DocObj, ids: *const u32, n: i64) -> u32
 msrt_json_add_object( d: *mut DocObj, keys: *const *const StrVal, ids: *const u32, n: i64, ) -> u32
 msrt_json_stringify( d: *const DocObj, root: u32, has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, out: *mut StrVal, ) -> u8
+msrt_json_dec_ip(text: *const StrVal, out: *mut *mut Obj) -> u8
+msrt_json_dec_cidr(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_int(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrVal, out: *mut f64) -> u8
 msrt_json_add_float(d: *mut DocObj, v: f64) -> u32

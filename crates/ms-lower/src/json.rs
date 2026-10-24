@@ -331,6 +331,10 @@ impl FnLower<'_> {
             Some((KIND_STRING, "msrt_encoding_base64_decode", true))
         } else if t.is_source_type("@std/net.ms", "Url") {
             Some((KIND_STRING, "msrt_url_parse", false))
+        } else if t.is_source_type("@std/net.ms", "IpAddress") {
+            Some((KIND_STRING, "msrt_json_dec_ip", false))
+        } else if t.is_source_type("@std/net.ms", "Cidr") {
+            Some((KIND_STRING, "msrt_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
             Some((KIND_NUMBER, "msstd_decimal_literal", false))
         } else if t.is_std("BigInt") {
@@ -925,6 +929,18 @@ impl FnLower<'_> {
         if t.is_source_type("@std/net.ms", "Url") {
             return self.jencode_url(doc, value);
         }
+        // An address or network is its text.
+        for (name, sym) in [
+            ("IpAddress", "msrt_net_ip_address_text"),
+            ("Cidr", "msrt_net_cidr_text"),
+        ] {
+            if t.is_source_type("@std/net.ms", name) {
+                let text = self.call_runtime(sym, &[value], MTy::STR)?;
+                let id = self.jadd("msrt_json_add_string", &[doc, text])?;
+                self.drop_value(text);
+                return Ok(id);
+            }
+        }
         match t.kind {
             ct::Kind::Record => {
                 let fields = jfields(&ct::fields(t));
@@ -1077,6 +1093,14 @@ impl FnLower<'_> {
             s.b.switch_to(put);
             let name = if key.id.as_str() == "String" {
                 Val { v: k, own: false }
+            } else if jplain_alt(&key) {
+                // The case name, as a payload-free alternative is written elsewhere.
+                let key_mt = s.jmty(&key)?;
+                let node = s.jencode_alternative(&key, key_mt, doc, k)?;
+                Val {
+                    v: s.jtext(doc, node)?,
+                    own: true,
+                }
             } else {
                 s.format_value(Val { v: k, own: false })?
             };
