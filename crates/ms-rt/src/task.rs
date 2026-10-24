@@ -47,6 +47,12 @@ pub const STACK_SLOT: usize = ms_rt_abi::symbols::STACK_SLOT as usize;
 const DEFAULT_STACK: usize = STACK_SLOT - (64 << 10);
 #[cfg(not(unix))]
 const DEFAULT_STACK: usize = 256 << 20;
+/// Address space reserved for an isolate's main task (committed lazily). Unix slots are already
+/// the most a stack can be; a fiber asks for the 1 GiB the main thread used to have.
+#[cfg(unix)]
+const ROOT_STACK: usize = 0;
+#[cfg(not(unix))]
+const ROOT_STACK: usize = 1 << 30;
 /// Largest stack a task can ask for.
 #[cfg(unix)]
 const MAX_STACK: usize = DEFAULT_STACK;
@@ -867,7 +873,7 @@ pub unsafe fn run_main_task(entry: Entry) {
     unsafe {
         ensure_init();
         let done = msrt_token_new(0);
-        let h = msrt_task_spawn(entry, done as usize as *mut u8, SPAWN_DETACHED, 0);
+        let h = msrt_task_spawn(entry, done as usize as *mut u8, SPAWN_DETACHED, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
         let mut value = 0;
@@ -886,7 +892,7 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
     // SAFETY: single threaded scheduler.
     unsafe {
         ensure_init();
-        let h = msrt_task_spawn(entry, arg, 0, 0);
+        let h = msrt_task_spawn(entry, arg, 0, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
         let mut msg = crate::string::NO_STR;
