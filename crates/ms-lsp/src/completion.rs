@@ -464,12 +464,12 @@ impl Completer<'_> {
         let line_start = text[..c.start].rfind('\n').map_or(0, |at| at + 1);
         if text[line_start..c.start].trim().is_empty() {
             let mut words: Vec<&str> = vec![
-                "let", "var", "if", "else", "for", "while", "match", "with", "return", "break",
+                "let", "var", "if", "elif", "else", "for", "while", "match", "with", "return", "break",
                 "continue",
             ];
             if line_start == c.start {
                 words = vec![
-                    "fn",
+                    "def",
                     "type",
                     "interface",
                     "impl",
@@ -499,7 +499,7 @@ impl Completer<'_> {
             }
         }
         if !c.type_context {
-            for word in ["true", "false", "unit", "fn", "not", "try"] {
+            for word in ["True", "False", "lambda", "not", "try"] {
                 self.add(word, 14, None, 5, word, Json::Null);
             }
         }
@@ -591,13 +591,13 @@ impl Completer<'_> {
 
 fn keyword_template(word: &str) -> Option<&'static str> {
     Some(match word {
-        "interface" => "interface ${1:Name}:\n    ${0:fn operation() Unit}",
-        "fn" => "fn ${1:name}(${2}) ${3:Unit}:\n    ${0:return unit}",
+        "interface" => "interface ${1:Name}:\n    ${0:def operation() -> Unit}",
+        "def" => "def ${1:name}(${2}) -> ${3:Unit}:\n    ${0:return ()}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "with" => "with ${1:resource} = ${2:initializer}:\n    $0",
-        "test" => "test \"${1:name}\":\n    ${0:return unit}",
+        "with" => "with ${1:initializer} as ${2:resource}:\n    $0",
+        "test" => "test \"${1:name}\":\n    ${0:return ()}",
         _ => return None,
     })
 }
