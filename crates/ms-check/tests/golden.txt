@@ -2519,7 +2519,7 @@ resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before u
 type	3	11	43	arithmetic requires numeric operandsfn f() Unit:
     var value = 1
     value += 1.5
-type	3	11	41	operator operands require the same independently known type, found Int + Float; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f(value: Val) Unit:
+type	3	11	41	operator operands require the same independently known type, found Int + Float; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])fn f(value: Val) Unit:
     value.val += true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:

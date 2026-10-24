@@ -125,7 +125,7 @@ impl Checker {
                 }
                 self.type_error(
                     e.pos,
-                    format!("this type has no source constructor: {typ} is built in; write a literal or call a standard function that returns it"),
+                    format!("this type has no source constructor: {typ} is built in; write a literal or call a standard function that returns it{}", builtin_constructor_hint(&typ)),
                 );
                 return i;
             }

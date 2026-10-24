@@ -866,6 +866,9 @@ impl Checker {
                 hint = result_use_hint(&bt, &at);
             }
             if hint.is_empty() {
+                hint = int_float_mix_hint(&at, &bt);
+            }
+            if hint.is_empty() {
                 hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             self.type_error(

@@ -1247,7 +1247,15 @@ impl<'a> Parser<'a> {
             }
             Tok::For => {
                 self.at += 1;
+                if self.kind() == Tok::LParen {
+                    let c = self.peek();
+                    return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \"@std/collections.ms\"");
+                }
                 let name = self.need(Tok::Name)?;
+                if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
+                    let c = self.peek();
+                    return self.fail(c, "for uses 'in', not 'of'; write 'for item in items:'");
+                }
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
                     return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value");
