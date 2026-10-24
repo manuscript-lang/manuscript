@@ -10,7 +10,7 @@
 
 ## Status
 
-- Runtime layer implemented on branch `claude/project-thread-lgd5qy` (PR #1181): stages 2 and 3. Stage 4 (checker rule, `WorkerGroup`) and later stages not started. Nothing merges until the whole feature works (owner, 2026-10-24).
+- Implemented on branch `claude/project-thread-lgd5qy` (PR #1181): runtime isolates, `WorkerGroup`, checker rule, pipes, fixtures and docs. Open: macOS and Windows verification. Nothing merges until the whole feature works (owner, 2026-10-24).
 - Direction (Chinmay, 2026-10-24): `worker_threads`-style model; separate proposals for threads and processes; dedicated group type; `Channel` uppercase; no user-facing "sendable" concept; Linux, macOS and Windows in every stage; 2 GiB default arena per worker; channels are bidirectional and in memory for tasks and workers (socketpair only for processes); majority of the work in Manuscript, small general Rust primitives.
 - Reversed since the first draft: raw-memory moves between arenas (replaced by JSON frames) and a result-returning `results()` (replaced by channels both ways).
 - Siblings: `proposals/taskgroup.md` (landed: `stdlib/tasks.ms`), `proposals/child-processes.md` (same group shape), channels (`proposals/channels.md`, PR #1185).
@@ -21,7 +21,7 @@
 - One runtime thread runs all Manuscript code (`crates/DESIGN.md` decision 4, `crates/ms-rt/src/task.rs`).
 - A CPU-bound fan-out (hashing, parsing, compression, search) takes N times as long as on N cores.
 - Affected: server and CLI authors, and agents writing batch tools.
-- Not measured: no benchmark here shows a workload that gains. Stage 5 must record scaling at 1, 2 and 4 workers.
+- Measured (Linux, 4 cores, release build, eight `fib(38)` jobs round-robin over N workers): 1 worker 1.82 s, 2 workers 1.03 s (1.8x), 4 workers 0.60 s (3.0x).
 
 ## Goals and non-goals
 
@@ -39,29 +39,26 @@
 
 ## Design
 
-### Syntax and API
-
-Provisional: the channel API is owned by the channels thread; the shape below follows `ProcessGroup`.
+### Syntax and API (as built)
 
 ```manuscript
-from "@std/workers.ms" import WorkerGroup
+from "@std/workers.ms" import WorkerGroup, worker_channel
 
-def hash_worker(chat: Channel[Bytes, String]) -> Unit:
-    for chunk in chat.incoming():
-        chat.send(sha256_hex(chunk))
+def hash_worker() -> Unit:
+    var ch = worker_channel[String, Bytes]()
+    # receive chunks, send digests, until the starter closes its end
 
-def hash_all(chunks: List[Bytes]) -> Result[List[String], TaskError]:
-    with WorkerGroup() as group:
-        let worker = group.spawn(hash_worker)
-        for chunk in chunks:
-            worker.send(chunk)
-        return worker.receive_n(chunks.length())
+def hash_all(chunks: List[Bytes]) -> Result[List[String], WorkerError]:
+    with WorkerGroup[Bytes, String]() as group:
+        var worker = try group.spawn(hash_worker)
+        # send chunks, read digests, then worker.channel.close() and worker.join()
 ```
 
-- `WorkerGroup`: `Closeable`; untyped. `spawn(entry) -> Worker[In, Out]`; the worker owns one `Channel[In, Out]` end, the entry receives the other.
-- `Worker.close()` closes the channel, sets the cancel flag, then joins. Leaving `with` closes every worker.
-- `entry` is a named top-level `def` taking its channel end. One binary, so a function item identifies it; lambdas and captures are rejected at the call site.
-- A fault in a worker is reported to the parent at join; the group re-raises it in the parent, which then exits 70 after its own cleanups.
+- `WorkerGroup[In = Unit, Out = Unit]`: `Closeable`. `spawn(entry: Callable[[], Unit]) -> Result[Worker[In, Out], WorkerError]`. The starter's end is `worker.channel: Channel[In, Out]`; the worker takes the other with `worker_channel[Send, Receive]()` (`Channel` and `Transport` come from `@std/channels.ms`).
+- `entry` is a named top-level `def` with no parameters. The checker rejects anything else (lambda, local function, captured value) at the `spawn` call, because the entry crosses as a capture-free closure: the runtime copies its code pointer into a system block and rebuilds a closure in the worker's arena (one binary, so the pointer is valid in both). This replaces the earlier idea of passing the channel end as an entry parameter, which needed a generated typed thunk: `worker_channel` is an ordinary generic function, so no compiler support beyond the checker rule is needed.
+- `Worker.join()` closes the starter's end, waits, and returns `Result[Unit, WorkerError]` (`Faulted(report)`, `Cancelled`, `NotStarted`); later calls return the same outcome. `Worker.cancel()` raises the worker's cancel flag. Leaving `with` cancels, closes and joins every worker.
+- A fault in a worker does not end the program: it comes back from `join` as `Faulted(report)`. The group does not re-raise (decision changed from the first draft: the caller can choose, and a fault is data like a task's error).
+- Transport: `WorkerTransport[In, Out]` implements `Transport` over `msrt_pipe_*` (`ms-rt/src/pipe.rs`). The pipe is a duplex queue of whole messages in system memory, bounded at 16 messages per direction; a waiting task parks on a remote token that the other end posts. Encoding and decoding are `stringify` and `parse` in Manuscript. Framing is not needed in memory; the process transport (socket pair) will add it in Manuscript. This deviates from "pipe written in Manuscript" in one place: the shared queue lives in Rust because two isolates share no Manuscript memory; it is about 250 lines with no knowledge of messages.
 
 ### Semantics
 
@@ -93,8 +90,8 @@ flowchart LR
 
 - Per-isolate (`isolate_static!`): `DROP_DEPTH`, `PENDING`, `EQ`, string `HINT`, `TRAP`, `CLEANUPS`, `FAULTING`, `SECONDARY`, `TASK_CANCEL`, `PRIMARY`, `GUARDS`, `CUR_HDR`, `ROOT_HDR`, `SCHED`, poller `STATE`, allocator `STATE`, task-scope tables, `TIMED_OUT`.
 - Process-wide, set before other isolates or read-only: `TABLES`, argc/argv, `MAIN_FN`, `MAIN_RESULT`, `START_NANOS`, `STACK_LO/HI` (read by profilers on other threads), profiler buffers.
-- Process-wide, needs a lock before a second isolate writes: `OUT`, `TTY`, `CLOSED` (stdout writer), `EXIT_HOOKS`.
-- `ms-std-*` crates keep `ms_rt::ffi::Global` cells (`ms-std-io` STDIN, `ms-std-terminal`, `ms-std-system` caches): main-isolate-only; a worker that reaches them must fault.
+- Process-wide, main isolate only: `OUT`, `TTY`, `CLOSED` (stdout buffer; a worker writes straight to descriptor 1 under a lock, unbuffered), `EXIT_HOOKS`. Per-isolate since workers: `FAILURE`, `STDIN_PENDING`.
+- `ms-std-*` crates keep `ms_rt::ffi::Global` cells (`ms-std-io` STDIN, `ms-std-terminal`, `ms-std-system` caches): main-isolate-only; `Global::get` faults in a worker ("only available on the main thread").
 
 ## Components touched
 
@@ -102,9 +99,9 @@ flowchart LR
 | --- | --- | --- |
 | `crates/ms-rt` | `Process<T>` / `isolate_static!`, per-isolate arenas and remote free, header blocks, worker externs, token routing (done) | unit tests: remote free, worker run/fault/cancel; conform |
 | `crates/ms-clif`, LLVM path | header block via masked stack pointer (Windows: call) (done) | benchmark gate (`bench/perf`) |
-| `crates/ms-check` | named-def entry rule, worker-boundary type check, diagnostics | conformance reject cases |
-| `crates/ms-lower` / `ms-mir` | entry reference lowering for `spawn` | e2e worker fixture |
-| `stdlib/workers.ms` | `WorkerGroup`, `Worker` over the worker externs and channels, in Manuscript | `make docs` regenerate |
+| `crates/ms-check` | named-def entry rule at `WorkerGroup.spawn` (done); JSON encodability is checked by `stringify`/`parse` at run time | `worker-entry-lambda` fixture |
+| `crates/ms-lower` / `ms-mir` | none: the entry is an ordinary capture-free closure | e2e `workers.ms` |
+| `stdlib/workers.ms` | `WorkerGroup`, `Worker`, `worker_channel`, `WorkerTransport` in Manuscript (done) | `make docs-check` |
 | `crates/ms-std-*` | statics classified; reactors per thread | per-crate tests |
 | `ms-syntax`, formatter, lint, LSP | unchanged (no syntax) | - |
 | Docs | core-language page, cheat sheet (`ms guide`), `crates/DESIGN.md` decision 4, `VISION.md`, `.experts/runtime.md` | `make repo-check`, `make book-check` |
@@ -153,16 +150,15 @@ flowchart LR
 1. Spike: done. Cranelift TLS is call-based; header blocks chosen; allocator TLS cost measured.
 2. Done: `Global<T>` split into `Process<T>` / `isolate_static!`; static audit for `ms-rt`.
 3. Done: per-isolate arenas with registry and remote free; per-isolate wake inboxes; header blocks with slot-aligned stacks; main as a task; worker spawn/cancel/join with unit tests (spawn, fault report, cancel, remote free).
-4. Next: checker rule (named-def entry, encodability), `WorkerGroup`/`Worker` in `stdlib/workers.ms`, ms-std main-only statics fault in workers, conformance fixtures. Waits on the channel API.
-5. In-memory duplex pipe and `Channel` framing (channels thread).
-6. Docs (`crates/DESIGN.md` decision 4, `crates/ms-rt/ABI.md`, `VISION.md`, `.experts/runtime.md`, cheat sheet), scaling at 1, 2, 4 workers; gate: two workers reach at least 1.6x on a CPU-bound kernel.
+4. Done: checker rule (named-def entry), `WorkerGroup`/`Worker`/`worker_channel` in `stdlib/workers.ms`, `Global<T>` faults in a worker, conformance fixtures `workers.ms` and `worker-entry-lambda.ms`.
+5. Done: in-memory duplex message pipe (`pipe.rs`) and the transport.
+6. Done on Linux: docs (`concurrency/workers.md`, `crates/DESIGN.md`, `VISION.md`, `.experts/runtime.md`), scaling (gate of 1.6x on two workers met). Open: green `make verify-full` on macOS and Windows.
 
 ## Open questions
 
-- Pending the channels thread: the pipe API, how a worker entry receives its channel end (a generated entry thunk or a flattened-argument call), and the re-raise policy on `Worker.close()`.
 - Whether `ms-std-net` reactors and similar thread-affine natives should be usable inside workers (default: fault).
 - Workers spawning workers (default: allowed, counted against the 256 cap).
-- Orphaned state: a worker's scheduler `Vec`s use the Rust allocator and are freed at teardown; arena blocks are unmapped.
+- Rust code in a worker (the Rust standard library's allocations, including the scheduler's `Vec`s) uses the system allocator on Linux, because process-wide caches (`OnceLock<Vec>` in `ms-std-net`) could otherwise point into an unmapped arena; macOS and Windows already use the system allocator for Rust code.
 
 ## Rejected ideas
 
