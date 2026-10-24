@@ -174,7 +174,9 @@ fn linkable(ir: &str) -> String {
             continue;
         }
         let line = if line.starts_with("attributes #") {
-            drop_attribute(&drop_attribute(line, "target-cpu"), "target-features")
+            let line = drop_attribute(&drop_attribute(line, "target-cpu"), "target-features");
+            // A group that held only those attributes (aarch64) must not be left empty: LLVM rejects it.
+            line.replace("= { }", "= { \"ms-hot\"=\"1\" }")
         } else if line.starts_with("define ")
             && let Some(group) = line.rfind(" #")
         {
@@ -254,4 +256,22 @@ fn strip_debug(archive: &Path) {
         }
     }
     let _ = std::fs::remove_file(&original);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::linkable;
+
+    #[test]
+    fn linkable_strips_cpu_attributes_and_keeps_groups_non_empty() {
+        let ir = "target triple = \"aarch64-unknown-linux-musl\"\n\
+                  define i64 @msrt_f(i64 %a) unnamed_addr #0 {\n\
+                  attributes #0 = { nounwind \"target-cpu\"=\"generic\" }\n\
+                  attributes #1 = { \"target-cpu\"=\"generic\" }\n";
+        let out = linkable(ir);
+        assert!(!out.contains("target-cpu") && !out.contains("target triple"));
+        assert!(out.contains("define i64 @msrt_f(i64 %a) unnamed_addr alwaysinline #0 {"));
+        assert!(out.contains("attributes #0 = { nounwind }"));
+        assert!(!out.contains("{ }"));
+    }
 }
