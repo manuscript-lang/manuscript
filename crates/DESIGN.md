@@ -25,6 +25,16 @@ tools: ms-project (manifest, lock, aliases, import resolution), ms-driver (modul
 
 Keep public crate APIs small and documented with rustdoc; cross-crate changes must preserve the shared ownership and runtime ABI contracts.
 
+## Standard-library crate layering
+
+`ms-std-*` crates form three layers, enforced by `make repo-check` (`crates/ms-repo-check/src/layering.rs`):
+
+1. `ms-std-core`: typed marshalling of ABI values (`Str`, `Out`, handles, lists). Depends on `ms-rt-abi` only and holds no runtime services.
+2. `ms-std-rt`: runtime services (faults, cancellation, task waits, the blocking pool, failure stash). Depends on `ms-rt-abi` only; never on `ms-std-core` or a leaf. It stays a separate crate so a pure-compute leaf (`json`, `regex`, `url`, `html`, `math`, `crypto`) can reach marshalling but not the scheduler; merging it into core would remove that boundary and give those crates `libc` and the pool for no gain.
+3. Leaves (one per native module): depend on `ms-rt-abi`, `ms-std-core`, optionally `ms-std-rt`, and on another leaf only through a listed edge (`LEAF_EDGES`: `archive`→`compress`, `fs`→`path`, `io`→`fs`, `log`→`json`, `process`→`fs`/`io`, `system`→`process`). The graph stays acyclic; `ms-rt` is a dev-dependency only.
+
+Only `ms-native` (all of them), `ms-lower` (`ms-std-decimal`, without its `ffi` feature) and `ms-rt` (the runtime-internal natives) may depend on a std crate. A new edge needs a reason in the change that adds it. Heavy optional surface inside a leaf is a cargo feature that defaults on, as `ms-std-net`'s `http` (HTTP client and server, HTTP/2, WebSocket; off leaves sockets, DNS and TLS).
+
 ## Value representation (word-level, 64-bit targets)
 
 - `Int` i64 (checked arithmetic faults on overflow), `Float` f64, `Bool` i8 (0 or 1), `Unit` zero-sized.

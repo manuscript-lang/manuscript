@@ -8,6 +8,11 @@ description = "Manuscript native standard library: net, tls, http, websocket"
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+[features]
+default = ["http"]
+# The HTTP client and server, HTTP/2 and WebSocket. Off leaves sockets, DNS and TLS.
+http = ["dep:httparse", "dep:flate2", "dep:psl"]
+
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
 ms-std-core = { path = "../ms-std-core" }
@@ -20,9 +25,9 @@ rustls-pki-types = { version = "1", features = ["std"] }
 rustls-native-certs = "0.8"
 x509-parser = { version = "0.18", features = ["verify"] }
 base64 = "0.22"
-httparse = "1"
-flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
-psl = "2"
+httparse = { version = "1", optional = true }
+flate2 = { version = "1", default-features = false, features = ["rust_backend"], optional = true }
+psl = { version = "2", optional = true }
 ring = "0.17"
 
 [target.'cfg(unix)'.dependencies]
@@ -42,3 +47,7 @@ ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "web_bench"
+required-features = ["http"]

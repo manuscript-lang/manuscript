@@ -126,7 +126,7 @@ pub fn sleep(ns: i64) -> u32 {
 /// server reactor role on, so a request handler that waits does not stall the other requests.
 pub fn install_prepark_hook() {
     unsafe extern "C-unwind" fn hook() {
-        crate::http::server::give_up_reactor_role();
+        crate::reactor::give_up_role();
     }
     // SAFETY: `hook` follows the runtime's hook ABI and stays valid for the process lifetime.
     unsafe { msrt_task_set_prepark(Some(hook)) };

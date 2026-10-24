@@ -10,11 +10,15 @@
 //!   reaches zero. Only `handler` calls back into compiled code and keeps raw
 //!   pointers.
 
+#[cfg(feature = "http")]
 pub mod handler;
+#[cfg(feature = "http")]
 pub mod http_client;
+#[cfg(feature = "http")]
 pub mod http_server;
 pub mod net;
 pub mod tls;
+#[cfg(feature = "http")]
 pub mod websocket;
 
 use crate::error::Status;
@@ -66,6 +70,12 @@ handle_newtype! {
     ListenerH(std::rc::Rc<crate::conn::Listener>);
     /// A `DatagramSocket` handle.
     DgramH(std::rc::Rc<crate::conn::Datagrams>);
+    /// An `IpAddress` handle.
+    IpH(std::net::IpAddr);
+}
+
+#[cfg(feature = "http")]
+handle_newtype! {
     /// An `HttpHeaders` handle.
     HeadersH(crate::http::headers::Shared);
     /// An `HttpServer` handle.
@@ -78,6 +88,4 @@ handle_newtype! {
     ExchH(std::rc::Rc<crate::http::exchange::Exchange>);
     /// A `WebSocket` handle.
     SocketH(std::rc::Rc<crate::ws::socket::Socket>);
-    /// An `IpAddress` handle.
-    IpH(std::net::IpAddr);
 }

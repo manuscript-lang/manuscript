@@ -1,6 +1,7 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
+mod layering;
 mod licenses;
 mod nested;
 mod release;
@@ -52,9 +53,10 @@ fn run() -> ExitCode {
     issues.extend(release::extension_version());
     issues.extend(release::workflow_triggers());
     issues.extend(unsafe_boundary::check(&files));
+    issues.extend(layering::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, and unsafe boundary agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, and std crate layering agree."
         );
         return ExitCode::SUCCESS;
     }
