@@ -34,6 +34,9 @@ An extern follows the runtime's native conventions (`ms-rt/ABI.md`, section 1).
 | `String` argument | `const ms_str *`, borrowed for the call |
 | `String` result | trailing `ms_str *out`, filled by `msrt_string_from_bytes` |
 | `Unit` result | `void` |
+| `Result[T, E]` result | `uint8_t` status, with `T` through a trailing `out` unless it is `Unit` |
+
+A `Result[T, E]` return takes `Int`, `Float`, `Bool`, `String`, or `Unit` for `T`. `E` is a `type` whose cases all carry no payload. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order. Reordering the cases of `E` changes the numbers, so the native must change with it. A status past the last case is read as the last case. `out` is written only when the status is `0`.
 
 Any other type is rejected by `ms check`. C types such as `int`, `float`, `char *`, and structs have no Manuscript counterpart, so a library using them needs a small shim written against `crates/ms-rt-abi/include/ms_abi.h`.
 

@@ -6,7 +6,8 @@ use crate::func::{FnLower, Val};
 use crate::rtcall::{RtParam, RtSig};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
-use ms_mir::types::Ty as MTy;
+use ms_mir::ir::{Imm, Op};
+use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::Expr;
 
 impl FnLower<'_> {
@@ -24,7 +25,28 @@ impl FnLower<'_> {
             return Ok(self.dummy(MTy::UNIT));
         }
         let result = self.emty(e)?;
-        let vals: Vec<_> = args.iter().map(|a| self.borrow(a.val)).collect();
+        let mut vals: Vec<_> = args.iter().map(|a| self.borrow(a.val)).collect();
+        if let TyKind::Alt(a) = self.b.m.types.kind(result).clone() {
+            // `Result[T, E]`: a `u8` status (0 is ok, `n` the `n`th case of `E`) and `T` through `out`.
+            let ok = self.ok_case_index(a)?;
+            let payload = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+            self.at(e.pos);
+            let out = if payload == MTy::UNIT {
+                None
+            } else {
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(payload), Some(MTy::PTR))
+                    .expect("slot");
+                vals.push(slot);
+                Some((slot, payload))
+            };
+            let code = self.status_code(symbol, &vals)?;
+            // The `extern:` prefix numbers the error cases by declaration order.
+            let mut r = self.status_result(&format!("extern:{symbol}"), code, out, None, result)?;
+            r.v = self.stamped(r.v)?;
+            return Ok(r);
+        }
         let c_type = |t: MTy| match t {
             MTy::INT => "i64",
             MTy::FLOAT => "f64",

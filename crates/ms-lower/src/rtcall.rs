@@ -1123,9 +1123,15 @@ impl FnLower<'_> {
 /// Whether the statuses of `sym` number the error cases 1 + declaration index
 /// (`ms-std-net/ABI.md`) instead of sharing the `STATUS_CASES` codes.
 fn ordinal_status(sym: &str) -> bool {
-    ["msrt_net_", "msrt_http_", "msrt_websocket_", "msrt_tls_"]
-        .iter()
-        .any(|p| sym.starts_with(p))
+    [
+        "msrt_net_",
+        "msrt_http_",
+        "msrt_websocket_",
+        "msrt_tls_",
+        "extern:",
+    ]
+    .iter()
+    .any(|p| sym.starts_with(p))
 }
 
 /// The symbol returning the text of a `Failed` status of `sym`'s module, when it has one.

@@ -677,9 +677,6 @@ impl Checker {
             } else if s.kind == SymKind::Fn {
                 let f = d.func().expect("fn");
                 let t = self.signature(&f.params, Some(&f.result));
-                if f.external {
-                    self.check_extern_signature(f, &t);
-                }
                 *s.ty.borrow_mut() = Some(t);
             } else {
                 let def = s.ty().def.clone().expect("def");
@@ -761,7 +758,11 @@ impl Checker {
     fn check_bodies(&mut self, module: &ModRef) {
         for d in &module.decls {
             match &d.decl().kind {
-                DeclKind::Fn(f) if f.external => {}
+                DeclKind::Fn(f) if f.external => {
+                    if let Some(s) = self.own_symbol(d) {
+                        self.check_extern_signature(f, &s.ty());
+                    }
+                }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
                     if let Some(s) = self.own_symbol(d) {
                         let t = s.ty();
@@ -991,10 +992,27 @@ impl Checker {
             }
         }
         let result = t.result_ty();
-        if result.id != "<invalid>" && !RESULTS.contains(&result.id.as_str()) {
+        if result.id == "<invalid>" {
+            return;
+        }
+        if result.is_std("Result") && result.args.len() == 2 {
+            let (ok, error) = (&result.args[0], &result.args[1]);
+            let cases = cases(error);
+            if !RESULTS.contains(&ok.id.as_str()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern Result value has type {}, which cannot cross the native boundary; use Int, Float, Bool, String, or Unit", ok.name),
+                );
+            } else if cases.is_empty() || cases.iter().any(|c| !c.fields.is_empty()) {
+                self.type_error(
+                    f.result.pos,
+                    format!("extern error type {} must be an alternative whose cases carry no payload; the native returns the status 1 + the case index", error.name),
+                );
+            }
+        } else if !RESULTS.contains(&result.id.as_str()) {
             self.type_error(
                 f.result.pos,
-                format!("extern result has type {}, which cannot cross the native boundary; return Int, Float, Bool, String, or Unit", result.name),
+                format!("extern result has type {}, which cannot cross the native boundary; return Int, Float, Bool, String, Unit, or a Result of them", result.name),
             );
         }
     }
