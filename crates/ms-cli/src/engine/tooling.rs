@@ -120,25 +120,26 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             return (1, Vec::new());
         }
     };
-    let mut analyzed = Vec::new();
     let mut files = Vec::new();
-    let mut issues = selection.diagnostics.clone();
+    let mut diagnostics = selection.diagnostics.clone();
+    let mut findings = Vec::new();
+    let mut summaries = Vec::new();
+    let mut root = String::new();
     for input in &selection.inputs {
         let checked = analyze_with(&input.path, &Overlay::new(), check, check);
         files.extend(watched_files(&input.path, &checked));
         for issue in &checked.diagnostics {
-            issues.push(placed(&selection, &checked.source_root, issue));
+            diagnostics.push(placed(&selection, &checked.source_root, issue));
         }
-        analyzed.push(checked);
-    }
-    let mut diagnostics = issues.clone();
-    for (input, checked) in selection.inputs.iter().zip(&analyzed) {
+        if selection.inputs.len() == 1 && !selection.collection {
+            root.clone_from(&checked.source_root);
+        }
         let Some(program) = checked.program.as_ref().filter(|_| checked.success()) else {
             continue;
         };
         if check {
             if !request.json {
-                let _ = writeln!(io.stdout, "{}", checked_line(input, checked));
+                summaries.push(checked_line(input, &checked));
             }
             continue;
         }
@@ -149,13 +150,20 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 column: finding.pos.column as usize,
                 offset: finding.pos.offset as usize,
             };
-            diagnostics.push(CommandDiagnostic {
+            findings.push(CommandDiagnostic {
                 code: finding.code.to_string(),
                 message: finding.message,
                 position: selection.position(&checked.source_root, &at),
                 ..CommandDiagnostic::default()
             });
         }
+    }
+    // Keep compiler diagnostics ahead of lint findings and defer output until
+    // every input has been checked, without retaining their checked programs.
+    let has_errors = !diagnostics.is_empty();
+    diagnostics.extend(findings);
+    for summary in summaries {
+        let _ = writeln!(io.stdout, "{summary}");
     }
     if selection.collection {
         diagnostics = ordered(diagnostics);
@@ -170,14 +178,10 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             files,
         );
     }
-    let root = match analyzed.as_slice() {
-        [only] if !selection.collection => only.source_root.as_str(),
-        _ => "",
-    };
     for issue in &diagnostics {
         let mut position = issue.position.clone();
         if !root.is_empty() && !gopath::is_abs(&position.file) {
-            position.file = gopath::join(&[root, &position.file]);
+            position.file = gopath::join(&[&root, &position.file]);
         }
         let label = if issue.phase.is_empty() {
             &issue.code
@@ -186,7 +190,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         };
         let _ = writeln!(io.stderr, "{position}: {label}: {}", issue.message);
     }
-    if !issues.is_empty() {
+    if has_errors {
         let count = diagnostics.iter().filter(|d| !d.phase.is_empty()).count();
         let _ = writeln!(
             io.stderr,
