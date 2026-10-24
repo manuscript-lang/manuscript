@@ -177,9 +177,6 @@ impl Ownership {
 const UNVETTED: &[&str] = &[
     // Transports share one stream handle through non-`var` methods.
     "@std/log.ms",
-    // `borrow_body` stores a response body it only means to borrow; a resource handle has no
-    // way to be held without being moved.
-    "@std/sse.ms",
 ];
 
 /// Whether the ownership checker vets this module.
