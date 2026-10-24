@@ -55,8 +55,9 @@ def nanos(limit: Optional[Duration]) -> Int:
 # The body of a task: runs `work` and stores its one result in `slot`.
 def run[T](work: Callable[[], T], slot: Shared[List[T]]) -> Unit:
     let value = work()
-    let empty = slot.take()
-    slot.put([value])
+    var held = slot.take()
+    held.append(value)
+    slot.put(held)
 
 # A started task that returns a `T`. `result` waits for it.
 export type Task[T]:
@@ -101,8 +102,9 @@ impl TaskGroup[T]:
             self.scope, lambda: run(work, slot), nanos(timeout), nanos(self.timeout)
         )
         let task = Task(handle, values)
-        let started = self.tasks.take()
-        self.tasks.put(started.concat([Task(handle, values)]))
+        var started = self.tasks.take()
+        started.append(Task(handle, values))
+        self.tasks.put(started)
         return task
 
     # Waits for every started task and returns their results in start order, or the first task's error.

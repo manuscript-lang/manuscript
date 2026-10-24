@@ -68,7 +68,7 @@ def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
 
 - Runtime (`ms-rt`): `scope.rs` keeps the task list of each scope. `msrt_scope_new`, `msrt_scope_spawn(scope, closure, task_limit_ns, scope_limit_ns)` (retains the closure, starts a `SPAWN_FATAL` task, registers a kill deadline), `msrt_scope_join(handle, keep)` and `msrt_scope_wait(scope)` (0 returned, 1 timed out, 2 cancelled, 3 collected or closed). Scope ids carry a generation, so a closed group's id never reaches a later group, and `msrt_scope_close(scope)` (cancel, wait, release).
 - Compiler: no TaskGroup-specific code. An `extern def` parameter of function type passes the closure object, lent. A `with` binding whose `close` is in a generic `impl` binds the impl's type variables.
-- Library: `@std/tasks.ms` is about 100 lines with comments over five externs. A task's result travels in a `Shared[List[T]]` slot filled with a freshly built list.
+- Library: `@std/tasks.ms` is about 100 lines with comments over five externs. A task's result travels in a `Shared[List[T]]` slot filled by the task.
 
 ## Alternatives
 
@@ -80,6 +80,6 @@ def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
 ## Risks and known gaps
 
 - The benefit is design-level; no benchmark shows programs failing for lack of concurrency. Examples to check first-try success by agents are planned with stage 5.
-- Two pre-existing compiler bugs were hit and worked around: issue #1167 (`Shared[List]` append-after-take frees the buffer; `Shared[Optional[Int]]` misreads) and source methods cannot declare type parameters.
+- Source methods cannot declare type parameters, so a group has one result type. Issue #1167 (`Shared` payload bugs hit during this work) is fixed on main.
 - Each task reserves 16 MiB of address space for its stack (committed lazily).
 - A deadlock where every task waits ends the program (exit 70), as it does for the existing runtime.
