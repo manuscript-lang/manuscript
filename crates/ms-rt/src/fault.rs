@@ -480,20 +480,27 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
 unsafe fn walk_fault_frames(_fp: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
-    let Some((pc, fp, remaining)) = sys::source_frame(fault_vec as *const () as usize, |pc| {
+    #[cfg(target_arch = "x86_64")]
+    // SAFETY: written once by the depth-fault shim on this thread, before any report is built.
+    let site = unsafe { core::ptr::replace(core::ptr::addr_of_mut!(DEPTH_SITE), [0; 2]) };
+    #[cfg(target_arch = "x86_64")]
+    let recovered = if site[0] != 0 {
+        // The depth limit was hit: the shim saved the generated frame, which a diverging Rust
+        // function between here and there may have clobbered in the register the unwinder reads.
+        Some((site[0], site[1], MAX_STACK_WALK_FRAMES - 2))
+    } else {
+        sys::source_frame(fault_vec as *const () as usize, |pc| {
+            find_func(t, pc).is_some()
+        })
+    };
+    #[cfg(not(target_arch = "x86_64"))]
+    let recovered = sys::source_frame(fault_vec as *const () as usize, |pc| {
         find_func(t, pc).is_some()
-    }) else {
+    });
+    let Some((pc, fp, remaining)) = recovered else {
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    if DEPTHDBG.load(Ordering::Relaxed) {
-        let sp: usize = 0;
-        let m = format!("WALKDBG pc={pc:x} fp={fp:x} remaining={remaining} lo={lo:x} hi={hi:x} lo0={:x} hi0={:x} local={:x}\n", unsafe { *STACK_LO.ptr() }, unsafe { *STACK_HI.ptr() }, &sp as *const usize as usize);
-        sys::write_all(sys::STDERR, m.as_bytes());
-        let (n, r) = unsafe { (*(fp as *const usize), *((fp + 8) as *const usize)) };
-        let m = format!("WALKDBG next={n:x} ret={r:x} infunc={}\n", find_func(t, r).is_some());
-        sys::write_all(sys::STDERR, m.as_bytes());
-    }
     // SAFETY: source_frame recovered the current generated frame and stack_limits
     // bounds the live thread stack.
     unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
@@ -897,10 +904,8 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -
 /// Lowers the recursion limit so cleanups can run calls in the reserve. A function of its own that
 /// returns: the Windows frame walk recovers the faulting frame's `rbp` by unwinding, and a
 /// diverging function is free to leave a register it used (here the new limit) unrestored.
-static DEPTHDBG: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 #[inline(never)]
 fn lower_depth_limit() {
-    DEPTHDBG.store(true, Ordering::Relaxed);
     // SAFETY: single threaded limit change.
     unsafe {
         let lo = *STACK_LO.ptr();
@@ -912,8 +917,30 @@ fn lower_depth_limit() {
     }
 }
 
+/// Where the generated code was when it hit the depth limit: the return address into it and its
+/// `rbp`, saved by the entry shim before any Rust code can reuse the register.
+#[cfg(all(windows, target_arch = "x86_64"))]
+static mut DEPTH_SITE: [usize; 2] = [0; 2];
+
+#[cfg(all(windows, target_arch = "x86_64"))]
+core::arch::global_asm!(
+    ".globl msrt_fault_depth",
+    "msrt_fault_depth:",
+    "mov rax, [rsp]",
+    "mov [rip + {site}], rax",
+    "mov [rip + {site} + 8], rbp",
+    "jmp {body}",
+    site = sym DEPTH_SITE,
+    body = sym fault_depth_body,
+);
+
+#[cfg(not(all(windows, target_arch = "x86_64")))]
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_depth() -> ! {
+    fault_depth_body()
+}
+
+extern "C-unwind" fn fault_depth_body() -> ! {
     lower_depth_limit();
     fault(
         b"stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead",
