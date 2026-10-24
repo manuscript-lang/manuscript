@@ -3,7 +3,7 @@
 
 use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use alloc::string::String;
-use ms_std_core::{
+use ms_rt::ffi::{
     Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, native,
 };
 

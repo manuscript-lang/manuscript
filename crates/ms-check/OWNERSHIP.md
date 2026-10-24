@@ -18,7 +18,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 
 ## Model
 
-- **Classes.** `Copy` (scalars, and records/alternatives/tuples of scalars), `Move` (strings and everything else owned; a borrowed string stored in an owned position needs `.clone()`), `Resource` (types with cleanup; move-only, never `.copy()`). `Shared[T]` is planned (not in the language yet; see `crates/DESIGN.md` decision 1) and would be the only refcounted source type, with `Copy`-class sharing. Type variables are `Move` (conservative); handle types are `Copy`-class handles, their `with` resources `Resource`.
+- **Classes.** `Copy` (scalars, and records/alternatives/tuples of scalars), `Move` (strings and everything else owned; a borrowed string stored in an owned position needs `.clone()`), `Resource` (types with cleanup; move-only, never `.copy()`). `Shared[T]` (`@std/shared.ms`) is the only refcounted source type: `Copy` class, immutable, read through the lending `get()`; a `Shared` of a `Resource` payload is itself `Resource`, so a closeable value is never held twice. Type variables are `Move` (conservative); handle types are `Copy`-class handles, their `with` resources `Resource`.
 - **One owner.** A `Move`-class value passed to a consuming position (consuming parameter, record/list/map element, `return`, `let`/`var` initializer from a non-place, closure capture of an escaping closure) is moved. A move is legal only at the value's last use (backward liveness; loops use a head fixpoint; reassignment kills the old value). Use after move is an error.
 - **Modes.** Parameter modes are inferred by a program-wide fixpoint: `Borrow` (read), `Mutate` (declared `var`), `Consume` (moved/stored/returned). `var` is declared in the signature (`var xs: T`, `var fn` receivers) and written at the call (`f(var xs)`); the marker is required exactly where the callee takes `var`. There is no `mut`.
 - **Mutability.** `let` is immutable including contents; only `var` bindings, `var` parameters and `var fn` receivers change. Fields/elements of a `var` binding are changed through it.
@@ -60,6 +60,7 @@ f.parameters, f.receiver              // inferred ParamMode: Borrow | Mutate (va
 | String views | `view_result_stored`, `view_bound_then_stored`, `view_source_changed`, `view_result_returned_from_local`; accepted: `view_in_place`, `view_lent_result` |
 | Mutable borrows | `var_borrow_second_mutable`, `var_borrow_read_origin`, `var_borrow_mutate_origin`, `var_borrow_of_let`, `var_borrow_reassigned`, `var_borrow_moved_out`, `if_var_of_let`, `if_var_read_origin`, `if_var_mutate_origin`, `if_var_reassigned` |
 | Mutators | `mutator_chaining`, `mutator_result_used` |
+| Shared | `shared_var_borrow`; accepted: `shared_copies` |
 | Explicit `ref` | `ref_missing_on_lender`, `ref_result_owned`, `ref_binding_owned`, `ref_impl_adds_ref`, `ref_result_two_paths_var`; accepted: `ref_result`, `ref_impl_owns_under_ref` |
 
 ## String views

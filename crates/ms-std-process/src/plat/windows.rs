@@ -49,7 +49,7 @@ pub fn wait_io(fds: [sys::Fd; 3], slice_ms: i64) -> [bool; 3] {
             return ready;
         }
         // Parks the task, so other tasks run while the pipes are idle.
-        ms_std_rt::task_sleep(1_000_000);
+        ms_rt::glue::task_sleep(1_000_000);
         waited += 1;
     }
 }

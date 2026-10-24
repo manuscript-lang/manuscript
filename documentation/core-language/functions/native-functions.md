@@ -42,6 +42,10 @@ Any other type is rejected by `ms check`. C types such as `int`, `float`, `char 
 
 Arguments are borrowed: a native reads them and does not keep the pointer after returning. A native builds string results only with `msrt_string_from_bytes`, never with its own allocator, so the program can free them. A native must not block indefinitely, since a native call is not a cancellation point.
 
+## Extern types
+
+`extern type Name` declares an opaque value whose layout the runtime owns, such as `Decimal`. Only the standard library may declare one; user modules get a diagnostic. A bundled module pairs it with private `extern fn` declarations and ordinary wrapper methods in an `impl` block, so the public API is plain Manuscript over the native symbols.
+
 ## Linking the native code
 
 `ms build`, `ms run`, and `ms test` take `--link <file>` (repeatable) for an object (`.o`) or static library (`.a`) that defines the symbols. The standard runtime and libc are always linked.

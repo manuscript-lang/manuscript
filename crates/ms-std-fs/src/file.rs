@@ -9,11 +9,11 @@ use crate::path;
 use crate::stream::Stream;
 use crate::sys::{self, CPath};
 use alloc::vec::Vec;
+use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_UNSUPPORTED,
 };
-use ms_std_rt::poll_cancel;
 
 /// `os.OpenFile` flag combinations for the mode strings of `open`.
 pub fn flags_of_mode(mode: &[u8]) -> Option<i32> {

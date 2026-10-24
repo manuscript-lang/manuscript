@@ -11,7 +11,7 @@ use ms_rt as _;
 
 mod libm;
 
-use ms_std_core::native;
+use ms_rt::ffi::native;
 
 macro_rules! unary {
     ($($sym:ident => $f:path),* $(,)?) => {$(
@@ -81,7 +81,7 @@ native! {
     safe fn msstd_math_abs_int(n: i64) -> i64 {
         match n.checked_abs() {
             Some(v) => v,
-            None => ms_std_core::int_overflow(),
+            None => ms_rt::ffi::int_overflow(),
         }
     }
 

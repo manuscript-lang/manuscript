@@ -1219,6 +1219,7 @@ impl Module {
             Op::RecGet
             | Op::AltGet
             | Op::ListGet
+            | Op::SharedGet
             | Op::ListGetNn
             | Op::ListGetU
             | Op::OptGet

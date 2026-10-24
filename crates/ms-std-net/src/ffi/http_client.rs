@@ -10,11 +10,11 @@ use crate::http::client::{
 use crate::http::headers::Headers;
 use crate::http::url;
 use crate::wait::Deadline;
-use ms_rt_abi::STATUS_NONE;
-use ms_std_core::{
+use ms_rt::ffi::{
     Bytes, BytesList, ErrOut, ObjRef, ObjSlot, Object, OptInt, Out, ReadSource, StatusCode, Str,
     abi_record, native,
 };
+use ms_rt_abi::STATUS_NONE;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;

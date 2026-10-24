@@ -7,7 +7,7 @@
 use crate::{Doc, Limits, Node, NodeId};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_std_core::{
+use ms_rt::ffi::{
     Fail, IdArray, ObjMut, ObjRef, Object, Out, Status, StrArray, abi_handle, native,
 };
 
@@ -231,8 +231,8 @@ mod tests {
     use super::*;
     use core::mem::MaybeUninit;
     use ms_rt as _;
+    use ms_rt::ffi::{ObjCell, new_string, str_ref};
     use ms_rt_abi::{STATUS_OK, StrVal};
-    use ms_std_core::{ObjCell, new_string, str_ref};
 
     #[test]
     fn roundtrip() {
@@ -256,9 +256,9 @@ mod tests {
                 STATUS_OK
             );
             assert!(str_ref(s.as_ptr()).starts_with("{\n  \"a\": [\n    1,"));
-            ms_std_core::str_release(s.assume_init_ref());
+            ms_rt::ffi::str_release(s.assume_init_ref());
             ms_rt::obj::msrt_release(d.cast());
-            ms_std_core::str_release(&text);
+            ms_rt::ffi::str_release(&text);
         }
     }
 }

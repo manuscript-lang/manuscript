@@ -5,8 +5,8 @@ use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
+use ms_rt::ffi::{Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, abi_record, native};
 use ms_rt_abi::STATUS_NONE;
-use ms_std_core::{Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, abi_record, native};
 
 abi_record! {
     /// `WebSocketOptions` as the compiler lays it out for natives.

@@ -17,7 +17,7 @@ recorded here before it is committed.)_
   clone, clear, and derived Set operations retain it. Descriptor-neutral native maps keep a null
   pointer and use the supplied builtin descriptor.
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
-  crates (`no_std` rlibs linked into `libms_rt.a`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
+  crates (rlibs linked into `libms_native.a` with `ms-rt`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
   `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
   `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
@@ -49,12 +49,12 @@ recorded here before it is committed.)_
   entry (bit 0 directory, bit 1 symlink). Streams are refcounted `Handle<Stream>` objects (`Obj` header, then the value); reads and writes
   poll in 50 ms slices so cancellation interrupts them. `STATUS_NONE` from `read`/`read_line` means end of stream. Generic `io.copy`,
   `read_all` and `read_line` over user-defined `ReadStream`s stay compiler-lowered.
-- **v2.3 (`ms-std-time`, `ms-std-rt`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
+- **v2.3 (`ms-std-time`, `ms_rt::glue`).** `msstd_time_*` covers `@std/time`. `Duration` is an `i64` of nanoseconds by value.
   `Timestamp` is `repr(C) { seconds: i64, nanos: i64 }` and `Instant` is `repr(C) { domain: u64, tick: i64 }`; both are passed by pointer
   and returned through a trailing `out`. `msstd_time_clock_now` uses domain 1 (the process monotonic clock); `Calendar` is returned as
   `CalendarOut` (ten `i64` fields in declaration order, then an owned zone-name string). Fallible calls return `STATUS_*` codes (`TimeError`
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
-  IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms-std-rt` is the shared glue (read/build strings, faults, cancellation).
+  IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms_rt::glue` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
   Only `Shared` boxes (internal today, used for builder handles; the source type `Shared[T]` is planned) and closures keep an `Obj` header and a count.
   `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).

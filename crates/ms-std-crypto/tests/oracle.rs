@@ -1,7 +1,7 @@
 //! Replays `tests/oracle/crypto.tsv`, a recorded corpus.
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
-use ms_std_core::Fail;
+use ms_rt::ffi::Fail;
 use ms_std_crypto::*;
 
 fn bytes(tok: &str) -> Vec<u8> {

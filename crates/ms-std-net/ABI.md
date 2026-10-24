@@ -6,7 +6,7 @@ Native implementations of `@std/net.ms`, `@std/net.ms`, `@std/http.ms` and
 modules. Behavior follows the standard-library contract in `stdlib/`. `@std/sse.ms` is written in Manuscript and
 has no natives.
 
-Linking: `libms_std_net.a` is linked next to `libms_rt.a` when a program imports one
+Linking: `libms_std_net.a` is linked into `libms_native.a` when a program imports one
 of these modules. The crate calls `msrt_*` symbols (allocation, strings, retain and
 release, cancellation) and never the other way around.
 

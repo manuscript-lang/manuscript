@@ -236,7 +236,20 @@ pub fn is_native_module(path: Name) -> bool {
 /// A native module's declaration by name.
 pub fn standard_module_symbol(path: Name, name: Name) -> Option<SymRef> {
     ensure_standard();
-    world(|w| w.modules.get(&path).and_then(|m| m.get(&name).cloned()))
+    world(|w| {
+        w.modules
+            .get(&path)
+            .and_then(|m| m.get(&name).cloned())
+            // An `extern type` of a source module is canonical from the moment of loading.
+            .or_else(|| {
+                w.symbols
+                    .get(&name)
+                    .filter(|s| {
+                        s.module == path && s.export && w.source_modules.contains_key(&path)
+                    })
+                    .cloned()
+            })
+    })
 }
 
 /// Every bundled module path in sorted order.
@@ -548,10 +561,47 @@ fn position_text(file: Name, pos: ms_syntax::Pos) -> String {
 }
 
 impl Loader<'_> {
+    /// The canonical symbol of an `extern type` declared in a bundled source module.
+    fn register_extern_type(&mut self, module: &ModRef, d: &DeclRef) -> Result<(), String> {
+        let name = d.name();
+        if !d.type_params().is_empty() {
+            return Err(format!(
+                "extern types cannot be generic yet: {}",
+                position_text(module.file, d.pos())
+            ));
+        }
+        let id = n(&format!("@std/{name}"));
+        let s = Rc::new(Sym {
+            name,
+            id,
+            kind: SymKind::Type,
+            module: module.file,
+            native: name,
+            export: d.decl().export,
+            ty: RefCell::new(None),
+            variables: RefCell::new(Vec::new()),
+            decl: Some(d.clone()),
+        });
+        let def = Definition::new(&s, Kind::Native);
+        let mut t = Type::new(name, id, Kind::Native);
+        t.def = Some(def);
+        *s.ty.borrow_mut() = Some(Rc::new(t));
+        if world(|w| w.symbols.contains_key(&name)) {
+            return Err(format!("duplicate standard type {name}"));
+        }
+        world(|w| w.symbols.insert(name, s));
+        Ok(())
+    }
+
     fn register(&mut self, module: &ModRef) -> Result<(), String> {
         world(|w| w.sources.push(module.clone()));
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
+            for d in &module.decls {
+                if matches!(&d.decl().kind, DeclKind::Record(r) if r.external) {
+                    self.register_extern_type(module, d)?;
+                }
+            }
             world(|w| {
                 w.source_modules.insert(module.file, module.clone());
             });

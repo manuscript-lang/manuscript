@@ -3,8 +3,8 @@
 //! deflate payload differs from Go's encoder (the Rust-packed zip must round-trip instead).
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
+use ms_rt::ffi::Fail;
 use ms_std_archive::{Entry, Limits, pack, unpack};
-use ms_std_core::Fail;
 use std::collections::BTreeMap;
 
 fn bytes(tok: &str) -> Vec<u8> {

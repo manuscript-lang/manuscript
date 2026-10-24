@@ -3,7 +3,7 @@
 //! through `out` only on success.
 
 use alloc::vec::Vec;
-use ms_std_core::{Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, native};
+use ms_rt::ffi::{Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, native};
 
 /// The `width` bytes at `offset`, when they exist.
 fn chunk(data: &[u8], offset: i64, width: usize) -> Option<&[u8]> {

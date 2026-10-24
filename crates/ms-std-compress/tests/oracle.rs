@@ -3,8 +3,8 @@
 //! accept and reject the same arguments; the encoded bytes themselves are implementation specific.
 // Links the msrt_* runtime symbols.
 use ms_rt as _;
+use ms_rt::ffi::Fail;
 use ms_std_compress::*;
-use ms_std_core::Fail;
 
 fn bytes(tok: &str) -> Vec<u8> {
     let h = tok.strip_prefix('x').expect("hex token");
