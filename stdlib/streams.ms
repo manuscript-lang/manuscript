@@ -38,10 +38,10 @@ type MappedStream:
     transform: fn(chunk: Bytes) Bytes
 
 impl ReadStream for MappedStream:
-    var fn close() Unit:
+    fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         while true:
             let chunk = try self.input.read(max_bytes)
 
@@ -64,7 +64,7 @@ type LimitedStream:
     remaining: Int
 
 impl ReadStream for LimitedStream:
-    var fn close() Unit:
+    fn close() Unit:
         return self.input.close()
 
     var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
@@ -126,10 +126,10 @@ type TeeStream:
     sink: WriteStream
 
 impl ReadStream for TeeStream:
-    var fn close() Unit:
+    fn close() Unit:
         return self.input.close()
 
-    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -148,16 +148,16 @@ type MappedWriter:
     transform: fn(chunk: Bytes) Bytes
 
 impl WriteStream for MappedWriter:
-    var fn close() Unit:
+    fn close() Unit:
         return self.output.close()
 
-    var fn flush() Result[Unit, IoError]:
+    fn flush() Result[Unit, IoError]:
         return self.output.flush()
 
-    var fn write(data: String) Result[Unit, IoError]:
+    fn write(data: String) Result[Unit, IoError]:
         return self.write_bytes(data.to_bytes())
 
-    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
+    fn write_bytes(data: Bytes) Result[Unit, IoError]:
         let mapped = self.transform(data)
         if mapped.length() == 0: return ok(unit)
 
@@ -169,7 +169,7 @@ export fn map_writer(output: WriteStream, transform: fn(chunk: Bytes) Bytes) Wri
     return WriteStream(value: MappedWriter(output, transform))
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, IoError]:
+export fn digest(input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, IoError]:
     let hasher = algorithm.hasher()
 
     while true:
@@ -193,6 +193,6 @@ export fn read_lines(
         let line = try read_line(input, max_bytes)
         if line.is_none(): break
 
-        lines.append(line.get().clone())
+        lines.append(line.get())
 
     return ok(lines)

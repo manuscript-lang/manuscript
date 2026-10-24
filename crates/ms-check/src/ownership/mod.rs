@@ -175,6 +175,14 @@ impl Ownership {
 /// standard library, is checked and lowered under the same rules. Fix a module, then delete
 /// its entry.
 const UNVETTED: &[&str] = &[
+    // Vetting infers owning parameters for their public functions (a loop or match over a
+    // parameter at its last use consumes it), which breaks callers that reuse the argument;
+    // each needs its API mode settled before it can be vetted.
+    "@std/csv.ms",
+    "@std/sse.ms",
+    "@std/streams.ms",
+    "@std/toml.ms",
+    "@std/yaml.ms",
     // Generic containers: ownership needs `.clone()` on an unconstrained type parameter.
     "@std/deque.ms",
     "@std/queue.ms",
