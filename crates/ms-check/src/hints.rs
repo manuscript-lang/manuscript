@@ -161,10 +161,51 @@ const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
     ("decode", &["to_string"]),
     ("toString", &["to_string"]),
     ("to_text", &["to_string"]),
+    ("includes", &["contains"]),
+    ("has", &["contains"]),
+    ("indexOf", &["index_of"]),
+    ("find_index", &["index_of"]),
+    ("reduce", &["fold"]),
+    ("each", &["for_each"]),
+    ("substring", &["slice", "slice_scalars"]),
+    ("substr", &["slice", "slice_scalars"]),
+    ("charAt", &["scalar_at"]),
+    ("char_at", &["scalar_at"]),
+    ("sort", &["sorted"]),
+    ("trim_left", &["trim_start"]),
+    ("trim_right", &["trim_end"]),
+    ("to_upper", &["upper"]),
+    ("to_lower", &["lower"]),
+    ("to_uppercase", &["upper"]),
+    ("to_lowercase", &["lower"]),
+    ("toUpperCase", &["upper"]),
+    ("toLowerCase", &["lower"]),
+    ("trimStart", &["trim_start"]),
+    ("trimEnd", &["trim_end"]),
+    ("to_int", &["parse_int", "truncate_to_int"]),
 ];
+
+/// `fooBar` -> `foo_bar`, or "" when `name` has no uppercase letter.
+fn snake_case(name: &str) -> String {
+    if !name.bytes().any(|b| b.is_ascii_uppercase()) {
+        return String::new();
+    }
+    let mut out = String::new();
+    for c in name.chars() {
+        if c.is_ascii_uppercase() {
+            out.push('_');
+        }
+        out.push(c.to_ascii_lowercase());
+    }
+    out
+}
 
 fn synonym_hint(name: &str, available: &[String]) -> String {
     let mut found: Vec<String> = Vec::new();
+    let snake = snake_case(name);
+    if !snake.is_empty() && available.contains(&snake) {
+        found.push(format!("'{snake}'"));
+    }
     for (key, candidates) in MEMBER_SYNONYMS {
         if *key != name {
             continue;
@@ -383,6 +424,57 @@ impl Checker {
                     "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"
                 );
             }
+            "Some" => {
+                return format!(
+                    "{message}; write the lowercase some(value) for a present Optional"
+                );
+            }
+            "Ok" => {
+                return format!("{message}; write the lowercase ok(value) for a successful Result");
+            }
+            "Err" | "err" | "Error" => {
+                return format!(
+                    "{message}; write error(cause) for a failed Result, where cause is a value implementing Error"
+                );
+            }
+            "True" | "False" => {
+                return format!("{message}; booleans are lowercase: true and false");
+            }
+            "len" => {
+                return format!(
+                    "{message}; there is no {name}() function: call the length member, e.g. xs.length() (String also has byte_length and scalar_length)"
+                );
+            }
+            "str" | "toString" | "repr" | "sprintf" => {
+                return format!(
+                    "{message}; to make text, interpolate: \"{{value}}\", or call value.to_string()"
+                );
+            }
+            "int" | "parseInt" | "atoi" | "Number" | "parse_int" => {
+                return format!(
+                    "{message}; parse text with text.parse_int(), which returns Optional[Int]; Float has truncate_to_int()"
+                );
+            }
+            "float" | "parseFloat" | "parse_float" => {
+                return format!(
+                    "{message}; parse text with parse_float from \"@std/math.ms\", which returns a Result; an Int converts with value.to_float()"
+                );
+            }
+            "Object" | "Array" | "dict" | "list" => {
+                return format!(
+                    "{message}; use List[T] and Map[K, V] from \"@std/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
+                );
+            }
+            "Math" | "math" => {
+                return format!(
+                    "{message}; the math functions (floor, sqrt, pow, ...) are in \"@std/math.ms\": import floor from \"@std/math.ms\""
+                );
+            }
+            "console" | "System" | "fmt" | "os" => {
+                return format!(
+                    "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
+                );
+            }
             "print" | "println" | "printf" | "puts" | "echo" => {
                 return format!(
                     "{message}; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")"
@@ -483,6 +575,35 @@ impl Checker {
                         available.join(", ")
                     );
                 }
+            }
+        }
+        if receiver.is_std("Optional") {
+            let fix = match name.as_str() {
+                "unwrap" | "expect" | "value" | "unwrap_or" | "unwrap_or_else" | "or_default"
+                | "unwrap_or_default" => {
+                    "read an Optional with x.get(default), which falls back when absent; or `if let value = x:` to test and unwrap; x.get() with no default faults on none"
+                }
+                "map_or" | "is_some_and" | "flatten" | "filter" => {
+                    "use map, and_then, is_some, or `if let value = x:`"
+                }
+                _ => "",
+            };
+            if !fix.is_empty() {
+                return format!("{message}; {fix}");
+            }
+        }
+        if receiver.is_std("Result") {
+            let fix = match name.as_str() {
+                "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
+                    "read a Result with `try x` inside a fn that returns Result, x.get(default), or `if let value = x:`"
+                }
+                "unwrap_err" | "err" | "ok" => {
+                    "inspect a Result with `if let value = x:` or is_error()"
+                }
+                _ => "",
+            };
+            if !fix.is_empty() {
+                return format!("{message}; {fix}");
             }
         }
         if receiver.is_std("Map") && name == "set" {
@@ -641,5 +762,26 @@ impl Checker {
         format!(
             "{typ} is an interface, not an alternative; declare a concrete type and 'impl {typ} for <Type>:', then construct that concrete type"
         )
+    }
+}
+
+/// Names the conversion when an arithmetic or comparison mixes Int and Float.
+pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
+    let (i, f) = (a.to_string(), b.to_string());
+    let mixed = (i == "Int" && f == "Float") || (i == "Float" && f == "Int");
+    if mixed {
+        "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])".to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// Names the real conversion for a built-in type called like a constructor.
+pub fn builtin_constructor_hint(typ: &Ty) -> String {
+    match typ.to_string().as_str() {
+        "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
+        "Int" => "; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()".to_string(),
+        "Float" => "; convert an Int with value.to_float(); parse text with parse_float from \"@std/math.ms\"".to_string(),
+        _ => String::new(),
     }
 }
