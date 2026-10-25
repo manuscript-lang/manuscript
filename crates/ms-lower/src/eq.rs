@@ -3,6 +3,7 @@
 use crate::Error;
 use crate::cx::{Cx, Job, JobKind};
 use crate::text::{runtime_fn, ty_name};
+use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -274,14 +275,79 @@ impl Cx {
         if !comparable(m, t, &mut Vec::new()) {
             return;
         }
-        let eq = self.eq_fn(m, t, scope);
         let module = self.scope_name(scope);
+        // Plain bits compare and hash as one blob in the runtime, which an absent glue selects.
+        if self.plain_key(m, t, module) {
+            return;
+        }
+        let eq = self.eq_fn(m, t, scope);
         let user_hash = match self.source_tys.get(&t).cloned() {
             Some(concrete) => self.user_hash(m, &concrete, module).ok().flatten(),
             None => None,
         };
         let (eq, hash) = (self.eq_adapter(m, t, eq), hash_adapter(m, t, user_hash));
         m.desc_glue.push((t.scoped(scope), eq, hash));
+    }
+
+    /// Whether `t` is a record of only `Int`, sized ints and `Bool` without padding, none of its
+    /// records with an `impl Equal` or `impl Hashable`: its bytes alone decide equality.
+    fn plain_key(&mut self, m: &mut Module, t: MTy, module: ct::Name) -> bool {
+        if !matches!(m.types.kind(t), TyKind::Rec(_)) {
+            return false;
+        }
+        let mut leaves = Vec::new();
+        if !self.plain_leaves(m, t, module, &mut leaves) {
+            return false;
+        }
+        // Natural layout: padding between or after leaves would hold unspecified bytes.
+        let (mut off, mut align) = (0u32, 1u32);
+        for l in leaves {
+            if off % l != 0 {
+                return false;
+            }
+            off += l;
+            align = align.max(l);
+        }
+        off % align == 0
+    }
+
+    /// Appends the byte size of each leaf of `t` to `out`; false if `t` is not plain.
+    fn plain_leaves(
+        &mut self,
+        m: &mut Module,
+        t: MTy,
+        module: ct::Name,
+        out: &mut Vec<u32>,
+    ) -> bool {
+        let size = match m.types.kind(t) {
+            TyKind::Int => 8,
+            TyKind::Int32 => 4,
+            TyKind::Int16 => 2,
+            TyKind::Int8 | TyKind::Bool => 1,
+            TyKind::Rec(r) => {
+                let fields: Vec<MTy> = m.records[r.index()].fields.iter().map(|f| f.1).collect();
+                let Some(concrete) = self.source_tys.get(&t).cloned() else {
+                    return false;
+                };
+                let custom = self
+                    .user_equals(m, &concrete, module)
+                    .ok()
+                    .flatten()
+                    .is_some()
+                    || self
+                        .user_hash(m, &concrete, module)
+                        .ok()
+                        .flatten()
+                        .is_some();
+                return !custom
+                    && fields
+                        .into_iter()
+                        .all(|f| self.plain_leaves(m, f, module, out));
+            }
+            _ => return false,
+        };
+        out.push(size);
+        true
     }
 
     /// `fn(ptr, ptr) -> bool` over the equality helper.
