@@ -186,3 +186,14 @@ test "cancelling a joined worker's handle leaves a later worker alone":
         a.cancel()
         expect_equal(b.channel.receive(), ok(some(1)))
         expect_ok(b.join())
+
+def sends_one() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    ch.send(1)
+
+test "a finished worker's channel ends with none instead of an error":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(sends_one).get(none)
+        expect_equal(worker.channel.receive(), ok(some(1)))
+        expect_equal(worker.channel.receive(), ok(none))
+        expect_ok(worker.join())
