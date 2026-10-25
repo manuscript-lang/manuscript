@@ -140,7 +140,8 @@ pub(super) struct Pending {
 }
 
 pub(super) struct ConnSt {
-    pub tls_pending: Option<TlsIo>,
+    /// Boxed so a connection without TLS, and an exchange keeping one alive, stay small.
+    pub tls_pending: Option<Box<TlsIo>>,
     pub io: Option<Rc<dyn Io>>,
     pub inbuf: Vec<u8>,
     pub pos: usize,
@@ -917,7 +918,11 @@ impl Server {
             Some(config) => match rustls::ServerConnection::new(config.clone()) {
                 Ok(c) => (
                     None,
-                    Some(TlsIo::new(sock, rustls::Connection::Server(c), false)),
+                    Some(Box::new(TlsIo::new(
+                        sock,
+                        rustls::Connection::Server(c),
+                        false,
+                    ))),
                     Phase::Handshake,
                 ),
                 Err(_) => return,
@@ -979,7 +984,8 @@ impl Server {
             Handshake::Done => {
                 let mut st = conn.st.borrow_mut();
                 let mut h2 = false;
-                if let Some(mut tls) = st.tls_pending.take() {
+                if let Some(tls) = st.tls_pending.take() {
+                    let mut tls = *tls;
                     let verified = tls.has_peer_certificates();
                     tls.set_verified(verified);
                     h2 = tls.tls_details().is_some_and(|d| d.alpn == "h2");

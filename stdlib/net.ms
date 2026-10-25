@@ -355,25 +355,14 @@ export interface Network:
         cidrs: List[String],
         allow_listen: Bool
     ) -> Result[Network, NetworkError]
-    # Starts an HTTP server on `address` that calls `handler` with each fully buffered request and sends the returned response.
-    # A request beyond `limit` concurrent requests is answered with 503, a request header block over 1 MiB with 431, an oversized request body with 413, and a handler fault with 500. An address that cannot be bound returns IoError.Unavailable.
+    # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
+    # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
+    # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
     # A faulting handler does not release the heap values its frames own, so each fault leaks memory until the server exits (about 1 MB per fault when the handler holds a 1 MB string). Return an error response for expected failures instead of faulting.
     def serve(
         address: String,
-        handler: Callable[[HttpRequest], HttpResponse],
-        max_requests: Optional[Int] = none,
-        max_body_bytes: Optional[Int] = none,
-        max_response_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none,
-        grace: Optional[Duration] = none
-    ) -> Result[HttpServer, IoError]
-    # Starts an HTTP server on `address` whose handler receives each request as a streaming exchange. Limits, timeouts, and TLS come from `options`.
-    # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
-    # A faulting handler is answered with 500 and leaks the values it owns, as for `serve`.
-    def serve_stream(
-        address: String,
         handler: Callable[[HttpExchange], Result[Unit, HttpError]],
-        options: HttpServerOptions
+        options: HttpServerOptions = HttpServerOptions()
     ) -> Result[HttpServer, HttpError]
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.

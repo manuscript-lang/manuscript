@@ -316,6 +316,47 @@ impl Exchange {
         Ok(())
     }
 
+    /// `HttpExchange.send(status, headers, body)`: a whole response with a known length.
+    /// A HEAD request or a status without a body gets the head alone.
+    pub fn send_response(
+        &self,
+        status: i64,
+        headers: &Headers,
+        body: &[u8],
+    ) -> Result<(), HttpErr> {
+        self.send_headers(status, headers)?;
+        let (bodyless, remaining) = {
+            let st = self.st.borrow();
+            (
+                st.is_head || !server::body_allowed(st.status),
+                st.remaining_write,
+            )
+        };
+        if body.len() > remaining {
+            return Err(HttpErr::LimitExceeded);
+        }
+        // The head alone is written when the handler returns.
+        if body.is_empty() || bodyless {
+            return Ok(());
+        }
+        let result = if self.h2_id().is_some() {
+            self.write(body)
+        } else {
+            let sent = self.write_head(body, Some(body.len()), self.deadline());
+            if sent.is_err() {
+                self.st.borrow_mut().close_conn = true;
+            } else {
+                self.st.borrow_mut().remaining_write -= body.len();
+            }
+            sent
+        };
+        result.map_err(|e| match e {
+            IoErr::Closed => HttpErr::Closed,
+            IoErr::Failed(m) => HttpErr::Failed(m),
+            _ => HttpErr::Failed("response write failed".into()),
+        })
+    }
+
     /// Builds and sends the response head with the first body bytes.
     fn write_head(
         &self,
@@ -519,6 +560,9 @@ impl Exchange {
         if let Some(m) = &fault {
             eprintln!("HTTP stream handler fault: {m}");
         }
+        if fault.is_some() {
+            self.release_request_state();
+        }
         if let Some(id) = self.h2_id() {
             self.finish_h2(id, failed, cancelled, late);
             return;
@@ -583,6 +627,18 @@ impl Exchange {
             close = !self.drain_request_body();
         }
         server.queue_output(conn, reactor, out, close);
+    }
+
+    /// Empties what the request holds. The frames a fault abandons keep their reference to this
+    /// exchange for good, so everything it owns would otherwise stay allocated with it.
+    fn release_request_state(&self) {
+        let mut st = self.st.borrow_mut();
+        st.method = String::new();
+        st.path = String::new();
+        st.query = String::new();
+        st.decoded = Vec::new();
+        st.staged = Headers::new();
+        *st.headers.borrow_mut() = Headers::new();
     }
 
     /// Skips what is left of the request body that is already buffered.

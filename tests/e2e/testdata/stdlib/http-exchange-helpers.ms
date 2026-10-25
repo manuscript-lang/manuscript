@@ -12,7 +12,7 @@ def exchange_echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return reply(exchange, text(200, f"{body.length()}"))
 
 test "buffered adapts a request-to-response handler":
-    with let server = try network().serve_stream(
+    with let server = try network().serve(
         "127.0.0.1:0", buffered(echo), HttpServerOptions()
     ):
         with let client = try network().http_client(HttpClientOptions()):
@@ -25,7 +25,7 @@ test "buffered adapts a request-to-response handler":
             try expect_equal(body.decode_utf8().get(""), "/x:abc")
 
 test "read_body bounds the body by its limit":
-    with let server = try network().serve_stream(
+    with let server = try network().serve(
         "127.0.0.1:0", exchange_echo, HttpServerOptions()
     ):
         with let client = try network().http_client(HttpClientOptions()):

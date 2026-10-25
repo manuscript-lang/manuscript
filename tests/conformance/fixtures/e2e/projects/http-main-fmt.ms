@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-http,stdlib-io,stdlib-net,tier-io,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/http/main.ms
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
 from "@std/net.ms" import network
 from "@std/io.ms" import stdout
 
@@ -10,10 +10,13 @@ def handle(request: HttpRequest) -> HttpResponse:
 
 export def main() -> Int:
     let serve = network().serve
+    let options = HttpServerOptions(
+        max_requests: 2, max_body_bytes: 1024, max_response_bytes: 1024,
+        timeout: 2.seconds, grace: 0.seconds
+    )
 
     if let acquired = serve(
-        address: "127.0.0.1:0", handler: handle, max_requests: 2, max_body_bytes: 1024,
-        max_response_bytes: 1024, timeout: 2.seconds, grace: 0.seconds
+        address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         with let server = acquired:
             if stdout().write(f"{server.address()}\n").is_error():

@@ -190,11 +190,13 @@ impl Dispatch for Program {
         let handle = Object(ExchH(exchange)).into_raw().cast();
         // SAFETY: the thunk contract; the handle is live for the call.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
-        if let Some(stop) = guarded(call) {
+        let stop = guarded(call);
+        // SAFETY: the handle created above is released once, after the thunk returned or its
+        // frames were abandoned; the frames' own references leak, but this one need not.
+        unsafe { msrt_release(handle) };
+        if let Some(stop) = stop {
             return stop;
         }
-        // SAFETY: the handle created above is released once, after the thunk returned.
-        unsafe { msrt_release(handle) };
         let text = if message.ptr_word.is_null() && message.is_static() {
             String::new()
         } else {

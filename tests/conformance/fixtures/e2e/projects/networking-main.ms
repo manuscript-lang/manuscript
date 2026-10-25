@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/networking/main.ms
 from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
-from "@std/http.ms" import headers, HttpMethod
+from "@std/http.ms" import headers, HttpMethod, buffered
 from "@std/net.ms" import network
 from "@std/http.ms" import HttpError
 from "@std/net.ms" import WebSocketError
@@ -76,7 +76,7 @@ def exercise() -> Result[Unit, Error]:
         max_header_bytes: 65536, timeout: 3.seconds, grace: 0.milliseconds, tls: none
     )
 
-    with let server = try network().serve_stream(
+    with let server = try network().serve(
         address: "127.0.0.1:0", handler: echo, options: server_options
     ):
         let client_options = HttpClientOptions(

@@ -3,7 +3,7 @@
 # conform: timeout=30
 # A request that arrives on a connection while its handler is parked is served as soon as
 # the handler's response is sent, not after a timeout.
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/process.ms" import control
@@ -40,7 +40,7 @@ def exchange(address: String) -> String:
     return "connect failed"
 
 export def main() -> Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: handle):
+    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
         with let server = acquired:
             let start = control().monotonic_time()
             let text = exchange(server.address())

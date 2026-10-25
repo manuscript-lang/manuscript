@@ -163,7 +163,7 @@ msrt_http_body_{read,metadata,close}
 msrt_net_network_serve(net, address, env, limits..., out, err) -> u8
 msrt_net_network_serve_stream(net, address, env, opts, out, err) -> u8
 msrt_http_server_{address,close,wait}
-msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,write,write_bytes,close,upgrade}
+msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,send,write,write_bytes,close,upgrade}
 ```
 
 Handlers are compiler generated closures that run on the ms thread, each request in its
