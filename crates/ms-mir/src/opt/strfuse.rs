@@ -262,10 +262,12 @@ fn chain(
     remove: &mut HashSet<(usize, usize)>,
 ) {
     // A chain with more leaves than one call joins is rejected whatever its shape, so stop
-    // walking it once it has more inner links than that (each link adds itself and its drop to
-    // `remove`): otherwise every link of a long chain walks the whole chain below it, and the
-    // pass, which restarts after each fusion, is cubic in the chain's length.
+    // descending once it has more inner links than that (each link adds itself and its drop to
+    // `remove`) and keep `v` as a leaf: otherwise every link of a long chain walks the whole
+    // chain below it, and the pass, which restarts after each fusion, is cubic in the chain's
+    // length. The value must stay a leaf, not vanish: the join is built from `leaves`.
     if remove.len() > 2 * MAX_JOIN {
+        leaves.push(v);
         return;
     }
     let inner = info.defs[v.index()].and_then(|(db, di)| {

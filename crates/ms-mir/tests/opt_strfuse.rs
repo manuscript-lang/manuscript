@@ -166,3 +166,72 @@ fn a_long_concat_chain_fuses_in_linear_rounds() {
         "an unfused pair remains"
     );
 }
+
+/// Nine pieces joined as a tree whose inner links outnumber what one call joins before the
+/// walk has seen all of its leaves: `((p0 + p1) + ((p2 + p3) + p4)) + (p5 + ((p6 + p7) + p8))`.
+const DEEP_TREE: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: str = str "p0"
+  %1: str = str "p1"
+  %2: str = str "p2"
+  %3: str = str "p3"
+  %4: str = str "p4"
+  %5: str = str "p5"
+  %6: str = str "p6"
+  %7: str = str "p7"
+  %8: str = str "p8"
+  %9: str = call.rt @msrt_string_concat (%0, %1)
+  %10: str = call.rt @msrt_string_concat (%2, %3)
+  %11: str = call.rt @msrt_string_concat (%10, %4)
+  %12: str = call.rt @msrt_string_concat (%9, %11)
+  %13: str = call.rt @msrt_string_concat (%6, %7)
+  %14: str = call.rt @msrt_string_concat (%13, %8)
+  %15: str = call.rt @msrt_string_concat (%5, %14)
+  %16: str = call.rt @msrt_string_concat (%12, %15)
+  %17: int = str.len %16
+  drop %9
+  drop %10
+  drop %11
+  drop %12
+  drop %13
+  drop %14
+  drop %15
+  drop %16
+  ret %17
+}
+"#;
+
+/// Cutting the chain walk short must keep the value it stops at as a leaf. When the cut-off
+/// value vanished instead, this tree fused into one call of six pieces and lost `p6`, `p7`
+/// and `p8` (conformance fixture `fuzz/run/seed-0178` printed a truncated string).
+#[test]
+fn a_cut_off_chain_keeps_every_piece() {
+    let mut m = parse_module(DEEP_TREE).expect("parse");
+    verify_module(&m).expect("input verifies");
+    opt::strfuse::run(&mut m);
+    verify_module(&m).expect("output verifies");
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    let used: std::collections::HashSet<_> = f
+        .blocks
+        .iter()
+        .flat_map(|b| b.insts.iter().flat_map(|i| i.args.iter().copied()))
+        .collect();
+    let text = print_module(&m);
+    for b in &f.blocks {
+        for i in &b.insts {
+            if i.op == ms_mir::ir::Op::StrLit {
+                let r = i.res.expect("literal result");
+                assert!(
+                    used.contains(&r),
+                    "piece %{} dropped from the join:\n{text}",
+                    r.index()
+                );
+            }
+        }
+    }
+}
