@@ -346,7 +346,19 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        let fid = self.instance(c, subst)?;
+        // A `ref` function hands back a borrow of its argument instead of a copy. Only the
+        // standard library does so far: a user function declared `ref` may return the result of
+        // an interface call, which is always an owned copy.
+        let lent = c.module.file.as_str().starts_with("@std/")
+            && c.func
+                .func()
+                .is_some_and(|f| f.result_ref && !f.body.is_empty());
+        let fid = if lent {
+            let scope = self.evidence();
+            self.cx.function_lent(self.b.m, c, subst, scope)?
+        } else {
+            self.instance(c, subst)?
+        };
         let vars = self.cx.var_positions(c);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
@@ -406,7 +418,7 @@ impl<'a> FnLower<'a> {
                 _ => self.drop_value(new),
             }
         }
-        Ok(self.val(v, true))
+        Ok(self.val(v, !lent))
     }
 
     // ------------------------------------------------------------- methods
@@ -454,6 +466,9 @@ impl<'a> FnLower<'a> {
         }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
+        }
+        if let Some(v) = self.map_get_lent(e, view, recv_expr, &method)? {
+            return Ok(v);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
@@ -794,10 +809,19 @@ impl<'a> FnLower<'a> {
             None => ct::fields(&t),
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        // `return some(part)` of a lending function wraps the borrow itself.
+        let view_only = self.lent_return
+            && self.lent_expr == Some(e as *const Expr as usize)
+            && matches!(self.b.m.types.kind(mt), TyKind::Opt(_))
+            && view.arguments.len() == 1;
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
+            }
+            if view_only && a.wrap_optional.is_none() && !x.own {
+                let v = self.b.opt_view(x.v);
+                return Ok(Val { v, own: false });
             }
             let later_try = view.arguments[n + 1..]
                 .iter()
