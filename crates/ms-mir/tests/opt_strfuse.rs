@@ -113,3 +113,56 @@ fn concat_onto_a_dying_string_appends_in_place() {
     );
     assert_eq!(text.matches("drop").count(), 2, "{text}");
 }
+
+/// `"p0" + "p1" + ... + "p{n-1}"` as lowering emits it: a left-nested chain whose intermediate
+/// results are dropped at the end of the function.
+fn long_chain(n: usize) -> String {
+    let mut src = String::from(
+        "module \"main\"\nfile 0 \"a.ms\"\nextern @msrt_string_concat(str, str) -> str\nentry @main\n\nfn @main() -> int export {\nb0:\n  %0: str = str \"p0\"\n",
+    );
+    let mut next = 1;
+    let mut acc = 0;
+    let mut intermediates = Vec::new();
+    for i in 1..n {
+        let lit = next;
+        let cat = next + 1;
+        next += 2;
+        src.push_str(&format!("  %{lit}: str = str \"p{i}\"\n"));
+        src.push_str(&format!(
+            "  %{cat}: str = call.rt @msrt_string_concat (%{acc}, %{lit})\n"
+        ));
+        if i > 1 {
+            intermediates.push(acc);
+        }
+        acc = cat;
+    }
+    src.push_str(&format!("  %{next}: int = str.len %{acc}\n"));
+    for v in intermediates.into_iter().rev() {
+        src.push_str(&format!("  drop %{v}\n"));
+    }
+    src.push_str(&format!("  drop %{acc}\n  ret %{next}\n}}\n"));
+    src
+}
+
+/// A chain of 1200 pieces fuses in groups within a bounded time. Before the chain walk was
+/// bounded, every link walked the whole chain below it on every pass round, which made
+/// `ms build` of such a program cubic in the chain's length (64 s for 2000 pieces).
+#[test]
+fn a_long_concat_chain_fuses_in_linear_rounds() {
+    let mut m = parse_module(&long_chain(1200)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    assert!(opt::strfuse::run(&mut m));
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(20),
+        "strfuse took {:?}",
+        start.elapsed()
+    );
+    verify_module(&m).expect("output verifies");
+    let text = print_module(&m);
+    assert!(text.contains("@msrt_string_concat6 ("), "{}", &text[..600]);
+    assert!(
+        !text.contains("@msrt_string_concat ("),
+        "an unfused pair remains"
+    );
+}
