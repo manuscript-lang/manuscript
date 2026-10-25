@@ -8,7 +8,7 @@ use crate::isolate;
 use crate::task::msrt_token_post_remote;
 use core::ffi::c_void;
 use ms_rt_abi::StrVal;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Entry of a worker: called on the worker's main task with the argument block.
@@ -31,6 +31,12 @@ struct Worker {
     outcome: Mutex<(u8, usize, usize)>,
     /// The remote token of the caller that spawned through [`msrt_worker_start`].
     done: AtomicU64,
+    /// Whether a task is parked on `done`; later waiters park on tokens of their own.
+    waiting: AtomicBool,
+    /// Tokens of the tasks waiting behind the first, posted once the worker is collected.
+    waiters: Mutex<Vec<u64>>,
+    /// The collected outcome text, for the waiters behind the first.
+    result: Mutex<Vec<u8>>,
 }
 
 struct WorkerSlot {
@@ -100,6 +106,9 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
         cancellation: Mutex::new(Cancellation::default()),
         outcome: Mutex::new((0, 0, 0)),
         done: AtomicU64::new(0),
+        waiting: AtomicBool::new(false),
+        waiters: Mutex::new(Vec::new()),
+        result: Mutex::new(Vec::new()),
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
@@ -340,11 +349,34 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
         crate::fault::fault(b"wait: no such worker");
     };
     let done = w.done.load(Ordering::Acquire);
+    if w.waiting.swap(true, Ordering::AcqRel) {
+        // SAFETY: the token is this isolate's; freed once the first waiter collected the worker.
+        unsafe {
+            let mine = crate::task::msrt_token_new(crate::task::TOKEN_REMOTE);
+            w.waiters
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(mine);
+            if crate::task::msrt_token_park(mine, -1, core::ptr::null_mut()) != 0 {
+                w.waiters
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .retain(|t| *t != mine);
+                crate::task::msrt_token_free(mine);
+                crate::fault::msrt_cancelled();
+            }
+            crate::task::msrt_token_free(mine);
+            let text = w.result.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            *out = crate::string::from_bytes(&text);
+        }
+        return;
+    }
     // SAFETY: the token is this isolate's; it is freed once the worker ended.
     unsafe {
         if crate::task::msrt_token_park(done, -1, core::ptr::null_mut()) != 0 {
             // A stop request: unwind without joining, so the caller's cleanup can cancel the
             // worker and wait again on the same token.
+            w.waiting.store(false, Ordering::Release);
             crate::fault::msrt_cancelled();
         }
         crate::task::msrt_token_free(done);
@@ -362,6 +394,13 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
     }
     // SAFETY: `out` is writable by contract.
     unsafe { *out = crate::string::from_bytes(&text) };
+    let waiters = core::mem::take(&mut *w.waiters.lock().unwrap_or_else(|e| e.into_inner()));
+    if !waiters.is_empty() {
+        *w.result.lock().unwrap_or_else(|e| e.into_inner()) = text;
+        for t in waiters {
+            crate::task::msrt_token_post_remote(t, 1);
+        }
+    }
 }
 
 #[cfg(test)]

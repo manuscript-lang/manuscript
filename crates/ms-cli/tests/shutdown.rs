@@ -192,7 +192,7 @@ def long() -> Unit:
         sleep(duration(nanoseconds: 100000000))
 
 export def main() -> Int:
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var w = group.spawn(long).get()
         stdout().write("joining\n").get()
         stdout().flush().get()

@@ -189,7 +189,7 @@ def square(n: Int) -> Int:
     return n * n
 
 test "a group collects its results in start order":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in [1, 2, 3]:
             group.spawn(lambda ch: square(n))
         group.results() | try expect_ok | try expect_equal([1, 4, 9])

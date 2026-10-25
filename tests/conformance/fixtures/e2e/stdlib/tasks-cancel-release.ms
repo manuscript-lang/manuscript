@@ -23,17 +23,17 @@ def hold_in_callee() -> Int:
     return total + words.length()
 
 def group_timeout() -> Unit:
-    with TaskGroup[Int](timeout: some(duration(1000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(1000000))):
         group.spawn(lambda ch: hold_in_callee())
         group.wait()
 
 def task_timeout() -> Unit:
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let held = group.spawn(lambda ch: hold_in_callee(), timeout: some(duration(1000000)))
         held.result()
 
 def leave_group() -> Unit:
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         group.spawn(lambda ch: hold_in_callee())
         sleep(duration(1000000))
 

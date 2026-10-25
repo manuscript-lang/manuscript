@@ -73,13 +73,13 @@ def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     return ok(())
 
 def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
-    with TaskGroup[Int]() as group:                 # no messages: Channel[Unit, Unit]
+    with let group = TaskGroup[Int]():                 # no messages: Channel[Unit, Unit]
         for url in urls:
             group.spawn(lambda ch: fetch_size(url.clone()))
         return group.results()
 
 def main() -> Int:
-    with WorkerGroup[Result[Unit, ChannelError], Int, Int]() as group:   # or TaskGroup / ProcessGroup
+    with let group = WorkerGroup[Result[Unit, ChannelError], Int, Int]():   # or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
         if worker.channel.send(3).is_error():
             return 1

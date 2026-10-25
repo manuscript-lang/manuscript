@@ -18,10 +18,10 @@ def lines(path: String) -> Result[String, Error]:
 test "levels filter, fields nest under data, and bound fields merge":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-log-") as directory:
+    with let directory = try fs.temporary("manuscript-log-"):
         let path = f"{directory.path()}/events.ndjson"
 
-        with try create(try file_transport(path), LogLevel.Warn, False) as logger:
+        with let logger = try create(try file_transport(path), LogLevel.Warn, False):
             try expect_equal(logger.enabled(LogLevel.Info), False)
             try logger.info("filtered")
             try logger.warn("warn")
@@ -42,7 +42,7 @@ test "levels filter, fields nest under data, and bound fields merge":
 test "limits, invalid levels, and closed transports are errors":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-log-") as directory:
+    with let directory = try fs.temporary("manuscript-log-"):
         let path = f"{directory.path()}/events.ndjson"
         let line = "{\"level\":30,\"msg\":\"x\"}\n"
         var logger = try create(
@@ -73,7 +73,7 @@ test "limits, invalid levels, and closed transports are errors":
 test "a missing directory is a filesystem error":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-log-") as directory:
+    with let directory = try fs.temporary("manuscript-log-"):
         let missing = try expect_error(
             file_transport(f"{directory.path()}/missing/events.ndjson")
         )

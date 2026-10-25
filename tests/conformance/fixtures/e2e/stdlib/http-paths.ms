@@ -93,16 +93,16 @@ def check_paths(base: String) -> Result[Unit, Error]:
     return ok(())
 
 test "buffered routes validate original input and decode once":
-    with (network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok) as server:
+    with let server = (network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok):
         (try check_paths(f"http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    with (
+    with let server = (
         network().serve_stream(
             address: "127.0.0.1:0", handler: stream_route,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
-    ) as server:
+    ):
         (try check_paths(f"http://{server.address()}"))
 
 def expect_http_error[T](outcome: Result[T, HttpError]) -> Result[Unit, Error]:
@@ -129,11 +129,11 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: False
     )
-    with (
+    with let client = (
         network().http_client(
             HttpClientOptions(decompress: False, cookies: False, tls: tls)
         ) | try expect_ok
-    ) as client:
+    ):
         (
             client.request(
                 method: HttpMethod.Get, url: "http://127.0.0.1:65536/",

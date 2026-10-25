@@ -80,23 +80,23 @@ test "HTTPS trusts only the explicitly supplied local test root":
         timeout: 3.seconds, grace: 0.seconds, tls: server_tls
     )
 
-    with (
+    with let server = (
         net.serve_stream(
             address: "127.0.0.1:0", handler: hello, options: server_options
         ) | try expect_ok
-    ) as server:
+    ):
         let client_tls = TlsOptions(
             server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
             private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: False
         )
-        with (
+        with let client = (
             net.http_client(
                 HttpClientOptions(
                     decompress: False, cookies: False, tls: client_tls
                 )
             ) | try expect_ok
-        ) as client:
-            with (
+        ):
+            with let response = (
                 client.request(
                     method: HttpMethod.Get,
                     url: f"https://{server.address()}/",
@@ -106,7 +106,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
                     body: "",
                     timeout: 2.seconds
                 ) | try expect_ok
-            ) as response:
+            ):
                 try expect_false(
                     (
                         response.metadata().status != 200
@@ -137,25 +137,25 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
         )
     )
 
-    with (
+    with let server = (
         net.serve_stream(
             address: "127.0.0.1:0", handler: report_protocol, options: server_options
         ) | try expect_ok
-    ) as server:
+    ):
         let client_tls = TlsOptions(
             server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
             private_key_pem: "", alpn: ["h2", "http/1.1"],
             require_client_certificate: False
         )
 
-        with (
+        with let client = (
             net.http_client(
                 HttpClientOptions(
                     decompress: False, cookies: False, tls: client_tls
                 )
             ) | try expect_ok
-        ) as client:
-            with (
+        ):
+            with let response = (
                 client.request(
                     method: HttpMethod.Get,
                     url: f"https://{server.address()}/",
@@ -165,6 +165,6 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
                     body: "",
                     timeout: 2.seconds
                 ) | try expect_ok
-            ) as response:
+            ):
                 try expect_equal(response.metadata().protocol, "HTTP/2.0")
                 try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())

@@ -154,6 +154,22 @@ native! {
         Ok(make(n(&a) % n(&other)))
     }
 
+    /// The `/` operator: truncates toward zero; a zero divisor is a fault.
+    fn msstd_bigint_quotient(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        if n(&other).is_zero() {
+            fault_fmt(format_args!("BigInt./: division by zero; right must be nonzero, found 0"));
+        }
+        make(n(&a) / n(&other))
+    }
+
+    /// The `%` operator: the sign follows the dividend; a zero divisor is a fault.
+    fn msstd_bigint_modulo(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        if n(&other).is_zero() {
+            fault_fmt(format_args!("BigInt.%: division by zero; right must be nonzero, found 0"));
+        }
+        make(n(&a) % n(&other))
+    }
+
     fn msstd_bigint_compare(a: ObjRef<Big>, other: ObjRef<Big>) -> i64 {
         n(&a).cmp(n(&other)) as i64
     }

@@ -4,4 +4,4 @@
 def f() -> Unit:
     while True: break
     for x in values: consume(x)
-    with resource() as x: consume(x)
+    with let x = resource(): consume(x)

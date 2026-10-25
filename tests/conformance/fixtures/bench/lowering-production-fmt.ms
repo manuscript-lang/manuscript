@@ -13,31 +13,31 @@ impl Closeable for Resource:
 def empty(value: Int) -> Int: value
 
 def kept(resource: Resource) -> Int:
-    with resource as active: return 1
+    with let active = resource: return 1
 
 def ints(left: Int, right: Int, limit: Int, resource: Resource) -> Int:
-    with resource as active:
+    with let active = resource:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
 def floats(left: Float, right: Float, limit: Int, resource: Resource) -> Int:
-    with resource as active:
+    with let active = resource:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
 def bools(left: Bool, right: Bool, limit: Int, resource: Resource) -> Int:
-    with resource as active:
+    with let active = resource:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1
         return count
 
 def strings(left: String, right: String, limit: Int, resource: Resource) -> Int:
-    with resource as active:
+    with let active = resource:
         var count = 0
         for index in range(0, limit):
             if left == right: count += 1

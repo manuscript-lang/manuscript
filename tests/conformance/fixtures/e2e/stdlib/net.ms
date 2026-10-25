@@ -26,9 +26,9 @@ test "IP parsing CIDR normalization and containment":
 test "TCP loopback writes reads half close and EOF":
     let net = network()
 
-    with try net.listen("127.0.0.1:0") as listener:
-        with try net.connect(listener.address(), 2.seconds) as client:
-            with try listener.accept(2.seconds) as server:
+    with let listener = try net.listen("127.0.0.1:0"):
+        with let client = try net.connect(listener.address(), 2.seconds):
+            with let server = try listener.accept(2.seconds):
                 try client.write("hello", 2.seconds)
                 try expect_equal(
                     (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
@@ -40,8 +40,8 @@ test "TCP loopback writes reads half close and EOF":
 test "UDP loopback preserves datagram data and sender":
     let net = network()
 
-    with try net.bind_datagram("127.0.0.1:0") as receiver:
-        with try net.bind_datagram("127.0.0.1:0") as sender:
+    with let receiver = try net.bind_datagram("127.0.0.1:0"):
+        with let sender = try net.bind_datagram("127.0.0.1:0"):
             try sender.send("packet", receiver.address(), 2.seconds)
 
             let packet = try receiver.receive(64, 2.seconds)
