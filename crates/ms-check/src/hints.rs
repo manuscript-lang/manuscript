@@ -593,7 +593,7 @@ impl Checker {
             let fix = match name.as_str() {
                 "unwrap" | "expect" | "value" | "unwrap_or" | "unwrap_or_else" | "or_default"
                 | "unwrap_or_default" => {
-                    "read an Optional with x.get(default), which falls back when absent; or `if let value = x:` to test and unwrap; x.get() with no default faults on none"
+                    "read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:` to test and unwrap; x.get() with no default faults on none"
                 }
                 "map_or" | "is_some_and" | "flatten" | "filter" => {
                     "use map, and_then, is_some, or `if let value = x:`"
@@ -607,7 +607,7 @@ impl Checker {
         if receiver.is_std("Result") {
             let fix = match name.as_str() {
                 "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
-                    "read a Result with `try x` inside a fn that returns Result, x.get(default), or `if let value = x:`"
+                    "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`"
                 }
                 "unwrap_err" | "err" | "ok" => {
                     "inspect a Result with `if let value = x:` or is_error()"
@@ -620,7 +620,7 @@ impl Checker {
         }
         if receiver.is_std("Map") && name == "set" {
             return format!(
-                "{message}; 'm[key] = value' assigns only into a List; write m.add(key, value) to insert or replace a Map entry; available: {}",
+                "{message}; write m[key] = value or m.add(key, value) to insert or replace a Map entry; available: {}",
                 available.join(", ")
             );
         }

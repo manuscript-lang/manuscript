@@ -110,6 +110,17 @@ test "cancelling a task inside Subprocess.wait kills the child":
     sleep(duration(200000000))
     try expect_equal(long_alive(), False)
 
+# The child belongs to the task's closure, not to a local of its frames, so the unwind pass has no
+# value to drop: only Subprocess.wait's own cleanup stops it.
+test "cancelling a task inside Subprocess.wait stops a child the task was handed":
+    let child = commands().spawn(long_program(), long_args()).get()
+    with TaskGroup[Int](timeout: some(duration(200000000))) as group:
+        let t = group.spawn(lambda ch: child.wait().get(-1))
+        try expect_equal(t.result().is_ok(), False)
+
+    sleep(duration(200000000))
+    try expect_equal(long_alive(), False)
+
 test "the liveness check sees a live child":
     with try commands().spawn(long_program(), long_args()) as child:
         try expect_equal(long_alive(), True)

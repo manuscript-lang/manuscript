@@ -3,9 +3,9 @@
 use std::collections::BTreeMap;
 
 use crate::project::error::ProjectError;
-use crate::project::gopath;
 use crate::project::manifest::Project;
 use crate::project::overlay::Overlay;
+use crate::project::pathops;
 
 /// Resolve a local import; standard (`@std/`) imports belong to the checker.
 pub fn resolve_import(
@@ -21,13 +21,13 @@ pub fn resolve_import(
     }
     let target;
     if path.starts_with("./") || path.starts_with("../") {
-        if gopath::ext(path) != ".ms" {
-            let stem = &path[..path.len() - gopath::ext(path).len()];
+        if pathops::ext(path) != ".ms" {
+            let stem = &path[..path.len() - pathops::ext(path).len()];
             return Err(ProjectError::msg(format!(
                 "import path requires .ms extension; write \"{stem}.ms\""
             )));
         }
-        target = gopath::join(&[&gopath::dir(importer), path]);
+        target = pathops::join(&[&pathops::dir(importer), path]);
     } else if path.starts_with('@') {
         let (alias, remainder) = path.split_once('/').unwrap_or((path, ""));
         let base = project.aliases.get(alias).map(String::as_str).unwrap_or("");
@@ -39,14 +39,14 @@ pub fn resolve_import(
         }
         let info = std::fs::metadata(base).map_err(|e| ProjectError::path("stat", base, &e))?;
         if info.is_dir() {
-            if remainder.is_empty() || gopath::ext(remainder) != ".ms" {
+            if remainder.is_empty() || pathops::ext(remainder) != ".ms" {
                 return Err(ProjectError::msg(format!(
                     "directory alias requires a .ms path; write \"{alias}/<file>.ms\""
                 )));
             }
-            target = gopath::join(&[base, remainder]);
+            target = pathops::join(&[base, remainder]);
         } else {
-            if !remainder.is_empty() || gopath::ext(base) != ".ms" {
+            if !remainder.is_empty() || pathops::ext(base) != ".ms" {
                 return Err(ProjectError::msg(format!(
                     "file alias does not accept a suffix; alias {alias} names one file, so import it as \"{alias}\" alone"
                 )));
@@ -68,12 +68,12 @@ pub fn resolve_import(
 /// Canonicalize a source path within `root`, which must be canonical. An
 /// overlay may supply a new file only beneath an existing, confined directory.
 pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, ProjectError> {
-    let path = if gopath::is_abs(path) {
+    let path = if pathops::is_abs(path) {
         path.to_string()
     } else {
-        gopath::join(&[root, path])
+        pathops::join(&[root, path])
     };
-    let canonical = match gopath::eval_symlinks(&path) {
+    let canonical = match pathops::eval_symlinks(&path) {
         Ok(canonical) => canonical,
         Err(error) => {
             if overlay.is_empty() || !error.is_not_exist() {
@@ -87,10 +87,10 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
                 }
                 Err(_) => {}
             }
-            let parent = gopath::eval_symlinks(&gopath::dir(&path))?;
-            let canonical = gopath::join(&[&parent, &gopath::base(&path)]);
+            let parent = pathops::eval_symlinks(&pathops::dir(&path))?;
+            let canonical = pathops::join(&[&parent, &pathops::base(&path)]);
             if !(cfg!(windows) && overlay.contains_key(&path))
-                && !overlay.contains_key(&gopath::clean(&path))
+                && !overlay.contains_key(&pathops::clean(&path))
                 && !overlay.contains_key(&canonical)
             {
                 return Err(error);
@@ -98,8 +98,8 @@ pub fn source_path(root: &str, path: &str, overlay: &Overlay) -> Result<String, 
             canonical
         }
     };
-    match gopath::rel(root, &canonical) {
-        Ok(rel) if !gopath::escapes(&rel) => Ok(canonical),
+    match pathops::rel(root, &canonical) {
+        Ok(rel) if !pathops::escapes(&rel) => Ok(canonical),
         _ => Err(ProjectError::msg(format!(
             "path escapes project root: {path}; keep imported files inside the directory containing ms.toml (or the entry file's directory)"
         ))),

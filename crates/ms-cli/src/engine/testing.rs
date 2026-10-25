@@ -25,7 +25,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use ms_build::Lower;
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 
 use ms_build::FAILURE_MARKER;
 
@@ -234,11 +234,11 @@ pub(super) fn test<L: Lower>(
         return Ok(failed_early(io, &mut document, "build", &message));
     }
     let working = if compiled.project_root.is_empty() {
-        gopath::dir(&request.filename)
+        pathops::dir(&request.filename)
     } else {
         compiled.project_root.clone()
     };
-    let working = gopath::abs(&working).unwrap_or(working);
+    let working = pathops::abs(&working).unwrap_or(working);
 
     let mut runner = Runner {
         executable: &executable,

@@ -49,7 +49,7 @@ ms diagram ms.toml
 ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`.
+These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`. Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
 
 ```sh
 ms diagram ms.toml --view effects --entity save
@@ -71,9 +71,10 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `scope` | `flow` pruned to `with` scopes and the exits inside them (needs `--entity`) |
 | `tasks` | `flow` pruned to `with` scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
 
-- `--entity name` or `file::name` roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls.
+- `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
 - `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. It needs `--view` or `--entity`.
+- `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. Use `--format mermaid` to render a view for people; `--json` and `--format` cannot be combined.
 
 ## Review report
 
@@ -88,8 +89,9 @@ ms review ms.toml --diff change.patch --explain 1
 
 - Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, `with` scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
-- `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; an id or entity name also works.
-- `--format ascii|markdown` picks the rendering; `--json` emits the JSON report. Tables show five rows per section unless `--all`.
+- `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; a full id or unambiguous entity name also works. Removed entities and declarations without a callable body have no current flow.
+- `--format ascii|markdown` picks the rendering. Text tables show five rows per section unless `--all`; `--json` includes every row and finding. Report format 2 includes `base_checked` (`null` for a project map) and a `number` on each finding (`null` for INTERNAL).
+- `--explain <n|id> --json` emits `finding`, structured `callers`, and a `diagram` request with `view` and `entity`, or `null` when no current flow exists. Pass that entity ID directly to `ms diagram --entity`.
 - If the before state does not check, the report says so and lists only touched entities. If the current tree fails checking, it prints diagnostics and exits 1.
 
 Entities match by file, kind, and name, so formatting and in-file moves are not changes. Tiers:
@@ -103,6 +105,18 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 | `INTERNAL` | Body changed without affecting any tier |
 
 Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. `unknown` effects appear for indirect calls and most native operations, so only newly introduced effects rank.
+
+The report compares tracked static properties; it does not run tests. An INTERNAL body edit can still change runtime behavior. “No tracked semantic changes” means the comparison found no changes to those properties.
+
+For an agent, follow a finding's stable ID through the same workflow:
+
+```sh
+ms review ms.toml --diff change.patch --json
+ms review ms.toml --diff change.patch --explain 1 --json
+ms diagram ms.toml --view flow --entity 'src/main.ms#fn#save' --diff change.patch --json
+```
+
+Replace the example ID with `diagram.entity` from the explanation. The diff must be available again for each command; save a piped diff to a file when following up.
 
 ## Commands for agents
 
@@ -160,7 +174,7 @@ A nonzero application exit keeps its status with `completed: True` and `reason: 
 
 `ms fmt <targets> --check --json`, `ms test <input> --json`, and `ms run <input> --json` write one `format: 1` document to stdout. Usage errors return 2 on stderr with no JSON. `fmt --json` requires `--check`; `test --json --watch` is rejected.
 
-`ms run --json` captures the program's output and reports `exit_code`, `stdout`, `stderr`, and `diagnostics`; compile errors return `reason: "compile_error"` with diagnostics. A program that ends in a runtime fault (exit 70) adds a `fault` object, and `ms test --json` adds the same object to a test that faulted: `kind` (`division_by_zero`, `overflow`, `index_out_of_range`, `stack_overflow`, `deadlock`, `assertion`, `incomplete_cleanup`, or `fault`), `message` (which carries the offending values), `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), `trace_truncated`, `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`. `ms run --json` returns the program's own status.
+`ms run --json` captures the program's output and reports `exit_code`, `stdout`, `stderr`, and `diagnostics`; compile errors return `reason: "compile_error"` with diagnostics. A program that ends in a runtime fault (exit 70) adds a `fault` object, and `ms test --json` adds the same object to a test that faulted: `kind` (`division_by_zero`, `overflow`, `index_out_of_range`, `stack_overflow`, `deadlock`, `assertion`, `incomplete_cleanup`, or `fault`; an absent `Map` key reports `fault` with `map key not found: <key>`), `message` (which carries the offending values), `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), `trace_truncated`, `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`. `ms run --json` returns the program's own status.
 
 `ms verify [target] [--json] [--no-test]` runs `check`, `fmt --check`, `lint`, and `test` on one target (default `ms.toml`) and exits 1 when any step fails.
 
@@ -168,7 +182,7 @@ A nonzero application exit keeps its status with `completed: True` and `reason: 
 - `lint` and `test` are skipped when `check` fails; `fmt` always runs; `--no-test` skips the native test build.
 - Without `--json`, each failed step prints its first eight findings to stderr.
 
-`ms inspect` and `diagram` accept `--json` for failures only: unchecked source writes the `check --json` `diagnostics` document and exits 1.
+`ms inspect`, `diagram`, and `review` accept `--json` for check failures: unchecked source writes the `check --json` `diagnostics` document and exits 1. Successful diagram and review JSON use the schemas described above.
 
 Formatting results contain `files` and `diagnostics`, both arrays even when empty. Each file has `path` and `status`: `clean`, `needs_formatting`, or `error`. Files are deduplicated and ordered by displayed path. Drift is `MSF001`; selection and I/O errors are `MSF002`; parse and manifest diagnostics keep their codes. The command writes no source, returns 1 on any drift or error, and still reports other files. An empty selection succeeds.
 

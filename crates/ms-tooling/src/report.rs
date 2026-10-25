@@ -8,13 +8,13 @@ use crate::review::{
     compare_facts,
 };
 use crate::sha256;
-use crate::views::effect_list;
+use crate::views::{effect_list, or_none};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 
 /// The version of the report template set. Any wording change bumps it, so
 /// two reports with the same format are comparable.
-pub const REPORT_FORMAT: i64 = 1;
+pub const REPORT_FORMAT: i64 = 2;
 
 const ROW_CAP: usize = 5;
 
@@ -59,6 +59,8 @@ pub struct Report {
     pub sections: Vec<Section>,
     pub findings: Vec<Finding>,
     pub digest: String,
+    /// None for a project map, otherwise whether semantic comparison succeeded.
+    pub base_checked: Option<bool>,
 }
 
 /// Selects how much of each section is shown.
@@ -108,6 +110,7 @@ pub fn diff_report(
     let mut r = Report {
         format: REPORT_FORMAT,
         mode: "diff".into(),
+        base_checked: Some(input.base_checked),
         ..Report::default()
     };
     r.input = format!(
@@ -117,7 +120,7 @@ pub fn diff_report(
     r.result = if !input.base_checked {
         "base did not check; semantic comparison unavailable".to_string()
     } else if findings.is_empty() {
-        "no semantic change".to_string()
+        "no tracked semantic changes".to_string()
     } else {
         format!("{attention} need attention, {internal} internal")
     };
@@ -145,7 +148,8 @@ pub fn diff_report(
             f.location.clone(),
             f.score.to_string(),
         ]);
-        let mut detail = f.evidence.clone();
+        let mut detail = vec![format!("id: {}", f.id)];
+        detail.extend(f.evidence.clone());
         detail.push(format!("score: {}", f.terms.join(", ")));
         evidence.push(vec![rows.len().to_string(), detail.join(" | ")]);
     }
@@ -173,6 +177,7 @@ pub fn diff_report(
         tier_section("RESOURCES", TIER_RESOURCE, &findings, options),
         import_section(base, head),
         internal_section(&findings, options),
+        limits_section(),
     ];
     r.findings = findings;
     r.digest = r.compute_digest();
@@ -258,7 +263,12 @@ pub fn project_report(head: &Facts, options: ReviewOptions) -> Report {
         tests += usize::from(f.kind == "test");
         withs += usize::from(f.withs > 0);
     }
-    let files: BTreeSet<&String> = head.entities.values().map(|f| &f.file).collect();
+    let files: BTreeSet<&String> = head
+        .entities
+        .values()
+        .map(|f| &f.file)
+        .chain(head.imports.keys())
+        .collect();
     r.result = format!("{} modules, {} entities", files.len(), head.entities.len());
     let summary = Section {
         title: "SUMMARY".into(),
@@ -327,16 +337,29 @@ pub fn project_report(head: &Facts, options: ReviewOptions) -> Report {
         section("ERROR TYPES", &["TYPE", "FUNCTIONS"], error_rows),
         section("RESOURCES", &["ENTITY", "WITH", "WHERE"], resources),
         import_map(head),
+        limits_section(),
     ];
     r.digest = r.compute_digest();
     r
+}
+
+fn limits_section() -> Section {
+    Section {
+        title: "READING THIS REPORT".into(),
+        lines: vec![
+            "Static analysis of checked source; tests are not run.".into(),
+            "INTERNAL means no tracked contract, effect, error-flow, or resource change; runtime behavior can still change.".into(),
+            "Use --explain <number|id> with --diff for evidence and a focused diagram.".into(),
+        ],
+        ..Section::default()
+    }
 }
 
 fn import_map(head: &Facts) -> Section {
     let lines = head
         .imports
         .iter()
-        .map(|(file, paths)| format!("{file} imports {}", paths.join(", ")))
+        .map(|(file, paths)| format!("{file} imports {}", or_none(&paths.join(", "))))
         .collect();
     Section {
         title: "DEPENDENCIES".into(),
@@ -357,17 +380,30 @@ impl Report {
             ("mode".to_string(), Json::str(&self.mode)),
             ("input".to_string(), Json::str(&self.input)),
             ("result".to_string(), Json::str(&self.result)),
+            ("base_checked".to_string(), Json::from(self.base_checked)),
             (
                 "sections".to_string(),
                 Json::Arr(self.sections.iter().map(Section::to_json).collect()),
             ),
         ];
-        if !self.findings.is_empty() {
-            fields.push((
-                "findings".to_string(),
-                Json::Arr(self.findings.iter().map(Finding::to_json).collect()),
-            ));
-        }
+        let mut number = 0usize;
+        fields.push((
+            "findings".to_string(),
+            Json::Arr(
+                self.findings
+                    .iter()
+                    .map(|f| {
+                        let rank = if f.tier == TIER_INTERNAL {
+                            Json::Null
+                        } else {
+                            number += 1;
+                            Json::from(number)
+                        };
+                        f.to_json().with("number", rank)
+                    })
+                    .collect(),
+            ),
+        ));
         fields.push(("digest".to_string(), Json::str(&self.digest)));
         Json::Obj(fields)
     }

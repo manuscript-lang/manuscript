@@ -220,11 +220,12 @@ Examples:
 
 pub const HELP_DIAGRAM: &str = r#"Usage: ms diagram <file.ms|ms.toml> [--view calls|effects|errors|modules|flow|scope|tasks] [--entity name] [--depth n] [--diff <file|->] [--format ascii|mermaid] [-o output] [--json]
 
-Emit the checked static call graph. The default ascii outline is plain text with a fixed order;
+Emit the checked static call graph of project declarations; standard calls are boundary leaves.
+The default ascii outline is plain text with a fixed order;
 mermaid is a flowchart for rendering. --view or --entity switch to one question's tree:
 calls (who is called), effects (where effects enter), errors (error types and try sites),
 modules (imports), flow (one function's ordered steps), scope (its cleanup scopes and exits),
-tasks (its task groups and the work each spawn starts). flow, scope and tasks need --entity. --entity roots the tree at one declaration (name or file::name; a module
+tasks (its task groups and the work each spawn starts). flow, scope and tasks need --entity. --entity roots the tree at one declaration (name, file::name, or full entity ID; a module
 path for modules) and --depth bounds expansion (default 3, at most 200 nodes).
 
 Options:
@@ -234,7 +235,7 @@ Options:
   --diff <path|->      Mark what a unified diff changed in the view (tree is the after state)
   --format <name>      ascii (default) or mermaid
   -o, --output <path>  Write output to a file (default: stdout)
-  --json               On failure, emit versioned JSON diagnostics instead of terminal messages
+  --json               Emit a versioned diagram tree with source IDs and locations (default: calls view)
   -h, --help  Show this help without executing the command
 
 Examples:
@@ -244,6 +245,7 @@ Examples:
   ms diagram ms.toml --view errors
   ms diagram ms.toml --view flow --entity main --depth 2
   ms diagram ms.toml --view flow --entity save --diff change.patch
+  ms diagram ms.toml --view flow --entity save --json
 "#;
 
 pub const HELP_REVIEW: &str = r#"Usage: ms review <file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--format ascii|markdown] [--json] [--all] [-o output]
@@ -259,7 +261,7 @@ timestamps, absolute paths, or generated prose, and ends with a digest.
 Options:
   --diff <path|->      Unified diff to review (- reads standard input)
   --format <name>      ascii (default) or markdown
-  --json               Emit the report as versioned JSON (not with --format or --explain)
+  --json               Emit the complete report or explanation as versioned JSON (not with --format)
   --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)
   --all                Show every row instead of the first five per section
   -o, --output <path>  Write output to a file (default: stdout)
@@ -270,6 +272,7 @@ Examples:
   git diff --no-renames main... | ms review ms.toml --diff -
   ms review ms.toml --diff change.patch --format markdown
   ms review ms.toml --diff change.patch --explain 1
+  ms review ms.toml --diff change.patch --explain 1 --json
 "#;
 
 pub const HELP_INIT: &str = r#"Usage: ms init [directory]

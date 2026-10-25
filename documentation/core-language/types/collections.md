@@ -147,7 +147,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
 | `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
+| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool`; `[key] V` faults with `map key not found: <key>` when absent |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
 | `Map[K, V]` | `filter(predicate: Callable[[K, V], Bool]) -> Map[K, V]` |
 | `Map[K, V]` | `map[W](transform: Callable[[K, V], W]) -> Map[K, W]` |
@@ -157,7 +157,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `find(predicate: Callable[[K, V], Bool]) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `some(predicate: Callable[[K, V], Bool]) -> Bool`; `every` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
@@ -186,7 +186,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
-| Set `values()`, `entries()` | New lists in insertion order; `entries()` returns `List[List[T]]`, with each inner list `[value, value]`. |
+| Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 

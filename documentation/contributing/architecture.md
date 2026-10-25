@@ -62,7 +62,7 @@ weight = 1
 | `crates/` | The Rust implementation; `crates/DESIGN.md` is the design contract |
 | `scripts/` | Tool bootstrap, doctor, `package-rust.sh`, `dist-check.sh` |
 | `tests/` | `conformance/` (frozen corpus), `docs/` (book checks), `e2e/testdata` (fixtures) |
-| `bench/` | Benchmarks and agent pass-rate studies |
+| `bench/` | `perf/` (kernels, workloads, JSON, web, workers, stdlib, each with a run script and a dated result page) and `agent/` (the agent benchmark and its results) |
 | `examples/` | Hello project and tooling demo |
 | `extensions/vscode/` | VS Code client, grammar, snippets |
 | `.github/workflows/` | CI, book publishing, six-target release packaging |

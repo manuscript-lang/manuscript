@@ -4,7 +4,6 @@
 from "@std/testing.ms" import expect_contains, expect_fault, expect_true
 from "@std/string.ms" import StringBuilder
 from "@std/collections.ms" import MapBuilder, SetBuilder
-from "@std/math.ms" import abs_int
 
 type Folded:
     name: String
@@ -87,11 +86,11 @@ test "unsealed set builder continues":
     let frozen = builder.freeze()
     (frozen.length() == 1) | try expect_true
 
-test "abs_int of the minimum overflows":
+test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
         lambda:
-            let ignored = abs_int(value: smallest)
+            let ignored = smallest.abs()
     )
     message | try expect_contains("Int overflow")
 

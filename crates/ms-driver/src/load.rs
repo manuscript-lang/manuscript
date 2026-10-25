@@ -7,7 +7,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::project::{Overlay, Project, ProjectError, gopath};
+use crate::project::{Overlay, Project, ProjectError, pathops};
 use ms_check::types::{Name, n};
 use ms_check::{ImportMap, ModRef};
 use ms_syntax::{Diagnostic, Phase, Pos};
@@ -187,15 +187,15 @@ fn manifest_pos(config: &Project) -> Pos {
 
 /// `(project, is_manifest)`, or the root and the error.
 fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectError)> {
-    let absolute = gopath::abs(filename).map_err(|e| (String::new(), e))?;
-    if gopath::base(&absolute) == "ms.toml" {
+    let absolute = pathops::abs(filename).map_err(|e| (String::new(), e))?;
+    if pathops::base(&absolute) == "ms.toml" {
         let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
             Some(error) => Err((config.root, error)),
             None => Ok((config, true)),
         };
     }
-    let root = gopath::eval_symlinks(&gopath::dir(&absolute)).map_err(|e| (String::new(), e))?;
+    let root = pathops::eval_symlinks(&pathops::dir(&absolute)).map_err(|e| (String::new(), e))?;
     let config = Project {
         root,
         entry: absolute,
@@ -227,7 +227,7 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     let ProjectError::Path(path_error) = error else {
         return error.to_string();
     };
-    // `gopath` speaks `/` only; Windows spells the same paths with `\` and a `\\?\` prefix.
+    // `pathops` speaks `/` only; Windows spells the same paths with `\` and a `\\?\` prefix.
     let slashed = |path: &str| {
         if cfg!(windows) {
             path.trim_start_matches(r"\\?\").replace('\\', "/")
@@ -241,7 +241,7 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     if let Ok(cwd) = std::env::current_dir() {
         let canonical = std::fs::canonicalize(&cwd).ok();
         for base in std::iter::once(&cwd).chain(canonical.as_ref()) {
-            if let Ok(relative) = gopath::rel(&slashed(&base.to_string_lossy()), &name)
+            if let Ok(relative) = pathops::rel(&slashed(&base.to_string_lossy()), &name)
                 && !relative.starts_with("..")
             {
                 name = relative;
@@ -292,7 +292,7 @@ impl Loader<'_> {
     /// Accepts an already resolved canonical path. Resolution happens at the
     /// graph's edges, never again during traversal or checking.
     fn visit(&mut self, canonical: &str) -> Result<Name, Failure> {
-        let logical = gopath::rel(&self.config.root, canonical).map_err(Failure::Error)?;
+        let logical = pathops::rel(&self.config.root, canonical).map_err(Failure::Error)?;
         let file: Arc<str> = Arc::from(logical.as_str());
         if self.active.contains(canonical) {
             return Err(Failure::Cycle(format!(

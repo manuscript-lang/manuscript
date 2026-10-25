@@ -1503,7 +1503,8 @@ impl<'a> Parser<'a> {
         Ok(kind)
     }
 
-    /// `xs[i] = value` as the mutator call `xs.set(i, value)`.
+    /// `xs[i] = value` as the call of the member `[]=`, which the checker resolves to `set` on a
+    /// List and `add` on a Map.
     fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
         let (left, index) = match target.kind {
             ExprKind::Index { left, index } => (left, index),
@@ -1519,7 +1520,7 @@ impl<'a> Parser<'a> {
             pos,
             ExprKind::Member {
                 left,
-                name: Symbol::intern("set"),
+                name: Symbol::intern(INDEX_SET),
             },
         );
         let args = vec![
@@ -1550,7 +1551,7 @@ impl<'a> Parser<'a> {
         match e.kind {
             ExprKind::Name(n) if n.as_str() != "self" && n.as_str() != "fixture" => Ok(AssignTarget::Name(n)),
             ExprKind::Member { .. } => Ok(AssignTarget::Member(e)),
-            _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map"),
+            _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"),
         }
     }
 
@@ -2716,6 +2717,9 @@ fn plain_chain(e: &Expr) -> bool {
     }
 }
 
+/// The member name of an index assignment; no source name can spell it.
+pub const INDEX_SET: &str = "[]=";
+
 /// The receiver and index of `left[index]`, however the bracket was parsed.
 fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
     match &e.kind {
@@ -2729,9 +2733,13 @@ fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
     }
 }
 
-/// An index that can be evaluated twice without effect: a name or a number.
+/// An index that can be evaluated twice without effect: a name, a number or a text literal.
 fn plain_index(e: &Expr) -> bool {
-    matches!(e.kind, ExprKind::Name(_) | ExprKind::Number(_))
+    match &e.kind {
+        ExprKind::Name(_) | ExprKind::Number(_) => true,
+        ExprKind::Text(parts) => parts.iter().all(|p| !matches!(p, TextPart::Interp(_))),
+        _ => false,
+    }
 }
 
 /// Spells a type's parameters as the arguments of its impl receiver.

@@ -110,6 +110,8 @@ interface StringOperations:
     def to_bytes() -> Bytes
     # Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
     def parse_int() -> Optional[Int]
+    # Parses a decimal floating-point number with the syntax of `math.parse_float`; invalid or out-of-range text returns none.
+    def parse_float() -> Optional[Float]
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:

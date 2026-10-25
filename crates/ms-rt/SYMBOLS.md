@@ -184,6 +184,7 @@ msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal)
 msrt_string_from_scalars( values: *const VecVal, out: *mut StrVal, ) -> u8
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal)
 msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8
+msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8
 msrt_string_normalize( s: *const StrVal, form: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_normalize_kind( s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_int_to_string(v: i64, out: *mut StrVal)
@@ -498,11 +499,8 @@ msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64
 msstd_math_remainder(left: f64, right: f64) -> f64
-msstd_math_abs_int(n: i64) -> i64
-msstd_math_sign_int(n: i64) -> i64
 msstd_math_is_integer(v: f64) -> u8
 msstd_math_is_safe_integer(v: f64) -> u8
-msstd_math_abs(value: f64) -> f64
 msstd_math_acos(value: f64) -> f64
 msstd_math_asin(value: f64) -> f64
 msstd_math_atan(value: f64) -> f64
@@ -528,7 +526,6 @@ msstd_math_cbrt(value: f64) -> f64
 msstd_math_expm1(value: f64) -> f64
 msstd_math_log1p(value: f64) -> f64
 msstd_math_sign(value: f64) -> f64
-msstd_math_to_float32(value: f64) -> f64
 msstd_math_e() -> f64
 msstd_math_pi() -> f64
 msstd_math_infinity() -> f64

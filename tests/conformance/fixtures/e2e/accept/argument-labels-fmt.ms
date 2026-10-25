@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/argument-labels.ms
 from "@std/testing.ms" import expect_equal, expect_true
-from "@std/math.ms" import abs_int
+from "@std/math.ms" import sqrt
 
 def increment(value: Int) -> Int:
     return value + 1
@@ -89,10 +89,10 @@ test "optional labels on methods and native functions":
 
     let method = view.apply
     method(5) | try expect_equal(8)
-    abs_int(-3) | try expect_equal(3)
+    sqrt(9.0) | try expect_equal(3.0)
 
-    let native = abs_int
-    native(-4) | try expect_equal(4)
+    let native = sqrt
+    native(16.0) | try expect_equal(4.0)
     sum([]) | try expect_equal(0)
     sum([1, 2, 3]) | try expect_equal(6)
 

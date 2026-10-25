@@ -302,6 +302,25 @@ impl Checker {
                 );
             }
         }
+        let t = i.t();
+        let in_test = self.test_function != 0 && self.function == self.test_function;
+        if in_test
+            && t.is_std("Result")
+            && !matches!(
+                &value.kind,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    ..
+                }
+            )
+        {
+            self.type_error(
+                value.pos,
+                format!(
+                    "this statement discards {t}, so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purpose"
+                ),
+            );
+        }
         (!i.no_return, i.breaks)
     }
 
@@ -1061,7 +1080,7 @@ impl Checker {
         }
     }
 
-    /// `receiver[index]` over a List.
+    /// `receiver[index]` over a List, Map or Bytes.
     pub(crate) fn index(&mut self, e: &Expr, left: &Expr, right: &Expr) -> Info {
         let receiver = self.expression(left, None);
         let rt = receiver.t();
@@ -1074,9 +1093,16 @@ impl Checker {
                 ..Info::default()
             };
         }
-        // Only a List is indexed by Int; do not push that expectation onto a Map key.
         let list = rt.is_std("List") && rt.args.len() == 1;
-        let index = self.expression(right, list.then(int).as_ref());
+        let map = rt.is_std("Map") && rt.args.len() == 2;
+        let bytes = rt.is_std("Bytes");
+        // A Map key keeps its own type; Lists and Bytes are indexed by Int.
+        let expected = if map {
+            Some(rt.args[0].clone())
+        } else {
+            (list || bytes).then(int)
+        };
+        let index = self.expression(right, expected.as_ref());
         let mut info = Info {
             ty: Some(invalid()),
             native: Some(n("index")),
@@ -1086,15 +1112,19 @@ impl Checker {
         if rt.id == "<invalid>" {
             return info;
         }
-        if !list {
-            let hint = if rt.is_std("Map") {
-                "indexing requires List[T]; read a Map entry with m.get(key)"
+        if list {
+            info.ty = Some(rt.args[0].clone());
+        } else if map {
+            info.ty = Some(rt.args[1].clone());
+        } else if bytes {
+            info.ty = Some(int());
+        } else {
+            let hint = if rt.id == "String" {
+                "indexing a String by scalar position is not supported; use s.get(index) or for c in s.chars()"
             } else {
-                "indexing requires List[T]; use the receiver's lookup method for other types"
+                "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
             };
             self.type_error(e.pos, hint);
-        } else {
-            info.ty = Some(rt.args[0].clone());
         }
         info
     }

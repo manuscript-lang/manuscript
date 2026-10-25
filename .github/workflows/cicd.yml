@@ -273,6 +273,9 @@ jobs:
       - name: Rust ms runs the e2e fixtures
         if: matrix.corpus
         run: sh scripts/e2e.sh
+      - name: Cancelled tasks release what they own
+        if: matrix.corpus
+        run: sh scripts/leak-check.sh tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms
       - name: Package and run the distribution on a hello project
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"

@@ -86,6 +86,7 @@ pub fn run(m: &mut Module) -> bool {
         parks,
         discard,
         closers: HashMap::new(),
+        with_closers: HashMap::new(),
     };
     let mut changed = false;
     for fi in 0..count {
@@ -101,6 +102,8 @@ struct Cx {
     discard: ExtId,
     /// The cleanup that drops a value of a type while a cancellation unwinds.
     closers: HashMap<Ty, FuncId>,
+    /// A `with` close followed by the drop of the value it closed, per close function.
+    with_closers: HashMap<FuncId, FuncId>,
 }
 
 fn starts_tasks(m: &Module) -> bool {
@@ -187,6 +190,73 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     id
 }
 
+/// The cleanup that runs `close` on a `with` value and then drops it while a cancellation
+/// unwinds. A cancelled task never reaches the drop after the block, and the per-call drops
+/// leave this value to its close so that nothing closes a freed value.
+fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
+    if let Some(f) = cx.with_closers.get(&close) {
+        return Some(*f);
+    }
+    let callee = m.funcs.get(close.index())?;
+    let [param] = callee.params.as_slice() else {
+        return None;
+    };
+    // Closing that consumes the value, or yields one that needs a drop, leaves nothing to add.
+    if param.mode == Mode::Own || callee.ret != Ty::UNIT {
+        return None;
+    }
+    let ty = param.ty;
+    if !m.needs_drop(ty) {
+        return None;
+    }
+    let gate = m.add_extern(ExternDef {
+        name: "msrt_unwind_drops".into(),
+        params: Vec::new(),
+        ret: Ty::BOOL,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.close_drop",
+        vec![Param {
+            ty,
+            mode: Mode::Own,
+        }],
+        Ty::UNIT,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    let v = b.params()[0];
+    b.call(close, &[v]);
+    let on = b.call_rt(gate, &[]);
+    b.emit(Op::DropIf, &[on, v], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.with_closers.insert(close, id);
+    Some(id)
+}
+
+/// Points every `with` close registered in `f` at its closing-then-dropping variant.
+fn wrap_with_closers(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
+    let mut changed = false;
+    for bi in 0..f.blocks.len() {
+        for ii in 0..f.blocks[bi].insts.len() {
+            let inst = &f.blocks[bi].insts[ii];
+            let (Op::CleanupPush, Imm::Func(g)) = (inst.op, inst.imm) else {
+                continue;
+            };
+            if let Some(w) = with_closer(m, cx, g) {
+                f.blocks[bi].insts[ii].imm = Imm::Func(w);
+                changed = true;
+            }
+        }
+    }
+    changed
+}
+
 fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     if f.blocks.is_empty() {
         return false;
@@ -207,6 +277,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     if !owned_def.iter().any(|o| *o) {
         return false;
     }
+    let wrapped = wrap_with_closers(m, cx, f);
     let holes = hole_states(f);
     // Values an existing cleanup entry (a `with` close) uses: it must see them undropped.
     let closed_by_with: BTreeSet<u32> = f
@@ -276,7 +347,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         }
     }
     if plans.iter().all(|p| p.is_empty()) {
-        return false;
+        return wrapped;
     }
     for (bi, plan) in plans.iter().enumerate() {
         if plan.is_empty() {

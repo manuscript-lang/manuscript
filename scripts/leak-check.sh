@@ -28,13 +28,18 @@ if [ "$#" -eq 0 ]; then
     set -- $(grep -rl 'def main' --include='*.ms' tests/conformance/fixtures/fuzz/run tests/conformance/fixtures/e2e tests/conformance/fixtures/examples | sort)
 fi
 
+# macOS has no timeout(1) by default; the sweep then runs unbounded.
+limit=
+if command -v timeout >/dev/null 2>&1; then
+    limit="timeout 60"
+fi
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 swept=0
 leaks=0
 for file in "$@"; do
     file=$(CDPATH='' cd -- "$(dirname -- "$file")" && pwd)/$(basename -- "$file")
-    count=$(cd "$scratch" && timeout 60 "$ms" run "$file" </dev/null 2>&1 >/dev/null | sed -n 's/^ms-rt live blocks at exit: //p' || true)
+    count=$(cd "$scratch" && $limit "$ms" run "$file" </dev/null 2>&1 >/dev/null | sed -n 's/^ms-rt live blocks at exit: //p' || true)
     [ -n "$count" ] || continue
     swept=$((swept + 1))
     if [ "$count" != 0 ]; then
@@ -43,4 +48,6 @@ for file in "$@"; do
     fi
 done
 echo "swept $swept programs, $leaks leaking"
+# A runtime that printed no count would otherwise pass without checking anything.
+[ "$swept" -gt 0 ] || { echo "no program reported a live block count"; exit 1; }
 [ "$leaks" -eq 0 ]
