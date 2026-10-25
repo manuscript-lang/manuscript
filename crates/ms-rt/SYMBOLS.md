@@ -298,6 +298,8 @@ msstd_bigint_bit_or( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_bit_xor( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_divide( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
 msstd_bigint_remainder( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_quotient( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_modulo( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64
 msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj
 msstd_bigint_negate(a: *const BigObj) -> *mut BigObj
