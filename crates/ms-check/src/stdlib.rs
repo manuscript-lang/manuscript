@@ -144,8 +144,9 @@ fn read_bindings() -> Result<Bindings, String> {
 
 // -------------------------------------------------------------------- queries
 
-/// The bundled source module whose List operations apply to every program.
-const LISTS_MODULE: &str = "@std/lists.ms";
+/// The bundled source modules that extend native standard types (List operations, Bytes codecs); their
+/// methods apply to every program.
+const EXTENSION_MODULES: [&str; 2] = ["@std/lists.ms", "@std/bytecodecs.ms"];
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -405,6 +406,15 @@ fn source_group(module: &ModRef) -> Vec<ModRef> {
     group
 }
 
+/// Whether `module` is an extension module or one an extension module imports.
+fn extension_reach(module: &ModRef) -> bool {
+    EXTENSION_MODULES.iter().any(|path| {
+        module.file.as_str() == *path
+            || standard_source_module(n(path))
+                .is_some_and(|ext| source_reach(&ext).iter().any(|m| m.file == module.file))
+    })
+}
+
 /// Checks a bundled source module and the bundled modules it imports, once.
 /// Modules that import each other are checked together.
 pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
@@ -430,10 +440,14 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             }
         }
     }
-    if let Some(lists) = standard_source_module(n(LISTS_MODULE))
-        && !group.iter().any(|m| m.file == lists.file)
-    {
-        ensure_source(&lists);
+    // An extension module and what it imports cannot depend on the extensions, so they are not loaded for them.
+    let extending = extension_reach(module);
+    for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
+        if let Some(extension) = standard_source_module(n(path))
+            && !group.iter().any(|m| m.file == extension.file)
+        {
+            ensure_source(&extension);
+        }
     }
     let mut checker = Checker::new(&CheckOptions {
         bundled: Some(module.file),
@@ -544,9 +558,13 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         state.insert(module.file, 2);
         ordered.push(module.clone());
     }
-    // The List operations written in Manuscript apply to every program.
-    if let Some(lists) = standard_source_module(n(LISTS_MODULE)) {
-        visit(&lists, &mut state, &mut ordered, &mut diagnostics);
+    // The operations written in Manuscript on native types apply to every program.
+    // An extension module and what it imports do not depend on the extensions.
+    let extending = modules.iter().any(extension_reach);
+    for path in EXTENSION_MODULES.iter().filter(|_| !extending) {
+        if let Some(extension) = standard_source_module(n(path)) {
+            visit(&extension, &mut state, &mut ordered, &mut diagnostics);
+        }
     }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);

@@ -618,6 +618,16 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
+        if (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
+            && matches!(name.as_str(), "some" | "every")
+        {
+            let now = if name.as_str() == "some" {
+                "any"
+            } else {
+                "all"
+            };
+            return format!("{message}; {name}(predicate) is now {now}(predicate)");
+        }
         if receiver.is_std("Map") && name == "set" {
             return format!(
                 "{message}; write m[key] = value or m.add(key, value) to insert or replace a Map entry; available: {}",

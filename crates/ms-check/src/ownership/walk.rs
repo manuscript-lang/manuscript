@@ -951,7 +951,11 @@ impl Walker<'_> {
                 self.block(body);
                 self.active = Self::join_active(entry, std::mem::take(&mut self.active));
             }
-            StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body),
+            StmtKind::For { iter, body, .. } => match self.cx.m.stmt(s).expansion {
+                // A `for` over an `Iterator` is the loop the checker expanded it into.
+                Some(expansion) => self.block(&expansion),
+                None => self.for_stmt(s, iter, body),
+            },
             StmtKind::With {
                 mutable,
                 value,

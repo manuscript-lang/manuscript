@@ -135,6 +135,10 @@ impl Pass<'_> {
             StmtKind::While { cond, body } => {
                 live = self.looping(Some(cond), None, None, body, live)
             }
+            StmtKind::For { .. } if self.m.stmt(s).expansion.is_some() => {
+                let expansion = self.m.stmt(s).expansion.unwrap_or_default();
+                live = self.block(&expansion, live);
+            }
             StmtKind::For { iter, body, .. } => {
                 let variable = self.m.stmt(s).loop_binding;
                 live = self.looping(None, Some(iter), variable.map(|b| b.uid), body, live);

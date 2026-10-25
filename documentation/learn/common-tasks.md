@@ -114,20 +114,18 @@ Use `replace: True` to overwrite. Relative paths use the working directory.
 
 ## Read standard input line by line
 
-Save as `lines.ms`. `try` the `Result`, then check the `Optional` for EOF.
+Save as `lines.ms`. `lines` returns an iterator over the lines; declare it `var` to read `error()` after the loop.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
-from "@std/io.ms" import stdin, stdout, read_line
+from "@std/io.ms" import stdin, stdout, lines
 
 def run() -> Result[Unit, Error]:
-    let input = stdin()
-    while True:
-        let line = try read_line(input, max_bytes: 4096)
-        if let text = line:
-            try stdout().write(f"{text}\n")
-        else:
-            break
+    var reader = lines(stdin(), max_bytes: 4096)
+    for line in reader:
+        try stdout().write(f"{line}\n")
+    if let failure = reader.error():
+        return error(failure)
     return stdout().flush()
 
 export def main() -> Int:
@@ -140,7 +138,7 @@ export def main() -> Int:
 printf 'line one\n\nlast line' | ms run lines.ms
 ```
 
-`some("")` is an empty line; `none` is EOF. `read_line` strips the line ending, and the limit applies per line.
+An empty line is `""`, and the loop ends at end of input. Line endings are stripped, and the limit applies per line. A read failure or a line over the limit also ends the loop; `error()` is `none` after a clean end. For one line at a time on demand, `read_line` returns `Result[Optional[String], IoError]`.
 
 ## Parse an integer
 

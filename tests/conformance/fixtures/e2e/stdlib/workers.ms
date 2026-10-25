@@ -64,15 +64,18 @@ def wait_forever() -> Unit:
 def announce_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
     ch.send(1)
+
     let got = ch.receive()
 
 # Runs without parking for long enough that the cancel always lands while it is computing.
 def spin_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
     ch.send(1)
+
     var n = 0
     for i in range(0, 300000000):
         n += i
+
     let got = ch.receive()
 
 def sleep_long() -> Unit:
@@ -220,6 +223,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
     with let group = WorkerGroup[Int, Int]():
         var a = group.spawn(quick).get(none)
         try expect_ok(a.join())
+
         var b = group.spawn(delayed_send).get(none)
         sleep(duration(nanoseconds: 30000000))
         a.cancel()
@@ -239,6 +243,7 @@ test "a finished worker's channel ends with none instead of an error":
 
 def runs_faulting_task() -> Unit:
     var ch = worker_channel[Int, Int]()
+
     with let tasks = TaskGroup[Int]():
         let t = tasks.spawn(lambda c: panic("task inside worker faults"))
         t.result()
@@ -256,6 +261,7 @@ def sleeps_long() -> Unit:
 
 def joins_nested() -> Unit:
     var ch = worker_channel[Int, Int]()
+
     with let inner = WorkerGroup[Int, Int]():
         var worker = inner.spawn(sleeps_long).get(none)
         let outcome = worker.join()
@@ -265,6 +271,7 @@ test "cancelling a worker that is joining another ends it as cancelled":
         var outer = group.spawn(joins_nested).get(none)
         sleep(duration(nanoseconds: 50000000))
         outer.cancel()
+
         let outcome = outer.join()
         let cause = try expect_error(outcome)
         try expect_equal(cause.message(), "worker: cancelled")
@@ -279,7 +286,6 @@ test "a worker that uses the network ends cleanly":
         var worker = group.spawn(touches_network).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_ok(worker.join())
-
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w

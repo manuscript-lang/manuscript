@@ -174,7 +174,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Map[K, V]` | `find(predicate: Callable[[K, V], Bool]) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
-| `Map[K, V]` | `some(predicate: Callable[[K, V], Bool]) -> Bool`; `every` uses the same predicate |
+| `Map[K, V]` | `any(predicate: Callable[[K, V], Bool]) -> Bool`; `all` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) -> Unit`; `remove(key: K) -> Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
@@ -186,7 +186,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Set[T]` | `find(predicate: Callable[[T], Bool]) -> Optional[T]` |
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
-| `Set[T]` | `some(predicate: Callable[[T], Bool]) -> Bool`; `every` uses the same predicate |
+| `Set[T]` | `any(predicate: Callable[[T], Bool]) -> Bool`; `all` uses the same predicate |
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
@@ -201,6 +201,8 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `none`; these searches require `Equal` elements. |
 | List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `none`. `find` and `find_last` return the matching value instead. |
 | List `count(predicate:)` | Number of elements whose predicate returns true, calling it once per element in order. |
+| List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `False` and `True`. |
+| List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
 | List `zip(other)` | A new list of `Pair[T, U]` records (`first` from the receiver, `second` from `other`), as long as the shorter list. |
@@ -275,7 +277,7 @@ All of these borrow the receiver while callbacks run; mutating or clearing that 
 
 - `fold` goes in insertion order; the step takes the accumulator, then the key/value or element, and returns the next accumulator of type `A`. An empty receiver returns the initial value. `fold_right` goes in reverse.
 - `find` stops at the first true predicate: a Set returns the element, a Map a fresh `MapEntry` (as in `entries()`; editing it does not update the Map). No match returns `none`. `find_last` searches from the end.
-- `some` stops at the first true predicate and `every` at the first false one. Empty receivers give false and true without calling the predicate.
+- `any` stops at the first true predicate and `all` at the first false one. Empty receivers give false and true without calling the predicate.
 
 ## Building data
 

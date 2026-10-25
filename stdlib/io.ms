@@ -1,3 +1,4 @@
+from "@std/core.ms" import Iterator
 from "@std/bytes.ms" import Bytes
 from "@std/time.ms" import Duration
 
@@ -96,12 +97,52 @@ export def read_all(
 ) -> Result[Bytes, IoError]:
     return msstd_io_read_all(input, max_bytes)
 
-# Reads one line, omitting its line ending; returns `none` at end of stream.
+# Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
+# To read every line, iterate `lines(input)` instead.
 export def read_line(
     input: ReadStream,
     max_bytes: Optional[Int] = none
 ) -> Result[Optional[String], IoError]:
     return msstd_io_read_line(input, max_bytes)
+
+# Lines of a stream, read on demand. `for line in reader:` walks the lines without their
+# terminators (`\n` or `\r\n`) and stops at end of input, at the first I/O error, or at a line
+# longer than `max_bytes`; `error()` then tells the last two apart from a clean end.
+#
+# Iterate a `var` reader with `for` so the loop advances it in place and `error()` can be read
+# afterwards; see "Read standard input line by line" in the common tasks guide.
+export type LineReader:
+    # The stream being read.
+    input: ReadStream
+    # Per-line byte limit, or none for no limit.
+    max_bytes: Optional[Int]
+    # The error that ended iteration, if any.
+    failure: Optional[IoError]
+
+impl LineReader:
+    # Returns the I/O error that ended iteration, or none after a clean end of input
+    # (and while lines remain). A line over the limit reports `LimitExceeded`.
+    def error() -> Optional[IoError]:
+        return self.failure.clone()
+
+impl Iterator[String] for LineReader:
+    # Returns the next line, or none at end of input or after an error (see `error()`).
+    var def next() -> Optional[String]:
+        if self.failure.is_some():
+            return none
+
+        let line = read_line(self.input, self.max_bytes)
+
+        if line.is_error():
+            self.failure = some(line.err().clone())
+            return none
+
+        return line.get().clone()
+
+# Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
+# line, as in `read_line`.
+export def lines(input: ReadStream, max_bytes: Optional[Int] = none) -> LineReader:
+    return LineReader(input, max_bytes, none)
 
 impl Error for IoError:
     # Returns original Failed text, or an I/O-prefixed diagnostic for the other cases.

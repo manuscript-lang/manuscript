@@ -304,6 +304,9 @@ pub struct StmtFacts {
     pub falls_through: Option<bool>,
     /// A statement whose whole value is a plain `try`.
     pub plain_try: bool,
+    /// The statements a `for` over an `Iterator` stands for: every later pass reads these
+    /// instead of the loop.
+    pub expansion: Option<Rc<Vec<Stmt>>>,
 }
 
 /// Match arm facts.
@@ -359,6 +362,11 @@ impl Facts {
     /// Fact of an expression.
     pub fn info(&self, id: NodeId) -> Option<&Info> {
         self.exprs.get(id.index()).and_then(|i| i.as_ref())
+    }
+    /// A node id past every parsed or synthetic one, for a node the checker builds.
+    pub fn fresh_id(&mut self) -> NodeId {
+        self.exprs.push(None);
+        NodeId((self.exprs.len() - 1) as u32)
     }
     /// Sets the fact of an expression.
     pub fn set_info(&mut self, id: NodeId, info: Info) {

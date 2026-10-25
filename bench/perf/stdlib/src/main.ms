@@ -4,6 +4,7 @@ from "./maps.ms" import bench_map_set
 from "./structures.ms" import bench_structures
 from "./jsonbench.ms" import bench_json
 from "./csvbench.ms" import bench_csv
+from "./iobench.ms" import bench_io
 from "./binarybench.ms" import bench_binary
 from "./regexbench.ms" import bench_regex
 from "./pathurl.ms" import bench_path_url_math
@@ -23,6 +24,7 @@ export def main() -> Int:
     bench_structures()
     bench_json()
     bench_csv()
+    bench_io()
     bench_binary()
     bench_regex()
     bench_path_url_math()
