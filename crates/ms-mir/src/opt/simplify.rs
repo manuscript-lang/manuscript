@@ -932,8 +932,22 @@ fn cse(m: &Module, f: &mut Func) -> bool {
     if removed.is_empty() {
         return false;
     }
-    for (b, ii) in removed.into_iter().rev() {
-        f.blocks[b].insts.remove(ii);
+    // One sweep per block: removing each instruction in place shifts the rest of the
+    // block, quadratic in a block with many repeated computations.
+    let mut dead: Vec<Vec<bool>> = f
+        .blocks
+        .iter()
+        .map(|b| vec![false; b.insts.len()])
+        .collect();
+    for (b, ii) in removed {
+        dead[b][ii] = true;
+    }
+    for (b, blk) in f.blocks.iter_mut().enumerate() {
+        let mut ii = 0;
+        blk.insts.retain(|_| {
+            ii += 1;
+            !dead[b][ii - 1]
+        });
     }
     apply_subst(f, &subst);
     true
@@ -949,32 +963,47 @@ fn roundtrips(f: &mut Func) -> bool {
     let uses = f.use_counts();
     let mut changed = false;
     for b in &mut f.blocks {
-        let mut i = 0;
-        while i < b.insts.len() {
-            if let Some(found) = find_roundtrip(&b.insts, i, &uses) {
-                let (put_in, call, take_out, put_back, slot) = found;
-                let p = b.insts[i].args[0];
-                for arg in &mut b.insts[call].args {
-                    if *arg == slot {
-                        *arg = p;
-                    }
-                }
-                for k in [put_back, take_out, put_in, i] {
-                    b.insts.remove(k);
-                }
-                changed = true;
+        // Removed instructions are marked and swept once at the end: removing each one in
+        // place shifts the rest of the block, quadratic in a block with many roundtrips.
+        let mut removed = vec![false; b.insts.len()];
+        let mut any = false;
+        for i in 0..b.insts.len() {
+            if removed[i] {
                 continue;
             }
-            i += 1;
+            let Some(found) = find_roundtrip(&b.insts, &removed, i, &uses) else {
+                continue;
+            };
+            let (put_in, call, take_out, put_back, slot) = found;
+            let p = b.insts[i].args[0];
+            for arg in &mut b.insts[call].args {
+                if *arg == slot {
+                    *arg = p;
+                }
+            }
+            for k in [put_back, take_out, put_in, i] {
+                removed[k] = true;
+            }
+            any = true;
+        }
+        if any {
+            let mut k = 0;
+            b.insts.retain(|_| {
+                k += 1;
+                !removed[k - 1]
+            });
+            changed = true;
         }
     }
     changed
 }
 
 /// The instruction indexes of the sequence starting with the `take` at `at`:
-/// `(put into slot, call, take from slot, put back, slot)`.
+/// `(put into slot, call, take from slot, put back, slot)`. Instructions marked in `removed`
+/// are no longer part of the block.
 fn find_roundtrip(
     insts: &[Inst],
+    removed: &[bool],
     at: usize,
     uses: &[u32],
 ) -> Option<(usize, usize, usize, usize, Value)> {
@@ -986,42 +1015,52 @@ fn find_roundtrip(
     if uses[a.index()] != 1 {
         return None;
     }
-    let put_in =
-        (at + 1..insts.len()).find(|&k| insts[k].op == Op::Put && insts[k].args[1] == a)?;
+    let live = |k: &usize| !removed[*k];
+    let put_in = (at + 1..insts.len())
+        .filter(live)
+        .find(|&k| insts[k].op == Op::Put && insts[k].args[1] == a)?;
     let slot = insts[put_in].args[0];
     let ty = first.imm;
-    let def = insts[..put_in]
-        .iter()
+    // The slot's one definition usually sits right before the put.
+    let def = (0..put_in)
+        .rev()
+        .filter(live)
+        .map(|k| &insts[k])
         .find(|d| d.res == Some(slot) && d.op == Op::Slot && d.imm == ty)?;
     debug_assert!(def.args.is_empty());
     if uses[slot.index()] != 3 {
         return None;
     }
-    let call = (put_in + 1..insts.len()).find(|&k| insts[k].args.contains(&slot))?;
+    let call = (put_in + 1..insts.len())
+        .filter(live)
+        .find(|&k| insts[k].args.contains(&slot))?;
     if !matches!(insts[call].op, Op::CallRt)
         || insts[call].args.iter().filter(|x| **x == slot).count() != 1
     {
         return None;
     }
-    let take_out = (call + 1..insts.len()).find(|&k| insts[k].args.contains(&slot))?;
+    let take_out = (call + 1..insts.len())
+        .filter(live)
+        .find(|&k| insts[k].args.contains(&slot))?;
     let (Op::Take, Some(b)) = (insts[take_out].op, insts[take_out].res) else {
         return None;
     };
     if uses[b.index()] != 1 || insts[take_out].imm != ty {
         return None;
     }
-    let put_back = (take_out + 1..insts.len()).find(|&k| insts[k].args.contains(&b))?;
+    let put_back = (take_out + 1..insts.len())
+        .filter(live)
+        .find(|&k| insts[k].args.contains(&b))?;
     if insts[put_back].op != Op::Put || insts[put_back].args != [p, b] {
         return None;
     }
     // The memory at `p` is touched by nothing else in the window, and nothing else
     // in it can read or write through another pointer.
-    let window = &insts[at + 1..put_back];
-    for (k, w) in window.iter().enumerate() {
-        let k = at + 1 + k;
-        if k == put_in || k == call || k == take_out {
+    for k in at + 1..put_back {
+        if removed[k] || k == put_in || k == call || k == take_out {
             continue;
         }
+        let w = &insts[k];
         if w.args.contains(&p) || !w.op.info().effects.is_pure() {
             return None;
         }
