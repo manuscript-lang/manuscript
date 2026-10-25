@@ -194,31 +194,6 @@ pub fn is_vetted(file: Name) -> bool {
 }
 
 impl Hir<'_> {
-    /// Records, for each interface operation, what its implementations may hand back.
-    /// Returns whether anything changed.
-    fn join_contracts(&self, summaries: &mut Summaries) -> bool {
-        let mut joined: HashMap<(Name, Name), modes::ResultOrigin> = HashMap::new();
-        for m in &self.program().methods {
-            let (Some(c), Some(f)) = (&m.contract, &m.decl) else {
-                continue;
-            };
-            let Some(s) = summaries.get(&(m.module, f.id())) else {
-                continue;
-            };
-            let entry = joined.entry((c.id, f.name())).or_default();
-            for slot in &s.result.slots {
-                if !entry.slots.contains(slot) {
-                    entry.slots.push(*slot);
-                }
-            }
-        }
-        if joined == summaries.contracts {
-            return false;
-        }
-        summaries.contracts = joined;
-        true
-    }
-
     /// Checks the `ref` written in result types: a `ref` result must lend from a parameter or the
     /// receiver, and an implementation agrees with the interface operation it implements.
     fn ref_results(
@@ -372,9 +347,6 @@ impl Hir<'_> {
                     changed = true;
                 }
                 outcomes.push(out);
-            }
-            if self.join_contracts(&mut summaries) {
-                changed = true;
             }
             if !changed {
                 break;

@@ -118,6 +118,15 @@ impl Cx {
                 methods.push(m.add_func(f));
                 continue;
             }
+            // A `ref` operation's table entry lends what the implementation's lent instance
+            // returns; the checker made every source implementation of it a lender.
+            let lends = s.ret_borrowed && m.needs_drop(s.ret);
+            if lends && !native.as_str().is_empty() {
+                return Err(Error::new(format!(
+                    "a native implementation of `{}` cannot lend its `ref` result",
+                    s.name
+                )));
+            }
             let callee = if !native.as_str().is_empty() {
                 self.native_method_fn(m, native.as_str(), concrete, data_ty)?
             } else {
@@ -133,11 +142,22 @@ impl Cx {
                     ));
                 }
                 writes_back = !vars.is_empty();
-                self.function_in(m, &c, &subst, scope)?
+                if lends && writes_back {
+                    return Err(Error::new(format!(
+                        "`{}` changes its receiver, so it cannot lend its `ref` result through an interface",
+                        s.name
+                    )));
+                }
+                if lends {
+                    self.function_lent(m, &c, &subst, scope)?
+                } else {
+                    self.function_in(m, &c, &subst, scope)?
+                }
             };
             let mut b = FuncBuilder::new(m, &format!("vt.{}", s.name), ps, s.ret);
             b.func_mut().kind = FuncKind::Method;
             b.func_mut().linkage = Linkage::Internal;
+            b.func_mut().ret_borrowed = lends;
             let args = b.params();
             // A method that changes `self` takes the box itself: it moves the data out and
             // puts the new value back.

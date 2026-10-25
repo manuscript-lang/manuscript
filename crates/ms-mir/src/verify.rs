@@ -1444,6 +1444,12 @@ fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u12
                                 .filter(|(j, a)| mask & param_bit(*j) != 0 && rc(**a))
                                 .fold(0, |acc, (_, a)| acc | src[a.index()])
                         }
+                        // A lending interface operation may lend from any of its operands.
+                        (Op::CallMethod, _) => i
+                            .args
+                            .iter()
+                            .filter(|a| rc(**a))
+                            .fold(0, |acc, a| acc | src[a.index()]),
                         (
                             Op::RecGet
                             | Op::AltGet

@@ -96,8 +96,6 @@ pub type Key = (Name, NodeId);
 #[derive(Default)]
 pub struct Summaries {
     pub decls: HashMap<Key, Summary>,
-    /// By interface id and operation name: the union over the implementations.
-    pub contracts: HashMap<(Name, Name), ResultOrigin>,
 }
 
 impl std::ops::Deref for Summaries {
@@ -222,6 +220,24 @@ fn from_summary(
     }
 }
 
+/// What a call through an interface hands back: a `ref` operation lends, as every
+/// implementation does, from the receiver or any argument (the implementations may name their
+/// parameters differently); any other operation returns an owned value.
+fn contract_origin(declared: &Summary, func: &FuncRef) -> ResultOrigin {
+    if !func.func().is_some_and(|f| f.result_ref) {
+        return ResultOrigin {
+            owned: true,
+            ..ResultOrigin::default()
+        };
+    }
+    let mut slots = vec![Slot::Receiver];
+    slots.extend(declared.params.iter().map(|(name, _)| Slot::Param(*name)));
+    ResultOrigin {
+        slots,
+        ..ResultOrigin::default()
+    }
+}
+
 fn method_modes(
     summaries: &Summaries,
     method: &MethodRef,
@@ -251,18 +267,7 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
-                    // The union over the implementations of what each hands back.
-                    // A call through the interface returns an owned copy.
-                    origin: ResultOrigin {
-                        owned: true,
-                        ..method
-                            .contract
-                            .as_ref()
-                            .zip(method.name())
-                            .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
-                            .cloned()
-                            .unwrap_or_default()
-                    },
+                    origin: contract_origin(&declared, func),
                 }
             }
             None => native_unknown(count),

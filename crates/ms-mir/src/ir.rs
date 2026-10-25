@@ -1257,6 +1257,11 @@ impl Module {
         {
             return Some(Mode::Borrow);
         }
+        if let (Op::CallMethod, Imm::Method(i, k)) = (inst.op, inst.imm)
+            && self.ifaces[i.index()].methods[k as usize].ret_borrowed
+        {
+            return Some(Mode::Borrow);
+        }
         Some(match inst.op {
             Op::RecGet
             | Op::AltGet

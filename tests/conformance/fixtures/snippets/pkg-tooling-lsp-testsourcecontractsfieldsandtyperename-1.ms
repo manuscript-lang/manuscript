@@ -11,7 +11,7 @@ impl Reader for Box:
     def read() -> ref String:
         return self.label
 
-def message(value: Reader) -> String:
+def message(value: Reader) -> ref String:
     return value.read()
 
 def make() -> Box:

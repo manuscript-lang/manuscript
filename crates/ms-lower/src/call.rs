@@ -780,7 +780,8 @@ impl<'a> FnLower<'a> {
         let r = self.borrow(recv);
         self.at(e.pos);
         let v = self.b.call_method(iface, k as u32, r, &args);
-        Ok(self.val(v, true))
+        // A `ref` operation lends: the result is a borrow of the receiver or an argument.
+        Ok(self.val(v, !sig.ret_borrowed))
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a

@@ -339,6 +339,12 @@ impl Walker<'_> {
         self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
     }
 
+    /// Whether `a` is converted to an interface where it is used: the use receives a new
+    /// interface value holding a copy, a temporary of the call.
+    fn converted(&self, a: &Expr) -> bool {
+        self.cx.m.info(a).error_source.is_some()
+    }
+
     /// Whether `e` is the `none` literal.
     fn is_none(&self, e: &Expr) -> bool {
         matches!(
@@ -379,6 +385,7 @@ impl Walker<'_> {
                 return matches!(slot, Slot::Param(_));
             };
             self.copy_handle(a)
+                || self.converted(a)
                 || !self.is_place(a)
                     && (self.pure_origins(a).is_none_or(|o| o.is_empty()) || self.lends_owned(a))
         })

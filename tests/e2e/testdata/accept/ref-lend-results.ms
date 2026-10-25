@@ -55,8 +55,8 @@ impl Holder:
     def shelved() -> ref List[String]:
         return self.inner.pick(True)
 
-    # An interface call result is owned, so this one is returned as a copy.
-    def listed() -> List[String]:
+    # A `ref` interface operation lends, so this one is handed back too.
+    def listed() -> ref List[String]:
         return self.source.names()
 
     def maybe(flag: Bool) -> ref Optional[List[String]]:
