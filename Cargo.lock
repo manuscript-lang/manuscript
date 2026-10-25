@@ -999,6 +999,7 @@ dependencies = [
  "ms-lsp",
  "ms-mir",
  "ms-rt",
+ "ms-rt-abi",
  "ms-syntax",
  "ms-tooling",
  "object",
