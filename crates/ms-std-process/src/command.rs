@@ -330,19 +330,33 @@ impl Subprocess {
     /// Waits for exit, or `Timeout` when `timeout_ns` elapses first (the child keeps running).
     pub fn wait(&mut self, timeout_ns: Option<i64>) -> Res<i64> {
         let deadline = timeout_ns.map(|t| now_ns().saturating_add(t));
-        loop {
-            ms_rt::glue::poll_cancel();
-            if self.child.poll() {
-                return Ok(self.child.code.unwrap_or(-1));
-            }
-            let now = now_ns();
-            if deadline.is_some_and(|d| now >= d) {
-                return Err(Fail::status(STATUS_TIMEOUT));
-            }
-            if !self.child.park_until_exit(deadline.map_or(-1, |d| d - now)) {
-                sleep_ms(deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)));
-            }
-        }
+        // Cancelling the waiting task leaves this frame by a jump; like `run`, stop the child
+        // then, since the task that started it is the one going away.
+        let this: *mut Subprocess = self;
+        ms_rt::fault::with_cleanup(
+            &mut || {
+                // SAFETY: the body that used `self` was abandoned; `self` outlives this call.
+                #[allow(unsafe_code)]
+                unsafe {
+                    (*this).stop()
+                }
+            },
+            || loop {
+                ms_rt::glue::poll_cancel();
+                if self.child.poll() {
+                    return Ok(self.child.code.unwrap_or(-1));
+                }
+                let now = now_ns();
+                if deadline.is_some_and(|d| now >= d) {
+                    return Err(Fail::status(STATUS_TIMEOUT));
+                }
+                if !self.child.park_until_exit(deadline.map_or(-1, |d| d - now)) {
+                    sleep_ms(
+                        deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)),
+                    );
+                }
+            },
+        )
     }
 
     /// Kills the group, joins the leader, kills what remains of the group.
