@@ -2279,7 +2279,12 @@ pub(crate) mod tests {
             std::thread::sleep(Duration::from_millis(30));
             peer.write_all(b"Host: ").unwrap();
             std::thread::sleep(Duration::from_millis(50));
-            assert_eq!(peer.read(&mut [0; 1]).unwrap(), 0);
+            // The server closes with the trickled bytes unread; BSD stacks answer that with a
+            // reset instead of an orderly end of stream.
+            match peer.read(&mut [0; 1]) {
+                Ok(n) => assert_eq!(n, 0),
+                Err(e) => assert_eq!(e.kind(), std::io::ErrorKind::ConnectionReset),
+            }
         });
         assert!(server.st.borrow().conns.is_empty());
         server.close().unwrap();

@@ -1,6 +1,6 @@
 //! Process-wide controls.
 use crate::envfile;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
@@ -517,7 +517,34 @@ pub fn resident_bytes() -> Res<i64> {
     Ok(pages * page)
 }
 
-#[cfg(all(unix, not(target_os = "linux")))]
+/// Resident set size in bytes (`proc_pidinfo(PROC_PIDTASKINFO)`).
+#[cfg(target_os = "macos")]
+pub fn resident_bytes() -> Res<i64> {
+    let mut info = core::mem::MaybeUninit::<libc::proc_taskinfo>::uninit();
+    let size = core::mem::size_of::<libc::proc_taskinfo>() as libc::c_int;
+    // SAFETY: `info` has room for one task-info record, and the kernel fills at most `size` bytes.
+    let written = unsafe {
+        libc::proc_pidinfo(
+            libc::getpid(),
+            libc::PROC_PIDTASKINFO,
+            0,
+            info.as_mut_ptr().cast(),
+            size,
+        )
+    };
+    if written != size {
+        return Err(Fail::errno(
+            std::io::Error::last_os_error().raw_os_error().unwrap_or(0),
+            "proc_pidinfo",
+            b"PROC_PIDTASKINFO",
+        ));
+    }
+    // SAFETY: the call wrote the complete record.
+    let info = unsafe { info.assume_init() };
+    Ok(info.pti_resident_size.min(i64::MAX as u64) as i64)
+}
+
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
 pub fn resident_bytes() -> Res<i64> {
     Err(Fail::status(STATUS_UNSUPPORTED))
 }

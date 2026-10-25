@@ -288,14 +288,41 @@ mod plat {
                 .spawn(move || {
                     let mut watched = libc::pollfd {
                         fd: descriptor.as_raw_fd(),
-                        events: 0,
+                        events: libc::POLLIN,
                         revents: 0,
                     };
                     while !flag.load(Ordering::Acquire) {
                         // SAFETY: an owned descriptor and initialized poll record; no runtime state is used.
                         let ready = unsafe { libc::poll(&mut watched, 1, 100) };
+                        if ready > 0 && watched.revents & libc::POLLIN != 0 {
+                            // Apple stacks report a closed peer as readable without POLLHUP:
+                            // a zero-length peek is the end of stream. Pending control
+                            // bytes belong to the runtime's reader, so wait one interval.
+                            let mut byte = 0u8;
+                            // SAFETY: a one-byte buffer; MSG_PEEK leaves the data queued.
+                            let peeked = unsafe {
+                                libc::recv(
+                                    watched.fd,
+                                    (&mut byte as *mut u8).cast(),
+                                    1,
+                                    libc::MSG_PEEK | libc::MSG_DONTWAIT,
+                                )
+                            };
+                            let gone = peeked == 0
+                                || (peeked < 0
+                                    && !matches!(
+                                        std::io::Error::last_os_error().raw_os_error(),
+                                        Some(libc::EAGAIN) | Some(libc::EINTR)
+                                    ));
+                            if !gone {
+                                std::thread::sleep(std::time::Duration::from_millis(100));
+                                watched.revents = 0;
+                                continue;
+                            }
+                        }
                         if ready > 0
-                            && watched.revents & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL)
+                            && watched.revents
+                                & (libc::POLLHUP | libc::POLLERR | libc::POLLNVAL | libc::POLLIN)
                                 != 0
                         {
                             let lost = std::time::Instant::now();
@@ -356,54 +383,97 @@ mod plat {
         }
 
         pub fn receive_descriptor(&self) -> Result<std::os::fd::OwnedFd, i32> {
-            use core::mem::MaybeUninit;
-            use rustix::net::{
-                RecvAncillaryBuffer, RecvAncillaryMessage, RecvFlags, ReturnFlags, recvmsg,
-            };
-            use std::io::IoSliceMut;
-            use std::os::fd::BorrowedFd;
+            use std::os::fd::{FromRawFd, OwnedFd};
             nonblocking(self.0);
-            // SAFETY: this Link owns the descriptor throughout the operation.
-            let socket = unsafe { BorrowedFd::borrow_raw(self.0) };
-            let mut space = [MaybeUninit::uninit(); rustix::cmsg_space!(ScmRights(8))];
-            let mut control = RecvAncillaryBuffer::new(&mut space);
             let mut marker = [0u8];
+            let mut data = libc::iovec {
+                iov_base: marker.as_mut_ptr().cast(),
+                iov_len: 1,
+            };
+            // Room for more descriptors than a well-formed message carries, so an
+            // oversized one is observed as truncation and closed rather than parsed.
+            const CONTROL_BYTES: usize = 256;
+            let mut control = [0u8; CONTROL_BYTES];
+            // SAFETY: msghdr is plain data; every pointer refers to a live local buffer.
+            let mut header: libc::msghdr = unsafe { core::mem::zeroed() };
+            header.msg_iov = &mut data;
+            header.msg_iovlen = 1;
+            header.msg_control = control.as_mut_ptr().cast();
+            header.msg_controllen = CONTROL_BYTES as _;
             #[cfg(any(target_os = "linux", target_os = "android"))]
-            let flags = RecvFlags::CMSG_CLOEXEC;
+            let flags = libc::MSG_CMSG_CLOEXEC;
             #[cfg(not(any(target_os = "linux", target_os = "android")))]
-            let flags = RecvFlags::empty();
-            let message = loop {
+            let flags = 0;
+            let received = loop {
                 poll_cancel();
-                match recvmsg(
-                    socket,
-                    &mut [IoSliceMut::new(&mut marker)],
-                    &mut control,
-                    flags,
-                ) {
-                    Ok(message) => break message,
-                    Err(rustix::io::Errno::INTR) => continue,
-                    Err(rustix::io::Errno::AGAIN) => {
+                // SAFETY: the header's buffers outlive the call; the descriptor is ours.
+                let n = unsafe { libc::recvmsg(self.0, &mut header, flags) };
+                if n >= 0 {
+                    break n;
+                }
+                match errno() {
+                    libc::EINTR => continue,
+                    libc::EAGAIN => {
                         task_wait_fd(self.0, WAIT_READ, -1);
                     }
-                    Err(error) => return Err(error.raw_os_error()),
+                    error => return Err(error),
                 }
             };
-            let mut received = Vec::new();
-            for message in control.drain() {
-                if let RecvAncillaryMessage::ScmRights(descriptors) = message {
-                    received.extend(descriptors);
+            // Walk the control messages the kernel actually wrote. A header that claims
+            // more bytes than were delivered is truncated; the descriptors inside it are
+            // still installed and must be closed.
+            let written = header.msg_controllen as usize;
+            let mut descriptors: Vec<i32> = Vec::new();
+            let mut truncated = header.msg_flags & libc::MSG_CTRUNC != 0;
+            let base = control.as_ptr() as usize;
+            // SAFETY: CMSG_FIRSTHDR/NXTHDR stay inside `written` bytes of `control`.
+            let mut message = unsafe { libc::CMSG_FIRSTHDR(&header) };
+            while !message.is_null() {
+                // SAFETY: `message` points at a complete header inside `control`.
+                let (level, kind, length) = unsafe {
+                    (
+                        (*message).cmsg_level,
+                        (*message).cmsg_type,
+                        (*message).cmsg_len as usize,
+                    )
+                };
+                let offset = message as usize - base;
+                let end = offset.saturating_add(length).min(written);
+                if offset + length > written {
+                    truncated = true;
                 }
+                // SAFETY: CMSG_DATA points just past the header of a message inside `control`.
+                let payload = unsafe { libc::CMSG_DATA(message) } as usize - base;
+                if level == libc::SOL_SOCKET && kind == libc::SCM_RIGHTS && end > payload {
+                    let count = (end - payload) / core::mem::size_of::<i32>();
+                    for index in 0..count {
+                        let at = payload + index * core::mem::size_of::<i32>();
+                        descriptors.push(i32::from_ne_bytes(
+                            control[at..at + 4].try_into().expect("four bytes"),
+                        ));
+                    }
+                }
+                if offset + length > written {
+                    break;
+                }
+                // SAFETY: both pointers refer to `control`, bounded by `written`.
+                message = unsafe { libc::CMSG_NXTHDR(&header, message) };
             }
-            if message.bytes != 1
+            // SAFETY: every descriptor was just installed by this recvmsg and is owned here.
+            let mut owned: Vec<OwnedFd> = descriptors
+                .into_iter()
+                .filter(|&fd| fd >= 0)
+                .map(|fd| unsafe { OwnedFd::from_raw_fd(fd) })
+                .collect();
+            if received != 1
                 || marker != *b"L"
-                || message
-                    .flags
-                    .intersects(ReturnFlags::CTRUNC | ReturnFlags::TRUNC)
-                || received.len() != 1
+                || truncated
+                || header.msg_flags & libc::MSG_TRUNC != 0
+                || owned.len() != 1
             {
                 return Err(libc::EINVAL);
             }
-            let descriptor = received.pop().unwrap();
+            let descriptor = owned.pop().unwrap();
             rustix::io::fcntl_setfd(&descriptor, rustix::io::FdFlags::CLOEXEC)
                 .map_err(|e| e.raw_os_error())?;
             Ok(descriptor)
