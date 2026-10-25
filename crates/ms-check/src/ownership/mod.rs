@@ -96,6 +96,15 @@ pub struct BindingFacts {
     pub exclusive: bool,
 }
 
+/// How a binding borrows the place it names.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BorrowKind {
+    /// `let`: reads while the origin stays unchanged.
+    Shared,
+    /// `var`: changes through it change the origin.
+    Exclusive,
+}
+
 /// How a lambda holds what it captures.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CaptureMode {
@@ -157,10 +166,9 @@ pub struct Ownership {
     facts: HashMap<Key, CallableOwnership>,
     /// Rejected programs, in callable order.
     pub diagnostics: Vec<Diagnostic>,
-    /// Identities of the exclusive borrow bindings.
-    pub exclusive: HashSet<usize>,
-    /// Pattern and arm bindings that read-borrow a part of a non-`Copy` scrutinee.
-    pub read_borrows: HashSet<usize>,
+    /// Bindings that borrow a place another binding owns, by identity. A binding of a
+    /// temporary owns its value and is absent.
+    pub borrows: HashMap<usize, BorrowKind>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
@@ -357,31 +365,20 @@ impl Hir<'_> {
         }
         let mut facts = HashMap::new();
         let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
-        let mut exclusive = HashSet::new();
-        let mut read_borrows = HashSet::new();
+        let mut borrows = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
-            let held: Vec<usize> = out
-                .facts
-                .bindings
-                .values()
-                .filter(|f| f.exclusive)
-                .map(|f| f.binding.uid)
-                .collect();
-            exclusive.extend(held);
-            read_borrows.extend(
-                out.facts
-                    .bindings
-                    .values()
-                    .filter(|f| {
-                        matches!(f.role, Role::Pattern | Role::Arm)
-                            && !f.owned
-                            && !f.exclusive
-                            && f.class != Class::Copy
-                    })
-                    .map(|f| f.binding.uid),
-            );
+            for f in out.facts.bindings.values() {
+                let kind = if f.exclusive {
+                    BorrowKind::Exclusive
+                } else if !f.owned && !f.borrows.is_empty() && f.class != Class::Copy {
+                    BorrowKind::Shared
+                } else {
+                    continue;
+                };
+                borrows.insert(f.binding.uid, kind);
+            }
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
@@ -394,8 +391,7 @@ impl Hir<'_> {
         Ownership {
             facts,
             diagnostics,
-            exclusive,
-            read_borrows,
+            borrows,
             getters,
             lenders,
         }

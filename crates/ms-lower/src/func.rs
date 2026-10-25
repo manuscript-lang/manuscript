@@ -549,7 +549,7 @@ impl<'a> FnLower<'a> {
         let lent = ty == MTy::STR
             && self.ownership_checked()
             && !x.own
-            && !binding.mutable
+            && self.cx.shared(binding.uid)
             && !self.slotted.contains(&binding.uid)
             && self.temps.is_empty()
             && (self.views.contains(&x.v)
@@ -560,7 +560,7 @@ impl<'a> FnLower<'a> {
         // A pattern variable the checker proved a read-only borrow of its scrutinee stays where it
         // is: a lending function can hand it back, and a reader skips the copy.
         let lent = lent
-            || (self.cx.read_borrows.contains(&binding.uid)
+            || (self.cx.shared(binding.uid)
                 && self.ownership_checked()
                 && !x.own
                 && !binding.mutable
