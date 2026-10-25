@@ -46,6 +46,15 @@ export def bench_list() -> Unit:
         lambda () -> Int:
             return data.filter(lambda (x: Int) -> Bool: x % 2 == 0).length()
     )
+    bench("list.zip", 100000, lambda () -> Int: return data.zip(data).length())
+    bench("list.chunks", 100000, lambda () -> Int: return data.chunks(64).length())
+    bench("list.windows", 100000, lambda () -> Int: return data.windows(4).length())
+    bench(
+        "list.partition",
+        100000,
+        lambda () -> Int:
+            return data.partition(lambda (x: Int) -> Bool: x % 2 == 0).matching.length()
+    )
     bench(
         "list.fold",
         100000,
