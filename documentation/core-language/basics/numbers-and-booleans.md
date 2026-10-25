@@ -68,8 +68,8 @@ def sized() -> Unit:
 | --- | --- |
 | `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
 | `Float` | `truncate_to_int() -> Optional[Int]` |
-| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
-| `Float`, `Float32` | `to_float32()`, `to_float64()`, `truncate_to_int() -> Optional[Int]` |
+| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_int()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
+| `Float`, `Float32` | `to_float32()`, `to_float64()`, `to_float()` (`Float32` only), `truncate_to_int() -> Optional[Int]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).

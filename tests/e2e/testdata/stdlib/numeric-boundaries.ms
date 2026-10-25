@@ -93,3 +93,13 @@ test "duration safe addition subtraction negation and unit edges":
             or (-153722867).minutes.to_nanoseconds() != -9223372020000000000
         )
     )
+
+test "sized numbers widen to Int and Float with to_int and to_float":
+    let a: Int8 = -100
+    let b: Int16 = -7
+    let c: Int32 = 70000
+    let d: Int64 = 9
+    let f: Float32 = 0.5
+    let total: Int = a.to_int() + b.to_int() + c.to_int() + d.to_int()
+    try expect_equal(total, 69902)
+    try expect_equal(f.to_float(), 0.5)
