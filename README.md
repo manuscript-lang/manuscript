@@ -128,7 +128,7 @@ The [agent benchmark](bench/agent/README.md) runs Claude Code on twenty challeng
 | first build succeeded (small) | 1-2 / 10 | 10 / 10 |
 | source size, LLM tokens, same nine small challenges | 1.21-1.28x TypeScript | 1.00x |
 
-Read it honestly: agents that have never seen the language now pass as often as they do in TypeScript, but they still need several compile-fix rounds to get there and write about a fifth more source than they would in TypeScript. The first-build rate and the token ratio are the two numbers this project is trying to move, and the diagnostics below are how.
+Read it honestly: agents that have never seen the language now pass as often as they do in TypeScript, but they still need several compile-fix rounds to get there and write about 20-30% more source than they would in TypeScript. The first-build rate and the token ratio are the two numbers this project is trying to move, and the diagnostics below are how.
 
 ## Written for agents
 

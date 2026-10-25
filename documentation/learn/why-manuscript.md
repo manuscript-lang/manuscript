@@ -43,7 +43,7 @@ It is also fast: `@std/json` parses and writes the standard documents faster tha
 
 The claim that matters most is also the one that is hardest to assume: that agents do better in Manuscript. The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives the same twenty challenges (ten small programs, ten applications of three to five thousand lines) to a coding agent in Manuscript, TypeScript, Go and Rust, with hidden tests, and records pass rate, first-build success, turns, tokens and cost over passing runs only.
 
-In the latest runs with Claude Haiku, agents pass 10 of 10 small challenges in Manuscript, the same as in TypeScript, and 8 of 10 large applications. They still need several compile-fix rounds (first build succeeds on 1 or 2 of 10) and write about a fifth more source than in TypeScript. Those two numbers are what the diagnostics, the cheat sheet and the API work are trying to move; the [results](https://github.com/manuscript-lang/manuscript/tree/main/bench/agent/results) record each attempt.
+In the latest runs with Claude Haiku, agents pass 10 of 10 small challenges in Manuscript, the same as in TypeScript, and 8 of 10 large applications. They still need several compile-fix rounds (first build succeeds on 1 or 2 of 10) and write about 20-30% more source than in TypeScript. Those two numbers are what the diagnostics, the cheat sheet and the API work are trying to move; the [results](https://github.com/manuscript-lang/manuscript/tree/main/bench/agent/results) record each attempt.
 
 ## Where this is going
 
