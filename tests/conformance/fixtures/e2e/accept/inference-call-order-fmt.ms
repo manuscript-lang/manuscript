@@ -18,7 +18,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> ref String: self.detail
+    def message() -> String: self.detail.clone()
 
 type GenericFailure[T]:
     detail: T

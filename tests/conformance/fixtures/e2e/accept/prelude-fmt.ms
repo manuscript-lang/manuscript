@@ -7,8 +7,8 @@ type Failure:
     message_text: String
 
 impl Error for Failure:
-    def message() -> ref String:
-        return self.message_text
+    def message() -> String:
+        return self.message_text.clone()
 
 def success() -> Result[Optional[Int], Error]:
     return ok(some(7))
