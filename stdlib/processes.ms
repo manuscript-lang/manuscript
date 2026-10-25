@@ -324,11 +324,11 @@ impl Process[T, In, Out]:
     def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
-    # Asks the child's process group to stop (SIGTERM on Unix; Windows ends the group). Does not wait.
+    # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
     def terminate() -> Unit:
         msstd_process_forked_signal(self.native, False)
 
-    # Kills the child's process group. Does not wait.
+    # Kills the child and the processes it started. Does not wait.
     def kill() -> Unit:
         msstd_process_forked_signal(self.native, True)
 

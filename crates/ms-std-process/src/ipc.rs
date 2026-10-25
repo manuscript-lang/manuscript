@@ -57,6 +57,16 @@ pub struct Reader(plat::Reader);
 /// The writing half of an end.
 pub struct Writer(plat::Writer);
 
+/// Whether this process was started with an end by `ProcessGroup.spawn`.
+static STARTED_BY_GROUP: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+/// Whether this process is a `ProcessGroup` child, so its parent's kill of its group must reach
+/// everything it starts.
+pub fn started_by_group() -> bool {
+    STARTED_BY_GROUP.load(core::sync::atomic::Ordering::Relaxed)
+}
+
 impl Link {
     /// The child's end named by [`ENV`] in this process, or none when this process was not
     /// started with one. The variable is removed so user code and grandchildren do not see it.
@@ -67,6 +77,7 @@ impl Link {
         // SAFETY: called once from the start path, before user code or other threads read the
         // environment.
         unsafe { std::env::remove_var(ENV) };
+        STARTED_BY_GROUP.store(true, core::sync::atomic::Ordering::Relaxed);
         let link = plat::adopt(value.as_encoded_bytes()).map_err(|e| os_failure("ipc", e))?;
         Ok(Some(Link(link)))
     }
