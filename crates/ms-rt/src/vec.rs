@@ -1657,111 +1657,35 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 
 // ---- Bytes fixed-width codecs ----
 
-/// The `N` bytes at `at`, when they exist.
-unsafe fn codec_chunk<const N: usize>(b: *const VecVal, at: i64) -> Option<[u8; N]> {
+/// `msrt_bytes_read_word(data, at, width, little)`: the `width` bytes (1, 2, 4 or 8) at `at` as an unsigned
+/// number, or all eight bytes as the `i64` with that bit pattern. `@std/bytecodecs.ms` builds every
+/// `Bytes.int32_le(at)` style read on it. Missing bytes are `STATUS_OUT_OF_RANGE`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
+    b: *const VecVal,
+    at: i64,
+    width: i64,
+    little: u8,
+    out: *mut i64,
+) -> u8 {
     // SAFETY: caller contract.
-    let s = unsafe { bslice(b) };
-    let start = usize::try_from(at).ok()?;
-    s.get(start..start.checked_add(N)?)?.try_into().ok()
-}
-
-/// Bytes read (`Bytes.int32_le(at)` and siblings): `STATUS_OUT_OF_RANGE` when the bytes are not all there.
-macro_rules! bytes_reads {
-    ($($name:ident, $out:ty, $prim:ty, $n:literal, $from:ident;)*) => {$(
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C-unwind" fn $name(b: *const VecVal, at: i64, out: *mut $out) -> u8 {
-            // SAFETY: caller contract.
-            unsafe {
-                let Some(raw) = codec_chunk::<$n>(b, at) else {
-                    return STATUS_OUT_OF_RANGE;
-                };
-                out.write(<$prim>::$from(raw) as $out);
-                STATUS_OK
-            }
+    unsafe {
+        let s = bslice(b);
+        let n = width as usize;
+        let Some(raw) = usize::try_from(at)
+            .ok()
+            .and_then(|start| s.get(start..start.checked_add(n)?))
+        else {
+            return STATUS_OUT_OF_RANGE;
+        };
+        let mut word = [0u8; 8];
+        word[..n].copy_from_slice(raw);
+        if little == 0 {
+            word[..n].reverse();
         }
-    )*};
-}
-
-bytes_reads! {
-    msrt_bytes_int8, i8, i8, 1, from_le_bytes;
-    msrt_bytes_uint8, i64, u8, 1, from_le_bytes;
-    msrt_bytes_int16_le, i16, i16, 2, from_le_bytes;
-    msrt_bytes_uint16_le, i64, u16, 2, from_le_bytes;
-    msrt_bytes_int16_be, i16, i16, 2, from_be_bytes;
-    msrt_bytes_uint16_be, i64, u16, 2, from_be_bytes;
-    msrt_bytes_int32_le, i32, i32, 4, from_le_bytes;
-    msrt_bytes_uint32_le, i64, u32, 4, from_le_bytes;
-    msrt_bytes_int32_be, i32, i32, 4, from_be_bytes;
-    msrt_bytes_uint32_be, i64, u32, 4, from_be_bytes;
-    msrt_bytes_int64_le, i64, i64, 8, from_le_bytes;
-    msrt_bytes_int64_be, i64, i64, 8, from_be_bytes;
-    msrt_bytes_float32_le, f32, f32, 4, from_le_bytes;
-    msrt_bytes_float32_be, f32, f32, 4, from_be_bytes;
-    msrt_bytes_float64_le, f64, f64, 8, from_le_bytes;
-    msrt_bytes_float64_be, f64, f64, 8, from_be_bytes;
-}
-
-/// Bytes writes (`BytesBuilder.append_int32_le(value)` and siblings).
-macro_rules! bytes_appends {
-    ($($name:ident, $arg:ty, $prim:ty, $to:ident;)*) => {$(
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C-unwind" fn $name(b: *mut VecVal, value: $arg) {
-            let value = match <$prim>::try_from(value) {
-                Ok(value) => value,
-                Err(_) => fault::fault_fmt(format_args!(
-                    "BytesBuilder.{}: value {value} does not fit {}",
-                    &stringify!($name)["msrt_bytes_".len()..],
-                    stringify!($prim)
-                )),
-            };
-            let raw = value.$to();
-            // SAFETY: caller contract.
-            unsafe {
-                let v = &mut *b;
-                reserve(v, &desc::msrt_desc_bool, raw.len());
-                core::ptr::copy_nonoverlapping(raw.as_ptr(), v.ptr.add(v.len), raw.len());
-                v.len += raw.len();
-            }
-        }
-    )*};
-}
-
-bytes_appends! {
-    msrt_bytes_append_int8, i64, i8, to_le_bytes;
-    msrt_bytes_append_int16_le, i64, i16, to_le_bytes;
-    msrt_bytes_append_uint16_le, i64, u16, to_le_bytes;
-    msrt_bytes_append_int16_be, i64, i16, to_be_bytes;
-    msrt_bytes_append_uint16_be, i64, u16, to_be_bytes;
-    msrt_bytes_append_int32_le, i64, i32, to_le_bytes;
-    msrt_bytes_append_uint32_le, i64, u32, to_le_bytes;
-    msrt_bytes_append_int32_be, i64, i32, to_be_bytes;
-    msrt_bytes_append_uint32_be, i64, u32, to_be_bytes;
-    msrt_bytes_append_int64_le, i64, i64, to_le_bytes;
-    msrt_bytes_append_int64_be, i64, i64, to_be_bytes;
-}
-
-/// A `Float32` crosses in a register as the `f64` holding its exact value.
-macro_rules! bytes_append_floats {
-    ($($name:ident, $arg:ty, $to:ident;)*) => {$(
-        #[unsafe(no_mangle)]
-        pub unsafe extern "C-unwind" fn $name(b: *mut VecVal, value: f64) {
-            let raw = (value as $arg).$to();
-            // SAFETY: caller contract.
-            unsafe {
-                let v = &mut *b;
-                reserve(v, &desc::msrt_desc_bool, raw.len());
-                core::ptr::copy_nonoverlapping(raw.as_ptr(), v.ptr.add(v.len), raw.len());
-                v.len += raw.len();
-            }
-        }
-    )*};
-}
-
-bytes_append_floats! {
-    msrt_bytes_append_float32_le, f32, to_le_bytes;
-    msrt_bytes_append_float32_be, f32, to_be_bytes;
-    msrt_bytes_append_float64_le, f64, to_le_bytes;
-    msrt_bytes_append_float64_be, f64, to_be_bytes;
+        out.write(i64::from_le_bytes(word));
+        STATUS_OK
+    }
 }
 
 // ---- StringBuilder (bytes) ----

@@ -80,6 +80,55 @@ fn a_value_used_in_a_loop_is_dropped_on_the_exit_edge() {
     assert_eq!(all.iter().flatten().filter(|o| **o == Op::Drop).count(), 1);
 }
 
+const LENT: &str = r#"module "t"
+file 0 "t.ms"
+extern @msrt_map_new() -> Map<str, str>
+extern @msrt_map_get_ptr(Map<str, str>, ptr, ptr, ptr) -> ptr
+entry @main
+
+fn @main() -> int export {
+b0:
+  %m: Map<str, str> = call.rt @msrt_map_new ()
+  %k: str = str "a"
+  %kd: ptr = typedesc str
+  %vd: ptr = typedesc str
+  %ks: ptr = slot str
+  store %ks, %k
+  %p: ptr = call.rt @msrt_map_get_ptr (%m, %kd, %vd, %ks)
+  %miss: bool = ptr.is_null %p
+  %hit: bool = not %miss
+  br_if %hit, b1(), b2()
+b1():
+  %v: str = load str %p
+  %o: opt<str> = opt.view %v
+  br b3(%o)
+b2():
+  %n: opt<str> = opt.none
+  br b3(%n)
+b3(%r: opt<str>):
+  %some: bool = opt.is_some %r
+  %len: int = b2i %some
+  drop %m
+  ret %len
+}
+"#;
+
+/// A map read in place (`let x = m.get(k)` lowers to the entry pointer, a `load` and
+/// `opt.view`) keeps the map alive until the lent optional's last use: the pointer and the
+/// values read through it belong to the map's family, so `drop %m` cannot move above them.
+#[test]
+fn a_lent_entry_keeps_its_container_alive() {
+    let m = optimized(LENT);
+    let all = ops(&m, "main");
+    assert!(!all[0].contains(&Op::Drop), "{all:?}");
+    assert!(!all[1].contains(&Op::Drop), "{all:?}");
+    assert!(!all[2].contains(&Op::Drop), "{all:?}");
+    let last = &all[3];
+    let drop = last.iter().position(|o| *o == Op::Drop).expect("drop");
+    let use_ = last.iter().position(|o| *o == Op::OptIsSome).expect("use");
+    assert!(use_ < drop, "{all:?}");
+}
+
 /// `"a" + "b" + "c"`: a chain of concatenations whose intermediate results are dropped at the
 /// end of the function.
 fn concat_chain(fresh: &str) -> String {

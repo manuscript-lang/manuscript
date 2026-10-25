@@ -14,7 +14,7 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 - A function that returns part of a parameter or the receiver declares it: `def list() -> ref List[Int]`, `def trim() -> ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. Every path of a `ref` function returns such a part (or `none`): returning a new value, a `try` failure, or a borrow of a temporary built inside the function is rejected, because the caller would hold a borrow of something freed when the function returns. Drop `ref` to return owned values. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
 - A binding of a place (`let x = a.b`, `var x = xs[i]`), a loop variable and a match payload borrow without a marker; `let ref`, `for ref` and `match ref` are rejected.
 - A `ref` result freezes every borrowable argument of the call until its last use, not only the one it came from.
-- An interface operation declares `ref` when implementations may lend; an implementation of a `ref` operation may lend or own, while an owning operation cannot be implemented by a lender.
+- An interface operation declares `ref` when its implementations lend: every implementation of a `ref` operation returns `ref`, and an owning operation cannot be implemented by a lender. A `Copy` result (`Int`, a record of scalars) is the same lent or owned, so an implementation may compute it.
 
 ```manuscript
 type Box:
@@ -30,7 +30,7 @@ def grow(var b: Box) -> Int:
     return b.items.length()
 ```
 
-The standard library declares its lending natives the same way (`trim`, `List.first`, `Map.get`, `Optional.get`, `Error.message`).
+The standard library declares its lending natives the same way (`trim`, `List.first`, `Map.get`, `Optional.get`). `Error.message` owns its result, so an implementation may build the text; one that returns a stored field writes `.clone()`.
 
 ## Reassignment
 

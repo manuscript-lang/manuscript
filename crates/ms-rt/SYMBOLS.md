@@ -108,6 +108,10 @@ msrt_numbers_error_message(status: u8, out: *mut StrVal)
 msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal)
 msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal)
 msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal)
+msrt_float_from_bits(bits: i64) -> f64
+msrt_float_to_bits(value: f64) -> i64
+msrt_float32_from_bits(bits: i64) -> f64
+msrt_float32_to_bits(value: f64) -> i64
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
@@ -149,6 +153,11 @@ msrt_string_concat3( a: *const StrVal, b: *const StrVal, c: *const StrVal, out: 
 msrt_string_concat4( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, out: *mut StrVal, )
 msrt_string_concat5( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, out: *mut StrVal, )
 msrt_string_concat6( a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e: *const StrVal, f: *const StrVal, out: *mut StrVal, )
+msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal)
+msrt_string_fmt3( mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal, )
+msrt_string_fmt4( mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal, )
+msrt_string_fmt5( mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal, )
+msrt_string_fmt6( mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize, out: *mut StrVal, )
 msrt_string_clone(s: *const StrVal, out: *mut StrVal)
 msrt_string_free(s: *const StrVal)
 msrt_str_free(ptr: *mut u8)
@@ -278,37 +287,7 @@ msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal)
 msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8
 msrt_bytes_append(b: *mut VecVal, value: i64)
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal)
-msrt_bytes_int8(b: *const VecVal, at: i64, out: *mut i8) -> u8
-msrt_bytes_uint8(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int16_le(b: *const VecVal, at: i64, out: *mut i16) -> u8
-msrt_bytes_uint16_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int16_be(b: *const VecVal, at: i64, out: *mut i16) -> u8
-msrt_bytes_uint16_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int32_le(b: *const VecVal, at: i64, out: *mut i32) -> u8
-msrt_bytes_uint32_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int32_be(b: *const VecVal, at: i64, out: *mut i32) -> u8
-msrt_bytes_uint32_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int64_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_int64_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
-msrt_bytes_float32_le(b: *const VecVal, at: i64, out: *mut f32) -> u8
-msrt_bytes_float32_be(b: *const VecVal, at: i64, out: *mut f32) -> u8
-msrt_bytes_float64_le(b: *const VecVal, at: i64, out: *mut f64) -> u8
-msrt_bytes_float64_be(b: *const VecVal, at: i64, out: *mut f64) -> u8
-msrt_bytes_append_int8(b: *mut VecVal, value: i64)
-msrt_bytes_append_int16_le(b: *mut VecVal, value: i64)
-msrt_bytes_append_uint16_le(b: *mut VecVal, value: i64)
-msrt_bytes_append_int16_be(b: *mut VecVal, value: i64)
-msrt_bytes_append_uint16_be(b: *mut VecVal, value: i64)
-msrt_bytes_append_int32_le(b: *mut VecVal, value: i64)
-msrt_bytes_append_uint32_le(b: *mut VecVal, value: i64)
-msrt_bytes_append_int32_be(b: *mut VecVal, value: i64)
-msrt_bytes_append_uint32_be(b: *mut VecVal, value: i64)
-msrt_bytes_append_int64_le(b: *mut VecVal, value: i64)
-msrt_bytes_append_int64_be(b: *mut VecVal, value: i64)
-msrt_bytes_append_float32_le(b: *mut VecVal, value: f64)
-msrt_bytes_append_float32_be(b: *mut VecVal, value: f64)
-msrt_bytes_append_float64_le(b: *mut VecVal, value: f64)
-msrt_bytes_append_float64_be(b: *mut VecVal, value: f64)
+msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8
 msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal)
 msrt_strbuilder_append_int(b: *mut VecVal, n: i64)
 msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal)

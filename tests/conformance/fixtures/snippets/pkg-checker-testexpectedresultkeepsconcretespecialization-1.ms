@@ -5,7 +5,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> ref String: self.detail
+    def message() -> String: self.detail.clone()
 
 def fail_cause[T, E: Error](cause: E) -> Result[T, E]: error(cause)
 

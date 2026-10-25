@@ -526,11 +526,16 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             .map_or(Act::Keep, |p| Act::Const(K::F((p as f64).to_bits()))),
         Op::B2I => env.ci(a(0)).map_or(Act::Keep, |p| Act::Const(K::I(p))),
         Op::OptIsSome => match env.defs.get(&a(0)) {
-            Some((Op::OptSome, _, _)) => Act::Const(K::B(true)),
+            Some((Op::OptSome | Op::OptView, _, _)) => Act::Const(K::B(true)),
             Some((Op::OptNone, _, _)) => Act::Const(K::B(false)),
             _ => Act::Keep,
         },
         Op::OptGet | Op::OptUnwrap => {
+            // A lent optional borrows its payload, so `opt.get` of it is the payload itself.
+            // `opt.unwrap` owns its result, so it keeps copying.
+            if let (Op::OptGet, Some((Op::OptView, args, _))) = (inst.op, env.defs.get(&a(0))) {
+                return Act::Alias(args[0]);
+            }
             let Some((Op::OptSome, args, _)) = env.defs.get(&a(0)) else {
                 return Act::Keep;
             };

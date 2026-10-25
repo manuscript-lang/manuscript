@@ -227,8 +227,10 @@ impl FnLower<'_> {
         self.rt_call(sym, None, None, decl, args, result)
     }
 
-    /// `Map[Int, V]` and `Map[String, V]` lookups whose values are single words go to the `_w8` /
-    /// `_sw8` entry points, which probe without descriptor dispatch (`add` likewise for scalar values). `get` copies the value bitwise, so it excludes `String`.
+    /// `Map[Int, V]` and `Map[String, V]` lookups whose values are single words (`Int`, `Float`)
+    /// go to the `_w8` / `_sw8` entry points, which probe a fixed slot layout without descriptor
+    /// dispatch (`add` likewise). A `String` value is two words, so its maps take the general
+    /// entry points: `find_w8` walks 24-byte slots and would read the wrong key.
     pub(crate) fn word_map_symbol(&self, sym: &str, map: MTy) -> Option<&'static str> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
@@ -244,7 +246,7 @@ impl FnLower<'_> {
             _ => return None,
         };
         let scalar = a[1] == MTy::INT || a[1] == MTy::FLOAT;
-        let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
+        let word = scalar;
         match (sym, int_key) {
             ("msrt_map_add", true) if scalar => Some("msrt_map_add_w8"),
             ("msrt_map_add", false) if scalar => Some("msrt_map_add_sw8"),

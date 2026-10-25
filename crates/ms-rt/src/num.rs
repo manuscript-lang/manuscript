@@ -423,6 +423,30 @@ pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *m
     unsafe { precision_out(v, b'f', digits, 0, "to_fixed", out) }
 }
 
+/// The `Float` with this IEEE 754 binary64 bit pattern.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_float_from_bits(bits: i64) -> f64 {
+    f64::from_bits(bits as u64)
+}
+
+/// The IEEE 754 binary64 bit pattern of a `Float`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
+    value.to_bits() as i64
+}
+
+/// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
+    f64::from(f32::from_bits(bits as u32))
+}
+
+/// The binary32 bit pattern of a value a `Float32` register holds as an `f64`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_float32_to_bits(value: f64) -> i64 {
+    i64::from((value as f32).to_bits())
+}
+
 /// `Float.truncate_to_int()`: present flag, value through `out` only when present.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 {

@@ -386,7 +386,7 @@ unsafe fn string_get(
             return cloned(&*default);
         };
         let text = bytes(s);
-        if scalar_count(s) == text.len() {
+        if n == text.len() {
             return from_bytes(&text[i..i + 1]);
         }
         let off = scalar_offset(s, i);
@@ -754,6 +754,122 @@ pub unsafe extern "C-unwind" fn msrt_string_concat6(
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
     unsafe { concat_parts(&[a, b, c, d, e, f]).write_to(out) }
+}
+
+/// Most parts one `msrt_string_fmtN` joins.
+const MAX_FMT: usize = 6;
+
+/// Joins `parts` with one allocation: part `k` is an `i64` written in decimal when bit `k` of
+/// `mask` is set, otherwise a `*const StrVal`. `f"{name}={n}"` builds its text here without a
+/// temporary string for `n`.
+///
+/// # Safety
+/// Every part whose mask bit is clear is a live string.
+unsafe fn format_parts(mask: i64, parts: &[usize]) -> StrVal {
+    debug_assert!(parts.len() <= MAX_FMT);
+    // Digit buffers are initialised only for the integer parts.
+    let mut digits: [core::mem::MaybeUninit<[u8; 20]>; MAX_FMT] =
+        [core::mem::MaybeUninit::uninit(); MAX_FMT];
+    let mut slices: [(*const u8, usize); MAX_FMT] = [(core::ptr::null(), 0); MAX_FMT];
+    let mut total = 0usize;
+    for (k, &p) in parts.iter().enumerate() {
+        let (ptr, len) = if (mask >> k) & 1 == 1 {
+            let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
+            (d.as_ptr(), d.len())
+        } else {
+            // SAFETY: caller contract.
+            let s = unsafe { &*(p as *const StrVal) };
+            (s.data(), s.len())
+        };
+        slices[k] = (ptr, len);
+        total += len;
+    }
+    let mut buf = [0u8; 16];
+    let s = if total <= STR_INLINE_MAX {
+        None
+    } else {
+        Some(alloc_str(total))
+    };
+    let dst = match &s {
+        Some(s) => s.ptr_word,
+        None => buf.as_mut_ptr(),
+    };
+    let mut at = 0usize;
+    for &(ptr, len) in &slices[..parts.len()] {
+        // SAFETY: `dst` has room for `total` bytes and every slice is readable.
+        unsafe { core::ptr::copy_nonoverlapping(ptr, dst.add(at), len) };
+        at += len;
+    }
+    match s {
+        Some(s) => s,
+        // `buf` is zero past `total`.
+        None => StrVal::from_bits(u128::from_le_bytes(buf), total),
+    }
+}
+
+/// `f"{a}{b}"` where a part may be an integer: see [`format_parts`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { format_parts(mask, &[a, b]).write_to(out) }
+}
+
+/// Three parts, any of them integers: see [`format_parts`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_fmt3(
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { format_parts(mask, &[a, b, c]).write_to(out) }
+}
+
+/// Four parts, any of them integers: see [`format_parts`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_fmt4(
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    d: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { format_parts(mask, &[a, b, c, d]).write_to(out) }
+}
+
+/// Five parts, any of them integers: see [`format_parts`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_fmt5(
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    d: usize,
+    e: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { format_parts(mask, &[a, b, c, d, e]).write_to(out) }
+}
+
+/// Six parts, any of them integers: see [`format_parts`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_fmt6(
+    mask: i64,
+    a: usize,
+    b: usize,
+    c: usize,
+    d: usize,
+    e: usize,
+    f: usize,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes live strings and a writable `out`.
+    unsafe { format_parts(mask, &[a, b, c, d, e, f]).write_to(out) }
 }
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
@@ -2146,6 +2262,44 @@ mod tests {
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
             assert_eq!(none.len(), 0);
+        }
+    }
+
+    #[test]
+    fn format_parts_writes_integers_in_place_of_strings() {
+        let _g = crate::testutil::lock();
+        // SAFETY: the strings are live for the whole test.
+        unsafe {
+            let w = from_bytes(b"w");
+            let eq = from_bytes(b"=");
+            let mut s = empty();
+            msrt_string_fmt2(0b10, &w as *const StrVal as usize, 1234usize, &mut s);
+            assert_eq!(bytes(&s), b"w1234");
+            assert!(s.is_inline());
+            let mut neg = empty();
+            msrt_string_fmt3(
+                0b101,
+                (-7i64) as usize,
+                &eq as *const StrVal as usize,
+                i64::MIN as usize,
+                &mut neg,
+            );
+            assert_eq!(bytes(&neg), b"-7=-9223372036854775808");
+            assert!(neg.owns());
+            let long = from_bytes(b"abcdefghijklmn");
+            let mut edge = empty();
+            msrt_string_fmt2(0b10, &long as *const StrVal as usize, 5usize, &mut edge);
+            assert_eq!(bytes(&edge), b"abcdefghijklmn5");
+            assert!(edge.is_inline());
+            let mut over = empty();
+            msrt_string_fmt2(0b10, &long as *const StrVal as usize, 56usize, &mut over);
+            assert_eq!(bytes(&over), b"abcdefghijklmn56");
+            assert!(over.owns());
+            let mut ints = empty();
+            msrt_string_fmt2(0b11, 0usize, 10usize, &mut ints);
+            assert_eq!(bytes(&ints), b"010");
+            release(&neg);
+            release(&over);
         }
     }
 
