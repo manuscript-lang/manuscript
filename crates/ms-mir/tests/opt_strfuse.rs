@@ -311,3 +311,48 @@ fn integer_interpolations_format_into_the_joined_string() {
     assert!(text.contains("iconst 5"), "{text}");
     assert_eq!(text.matches("drop").count(), 3, "{text}");
 }
+
+const SIZED: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str
+extern @msrt_int_to_string(int32) -> str
+extern @msrt_string_empty() -> str
+entry @main
+
+fn @label(%0: str, %1: int32) -> str inline(never) {
+b0:
+  %2: str = call.rt @msrt_int_to_string (%1)
+  %3: str = call.rt @msrt_string_concat (%0, %2)
+  drop %2
+  ret %3
+}
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %w: int = iconst 7
+  %n: int32 = conv %w
+  %1: str = call @label (%0, %n)
+  drop %1
+  drop %0
+  %5: int = iconst 0
+  ret %5
+}
+"#;
+
+/// A sized integer's text is declared with its own width, which `string_fmtN` does not take: the
+/// chain keeps its `int_to_string`.
+#[test]
+fn sized_integer_text_is_not_fused() {
+    let mut m = parse_module(SIZED).expect("parse");
+    verify_module(&m).expect("verify");
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    verify_module(&m).expect("verify after");
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("call.rt @msrt_int_to_string").count(),
+        1,
+        "{text}"
+    );
+    assert!(!text.contains("string_fmt"), "{text}");
+}

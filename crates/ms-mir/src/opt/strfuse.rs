@@ -127,8 +127,11 @@ fn collect(
         let inst = &f.blocks[db].insts[di];
         let name = ext_name(m, inst)?;
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
-        (single && matches!(name, CONCAT | INT_TO_STRING) && straight_line(f, info, db, at))
-            .then_some((db, di, name == CONCAT))
+        (single && fusable(f, inst, name) && straight_line(f, info, db, at)).then_some((
+            db,
+            di,
+            name == CONCAT,
+        ))
     });
     let Some((db, di, concat)) = fused else {
         if top {
@@ -260,6 +263,16 @@ fn fmt_name(n: usize) -> String {
 }
 
 /// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
+/// Whether a call named `name` can join a fused chain: a concatenation, or the text of a plain
+/// `Int` (a sized integer is declared with its own width, which `string_fmtN` does not take).
+fn fusable(f: &Func, inst: &Inst, name: &str) -> bool {
+    match name {
+        CONCAT => true,
+        INT_TO_STRING => inst.args.first().is_some_and(|a| f.ty(*a) == Ty::INT),
+        _ => false,
+    }
+}
+
 /// links into `remove`. A leaf that is a single-use `int_to_string` becomes the integer itself.
 fn chain(
     m: &Module,
@@ -282,8 +295,9 @@ fn chain(
     let inner = info.defs[v.index()].and_then(|(db, di)| {
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
         let (dbi, ddi) = info.drops[v.index()].first().copied()?;
-        let name = ext_name(m, &f.blocks[db].insts[di])?;
-        let ok = matches!(name, CONCAT | INT_TO_STRING)
+        let inst = &f.blocks[db].insts[di];
+        let name = ext_name(m, inst)?;
+        let ok = fusable(f, inst, name)
             && single
             && straight_line(f, info, db, at.0)
             && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
