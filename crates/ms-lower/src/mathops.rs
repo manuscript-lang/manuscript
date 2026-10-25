@@ -1,4 +1,4 @@
-//! `math.min`, `math.max`, `math.min_of` and `math.max_of` over any `Comparable` scalar.
+//! `math.min` and `math.max` over any `Comparable` scalar, and `List.min` and `List.max`.
 //!
 //! Ordering follows the native compare of the type: `Float` puts NaN above every value and
 //! equates `-0.0` with `0.0`. Ties keep the first operand.
@@ -129,38 +129,22 @@ impl FnLower<'_> {
         )
     }
 
-    /// `min_of(values)` or `max_of(values)`: the first of the extreme elements, or none.
-    pub(crate) fn math_extreme_of(
+    /// `list.min()` or `list.max()` over the list in `lvar`: a copy of the first of the extreme
+    /// elements, or none.
+    pub(crate) fn list_extreme(
         &mut self,
-        e: &ms_syntax::ast::Expr,
-        view: &CallView<'_>,
+        lvar: ms_mir::builder::Var,
+        element: &ct::Ty,
+        out: MTy,
         greater: bool,
     ) -> Result<Val, Error> {
-        let args = self.native_args(view)?;
-        if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
-        }
-        let out = self.emty(e)?;
-        let values = args
-            .iter()
-            .find(|a| a.name.as_str() == "values")
-            .map(|a| a.val)
-            .ok_or_else(|| Error::new("min_of and max_of take a list"))?;
-        let element = view
-            .arguments
-            .iter()
-            .find(|a| a.slot.name.as_str() == "values")
-            .and_then(|a| self.ety(a.expr).args.first().cloned())
-            .ok_or_else(|| Error::new("min_of and max_of take a list"))?;
-        let list = self.borrow(values);
+        let list = self.b.use_var(lvar);
         let TyKind::List(elem) = self.b.m.types.kind(self.ty_of(list)).clone() else {
-            return Err(Error::new("min_of and max_of take a list"));
+            return Err(Error::new("min and max take a list"));
         };
         let n = self.b.list_len(list);
         let zero = self.b.iconst(0);
         let empty = self.b.icmp(Cc::Eq, n, zero);
-        let lvar = self.b.declare_var(self.ty_of(list), Mode::Borrow);
-        self.b.def_var(lvar, list);
         self.two_ways(empty, out, &mut |s| Ok(Some(s.none_owned(out))), &mut |s| {
             let l = s.b.use_var(lvar);
             let first = s.b.list_get(l, zero);
@@ -172,7 +156,7 @@ impl FnLower<'_> {
             s.b.def_var(best, first);
             s.each_element(lvar, &mut |s, _, x| {
                 let cur = s.b.use_var(best);
-                let c = s.order(elem, &element, x, cur)?;
+                let c = s.order(elem, element, x, cur)?;
                 let z = s.b.iconst(0);
                 let better = s.b.icmp(if greater { Cc::Gt } else { Cc::Lt }, c, z);
                 let (take, skip) = (s.b.new_block(), s.b.new_block());
@@ -190,6 +174,40 @@ impl FnLower<'_> {
             })?;
             let v = s.b.use_var(best);
             Ok(Some(s.b.opt_some(v)))
+        })
+    }
+
+    /// `list.sum()` over the list in `lvar`: the elements added left to right with `+`.
+    pub(crate) fn list_sum(
+        &mut self,
+        lvar: ms_mir::builder::Var,
+        element: &ct::Ty,
+        out: MTy,
+    ) -> Result<Val, Error> {
+        let list = self.b.use_var(lvar);
+        let n = self.b.list_len(list);
+        let acc = self.b.declare_var(out, Mode::Borrow);
+        let float = self.b.m.types.is_float(out);
+        let zero = if float {
+            self.b.fconst_ty(0.0, out)
+        } else {
+            self.b.iconst_ty(0, out)
+        };
+        self.b.def_var(acc, zero);
+        let first = self.b.iconst(0);
+        self.counted_loop(first, n, &mut |s, i| {
+            let l = s.b.use_var(lvar);
+            let x = s.b.list_get(l, i);
+            let cur = s.b.use_var(acc);
+            let add = if float { Op::FAdd } else { Op::IAddChk };
+            let next = s.b.binop(add, cur, x);
+            let next = s.narrow(next, element);
+            s.b.def_var(acc, next);
+            Ok(())
+        })?;
+        Ok(Val {
+            v: self.b.use_var(acc),
+            own: false,
         })
     }
 }

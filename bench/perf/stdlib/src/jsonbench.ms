@@ -22,6 +22,20 @@ def encoded_length(value: JsonValue) -> Int:
 
     return 0
 
+# Reads three nested fields of one row in place, without copying any subtree.
+def row_weight(tree: JsonValue, index: Int) -> Int:
+    if let row = tree.at(index):
+        var weight = 0
+        if let id = row.get("id"):
+            weight += id.as_int().get(0)
+        if let tags = row.get("tags"):
+            if let last = tags.at(-1):
+                if let tag = last.as_string():
+                    weight += tag.length()
+        return weight
+
+    return 0
+
 export def bench_json() -> Unit:
     let doc = json_doc(5000)
 
@@ -51,23 +65,7 @@ export def bench_json() -> Unit:
             100000,
             lambda () -> Int:
                 var total = 0
-
                 for i in range(0, 100000):
-                    let row = tree.at(i % 5000)
-                    let id = (
-                        row
-                        .and_then(lambda r: r.get("id"))
-                        .and_then(lambda n: n.as_int())
-                        .get(0)
-                    )
-                    let tag = (
-                        row
-                        .and_then(lambda r: r.get("tags"))
-                        .and_then(lambda t: t.at(-1))
-                        .and_then(lambda n: n.as_string())
-                        .get("")
-                    )
-                    total += id + tag.length()
-
+                    total += row_weight(tree, i % 5000)
                 return total
         )

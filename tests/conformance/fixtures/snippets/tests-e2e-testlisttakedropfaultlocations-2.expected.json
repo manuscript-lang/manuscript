@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...",
+        "message": "unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...",
         "position": {
           "file": "tests-e2e-testlisttakedropfaultlocations-2.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testlisttakedropfaultlocations-2.ms:5:23: resolution: unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testlisttakedropfaultlocations-2.ms:5:23: resolution: unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

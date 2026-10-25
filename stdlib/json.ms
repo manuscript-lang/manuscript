@@ -34,16 +34,18 @@ export type JsonLimits:
 
 # A JSON value. Number text is retained to avoid losing precision during parsing.
 #
-# Accessors return owned copies, because the checker cannot lend an alternative payload through a method
-# or a lambda; `get`, `at`, `as_list` and `as_map` copy the subtree they return, so read a deep value
-# in one chain rather than binding each level, and match when the walk must avoid copies.
-#
 # `get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-# mismatch, so nested reads chain without a `match` per level:
+# mismatch. `get`, `at`, `as_string`, `as_list` and `as_map` lend the part of the document they
+# find, with no copy, so nested reads bind each level with `if let`:
 #
 # ```manuscript
-# let name = doc.get("user").and_then(lambda u: u.get("name")).and_then(lambda n: n.as_string()).get("")
+# if let user = doc.get("user"):
+#     if let name = user.get("name"):
+#         return name.as_string().get("")
 # ```
+#
+# A borrow cannot be returned from a lambda, so `and_then(lambda u: u.get("name"))` does not
+# check; read the levels with `if let`, or take a copy with `.clone()`.
 export type JsonValue:
     # JSON null, represented without a payload value.
     case Null
@@ -74,26 +76,26 @@ export type JsonValue:
     )
 
 impl JsonValue:
-    # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The member is a copy.
-    def get(key: String) -> Optional[JsonValue]:
+    # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
+    def get(key: String) -> ref Optional[JsonValue]:
         match ref self:
-            case ObjectValue(values): return values.get(key).map(lambda v: v.clone())
+            case ObjectValue(values): return values.get(key)
             case _: return none
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
-    # range, or a value that is not an array, returns `none`. The element is a copy.
-    def at(index: Int) -> Optional[JsonValue]:
+    # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
+    def at(index: Int) -> ref Optional[JsonValue]:
         match ref self:
             case ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
 
-                return some(values.get(index).clone())
+                return some(values.get(index))
             case _: return none
 
-    # Returns the text of a string value, or `none` for any other value.
-    def as_string() -> Optional[String]:
+    # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
+    def as_string() -> ref Optional[String]:
         match ref self:
-            case StringValue(value): return some(value.clone())
+            case StringValue(value): return some(value)
             case _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
@@ -115,16 +117,16 @@ impl JsonValue:
             case BoolValue(value): return some(value)
             case _: return none
 
-    # Returns the elements of an array value, or `none` for any other value. The list is a copy.
-    def as_list() -> Optional[List[JsonValue]]:
+    # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
+    def as_list() -> ref Optional[List[JsonValue]]:
         match ref self:
-            case ArrayValue(values): return some(values.clone())
+            case ArrayValue(values): return some(values)
             case _: return none
 
-    # Returns the members of an object value, or `none` for any other value. The map is a copy.
-    def as_map() -> Optional[Map[String, JsonValue]]:
+    # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
+    def as_map() -> ref Optional[Map[String, JsonValue]]:
         match ref self:
-            case ObjectValue(values): return some(values.clone())
+            case ObjectValue(values): return some(values)
             case _: return none
 
     # Returns True only for the Null case; a missing key or any other value returns False.

@@ -31,7 +31,7 @@
         },
         {
           "index": 4,
-          "name": "comparable.ms::max_of and min_of over a list",
+          "name": "comparable.ms::max and min over a list",
           "status": "passed"
         }
       ],
@@ -45,7 +45,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN comparable.ms::max and min over built-in types\nPASS comparable.ms::max and min over built-in types\nRUN comparable.ms::float order puts NaN above every value\nPASS comparable.ms::float order puts NaN above every value\nRUN comparable.ms::a source impl drives max, min, and generic bounds\nPASS comparable.ms::a source impl drives max, min, and generic bounds\nRUN comparable.ms::compare through an explicit view\nPASS comparable.ms::compare through an explicit view\nRUN comparable.ms::max_of and min_of over a list\nPASS comparable.ms::max_of and min_of over a list\n5 tests, 0 failed\n",
+      "stdout": "RUN comparable.ms::max and min over built-in types\nPASS comparable.ms::max and min over built-in types\nRUN comparable.ms::float order puts NaN above every value\nPASS comparable.ms::float order puts NaN above every value\nRUN comparable.ms::a source impl drives max, min, and generic bounds\nPASS comparable.ms::a source impl drives max, min, and generic bounds\nRUN comparable.ms::compare through an explicit view\nPASS comparable.ms::compare through an explicit view\nRUN comparable.ms::max and min over a list\nPASS comparable.ms::max and min over a list\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

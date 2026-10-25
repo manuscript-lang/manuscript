@@ -159,6 +159,8 @@ pub struct Ownership {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities of the exclusive borrow bindings.
     pub exclusive: HashSet<usize>,
+    /// Pattern and arm bindings that read-borrow a part of a non-`Copy` scrutinee.
+    pub read_borrows: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
@@ -354,6 +356,7 @@ impl Hir<'_> {
         let mut facts = HashMap::new();
         let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut exclusive = HashSet::new();
+        let mut read_borrows = HashSet::new();
         let mut getters = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
             let held: Vec<usize> = out
@@ -364,6 +367,18 @@ impl Hir<'_> {
                 .map(|f| f.binding.uid)
                 .collect();
             exclusive.extend(held);
+            read_borrows.extend(
+                out.facts
+                    .bindings
+                    .values()
+                    .filter(|f| {
+                        matches!(f.role, Role::Pattern | Role::Arm)
+                            && !f.owned
+                            && !f.exclusive
+                            && f.class != Class::Copy
+                    })
+                    .map(|f| f.binding.uid),
+            );
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);
             }
@@ -374,6 +389,7 @@ impl Hir<'_> {
             facts,
             diagnostics,
             exclusive,
+            read_borrows,
             getters,
         }
     }

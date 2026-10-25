@@ -26,6 +26,55 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+/// Every instruction operand use of each value as `(block, instruction)` in program order (a
+/// value used twice by one instruction appears twice). Terminator uses are not listed.
+fn operand_uses(f: &Func) -> Vec<Vec<(usize, usize)>> {
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (ii, inst) in b.insts.iter().enumerate() {
+            for a in &inst.args {
+                at[a.index()].push((bi, ii));
+            }
+        }
+    }
+    at
+}
+
+/// The first use in `uses` after instruction `i` of block `bi`.
+fn next_use(uses: &[(usize, usize)], bi: usize, i: usize) -> Option<&(usize, usize)> {
+    uses.get(uses.partition_point(|u| *u <= (bi, i)))
+}
+
+/// Operand uses of each value within one block's instructions, sorted by value then position.
+struct BlockUses(Vec<(usize, usize)>);
+
+impl BlockUses {
+    fn new(insts: &[Inst]) -> BlockUses {
+        let mut v: Vec<(usize, usize)> = Vec::new();
+        for (ii, inst) in insts.iter().enumerate() {
+            for a in &inst.args {
+                v.push((a.index(), ii));
+            }
+        }
+        v.sort_unstable();
+        BlockUses(v)
+    }
+
+    /// Positions of the uses of `v` after instruction `i`, ascending.
+    fn after(&self, v: Value, i: usize) -> impl Iterator<Item = usize> + '_ {
+        let lo = self.0.partition_point(|u| *u <= (v.index(), i));
+        self.0[lo..]
+            .iter()
+            .take_while(move |u| u.0 == v.index())
+            .map(|u| u.1)
+    }
+
+    /// The first use of `v` after instruction `i` that is an `op`.
+    fn first_after(&self, insts: &[Inst], v: Value, i: usize, op: Op) -> Option<usize> {
+        self.after(v, i).find(|&k| insts[k].op == op)
+    }
+}
+
 /// Turns `c = copy v; ...; drop v` into a move when `v` is not touched in between: the copy
 /// and the drop cancel, and `c` is `v`. This is the shape of `l = More(l)` in a loop, which
 /// would otherwise deep-copy the old value on every iteration.
@@ -33,6 +82,7 @@ fn move_dead_sources(f: &mut Func) -> bool {
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
     let mut dead: Vec<(usize, usize)> = Vec::new();
+    let at = operand_uses(f);
     for (bi, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
             let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
@@ -42,14 +92,11 @@ fn move_dead_sources(f: &mut Func) -> bool {
             if touched[c.index()] || touched[v.index()] {
                 continue;
             }
-            let Some(j) = b.insts[i + 1..]
-                .iter()
-                .position(|n| n.op == Op::Drop && n.args[0] == v)
-                .map(|k| i + 1 + k)
-            else {
+            // The copy is a move when the next use of `v` in the block is its drop.
+            let Some(&(jb, j)) = next_use(&at[v.index()], bi, i) else {
                 continue;
             };
-            if b.insts[i + 1..j].iter().any(|n| n.args.contains(&v)) {
+            if jb != bi || b.insts[j].op != Op::Drop {
                 continue;
             }
             touched[c.index()] = true;
@@ -708,6 +755,7 @@ fn unbox_dead_options(f: &mut Func) -> bool {
     let mut changed = false;
     for b in &mut f.blocks {
         'again: loop {
+            let idx = BlockUses::new(&b.insts);
             let term_uses_of = |v: Value| {
                 let mut hit = false;
                 b.term.for_each_use(|u| hit |= u == v);
@@ -721,28 +769,14 @@ fn unbox_dead_options(f: &mut Func) -> bool {
                 if uses[p.index()] != 1 {
                     continue;
                 }
-                let Some(ci) = b.insts[gi + 1..]
-                    .iter()
-                    .position(|n| n.op == Op::Copy && n.args[0] == p)
-                    .map(|k| gi + 1 + k)
-                else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
                     continue;
                 };
-                let Some(di) = b.insts[ci + 1..]
-                    .iter()
-                    .position(|n| n.op == Op::Drop && n.args[0] == v)
-                    .map(|k| ci + 1 + k)
-                else {
+                let Some(di) = idx.first_after(&b.insts, v, ci, Op::Drop) else {
                     continue;
                 };
-                let term_uses = term_uses_of(v);
-                if b.insts[gi + 1..di]
-                    .iter()
-                    .enumerate()
-                    .any(|(k, n)| gi + 1 + k != ci && n.args.contains(&v))
-                    || b.insts[di + 1..].iter().any(|n| n.args.contains(&v))
-                    || term_uses
-                {
+                // The drop must be the only use of `v` after the load (`ci` reads `p`).
+                if idx.after(v, gi).any(|k| k != di) || term_uses_of(v) {
                     continue;
                 }
                 b.insts[ci].op = Op::OptUnbox;
@@ -778,6 +812,7 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
     let mut changed = false;
     for b in &mut f.blocks {
         'again: loop {
+            let idx = BlockUses::new(&b.insts);
             for (gi, get) in b.insts.iter().enumerate() {
                 let (Op::AltGet, Some(p)) = (get.op, get.res) else {
                     continue;
@@ -786,33 +821,36 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
                 if uses[p.index()] != 1 || !nd[p.index()] {
                     continue;
                 }
-                let Some(ci) = b.insts[gi + 1..]
-                    .iter()
-                    .position(|n| n.op == Op::Copy && n.args[0] == p)
-                    .map(|k| gi + 1 + k)
-                else {
+                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Copy) else {
                     continue;
                 };
-                let Some(di) = b.insts[ci + 1..]
-                    .iter()
-                    .position(|n| n.op == Op::Drop && n.args[0] == v)
-                    .map(|k| ci + 1 + k)
-                else {
+                let Some(di) = idx.first_after(&b.insts, v, ci, Op::Drop) else {
                     continue;
                 };
                 let mut hoist = Vec::new();
                 let mut ok = true;
-                for (k, n) in b.insts.iter().enumerate().take(di).skip(gi + 1) {
-                    if k == ci || !n.args.contains(&v) {
+                let mut after_drop = false;
+                let mut last = None;
+                for k in idx.after(v, gi) {
+                    if last == Some(k) {
                         continue;
                     }
+                    last = Some(k);
+                    if k > di {
+                        after_drop = true;
+                        break;
+                    }
+                    if k == ci || k == di {
+                        continue;
+                    }
+                    let n = &b.insts[k];
                     if n.op == Op::AltGet && n.res.is_some_and(|r| !nd[r.index()]) {
                         hoist.push(k);
                     } else {
                         ok = false;
                     }
                 }
-                if !ok || b.insts[di + 1..].iter().any(|n| n.args.contains(&v)) {
+                if !ok || after_drop {
                     continue;
                 }
                 let mut insts = std::mem::take(&mut b.insts);
