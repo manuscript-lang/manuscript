@@ -7,9 +7,9 @@ Direction (Chinmay, 2026-10-25): "yeah let's make it similar to rust" (`Arc<Mute
 
 - `Shared.take`/`put` is a manual lock. A task cancelled between them leaves the box marked in use for every holder (probe p13); `Worker.join` hits it today.
 - Replace them with `box.lock()`, a guard used with `with`. The guard's `close` returns the payload, and `with` already runs `close` on cancellation.
-- One language change: `with ... as var name`, so the block can change the guarded value. Everything else is `stdlib/shared.ms` plus lowering.
+- One language change: `with let name = expr:` / `with var name = expr:` replaces `with expr as name:`, so the block can change the guarded value. Everything else is `stdlib/shared.ms` plus lowering.
 - Poisoning is not needed: a fault in a task ends the program (task-groups guide), and a worker has its own heap.
-- Decision requested: the `with ... as var` spelling, and fault versus wait when the box is already locked.
+- Decisions taken by the owner: waiting lock, `with let/var` spelling.
 
 ## Problem
 
@@ -30,17 +30,17 @@ def hold(box: Shared[List[Int]]) -> Int:
 
 ```
 let box: Shared[List[Int]] = share([1])
-with box.lock() as var guard:
+with var guard = box.lock():
     guard.value.append(2)
 # guard closed: the payload is back, the box is unlocked
 ```
 
 - `lock() -> SharedGuard[T]` takes the payload (today's `take`). `SharedGuard[T]` has `value: T` and implements `Closeable`; `close` puts `value` back and clears the mark. Written in `shared.ms`; `take`/`put` become unexported natives used only there.
-- `with ... as var name`: the binding may be changed in the block; `close` runs on the binding's final value. The compiler already closes "the current value" of the binding (`with.rs`); the change is parser, checker and docs. A plain `as name` stays immutable.
+- `with let name = expr:` binds immutably (today's behavior); `with var name = expr:` lets the block change the binding, and `close` runs on its final value. The compiler already closes "the current value" of the binding (`with.rs`). The `as` form is removed: `ms format` rewrites the 414 existing uses (stdlib, docs, fixtures) in the same PR stage.
 - Cancellation: the guard is a registered `with` cleanup, so a cancelled task runs `close` and the box is restored with whatever the block had done. This is the p13 fix.
 - Fault: the program ends (tasks) or the worker ends with its heap, so no holder can observe a half-changed value. No poison flag. If faults become catchable inside a task, poisoning is added then.
 - `get()` stays as a read (`ref T`), faulting while locked, as now.
-- Already locked: `lock()` faults "shared value is locked" in v1. Tasks switch only at waits, so this means a lock held across a wait, which is the bug to surface. Waiting instead (as Rust's `Mutex` does) needs a wait queue per box and is deferred.
+- Already locked: `lock()` waits until the holder's guard closes, as Rust's `Mutex` does (Chinmay, 2026-10-25). The box keeps a list of wait tokens like `Lane.waiting` in `tasks.ms`; `close` wakes them with `msrt_channel_post`. A task cancelled while waiting leaves the queue. A deadlock (a task locks a box it holds) waits forever: documented, and the existing deadlock detection reports it if the runtime has all tasks parked. `get()` while locked also waits.
 - Rejected: `lock` without `with` still compiles but the guard is a plain value; a diagnostic is out of scope for v1.
 
 ## Worker and process messages (#1249)
@@ -52,7 +52,7 @@ with box.lock() as var guard:
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-syntax` parser, formatter | accept `var` after `as` in `with` | parse and format fixtures |
+| `crates/ms-syntax` parser, formatter | new `with let/var name = expr:` form, drop `as` | parse and format fixtures |
 | `crates/ms-check` | `with` binding mutable when `var`; closer receives the final value | accept and reject fixtures |
 | `crates/ms-lower` `with.rs`, `sharedbuilder.rs` | close the binding's current value; `take`/`put` internal | p13 as e2e fixture |
 | `stdlib/shared.ms` | `lock`, `SharedGuard`; `take`/`put` unexported | stdlib tests |
@@ -69,7 +69,7 @@ with box.lock() as var guard:
 
 ## Staging and verification
 
-1. `with ... as var` (parser, checker, lowering) with fixtures. Gate: existing `with` fixtures unchanged.
+1. `with let/var name = expr:` (parser, checker, lowering, formatter migration of all `as` uses) with fixtures. Gate: existing `with` fixtures unchanged.
 2. `lock`/`SharedGuard` in `shared.ms` plus the p13 e2e fixture (fails before, passes after).
 3. Migrate the stdlib sites, remove the public `take`/`put`, update docs.
 4. Reject `Shared` (and the other handles) in worker and process message types (#1249), with a reject fixture.
@@ -77,5 +77,5 @@ Each stage runs `cargo fmt --all --check`, clippy, `cargo nextest run --workspac
 
 ## Open questions
 
-- Spelling: `with box.lock() as var guard` (recommended, one new use of an existing keyword) versus a mutable-by-default guard type.
-- Already locked: fault in v1 (recommended) or wait.
+- Decided: waiting lock; `with let/var name = expr:` spelling.
+- Open: replace `as` everywhere (assumed) or keep both spellings.
