@@ -262,7 +262,6 @@ fn fmt_name(n: usize) -> String {
     format!("msrt_string_fmt{n}")
 }
 
-/// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
 /// Whether a call named `name` can join a fused chain: a concatenation, or the text of a plain
 /// `Int` (a sized integer is declared with its own width, which `string_fmtN` does not take).
 fn fusable(f: &Func, inst: &Inst, name: &str) -> bool {
@@ -273,6 +272,7 @@ fn fusable(f: &Func, inst: &Inst, name: &str) -> bool {
     }
 }
 
+/// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
 /// links into `remove`. A leaf that is a single-use `int_to_string` becomes the integer itself.
 fn chain(
     m: &Module,
@@ -289,7 +289,7 @@ fn chain(
     // chain below it, and the pass, which restarts after each fusion, is cubic in the chain's
     // length. The value must stay a leaf, not vanish: the join is built from `leaves`.
     if remove.len() > 2 * MAX_JOIN {
-        leaves.push(v);
+        leaves.push(Piece::Str(v));
         return;
     }
     let inner = info.defs[v.index()].and_then(|(db, di)| {
