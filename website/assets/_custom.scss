@@ -135,7 +135,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .copy-code { background: var(--body-background); color: var(--docs-muted); border: 1px solid var(--gray-200); border-radius: 4px; font: .65rem -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: .2rem .5rem; margin-left: auto; }
 .copy-code:hover { color: var(--color-link); border-color: var(--color-link); }
 .chroma { color: var(--body-font-color); background: transparent; }
-.chroma .k, .chroma .kc, .chroma .kd, .chroma .kn, .chroma .kp, .chroma .kr, .chroma .kt { color: var(--docs-code-keyword); }
+.chroma .k, .chroma .kc, .chroma .kd, .chroma .kn, .chroma .kp, .chroma .kr, .chroma .kt, .chroma .o, .chroma .se { color: var(--docs-code-keyword); }
 .chroma .s, .chroma .s1, .chroma .s2, .chroma .sb, .chroma .sc, .chroma .sd, .chroma .si { color: var(--docs-code-string); }
 .chroma .nf, .chroma .nb, .chroma .nc { color: var(--docs-code-function); }
 .chroma .m, .chroma .mi, .chroma .mf { color: var(--docs-code-keyword); }

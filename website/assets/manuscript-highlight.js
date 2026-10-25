@@ -1,48 +1,43 @@
 // Apply the VS Code extension's shared lexical grammar to documentation fences.
-// The adapter supports its match (with captures) and quoted-string rules; no source is evaluated.
+// Interpret its match, capture, begin/end, and local include rules; no source is evaluated.
 (() => {
   function tokenClass(scope) {
     if (scope.startsWith('comment.')) return 'c1';
     if (scope.startsWith('string.')) return 's';
+    if (scope.startsWith('keyword.operator.')) return 'o';
     if (scope.startsWith('keyword.')) return 'k';
+    if (scope.startsWith('constant.character.escape.')) return 'se';
     if (scope.startsWith('constant.language.')) return 'kc';
     if (scope.startsWith('constant.numeric.')) return 'mi';
     if (scope.startsWith('entity.name.type.')) return 'nc';
     if (scope.startsWith('entity.name.function.')) return 'nf';
+    if (scope.startsWith('punctuation.section.interpolation.')) return 'si';
+    if (scope.startsWith('punctuation.')) return 'p';
     return '';
   }
 
-  function stringEnd(source, start) {
-    const stack = [{ string: true }];
-    let cursor = start + 1;
-    while (cursor < source.length && stack.length) {
-      const context = stack[stack.length - 1];
-      const character = source[cursor++];
-      if (context.string) {
-        if (character === '\\') {
-          if (source[cursor] === 'u' && source[cursor + 1] === '{') {
-            const end = source.indexOf('}', cursor + 2);
-            cursor = end < 0 ? source.length : end + 1;
-          } else cursor = Math.min(cursor + 1, source.length);
-        } else if (character === '"') stack.pop();
-        else if (character === '{') stack.push({ depth: 1 });
-      } else {
-        if (character === '"') stack.push({ string: true });
-        else if (character === '{') context.depth++;
-        else if (character === '}' && --context.depth === 0) stack.pop();
-      }
-    }
-    return cursor;
-  }
-
   function tokenize(source, grammar) {
-    const resolve = rule => rule.include ? grammar.repository[rule.include.slice(1)] : rule;
-    const rules = grammar.patterns.map(resolve).map(rule => ({
-      expression: new RegExp(rule.match || rule.begin, 'muyd'),
-      kind: tokenClass(rule.name || ''),
-      captures: Object.entries(rule.captures || {}).map(([group, { name }]) => [Number(group), tokenClass(name)]),
-      quoted: rule.begin === '"' && rule.end === '"'
-    }));
+    const cache = new Map();
+    const captures = scopes => Object.entries(scopes || {}).map(([group, { name }]) => [Number(group), tokenClass(name)]);
+    function patterns(rules) {
+      return rules.flatMap(rule => rule.include === '$self' ? patterns(grammar.patterns) :
+        compile(rule.include ? grammar.repository[rule.include.slice(1)] : rule));
+    }
+    function compile(rule) {
+      if (cache.has(rule)) return cache.get(rule);
+      const compiled = {};
+      cache.set(rule, compiled); // Interpolation includes the root grammar recursively.
+      Object.assign(compiled, {
+        expression: new RegExp(rule.match || rule.begin, 'muyd'),
+        end: rule.end && new RegExp(rule.end, 'muyd'),
+        kind: rule.name === undefined ? undefined : tokenClass(rule.name),
+        captures: captures(rule.captures || rule.beginCaptures),
+        endCaptures: captures(rule.endCaptures),
+        patterns: patterns(rule.patterns || [])
+      });
+      return compiled;
+    }
+    const stack = [{ patterns: patterns(grammar.patterns), kind: '' }];
     const tokens = [];
     let cursor = 0;
     const add = (text, kind = '') => {
@@ -51,34 +46,47 @@
       if (previous?.kind === kind) previous.text += text;
       else tokens.push({ text, kind });
     };
+    const matchAt = expression => {
+      if (!expression) return null;
+      expression.lastIndex = cursor;
+      const match = expression.exec(source);
+      return match?.[0].length ? match : null;
+    };
+    const emit = (match, kind, captures) => {
+      let at = cursor;
+      for (const [group, capturedKind] of captures) {
+        if (!match.indices[group]) continue;
+        const [from, to] = match.indices[group];
+        add(source.slice(at, from), kind);
+        add(source.slice(from, to), capturedKind);
+        at = to;
+      }
+      cursor += match[0].length;
+      add(source.slice(at, cursor), kind);
+    };
     while (cursor < source.length) {
+      const context = stack[stack.length - 1];
+      const end = matchAt(context.end);
+      if (end) {
+        emit(end, context.kind, context.endCaptures);
+        stack.pop();
+        continue;
+      }
       let matched = false;
-      for (const rule of rules) {
-        rule.expression.lastIndex = cursor;
-        const match = rule.expression.exec(source);
-        if (!match || !match[0].length) continue;
+      for (const rule of context.patterns) {
+        const match = matchAt(rule.expression);
+        if (!match) continue;
         // TextMate word boundaries are Unicode-aware; JavaScript's \b is not.
         if (['k', 'kc', 'mi', 'nc', 'nf'].includes(rule.kind) &&
             (/[\p{ID_Continue}]/u.test(source[cursor - 1] || '') ||
              /[\p{ID_Continue}]/u.test(source[rule.expression.lastIndex] || ''))) continue;
-        const end = rule.quoted ? stringEnd(source, cursor) : rule.expression.lastIndex;
-        if (rule.captures.length) {
-          // Capture groups carry the scopes; text between them stays plain.
-          let at = cursor;
-          for (const [group, kind] of rule.captures) {
-            if (!match.indices[group]) continue;
-            const [from, to] = match.indices[group];
-            add(source.slice(at, from));
-            add(source.slice(from, to), kind);
-            at = to;
-          }
-          add(source.slice(at, end));
-        } else add(source.slice(cursor, end), rule.kind);
-        cursor = end;
+        const kind = rule.kind ?? context.kind;
+        emit(match, kind, rule.captures);
+        if (rule.end) stack.push({ ...rule, kind });
         matched = true;
         break;
       }
-      if (!matched) add(source[cursor++]);
+      if (!matched) add(source[cursor++], context.kind);
     }
     return tokens;
   }

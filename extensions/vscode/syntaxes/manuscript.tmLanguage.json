@@ -12,28 +12,38 @@
       "include": "#string"
     },
     {
-      "match": "^\\s*(from)\\b[^#\"\\n]*?\\b(import)\\b|^\\s*(from)\\s+(?=\")|\\b(with)\\b[^#\\n]*?\\b(as)\\b",
+      "match": "^[ \\t]*(from)(?=[ \\t]+\")",
       "captures": {
         "1": {
-          "name": "keyword.control.manuscript"
-        },
-        "2": {
-          "name": "keyword.control.manuscript"
-        },
-        "3": {
-          "name": "keyword.control.manuscript"
-        },
-        "4": {
-          "name": "keyword.control.manuscript"
-        },
-        "5": {
           "name": "keyword.control.manuscript"
         }
       }
     },
     {
+      "match": "\\b(def)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.manuscript"
+        },
+        "2": {
+          "name": "entity.name.function.manuscript"
+        }
+      }
+    },
+    {
+      "match": "\\b(type|interface)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.manuscript"
+        },
+        "2": {
+          "name": "entity.name.type.manuscript"
+        }
+      }
+    },
+    {
       "name": "keyword.control.manuscript",
-      "match": "\\b(def|lambda|type|interface|impl|import|as|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(def|lambda|type|interface|impl|import|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
@@ -41,7 +51,7 @@
     },
     {
       "name": "constant.numeric.manuscript",
-      "match": "\\b[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?d?\\b"
+      "match": "\\b(?:0x[0-9A-Fa-f](?:_?[0-9A-Fa-f])*|0b[01](?:_?[01])*|(?:0|[1-9](?:_?[0-9])*)(?:\\.[0-9](?:_?[0-9])*)?(?:[eE][+-]?[0-9]+)?d?)\\b"
     },
     {
       "name": "entity.name.type.manuscript",
@@ -49,7 +59,19 @@
     },
     {
       "name": "entity.name.function.manuscript",
-      "match": "\\b[a-z_][A-Za-z0-9_]*(?=\\s*(?:\\[[^\\]\\n]*\\])?\\s*\\()"
+      "match": "\\b[a-z_][A-Za-z0-9_]*(?=[ \\t]*(?:\\[[A-Za-z0-9_.,\\[\\] \\t]+\\])?[ \\t]*\\()"
+    },
+    {
+      "name": "constant.language.placeholder.manuscript",
+      "match": "\\b_\\b"
+    },
+    {
+      "name": "keyword.operator.manuscript",
+      "match": "\\.\\.\\.|\\.\\.|->|==|!=|<=|>=|[+*/%=-]=?|[<>&|]"
+    },
+    {
+      "name": "punctuation.manuscript",
+      "match": "[()\\[\\]{}:,.]"
     }
   ],
   "repository": {
