@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "A programming language designed for agents to write and humans to understand. Learning from agent behavior to make every token count, while keeping code readable and easy to analyze."
+description = "A statically typed, natively compiled language designed for agents to write and humans to understand: Python-like syntax, ownership without a garbage collector, concurrency without async, and compiler feedback an agent can act on."
 +++
 
 {{< docs-home >}}
