@@ -140,3 +140,68 @@ fn a_runtime_result_without_fresh_may_borrow_from_its_arguments() {
     let drops: Vec<usize> = (0..b.len()).filter(|k| b[*k] == Op::Drop).collect();
     assert_eq!(drops, [8, 9, 10]);
 }
+
+/// `n` strings built from two literals each, measured, and all dropped at the end of the scope.
+fn many_strings(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "t"
+file 0 "t.ms"
+extern @msrt_string_concat(str, str) -> str fresh
+
+fn @main() -> int export {
+b0:
+  %0: int = iconst 0
+"#,
+    );
+    let mut v = 1;
+    let mut acc = 0;
+    let mut strings = Vec::new();
+    for _ in 0..n {
+        s.push_str(&format!(
+            "  %{v}: str = str \"a\"\n  %{}: str = str \"b\"\n",
+            v + 1
+        ));
+        s.push_str(&format!(
+            "  %{}: str = call.rt @msrt_string_concat (%{v}, %{})\n",
+            v + 2,
+            v + 1
+        ));
+        s.push_str(&format!("  %{}: int = str.len %{}\n", v + 3, v + 2));
+        s.push_str(&format!("  %{}: int = iadd %{acc}, %{}\n", v + 4, v + 3));
+        strings.push(v + 2);
+        acc = v + 4;
+        v += 5;
+    }
+    for w in strings {
+        s.push_str(&format!("  drop %{w}\n"));
+    }
+    s.push_str(&format!("  ret %{acc}\n}}\n"));
+    s
+}
+
+#[test]
+fn a_large_function_is_handled_in_linear_time() {
+    // 3000 strings (15 000 instructions): every string is dropped right after its length is
+    // read, and the pass finishes quickly. The previous pass rescanned the whole function
+    // for each candidate and skipped functions over 4000 instructions altogether.
+    let n = 3000;
+    let start = std::time::Instant::now();
+    let m = optimized(&many_strings(n));
+    assert!(start.elapsed().as_secs() < 20, "took {:?}", start.elapsed());
+    let b = &ops(&m, "main")[0];
+    let drops = b.iter().filter(|op| **op == Op::Drop).count();
+    assert_eq!(drops, n);
+    assert_eq!(
+        b[..7],
+        [
+            Op::IConst,
+            Op::StrLit,
+            Op::StrLit,
+            Op::CallRt,
+            Op::StrLen,
+            Op::Drop,
+            Op::IAdd
+        ]
+    );
+    assert_eq!(b[b.len() - 2..], [Op::Drop, Op::IAdd]);
+}
