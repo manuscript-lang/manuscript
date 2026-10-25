@@ -289,11 +289,11 @@ def joined_ok(w: Worker[Int, Int]) -> Int:
     return 0
 
 test "tasks joining clones of one worker all see its outcome":
-    with WorkerGroup[Int, Int]() as workers:
+    with let workers = WorkerGroup[Int, Int]():
         let worker = workers.spawn(naps).get(none)
         let first_copy = worker.clone()
         let second_copy = worker.clone()
-        with TaskGroup[Int]() as tasks:
+        with let tasks = TaskGroup[Int]():
             let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))
             first.result() | try expect_ok | try expect_equal(1)
