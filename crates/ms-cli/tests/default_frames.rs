@@ -32,7 +32,7 @@ fn check_frames(file: &str, frames: &str) {
             .args(["run", &fixture, "--build-type", build_type])
             .output()
             .unwrap();
-        assert_eq!(out.status.code(), Some(70));
+        assert_eq!(out.status.code(), Some(67));
         assert_eq!(
             String::from_utf8_lossy(&out.stderr),
             format!("Int./: division by zero; right must be nonzero, found 0\n{frames}")

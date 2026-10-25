@@ -151,7 +151,7 @@ static void die(const char *msg, size_t len) {
   trace();
   run_cleanups();
   fflush(stdout);
-  exit(70);
+  exit(67);
 }
 void msrt_fault(const char *msg, size_t len) { die(msg, len); }
 void msrt_fault_int_overflow(void) { die("integer overflow", 16); }
@@ -214,7 +214,7 @@ int msrt_start(int64_t (*main_fn)(void), const void *t, int argc, char **argv) {
     fprintf(stderr, "leak: %lld live allocations\n", (long long)msrt_live_allocs);
     return 99;
   }
-  if (r < 0 || r > 125) { fprintf(stderr, "exit code out of range\n"); return 70; }
+  if (r < 0 || r > 125) { fprintf(stderr, "exit code out of range\n"); return 67; }
   return (int)r;
 }
 

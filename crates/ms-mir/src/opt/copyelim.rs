@@ -6,8 +6,6 @@
 //! source cannot change or die before the copy would: a borrowed parameter is neither
 //! mutated nor released by its callee, and neither is anything projected out of one.
 
-use std::collections::HashSet;
-
 use crate::ir::{Func, Inst, Mode, Module, Op, Value};
 use crate::types::TyKind;
 use crate::verify::arg_modes;
@@ -28,14 +26,14 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
-/// Every instruction operand use of each value, as `(block, instruction)` in program order
-/// (a value used twice by one instruction appears twice). Terminator uses are not listed.
-fn operand_uses(f: &Func) -> Vec<Vec<(u32, u32)>> {
-    let mut at: Vec<Vec<(u32, u32)>> = vec![Vec::new(); f.values.len()];
+/// Every instruction operand use of each value as `(block, instruction)` in program order (a
+/// value used twice by one instruction appears twice). Terminator uses are not listed.
+fn operand_uses(f: &Func) -> Vec<Vec<(usize, usize)>> {
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             for a in &inst.args {
-                at[a.index()].push((bi as u32, ii as u32));
+                at[a.index()].push((bi, ii));
             }
         }
     }
@@ -43,20 +41,19 @@ fn operand_uses(f: &Func) -> Vec<Vec<(u32, u32)>> {
 }
 
 /// The first use in `uses` after instruction `i` of block `bi`.
-fn next_use(uses: &[(u32, u32)], bi: usize, i: usize) -> Option<&(u32, u32)> {
-    let key = (bi as u32, i as u32);
-    uses.get(uses.partition_point(|u| *u <= key))
+fn next_use(uses: &[(usize, usize)], bi: usize, i: usize) -> Option<&(usize, usize)> {
+    uses.get(uses.partition_point(|u| *u <= (bi, i)))
 }
 
 /// Operand uses of each value within one block's instructions, sorted by value then position.
-struct BlockUses(Vec<(u32, u32)>);
+struct BlockUses(Vec<(usize, usize)>);
 
 impl BlockUses {
     fn new(insts: &[Inst]) -> BlockUses {
-        let mut v: Vec<(u32, u32)> = Vec::new();
+        let mut v: Vec<(usize, usize)> = Vec::new();
         for (ii, inst) in insts.iter().enumerate() {
             for a in &inst.args {
-                v.push((a.index() as u32, ii as u32));
+                v.push((a.index(), ii));
             }
         }
         v.sort_unstable();
@@ -65,13 +62,11 @@ impl BlockUses {
 
     /// Positions of the uses of `v` after instruction `i`, ascending.
     fn after(&self, v: Value, i: usize) -> impl Iterator<Item = usize> + '_ {
-        let lo = self
-            .0
-            .partition_point(|u| *u <= (v.index() as u32, i as u32));
+        let lo = self.0.partition_point(|u| *u <= (v.index(), i));
         self.0[lo..]
             .iter()
-            .take_while(move |u| u.0 == v.index() as u32)
-            .map(|u| u.1 as usize)
+            .take_while(move |u| u.0 == v.index())
+            .map(|u| u.1)
     }
 
     /// The first use of `v` after instruction `i` that is an `op`.
@@ -86,7 +81,7 @@ impl BlockUses {
 fn move_dead_sources(f: &mut Func) -> bool {
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
-    let mut dead: HashSet<(usize, usize)> = HashSet::new();
+    let mut dead: Vec<(usize, usize)> = Vec::new();
     let at = operand_uses(f);
     for (bi, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
@@ -101,28 +96,20 @@ fn move_dead_sources(f: &mut Func) -> bool {
             let Some(&(jb, j)) = next_use(&at[v.index()], bi, i) else {
                 continue;
             };
-            let j = j as usize;
-            if jb as usize != bi || b.insts[j].op != Op::Drop {
+            if jb != bi || b.insts[j].op != Op::Drop {
                 continue;
             }
             touched[c.index()] = true;
             touched[v.index()] = true;
             rename[c.index()] = Some(v);
-            dead.insert((bi, i));
-            dead.insert((bi, j));
+            dead.push((bi, i));
+            dead.push((bi, j));
         }
     }
     if dead.is_empty() {
         return false;
     }
-    for (bi, b) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0;
-        b.insts.retain(|_| {
-            let drop_it = dead.contains(&(bi, k));
-            k += 1;
-            !drop_it
-        });
-    }
+    remove_insts(f, &dead);
     for b in &mut f.blocks {
         for i in &mut b.insts {
             for a in &mut i.args {
@@ -170,7 +157,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
     let preds = f.predecessors();
     let mut touched = vec![false; n];
     let mut rename: Vec<Option<Value>> = vec![None; n];
-    let mut dead: HashSet<(usize, usize)> = HashSet::new();
+    let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bc, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
             let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
@@ -234,7 +221,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
             touched[v.index()] = true;
             touched[c.index()] = true;
             rename[c.index()] = Some(v);
-            dead.insert((bc, i));
+            dead.push((bc, i));
             dead.extend(drops);
         }
     }
@@ -242,13 +229,8 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
         return false;
     }
     let f = &mut m.funcs[fi];
-    for (bi, b) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0;
-        b.insts.retain(|_| {
-            let drop_it = dead.contains(&(bi, k));
-            k += 1;
-            !drop_it
-        });
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
         for i in &mut b.insts {
             for a in &mut i.args {
                 if let Some(s) = rename[a.index()] {
@@ -273,24 +255,54 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
 fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let mut uses = vec![0u32; f.values.len()];
-    for b in &f.blocks {
-        for i in &b.insts {
-            for a in &i.args {
-                uses[a.index()] += 1;
-            }
-        }
-        b.term.for_each_use(|v| uses[v.index()] += 1);
-    }
+    // Operand uses of each value as (block, index), in order.
+    let mut at: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
     let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             if let Some(r) = inst.res {
                 defs[r.index()] = Some((bi, ii));
             }
+            for a in &inst.args {
+                uses[a.index()] += 1;
+                at[a.index()].push((bi, ii));
+            }
         }
+        b.term.for_each_use(|v| uses[v.index()] += 1);
     }
+    // Per block, how many of the first `k` instructions write memory or touch reference
+    // counts (other than `str.len` and `copy`), so a span is checked without a scan.
+    let unstable: Vec<Vec<u32>> = f
+        .blocks
+        .iter()
+        .map(|b| {
+            let mut n = 0u32;
+            std::iter::once(0)
+                .chain(b.insts.iter().map(|i| {
+                    let e = i.op.info().effects;
+                    if (e.writes && i.op != Op::StrLen) || (e.rc && i.op != Op::Copy) {
+                        n += 1;
+                    }
+                    n
+                }))
+                .collect()
+        })
+        .collect();
+    // Whether an instruction of block `bi` strictly between `lo` and `hi` takes `x` other
+    // than by borrow.
+    let consumes = |x: Value, bi: usize, lo: usize, hi: usize| -> bool {
+        at[x.index()].iter().any(|&(bx, k)| {
+            bx == bi && k > lo && k < hi && {
+                let n = &f.blocks[bi].insts[k];
+                n.args
+                    .iter()
+                    .zip(arg_modes(m, n))
+                    .any(|(a, mode)| *a == x && mode != Mode::Borrow)
+            }
+        })
+    };
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
-    let mut dead: HashSet<(usize, usize)> = HashSet::new();
+    let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
             let (Op::Copy, Some(c)) = (inst.op, inst.res) else {
@@ -308,57 +320,48 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
             {
                 continue;
             }
-            let Some(j) = b.insts[i + 1..]
+            // The first drop of `c` after the copy in this block.
+            let Some(j) = at[c.index()]
                 .iter()
-                .position(|n| n.op == Op::Drop && n.args[0] == c)
-                .map(|k| i + 1 + k)
+                .find(|&&(bx, k)| bx == bi && k > i && b.insts[k].op == Op::Drop)
+                .map(|&(_, k)| k)
             else {
                 continue;
             };
-            let span = &b.insts[i + 1..j];
-            if is_str && !str_source_stable(m, f, &defs, v, span) {
+            if is_str {
+                // Strings are immutable, so the copy can only differ from `v` once `v`'s
+                // owner releases or replaces it.
+                let Some(root) = str_source(f, &defs, v) else {
+                    continue;
+                };
+                if root.is_some_and(|r| consumes(r, bi, i, j)) {
+                    continue;
+                }
+            }
+            if composite && unstable[bi][j] > unstable[bi][i + 1] {
                 continue;
             }
-            if composite
-                && span.iter().any(|n| {
-                    let e = n.op.info().effects;
-                    (e.writes && n.op != Op::StrLen) || (e.rc && n.op != Op::Copy)
-                })
-            {
-                continue;
-            }
-            let c_uses = span
+            let c_uses = at[c.index()]
                 .iter()
-                .map(|n| n.args.iter().filter(|a| **a == c).count() as u32)
-                .sum::<u32>();
+                .filter(|&&(bx, k)| bx == bi && k > i && k < j)
+                .count() as u32;
             if c_uses + 1 != uses[c.index()] {
                 continue;
             }
-            let consumed = span.iter().any(|n| {
-                n.args
-                    .iter()
-                    .zip(arg_modes(m, n))
-                    .any(|(a, mode)| (*a == v || *a == c) && mode != Mode::Borrow)
-            });
-            if consumed {
+            if consumes(v, bi, i, j) || consumes(c, bi, i, j) {
                 continue;
             }
             alias[c.index()] = Some(v);
-            dead.insert((bi, i));
-            dead.insert((bi, j));
+            dead.push((bi, i));
+            dead.push((bi, j));
         }
     }
     if dead.is_empty() {
         return false;
     }
     let f = &mut m.funcs[fi];
-    for (bi, b) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0;
-        b.insts.retain(|_| {
-            let drop_it = dead.contains(&(bi, k));
-            k += 1;
-            !drop_it
-        });
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
         for i in &mut b.insts {
             for a in &mut i.args {
                 if let Some(s) = alias[a.index()] {
@@ -379,6 +382,8 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
     let nb = f.blocks.len();
     let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
     let mut uses = vec![0u32; f.values.len()];
+    // The drops of each value as (block, index).
+    let mut drops: Vec<Vec<(usize, usize)>> = vec![Vec::new(); f.values.len()];
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             if let Some(r) = inst.res {
@@ -387,10 +392,13 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
             for a in &inst.args {
                 uses[a.index()] += 1;
             }
+            if inst.op == Op::Drop {
+                drops[inst.args[0].index()].push((bi, ii));
+            }
         }
         b.term.for_each_use(|v| uses[v.index()] += 1);
     }
-    let mut dead: HashSet<(usize, usize)> = HashSet::new();
+    let mut dead: Vec<(usize, usize)> = Vec::new();
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
     for (bc, b) in f.blocks.iter().enumerate() {
         for (i, inst) in b.insts.iter().enumerate() {
@@ -402,30 +410,15 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
                 continue;
             }
             // The one drop of `c`, in a later block (the same-block case is handled elsewhere).
-            let mut drops = f.blocks.iter().enumerate().flat_map(|(bd, blk)| {
-                blk.insts
-                    .iter()
-                    .enumerate()
-                    .filter(move |(_, n)| n.op == Op::Drop && n.args[0] == c)
-                    .map(move |(jd, _)| (bd, jd))
-            });
-            let (Some((bd, jd)), None) = (drops.next(), drops.next()) else {
+            let [(bd, jd)] = drops[c.index()][..] else {
                 continue;
             };
             if bd == bc {
                 continue;
             }
             // The list `v` is read from, or none for a parameter or literal.
-            let root = match defs[v.index()] {
-                None => None,
-                Some((db, di)) => {
-                    let def = &f.blocks[db].insts[di];
-                    match def.op {
-                        Op::StrLit => None,
-                        Op::ListGet | Op::ListGetU | Op::ListGetNn => Some(def.args[0]),
-                        _ => continue,
-                    }
-                }
+            let Some(root) = str_source(f, &defs, v) else {
+                continue;
             };
             // Blocks reachable from the copy without passing through the drop's block.
             let mut seen = vec![false; nb];
@@ -485,21 +478,16 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
                 continue;
             }
             alias[c.index()] = Some(v);
-            dead.insert((bc, i));
-            dead.insert((bd, jd));
+            dead.push((bc, i));
+            dead.push((bd, jd));
         }
     }
     if dead.is_empty() {
         return false;
     }
     let f = &mut m.funcs[fi];
-    for (bi, b) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0;
-        b.insts.retain(|_| {
-            let drop_it = dead.contains(&(bi, k));
-            k += 1;
-            !drop_it
-        });
+    remove_insts(f, &dead);
+    for b in &mut f.blocks {
         for i in &mut b.insts {
             for a in &mut i.args {
                 if let Some(s) = alias[a.index()] {
@@ -692,12 +680,12 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
         return false;
     }
     let f = &mut m.funcs[fi];
-    let mut dead: HashSet<(usize, usize)> = HashSet::new();
+    let mut dead: Vec<(usize, usize)> = Vec::new();
     for (bb, pi, edges, drop_at) in plans {
         f.blocks[bb].params[pi].mode = Mode::Borrow;
-        dead.insert(drop_at);
+        dead.push(drop_at);
         for (x, di, src) in edges {
-            dead.insert((x, di));
+            dead.push((x, di));
             f.blocks[x].term.for_each_target_mut(|t| {
                 if t.block.index() == bb {
                     t.args[pi] = src;
@@ -705,43 +693,47 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
             });
         }
     }
-    for (bi, b) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0;
-        b.insts.retain(|_| {
-            let drop_it = dead.contains(&(bi, k));
-            k += 1;
-            !drop_it
-        });
-    }
+    remove_insts(f, &dead);
     true
 }
 
-/// Whether a string `v` stays alive and unchanged across `span`: a parameter or literal, or an
-/// element read out of a list that the span only borrows. Strings are immutable, so the only
-/// way the copy could differ from `v` is `v`'s owner releasing or replacing it.
-fn str_source_stable(
-    m: &Module,
-    f: &Func,
-    defs: &[Option<(usize, usize)>],
-    v: Value,
-    span: &[Inst],
-) -> bool {
+/// What a string copy of `v` may borrow instead of copying: `Some(None)` when `v` is a
+/// parameter or a literal, `Some(Some(list))` when `v` is an element read out of `list`,
+/// which stays valid while the list is only borrowed, `None` for any other source.
+fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Option<Value>> {
     let Some((db, di)) = defs[v.index()] else {
-        return true;
+        return Some(None);
     };
     let def = &f.blocks[db].insts[di];
     match def.op {
-        Op::StrLit => true,
-        Op::ListGet | Op::ListGetU | Op::ListGetNn => {
-            let root = def.args[0];
-            span.iter().all(|n| {
-                n.args
-                    .iter()
-                    .zip(arg_modes(m, n))
-                    .all(|(a, mode)| *a != root || mode == Mode::Borrow)
-            })
+        Op::StrLit => Some(None),
+        Op::ListGet | Op::ListGetU | Op::ListGetNn => Some(Some(def.args[0])),
+        _ => None,
+    }
+}
+
+/// Removes the instructions at the (block, index) positions in `dead`.
+fn remove_insts(f: &mut Func, dead: &[(usize, usize)]) {
+    let mut per_block: Vec<Vec<usize>> = vec![Vec::new(); f.blocks.len()];
+    for &(bi, k) in dead {
+        per_block[bi].push(k);
+    }
+    for (b, mut ks) in f.blocks.iter_mut().zip(per_block) {
+        if ks.is_empty() {
+            continue;
         }
-        _ => false,
+        ks.sort_unstable();
+        ks.dedup();
+        let mut k = 0;
+        let mut next = 0;
+        b.insts.retain(|_| {
+            let drop_it = next < ks.len() && ks[next] == k;
+            if drop_it {
+                next += 1;
+            }
+            k += 1;
+            !drop_it
+        });
     }
 }
 
