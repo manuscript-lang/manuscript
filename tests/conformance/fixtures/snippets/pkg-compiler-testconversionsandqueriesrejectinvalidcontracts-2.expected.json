@@ -7,21 +7,21 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected Callable[[String, Int], Bool], found Callable[[Int, String], Bool] (in argument 'predicate' of value.every); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)",
         "position": {
           "file": "pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms",
           "line": 6,
-          "column": 57,
-          "offset": 290
+          "column": 51,
+          "offset": 284
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms:6:57: type: expected Callable[[String, Int], Bool], found Callable[[Int, String], Bool] (in argument 'predicate' of value.every); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-2.ms:6:51: resolution: unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

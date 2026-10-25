@@ -82,6 +82,41 @@ export def bench_list() -> Unit:
     )
 
     bench(
+        "list.any_early_exit",
+        100000,
+        lambda () -> Int:
+            var n = 0
+            for i in range(0, 100000):
+                if data.any(lambda (x: Int) -> Bool: x == 0): n += 1
+            return n
+    )
+
+    let points = data.map(lambda (x: Int) -> Point: Point(x, (x * 7) % 1000))
+
+    bench(
+        "list.max_by",
+        100,
+        lambda () -> Int:
+            var n = 0
+            for i in range(0, 100):
+                if let best = points.max_by(lambda (p: Point) -> Int: p.y): n += best.x
+            return n
+    )
+
+    bench(
+        "list.max_by_loop",
+        100,
+        lambda () -> Int:
+            var n = 0
+            for i in range(0, 100):
+                var best = points.get(0)
+                for p in points:
+                    if p.y > best.y: best = p
+                n += best.x
+            return n
+    )
+
+    bench(
         "list.records_map",
         100000,
         lambda () -> Int:

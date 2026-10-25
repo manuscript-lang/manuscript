@@ -24,53 +24,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`original` is moved here but used again at 118:5; a value has one owner, so pass `original.clone()` to keep the original, or move it only at its last use",
+          "message": "Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly",
           "position": {
             "file": "builtin-parity.ms",
-            "line": 117,
-            "column": 17,
-            "offset": 3465
-          },
-          "fix": {
-            "position": {
-              "file": "builtin-parity.ms",
-              "line": 117,
-              "column": 25,
-              "offset": 3473
-            },
-            "end": {
-              "file": "builtin-parity.ms",
-              "line": 117,
-              "column": 25,
-              "offset": 3473
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "`other` is moved here but used again at 277:5; a value has one owner, so pass `other.clone()` to keep the original, or move it only at its last use",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 235,
-            "column": 25,
-            "offset": 8257
-          },
-          "fix": {
-            "position": {
-              "file": "builtin-parity.ms",
-              "line": 235,
-              "column": 30,
-              "offset": 8262
-            },
-            "end": {
-              "file": "builtin-parity.ms",
-              "line": 235,
-              "column": 30,
-              "offset": 8262
-            },
-            "replacement": ".clone()"
+            "line": 43,
+            "column": 26,
+            "offset": 1469
           }
         }
       ]
@@ -79,18 +38,6 @@
       "completed",
       "diagnostics",
       "diagnostics[].code",
-      "diagnostics[].fix",
-      "diagnostics[].fix.end",
-      "diagnostics[].fix.end.column",
-      "diagnostics[].fix.end.file",
-      "diagnostics[].fix.end.line",
-      "diagnostics[].fix.end.offset",
-      "diagnostics[].fix.position",
-      "diagnostics[].fix.position.column",
-      "diagnostics[].fix.position.file",
-      "diagnostics[].fix.position.line",
-      "diagnostics[].fix.position.offset",
-      "diagnostics[].fix.replacement",
       "diagnostics[].message",
       "diagnostics[].phase",
       "diagnostics[].position",

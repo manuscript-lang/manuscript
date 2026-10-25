@@ -42,10 +42,10 @@ test "inlined callbacks":
         )
     )
     try expect_true((items.count(predicate: lambda (v: Int) -> Bool: v > 1) == 3))
-    try expect_true((items.some(predicate: lambda (v: Int) -> Bool: v == 4)))
-    try expect_true((not items.some(predicate: lambda (v: Int) -> Bool: v == 9)))
-    try expect_true((items.every(predicate: lambda (v: Int) -> Bool: v < 5)))
-    try expect_true((not items.every(predicate: lambda (v: Int) -> Bool: v < 4)))
+    try expect_true((items.any(predicate: lambda (v: Int) -> Bool: v == 4)))
+    try expect_true((not items.any(predicate: lambda (v: Int) -> Bool: v == 9)))
+    try expect_true((items.all(predicate: lambda (v: Int) -> Bool: v < 5)))
+    try expect_true((not items.all(predicate: lambda (v: Int) -> Bool: v < 4)))
 
     # Closures cannot mutate captures, so iterate a clone while growing the original.
     var seen = List[Int]()
