@@ -3,8 +3,8 @@
 //! Each isolate (one OS thread with its own arena and scheduler) has an [`Inbox`] in a
 //! process-wide registry. A park token's id carries the owning isolate's registry slot, so a
 //! post from any thread reaches the right scheduler and kicks only that isolate's poller.
-use crate::fault::Hdr;
-use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, Ordering};
+use crate::fault::{Hdr, PublishedHdr};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Isolates addressable by a token id (12 bits).
@@ -21,7 +21,7 @@ pub struct Inbox {
     /// A stop request aimed at this (worker) isolate; 0 when none.
     cancel: AtomicU8,
     /// The running task's header block, for a parent that cancels this isolate.
-    cur: AtomicPtr<Hdr>,
+    cur: PublishedHdr,
 }
 
 static REGISTRY: Mutex<Vec<Option<Arc<Inbox>>>> = Mutex::new(Vec::new());
@@ -73,7 +73,7 @@ fn current() -> &'static (usize, Arc<Inbox>) {
             full: AtomicBool::new(false),
             wake: Mutex::new(None),
             cancel: AtomicU8::new(0),
-            cur: AtomicPtr::new(core::ptr::null_mut()),
+            cur: PublishedHdr::new(),
         });
         let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
         let slot = match reg.iter().position(Option::is_none) {
@@ -159,7 +159,7 @@ pub fn pending_cancel() -> u8 {
 
 /// Records the running task's block so a cancel aimed at this isolate can reach its flag.
 pub fn publish_hdr(hdr: *mut Hdr) {
-    current().1.cur.store(hdr, Ordering::Release);
+    current().1.cur.publish(hdr);
 }
 
 /// Asks the isolate in registry slot `slot` to stop: raises the flag of its running task unless
@@ -173,15 +173,7 @@ pub fn raise_cancel(slot: usize, sig: u8) {
         }
     };
     inbox.cancel.store(sig, Ordering::Relaxed);
-    let hdr = inbox.cur.load(Ordering::Acquire);
-    if !hdr.is_null() {
-        // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
-        unsafe {
-            if (*hdr).shield.load(Ordering::Relaxed) == 0 {
-                (*hdr).cancel.store(sig, Ordering::Relaxed);
-            }
-        }
-    }
+    inbox.cur.cancel(sig);
     if let Some(wake) = &*inbox.wake.lock().unwrap_or_else(|e| e.into_inner()) {
         wake();
     }

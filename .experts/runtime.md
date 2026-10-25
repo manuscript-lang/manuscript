@@ -246,6 +246,14 @@ Evidence: [concurrent shield regression and ABI checks](../crates/ms-rt/src/faul
 Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads`
 passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.
 
+Verified: atomic fields do not keep a published task header alive. Miri catches a remote
+cancellation reading a header after unpublication and deallocation. `PublishedHdr` counts
+short reader sections; publication uses sequentially consistent operations and waits for old
+readers before the caller can free or reuse the previous header. Readers never lock or wait,
+so a signal interrupting the publishing thread cannot deadlock it. Teardown unpublishes first.
+Verify with `cargo +nightly miri test -p ms-rt cancellation_header_retirement_waits_for_readers`;
+keep header layout and shield semantics unchanged, and measure context-switch overhead.
+
 ### Worker cancellation must follow startup and retirement
 
 Verified: a cancellation sent immediately after spawn was discarded before the worker published

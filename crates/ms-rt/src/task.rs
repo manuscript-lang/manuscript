@@ -793,6 +793,7 @@ unsafe fn switch_away() {
                 (*next).state = State::Running;
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
+                fault::publish_current_hdr();
                 s.cur = next;
                 stack::switch(cur, next);
                 after_switch();
@@ -1466,6 +1467,7 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// scenarios in one process; the leak sweep calls it at exit so only real leaks remain in the
 /// live-block count.
 pub fn teardown() {
+    fault::retire_hdr();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
