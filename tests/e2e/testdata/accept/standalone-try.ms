@@ -24,7 +24,7 @@ def operation(var state: State, fail: Bool) -> Result[Unit, Failure]:
     return ok(())
 
 def exact(state: State, fail: Bool) -> Result[String, Failure]:
-    with state as resource:
+    with let resource = state:
         var work = resource.clone()
         try operation(var work, fail)
         work.calls += 10
@@ -40,7 +40,7 @@ def closed(marker: String) -> Bool:
 test "standalone try evaluates once and continues on Unit success":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-try-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-try-") | try expect_ok):
         let marker = f"{temporary.path()}/marker"
         let value = try exact(State(0, marker.clone()), fail: False)
         try expect_equal(value, "done 11")
@@ -49,7 +49,7 @@ test "standalone try evaluates once and continues on Unit success":
 test "standalone try propagates and cleans up before returning":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-try-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-try-") | try expect_ok):
         let marker = f"{temporary.path()}/marker"
         let failed = exact(State(0, marker.clone()), fail: True)
         try expect_false(failed.is_ok())

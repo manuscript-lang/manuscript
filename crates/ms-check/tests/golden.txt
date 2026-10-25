@@ -1438,7 +1438,7 @@ impl Closeable for R:
 def mk() -> Result[R, Error]:
     return ok(R(n: 1))
 def f() -> Int:
-    with mk() as x:
+    with let x = mk():
         return 1
     return 0
 resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
@@ -1691,12 +1691,12 @@ resolution	1	33	32	unknown type Layer32; declare it with 'type Layer32:' / 'inte
     let x = 1
     let y: Int = x.foo
     return y
-resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef g(v: Int) -> Int:
+resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef g(v: Int) -> Int:
     return v
 def f() -> Int:
     let x = 1
     return g(v: x.foo())
-resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
+resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Int = True) -> Int: ...
 type	1	20	19	expected Int, found Bool
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(first: Int = second, second: Int = 1) -> Int: ...
@@ -1879,7 +1879,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 44 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 52 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2331,9 +2331,9 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 44 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 52 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export interface Read[T]:
     def get() -> T
 export type Box[T]:
     value: T
@@ -2349,7 +2349,7 @@ export def invoke[T: Read[Int]](value: T) -> Int:
 resolution	1	16	15	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import it
 resolution	1	29	28	unknown type Read; declare it with 'type Read:' / 'interface Read:', declare it as a type parameter, or import it
 resolution	2	12	50	unknown binding Read; declare it with 'let Read = ...' before use, define 'def Read(...) -> T:', or import it from a moduledef use(value: Box[Int]) -> Unit:
-    with value as resource:
+    with let resource = value:
         return
 resolution	1	16	15	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itfrom "@std/cleanup.ms" import Closeable
 impl Closeable for Box[T]:
@@ -3570,11 +3570,11 @@ def g() -> Unit: return
 type	4	42	155	expected Callable[[], Unit], found Callable[[], Int] (in entry 2 of the literal, whose entries share one type)def f() -> Unit:
     while True: break
     for x in values: consume(x)
-    with resource() as x: consume(x)
+    with let x = resource(): consume(x)
 resolution	3	14	52	unknown binding values; add: from "@std/bytes.ms" import values
 resolution	3	22	60	unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module
-resolution	4	10	80	unknown binding resource; declare it with 'let resource = ...' before use, define 'def resource(...) -> T:', or import it from a module
-resolution	4	27	97	unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a modulefn f(x: Int) Int:
+resolution	4	18	88	unknown binding resource; declare it with 'let resource = ...' before use, define 'def resource(...) -> T:', or import it from a module
+resolution	4	30	100	unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a modulefn f(x: Int) Int:
     if x > 0: return x else: return 0
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Unit:
     if true: return else: return
@@ -3954,7 +3954,7 @@ def pure() -> Int:
     return 1
 
 def direct(resource: Resource) -> Unit:
-    with resource as item:
+    with let item = resource:
         return
 
 def transitive(resource: Resource) -> Unit:
@@ -3962,7 +3962,7 @@ def transitive(resource: Resource) -> Unit:
 
 def nested(resource: Resource) -> Unit:
     let callback = lambda () -> Unit:
-        with resource as item:
+        with let item = resource:
             return
 
 def indirect(callback: Callable[[], Unit]) -> Unit:
@@ -3972,7 +3972,7 @@ resolution	2	30	69	module does not export Queue; unknown standard module @std/qu
 resolution	5	12	102	unknown type Queue; add: from "@std/queue.ms" import Queue
 resolution	7	6	119	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	15	5	275	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
-type	23	9	476	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unittype State:
+type	23	9	479	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unittype State:
     count: Int
 def increment(state: State) -> Int:
     state.count = state.count + 1
@@ -4383,13 +4383,13 @@ resolution	2	34	50	unknown binding remaining; declare it with 'let remaining = .
         run(count)
     for item in [1, 2]:
         run(item)
-    with acquire() as resource:
+    with let resource = acquire():
         run(resource)
     return count
 resolution	4	9	74	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
 resolution	6	9	117	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	7	10	136	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	8	9	167	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef process(input: String) -> Int:
+resolution	7	25	151	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
+resolution	8	9	170	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef process(input: String) -> Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -4433,7 +4433,7 @@ resolution	9	11	226	unknown binding save; declare it with 'let save = ...' befor
     for item in [1, 2]:
         if item == 1: continue
         run(item)
-    with acquire() as resource:
+    with let resource = acquire():
         run(resource)
     return count
 resolution	4	9	74	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
@@ -4441,8 +4441,8 @@ resolution	5	21	105	unknown binding run; declare it with 'let run = ...' before 
 resolution	7	9	130	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
 resolution	10	9	193	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
 resolution	14	9	281	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	15	10	300	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	16	9	331	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef work(enabled: Bool) -> Int:
+resolution	15	25	315	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
+resolution	16	9	334	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef work(enabled: Bool) -> Int:
     let count = 2
 
     if enabled:
@@ -4462,7 +4462,7 @@ resolution	16	9	331	unknown binding run; declare it with 'let run = ...' before 
 
         run(item)
 
-    with acquire() as resource:
+    with let resource = acquire():
         run(resource)
     return count
 resolution	5	9	75	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
@@ -4470,8 +4470,8 @@ resolution	6	21	106	unknown binding run; declare it with 'let run = ...' before 
 resolution	8	9	131	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
 resolution	13	9	196	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
 resolution	19	9	286	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	21	10	306	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	22	9	337	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef choose(value: Choice) -> Int:
+resolution	21	25	321	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
+resolution	22	9	340	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef choose(value: Choice) -> Int:
     match value:
         case first: return 1
         case second: return 2
@@ -4627,10 +4627,10 @@ def run(n: Int) -> Int:
 def run(n: Int) -> Int:
     let a = n |.size()|try.m()| .k
     return a
-resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef run(n: Int) -> Int:
+resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef run(n: Int) -> Int:
     let a = n | .size() | try .m() | .k
     return a
-resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f() -> Int:
+resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f() -> Int:
     for mode in [1]:
         if not (
                 mode == 2
@@ -5629,7 +5629,7 @@ def load(n: Int) -> Result[Int, Error]:
     return ok(n)
 
 def guarded(n: Int) -> Result[Int, Error]:
-    with stdout() as out:
+    with let out = stdout():
         let v = try load(n)
         if v > 1:
             return ok(2)
@@ -6454,15 +6454,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export def main() -> Int:
+resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export def main() -> Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...export def main() -> Int:
+resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export def main() -> Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, pop, prepend, remove, reverse_in_place, reversed, set, slice, some, ...from "@std/faults.ms" import panic
+resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...from "@std/faults.ms" import panic
 
 def run() -> Int:
     let boom = lambda (value: Int) -> Int: panic(message: "closure failed")
@@ -6480,7 +6480,7 @@ impl Closeable for Watch:
     def close() -> Unit:
         self.count.total += 10
 def next(count: Count) -> Int:
-    with Watch(count) as watch:
+    with let watch = Watch(count):
         count.total += 1
         return 0
 def unknown(s: Shape) -> Int: return area(s)
@@ -6500,17 +6500,17 @@ export def main() -> Int:
     if sum != 2033: return 4
     return 0
 resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
-resolution	13	16	298	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	13	16	301	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	6	6	101	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	10	5	213	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Watch has none, so add 'impl Closeable for Watch:' with var def close() -> Unit
-resolution	13	38	320	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	15	19	372	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	15	36	389	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	15	53	406	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	17	8	452	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	19	8	543	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	21	16	638	unknown binding Shape; did you mean 'shapes'?
-resolution	25	16	731	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduledef probe() -> Int:
+resolution	13	38	323	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
+resolution	15	19	375	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+resolution	15	36	392	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+resolution	15	53	409	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+resolution	17	8	455	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
+resolution	19	8	546	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
+resolution	21	16	641	unknown binding Shape; did you mean 'shapes'?
+resolution	25	16	734	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduledef probe() -> Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(2))
 export def main() -> Int:
@@ -6763,7 +6763,7 @@ impl Closeable for Resource:
         let written = self.output.write("fault cleanup completed\n").get()
 
 test "panic unwinds Closeable":
-    with Resource(stdout()) as resource:
+    with let resource = Resource(stdout()):
         return panic("intentional stdlib panic")
 
 test "absent Optional unwrap faults":
@@ -6797,10 +6797,10 @@ resolution	2	31	65	module does not export Closeable; unknown standard module @st
 resolution	4	30	150	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	14	6	365	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	19	5	526	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
-resolution	20	16	578	unknown binding panic; add: from "@std/core.ms" import panic
-resolution	32	17	907	unknown binding Queue; add: from "@std/queue.ms" import Queue
-resolution	35	17	977	unknown binding Queue; add: from "@std/queue.ms" import Queue
-type	44	56	1298	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
+resolution	20	16	581	unknown binding panic; add: from "@std/core.ms" import panic
+resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
+resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queue
+type	44	56	1301	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
 from "@std/testing.ms" import expect_true, fail
 
 test "fixture next to the manifest":

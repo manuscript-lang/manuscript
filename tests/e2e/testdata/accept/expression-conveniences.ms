@@ -19,7 +19,7 @@ def closed(marker: String) -> Bool: filesystem().read_file(marker).is_ok()
 def identity[T](value: T) -> T: return value
 
 def amount(text: String, marker: String) -> Result[Int, TextError]:
-    with Resource(marker: marker.clone()) as resource:
+    with let resource = Resource(marker: marker.clone()):
         let cents = match text.parse_int():
             case some(value):
                 value
@@ -98,7 +98,7 @@ test "match expressions preserve returns and cleanup":
 
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-match-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-match-") | try expect_ok):
         let dir = temporary.path()
         let parsed = amount(text: "3", marker: f"{dir}/parsed")
         (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false

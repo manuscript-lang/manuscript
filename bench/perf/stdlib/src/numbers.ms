@@ -21,6 +21,17 @@ export def bench_numbers() -> Unit:
     )
 
     bench(
+        "bigint.multiply_100_digits",
+        20000,
+        lambda () -> Int:
+            let base = from_int(7).pow(118).get(from_int(0))
+            var acc = base
+            for i in range(0, 20000):
+                acc = base * base
+            return acc.to_string_radix(10).length()
+    )
+
+    bench(
         "decimal.add_round",
         20000,
         lambda () -> Int:

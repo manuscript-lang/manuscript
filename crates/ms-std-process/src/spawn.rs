@@ -484,17 +484,18 @@ mod tree {
             let parent = found[next];
             next += 1;
             let mut buf = [0 as libc::pid_t; 1024];
-            // SAFETY: `buf` is writable for the byte size passed.
-            let bytes = unsafe {
+            // SAFETY: `buf` is writable for the byte size passed. The return value is ignored: libproc
+            // documents it as a count of pids in some releases and bytes in others, and dividing
+            // a count by the pid size dropped every child of a parent with fewer than four.
+            // Unused slots stay zero and no pid is zero.
+            unsafe {
                 libc::proc_listchildpids(
                     parent,
                     buf.as_mut_ptr().cast(),
                     core::mem::size_of_val(&buf) as libc::c_int,
                 )
             };
-            let count =
-                (bytes.max(0) as usize / core::mem::size_of::<libc::pid_t>()).min(buf.len());
-            for &pid in &buf[..count] {
+            for &pid in buf.iter().take_while(|p| **p > 0) {
                 if !found.contains(&pid) {
                     found.push(pid);
                 }

@@ -9,7 +9,7 @@
 use crate::json::Json;
 
 /// The exit status of a program that ended in a runtime fault.
-pub const EXIT_FAULT: i32 = 70;
+pub use ms_rt_abi::EXIT_FAULT;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Frame {

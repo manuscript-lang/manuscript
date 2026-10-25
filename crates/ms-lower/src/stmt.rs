@@ -147,6 +147,7 @@ impl<'a> FnLower<'a> {
                 }
             }
             StmtKind::Return(e) => {
+                self.lent_expr = e.as_ref().map(|e| e as *const Expr as usize);
                 let x = match e {
                     Some(e) => self.expr(e)?,
                     None => Val {

@@ -164,6 +164,10 @@ pub struct Cx {
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// Bindings that are exclusive borrows of another place.
     pub exclusive: Rc<std::collections::HashSet<usize>>,
+    /// Pattern and arm bindings that only borrow a part of their scrutinee.
+    pub read_borrows: Rc<std::collections::HashSet<usize>>,
+    /// `ref` functions that lend on every path, by module file and node.
+    pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
 }
@@ -204,6 +208,8 @@ impl Cx {
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
             exclusive: program.exclusive_borrows.clone(),
+            read_borrows: program.read_borrows.clone(),
+            lenders: program.lenders.clone(),
             getters: program.getter_borrows.clone(),
         }
     }

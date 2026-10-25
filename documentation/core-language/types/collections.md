@@ -66,6 +66,23 @@ An expected type propagates into inner literals. Without one, elements must agre
 
 Maps and sets iterate in insertion order, with a [for loop](../control-flow/loops.md).
 
+### Walking two lists, or a list with its index
+
+`xs.entries()` pairs each element with its index, and `a.zip(b)` pairs two lists by position. Neither needs a nested index loop:
+
+```ms
+from "@std/io.ms" import stdout
+
+export def main() -> Int:
+    let names = ["ann", "bo", "cy"]
+    let scores = [90, 72]
+    for pair in names.zip(scores):
+        stdout().write(f"{pair.first}: {pair.second}\n")
+    for part in [1, 2, 3, 4, 5].chunks(2):
+        stdout().write(f"{part.length()}\n")
+    return 0
+```
+
 ## Mutation and copies
 
 Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
@@ -185,12 +202,31 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `count(predicate:)` | Number of elements whose predicate returns true, calling it once per element in order. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
+| List `zip(other)` | A new list of `Pair[T, U]` records (`first` from the receiver, `second` from `other`), as long as the shorter list. |
+| List `chunks(size)`, `windows(size)` | Lists of copies of `size` consecutive elements: `chunks` splits (the last may be shorter), `windows` overlaps (a list shorter than `size` gives none). A `size` of zero or less is a fault. |
+| List `partition(predicate)` | A `Partition[T]` record whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
 Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
+
+List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: lambda a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
+
+```manuscript
+from "@std/core.ms" import panic
+
+test "sorting and aggregates":
+    var scores = [3, 1, 2]
+    if scores.sorted() != [1, 2, 3]:
+        return panic("check failed")
+    scores.sort(lambda a, b: b - a)
+    if scores != [3, 2, 1]:
+        return panic("check failed")
+    if scores.sum() != 6 or scores.max() != some(3) or List[Int]().min() != none:
+        return panic("check failed")
+```
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 

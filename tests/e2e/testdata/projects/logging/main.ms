@@ -6,7 +6,7 @@ from "./records.ms" import emit
 
 def exercise(mode: String, path: String) -> Result[Unit, Error]:
     if (mode == "file" or mode == "missing"):
-        with try create(try file_transport(path), timestamp: False) as root:
+        with let root = try create(try file_transport(path), timestamp: False):
             let logger = try root.child_json("{\"service\":\"api\"}")
             try emit(logger)
             try logger.flush()
@@ -14,7 +14,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
         return ok(())
 
     if mode == "limit":
-        with try create(stdout_transport(), max_bytes: 1) as logger:
+        with let logger = try create(stdout_transport(), max_bytes: 1):
             try logger.info("too large")
     elif mode == "closed":
         var root = try create(stdout_transport())
@@ -22,7 +22,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
         root.close()
         try logger.info("closed")
     else:
-        with try create(stdout_transport()) as root:
+        with let root = try create(stdout_transport()):
             let logger = try root.child_json("{\"service\":\"api\"}")
 
             if mode == "invalid":
@@ -34,7 +34,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
                 try emit(logger)
                 try logger.flush()
 
-    with try create(stdout_transport(), timestamp: False) as logger:
+    with let logger = try create(stdout_transport(), timestamp: False):
         try logger.info("still open")
     return ok(())
 

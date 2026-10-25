@@ -21,27 +21,27 @@
         },
         {
           "index": 2,
-          "name": "shared.ms::take and put change the payload every holder sees",
+          "name": "shared.ms::lock changes the payload every holder sees",
           "status": "passed"
         },
         {
           "index": 3,
-          "name": "shared.ms::a second take while the payload is out faults",
+          "name": "shared.ms::a read while the payload is locked faults",
           "status": "passed"
         },
         {
           "index": 4,
-          "name": "shared.ms::a box dropped while its payload is out does not free the payload twice",
+          "name": "shared.ms::a box dropped while its payload is locked does not free the payload twice",
           "status": "passed"
         },
         {
           "index": 5,
-          "name": "shared.ms::an optional payload keeps its value through take and put",
+          "name": "shared.ms::an optional payload keeps its value through lock",
           "status": "passed"
         },
         {
           "index": 6,
-          "name": "shared.ms::a record payload with an optional field after a flag survives take and put",
+          "name": "shared.ms::a record payload with an optional field after a flag survives lock",
           "status": "passed"
         }
       ],
@@ -55,7 +55,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::take and put change the payload every holder sees\nPASS shared.ms::take and put change the payload every holder sees\nRUN shared.ms::a second take while the payload is out faults\nPASS shared.ms::a second take while the payload is out faults\nRUN shared.ms::a box dropped while its payload is out does not free the payload twice\nPASS shared.ms::a box dropped while its payload is out does not free the payload twice\nRUN shared.ms::an optional payload keeps its value through take and put\nPASS shared.ms::an optional payload keeps its value through take and put\nRUN shared.ms::a record payload with an optional field after a flag survives take and put\nPASS shared.ms::a record payload with an optional field after a flag survives take and put\n7 tests, 0 failed\n",
+      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::lock changes the payload every holder sees\nPASS shared.ms::lock changes the payload every holder sees\nRUN shared.ms::a read while the payload is locked faults\nPASS shared.ms::a read while the payload is locked faults\nRUN shared.ms::a box dropped while its payload is locked does not free the payload twice\nPASS shared.ms::a box dropped while its payload is locked does not free the payload twice\nRUN shared.ms::an optional payload keeps its value through lock\nPASS shared.ms::an optional payload keeps its value through lock\nRUN shared.ms::a record payload with an optional field after a flag survives lock\nPASS shared.ms::a record payload with an optional field after a flag survives lock\n7 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

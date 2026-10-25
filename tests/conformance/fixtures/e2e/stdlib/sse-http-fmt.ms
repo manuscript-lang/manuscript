@@ -25,8 +25,8 @@ def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return ok(())
 
 test "HTTP response bodies decode as SSE and close with the reader":
-    with try network().serve_stream("127.0.0.1:0", stream_events, HttpServerOptions()) as server:
-        with try network().http_client(HttpClientOptions()) as client:
+    with let server = try network().serve_stream("127.0.0.1:0", stream_events, HttpServerOptions()):
+        with let client = try network().http_client(HttpClientOptions()):
             let response = try client.request(
                 HttpMethod.Get, f"http://{server.address()}/", headers()
             )

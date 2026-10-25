@@ -20,6 +20,7 @@ from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/json.ms" import parse, stringify
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 
 extern def msrt_pipe_new() -> Int
 
@@ -138,23 +139,17 @@ impl Worker[In, Out]:
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
     var def join() -> Result[Unit, WorkerError]:
-        var held = self.ended.take()
+        with var held = lock(self.ended):
+            if held.value.length() > 0:
+                return held.value[0].clone()
 
-        if held.length() > 0:
-            let first = held[0]
-            self.ended.put(held)
-            return first.clone()
+            # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
+            self.channel.close()
 
-        # Put the payload back while waiting: a stop request unwinds the wait, and the cleanup joins again.
-        self.ended.put(held)
-        self.channel.close()
-
-        let report = msrt_worker_wait(self.handle)
-        let outcome = outcome_of(report)
-        var again = self.ended.take()
-        again.append(outcome.clone())
-        self.ended.put(again)
-        return outcome
+            let report = msrt_worker_wait(self.handle)
+            let outcome = outcome_of(report)
+            held.value.append(outcome.clone())
+            return outcome
 
     # Asks the worker to stop: its next wait or check for cancellation unwinds it.
     def cancel() -> Unit:
@@ -197,18 +192,14 @@ impl WorkerGroup[In, Out]:
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
         let ended: Shared[List[Result[Unit, WorkerError]]] = share([])
         let worker = Worker(handle, channel, ended)
-        var started = self.workers.take()
-        started.append(worker.clone())
-        self.workers.put(started)
+        with var started = lock(self.workers):
+            started.value.append(worker.clone())
         return ok(worker)
 
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var def close() -> Unit:
-        var started = self.workers.take()
-
-        for index in range(0, started.length()):
-            started[index].cancel()
-            started[index].join()
-
-        self.workers.put(started)
+        with var started = lock(self.workers):
+            for index in range(0, started.value.length()):
+                started.value[index].cancel()
+                started.value[index].join()

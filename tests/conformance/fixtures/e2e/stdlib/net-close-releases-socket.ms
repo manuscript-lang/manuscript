@@ -9,19 +9,19 @@ from "@std/time.ms" import duration
 # after a cancelled `accept` or `read` ran its `with` cleanup.
 
 def accept_one(address: String) -> Int:
-    with network().listen(address).get() as listener:
+    with let listener = network().listen(address).get():
         let accepted = listener.accept(duration(10000000000))
         if accepted.is_ok():
             return 1
         return 0
 
 def read_one(address: String) -> Int:
-    with network().connect(address, duration(2000000000)).get() as client:
+    with let client = network().connect(address, duration(2000000000)).get():
         let got = client.read(none, none)
         return got.get(none).map(lambda b: b.length()).get(-1)
 
 def receive_one(address: String) -> Int:
-    with network().bind_datagram(address).get() as socket:
+    with let socket = network().bind_datagram(address).get():
         let got = socket.receive(none, none)
         if got.is_ok():
             return 1
@@ -48,7 +48,7 @@ export def main() -> Int:
     first.close()
     stdout().write(f"closed listener rebound: {rebound(address)}\n").get()
 
-    with TaskGroup[Int](timeout: some(duration(2000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(2000000))):
         let a = address.clone()
         group.spawn(lambda ch: accept_one(a))
         group.wait()
@@ -56,11 +56,11 @@ export def main() -> Int:
 
     let third = net.listen("127.0.0.1:0").get()
     let third_address = third.address().clone()
-    with third as server:
+    with let server = third:
         let target = server.address().clone()
         for round in 0..20:
             let a = target.clone()
-            with TaskGroup[Int](timeout: some(duration(2000000))) as group:
+            with let group = TaskGroup[Int](timeout: some(duration(2000000))):
                 group.spawn(lambda ch: read_one(a))
                 group.wait()
             let accepted = server.accept(duration(500000000))
@@ -71,7 +71,7 @@ export def main() -> Int:
     let udp_address = udp.address().clone()
     udp.close()
     stdout().write(f"closed datagram socket rebound: {rebound_datagram(udp_address)}\n").get()
-    with TaskGroup[Int](timeout: some(duration(2000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(2000000))):
         let a = udp_address.clone()
         group.spawn(lambda ch: receive_one(a))
         group.wait()

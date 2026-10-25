@@ -40,7 +40,7 @@ User code cannot run two things at once. The runtime already has stackful corout
 from "@std/tasks.ms" import TaskGroup
 
 def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
-    with TaskGroup[Int](timeout: some(duration(5000000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(5000000000))):
         let tasks = urls.map(lambda url: group.spawn(lambda: fetch_size(url.clone())))
         var sizes = List[Int]()
         for task in tasks:
@@ -59,7 +59,7 @@ def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
 
 **Timeouts.** Opt-in only. The runtime keeps one kill deadline per limited task and cancels the task when it passes, noting that it timed out; there are no watcher tasks. A cancelled task has no result: `result()` returns `TimedOut` if the limit fired, otherwise `Cancelled`. A negative timeout faults. A task that finishes just as its limit fires keeps its result.
 
-**Cancellation and faults.** Cancelling the waiting task unwinds it and `close` cancels its tasks, through the existing per-task cancel flag. Faults cannot be caught, so a fault in any task ends the program (exit 70) after that task's cleanups, as an unjoined fault does today. Catching a child fault in the parent needs a runtime hook and is an open item.
+**Cancellation and faults.** Cancelling the waiting task unwinds it and `close` cancels its tasks, through the existing per-task cancel flag. Faults cannot be caught, so a fault in any task ends the program (exit 67) after that task's cleanups, as an unjoined fault does today. Catching a child fault in the parent needs a runtime hook and is an open item.
 
 **Ownership.** `spawn` takes a function value that outlives the call, so the closure owns its captures: a captured value moves in and the caller cannot use it afterwards; mutating a captured `var` is already rejected for such closures; results come back by value. Borrows (`let ref`, lending results) must not be captured; the diagnostic for that is stage 5. `Shared[T]` can cross a spawn on one thread (take/put have no wait between them); it is not part of any future sendable rule.
 
@@ -85,4 +85,4 @@ Transport (from the child-processes proposal, PR #1183): processes use `Sender[T
 - The benefit is design-level; no benchmark shows programs failing for lack of concurrency. Examples to check first-try success by agents are planned with stage 5.
 - Source methods cannot declare type parameters, so a group has one result type. Issue #1167 (`Shared` payload bugs hit during this work) is fixed on main.
 - Each task reserves 16 MiB of address space for its stack (committed lazily).
-- A deadlock where every task waits ends the program (exit 70), as it does for the existing runtime.
+- A deadlock where every task waits ends the program (exit 67), as it does for the existing runtime.

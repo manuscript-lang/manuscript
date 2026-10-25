@@ -733,6 +733,47 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
     }
 }
 
+/// `chunks(size)` and `windows(size)`: lists of copies of `size` consecutive elements, starting
+/// every `step` elements. `short_last` keeps a final shorter piece (chunks); otherwise only full
+/// pieces are produced (windows). `od` describes the outer list's element (a list).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_pieces(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    od: *const TypeDesc,
+    size: i64,
+    step: i64,
+    short_last: u8,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        if size <= 0 {
+            fault::fault_fmt(format_args!(
+                "List.{}: size must be positive, found {size}",
+                if short_last != 0 { "chunks" } else { "windows" }
+            ));
+        }
+        let (src, d, od) = (&*v, &*d, &*od);
+        let (size, step) = (size as usize, step.max(1) as usize);
+        let mut res = EMPTY;
+        let mut start = 0usize;
+        while start < src.len && (short_last != 0 || src.len - start >= size) {
+            let n = size.min(src.len - start);
+            let view = VecVal {
+                ptr: elem(src, d, start),
+                len: n,
+                cap: n,
+            };
+            reserve(&mut res, od, 1);
+            copy_list(&view, d, elem(&res, od, res.len) as *mut VecVal);
+            res.len += 1;
+            start += step;
+        }
+        *out = res;
+    }
+}
+
 /// `drop(count)` (named `drop_n` because `msrt_list_drop` releases a value).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_drop_n(

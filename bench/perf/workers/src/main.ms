@@ -26,7 +26,7 @@ def compute() -> Unit:
 def run(workers: Int, jobs: Int, n: Int) -> Result[Int, Error]:
     var total = 0
 
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var handles: List[Worker[Int, Int]] = []
         for i in 0..workers:
             handles.append(try group.spawn(compute))

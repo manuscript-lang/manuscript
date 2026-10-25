@@ -686,12 +686,17 @@ impl D {
                 body,
                 &[],
             ),
-            StmtKind::With { name, value, body } => self.stmt_fields(
+            StmtKind::With {
+                name,
+                mutable,
+                value,
+                body,
+            } => self.stmt_fields(
                 sp,
                 "with",
                 name.as_str(),
                 "",
-                false,
+                *mutable,
                 None,
                 None,
                 None,

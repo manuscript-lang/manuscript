@@ -65,12 +65,12 @@ test "closed codec strings reject spelling changes with their domain errors":
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-open-modes-") as temporary:
+    with let temporary = try fs.temporary("manuscript-open-modes-"):
         for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
             let path = f"{temporary.path()}/{mode}"
             if mode == "r" or mode == "r+":
                 try fs.write_file(path, "", replace: False)
-            with try fs.open(path, mode, 384) as handle:
+            with let handle = try fs.open(path, mode, 384):
                 let _fileinfo = try handle.stat()
 
         for mode in ["R", "rs", "w+x", " r", ""]:
@@ -89,11 +89,11 @@ test "all ten string open modes are accepted and changed spellings are invalid":
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-write-contract-") as temporary:
+    with let temporary = try fs.temporary("manuscript-write-contract-"):
         let path = f"{temporary.path()}/data"
         let data = (try "é".repeat(40000)).to_bytes()
 
-        with try fs.open(path, "w+", 384) as handle:
+        with let handle = try fs.open(path, "w+", 384):
             try handle.write_bytes(data)
             try expect_equal((try handle.stat()).size, 80000)
             try expect_false((try handle.read()).is_some())

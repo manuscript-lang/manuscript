@@ -13,7 +13,7 @@ def upper(chunk: Bytes) -> Bytes:
 test "flows compose stream transforms":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-streams-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
         let path = f"{temporary.path()}/pipeline.bin"
         let output = (fs.open(path: path, flags: "w", mode: 420) | try expect_ok)
         let source = from_bytes("hello world".to_bytes(), 4)
@@ -27,7 +27,7 @@ test "flows compose stream transforms":
 test "concat tee and writer helpers":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-streams-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
         let log_path = f"{temporary.path()}/tee.bin"
         let log = (fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok)
         let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
