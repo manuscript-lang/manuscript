@@ -86,3 +86,45 @@ fn same_spelling_in_other_modules_does_not_change_recursive_identity() {
         vec![("recursive.ms".into(), 2, 5, RECURSION_ERROR.into())]
     );
 }
+
+/// `type W{i}[T]: v: W{i-1}[T]` for `depth` declarations, with an optional changing cycle at the end.
+fn type_chain(depth: usize, changing_tail: bool) -> String {
+    let mut source = String::from("type W0[T]:\n    v: T\n\n");
+    for i in 1..depth {
+        source.push_str(&format!("type W{i}[T]:\n    v: W{}[T]\n\n", i - 1));
+    }
+    if changing_tail {
+        source.push_str(&format!(
+            "type Grow[T]:\n    next: Optional[Grow[List[T]]]\n    last: W{}[T]\n",
+            depth - 1
+        ));
+    }
+    source
+}
+
+#[test]
+fn chained_generic_types_are_checked_once_each() {
+    // Every declaration used to be a root walked with its own type variable, so a chain of N
+    // types cost N walks of up to N steps (4000 types: 43 s). Declarations that reach no
+    // cycle are pruned before the walk; the pruned run takes well under a second.
+    let start = std::time::Instant::now();
+    assert!(diagnostics(&[("chain.ms", &type_chain(2000, false))]).is_empty());
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(20),
+        "chained generic types took {:?}",
+        start.elapsed()
+    );
+}
+
+#[test]
+fn pruning_acyclic_types_keeps_the_changing_cycle_diagnostic() {
+    let got = diagnostics(&[("grow.ms", &type_chain(50, true))]);
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].3.starts_with(
+            "recursive generic applications must preserve their parameters in Grow.next"
+        ),
+        "{}",
+        got[0].3
+    );
+}
