@@ -191,6 +191,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
     // SAFETY: a live string by contract.
     let bytes = unsafe { crate::string::bytes(&*message) };
     loop {
+        cancel_if_requested();
         let mut t = table();
         let Some((pipe, side)) = find(&mut t, end) else {
             return CLOSED;
@@ -235,6 +236,15 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
     }
 }
 
+/// A cancelled task leaves at its next pipe operation even when the pipe is already closed, which
+/// is what cancelling a worker does to its ends; otherwise a cancel that arrives while the worker
+/// runs would be reported as a normal finish.
+fn cancel_if_requested() {
+    if crate::fault::cancel_flag().load(core::sync::atomic::Ordering::Relaxed) != 0 {
+        crate::fault::msrt_cancelled();
+    }
+}
+
 /// Reads the next message on `end` into `*out`, waiting for one. Returns 0 read, 1 when this
 /// end is closed, 2 when the other end closed and every message was read.
 ///
@@ -243,6 +253,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8 {
     loop {
+        cancel_if_requested();
         let mut t = table();
         let Some((pipe, side)) = find(&mut t, end) else {
             return CLOSED as u8;

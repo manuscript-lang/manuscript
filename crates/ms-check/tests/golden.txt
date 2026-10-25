@@ -5928,7 +5928,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-def f() -> Int:
+type	28	5	692	this statement discards Result[Unit, Error], so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purposedef f() -> Int:
     return 1
 let X = f()
 type	3	9	37	a constant takes literals, operators, collections, and other constants; compute this value in a functiondef f() -> Int:
