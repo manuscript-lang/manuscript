@@ -113,11 +113,13 @@ export def bench_list() -> Unit:
         100,
         lambda () -> Int:
             var n = 0
+
             for i in range(0, 100):
                 var best = points.get(0)
                 for p in points:
                     if p.y > best.y: best = p
                 n += best.x
+
             return n
     )
 
