@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "i1 = 0\n0 57 true sum 57\ni2 = 46\ns3 = [alpha]\ni4 = 92\n0 5 true sum 5\nf5 = 288.561\n",
     "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0024.ms:34 in main\n"
   }

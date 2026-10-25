@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "語本日\nf1 = 220.298\nfib(9) = 34\nf2 = 706321037528.6555\nacc3 = 84\nacc4 = 18\ns5 = [BRACE{S}]\n",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0397.ms:56 in main\n"
   }

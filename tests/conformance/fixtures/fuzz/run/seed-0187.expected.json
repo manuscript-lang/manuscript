@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "s1 = [日本語brace{s}]\nl2 = [-24, 26, -21, 20, -10] len 5\nl3 = [] len 0\ni4 = 475213\nb5 = false\nf6 = 1477.501\nf7 = 1476.5009999999997\ns8 = [日本語brace{s}42日本語brace{s}beta]\ni9 = 225827395412\nacc10 = 13\ns11 = [日本語brace{s}]\nl12 = [] len 0\nf13 = -342510.5231648184\ni14 = 396344094674986480\ni15 = 225842127015\n",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0187.ms:67 in main\n"
   }

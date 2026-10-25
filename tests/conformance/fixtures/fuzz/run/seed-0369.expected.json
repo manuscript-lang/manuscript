@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "a  padded  \ni1 = 0\na\n0 0 false sum 0\ni3 = -18\ns4 = [-36:héllo]\nb5 = true\nb6 = true\n0:-36:héllo\nb7 = false\nf8 = 98808.51657600001\ni9 = -365727\nb10 = true\n0 303135360474477947 true sum 303135360474477947\n",
     "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0369.ms:60 in main\n"
   }

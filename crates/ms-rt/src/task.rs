@@ -31,7 +31,7 @@ pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
-/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 70) as for a detached
+/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 67) as for a detached
 /// task, but the task can still be joined and cancelled.
 pub const SPAWN_FATAL: u32 = 2;
 
@@ -930,7 +930,7 @@ extern "C" fn task_main() -> ! {
 /// Starts `entry(arg)` as a new task and returns its handle. The task first runs when the
 /// caller parks or yields. `stack_bytes` of 0 selects the default (256 MiB of address space,
 /// committed lazily). With `SPAWN_DETACHED` nobody joins the task and a fault in it ends the
-/// process (exit 70); otherwise the fault is returned by `msrt_task_join`.
+/// process (exit 67); otherwise the fault is returned by `msrt_task_join`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_spawn(
     entry: Entry,

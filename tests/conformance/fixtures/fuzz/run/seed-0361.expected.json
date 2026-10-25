@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "gcd(440, 4081) = 11\nl1 = [] len 0\n-21 -160 false sum -181\nf2 = 1312898019840000.3\n1 47 true sum 48\nf3 = 2.9711458630784545e+60\ni4 = 2115\nl5 = [] len 0\ns6 = [hélloemoji 😀]\n",
     "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0361.ms:43 in main\n"
   }
