@@ -136,7 +136,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         ret_expr: None,
         ret_hit: false,
         owned_return: false,
-        owned_value: false,
+        owned_paths: Vec::new(),
         lends: Vec::new(),
         getters: HashMap::new(),
         let_pos: HashMap::new(),
@@ -145,6 +145,20 @@ pub fn analyze(cx: &Context) -> Outcome {
     w.run();
     let declared = Summary::declared(&cx.c.func);
     let result = w.result_origin(&declared);
+    // A `ref` result is a borrow on every path: a path that hands back an owned value would
+    // need the caller to free it.
+    let declared_ref = cx.c.func.func().is_some_and(|f| f.result_ref);
+    if declared_ref && !result.slots.is_empty() {
+        let name = cx.c.func.name();
+        for pos in std::mem::take(&mut w.owned_paths) {
+            w.error(
+                pos,
+                format!(
+                    "`{name}` returns `ref`, so every path must return part of a parameter or the receiver, but this one gives back an owned value; drop `ref` to return owned values, or return a stored part"
+                ),
+            );
+        }
+    }
     let summary = Summary {
         receiver: match (declared.receiver, w.receiver_consumed()) {
             (ParamMode::Borrow, true) => ParamMode::Consume,
@@ -204,8 +218,8 @@ struct Walker<'a> {
     ret_hit: bool,
     /// Some return gives back a value of its own.
     owned_return: bool,
-    /// Some return gives back an owned value other than `none`.
-    owned_value: bool,
+    /// Returns (and `try` exits) that give back an owned value other than `none`.
+    owned_paths: Vec<Pos>,
     lends: Vec<Lend>,
     getters: HashMap<NodeId, Vec<Name>>,
     /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
@@ -289,6 +303,7 @@ impl Walker<'_> {
             return;
         }
         let saved = (self.ret_expr, self.ret_hit);
+        let mark = self.lends.len();
         // `return some(part)` in a `ref Optional[T]` function lends the part itself.
         let lent = self.lent_by_some(e);
         self.ret_expr = Some(lent.map_or(e.id, |a| a.id));
@@ -303,12 +318,17 @@ impl Walker<'_> {
             }
             None => self.expr(e, Demand::Consume),
         }
+        // A call whose result is an owned copy (an interface call, or a lending call over a
+        // temporary) hands back a value of its own, not a part of a parameter.
+        if self.ret_hit && self.lends_owned(lent.unwrap_or(e)) {
+            self.lends.truncate(mark);
+            self.ret_hit = false;
+        }
         if !self.ret_hit {
             self.owned_return = true;
-        }
-        if !self.ret_hit && !self.is_none(e) || self.ret_hit && self.lends_owned(lent.unwrap_or(e))
-        {
-            self.owned_value = true;
+            if !self.is_none(e) {
+                self.owned_paths.push(e.pos);
+            }
         }
         (self.ret_expr, self.ret_hit) = saved;
     }
@@ -436,7 +456,7 @@ impl Walker<'_> {
         ResultOrigin {
             slots,
             plain,
-            owned: self.owned_value,
+            owned: !self.owned_paths.is_empty(),
         }
     }
 
@@ -1724,7 +1744,7 @@ impl Walker<'_> {
             ExprKind::Unary { op, operand } => {
                 // `try` returns the owned failure from the function on its early exit.
                 if *op == UnaryOp::Try && self.captured.is_empty() {
-                    self.owned_value = true;
+                    self.owned_paths.push(e.pos);
                 }
                 let inner = if *op == UnaryOp::Try { d } else { Demand::Read };
                 self.expr(operand, inner);
