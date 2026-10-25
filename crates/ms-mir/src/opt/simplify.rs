@@ -784,30 +784,31 @@ fn branches(f: &mut Func) -> bool {
     // Merge a block into its unique predecessor when that predecessor falls into it.
     loop {
         let edges = incoming_edges(f);
+        let mut subst: HashMap<Value, Value> = HashMap::new();
         let mut merged = false;
         for p in 0..f.blocks.len() {
-            let Term::Br(t) = &f.blocks[p].term else {
-                continue;
-            };
-            let b = t.block.index();
-            if b == 0 || b == p || edges[b] != 1 {
-                continue;
+            // A consumed block was emptied and ends in `Unreachable`, so it is skipped.
+            while let Term::Br(t) = &f.blocks[p].term {
+                let b = t.block.index();
+                if b == 0 || b == p || edges[b] != 1 {
+                    break;
+                }
+                let t = t.clone();
+                merged = true;
+                let bd = std::mem::take(&mut f.blocks[b]);
+                f.blocks[p].insts.extend(bd.insts);
+                f.blocks[p].term = bd.term;
+                f.blocks[p].term_loc = bd.term_loc;
+                for (bp, a) in bd.params.iter().zip(&t.args) {
+                    subst.insert(bp.value, *a);
+                }
             }
-            let t = t.clone();
-            let bd = std::mem::take(&mut f.blocks[b]);
-            f.blocks[p].insts.extend(bd.insts);
-            f.blocks[p].term = bd.term;
-            f.blocks[p].term_loc = bd.term_loc;
-            for (bp, a) in bd.params.iter().zip(&t.args) {
-                f.replace_uses(bp.value, *a);
-            }
-            changed = true;
-            merged = true;
-            break;
         }
         if !merged {
             break;
         }
+        changed = true;
+        apply_subst(f, &subst);
         f.compact_blocks();
     }
     // Thread edges through empty blocks that only forward their arguments.
