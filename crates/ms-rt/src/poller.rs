@@ -244,6 +244,8 @@ mod imp {
         pipes: HashMap<usize, NamedPipe>,
         /// Thread-pool waits on kernel objects (a child process), by object handle.
         objects: HashMap<usize, usize>,
+        /// Pipes whose readiness wakes the task waiting on another key instead, by handle.
+        groups: HashMap<usize, usize>,
     }
 
     static STATE: Global<Option<State>> = Global::new(None);
@@ -270,6 +272,7 @@ mod imp {
                 views: HashMap::new(),
                 pipes: HashMap::new(),
                 objects: HashMap::new(),
+                groups: HashMap::new(),
             };
             Ok((state, waker))
         };
@@ -375,9 +378,28 @@ mod imp {
         }
     }
 
+    /// Whether `handle` is a pipe the poller adopted.
+    pub fn pipe_adopted(handle: usize) -> bool {
+        // SAFETY: only the scheduler thread reaches the poller state.
+        unsafe { &*STATE.ptr() }
+            .as_ref()
+            .is_some_and(|s| s.pipes.contains_key(&handle))
+    }
+
+    /// Wakes the task waiting on `key` for reading, instead of the pipe's own reader and
+    /// writer, whenever the adopted pipe `handle` becomes readable or writable; one task can
+    /// then park on several pipes at once.
+    pub fn pipe_group(handle: usize, key: usize) {
+        let s = state();
+        if s.pipes.contains_key(&handle) {
+            s.groups.insert(handle, key);
+        }
+    }
+
     /// Deregisters and closes an adopted pipe.
     pub fn pipe_drop(handle: usize) {
         let s = state();
+        s.groups.remove(&handle);
         if let Some(mut pipe) = s.pipes.remove(&handle) {
             let _ = s.poll.registry().deregister(&mut pipe);
         }
@@ -413,7 +435,11 @@ mod imp {
 
     /// Ends the watch on `handle`; the caller may close it afterwards.
     pub fn object_drop(handle: usize) {
-        let Some(wait) = state().objects.remove(&handle) else {
+        // SAFETY: only the scheduler thread reaches the poller state.
+        let Some(s) = (unsafe { &mut *STATE.ptr() }) else {
+            return;
+        };
+        let Some(wait) = s.objects.remove(&handle) else {
             return;
         };
         // SAFETY: registered by `object_watch` and removed from the map, so unregistered once.
@@ -436,6 +462,14 @@ mod imp {
             let (fd, bits) = (ev.token().0, bits(ev));
             if !s.pipes.contains_key(&fd) {
                 ready.push((fd, bits));
+                continue;
+            }
+            if let Some(&key) = s.groups.get(&fd) {
+                out[count] = Ready {
+                    fd: key,
+                    bits: WAIT_READ,
+                };
+                count += 1;
                 continue;
             }
             // A pipe stays registered: wake its reader and its writer separately.
@@ -475,4 +509,7 @@ mod imp {
 
 pub use imp::{close, create, forget, kick, unwatch, wait, watch};
 #[cfg(windows)]
-pub use imp::{object_drop, object_watch, pipe_adopt, pipe_drop, pipe_read, pipe_write};
+pub use imp::{
+    object_drop, object_watch, pipe_adopt, pipe_adopted, pipe_drop, pipe_group, pipe_read,
+    pipe_write,
+};

@@ -19,9 +19,6 @@ pub struct Child {
     pub code: Option<i64>,
     #[cfg(windows)]
     job: isize,
-    /// Whether the runtime poller watches the process handle, so drop ends that watch.
-    #[cfg(windows)]
-    watched: bool,
     /// A descriptor that becomes readable when the child exits, or -1: a pidfd on Linux (none
     /// before 5.3), a kqueue watching the pid on Apple platforms.
     #[cfg(unix)]
@@ -270,7 +267,6 @@ impl Child {
                 inner,
                 code: None,
                 job: job as isize,
-                watched: false,
             }
         }
         #[cfg(unix)]
@@ -284,13 +280,18 @@ impl Child {
         }
     }
 
-    /// A descriptor that becomes readable when the child exits, when the platform has one.
+    /// What `run`'s waiter parks on for the child's exit, when the platform has one: a
+    /// descriptor that becomes readable on Unix, the process handle on Windows.
     pub fn exit_fd(&self) -> Option<sys::Fd> {
         #[cfg(unix)]
-        if self.exit >= 0 {
-            return Some(self.exit);
+        {
+            (self.exit >= 0).then_some(self.exit)
         }
-        None
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            Some(self.inner.as_raw_handle() as isize)
+        }
     }
 
     /// Parks the task until the child exits or `timeout_ns` passes (negative: no limit). False
@@ -307,7 +308,6 @@ impl Child {
         #[cfg(windows)]
         {
             use std::os::windows::io::AsRawHandle;
-            self.watched = true;
             let handle = self.inner.as_raw_handle() as isize;
             // SAFETY: the process handle stays open until drop, which ends the watch first.
             unsafe { ms_rt::glue::object::wait(handle, timeout_ns) }.is_some()
@@ -380,10 +380,9 @@ impl Child {
 #[cfg(windows)]
 impl Drop for Child {
     fn drop(&mut self) {
-        if self.watched {
-            use std::os::windows::io::AsRawHandle;
-            ms_rt::glue::object::forget(self.inner.as_raw_handle() as isize);
-        }
+        // Ends the poller's watch on the process handle, if a wait started one.
+        use std::os::windows::io::AsRawHandle;
+        ms_rt::glue::object::forget(self.inner.as_raw_handle() as isize);
         // SAFETY: the job handle is ours and closed once.
         unsafe { windows_sys::Win32::Foundation::CloseHandle(self.job as _) };
     }

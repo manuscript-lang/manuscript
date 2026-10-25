@@ -2,14 +2,19 @@
 use super::Fd;
 use ms_std_fs::sys;
 
-pub fn pipe() -> Result<(Fd, Fd), i32> {
+/// A pipe `(parent, child)` for one standard stream: the parent reads it when `parent_reads`,
+/// else writes it.
+pub fn pipe(parent_reads: bool) -> Result<(Fd, Fd), i32> {
     let mut fds = [0i32; 2];
     // SAFETY: `fds` has room for two descriptors.
     if unsafe { sys::pipe_cloexec(&mut fds, false) } != 0 {
         return Err(sys::errno());
     }
-    Ok((Fd(fds[0]), Fd(fds[1])))
+    let (r, w) = (Fd(fds[0]), Fd(fds[1]));
+    Ok(if parent_reads { (r, w) } else { (w, r) })
 }
+
+pub use sys::{close, read, write};
 
 pub fn set_nonblocking(fd: sys::Fd, _write_end: bool) {
     // SAFETY: plain fcntl calls.

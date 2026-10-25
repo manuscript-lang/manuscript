@@ -30,6 +30,8 @@ mod plat;
 mod plat;
 
 pub use crate::spawn::{Child, StdStream, start};
+#[cfg(windows)]
+pub use plat::duplex_pipe;
 pub use plat::pipe;
 
 /// Monotonic nanoseconds since the first call.
@@ -61,7 +63,7 @@ impl Fd {
 
     pub fn close(&mut self) {
         if self.is_open() {
-            let _ = sys::close(self.0);
+            let _ = plat::close(self.0);
             self.0 = sys::INVALID_FD;
         }
     }
@@ -108,9 +110,9 @@ pub fn run(
     max_output: i64,
     timeout_ns: Option<i64>,
 ) -> Res<Output> {
-    let (in_r, mut in_w) = pipe().map_err(start_failure)?;
-    let (mut out_r, out_w) = pipe().map_err(start_failure)?;
-    let (mut err_r, err_w) = pipe().map_err(start_failure)?;
+    let (mut in_w, in_r) = pipe(false).map_err(start_failure)?;
+    let (mut out_r, out_w) = pipe(true).map_err(start_failure)?;
+    let (mut err_r, err_w) = pipe(true).map_err(start_failure)?;
     let child = start(
         program,
         args,
@@ -166,8 +168,7 @@ pub fn run(
             kept_open = true;
             break;
         }
-        let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
-        if !ready.contains(&true) {
+        let park = || {
             let until = [deadline, exited_at.map(|t| t + WAIT_DELAY_NS)]
                 .into_iter()
                 .flatten()
@@ -177,17 +178,24 @@ pub fn run(
             } else {
                 sleep_ms(until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)));
             }
+        };
+        let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
+        if !ready.contains(&true) {
+            park();
             continue;
         }
 
+        // Whether a read or write did anything; when none did, the pipes are idle.
+        let mut progressed = false;
         if ready[0] && in_w.is_open() {
-            let end = input.len().min(written + 64 * 1024);
-            match sys::write(in_w.0, &input[written..end]) {
+            let (before, end) = (written, input.len().min(written + 64 * 1024));
+            match plat::write(in_w.0, &input[written..end]) {
                 Ok(n) => written += n,
-                Err(e) if would_block(e) => sleep_ms(POLL_MS),
+                Err(e) if would_block(e) => {}
                 // The child closed its input early; the remainder is dropped.
                 Err(_) => written = input.len(),
             }
+            progressed = written != before;
             if written >= input.len() {
                 in_w.close();
             }
@@ -197,7 +205,9 @@ pub fn run(
                 continue;
             }
             let reader = if is_err { &mut err_r } else { &mut out_r };
-            match sys::read(reader.0, &mut buf) {
+            let result = plat::read(reader.0, &mut buf);
+            progressed |= !matches!(result, Err(e) if would_block(e));
+            match result {
                 Ok(0) => reader.close(),
                 Ok(n) => {
                     let accepted = n.min(remaining.max(0) as usize);
@@ -215,6 +225,9 @@ pub fn run(
         if overflow {
             child.0.kill_group();
             break;
+        }
+        if !progressed {
+            park();
         }
     }
     let code = child.0.wait();
@@ -275,9 +288,8 @@ pub fn spawn_with(
     for (i, mode) in modes.into_iter().enumerate() {
         streams[i] = match mode {
             STDIO_PIPE => {
-                let (r, w) = pipe().map_err(start_failure)?;
                 // The parent writes the child's stdin and reads the rest.
-                let (mine, theirs) = if i == 0 { (w, r) } else { (r, w) };
+                let (mine, theirs) = pipe(i != 0).map_err(start_failure)?;
                 let fd = theirs.0;
                 parent[i] = mine;
                 child_ends.push(theirs);
@@ -464,5 +476,30 @@ mod windows_tests {
         );
         slow.child.signal(true);
         assert!(slow.wait(Some(20_000_000_000)).is_ok());
+    }
+
+    #[test]
+    fn run_parks_on_overlapped_pipes() {
+        let out = run(
+            b"cmd",
+            &args(&["/c", "findstr x & echo err 1>&2"]),
+            b"ax\r\nb\r\n",
+            1 << 20,
+            Some(20_000_000_000),
+        )
+        .unwrap();
+        assert_eq!(out.code, 0);
+        assert_eq!(out.stdout, b"ax\r\n");
+        assert!(out.stderr.starts_with(b"err"));
+        let big = b"x\r\n".repeat(100_000);
+        let echoed = run(
+            b"cmd",
+            &args(&["/c", "findstr x"]),
+            &big,
+            1 << 20,
+            Some(20_000_000_000),
+        )
+        .unwrap();
+        assert_eq!(echoed.stdout.len(), big.len());
     }
 }

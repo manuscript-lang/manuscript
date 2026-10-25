@@ -249,25 +249,11 @@ mod plat {
 mod plat {
     use alloc::rc::Rc;
     use alloc::vec::Vec;
-    use core::ptr::{null, null_mut};
+    use core::ptr::null_mut;
     use ms_rt::glue::pipe;
     use windows_sys::Win32::Foundation::{
-        CloseHandle, GENERIC_READ, GENERIC_WRITE, GetLastError, HANDLE, HANDLE_FLAG_INHERIT,
-        INVALID_HANDLE_VALUE, LocalFree, SetHandleInformation,
+        CloseHandle, GetLastError, HANDLE, HANDLE_FLAG_INHERIT, SetHandleInformation,
     };
-    use windows_sys::Win32::Security::Authorization::{
-        ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
-    };
-    use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
-    use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, FILE_FLAG_FIRST_PIPE_INSTANCE, FILE_FLAG_OVERLAPPED, OPEN_EXISTING,
-        PIPE_ACCESS_DUPLEX,
-    };
-    use windows_sys::Win32::System::Pipes::{
-        CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_WAIT,
-    };
-
-    const BUFFER: u32 = 64 * 1024;
 
     /// An overlapped pipe handle, closed on drop until it is handed to the runtime poller.
     pub struct Link(HANDLE);
@@ -312,88 +298,17 @@ mod plat {
         }
     }
 
-    fn wide(s: &str) -> Vec<u16> {
-        s.encode_utf16().chain(core::iter::once(0)).collect()
-    }
-
     fn last_error() -> i32 {
         // SAFETY: plain query.
         unsafe { GetLastError() as i32 }
     }
 
-    /// A random name suffix: `RandomState` keys come from the system generator. The name only
-    /// avoids collisions; the owner-only DACL and the first-instance flag keep others out.
-    fn random_suffix() -> u128 {
-        use core::hash::BuildHasher;
-        let state = std::collections::hash_map::RandomState::new();
-        (u128::from(state.hash_one(1u8)) << 64) | u128::from(state.hash_one(2u8))
-    }
-
     pub fn pair() -> Result<(Link, ChildLink), i32> {
-        let name = alloc::format!(
-            r"\\.\pipe\ms-ipc-{}-{:032x}",
-            std::process::id(),
-            random_suffix()
-        );
-        let wname = wide(&name);
-        // Owner rights only: no other user can open the pipe.
-        let sddl = wide("D:P(A;;GA;;;OW)");
-        let mut sd = null_mut();
-        // SAFETY: `sddl` is NUL-terminated and `sd` is writable; the descriptor is freed below.
-        if unsafe {
-            ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                sddl.as_ptr(),
-                SDDL_REVISION_1,
-                &mut sd,
-                null_mut(),
-            )
-        } == 0
-        {
-            return Err(last_error());
-        }
-        let attributes = SECURITY_ATTRIBUTES {
-            nLength: core::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
-            lpSecurityDescriptor: sd,
-            bInheritHandle: 0,
-        };
-        // SAFETY: `wname` is NUL-terminated and `attributes` outlives the call.
-        let server = unsafe {
-            CreateNamedPipeW(
-                wname.as_ptr(),
-                PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
-                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
-                1,
-                BUFFER,
-                BUFFER,
-                0,
-                &attributes,
-            )
-        };
-        let error = last_error();
-        // SAFETY: allocated by the conversion above.
-        unsafe { LocalFree(sd) };
-        if server == INVALID_HANDLE_VALUE {
-            return Err(error);
-        }
-        let server = Link(server);
-        // The parent opens the child's end itself, so the pipe is connected before the child
-        // runs and a child that dies at once still closes it.
-        // SAFETY: `wname` is NUL-terminated.
-        let client = unsafe {
-            CreateFileW(
-                wname.as_ptr(),
-                GENERIC_READ | GENERIC_WRITE,
-                0,
-                null(),
-                OPEN_EXISTING,
-                FILE_FLAG_OVERLAPPED,
-                null_mut(),
-            )
-        };
-        if client == INVALID_HANDLE_VALUE {
-            return Err(last_error());
-        }
-        Ok((server, ChildLink(Link(client))))
+        let (mut server, mut client) = crate::command::duplex_pipe()?;
+        Ok((
+            Link(server.take() as HANDLE),
+            ChildLink(Link(client.take() as HANDLE)),
+        ))
     }
 
     pub fn adopt(value: &[u8]) -> Result<Link, i32> {
