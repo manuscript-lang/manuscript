@@ -109,6 +109,15 @@ pub(crate) struct NArg {
     pub wrapped: bool,
 }
 
+/// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
+pub(crate) fn json_native(native: &str) -> &str {
+    match native {
+        "extern:msrt_json_parse" => "json/parse",
+        "extern:msrt_json_stringify" => "json/stringify",
+        other => other,
+    }
+}
+
 impl<'a> FnLower<'a> {
     pub fn native_function(
         &mut self,
@@ -118,6 +127,7 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
+        let native = json_native(native);
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
