@@ -63,6 +63,11 @@
           "index": 10,
           "name": "workers.ms::standard input stays with the main thread",
           "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "workers.ms::cancelling a joined worker's handle leaves a later worker alone",
+          "status": "passed"
         }
       ],
       "summary": {

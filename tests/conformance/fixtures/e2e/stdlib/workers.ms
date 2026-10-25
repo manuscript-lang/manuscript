@@ -174,3 +174,15 @@ test "standard input stays with the main thread":
         let outcome = worker.join()
         expect_error(outcome)
         expect_true(outcome.err().message().contains("main thread"))
+
+def quick() -> Unit:
+    var ch = worker_channel[Int, Int]()
+
+test "cancelling a joined worker's handle leaves a later worker alone":
+    with WorkerGroup[Int, Int]() as group:
+        var a = group.spawn(quick).get(none)
+        expect_ok(a.join())
+        var b = group.spawn(naps).get(none)
+        a.cancel()
+        expect_equal(b.channel.receive(), ok(some(1)))
+        expect_ok(b.join())

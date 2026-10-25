@@ -31,11 +31,31 @@ struct Worker {
     done: AtomicU64,
 }
 
-static WORKERS: Mutex<Vec<Option<Arc<Worker>>>> = Mutex::new(Vec::new());
+/// Registry slots: a generation, bumped each time the slot is filled, and the live worker.
+/// A handle is `(generation << 32) | (slot + 1)`, so one that outlived its worker names nothing.
+static WORKERS: Mutex<Vec<(u32, Option<Arc<Worker>>)>> = Mutex::new(Vec::new());
 
 fn find(handle: u64) -> Option<Arc<Worker>> {
     let table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-    table.get((handle as usize).checked_sub(1)?)?.clone()
+    let (generation, worker) = table.get(((handle & 0xffff_ffff) as usize).checked_sub(1)?)?;
+    if u64::from(*generation) != handle >> 32 {
+        return None;
+    }
+    worker.clone()
+}
+
+/// Empties the slot `handle` names, if it still names that worker.
+fn release(handle: u64) {
+    let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(entry) = ((handle & 0xffff_ffff) as usize)
+        .checked_sub(1)
+        .and_then(|at| table.get_mut(at))
+    else {
+        return;
+    };
+    if u64::from(entry.0) == handle >> 32 {
+        entry.1 = None;
+    }
 }
 
 /// Copies `len` bytes into a system-allocated block for [`msrt_worker_spawn`]'s argument.
@@ -89,16 +109,17 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-        let live = table.iter().filter(|w| w.is_some()).count();
+        let live = table.iter().filter(|w| w.1.is_some()).count();
         if live >= MAX_WORKERS {
             return 0;
         }
-        let at = table.iter().position(Option::is_none).unwrap_or_else(|| {
-            table.push(None);
+        let at = table.iter().position(|w| w.1.is_none()).unwrap_or_else(|| {
+            table.push((0, None));
             table.len() - 1
         });
-        table[at] = Some(worker.clone());
-        at as u64 + 1
+        let generation = table[at].0.wrapping_add(1);
+        table[at] = (generation, Some(worker.clone()));
+        (u64::from(generation) << 32) | (at as u64 + 1)
     };
     let (entry, arg) = (entry as usize, arg as usize);
     let w = worker.clone();
@@ -121,7 +142,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
             handle
         }
         Err(_) => {
-            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+            release(handle);
             if arg != 0 {
                 // SAFETY: the worker never ran, so the block is still ours.
                 unsafe { crate::sys::free(arg as *mut c_void) };
@@ -190,7 +211,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_join(handle: u64, msg_out: *mut StrV
     if let Some(t) = w.thread.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = t.join();
     }
-    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+    release(handle);
     let (status, ptr, len) =
         core::mem::take(&mut *w.outcome.lock().unwrap_or_else(|e| e.into_inner()));
     let report = if ptr == 0 {
@@ -301,12 +322,15 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
         crate::fault::fault(b"wait: no such worker");
     };
     let done = w.done.load(Ordering::Acquire);
-    // SAFETY: the token is this isolate's; parked once, then freed.
-    let cancelled = unsafe {
-        let woke = crate::task::msrt_token_park(done, -1, core::ptr::null_mut());
+    // SAFETY: the token is this isolate's; it is freed once the worker ended.
+    unsafe {
+        if crate::task::msrt_token_park(done, -1, core::ptr::null_mut()) != 0 {
+            // A stop request: unwind without joining, so the caller's cleanup can cancel the
+            // worker and wait again on the same token.
+            crate::fault::msrt_cancelled();
+        }
         crate::task::msrt_token_free(done);
-        woke != 0
-    };
+    }
     let mut report = crate::string::NO_STR;
     // SAFETY: `report` is writable.
     let status = unsafe { msrt_worker_join(handle as u64, &mut report) };
@@ -320,9 +344,6 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
     }
     // SAFETY: `out` is writable by contract.
     unsafe { *out = crate::string::from_bytes(&text) };
-    if cancelled {
-        crate::fault::msrt_cancelled();
-    }
 }
 
 #[cfg(test)]
@@ -410,6 +431,38 @@ mod tests {
         let (status, report) = run_worker(faults, b"", None);
         assert_eq!(status, 1);
         assert!(String::from_utf8_lossy(&report).contains("worker boom"));
+        crate::task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn naps(_: *mut u8) {
+        // SAFETY: sleeps this isolate's main task.
+        unsafe { msrt_task_sleep(100_000_000) };
+        if crate::fault::cancel_flag().load(Ordering::Relaxed) != 0 {
+            crate::fault::msrt_cancelled();
+        }
+    }
+
+    #[test]
+    fn a_stale_handle_names_no_worker() {
+        let _g = crate::testutil::lock();
+        // SAFETY: parks the test thread's flow on tokens the workers post.
+        unsafe {
+            let done = msrt_token_new(TOKEN_REMOTE);
+            let old = msrt_worker_spawn(adds, msrt_worker_arg_new(b"x".as_ptr(), 1), done);
+            assert_ne!(old, 0);
+            assert_eq!(msrt_token_park(done, -1, core::ptr::null_mut()), 0);
+            assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
+            msrt_token_free(done);
+            let done = msrt_token_new(TOKEN_REMOTE);
+            let new = msrt_worker_spawn(naps, core::ptr::null_mut(), done);
+            assert_eq!(new & 0xffff_ffff, old & 0xffff_ffff, "the slot is reused");
+            assert_ne!(new, old);
+            msrt_task_sleep(20_000_000);
+            msrt_worker_cancel(old);
+            assert_eq!(msrt_token_park(done, -1, core::ptr::null_mut()), 0);
+            msrt_token_free(done);
+            assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
+        }
         crate::task::teardown();
     }
 
