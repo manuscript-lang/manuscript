@@ -8,7 +8,7 @@ use crate::isolate;
 use crate::task::msrt_token_post_remote;
 use core::ffi::c_void;
 use ms_rt_abi::StrVal;
-use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Entry of a worker: called on the worker's main task with the argument block.
@@ -25,8 +25,6 @@ struct Worker {
     slot: AtomicUsize,
     /// The status, then a report in a system block of its own: it outlives the worker's arena.
     outcome: Mutex<(u8, usize, usize)>,
-    /// The pipe end the worker owns; closed when the worker ends, however it ends.
-    end: AtomicI64,
     /// The remote token of the caller that spawned through [`msrt_worker_start`].
     done: AtomicU64,
 }
@@ -97,7 +95,6 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
         thread: Mutex::new(None),
         slot: AtomicUsize::new(NO_SLOT),
         outcome: Mutex::new((0, 0, 0)),
-        end: AtomicI64::new(0),
         done: AtomicU64::new(0),
     });
     let handle = {
@@ -182,7 +179,7 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
     crate::task::teardown();
     isolate::unregister();
     crate::alloc::release_arena();
-    let end = w.end.load(Ordering::Acquire);
+    let end = msrt_worker_end();
     if end != 0 {
         crate::pipe::msrt_pipe_close(end);
     }
@@ -306,7 +303,6 @@ pub unsafe extern "C-unwind" fn msrt_worker_start(entry: *mut ms_rt_abi::Closure
             return 0;
         }
         if let Some(w) = find(handle) {
-            w.end.store(end, Ordering::Release);
             w.done.store(done, Ordering::Release);
         }
         handle as i64
@@ -456,6 +452,42 @@ mod tests {
             );
         }
         crate::task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn empty_closure(_: *mut ms_rt_abi::Closure) {}
+
+    unsafe extern "C" fn drop_empty_closure(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the worker owns this capture-free allocation.
+        unsafe { crate::alloc::free(obj.cast()) };
+    }
+
+    #[test]
+    fn worker_closes_pipe_before_parent_publishes_handle_metadata() {
+        let _g = crate::testutil::lock();
+        // Reproduce the schedule where the worker finishes before msrt_worker_start can
+        // publish metadata after spawn. The argument already transfers ownership of the end.
+        // SAFETY: the entry is capture-free and the worker takes the allocated argument once.
+        unsafe {
+            let parent = crate::pipe::msrt_pipe_new();
+            let end = crate::pipe::msrt_pipe_peer(parent);
+            let block = crate::sys::malloc(core::mem::size_of::<StartArg>()).cast::<StartArg>();
+            assert!(!block.is_null());
+            block.write(StartArg {
+                end,
+                code: empty_closure as *const u8,
+                drop: Some(drop_empty_closure),
+            });
+            let h = msrt_worker_spawn(closure_main, block.cast(), 0);
+            assert_ne!(h, 0);
+            assert_eq!(msrt_worker_join(h, core::ptr::null_mut()), 0);
+            let message = crate::string::from_bytes(b"probe");
+            let send = crate::pipe::msrt_pipe_send(parent, &message);
+            crate::string::release_opt(&message);
+            crate::pipe::msrt_pipe_close(end);
+            crate::pipe::msrt_pipe_close(parent);
+            crate::task::teardown();
+            assert_eq!(send, 1, "exited worker left its pipe end open");
+        }
     }
 
     #[test]

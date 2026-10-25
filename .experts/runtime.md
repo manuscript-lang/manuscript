@@ -210,6 +210,11 @@ Apply when: adding a process-wide `static`, a cache, or a standard-library featu
 Evidence: `proposals/worker-threads.md`; measured scaling 1.8x on two workers and 3.0x on four (`fib(38)` x8); allocator thread-local state cost +0.04% instructions on the program suite.
 Verify: every runtime `static` is an atomic, a `Process` cell (main isolate only), or an `isolate_static!`. Rust code in a worker uses the system allocator, because an arena ends with its worker and Rust code can keep an allocation in a cache another isolate reads (a `Vec` in a worker arena behind a process-wide `OnceLock` was a use-after-free). `Global<T>` in `ms-std-*` faults in a worker. Worker stdout writes bypass the main isolate's buffer. Windows reaches the task header through `msrt_isolate_hdr`, a call, because fibers cannot be aligned.
 
+Verified: the worker must close the pipe end transferred in its startup argument. Publishing
+that end from the parent after thread creation races with an immediate worker exit and leaks
+the end, preventing the peer from seeing closure. The worker's own `END` state owns this
+cleanup. `worker_closes_pipe_before_parent_publishes_handle_metadata` reproduces the ordering.
+
 ### A process entry is found by code offset, so it must capture nothing
 
 Decided: `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fork`, which reads the runner's and the entry's code and drop words and sends them as offsets from `msrt_start` in `MS_ENTRY`. The child rebuilds both closures before `main`. This needs no entry table in the compiler, but only a closure without captures can be rebuilt, so the checker requires the entry to name a top-level `def`. Values cross inside an `Envelope[T]` record because `Unit` has no JSON form: decoding restores an absent `Unit` member.
