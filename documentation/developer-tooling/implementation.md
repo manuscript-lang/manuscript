@@ -5,7 +5,7 @@ weight = 1
 
 # Commands and editor setup
 
-Use a self-contained `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or build the Rust `ms` in a source checkout (see the [Rust toolchain guide](../contributing/rust-toolchain.md)). Compilation, formatting, lint, LSP, and profiling need no separate toolchain beyond the system linker. There is no `ms debug` or `ms dap`; see [profiling and native debugging](debugging/debugger-integration.md).
+Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or build the Rust `ms` in a source checkout (see the [Rust toolchain guide](../contributing/rust-toolchain.md)). Formatting, lint and LSP run directly from `ms`. Native builds and profiling need the pinned linking tools, downloaded and cached on first use; see [how it works](how-it-works.md). There is no `ms debug` or `ms dap`; see [profiling and native debugging](debugging/debugger-integration.md).
 
 ```sh
 ms lint source.ms --json

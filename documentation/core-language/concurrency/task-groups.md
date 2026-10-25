@@ -30,9 +30,9 @@ test "a group collects its results in start order":
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
 - Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
-- A task cancelled while it waits releases the values its functions own, as if it had returned: lists, strings and maps are freed, and `with` blocks close. A value held only in a `var` that a call is changing at that moment, or in a runtime-native resource without a `with` close, can outlive the task until the program ends.
+- Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A fault in a task ends the program, as a fault anywhere does.
+- A Manuscript fault in a task on the main thread ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
 
@@ -93,6 +93,6 @@ test "a task answers messages on its channel":
 - `receive()` waits for the next value: `ok(some(value))`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.
-- Two tasks that each wait to send to the other while neither reads wait forever; when every task waits like this the program stops with a deadlock fault.
+- Two tasks that each wait to send to the other while neither reads cannot make progress. The task scheduler can detect deadlocks within its own scheduler. Cycles spanning workers or processes are not covered by this guarantee; design protocols so each receive has a corresponding sender.
 - An end has one owner. `.clone()` makes another handle on the same end, so several tasks can send to or receive from it.
 - Write the parameter as `ch` and rebind it with `var c = ch`; a function with a `var` parameter cannot be passed as an entry yet ([#1191](https://github.com/manuscript-lang/manuscript/issues/1191)).

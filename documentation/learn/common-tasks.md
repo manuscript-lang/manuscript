@@ -57,7 +57,7 @@ ms run args.ms -- Sam Ada
 
 ## Read a UTF-8 text file
 
-Save as `read.ms`. `to_string()` returns `none` for invalid UTF-8.
+Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
@@ -198,7 +198,7 @@ Without a type, `parse` returns a `JsonValue` tree for unknown shapes.
 
 ## Read and write typed JSON
 
-Save as `config.ms`. Parse a record directly and serialize it back.
+Save as `config.ms`. Parse a record directly and serialize it back. Use strict encoding so a value with no JSON representation fails instead of being silently omitted.
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
@@ -212,8 +212,8 @@ type Config:
 
 def run() -> Result[Unit, Error]:
     let text = arguments().get(0, default: "{\"name\":\"Sam\"}")
-    let encoded = try parse[Config](text)
-        | try stringify
+    let config = try parse[Config](text)
+    let encoded = try stringify(config, strict: True)
     try stdout().write(f"{encoded}\n")
     return stdout().flush()
 
@@ -230,7 +230,7 @@ ms run config.ms -- '{"name":"Sam"}'
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
 - Unknown members are ignored unless `ignore_unknown_fields: False`.
 - Write `parse[Config]` explicitly after `try`.
-- `stringify` writes fields in declaration order.
+- `stringify` writes fields in declaration order. `strict: True` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` record fields.
 
 ## Make an HTTP GET request
 

@@ -63,15 +63,13 @@ test "typed JSON and Optional payloads":
 
 Tests can also propagate errors from calls whose error type implements `Error`. See [Results](../core-language/errors/results.md).
 
-## Select, repeat, and profile
+## Select and repeat
 
 ```sh
 ms test ms.toml --list
 ms test ms.toml --test 'tests/math_test.ms::addition' --json
 ms test ms.toml --match 'addition|zero' --exclude 'slow' --fail-fast
 ms test ms.toml --repeat 10 --shuffle 42
-ms test ms.toml --filter addition --cpu-profile cpu.pprof --heap-profile heap.pprof --trace trace.out
-ms pprof -top cpu.pprof
 ```
 
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
@@ -79,7 +77,6 @@ ms pprof -top cpu.pprof
 - `--list` builds but never runs test bodies.
 - Each repetition starts a fresh root execution; globals and external fixtures stay shared. `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
-- Profiling covers the selected tests in one process; output paths must be new, and `--list` and `--watch` cannot combine with it. Profiled tests default to `Release` (`--build-type` overrides).
 
 All assertions return `Result`, so use `try`:
 
@@ -87,6 +84,16 @@ All assertions return `Result`, so use `try`:
 - `expect_fault(operation)` checks programming faults.
 - `fail(message)` fails explicitly; `skip(reason)` skips while running cleanup.
 - Write each independently reported case as its own `test` block.
+
+## Profile application work
+
+Use `ms profile` on a runnable project with an exported `main`:
+
+```sh
+ms profile ms.toml --out-dir capture --top 10
+```
+
+This runs the application entry point, not its test blocks. Put the workload you want to measure in the application's execution path. `capture` must be a new directory; the sampling profile includes folded stacks, pprof data, and a text report. The default build type is `Release`. See [profiling and native debugging](../developer-tooling/debugging/debugger-integration.md) for output files and source-attribution limits.
 
 ## Shared setup and teardown
 

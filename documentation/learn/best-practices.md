@@ -19,10 +19,7 @@ See [error handling](../core-language/errors/_index.md).
 
 ## Let types describe your data
 
-Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you pass `ignore_unknown_fields: False`. Test outcomes directly, with `try` on each assertion:
-
-Test the outcomes directly, and apply `try` to each assertion so a failed
-check fails the test:
+Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you pass `ignore_unknown_fields: False`. Apply `try` to each assertion so a failed check fails the test:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -48,4 +45,4 @@ See the [testing guide](testing.md) for more.
 ## Keep ownership visible
 
 - `with` keeps a file or connection open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
-- Records and collections are values with one owner: passing one moves it at its last use, and `.clone()` makes an independent deep copy. Mutate through `var` bindings and `var` parameters only.
+- Parameters can borrow values; consuming a value moves it at its last use. `.clone()` makes an explicit copy. Mutate through `var` bindings and `var` parameters. See [values and references](../core-language/types/references.md) for the exact rules.
