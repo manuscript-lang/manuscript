@@ -321,6 +321,12 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(self.ty(v));
         self.val(Op::OptSome, &[v], Imm::None, t)
     }
+    /// `opt.lend`: an optional that borrows its payload, so it is itself a borrow and is never
+    /// dropped.
+    pub fn opt_lend(&mut self, v: Value) -> Value {
+        let t = self.m.types.opt(self.ty(v));
+        self.val(Op::OptLend, &[v], Imm::None, t)
+    }
     /// `opt.none` of the given optional type.
     pub fn opt_none(&mut self, opt_ty: Ty) -> Value {
         self.val(Op::OptNone, &[], Imm::None, opt_ty)

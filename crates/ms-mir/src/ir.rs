@@ -279,7 +279,7 @@ pub enum Op {
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
     // Optionals.
-    OptSome, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
+    OptSome, OptLend, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
     StrLen, StrByte, StrAscii,
     // Shared[T].
@@ -396,7 +396,7 @@ impl Op {
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
-        Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
+        Op::OptSome, Op::OptLend, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
@@ -475,6 +475,7 @@ impl Op {
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
+            Op::OptLend => ("opt.lend", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
             Op::OptIsSome => ("opt.is_some", K::None, true, effects!()),
             Op::OptGet => ("opt.get", K::None, true, effects!()),
@@ -1187,6 +1188,13 @@ impl Module {
         }
     }
 
+    /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
+    /// and therefore holds its payload in a heap block behind a nullable pointer. Backends
+    /// share this rule through [`Boxing`], which memoizes it.
+    pub fn opt_is_boxed(&self, inner: Ty) -> bool {
+        Boxing::default().opt(self, inner)
+    }
+
     /// Whether values of `ty` own resources that must be dropped (strings, lists,
     /// maps, closures, interfaces, boxed or recursive alternatives, and records,
     /// alternatives and optionals containing them). Plain data is copied freely.
@@ -1252,6 +1260,7 @@ impl Module {
             | Op::Load
             | Op::StrLit
             | Op::StrAscii
+            | Op::OptLend
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })
@@ -1265,5 +1274,77 @@ impl fmt::Display for Loc {
         } else {
             write!(f, "{}:{}:{}", self.file, self.line, self.col)
         }
+    }
+}
+
+/// The recursive-layout decisions of a module: an alternative or an optional that contains
+/// itself by value lives behind a pointer. One `Boxing` memoizes the answers for a module.
+#[derive(Default)]
+pub struct Boxing {
+    alts: HashMap<AltId, bool>,
+    opts: HashMap<Ty, bool>,
+}
+
+impl Boxing {
+    /// Whether the alternative contains itself by value and therefore lives behind a pointer.
+    pub fn alt(&mut self, m: &Module, a: AltId) -> bool {
+        if let Some(b) = self.alts.get(&a) {
+            return *b;
+        }
+        // Provisional answer for cycles through other alternatives.
+        self.alts.insert(a, false);
+        let target = m.types.find(&TyKind::Alt(a));
+        let b = target.is_some_and(|t| self.reaches_by_value(m, t, t, &mut Vec::new()));
+        self.alts.insert(a, b);
+        b
+    }
+
+    /// Whether `Optional[inner]` contains itself by value.
+    pub fn opt(&mut self, m: &Module, inner: Ty) -> bool {
+        if let Some(b) = self.opts.get(&inner) {
+            return *b;
+        }
+        self.opts.insert(inner, false);
+        let target = m.types.find(&TyKind::Opt(inner));
+        let b = target.is_some_and(|t| self.reaches_by_value(m, t, t, &mut Vec::new()));
+        self.opts.insert(inner, b);
+        b
+    }
+
+    fn reaches_by_value(&mut self, m: &Module, from: Ty, target: Ty, seen: &mut Vec<Ty>) -> bool {
+        let children: Vec<Ty> = match m.types.kind(from) {
+            TyKind::Rec(r) => m.records[r.index()].fields.iter().map(|f| f.1).collect(),
+            TyKind::Alt(a) => m.alts[a.index()]
+                .cases
+                .iter()
+                .flat_map(|c| c.fields.iter().map(|f| f.1))
+                .collect(),
+            TyKind::Opt(t) => vec![*t],
+            _ => return false,
+        };
+        for c in children {
+            if c == target {
+                return true;
+            }
+            if seen.contains(&c) {
+                continue;
+            }
+            seen.push(c);
+            // Stop at other boxed alternatives and optionals: they are one pointer.
+            if let TyKind::Alt(a) = m.types.kind(c)
+                && self.alt(m, *a)
+            {
+                continue;
+            }
+            if let TyKind::Opt(i) = m.types.kind(c)
+                && self.opt(m, *i)
+            {
+                continue;
+            }
+            if self.reaches_by_value(m, c, target, seen) {
+                return true;
+            }
+        }
+        false
     }
 }

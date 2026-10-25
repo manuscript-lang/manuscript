@@ -772,6 +772,18 @@ impl Verifier<'_> {
                 m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(res == Some(t(0)), "yields the shortened list")
             }
+            Op::OptLend => {
+                arity(1)?;
+                want(
+                    res.and_then(|r| m.opt_inner(r)) == Some(t(0)),
+                    "opt.lend wraps its operand",
+                )?;
+                // A boxed optional holds its payload in a heap block, which a borrow cannot own.
+                want(
+                    !m.opt_is_boxed(t(0)),
+                    "opt.lend cannot lend a boxed optional",
+                )
+            }
             Op::OptSome => {
                 arity(1)?;
                 want(

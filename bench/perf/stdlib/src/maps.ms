@@ -50,6 +50,71 @@ export def bench_map_set() -> Unit:
     )
 
     bench(
+        "map.get_let",
+        100000,
+        lambda () -> Int:
+            let keys = words(50000)
+            var m = Map[String, String]()
+            for k in keys:
+                m.add(k.clone(), k.clone())
+
+            var n = 0
+
+            for k in keys:
+                let found = m.get(k)
+                if found.is_some():
+                    n += found.get().length()
+
+            return n
+    )
+
+    bench(
+        "map.get_if_let",
+        100000,
+        lambda () -> Int:
+            let keys = words(50000)
+            var m = Map[String, String]()
+            for k in keys:
+                m.add(k.clone(), k.clone())
+
+            var n = 0
+            for k in keys:
+                if let v = m.get(k):
+                    n += v.length()
+            return n
+    )
+
+    bench(
+        "map.get_chain",
+        100000,
+        lambda () -> Int:
+            let keys = words(50000)
+            var m = Map[String, String]()
+            for k in keys:
+                m.add(k.clone(), k.clone())
+
+            var n = 0
+            for k in keys:
+                n += m.get(k).get("").length()
+            return n
+    )
+
+    bench(
+        "map.get_or",
+        100000,
+        lambda () -> Int:
+            let keys = words(50000)
+            var m = Map[String, String]()
+            for k in keys:
+                m.add(k.clone(), k.clone())
+
+            var n = 0
+            for k in keys:
+                n += m.get_or(key: k, fallback: "").length()
+            return n
+    )
+
+    bench(
         "map.iterate_entries",
         100000,
         lambda () -> Int:

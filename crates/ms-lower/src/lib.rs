@@ -29,6 +29,7 @@ mod httpserve;
 mod iface;
 mod iterate;
 mod json;
+mod lend;
 mod mapset;
 mod matching;
 mod mathops;

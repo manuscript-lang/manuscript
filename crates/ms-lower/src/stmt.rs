@@ -225,6 +225,22 @@ impl<'a> FnLower<'a> {
             return Ok(());
         }
         let mark = self.temps.len();
+        if let Some((b, shape)) = self.lendable(Some(pattern), value)? {
+            // A lexical borrow of the container (the checker rejects changing it while the
+            // binding lives): read the entry in place, as a lent `Optional`.
+            let Some((present, entry)) = self.lent_read(shape, value)? else {
+                return Ok(());
+            };
+            let opt = self.lent_optional(present, &entry)?;
+            if self.dead {
+                return Ok(());
+            }
+            for t in self.temps.split_off(mark) {
+                self.bind_hidden(Val { v: t, own: true });
+            }
+            self.bind_lent(&b, opt.v);
+            return Ok(());
+        }
         let x = self.expr(value)?;
         if self.dead {
             return Ok(());
@@ -250,6 +266,28 @@ impl<'a> FnLower<'a> {
             return Ok(());
         }
         self.bind_pattern(pattern, x)
+    }
+
+    /// The binding and read shape when `let name = value` or `if let name = value` can lend
+    /// the container entry `value` reads: an immutable name the closures do not share.
+    fn lendable(
+        &mut self,
+        pattern: Option<&Pattern>,
+        value: &Expr,
+    ) -> Result<Option<(ms_check::types::BindingRef, crate::lend::Shape)>, Error> {
+        let Some(pattern) = pattern else {
+            return Ok(None);
+        };
+        if !matches!(pattern.kind, PatternKind::Name(_)) {
+            return Ok(None);
+        }
+        let Some(b) = self.hir.pattern_binding(pattern) else {
+            return Ok(None);
+        };
+        if b.mutable || self.slotted.contains(&b.uid) || self.cx.exclusive.contains(&b.uid) {
+            return Ok(None);
+        }
+        Ok(self.lent_shape(value)?.map(|shape| (b, shape)))
     }
 
     /// Binds the names of `pattern` to the parts of `x`: lists by position (the length is
@@ -588,6 +626,7 @@ impl<'a> FnLower<'a> {
         let (then_b, else_b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         let mut scrutinee: Option<Val> = None;
         let mut accessor_alias = None;
+        let mut lent = None;
         let c = if binding.is_some() {
             let exclusive = binding
                 .and_then(|p| self.hir.pattern_binding(p))
@@ -596,6 +635,14 @@ impl<'a> FnLower<'a> {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
                 found
+            } else if let Some((b, shape)) = self.lendable(binding, cond)? {
+                // `if let x = m.get(k)`: the test is the entry's presence and `x` is the entry
+                // itself, lent for the branch; no `Optional` is built.
+                let Some((present, entry)) = self.lent_read(shape, cond)? else {
+                    return Ok(());
+                };
+                lent = Some((b, entry));
+                crate::alias::Found::Present(present)
             } else {
                 crate::alias::Found::Opt(self.expr(cond)?)
             };
@@ -632,6 +679,10 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new("if var without binding"))?;
             self.aliases.insert(bnd.uid, alias.clone());
         }
+        if let Some((bnd, entry)) = lent.as_ref() {
+            let payload = self.lent_payload(entry);
+            self.bind_lent(bnd, payload);
+        }
         if let (Some(p), Some(o)) = (binding, scrutinee) {
             let bnd = self
                 .hir
@@ -646,13 +697,25 @@ impl<'a> FnLower<'a> {
                 self.aliases.insert(bnd.uid, alias);
             } else {
                 let payload = self.success_payload(o.v)?;
-                self.bind_local(
-                    &bnd,
-                    Val {
-                        v: payload,
-                        own: false,
-                    },
-                );
+                // The payload of a scrutinee that is itself a borrow is a lexical borrow for
+                // the branch (the checker rejects changing its origin meanwhile): no copy. An
+                // owned scrutinee is dropped here, so its payload is copied out first.
+                let lend = !o.own
+                    && matches!(p.kind, PatternKind::Name(_))
+                    && self.ownership_checked()
+                    && !self.slotted.contains(&bnd.uid)
+                    && self.needs_drop(self.ty_of(payload));
+                if lend {
+                    self.bind_lent(&bnd, payload);
+                } else {
+                    self.bind_local(
+                        &bnd,
+                        Val {
+                            v: payload,
+                            own: false,
+                        },
+                    );
+                }
                 if o.own {
                     self.drop_value(o.v);
                 }

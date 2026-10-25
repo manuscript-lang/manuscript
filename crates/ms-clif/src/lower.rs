@@ -1949,7 +1949,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListFill
             | Op::ListPush
             | Op::ListDropLast => self.lower_list(f, inst),
-            Op::OptSome => {
+            Op::OptSome | Op::OptLend => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
                 if self.opt_boxed(ty) {

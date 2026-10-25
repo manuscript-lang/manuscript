@@ -760,6 +760,7 @@ impl<'m> Interp<'m> {
                 set!(Val::List(l));
             }
             Op::OptSome => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], true, m))))),
+            Op::OptLend => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], false, m))))),
             Op::OptNone => set!(Val::Opt(None)),
             Op::OptIsSome => {
                 let Val::Opt(o) = &regs[a[0].index()] else {
