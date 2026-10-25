@@ -129,7 +129,9 @@ pub fn post_remote(id: u64, value: u64) {
 /// Takes the posts queued for the calling isolate.
 pub fn take_posts() -> Vec<(u64, u64)> {
     let (_, inbox) = current();
-    if !inbox.full.swap(false, Ordering::Acquire) {
+    // Switches check this even when all work is local. Avoid an unnecessary read-modify-write
+    // on the common empty path; the swap still claims any observed pending batch.
+    if !inbox.full.load(Ordering::Acquire) || !inbox.full.swap(false, Ordering::Acquire) {
         return Vec::new();
     }
     std::mem::take(&mut *inbox.posts.lock().unwrap_or_else(|e| e.into_inner()))

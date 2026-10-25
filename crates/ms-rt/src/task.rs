@@ -769,7 +769,9 @@ unsafe fn switch_away() {
         if crate::isolate::pending_cancel() != 0 {
             cancel_all_waiters();
         }
-        deliver_remote_posts();
+        if !s.tokens.is_empty() {
+            deliver_remote_posts();
+        }
         if !s.kills.is_empty() || !s.timers.is_empty() {
             expire_timers(clock_ns());
         }
