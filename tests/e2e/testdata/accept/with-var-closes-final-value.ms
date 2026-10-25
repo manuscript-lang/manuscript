@@ -33,6 +33,7 @@ test "a cancelled with var block closes the value it had reached":
 
     with let group = TaskGroup[Int](timeout: some(duration(20000000))):
         group.spawn(lambda ch: count_then_wait(mine))
+
         let ignored = group.wait()
 
     log.get().clone() | try expect_equal([7])
