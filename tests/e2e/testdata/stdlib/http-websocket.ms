@@ -15,13 +15,13 @@ def tls_options() -> TlsOptions:
 
 def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with (
+        with let socket = (
             try http_result(
                 exchange.upgrade(
                     allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
                 )
             )
-        ) as socket:
+        ):
             let message = (try http_result(socket.receive())).get()
             let sent = (
                 try http_result(
@@ -47,11 +47,11 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
 
-    with (
+    with let server = (
         net.serve_stream(
             address: "127.0.0.1:0", handler: echo, options: options
         ) | try expect_ok
-    ) as server:
+    ):
         let url = f"http://{server.address()}/"
         let response = (
             net.request(
@@ -76,8 +76,8 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             decompress: True, cookies: True, tls: tls_options()
         )
 
-        with (net.http_client(client_options) | try expect_ok) as client:
-            with (
+        with let client = (net.http_client(client_options) | try expect_ok):
+            with let body = (
                 client.request(
                     method: HttpMethod.Get,
                     url: url,
@@ -88,7 +88,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                     max_response_bytes: 5,
                     timeout: 2.seconds
                 ) | try expect_ok
-            ) as body:
+            ):
                 body.metadata().status | try expect_equal(201)
                 (body.read(5) | try expect_ok).get() | try expect_equal(
                     "hello".to_bytes()
@@ -110,23 +110,23 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
-    with (
+    with let server = (
         net.serve_stream(
             address: "127.0.0.1:0", handler: echo, options: options
         ) | try expect_ok
-    ) as server:
+    ):
         let client_options = WebSocketOptions(
             max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
             compression: False
         )
 
-        with (
+        with let socket = (
             net.web_socket(
                 url: f"ws://{server.address()}/ws",
                 headers: (try text_headers(Map[String, String]())),
                 subprotocols: ["echo"], options: client_options
             ) | try expect_ok
-        ) as socket:
+        ):
             socket.subprotocol() | try expect_equal("echo")
 
             let sent = (socket.send(data: "é🙂") | try expect_ok)
@@ -145,11 +145,11 @@ test "HTTP streaming handlers see the Host request header":
         max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
 
-    with (
+    with let server = (
         net.serve_stream(
             address: "127.0.0.1:0", handler: report_host, options: options
         ) | try expect_ok
-    ) as server:
+    ):
         let response = (
             net.request(
                 method: HttpMethod.Get, url: f"http://{server.address()}/",

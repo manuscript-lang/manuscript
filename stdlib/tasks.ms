@@ -2,6 +2,7 @@ from "@std/channels.ms" import Channel, ChannelError, Transport
 from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable, panic
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 from "@std/time.ms" import Duration
 
 extern def msrt_scope_new() -> Int
@@ -109,16 +110,14 @@ impl Lane[T]:
 
 # Closes the end that sends on `outgoing` and receives on `incoming`, waking whoever waits on either.
 def close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) -> Unit:
-    var sending = outgoing.take()
-    sending.sender_closed = True
-    sending.wake()
-    outgoing.put(sending)
+    with var sending = lock(outgoing):
+        sending.value.sender_closed = True
+        sending.value.wake()
 
-    var receiving = incoming.take()
-    receiving.receiver_closed = True
-    receiving.clear()
-    receiving.wake()
-    incoming.put(receiving)
+    with var receiving = lock(incoming):
+        receiving.value.receiver_closed = True
+        receiving.value.clear()
+        receiving.value.wake()
 
 # One end of a channel between tasks on the runtime thread. Values move from one end to the other;
 # a task that must wait parks until the other end posts its token.
@@ -132,19 +131,17 @@ impl TaskTransport[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
     def wait_for_room() -> Result[Unit, ChannelError]:
         while True:
-            var lane = self.outgoing.take()
+            var token = 0
 
-            if lane.sender_closed or lane.receiver_closed:
-                self.outgoing.put(lane)
-                return error(ChannelError.Closed)
+            with var lane = lock(self.outgoing):
+                if lane.value.sender_closed or lane.value.receiver_closed:
+                    return error(ChannelError.Closed)
+                if lane.value.length() < room():
+                    return ok(())
 
-            if lane.length() < room():
-                self.outgoing.put(lane)
-                return ok(())
+                token = msrt_channel_token()
+                lane.value.waiting.append(token)
 
-            let token = msrt_channel_token()
-            lane.waiting.append(token)
-            self.outgoing.put(lane)
             msrt_channel_park(token)
 
         return ok(())
@@ -153,32 +150,30 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
     var def send(value: In) -> Result[Unit, ChannelError]:
         try self.wait_for_room()
 
-        var lane = self.outgoing.take()
-        lane.back.append(value)
-        lane.wake()
-        self.outgoing.put(lane)
+        with var lane = lock(self.outgoing):
+            lane.value.back.append(value)
+            lane.value.wake()
+
         return ok(())
 
     var def receive() -> Result[Optional[Out], ChannelError]:
         while True:
-            var lane = self.incoming.take()
+            var token = 0
 
-            if lane.receiver_closed:
-                self.incoming.put(lane)
-                return error(ChannelError.Closed)
+            with var lane = lock(self.incoming):
+                if lane.value.receiver_closed:
+                    return error(ChannelError.Closed)
 
-            if let value = lane.pop():
-                lane.wake()
-                self.incoming.put(lane)
-                return ok(some(value))
+                if let value = lane.value.pop():
+                    lane.value.wake()
+                    return ok(some(value))
 
-            if lane.sender_closed:
-                self.incoming.put(lane)
-                return ok(none)
+                if lane.value.sender_closed:
+                    return ok(none)
 
-            let token = msrt_channel_token()
-            lane.waiting.append(token)
-            self.incoming.put(lane)
+                token = msrt_channel_token()
+                lane.value.waiting.append(token)
+
             msrt_channel_park(token)
 
         return ok(none)
@@ -199,7 +194,7 @@ def run[T, In, Out](
     down: Shared[Lane[In]],
     slot: Shared[List[T]]
 ) -> Unit:
-    with TaskTransport[Out, In](outgoing: up, incoming: down) as end:
+    with let end = TaskTransport[Out, In](outgoing: up, incoming: down):
         msrt_scope_started()
 
         let value = entry(
@@ -209,9 +204,8 @@ def run[T, In, Out](
                 )
             )
         )
-        var held = slot.take()
-        held.append(value)
-        slot.put(held)
+        with var held = lock(slot):
+            held.value.append(value)
 
 # The group's end of a task channel.
 def group_end[In, Out](
@@ -233,26 +227,19 @@ export type Entry[T, In, Out]:
 
 # Drops the entry of the collected task `handle`, so the group holds nothing for it.
 def forget[T, In, Out](registry: Shared[List[Entry[T, In, Out]]], handle: Int) -> Unit:
-    var entries = registry.take()
-
-    for index in range(0, entries.length()):
-        if entries[index].handle == handle:
-            entries.remove(index)
-            break
-
-    registry.put(entries)
+    with var entries = lock(registry):
+        for index in range(0, entries.value.length()):
+            if entries.value[index].handle == handle:
+                entries.value.remove(index)
+                break
 
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
 # even when it has no result, so the runtime and the group let go of it.
 def collect[T](scope: Int, handle: Int, values: Shared[List[T]]) -> Result[T, TaskError]:
     try outcome(msrt_scope_join(scope, handle, 0))
-
-    var finished = values.take()
-
-    if let value = finished.pop():
-        values.put(finished)
-        return ok(value)
-
+    with var finished = lock(values):
+        if let value = finished.value.pop():
+            return ok(value)
     panic("Task: the result was already taken")
 
 # A started task that returns a `T`, with the group's end of its channel.
@@ -319,9 +306,8 @@ impl TaskGroup[T, In, Out]:
             close_end(up, down)
 
         # The group keeps a second handle on its end, so closing the group closes it.
-        var started = self.tasks.take()
-        started.append(Entry(handle, values, group_end(down, up)))
-        self.tasks.put(started)
+        with var started = lock(self.tasks):
+            started.value.append(Entry(handle, values, group_end(down, up)))
         return Task(self.scope, handle, self.tasks, values, group_end(down, up))
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.
@@ -348,8 +334,6 @@ impl Closeable for TaskGroup[T, In, Out]:
     # Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
     var def close() -> Unit:
         msrt_scope_close(self.scope)
-
-        var started = self.tasks.take()
-        for index in range(0, started.length()):
-            started[index].channel.close()
-        self.tasks.put(started)
+        with var started = lock(self.tasks):
+            for index in range(0, started.value.length()):
+                started.value[index].channel.close()
