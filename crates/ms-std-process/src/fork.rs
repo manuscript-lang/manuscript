@@ -4,7 +4,8 @@
 use crate::command::{self, Subprocess};
 use crate::ipc::{self, Link, Reader, Writer};
 use alloc::vec::Vec;
-use core::cell::RefCell;
+use core::cell::{Cell, RefCell};
+use ms_rt::fault::with_cleanup;
 use ms_rt::ffi::{
     Handler, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, abi_handle, native,
 };
@@ -13,10 +14,19 @@ use ms_std_fs::fs_status;
 use ms_std_fs::stream::Stream;
 
 /// One end of an IPC pipe. The halves are separate so a reading task and a writing task can use
-/// the end at the same time; a second reader (or writer) at once faults.
+/// the end at the same time. A second reader waits for the first (see [`IpcLink::wait_reader`]);
+/// a second writer at once faults.
+///
+/// A task parked in a read or write can be cancelled, which leaves its frame with a jump and
+/// skips destructors, so the halves are guarded by `busy` flags that a runtime cleanup entry
+/// clears, not by `RefCell` borrows.
 pub struct IpcLink {
     reader: RefCell<Option<Reader>>,
     writer: RefCell<Option<Writer>>,
+    reading: Cell<bool>,
+    writing: Cell<bool>,
+    /// Tokens of tasks waiting for the current reader to finish.
+    waiting: RefCell<Vec<i64>>,
 }
 
 impl IpcLink {
@@ -25,36 +35,73 @@ impl IpcLink {
         Ok(IpcLink {
             reader: RefCell::new(Some(reader)),
             writer: RefCell::new(Some(writer)),
+            reading: Cell::new(false),
+            writing: Cell::new(false),
+            waiting: RefCell::new(Vec::new()),
         })
     }
 
+    fn end_read(&self) {
+        self.reading.set(false);
+        for token in self.waiting.take() {
+            ms_rt::channel::msrt_channel_post(token);
+        }
+    }
+
+    /// Parks while another task is reading, and returns true once it finished: the caller
+    /// re-checks what that reader recorded. False at once when nobody is reading.
+    fn wait_reader(&self) -> bool {
+        if !self.reading.get() {
+            return false;
+        }
+        let token = ms_rt::channel::msrt_channel_token();
+        self.waiting.borrow_mut().push(token);
+        ms_rt::channel::msrt_channel_park(token);
+        true
+    }
+
+    #[allow(unsafe_code)]
     fn read(&self, max: i64) -> Vec<u8> {
-        let Ok(mut reader) = self.reader.try_borrow_mut() else {
+        if self.reading.get() {
             ms_rt::ffi::fault("another task is already reading this process channel");
-        };
-        let Some(reader) = reader.as_mut() else {
+        }
+        self.reading.set(true);
+        // SAFETY: `reading` admits one task, so nothing else holds the half; no borrow is kept
+        // across the park.
+        let Some(reader) = (unsafe { &mut *self.reader.as_ptr() }).as_mut() else {
+            self.end_read();
             return Vec::new();
         };
         let mut buf = alloc::vec![0u8; max.clamp(1, 1 << 20) as usize];
         // A failed read means the other process is gone, the same as end of stream.
-        let n = reader.read(&mut buf).unwrap_or(0);
+        let n = with_cleanup(&mut || self.end_read(), || reader.read(&mut buf)).unwrap_or(0);
+        self.end_read();
         buf.truncate(n);
         buf
     }
 
+    #[allow(unsafe_code)]
     fn write(&self, data: &[u8]) -> bool {
-        let Ok(mut writer) = self.writer.try_borrow_mut() else {
+        if self.writing.get() {
             ms_rt::ffi::fault("another task is already writing this process channel");
-        };
-        writer.as_mut().is_some_and(|w| w.write(data).is_ok())
+        }
+        self.writing.set(true);
+        // SAFETY: as `read`.
+        let writer = unsafe { &mut *self.writer.as_ptr() };
+        let ok = writer.as_mut().is_some_and(|w| {
+            with_cleanup(&mut || self.writing.set(false), || w.write(data).is_ok())
+        });
+        self.writing.set(false);
+        ok
     }
 
     fn close(&self) {
-        if let Ok(mut w) = self.writer.try_borrow_mut() {
-            w.take();
+        // A half in use by a parked task is left to that task; it ends when the pipe does.
+        if !self.writing.get() {
+            self.writer.borrow_mut().take();
         }
-        if let Ok(mut r) = self.reader.try_borrow_mut() {
-            r.take();
+        if !self.reading.get() {
+            self.reader.borrow_mut().take();
         }
     }
 }
@@ -169,6 +216,12 @@ native! {
     /// Writes all of `data`, waiting while the pipe is full; false once the other process is gone.
     fn msstd_process_ipc_write(h: ObjRef<IpcLink>, data: &[u8]) -> bool {
         h.write(data)
+    }
+
+    /// Parks while another task reads this end, then returns true so the caller can look at what
+    /// that reader recorded; false at once when no task is reading.
+    fn msstd_process_ipc_wait_reader(h: ObjRef<IpcLink>) -> bool {
+        h.wait_reader()
     }
 
     /// Closes this end: the other process reads what was sent, then end of stream. Idempotent.

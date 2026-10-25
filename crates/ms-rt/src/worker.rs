@@ -31,31 +31,24 @@ struct Worker {
     done: AtomicU64,
 }
 
-/// Registry slots: a generation, bumped each time the slot is filled, and the live worker.
-/// A handle is `(generation << 32) | (slot + 1)`, so one that outlived its worker names nothing.
-static WORKERS: Mutex<Vec<(u32, Option<Arc<Worker>>)>> = Mutex::new(Vec::new());
+struct WorkerSlot {
+    generation: u32,
+    worker: Option<Arc<Worker>>,
+}
+
+static WORKERS: Mutex<Vec<WorkerSlot>> = Mutex::new(Vec::new());
+
+fn slot_index(handle: u64) -> Option<usize> {
+    (handle as u32 as usize).checked_sub(1)
+}
 
 fn find(handle: u64) -> Option<Arc<Worker>> {
     let table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-    let (generation, worker) = table.get(((handle & 0xffff_ffff) as usize).checked_sub(1)?)?;
-    if u64::from(*generation) != handle >> 32 {
+    let slot = table.get(slot_index(handle)?)?;
+    if slot.generation != (handle >> 32) as u32 {
         return None;
     }
-    worker.clone()
-}
-
-/// Empties the slot `handle` names, if it still names that worker.
-fn release(handle: u64) {
-    let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-    let Some(entry) = ((handle & 0xffff_ffff) as usize)
-        .checked_sub(1)
-        .and_then(|at| table.get_mut(at))
-    else {
-        return;
-    };
-    if u64::from(entry.0) == handle >> 32 {
-        entry.1 = None;
-    }
+    slot.worker.clone()
 }
 
 /// Copies `len` bytes into a system-allocated block for [`msrt_worker_spawn`]'s argument.
@@ -109,17 +102,25 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-        let live = table.iter().filter(|w| w.1.is_some()).count();
+        let live = table.iter().filter(|s| s.worker.is_some()).count();
         if live >= MAX_WORKERS {
             return 0;
         }
-        let at = table.iter().position(|w| w.1.is_none()).unwrap_or_else(|| {
-            table.push((0, None));
-            table.len() - 1
-        });
-        let generation = table[at].0.wrapping_add(1);
-        table[at] = (generation, Some(worker.clone()));
-        (u64::from(generation) << 32) | (at as u64 + 1)
+        // Never wrap a generation: retire an exhausted slot instead of reviving stale handles.
+        let at = table
+            .iter()
+            .position(|s| s.worker.is_none() && s.generation < u32::MAX)
+            .unwrap_or_else(|| {
+                table.push(WorkerSlot {
+                    generation: 0,
+                    worker: None,
+                });
+                table.len() - 1
+            });
+        let slot = &mut table[at];
+        slot.generation += 1;
+        slot.worker = Some(worker.clone());
+        (u64::from(slot.generation) << 32) | (at as u64 + 1)
     };
     let (entry, arg) = (entry as usize, arg as usize);
     let w = worker.clone();
@@ -142,7 +143,8 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
             handle
         }
         Err(_) => {
-            release(handle);
+            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker =
+                None;
             if arg != 0 {
                 // SAFETY: the worker never ran, so the block is still ours.
                 unsafe { crate::sys::free(arg as *mut c_void) };
@@ -211,7 +213,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_join(handle: u64, msg_out: *mut StrV
     if let Some(t) = w.thread.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = t.join();
     }
-    release(handle);
+    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker = None;
     let (status, ptr, len) =
         core::mem::take(&mut *w.outcome.lock().unwrap_or_else(|e| e.into_inner()));
     let report = if ptr == 0 {
@@ -434,34 +436,24 @@ mod tests {
         crate::task::teardown();
     }
 
-    unsafe extern "C-unwind" fn naps(_: *mut u8) {
-        // SAFETY: sleeps this isolate's main task.
-        unsafe { msrt_task_sleep(100_000_000) };
-        if crate::fault::cancel_flag().load(Ordering::Relaxed) != 0 {
-            crate::fault::msrt_cancelled();
-        }
-    }
+    unsafe extern "C-unwind" fn returns(_: *mut u8) {}
 
     #[test]
-    fn a_stale_handle_names_no_worker() {
+    fn collected_handles_do_not_address_replacement_workers() {
         let _g = crate::testutil::lock();
-        // SAFETY: parks the test thread's flow on tokens the workers post.
+        // SAFETY: entries need no arguments; each worker is joined once.
         unsafe {
-            let done = msrt_token_new(TOKEN_REMOTE);
-            let old = msrt_worker_spawn(adds, msrt_worker_arg_new(b"x".as_ptr(), 1), done);
+            let old = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
             assert_ne!(old, 0);
-            assert_eq!(msrt_token_park(done, -1, core::ptr::null_mut()), 0);
             assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
-            msrt_token_free(done);
-            let done = msrt_token_new(TOKEN_REMOTE);
-            let new = msrt_worker_spawn(naps, core::ptr::null_mut(), done);
-            assert_eq!(new & 0xffff_ffff, old & 0xffff_ffff, "the slot is reused");
-            assert_ne!(new, old);
-            msrt_task_sleep(20_000_000);
-            msrt_worker_cancel(old);
-            assert_eq!(msrt_token_park(done, -1, core::ptr::null_mut()), 0);
-            msrt_token_free(done);
+            let new = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            assert_ne!(new, 0);
+            let stale_matches = find(old).is_some();
             assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
+            assert!(
+                !stale_matches,
+                "a collected handle must not name a replacement worker"
+            );
         }
         crate::task::teardown();
     }

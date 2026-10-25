@@ -64,6 +64,17 @@ pub fn runtime_override() -> Result<Option<PathBuf>, String> {
     }
 }
 
+/// Re-verifies `module` after the pass `name`, which must keep it valid.
+fn verify_after(module: &Module, name: &str) -> Result<(), String> {
+    ms_mir::verify::verify_module(module).map_err(|errors| {
+        let text: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
+        format!(
+            "the {name} pass produced invalid code (this is a Manuscript bug):\n{}",
+            text.join("\n")
+        )
+    })
+}
+
 /// Optimize `module`, generate code and link the executable at `output`. The
 /// executable replaces `output` only when the whole build succeeds.
 pub fn build_executable(
@@ -88,6 +99,11 @@ pub fn build_executable(
     }
     let (level, options) = profile.options();
     optimize(module, level, cfg!(debug_assertions));
+    // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
+    let unwound = ms_mir::unwind::run(module);
+    if unwound && cfg!(debug_assertions) {
+        verify_after(module, "unwind")?;
+    }
     let parts = ms_clif::compile_parts(module, &options).map_err(|e| {
         format!(
             "native code generation failed (this is a Manuscript bug, so report it with the source that triggers it; 'ms emit <file>' prints the lowered code): {e}"
