@@ -10,6 +10,7 @@ use ms_rt::ffi::{
 };
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::fs_status;
+use ms_std_fs::stream::Stream;
 
 /// One end of an IPC pipe. The halves are separate so a reading task and a writing task can use
 /// the end at the same time; a second reader (or writer) at once faults.
@@ -60,25 +61,23 @@ impl IpcLink {
 
 abi_handle!(IpcLink);
 
-/// A child started at a process entry, with the parent's end of its IPC pipe.
+/// A child started at a process entry, with the parent's end of its IPC pipe and of its piped
+/// standard streams (an unpiped one is already closed).
 pub struct Forked {
     proc: Subprocess,
     link: ObjBox<IpcLink>,
+    streams: [ObjBox<Stream>; 3],
 }
 
 abi_handle!(Forked);
 
 fn start(runner: Handler, modes: [i64; 3]) -> Res<Forked> {
-    // The child's own streams are the parent's or the null device; piping them is not offered yet.
-    if modes.contains(&command::STDIO_PIPE) {
-        return Err(Fail::invalid());
-    }
     let exe = std::env::current_exe().map_err(|_| Fail::status(ms_rt_abi::STATUS_UNAVAILABLE))?;
     // SAFETY: `ProcessGroup.spawn` passes a closure that captures only the entry function.
     #[allow(unsafe_code)]
     let entry = unsafe { ms_rt::start::entry_value(runner.as_ptr().cast()) };
     let (link, end) = ipc::pair()?;
-    let p: Subprocess = command::spawn_with(
+    let mut p: Subprocess = command::spawn_with(
         exe.as_os_str().as_encoded_bytes(),
         &[],
         modes,
@@ -87,9 +86,15 @@ fn start(runner: Handler, modes: [i64; 3]) -> Res<Forked> {
     )?;
     // The parent's copy of the child's end closes here, so the parent sees the child's exit.
     drop(end);
+    let streams = [
+        ObjBox::new(crate::parent_end(&mut p.stdin, b"|1")),
+        ObjBox::new(crate::parent_end(&mut p.stdout, b"|0")),
+        ObjBox::new(crate::parent_end(&mut p.stderr, b"|0")),
+    ];
     Ok(Forked {
         proc: p,
         link: ObjBox::new(IpcLink::new(link)?),
+        streams,
     })
 }
 
@@ -110,6 +115,16 @@ native! {
         h.link.share()
     }
 
+    /// The child's piped standard input; closed unless spawned with `Stdio.Pipe`.
+    fn msstd_process_forked_stdin(h: ObjRef<Forked>) -> ObjShare<Stream> {
+        h.streams[0].share()
+    }
+
+    /// The child's piped standard output (`which` 1) or error (2); closed unless piped.
+    fn msstd_process_forked_output(h: ObjRef<Forked>, which: i64) -> ObjShare<Stream> {
+        h.streams[which.clamp(1, 2) as usize].share()
+    }
+
     /// Waits for exit; a negative `timeout_ns` waits without limit. `Timeout` leaves the child running.
     fn msstd_process_forked_wait(h: ObjMut<Forked>, timeout_ns: i64) -> Result<i64, StatusCode> {
         let mut h = h;
@@ -127,6 +142,9 @@ native! {
         let mut h = h;
         h.link.get_mut().close();
         h.proc.stop();
+        for s in &mut h.streams {
+            let _ = s.get_mut().close();
+        }
     }
 
     /// The child's end of its IPC pipe; faults outside a child started at a process entry.

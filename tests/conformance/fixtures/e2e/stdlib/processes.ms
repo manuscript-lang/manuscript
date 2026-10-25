@@ -2,7 +2,8 @@
 # conform: phase=test
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/core.ms" import panic
-from "@std/process.ms" import CommandError, Stdio
+from "@std/io.ms" import read_line, stderr, stdin, stdout
+from "@std/process.ms" import Stdio
 from "@std/processes.ms" import ProcessError, ProcessGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok
 
@@ -28,6 +29,19 @@ def describe(ch: Channel[Unit, Unit]) -> Job:
 
 def quiet(ch: Channel[Unit, Unit]) -> Unit:
     return ()
+
+def shout(ch: Channel[Unit, Unit]) -> Int:
+    match read_line(stdin()):
+        case ok(next):
+            let text = next.get("")
+            if stdout().write(text + "!\n").is_error():
+                return -1
+            if stderr().write("warn\n").is_error():
+                return -2
+            return text.length()
+        case error(_):
+            return -3
+    return -4
 
 def crash(ch: Channel[Unit, Unit]) -> Unit:
     panic("the child faults on purpose")
@@ -108,9 +122,25 @@ test "a child that faults is data, not a parent fault":
         child.result() | try expect_error | try expect_equal(ProcessError.Exited(70))
         let refused = child.channel.send(()) | try expect_error
 
-test "a piped standard stream is not offered":
+test "piped standard streams reach the parent":
+    with ProcessGroup[Int]() as group:
+        var child = group.spawn(
+            shout, stdin: Stdio.Pipe, stdout: Stdio.Pipe, stderr: Stdio.Pipe
+        ) | try expect_ok
+        try child.stdin().write("hi\n")
+        child.stdin().close()
+        let out = try read_line(child.stdout())
+        try expect_equal(out.get(""), "hi!")
+        let err = try read_line(child.stderr())
+        try expect_equal(err.get(""), "warn")
+        child.result() | try expect_ok | try expect_equal(2)
+
+test "a stream that is not piped is closed":
     with ProcessGroup[Unit]() as group:
-        group.spawn(quiet, stdout: Stdio.Pipe) | try expect_error | try expect_equal(CommandError.InvalidInput)
+        var child = group.spawn(quiet, stdout: Stdio.Null) | try expect_ok
+        try expect_equal(child.stdout().read().is_ok(), False)
+        try expect_equal(child.stdin().write("x").is_ok(), False)
+        child.result() | try expect_ok
 
 test "process errors describe themselves":
     try expect_equal(ProcessError.Exited(70).message(), "process: exited with status 70")

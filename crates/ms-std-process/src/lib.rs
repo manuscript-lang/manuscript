@@ -128,7 +128,7 @@ fn timeout(has: bool, value: i64) -> Res<Option<i64>> {
 
 /// The stream over a subprocess's parent end, or an already closed stream when that standard
 /// stream was not piped.
-fn parent_end(fd: &mut command::Fd, name: &[u8]) -> Stream {
+pub(crate) fn parent_end(fd: &mut command::Fd, name: &[u8]) -> Stream {
     if fd.is_open() {
         return Stream::new(fd.take(), true, name);
     }

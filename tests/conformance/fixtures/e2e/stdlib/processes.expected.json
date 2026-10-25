@@ -41,26 +41,31 @@
         },
         {
           "index": 6,
-          "name": "processes.ms::a piped standard stream is not offered",
+          "name": "processes.ms::piped standard streams reach the parent",
           "status": "passed"
         },
         {
           "index": 7,
+          "name": "processes.ms::a stream that is not piped is closed",
+          "status": "passed"
+        },
+        {
+          "index": 8,
           "name": "processes.ms::process errors describe themselves",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 8,
-        "selected": 8,
-        "passed": 8,
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN processes.ms::a child process answers each message in order\nPASS processes.ms::a child process answers each message in order\nRUN processes.ms::records cross in both directions\nPASS processes.ms::records cross in both directions\nRUN processes.ms::the parent reads what a finished child sent, then the end\nPASS processes.ms::the parent reads what a finished child sent, then the end\nRUN processes.ms::results come back in start order\nPASS processes.ms::results come back in start order\nRUN processes.ms::a Unit result crosses\nPASS processes.ms::a Unit result crosses\nRUN processes.ms::a child that faults is data, not a parent fault\nPASS processes.ms::a child that faults is data, not a parent fault\nRUN processes.ms::a piped standard stream is not offered\nPASS processes.ms::a piped standard stream is not offered\nRUN processes.ms::process errors describe themselves\nPASS processes.ms::process errors describe themselves\n8 tests, 0 failed\n",
+      "stdout": "RUN processes.ms::a child process answers each message in order\nPASS processes.ms::a child process answers each message in order\nRUN processes.ms::records cross in both directions\nPASS processes.ms::records cross in both directions\nRUN processes.ms::the parent reads what a finished child sent, then the end\nPASS processes.ms::the parent reads what a finished child sent, then the end\nRUN processes.ms::results come back in start order\nPASS processes.ms::results come back in start order\nRUN processes.ms::a Unit result crosses\nPASS processes.ms::a Unit result crosses\nRUN processes.ms::a child that faults is data, not a parent fault\nPASS processes.ms::a child that faults is data, not a parent fault\nRUN processes.ms::piped standard streams reach the parent\nPASS processes.ms::piped standard streams reach the parent\nRUN processes.ms::a stream that is not piped is closed\nPASS processes.ms::a stream that is not piped is closed\nRUN processes.ms::process errors describe themselves\nPASS processes.ms::process errors describe themselves\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
