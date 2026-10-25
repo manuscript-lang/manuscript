@@ -524,7 +524,6 @@ impl D {
         match &s.kind {
             StmtKind::Bind {
                 mutable,
-                by_ref: _,
                 pattern,
                 ty,
                 value,
