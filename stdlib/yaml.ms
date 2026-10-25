@@ -1236,11 +1236,7 @@ export def parse(
         YamlError.LimitExceeded
     )
 
-    var normalized = (
-        text
-        .replace("\r\n", "\n", text.byte_length())
-        .replace("\r", "\n", text.byte_length())
-    )
+    var normalized = (text.replace("\r\n", "\n").replace("\r", "\n"))
     if normalized.starts_with(f"\u{feff}"): normalized = (
         normalized
         .slice(1, normalized.scalar_length())

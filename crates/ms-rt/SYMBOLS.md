@@ -166,10 +166,8 @@ msrt_string_trim_end(s: *const StrVal, out: *mut StrVal)
 msrt_string_upper(s: *const StrVal, out: *mut StrVal)
 msrt_string_lower(s: *const StrVal, out: *mut StrVal)
 msrt_string_repeat( s: *const StrVal, count: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal)
-msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal)
-msrt_string_replace_n(s: *const StrVal, old: *const StrVal, new: *const StrVal, max: i64, out: *mut StrVal)
-msrt_string_replace_all( s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
+msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
+msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
 msrt_string_pad_start( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_pad_end( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_take( s: *const StrVal, count: i64, out: *mut StrVal, )

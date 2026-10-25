@@ -91,6 +91,18 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
 
+## Replacing text
+
+`String.replace(old:, new:)` replaces every nonoverlapping literal occurrence, scanning left to right; inserted text is not searched again, so `"aaa".replace("aa", "b")` is `"ba"`. `String.replace_first(old:, new:)` replaces only the first occurrence. Both return a new String and leave the receiver unchanged. An empty `old` matches at each Unicode scalar boundary: `"ab".replace("", "-")` is `"-a-b-"` and `"ab".replace_first("", "-")` is `"-ab"`. Output beyond the string size limit is a programming fault, as for `concat`. Use `Regex.replace_all` for pattern matches or a bounded result.
+
+The removed spellings migrate as follows.
+
+| Removed | Use |
+| --- | --- |
+| `replace_all(old, new)` returning `Result` | `replace(old, new)` returning `String` |
+| `replace(old, new)` meaning first occurrence | `replace_first(old, new)` |
+| `replace_n(old, new, count)`, `max_replacements:`, `max_bytes:` | `replace_first` for one, otherwise a loop over `index_of` |
+
 ## Encoding and parsing
 
 | Receiver or constructor | Signature/result |

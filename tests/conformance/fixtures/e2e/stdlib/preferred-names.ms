@@ -117,22 +117,14 @@ test "set names mutate in place keep order and no-op membership":
     try expect_equal(optional.values(), [some(9)])
 
 interface FirstReplacement:
-    def replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int]
-    ) -> String
+    def replace_first(old: String, new: String) -> String
 
 type TextAdapter:
     text: String
 
 impl FirstReplacement for TextAdapter:
-    def replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int]
-    ) -> String:
-        return self.text.replace_first(old, new, max_replacements)
+    def replace_first(old: String, new: String) -> String:
+        return self.text.replace_first(old, new)
 
 test "explicit views and bound views preserve native mutation":
     var items = [1, 2, 3]
@@ -161,26 +153,20 @@ test "explicit views and bound views preserve native mutation":
     let text_view: FirstReplacement = TextAdapter("aaaa")
     let view_first = text_view.replace_first
     try expect_false(
-        (
-            text_view.replace_first("a", "b", none) != "baaa"
-            or view_first("a", "b", 2) != "bbaa"
-        )
+        text_view.replace_first("a", "b") != "baaa" or view_first(
+            "a", "b"
+        ) != "baaa"
     )
 
-test "replace_first preserves first default explicit caps and scalar boundaries":
+test "replace_first changes one match and scalar boundaries":
     try expect_equal("aaaa".replace_first("a", "b"), "baaa")
-    try expect_equal("aaaa".replace_first("a", "b", none), "baaa")
-    try expect_equal("aaaa".replace_first("a", "b", 0), "aaaa")
-    try expect_equal("aaaa".replace_first("a", "b", 2), "bbaa")
-    try expect_equal("aaaa".replace_first("a", "b", 9223372036854775807), "bbbb")
-    try expect_equal("aa".replace_first("a", "aa", 2), "aaaa")
-    try expect_equal("é🙂".replace_first("", "x", 2), "xéx🙂")
+    try expect_equal("é🙂".replace_first("", "x"), "xé🙂")
     try expect_equal("".replace_first("", "x"), "x")
     try expect_equal("abc".replace_first("z", "x"), "abc")
 
     let first = "aaaa".replace_first
-    try expect_false(first(new: "b", "a") != "baaa" or first("a", "b", 2) != "bbaa")
-    try expect_equal(first("a", "b"), "aaaa".replace("a", "b"))
+    try expect_false(first(new: "b", "a") != "baaa")
+    try expect_equal(first("a", "b"), "aaaa".replace_first("a", "b"))
 
 test "regex replace_all preserves literal text and exact output budgets":
     let pattern = try compile("(a)")
