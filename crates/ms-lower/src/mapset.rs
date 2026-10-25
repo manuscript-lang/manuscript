@@ -733,8 +733,8 @@ impl<'a> FnLower<'a> {
                 "msrt_list_insert_copy".to_string()
             }
             (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
-            // `BytesBuilder.concat` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
-            (_, "concat") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
+            // `BytesBuilder.append_bytes` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
+            (_, "append_bytes") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
