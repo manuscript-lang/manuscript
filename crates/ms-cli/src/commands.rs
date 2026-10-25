@@ -196,7 +196,7 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             io,
             format!(
                 "unknown --format {} for ms review; use ascii or markdown (--json for JSON)",
-                ms_driver::project::strconv::quote(&format)
+                ms_driver::project::quoting::quote(&format)
             ),
         ));
     }
