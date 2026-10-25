@@ -455,6 +455,8 @@ msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)
 msrt_json_w_begin_object(w: *mut WriterObj)
 msrt_json_w_end_object(w: *mut WriterObj)
+msrt_json_w_no_form(w: *mut WriterObj)
+msrt_json_w_lost(w: *const WriterObj) -> u8
 msrt_json_w_null(w: *mut WriterObj)
 msrt_json_w_bool(w: *mut WriterObj, v: u8)
 msrt_json_w_int(w: *mut WriterObj, v: i64)

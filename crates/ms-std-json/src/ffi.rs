@@ -170,6 +170,14 @@ native! {
         w.0.end_object();
     }
 
+    fn msrt_json_w_no_form(w: ObjMut<Writer>) -> () {
+        w.0.lost = true;
+    }
+
+    fn msrt_json_w_lost(w: ObjRef<Writer>) -> bool {
+        w.lost
+    }
+
     fn msrt_json_w_null(w: ObjMut<Writer>) -> () {
         w.0.null();
     }

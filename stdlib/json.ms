@@ -136,6 +136,10 @@ export interface JsonEncode:
 # - Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
 #   from itself returns `InvalidData`; shared but acyclic values are written each time they appear.
 #
+# `strict` makes any value without a JSON form, anywhere in the document, return `InvalidData` instead
+# of being omitted or written as `null`, so a function, resource, interface value or `Unit` is never
+# dropped silently. A field holding `none` is still omitted: that is a value, not a loss.
+#
 # `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
 # containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
 # indentation included; exceeding it returns `LimitExceeded`. A negative bound or indent returns
@@ -152,7 +156,8 @@ export interface JsonEncode:
 export def stringify[T](
     value: T,
     max_bytes: Optional[Int] = none,
-    indent: Optional[Int] = none
+    indent: Optional[Int] = none,
+    strict: Bool = False
 ) -> Result[String, JsonError]: ...
 
 impl Error for JsonError:
