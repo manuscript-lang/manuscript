@@ -80,6 +80,7 @@ pub fn run(m: &mut Module) -> bool {
         ret: Ty::UNIT,
         noreturn: false,
         pure_: false,
+        fresh: false,
     });
     let mut cx = Cx {
         parks,
@@ -163,6 +164,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         ret: Ty::BOOL,
         noreturn: false,
         pure_: false,
+        fresh: false,
     });
     let mut b = FuncBuilder::new(
         m,

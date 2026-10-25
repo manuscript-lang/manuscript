@@ -82,6 +82,7 @@ pub fn run(m: &mut Module) -> bool {
                     ret: Ty::UNIT,
                     noreturn: false,
                     pure_: false,
+                    fresh: false,
                 });
                 rewrite_plain(&mut m.funcs[fi], bi, ii, ext, desc);
                 changed = true;

@@ -202,6 +202,7 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
         ret: Ty::UNIT,
         noreturn: false,
         pure_: false,
+        fresh: false,
     });
     let f = &mut m.funcs[fi];
     let last = plan.pieces.len() - 1;
@@ -332,6 +333,7 @@ fn apply_concat(
         ret: Ty::STR,
         noreturn: false,
         pure_: false,
+        fresh: true,
     });
     let f = &mut m.funcs[fi];
     let root = &mut f.blocks[bi].insts[ii];
@@ -402,6 +404,7 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         ret: Ty::STR,
         noreturn: false,
         pure_: false,
+        fresh: true,
     });
     let f = &mut m.funcs[fi];
     let remove: HashSet<(usize, usize)> = sites.iter().map(|s| s.1).collect();

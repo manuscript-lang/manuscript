@@ -103,6 +103,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
