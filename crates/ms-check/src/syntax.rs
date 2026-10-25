@@ -271,6 +271,8 @@ pub struct Info {
     pub fold_done: bool,
     /// Body checks need a later callback result context.
     pub inference_deferred: bool,
+    /// The call as lowered: this expression stands for the checked, equivalent call written here.
+    pub desugared: Option<Rc<Expr>>,
 }
 
 impl Info {
@@ -359,6 +361,11 @@ impl Facts {
     /// Fact of an expression.
     pub fn info(&self, id: NodeId) -> Option<&Info> {
         self.exprs.get(id.index()).and_then(|i| i.as_ref())
+    }
+    /// A node id past every parsed or synthetic one, for a node the checker builds.
+    pub fn fresh_id(&mut self) -> NodeId {
+        self.exprs.push(None);
+        NodeId((self.exprs.len() - 1) as u32)
     }
     /// Sets the fact of an expression.
     pub fn set_info(&mut self, id: NodeId, info: Info) {

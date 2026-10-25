@@ -68,13 +68,13 @@ def sized() -> Unit:
 | --- | --- |
 | `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
 | `Float` | `truncate_to_int() -> Optional[Int]` |
-| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
-| `Float`, `Float32` | `to_float32()`, `to_float64()`, `truncate_to_int() -> Optional[Int]` |
+| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_int()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
+| `Float`, `Float32` | `to_float32()`, `to_float64()`, `to_float()` (`Float32` only), `truncate_to_int() -> Optional[Int]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
-`abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `min`, `max`, `min_of` and `max_of` already accept any `Comparable` width.
+`abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. `math.min`, `math.max`, `List.min` and `List.max` already accept any `Comparable` width.
 
 ## Runtime numeric outcomes
 
@@ -114,6 +114,16 @@ let discounted = price * (1d - percent / 100d)
 ```
 
 Validate expected bad input with [expected failures](../errors/results.md); see [programming faults](../errors/faults.md) for invariants.
+
+### BigInt
+
+`BigInt` (from `@std/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
+
+```manuscript
+from "@std/math.ms" import from_int
+
+let big = from_int(2) * from_int(3) + from_int(1)
+```
 
 #### Scale rounding and fixed places
 
@@ -158,6 +168,6 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 ## Durations
 
-`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. Import `duration` from `@std/time.ms` for an exact nanosecond interval.
+`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`), and `duration(nanoseconds:)`; all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
 `Instant` is an opaque monotonic instant with no source constructor, comparable only within one run's clock domain; crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds + 1` is a type error.

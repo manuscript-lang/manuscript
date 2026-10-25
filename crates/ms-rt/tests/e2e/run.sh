@@ -16,7 +16,7 @@ out=$("$work/h" ok 2>"$work/err") && st=0 || st=$?
 [ "$out" = "héllo" ] || fail "ok: stdout '$out'"
 
 "$work/h" fault >/dev/null 2>"$work/err" && st=0 || st=$?
-[ "$st" = 70 ] || fail "fault: exit $st"
+[ "$st" = 67 ] || fail "fault: exit $st"
 expected=$(printf 'boom\n  at t.ms:3 in inner\n  at t.ms:3 in inner\n  at t.ms:3 in inner\n  at t.ms:9 in outer\ncleanup b\ncleanup a\n')
 # cleanups run before the report is written; accept either relative order of the two streams
 grep -q '^boom' "$work/err" || fail "fault: message missing"
@@ -24,12 +24,12 @@ grep -q 'in outer' "$work/err" || fail "fault: frames missing"
 [ "$(grep -n 'cleanup' "$work/err" | head -1 | cut -d: -f2)" = "cleanup b" ] || fail "fault: cleanup order"
 
 "$work/h" badexit >/dev/null 2>"$work/err" && st=0 || st=$?
-[ "$st" = 70 ] || fail "badexit: exit $st"
+[ "$st" = 67 ] || fail "badexit: exit $st"
 grep -q 'main exit code must be between 0 and 125' "$work/err" || fail "badexit: message"
 
 "$work/h" deep >/dev/null 2>&1 || fail "deep: 199990 nested calls must work"
 "$work/h" toodeep >/dev/null 2>"$work/err" && st=0 || st=$?
-[ "$st" = 70 ] || fail "toodeep: exit $st"
+[ "$st" = 67 ] || fail "toodeep: exit $st"
 grep -q 'call depth limit exceeded' "$work/err" || fail "toodeep: message"
 
 "$work/h" tasks >"$work/tout" 2>"$work/terr" && st=0 || st=$?

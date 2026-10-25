@@ -446,6 +446,77 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: false })
     }
 
+    /// `return m.get(key)` of a lending function: the entry itself, as an optional that borrows it.
+    pub(crate) fn map_get_lent(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if name != "get"
+            || !self.lent_return
+            || self.lent_expr != Some(e as *const Expr as usize)
+            || !self.ety(recv_expr).is_std("Map")
+        {
+            return Ok(None);
+        }
+        let [arg] = view.arguments.as_slice() else {
+            return Ok(None);
+        };
+        let map_ty = self.emty(recv_expr)?;
+        let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
+            return Ok(None);
+        };
+        let key_ty = self.emty(arg.expr)?;
+        if parts.first() != Some(&key_ty) || arg.wrap_optional.is_some() {
+            return Ok(None);
+        }
+        let opt_ty = self.emty(e)?;
+        let mv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(Some(mv));
+        }
+        let mv = self.borrow(mv);
+        let kv = self.expr(arg.expr)?;
+        if self.dead {
+            return Ok(Some(kv));
+        }
+        let kv = self.borrow(kv);
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let out = self.b.declare_var(opt_ty, Mode::Borrow);
+        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, absent, &[], present, &[]);
+        self.b.seal_block(absent);
+        self.b.seal_block(present);
+        self.enter(absent);
+        let none = self.b.opt_none(opt_ty);
+        self.b.def_var(out, none);
+        self.b.br(join, &[]);
+        self.enter(present);
+        let at = self
+            .b
+            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        let some = self.b.opt_view(at);
+        self.b.def_var(out, some);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
+        let v = self.b.use_var(out);
+        Ok(Some(Val { v, own: false }))
+    }
+
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         let v = self.call_runtime("msrt_map_new", &[], ty)?;
@@ -884,31 +955,6 @@ impl<'a> FnLower<'a> {
             Ok(None)
         })?;
         self.release_source(lv, hidden);
-        let out = self.b.use_var(acc);
-        Ok(Val { v: out, own: true })
-    }
-
-    /// `set.entries()`: `[value, value]` lists in insertion order.
-    pub(crate) fn set_entries(&mut self, recv: Val, result: MTy) -> Result<Val, Error> {
-        let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("entries without a list type"));
-        };
-        let TyKind::List(inner) = self.b.m.types.kind(pair).clone() else {
-            return Err(Error::new("entries pair is not a list"));
-        };
-        let acc = self.fresh_var(result);
-        let empty = self.b.list_lit(pair, &[]);
-        self.b.def_var(acc, empty);
-        let m = self.borrow(recv);
-        self.each_entry(m, &mut |s, key, _| {
-            let ko = s.owned(Val { v: key, own: false });
-            let kc = s.owned(Val { v: key, own: false });
-            let p = s.b.list_lit(inner, &[ko, kc]);
-            let cur = s.b.use_var(acc);
-            let next = s.b.list_push(cur, p);
-            s.b.def_var(acc, next);
-            Ok(())
-        })?;
         let out = self.b.use_var(acc);
         Ok(Val { v: out, own: true })
     }

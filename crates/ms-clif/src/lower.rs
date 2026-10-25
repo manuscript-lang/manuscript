@@ -1949,10 +1949,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListFill
             | Op::ListPush
             | Op::ListDropLast => self.lower_list(f, inst),
-            Op::OptSome => {
+            Op::OptSome | Op::OptView => {
                 let ty = res_ty.expect("opt.some result");
                 let v = self.a(inst, 0);
                 if self.opt_boxed(ty) {
+                    assert!(
+                        inst.op == Op::OptSome,
+                        "a borrowed optional cannot have a boxed layout"
+                    );
                     let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
                         unreachable!()
                     };

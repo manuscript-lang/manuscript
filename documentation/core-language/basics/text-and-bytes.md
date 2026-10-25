@@ -95,7 +95,7 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
+| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]`; `parse_float() -> Optional[Float]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
 | `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `[index] Int`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_string() -> Optional[String]` |
@@ -105,7 +105,7 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
 from "@std/core.ms" import panic

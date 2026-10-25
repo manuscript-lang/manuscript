@@ -129,6 +129,8 @@ interface StringOperations:
     def to_bytes() -> Bytes
     # Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
     def parse_int() -> Optional[Int]
+    # Parses a decimal floating-point number with the syntax of `math.parse_float`; invalid or out-of-range text returns none.
+    def parse_float() -> Optional[Float]
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
@@ -147,6 +149,8 @@ interface IntOperations:
     def sign() -> Int
     # Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
     def to_int8() -> Optional[Int8]
     # Converts to Int16, or returns none when the value is outside Int16's range.
@@ -205,6 +209,8 @@ interface Int8Operations:
     def to_int32() -> Int32
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -231,6 +237,8 @@ interface Int16Operations:
     def to_int32() -> Int32
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -257,6 +265,8 @@ interface Int32Operations:
     def to_int16() -> Optional[Int16]
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -276,5 +286,7 @@ interface Float32Operations:
     def sign() -> Float32
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
+    # Converts to Float; every Float32 converts exactly.
+    def to_float() -> Float
     # Converts to Float64; every Float32 converts exactly.
     def to_float64() -> Float64

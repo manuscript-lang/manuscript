@@ -1,7 +1,7 @@
 //! `@std/math` natives. Symbols are `msstd_math_<name>`; every function takes and returns
 //! scalars by value (`Float` = `f64`, `Int` = `i64`, `Bool` = `u8`), so the ABI is plain C.
 //!
-//! The generic `max`, `min`, `max_of` and `min_of` are not natives: they are lowered by the
+//! The generic `max` and `min` are not natives: they are lowered by the
 //! compiler through the element comparison.
 #![no_std]
 
@@ -26,7 +26,6 @@ macro_rules! constant {
 }
 
 unary! {
-    msstd_math_abs => f64::abs,
     msstd_math_acos => libm::acos_,
     msstd_math_asin => libm::asin_,
     msstd_math_atan => libm::atan_,
@@ -52,11 +51,6 @@ unary! {
     msstd_math_expm1 => libm::expm1_,
     msstd_math_log1p => libm::log1p_,
     msstd_math_sign => libm::sign,
-    msstd_math_to_float32 => to_float32,
-}
-
-fn to_float32(v: f64) -> f64 {
-    v as f32 as f64
 }
 
 native! {
@@ -75,18 +69,6 @@ native! {
     /// `Math.remainder` is C `fmod`, not the IEEE remainder.
     safe fn msstd_math_remainder(left: f64, right: f64) -> f64 {
         libm::fmod_(left, right)
-    }
-
-    /// Faults on the one value whose magnitude does not fit.
-    safe fn msstd_math_abs_int(n: i64) -> i64 {
-        match n.checked_abs() {
-            Some(v) => v,
-            None => ms_rt::ffi::int_overflow(),
-        }
-    }
-
-    safe fn msstd_math_sign_int(n: i64) -> i64 {
-        n.signum()
     }
 
     safe fn msstd_math_is_integer(v: f64) -> bool {

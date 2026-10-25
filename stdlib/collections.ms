@@ -77,8 +77,27 @@ impl List[T]:
     # Returns an independent reversed copy, including nested values.
     def reversed() -> List[T]: ...
 
-    # Returns a new list sorted by negative/zero/positive comparator results.
-    def sorted(compare: Callable[[T, T], Int]) -> List[T]: ...
+    # Returns a new list in ascending order; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    # With `compare`, a negative, zero or positive result puts the first argument before, level with or after the second. Without it, the element type must be Comparable (Int, Float, String, the sized numerics, or a type with `impl Comparable`); Float orders NaN above every other value.
+    # Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`; `names.sorted(lambda a, b: a.length() - b.length())` orders by length.
+    def sorted(compare: Optional[Callable[[T, T], Int]] = none) -> List[T]: ...
+
+    # Sorts the list in place, stably, in the same order as `sorted`: ascending natural order of a Comparable element type, or the order of `compare`.
+    # Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
+    var def sort(compare: Optional[Callable[[T, T], Int]] = none) -> Unit: ...
+
+    # Adds the elements left to right with `+`, so Int overflow faults; an empty list sums to 0.
+    # Available only for Int, Float, Int8, Int16, Int32 and Float32 elements; other element types have no `sum`.
+    # Example: `[1, 2, 3].sum()` is `6`.
+    def sum() -> T: ...
+
+    # Returns a copy of the least element, or none for an empty list; the first of equal elements wins. Elements must be Comparable; Float orders NaN above every other value.
+    # Example: `[3, 1, 2].min()` is `some(1)`; `List[Int]().min()` is `none`.
+    def min() -> Optional[T]: ...
+
+    # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins. Elements must be Comparable; Float orders NaN above every other value.
+    # Example: `[3, 1, 2].max()` is `some(3)`.
+    def max() -> Optional[T]: ...
 
     # Keeps matching values in their original order.
     def filter(predicate: Callable[[T], Bool]) -> List[T]: ...
@@ -324,9 +343,6 @@ impl Set[T]:
 
     # Returns an owned list containing copies of values in insertion order.
     def values() -> List[T]: ...
-
-    # Returns a new list of [value, value] lists in insertion order.
-    def entries() -> List[List[T]]: ...
 
     # Calls operation(value:) sequentially over the receiver in insertion order.
     def for_each(operation: Callable[[T], Unit]) -> Unit: ...

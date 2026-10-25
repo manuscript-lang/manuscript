@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "s1 = [20:padded]\ni2 = 45\nb3 = true\ncollatz(1092) = 31\ni4 = 45\nl5 = [-13, 7, 22] len 3\nf6 = 220.55190077716807\nf7 = 0\ni8 = -566148\n",
     "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0210.ms:52 in main\n"
   }

@@ -64,10 +64,10 @@ let FRAME_LIMIT = 16777216
 
 # Why a process gave no result.
 export type ProcessError:
-    # The process ended before its entry returned, with this exit status: 70 after a fault, -1
+    # The process ended before its entry returned, with this exit status: 67 after a fault, -1
     # when a signal ended it.
     case Exited(
-        # The exit status the parent observed: 70 after a fault in the child, -1 after a signal.
+        # The exit status the parent observed: 67 after a fault in the child, -1 after a signal.
         code: Int
     )
     # What the process sent could not be read.

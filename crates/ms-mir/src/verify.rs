@@ -772,7 +772,7 @@ impl Verifier<'_> {
                 m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(res == Some(t(0)), "yields the shortened list")
             }
-            Op::OptSome => {
+            Op::OptSome | Op::OptView => {
                 arity(1)?;
                 want(
                     res.and_then(|r| m.opt_inner(r)) == Some(t(0)),
@@ -1237,7 +1237,17 @@ impl Verifier<'_> {
             blk.term.for_each_target(|t| edges.push(t.clone()));
             if let Term::Ret(v) = &blk.term {
                 if let Some(v) = v.filter(|v| rc(*v)) {
-                    if !owned_def[v.index()] {
+                    if f.ret_borrowed {
+                        if owned_def[v.index()] {
+                            self.err(
+                                Some(bi),
+                                format!(
+                                    "ret: %{} is owned; a function that lends returns a borrow",
+                                    v.0
+                                ),
+                            );
+                        }
+                    } else if !owned_def[v.index()] {
                         self.err(
                             Some(bi),
                             format!(

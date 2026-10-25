@@ -286,13 +286,44 @@ impl Walker<'_> {
             return;
         }
         let saved = (self.ret_expr, self.ret_hit);
-        self.ret_expr = Some(e.id);
+        // `return some(part)` in a `ref Optional[T]` function lends the part itself.
+        let lent = self.lent_by_some(e);
+        self.ret_expr = Some(lent.map_or(e.id, |a| a.id));
         self.ret_hit = false;
-        self.expr(e, Demand::Consume);
+        match lent {
+            Some(arg) => {
+                if let ExprKind::Call { args, .. } = &e.kind {
+                    let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+                    self.facts.calls.insert(e.id, modes);
+                }
+                self.expr(arg, Demand::Consume);
+            }
+            None => self.expr(e, Demand::Consume),
+        }
         if !self.ret_hit {
             self.owned_return = true;
         }
         (self.ret_expr, self.ret_hit) = saved;
+    }
+
+    /// The argument of `some(argument)` when `e` is that call returned from a function whose
+    /// result is `ref Optional[T]`: the optional wraps a borrow of the argument.
+    fn lent_by_some<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return None;
+        };
+        let f = self.cx.c.func.func()?;
+        if !f.result_ref || args.len() != 1 || args[0].mutable {
+            return None;
+        }
+        match self.cx.m.resolution(e) {
+            Resolution::Constructor { ty, case: Some(c) }
+                if ty.is_std("Optional") && c.as_str() == "some" =>
+            {
+                Some(&args[0].value)
+            }
+            _ => None,
+        }
     }
 
     /// The slot of a read-only parameter or receiver, which may lend its parts to a result.
@@ -1709,6 +1740,14 @@ impl Walker<'_> {
                 Access::Borrow
             };
             self.record(e.id, b, access);
+            return;
+        }
+        // Returning a payload of a read-only parameter lends it.
+        let declared_ref = self.cx.c.func.func().is_some_and(|f| f.result_ref);
+        if declared_ref && self.meta[&b.uid].perm == Perm::Borrowed && self.lend(e, &resolved, None)
+        {
+            self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+            self.record(e.id, b, Access::Borrow);
             return;
         }
         self.move_out(e, b, &resolved);

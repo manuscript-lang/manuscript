@@ -1,6 +1,10 @@
 from "@std/collections.ms" import range
 from "./harness.ms" import bench, words
 
+type Cell:
+    x: Int
+    y: Int
+
 export def bench_map_set() -> Unit:
     bench(
         "map.int_put_get",
@@ -13,6 +17,20 @@ export def bench_map_set() -> Unit:
             var n = 0
             for i in range(0, 100000):
                 n += m.get(i).get(0)
+            return n
+    )
+
+    bench(
+        "map.record_key_get",
+        200000,
+        lambda () -> Int:
+            var m = Map[Cell, Int]()
+            for i in range(0, 100000):
+                m.add(Cell(x: i, y: i * 2), i)
+
+            var n = 0
+            for i in range(0, 100000):
+                n += m.get(Cell(x: i, y: i * 2)).get(0)
             return n
     )
 

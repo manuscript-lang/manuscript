@@ -7,6 +7,7 @@ Cross-cutting rules for shaping `stdlib/*.ms`. Domain-specific mechanics stay in
 Decision: the stdlib reorganization (#659) removed duplicate routes: `cli` moved into `process` (`process.arguments`, `process.control().environment()` is the only environment API), the temp-root query moved to `FileSystem.temporary_root` (`fs` is the only temp-dir API), string-typed `crypto.hmac` was dropped for `HashAlgorithm.hmac`, and the SSE decoder became an interface with `feed`/`finish`/`retry` methods. Before adding a function, search for an existing home with `ms search_symbol`; a second spelling needs a new decision. Do not restore removed names from old docs or branches.
 
 Apply when: adding or moving a stdlib function, or when two modules could both own an operation.
+The scalar `math.abs`, `abs_int`, `sign`, `sign_int` and `to_float32` functions duplicated the `.abs()`, `.sign()` and `.to_float32()` methods and were removed, as was `Set.entries()`, which only repeated `values()` as `[value, value]` pairs; `String.parse_float()` joins `parse_int()` as the Optional form while `math.parse_float` keeps the Result form with its cause.
 Evidence: commit 9a2dc4e6, [process](../stdlib/process.ms), [fs](../stdlib/fs.ms), [crypto](../stdlib/crypto.ms), [sse](../stdlib/sse.ms).
 Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.
 
@@ -49,3 +50,12 @@ Verified: public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and
 Apply when: adding a module or public member.
 Evidence: [development checks](../documentation/contributing/development.md), [runtime conventions](../documentation/contributing/runtime-conventions.md), [bindings](../stdlib/bindings.json), [docgen](../crates/ms-tooling/src/guide/src/docgen.rs).
 Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform`.
+
+### Natural order is a comparator, not a second sort path
+
+Decision: `List.sorted()` and `sort()` without `compare` order by the element's `Comparable.compare`; the checker rewrites the call to pass `lambda a, b: a.compare(b)` (the rewrite is recorded as `Info.desugared` and lowered in place of the written call), so user, generic and built-in element types share the comparator path and `sortgen` still reduces plain Int order to `msrt_list_sort_ints`. `sum`, `min` and `max` are native List members with receiver requirements in `bindings.json` (numeric, Comparable); `math.max_of`/`min_of` were removed. `Float.compare` must treat NaN as equal to itself and above every value, or float sorts are inconsistent.
+
+Apply when: adding a List operation that depends on an element contract, or changing `sortgen`'s recognized comparator shapes.
+Evidence: [collections.ms](../stdlib/collections.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
+Verify: `make stdlib-bench BENCHFILTER=list.sort` shows `sorted_natural` within noise of `sorted`.
+

@@ -36,7 +36,7 @@ fn llvm_release_matches_cranelift_fault_frames() {
     let cranelift = build_and_run("cranelift", &dir.join("cranelift"));
     let llvm = build_and_run("llvm", &dir.join("llvm"));
     let _ = std::fs::remove_dir_all(&dir);
-    assert_eq!(llvm.0, Some(70), "{}", llvm.1);
+    assert_eq!(llvm.0, Some(67), "{}", llvm.1);
     assert_eq!(llvm, cranelift);
     assert!(
         llvm.1.contains("overflow_frames.ms:2 in add_one"),

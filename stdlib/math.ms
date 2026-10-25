@@ -1,7 +1,3 @@
-extern def msstd_math_abs(value: Float) -> Float
-
-extern def msstd_math_abs_int(value: Int) -> Int
-
 extern def msstd_math_acos(value: Float) -> Float
 
 extern def msstd_math_asin(value: Float) -> Float
@@ -61,12 +57,6 @@ extern def msstd_math_cbrt(value: Float) -> Float
 extern def msstd_math_expm1(value: Float) -> Float
 
 extern def msstd_math_log1p(value: Float) -> Float
-
-extern def msstd_math_sign(value: Float) -> Float
-
-extern def msstd_math_sign_int(value: Int) -> Int
-
-extern def msstd_math_to_float32(value: Float) -> Float
 
 extern def msstd_math_is_integer(value: Float) -> Bool
 
@@ -152,6 +142,10 @@ extern def msstd_bigint_remainder(
     other: BigInt
 ) -> Result[BigInt, BigIntError]
 
+extern def msstd_bigint_quotient(value: BigInt, other: BigInt) -> BigInt
+
+extern def msstd_bigint_modulo(value: BigInt, other: BigInt) -> BigInt
+
 extern def msstd_bigint_compare(value: BigInt, other: BigInt) -> Int
 
 extern def msstd_bigint_bit_and(value: BigInt, other: BigInt) -> BigInt
@@ -193,14 +187,6 @@ extern def msstd_bigint_parse(
     radix: Int,
     max_digits: Optional[Int]
 ) -> Result[BigInt, BigIntError]
-
-# Returns the absolute value of a floating-point number.
-export def abs(value: Float) -> Float:
-    return msstd_math_abs(value)
-
-# Returns the absolute value of an integer.
-export def abs_int(value: Int) -> Int:
-    return msstd_math_abs_int(value)
 
 # Returns the inverse cosine in radians.
 export def acos(value: Float) -> Float:
@@ -272,32 +258,6 @@ export def min[T: Comparable](left: T, right: T) -> T:
 
     return left
 
-# Returns the greatest of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def max_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) > 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
-
-# Returns the least of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def min_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) < 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
-
 # Returns π, the ratio of a circle's circumference to its diameter.
 export def pi() -> Float:
     return msstd_math_pi()
@@ -361,18 +321,6 @@ export def expm1(value: Float) -> Float:
 # Returns the natural logarithm of one plus `value`, accurate for values near zero.
 export def log1p(value: Float) -> Float:
     return msstd_math_log1p(value)
-
-# Returns -1.0, 0.0 or 1.0 by sign, preserving signed zero and NaN.
-export def sign(value: Float) -> Float:
-    return msstd_math_sign(value)
-
-# Returns -1, 0 or 1 as the integer is negative, zero or positive.
-export def sign_int(value: Int) -> Int:
-    return msstd_math_sign_int(value)
-
-# Rounds to the nearest 32-bit floating-point value and widens it back to Float.
-export def to_float32(value: Float) -> Float:
-    return msstd_math_to_float32(value)
 
 # Reports whether the value is finite and has no fractional part.
 export def is_integer(value: Float) -> Bool:
@@ -536,7 +484,9 @@ export type BigIntError:
     # The text exceeds `max_digits` after excluding at most one leading sign; this check precedes syntax validation.
     case LimitExceeded
 
-# An arbitrary-precision signed integer with explicit arithmetic operations.
+# An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
+# both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
+# divide and remainder return a Result for callers that want an error value instead of a fault.
 export extern type BigInt
 
 impl BigInt:
