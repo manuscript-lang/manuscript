@@ -50,7 +50,7 @@ Manuscript is in alpha: syntax, APIs and platform behavior can change, and these
 
 **Ownership you can follow, no garbage collector.** Values have one owner and are dropped at their last use. `var` marks mutation at the declaration and at the call (`reset(var counter)`), `.clone()` makes copies visible, and borrows are lexical with no lifetimes in source. An HTTP server holding 10,000 idle connections sits at 31 MB where Go's `net/http` uses 197 MB, and it answers `/health` at 76-82k requests per second against Go's 55k on the same machine.
 
-**Batteries included.** Files, streams, processes, HTTP client and server, TCP, JSON (faster than V8 on every document we measured), JSON streaming, CSV, TOML, YAML, HTML, time, crypto, random, regex, logging, decimal, semver, archives, sized numerics (`Int8` to `Int64`, `Float32`), and a test runner, all in `ms`. Find any of it with `ms search_symbol <words>`.
+**Batteries included.** Files, streams, processes, HTTP client and server, TCP, JSON (1.2-3.4x the speed of V8 on the standard documents here), JSON streaming, CSV, TOML, YAML, HTML, time, crypto, random, regex, logging, decimal, semver, archives, sized numerics (`Int8` to `Int64`, `Float32`), and a test runner, all in `ms`. Find any of it with `ms search_symbol <words>`.
 
 **Measured, not asserted.** The [agent benchmark](bench/agent/README.md) gives the same twenty challenges to a coding agent in Manuscript, TypeScript, Go and Rust with hidden tests, and the [performance benchmarks](bench/perf/README.md) pin every speed claim to a script, a machine and a revision. Both are in this repository, including the results that are not flattering yet.
 
@@ -93,7 +93,7 @@ Faster than Go on 8 of 10 and level on the ciphers; the CSV grouping is the one 
 
 ### JSON against Node (V8)
 
-`@std/json` `parse` and `stringify` against `JSON.parse` and `JSON.stringify` on the standard documents. MB per second, median of at least five runs after warm-up. Reproduce: `sh bench/perf/json/run.sh`; details in [`bench/perf/json/results.md`](bench/perf/json/results.md).
+`@std/json` `parse` and `stringify` against `JSON.parse` and `JSON.stringify` on the standard documents. MB per second, median of at least five runs after warm-up. Four runs here agree within a few percent; on another machine the twitter parse and citm stringify rows came in just under Node (0.94x and 0.88x), so read the range as 0.9-3.4x across hardware. Reproduce: `sh bench/perf/json/run.sh`; details in [`bench/perf/json/results.md`](bench/perf/json/results.md).
 
 | document | parse: Node | parse: Manuscript | speed | stringify: Node | stringify: Manuscript | speed |
 |---|---:|---:|---:|---:|---:|---:|

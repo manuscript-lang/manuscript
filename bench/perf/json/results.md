@@ -17,7 +17,7 @@ linux/amd64, four cores, Node v22.22.0, `ms` Release build (LLVM).
 | citm_catalog | parse | 671 | 904 | 1.35x |
 | citm_catalog | stringify | 908 | 1269 | 1.40x |
 
-Manuscript is ahead of V8 on every row. `parse` builds a `JsonValue` tree, the same work `JSON.parse` does for a JavaScript value; typed `parse[T]` into records is a separate path and is not measured here.
+Manuscript is ahead of V8 on every row here, and three further runs on the same machine the same day agreed within a few percent (twitter parse 1.29-1.32x, citm stringify 1.41-1.49x). A run on another machine by the JsonValue thread the same day measured twitter parse at 0.94x and citm stringify at 0.88x, so across hardware the range is about 0.9-3.4x; rerun on your own machine before citing a row. `parse` builds a `JsonValue` tree, the same work `JSON.parse` does for a JavaScript value; typed `parse[T]` into records is a separate path and is not measured here.
 
 ## History
 
