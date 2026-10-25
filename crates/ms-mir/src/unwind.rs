@@ -215,6 +215,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
         ret: Ty::BOOL,
         noreturn: false,
         pure_: false,
+        fresh: false,
     });
     let mut b = FuncBuilder::new(
         m,
