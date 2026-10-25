@@ -2,7 +2,7 @@
 
 **The language for the agentic era.**
 
-Manuscript is a ground-up attempt to build the ideal language for agentic development.
+Manuscript is a programming language designed for agents to write and humans to understand.
 
 When agents write software, the language shapes how much context they need, how reliably they can make a change, and how well people can understand the result. Manuscript designs for that whole relationship: token-efficient code that stays readable, a small and regular language that is easy to reason about, and compiler-backed tools that make programs inspectable.
 
