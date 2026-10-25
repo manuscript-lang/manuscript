@@ -35,11 +35,19 @@ test "serve ends a connection that trickles its request head":
 
                 sent += 1
 
-            let reply = (client.read(timeout: 3.seconds) | try expect_ok)
-            let text = reply.get(Bytes([])).decode_utf8().get("")
-            if text.starts_with("HTTP/1.1 200"): return error(
-                TextError(f"incomplete request was served: {text}")
+            # The server closes the connection, so a write fails before the trickle ends. The
+            # read may then see an error (a reset on macOS) instead of an end of stream.
+            if sent == 30: return error(
+                TextError("trickled request head was never cut off")
             )
+
+            if let reply = client.read(timeout: 3.seconds):
+                let text = reply.get(Bytes([])).decode_utf8().get("")
+                if text.starts_with("HTTP/1.1 200"): return error(
+                    TextError(
+                        f"incomplete request was served: {text}"
+                    )
+                )
 
 test "close cancels a handler that outlives the grace period":
     let net = network()
@@ -54,11 +62,14 @@ test "close cancels a handler that outlives the grace period":
             sleep(100.milliseconds)
             server.close()
 
-            let reply = (client.read(timeout: 5.seconds) | try expect_ok)
-            let text = reply.get(Bytes([])).decode_utf8().get("")
-            if text.starts_with("HTTP/1.1 200"): return error(
-                TextError("handler finished instead of being cancelled")
-            )
+            # An error here is the connection ending (a reset on macOS); only a served reply fails.
+            if let reply = client.read(timeout: 5.seconds):
+                let text = reply.get(Bytes([])).decode_utf8().get("")
+                if text.starts_with("HTTP/1.1 200"): return error(
+                    TextError(
+                        "handler finished instead of being cancelled"
+                    )
+                )
 
 def expect_file_reply(conn: Connection) -> Result[Unit, Error]:
     let reply = (conn.read(timeout: 10.seconds) | try expect_ok)
