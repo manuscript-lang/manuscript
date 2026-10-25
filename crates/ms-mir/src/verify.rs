@@ -1391,12 +1391,34 @@ pub fn dominators(f: &Func, rpo: &[Block], preds: &[Vec<Block>]) -> Vec<usize> {
 /// instruction result or an owned block parameter. A lent result must not, since the owner is
 /// dropped before the caller reads it.
 fn borrows_from_owned(m: &Module, f: &Func) -> Vec<bool> {
+    let mut memo = std::collections::HashMap::new();
+    sources(m, f, &mut memo)
+        .into_iter()
+        .map(|s| s & OWNED != 0)
+        .collect()
+}
+
+/// Source bit of a value the function owns; bit `i + 1` is entry parameter `i`, and the last
+/// bit stands for every parameter past the others.
+const OWNED: u128 = 1;
+const EVERY_PARAM: u128 = !OWNED;
+
+fn param_bit(i: usize) -> u128 {
+    if i < 126 { 1 << (i + 1) } else { 1 << 127 }
+}
+
+/// What the storage of each value of `f` comes from, as source bits.
+fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u128>) -> Vec<u128> {
     let rc = |v: Value| m.needs_drop(f.ty(v));
-    let mut from = vec![false; f.values.len()];
-    for b in &f.blocks {
-        for p in &b.params {
+    let mut src = vec![0u128; f.values.len()];
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (i, p) in b.params.iter().enumerate() {
+            if !rc(p.value) {
+                continue;
+            }
             // An owned parameter (one the function consumes) is dropped at return, like a local.
-            from[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
+            let own = if p.mode == Mode::Own { OWNED } else { 0 };
+            src[p.value.index()] = own | if bi == 0 { param_bit(i) } else { 0 };
         }
     }
     loop {
@@ -1405,41 +1427,72 @@ fn borrows_from_owned(m: &Module, f: &Func) -> Vec<bool> {
             for i in &b.insts {
                 let Some(r) = i.res else { continue };
                 let x = match m.result_mode(f, i) {
-                    None | Some(Mode::Var) => false,
-                    Some(Mode::Own) => true,
-                    Some(Mode::Borrow) => match i.op {
-                        Op::Call => i.args.iter().any(|a| rc(*a) && from[a.index()]),
-                        Op::RecGet
-                        | Op::AltGet
-                        | Op::ListGet
-                        | Op::ListGetNn
-                        | Op::ListGetU
-                        | Op::OptGet
-                        | Op::OptView => i.args.first().is_some_and(|a| from[a.index()]),
-                        _ => false,
+                    None | Some(Mode::Var) => 0,
+                    Some(Mode::Own) => OWNED,
+                    Some(Mode::Borrow) => match (i.op, i.imm) {
+                        // A lending call's result comes from the arguments its callee lends from.
+                        (Op::Call, Imm::Func(g)) => {
+                            let mask = lent_mask(m, g.index(), memo);
+                            i.args
+                                .iter()
+                                .enumerate()
+                                .filter(|(j, a)| mask & param_bit(*j) != 0 && rc(**a))
+                                .fold(0, |acc, (_, a)| acc | src[a.index()])
+                        }
+                        (
+                            Op::RecGet
+                            | Op::AltGet
+                            | Op::ListGet
+                            | Op::ListGetNn
+                            | Op::ListGetU
+                            | Op::OptGet
+                            | Op::OptView,
+                            _,
+                        ) => i.args.first().map_or(0, |a| src[a.index()]),
+                        _ => 0,
                     },
                 };
-                if x && !from[r.index()] {
-                    from[r.index()] = true;
+                if x & !src[r.index()] != 0 {
+                    src[r.index()] |= x;
                     changed = true;
                 }
             }
             b.term.for_each_target(|t| {
                 let params = &f.blocks[t.block.index()].params;
                 for (p, a) in params.iter().zip(&t.args) {
-                    if p.mode == Mode::Borrow
-                        && rc(p.value)
-                        && from[a.index()]
-                        && !from[p.value.index()]
-                    {
-                        from[p.value.index()] = true;
+                    let x = src[a.index()];
+                    if p.mode == Mode::Borrow && rc(p.value) && x & !src[p.value.index()] != 0 {
+                        src[p.value.index()] |= x;
                         changed = true;
                     }
                 }
             });
         }
         if !changed {
-            return from;
+            return src;
         }
     }
+}
+
+/// The parameters a lending function's result can come from, as source bits: every parameter
+/// for a function without a body, or while its own analysis is still running (recursion).
+fn lent_mask(m: &Module, g: usize, memo: &mut std::collections::HashMap<usize, u128>) -> u128 {
+    if let Some(mask) = memo.get(&g) {
+        return *mask;
+    }
+    let f = &m.funcs[g];
+    if f.blocks.is_empty() {
+        return EVERY_PARAM;
+    }
+    memo.insert(g, EVERY_PARAM);
+    let src = sources(m, f, memo);
+    let mut mask = 0;
+    for b in &f.blocks {
+        if let Term::Ret(Some(v)) = &b.term {
+            mask |= src[v.index()];
+        }
+    }
+    let mask = mask & EVERY_PARAM;
+    memo.insert(g, mask);
+    mask
 }

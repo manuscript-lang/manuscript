@@ -103,3 +103,23 @@ test "let bindings of lending calls and accessors are lent":
     try expect_true(last_of(shelf([])).is_none())
     try expect_equal(age(a, "ada"), some("36"))
     try expect_true(age(a, "grace").is_none())
+
+def find(items: List[Shelf], first: String) -> ref Optional[Shelf]:
+    for s in items:
+        if s.names[0] == first:
+            return some(s)
+    return none
+
+test "a lent result keeps its argument alive after the argument's last use":
+    let items = [shelf(["ada lovelace", "and more"]), shelf(["grace hopper"])]
+
+    # `items` is not used again, so its drop could move up to the call.
+    if let s = find(items, "ada lovelace"):
+        try expect_equal(s.names[1], "and more")
+
+test "an owned temporary in an argument that is not lent from":
+    let s = shelf(["ada", "grace"])
+    let racks = [s.clone()]
+    let h = Holder(item: Item.Plain, items: [], racks: racks)
+    if let found = find(h.racks, "ad" + "a"):
+        try expect_equal(found.names, ["ada", "grace"])

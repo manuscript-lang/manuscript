@@ -333,6 +333,12 @@ impl Walker<'_> {
         (self.ret_expr, self.ret_hit) = saved;
     }
 
+    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
+    /// and another copy of the handle can change that storage, so what it lends is a copy.
+    fn copy_handle(&self, e: &Expr) -> bool {
+        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
+    }
+
     /// Whether `e` is the `none` literal.
     fn is_none(&self, e: &Expr) -> bool {
         matches!(
@@ -360,8 +366,8 @@ impl Walker<'_> {
         }
     }
 
-    /// Whether `e` is a lending call whose lent argument is a temporary of the call: a
-    /// non-place value, a default, or another lending call over one.
+    /// Whether `e` is a lending call whose lent argument is a temporary of the call (a
+    /// non-place value, a default, or another lending call over one) or a `Copy` handle.
     fn lends_temporary(&self, e: &Expr) -> bool {
         let ExprKind::Call { callee, args } = &e.kind else {
             return false;
@@ -372,8 +378,9 @@ impl Walker<'_> {
                 // A default argument is a temporary of the call.
                 return matches!(slot, Slot::Param(_));
             };
-            !self.is_place(a)
-                && (self.pure_origins(a).is_none_or(|o| o.is_empty()) || self.lends_owned(a))
+            self.copy_handle(a)
+                || !self.is_place(a)
+                    && (self.pure_origins(a).is_none_or(|o| o.is_empty()) || self.lends_owned(a))
         })
     }
 
@@ -1072,6 +1079,25 @@ impl Walker<'_> {
         if mutable && self.bind_getter(&b, role, pattern, value) {
             return;
         }
+        // `var x = handle.get()` would change a copy, not the shared value.
+        if mutable
+            && class != Class::Copy
+            && let ExprKind::Call { callee, .. } = &value.kind
+            && let ExprKind::Member { left, .. } = &callee.kind
+            && self.copy_handle(left)
+        {
+            let text = self.expr_text(value);
+            self.expr(value, Demand::Read);
+            self.error(
+                pattern.pos,
+                format!(
+                    "`var {}` cannot borrow `{text}` mutably: it is a read-only result; copy it with `{text}.{COPY}()` to own it",
+                    b.name
+                ),
+            );
+            self.declare(&b, role, Perm::Mutable, None, false);
+            return;
+        }
         // A `let` of a scalar copies; a `var` borrows its place whatever the type.
         if (mutable || class != Class::Copy)
             && let Some(origins) = self.projection_origins(value)
@@ -1660,7 +1686,7 @@ impl Walker<'_> {
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
         };
-        if !self.is_place(left) {
+        if !self.is_place(left) || self.copy_handle(left) {
             return None;
         }
         let origins = self.pure_places(left)?;
@@ -1679,6 +1705,9 @@ impl Walker<'_> {
         let ExprKind::Member { left, .. } = &callee.kind else {
             return None;
         };
+        if self.copy_handle(left) {
+            return None;
+        }
         let origins = self.pure_places(left)?;
         Some(origins.iter().map(|o| o.then(Step::Element)).collect())
     }
@@ -2036,7 +2065,8 @@ impl Walker<'_> {
         }
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
         // consumes it; only a result borrowed from a variable or part of one must stay in place.
-        let on_place = receiver_expr.is_some_and(|r| self.is_place(r));
+        // A `Copy` handle lends nothing that stays put, so its accessor's kept result is a copy.
+        let on_place = receiver_expr.is_some_and(|r| self.is_place(r) && !self.copy_handle(r));
         if modes.accessor && on_place && d == Demand::Consume && self.class_of(e) != Class::Copy {
             // Returning the part of a read-only parameter lends it to the caller.
             let lent = self

@@ -24,10 +24,10 @@ pub fn run(m: &mut Module) -> bool {
         if m.funcs[fi].blocks.is_empty() {
             continue;
         }
-        let mut f = std::mem::replace(
-            &mut m.funcs[fi],
-            Func::new("", Vec::new(), crate::types::Ty::UNIT),
-        );
+        // The stand-in keeps `ret_borrowed`, so a recursive call still reads as lending.
+        let mut stand_in = Func::new("", Vec::new(), crate::types::Ty::UNIT);
+        stand_in.ret_borrowed = m.funcs[fi].ret_borrowed;
+        let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
         changed |= function(m, &mut f);
         m.funcs[fi] = f;
     }
@@ -296,8 +296,9 @@ fn family(m: &Module, f: &Func, ix: &Index, v: Value) -> HashSet<Value> {
                     // extend the family (a concat chain would otherwise keep every
                     // intermediate alive until the end of the scope).
                     let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
-                    if i.op == Op::CallRt
-                        && !fresh
+                    // A lending function's result is a borrow of its arguments.
+                    let lent = matches!(i.imm, Imm::Func(g) if m.funcs[g.index()].ret_borrowed);
+                    if (i.op == Op::CallRt && !fresh || i.op == Op::Call && lent)
                         && let Some(r) = i.res
                         && !is_scalar(m, f.ty(r))
                     {
