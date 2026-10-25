@@ -291,7 +291,6 @@ test "set algebra and enumeration preserve source values":
     (empty.is_subset_of(other: left)) | try expect_true
     (left.is_superset_of(other: empty)) | try expect_true
     (empty.is_disjoint_from(other: left)) | try expect_true
-    left.entries() | try expect_equal([[1, 1], [2, 2], [3, 3]])
 
     var observed_left: List[Int] = []
     left.for_each(

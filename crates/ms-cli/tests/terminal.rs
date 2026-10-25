@@ -21,7 +21,7 @@ def describe(e: TerminalEvent) -> String:
 export def main() -> Int:
     let raw = terminal().raw_mode(alternate_screen: False)
     if let t = raw:
-        with t as term:
+        with let term = t:
             term.move_cursor(1, 2)
             term.show_cursor(False)
             term.erase(EraseRegion.LineEnd)

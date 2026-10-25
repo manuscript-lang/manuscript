@@ -271,6 +271,8 @@ pub struct Info {
     pub fold_done: bool,
     /// Body checks need a later callback result context.
     pub inference_deferred: bool,
+    /// The call as lowered: this expression stands for the checked, equivalent call written here.
+    pub desugared: Option<Rc<Expr>>,
 }
 
 impl Info {
@@ -356,20 +358,17 @@ pub struct Facts {
     pub type_refs: HashMap<NodeId, Ty>,
     /// Name expressions that stand for a constant's initializer call.
     pub const_use: HashSet<NodeId>,
-    /// The next node id for statements synthesized while checking.
-    pub next_node: u32,
 }
 
 impl Facts {
-    /// A fresh node id for a synthesized node.
-    pub fn fresh_id(&mut self) -> NodeId {
-        let id = NodeId(self.next_node);
-        self.next_node += 1;
-        id
-    }
     /// Fact of an expression.
     pub fn info(&self, id: NodeId) -> Option<&Info> {
         self.exprs.get(id.index()).and_then(|i| i.as_ref())
+    }
+    /// A node id past every parsed or synthetic one, for a node the checker builds.
+    pub fn fresh_id(&mut self) -> NodeId {
+        self.exprs.push(None);
+        NodeId((self.exprs.len() - 1) as u32)
     }
     /// Sets the fact of an expression.
     pub fn set_info(&mut self, id: NodeId, info: Info) {
@@ -410,7 +409,6 @@ impl ModuleData {
     pub fn new(m: &Module, decls: Vec<DeclRef>, node_count: u32) -> ModuleData {
         let mut facts = Facts::default();
         facts.exprs.resize_with(node_count as usize, || None);
-        facts.next_node = node_count;
         ModuleData {
             file: n(&m.file),
             source: m.source.clone(),

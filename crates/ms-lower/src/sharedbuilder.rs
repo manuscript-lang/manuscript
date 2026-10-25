@@ -223,6 +223,13 @@ impl<'a> FnLower<'a> {
                     .expect("load");
                 Ok(Val { v, own: false })
             }
+            "locked" => {
+                let v = self
+                    .b
+                    .emit(Op::Load, &[taken], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
+                    .expect("load");
+                Ok(Val { v, own: false })
+            }
             "take" => {
                 self.fault_if_flag(taken, true, "shared value is in use");
                 let yes = self.b.bconst(true);

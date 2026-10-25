@@ -18,7 +18,7 @@ def grandchild(ch: Channel[Unit, Unit]) -> Int:
     return 0
 
 def child(ch: Channel[Unit, Unit]) -> Int:
-    with ProcessGroup[Int]() as group:
+    with let group = ProcessGroup[Int]():
         var g = group.spawn(grandchild).get()
         var c = ch
         c.send(())
@@ -27,7 +27,7 @@ def child(ch: Channel[Unit, Unit]) -> Int:
 
 export def main() -> Int:
     filesystem().remove(marker())
-    with ProcessGroup[Int, Unit, Unit]() as group:
+    with let group = ProcessGroup[Int, Unit, Unit]():
         var c = group.spawn(child).get()
         c.channel.receive()
     sleep(duration(3500000000))

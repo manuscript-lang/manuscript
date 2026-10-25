@@ -8,7 +8,7 @@ from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
-from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
+from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_channel
 
 type Job:
     id: Int
@@ -104,11 +104,11 @@ def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
     return ok(answer)
 
 test "a worker answers a message":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         try expect_equal(ask(group, 12), ok(144))
 
 test "a worker answers each message in order":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(squares).get(none)
         let sent = worker.channel.send(1)
         try expect_ok(sent)
@@ -121,7 +121,7 @@ test "a worker answers each message in order":
         try expect_ok(worker.join())
 
 test "records cross as JSON":
-    with WorkerGroup[Job, Done]() as group:
+    with let group = WorkerGroup[Job, Done]():
         var worker = group.spawn(count_words).get(none)
         try expect_ok(worker.channel.send(Job(id: 7, words: ["a", "b", "c"])))
         try expect_equal(worker.channel.receive(), ok(some(Done(id: 7, count: 3))))
@@ -129,7 +129,7 @@ test "records cross as JSON":
         try expect_ok(worker.join())
 
 test "many messages wait for room":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(squares).get(none)
         var total = 0
 
@@ -143,7 +143,7 @@ test "many messages wait for room":
         try expect_equal(total, 2646700)
 
 test "workers run side by side with memory of their own":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var first = group.spawn(sum_until_closed).get(none)
         var second = group.spawn(sum_until_closed).get(none)
 
@@ -157,52 +157,52 @@ test "workers run side by side with memory of their own":
         try expect_ok(second.join())
 
 test "a fault in a worker is a result, not the end of the program":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
         let outcome = worker.join()
         let ignored = try expect_error(outcome)
 
 test "cancelling a worker stops it":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(announce_then_wait).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         worker.cancel()
         try expect_equal(worker.join(), error(WorkerError.Cancelled))
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(spin_then_wait).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         worker.cancel()
         try expect_equal(worker.join(), error(WorkerError.Cancelled))
 
 test "cancelling a worker right after spawn is not lost":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(sleep_long).get(none)
         worker.cancel()
         try expect_equal(worker.join(), error(WorkerError.Cancelled))
 
 test "leaving the group stops workers that are still running":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         let worker = group.spawn(wait_forever)
         let ignored = try expect_ok(worker)
 
     try expect_equal(1, 1)
 
 test "sends after the worker ended report the channel closed":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
         let outcome = worker.join()
         let ignored = try expect_error(worker.channel.send(1))
 
 test "a worker sleeps without blocking its starter":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(naps).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_ok(worker.join())
 
 test "standard input stays with the main thread":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(reads_stdin).get(none)
         let outcome = worker.join()
         let ignored = try expect_error(outcome)
@@ -217,7 +217,7 @@ def quick() -> Unit:
     var ch = worker_channel[Int, Int]()
 
 test "cancelling a joined worker's handle leaves a later worker alone":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var a = group.spawn(quick).get(none)
         try expect_ok(a.join())
         var b = group.spawn(delayed_send).get(none)
@@ -231,7 +231,7 @@ def sends_one() -> Unit:
     ch.send(1)
 
 test "a finished worker's channel ends with none instead of an error":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(sends_one).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_equal(worker.channel.receive(), ok(none))
@@ -239,12 +239,12 @@ test "a finished worker's channel ends with none instead of an error":
 
 def runs_faulting_task() -> Unit:
     var ch = worker_channel[Int, Int]()
-    with TaskGroup[Int]() as tasks:
+    with let tasks = TaskGroup[Int]():
         let t = tasks.spawn(lambda c: panic("task inside worker faults"))
         t.result()
 
 test "a fault in a task a worker started is the worker's fault":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(runs_faulting_task).get(none)
         let outcome = worker.join()
         let cause = try expect_error(outcome)
@@ -256,12 +256,12 @@ def sleeps_long() -> Unit:
 
 def joins_nested() -> Unit:
     var ch = worker_channel[Int, Int]()
-    with WorkerGroup[Int, Int]() as inner:
+    with let inner = WorkerGroup[Int, Int]():
         var worker = inner.spawn(sleeps_long).get(none)
         let outcome = worker.join()
 
 test "cancelling a worker that is joining another ends it as cancelled":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var outer = group.spawn(joins_nested).get(none)
         sleep(duration(nanoseconds: 50000000))
         outer.cancel()
@@ -275,7 +275,26 @@ def touches_network() -> Unit:
     ch.send(1)
 
 test "a worker that uses the network ends cleanly":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(touches_network).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_ok(worker.join())
+
+
+def joined_ok(w: Worker[Int, Int]) -> Int:
+    var held = w
+    if held.join().is_ok():
+        return 1
+
+    return 0
+
+test "tasks joining clones of one worker all see its outcome":
+    with WorkerGroup[Int, Int]() as workers:
+        let worker = workers.spawn(naps).get(none)
+        let first_copy = worker.clone()
+        let second_copy = worker.clone()
+        with TaskGroup[Int]() as tasks:
+            let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
+            let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))
+            first.result() | try expect_ok | try expect_equal(1)
+            second.result() | try expect_ok | try expect_equal(1)

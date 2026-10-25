@@ -13,23 +13,17 @@ from "@std/math.ms" import (
     sinh,
     tan,
     tanh,
-    abs,
     pi,
     e,
     remainder,
     max,
     min,
-    max_of,
-    min_of,
     acosh,
     asinh,
     atanh,
     cbrt,
     expm1,
     log1p,
-    sign,
-    sign_int,
-    to_float32,
     is_integer,
     is_safe_integer,
     infinity,
@@ -50,7 +44,7 @@ from "@std/math.ms" import (
 )
 
 def near(actual: Float, expected: Float) -> Bool:
-    return abs(actual - expected) < 0.000000001
+    return (actual - expected).abs() < 0.000000001
 
 test "inverse trigonometric functions return radians":
     try expect_false(not near(acos(1.0), 0.0))
@@ -100,12 +94,12 @@ test "extrema use comparator signs without negating Int minimum":
     try expect_equal(max(low.clone(), high.clone()).rank, 2)
 
     for values in [[high.clone(), low.clone()], [low.clone(), high.clone()]]:
-        try expect_equal(min_of(values.clone()).get().rank, 1)
-        try expect_equal(max_of(values.clone()).get().rank, 2)
+        try expect_equal(values.min().get().rank, 1)
+        try expect_equal(values.max().get().rank, 2)
 
     let values = [high.clone(), low.clone(), Ranked(1), Ranked(2)]
-    var minimum = min_of(values.clone()).get().clone()
-    var maximum = max_of(values.clone()).get().clone()
+    var minimum = values.min().get().clone()
+    var maximum = values.max().get().clone()
     minimum.rank = 0
     maximum.rank = 3
     try expect_false(values[1].rank != 1 or values[2].rank != 1)
@@ -126,19 +120,19 @@ test "inverse hyperbolic cube root and precision helpers":
     try expect_true(near(log1p(1.0), ln2()))
 
 test "sign and integer predicates":
-    try expect_equal(sign(-3.5), -1.0)
-    try expect_equal(sign(2.0), 1.0)
-    try expect_true(sign(nan()).is_nan())
-    try expect_equal(sign_int(-9), -1)
-    try expect_equal(sign_int(0), 0)
-    try expect_equal(sign_int(12), 1)
+    try expect_equal((-3.5).sign(), -1.0)
+    try expect_equal(2.0.sign(), 1.0)
+    try expect_true(nan().sign().is_nan())
+    try expect_equal((-9).sign(), -1)
+    try expect_equal(0.sign(), 0)
+    try expect_equal(12.sign(), 1)
     try expect_true(is_integer(4.0))
     try expect_false(is_integer(4.5))
     try expect_false(is_integer(infinity()))
     try expect_false(is_integer(nan()))
     try expect_true(is_safe_integer(9007199254740991.0))
     try expect_false(is_safe_integer(9007199254740992.0))
-    try expect_equal(to_float32(0.1) == 0.1, False)
+    try expect_equal(0.1.to_float32().to_float64() == 0.1, False)
 
 test "numeric limits and constants match IEEE and JavaScript":
     try expect_true(infinity() > max_float())

@@ -32,9 +32,9 @@ test "views and functions retain local implementations across modules":
 
     let events = ListBuilder[Int]()
     let resource = Resource(events)
-    with first_resource(resource) as first_close:
+    with let first_close = first_resource(resource):
         let active = True
-    with second_resource(resource) as second_close:
+    with let second_close = second_resource(resource):
         let active = True
 
     let values = events.freeze()

@@ -15,7 +15,7 @@ export def main() -> Int:
         address: "127.0.0.1:0", handler: handle, max_requests: 2, max_body_bytes: 1024,
         max_response_bytes: 1024, timeout: 2.seconds, grace: 0.seconds
     ):
-        with acquired as server:
+        with let server = acquired:
             if stdout().write(f"{server.address()}\n").is_error():
                 return 1
 

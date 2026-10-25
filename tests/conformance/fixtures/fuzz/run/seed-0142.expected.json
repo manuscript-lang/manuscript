@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "f1 = Infinity\nb2 = true\ni3 = -32\nf4 = Infinity\ns5 = [1:msalpha]\nb6 = false\n-1 -9 false sum -10\ngcd(1801, 3687) = 1\nb7 = true\nfib(7) = 13\nl8 = [] len 0\ni9 = 327895\ncollatz(906) = 15\nf10 = NaN\ni11 = -17\ni12 = 655807\n",
     "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0142.ms:86 in main\n"
   }

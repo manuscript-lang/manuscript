@@ -50,8 +50,8 @@
         "position": {
           "file": "pkg-parser-testinlinesuites-7.ms",
           "line": 7,
-          "column": 10,
-          "offset": 232
+          "column": 18,
+          "offset": 240
         }
       },
       {
@@ -61,15 +61,15 @@
         "position": {
           "file": "pkg-parser-testinlinesuites-7.ms",
           "line": 7,
-          "column": 27,
-          "offset": 249
+          "column": 30,
+          "offset": 252
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testinlinesuites-7.ms:6:14: resolution: unknown binding values; add: from \"@std/bytes.ms\" import values\n<DIR>/pkg-parser-testinlinesuites-7.ms:6:22: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-7.ms:7:10: resolution: unknown binding resource; declare it with 'let resource = ...' before use, define 'def resource(...) -> T:', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-7.ms:7:27: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testinlinesuites-7.ms:6:14: resolution: unknown binding values; add: from \"@std/bytes.ms\" import values\n<DIR>/pkg-parser-testinlinesuites-7.ms:6:22: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-7.ms:7:18: resolution: unknown binding resource; declare it with 'let resource = ...' before use, define 'def resource(...) -> T:', or import it from a module\n<DIR>/pkg-parser-testinlinesuites-7.ms:7:30: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

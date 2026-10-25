@@ -146,7 +146,7 @@ fn try_after_an_owned_argument_releases_it() {
 fn with_closes_on_every_exit_and_generic_bounds_dispatch_statically() {
     let mir = lower(
         "with",
-        "from \"@std/core.ms\" import Closeable\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    def close() -> Unit:\n        let x = self.n\n\ndef run[T: Closeable](r: T, early: Bool) -> Int:\n    with r as it:\n        if early:\n            return 1\n    return 2\n\nexport def main() -> Int:\n    var i = 0\n    while i < 3:\n        with Res(i) as c:\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: True) + i\n",
+        "from \"@std/core.ms\" import Closeable\n\ntype Res:\n    n: Int\n\nimpl Closeable for Res:\n    def close() -> Unit:\n        let x = self.n\n\ndef run[T: Closeable](r: T, early: Bool) -> Int:\n    with let it = r:\n        if early:\n            return 1\n    return 2\n\nexport def main() -> Int:\n    var i = 0\n    while i < 3:\n        with let c = Res(i):\n            i += 1\n            if i == 1:\n                continue\n            break\n    return run(r: Res(1), early: True) + i\n",
     );
     assert!(mir.matches("call @Res.close").count() >= 4);
     assert!(mir.contains("cleanup.push"));
@@ -223,7 +223,7 @@ fn direct_call_with_try_default_runs_it_in_the_callee_frame() {
 fn entries_keys_and_add_default_from_lower() {
     let mir = lower(
         "entries",
-        "from \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    var m: Map[String, Int] = Map()\n    m.add_default_from(\"a\", lambda (key: String): 5)\n    let items = [4, 5]\n    let r = stdout().write(f\"{items.keys()} {items.entries().length()} {[1].to_set().entries()}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    var m: Map[String, Int] = Map()\n    m.add_default_from(\"a\", lambda (key: String): 5)\n    let items = [4, 5]\n    let r = stdout().write(f\"{items.keys()} {items.entries().length()}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("msrt_map_contains"));
 }

@@ -70,7 +70,7 @@ def tail_cleanup(
     var visits: List[Int],
     marker: String
 ) -> Result[Int, TextError]:
-    with TailCleanup(marker) as resource:
+    with let resource = TailCleanup(marker):
         let value = try visit(result, var visits)
         return ok(value)
 
@@ -93,7 +93,7 @@ test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-tail-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
         let first = f"{temporary.path()}/first"
         let second = f"{temporary.path()}/second"
         tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(

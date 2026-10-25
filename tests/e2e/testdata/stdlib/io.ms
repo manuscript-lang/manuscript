@@ -14,7 +14,7 @@ test "stream compositions invoke source implementations and preserve EOF":
 
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-io-") as directory:
+    with let directory = try fs.temporary("manuscript-io-"):
         let path = f"{directory.path()}/copy.bin"
         let file = try fs.open(path: path, flags: "w", mode: 420)
         let source = MemoryStream("é🙂".to_bytes(), 0, closed: False)

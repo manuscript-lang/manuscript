@@ -126,7 +126,12 @@ impl Checker {
             StmtKind::For {
                 name, iter, body, ..
             } => self.check_for(s, *name, iter, body),
-            StmtKind::With { name, value, body } => self.check_with(s, *name, value, body),
+            StmtKind::With {
+                name,
+                mutable,
+                value,
+                body,
+            } => self.check_with(s, *name, *mutable, value, body),
         }
     }
 
@@ -535,7 +540,14 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    fn check_with(&mut self, s: &Stmt, name: Name, value: &Expr, body: &[Stmt]) -> (bool, bool) {
+    fn check_with(
+        &mut self,
+        s: &Stmt,
+        name: Name,
+        mutable: bool,
+        value: &Expr,
+        body: &[Stmt],
+    ) -> (bool, bool) {
         let i = self.expression(value, None);
         let t = i.t();
         if !is_invalid_id(&t) && !self.closeable(&t) {
@@ -568,7 +580,7 @@ impl Checker {
         }
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
-        let b = self.bind(name, &t, false, s.pos);
+        let b = self.bind(name, &t, mutable, s.pos);
         self.m()
             .facts_mut()
             .stmts

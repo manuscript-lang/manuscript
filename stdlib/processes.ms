@@ -13,6 +13,7 @@ from "@std/io.ms" import ReadStream, WriteStream
 from "@std/json.ms" import parse, stringify
 from "@std/process.ms" import CommandError, Stdio
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 from "@std/time.ms" import Duration
 
 # A running child, owned by its `Process`.
@@ -64,10 +65,10 @@ let FRAME_LIMIT = 16777216
 
 # Why a process gave no result.
 export type ProcessError:
-    # The process ended before its entry returned, with this exit status: 70 after a fault, -1
+    # The process ended before its entry returned, with this exit status: 67 after a fault, -1
     # when a signal ended it.
     case Exited(
-        # The exit status the parent observed: 70 after a fault in the child, -1 after a signal.
+        # The exit status the parent observed: 67 after a fault in the child, -1 after a signal.
         code: Int
     )
     # What the process sent could not be read.
@@ -144,32 +145,35 @@ def next_frame(
     inbox: Shared[Inbox]
 ) -> Result[Optional[Frame], ChannelError]:
     while True:
-        var state = inbox.take()
-        let available = state.pending.length()
+        with var state = lock(inbox):
+            let available = state.value.pending.length()
 
-        if available >= 5:
-            let size = read_integer(state.pending, 0, 4, False, True).get(0)
+            if available >= 5:
+                let size = read_integer(state.value.pending, 0, 4, False, True).get(0)
+                if size > FRAME_LIMIT:
+                    return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 
-            if size > FRAME_LIMIT:
-                inbox.put(state)
-                return error(ChannelError.Broken("a frame is larger than 16 MiB"))
+                if available >= 5 + size:
+                    let kind = state.value.pending.get(4)
+                    let body = (
+                        state
+                        .value
+                        .pending
+                        .slice(5, 5 + size)
+                        .get("".to_bytes())
+                    )
+                    state.value.pending = (
+                        state
+                        .value
+                        .pending
+                        .slice(5 + size, available)
+                        .get("".to_bytes())
+                    )
+                    if let text = body.decode_utf8():
+                        return ok(some(Frame(kind: kind, body: text)))
 
-            if available >= 5 + size:
-                let kind = state.pending.get(4)
-                let body = state.pending.slice(5, 5 + size).get("".to_bytes())
-                state.pending = (
-                    state
-                    .pending
-                    .slice(5 + size, available)
-                    .get("".to_bytes())
-                )
-                inbox.put(state)
-                if let text = body.decode_utf8():
-                    return ok(some(Frame(kind: kind, body: text)))
+                    return error(ChannelError.Broken("a frame is not UTF-8"))
 
-                return error(ChannelError.Broken("a frame is not UTF-8"))
-
-        inbox.put(state)
         if msstd_process_ipc_wait_reader(link):
             return ok(some(Frame(kind: RETRY, body: "")))
 
@@ -177,27 +181,27 @@ def next_frame(
         if chunk.is_empty():
             return ok(none)
 
-        var more = inbox.take()
-        more.pending = more.pending.concat(chunk)
-        inbox.put(more)
+        with var more = lock(inbox):
+            more.value.pending = more.value.pending.concat(chunk)
 
     return ok(none)
 
 # Marks that the other end sent no more messages, keeping the result body if this was it.
 def finish(inbox: Shared[Inbox], result: Optional[String]) -> Unit:
-    var state = inbox.take()
-    state.finished = True
-    if result.is_some():
-        state.result = result
-    inbox.put(state)
+    with var state = lock(inbox):
+        state.value.finished = True
+        if result.is_some():
+            state.value.result = result
 
 # Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
 # the child: the write could wait forever on a full pipe the child never reads).
 def close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = True) -> Unit:
-    var state = inbox.take()
-    let first = not state.closed
-    state.closed = True
-    inbox.put(state)
+    var first = False
+
+    with var state = lock(inbox):
+        first = not state.value.closed
+        state.value.closed = True
+
     if first and notify:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
@@ -381,14 +385,11 @@ impl Closeable for Process[T, In, Out]:
     var def close() -> Unit:
         stop_child(self.link, self.inbox, self.native)
 
-        var all = self.registry.take()
-
-        for index in range(0, all.length()):
-            if all[index].id == self.id:
-                all.remove(index)
-                break
-
-        self.registry.put(all)
+        with var all = lock(self.registry):
+            for index in range(0, all.value.length()):
+                if all.value[index].id == self.id:
+                    all.value.remove(index)
+                    break
 
 # A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
 # two-way channel to the group: the child sends `Out` values and receives `In` values, both
@@ -418,12 +419,14 @@ impl ProcessGroup[T, In, Out]:
         let native = try msstd_process_fork(runner, stdin, stdout, stderr)
         let link = msstd_process_forked_link(native)
         let inbox: Shared[Inbox] = share(Inbox())
-        let id = self.started.take()
-        self.started.put(id + 1)
+        var id = 0
 
-        var all = self.processes.take()
-        all.append(Open(id, native, link, inbox))
-        self.processes.put(all)
+        with var next = lock(self.started):
+            id = next.value
+            next.value = id + 1
+
+        with var all = lock(self.processes):
+            all.value.append(Open(id, native, link, inbox))
         return ok(
             Process[T, In, Out](
                 native: native,
@@ -454,7 +457,9 @@ impl ProcessGroup[T, In, Out]:
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var def close() -> Unit:
-        var all = self.processes.take()
-        for index in range(0, all.length()):
-            stop_child(all[index].link, all[index].inbox, all[index].native)
-        self.processes.put(all)
+        with var all = lock(self.processes):
+            for index in range(0, all.value.length()):
+                stop_child(
+                    all.value[index].link, all.value[index].inbox,
+                    all.value[index].native
+                )

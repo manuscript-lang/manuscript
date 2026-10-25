@@ -408,3 +408,97 @@ fn a_copy_at_the_last_use_across_blocks_becomes_a_move() {
     );
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
+
+/// One block that builds a collection entry by entry the way a map literal lowers: each entry
+/// copies a literal key, computes the same type descriptor, moves the collection through a
+/// slot around a runtime call, and the copies are all dropped at the end of the scope.
+fn literal_entries(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "t"
+file 0 "t.ms"
+extern @msrt_coll_new() -> list<int>
+extern @msrt_coll_add(ptr, ptr, str) -> unit
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: list<int> = call.rt @msrt_coll_new ()
+  %1: ptr = slot list<int>
+  put %1, %0
+"#,
+    );
+    let mut v = 2;
+    let mut copies = Vec::new();
+    for i in 0..n {
+        s.push_str(&format!(
+            "  %{v}: str = str \"k{i}\"\n  %{c}: str = copy %{v}\n  %{t}: list<int> = take list<int> %1\n  %{sl}: ptr = slot list<int>\n  put %{sl}, %{t}\n  %{d}: ptr = typedesc str\n  %{u}: unit = call.rt @msrt_coll_add (%{sl}, %{d}, %{c})\n  %{b}: list<int> = take list<int> %{sl}\n  put %1, %{b}\n",
+            c = v + 1,
+            t = v + 2,
+            sl = v + 3,
+            d = v + 4,
+            u = v + 5,
+            b = v + 6
+        ));
+        copies.push(v + 1);
+        v += 7;
+    }
+    s.push_str(&format!(
+        "  %{v}: list<int> = take list<int> %1\n  %{l}: int = list.len %{v}\n  drop %{v}\n",
+        l = v + 1
+    ));
+    for c in copies {
+        s.push_str(&format!("  drop %{c}\n"));
+    }
+    s.push_str(&format!("  ret %{}\n}}\n", v + 1));
+    s
+}
+
+#[test]
+fn a_long_literal_is_optimized_in_linear_time() {
+    // 6000 entries (54 000 instructions). Each copy's span to its drop, each roundtrip's
+    // removal and each common subexpression's removal used to be a scan or a shift of the
+    // whole block.
+    let mut m = parse_module(&literal_entries(6000)).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let start = std::time::Instant::now();
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(20),
+        "took {:?}",
+        start.elapsed()
+    );
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", &print_module(&m)[..2000]);
+    }
+    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::TypeDesc), 1);
+    // Only the collection's own slot is left; every entry's roundtrip through a slot is gone.
+    assert_eq!(count(&m, "main", Op::Slot), 1);
+}
+
+fn many_moves(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nalt List { Nil, More(next: List) }\nentry @main\n\nfn @main() -> int export {\nb0:\n",
+    );
+    for i in 0..n {
+        s.push_str(&format!(
+            "  %a{i}: List = alt.new List.Nil\n  %c{i}: List = copy %a{i}\n  drop %a{i}\n"
+        ));
+    }
+    for i in 0..n {
+        s.push_str(&format!("  drop %c{i}\n"));
+    }
+    s.push_str("  %z: int = iconst 0\n  ret %z\n}\n");
+    s
+}
+
+#[test]
+fn a_long_run_of_copy_then_drop_pairs_becomes_moves_in_linear_time() {
+    let n = 6000;
+    let mut m = parse_module(&many_moves(n)).unwrap_or_else(|e| panic!("{e}"));
+    let start = std::time::Instant::now();
+    assert!(opt::copyelim::run(&mut m));
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Drop), n);
+}

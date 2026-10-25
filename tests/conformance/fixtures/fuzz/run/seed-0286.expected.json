@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "i1 = 18\nl2 = [2, 14, -12, 29, 21] len 5\ns3 = [語本日]\nl4 = [2, 14, -12, 29, 21, 2, 14, -12, 29, 21] len 10\nacc5 = 23\n18 648 true sum 666\ni6 = -648\n語本日\nacc7 = 2\nacc8 = -3\nb9 = false\n3 0 false sum 3\n",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0286.ms:70 in main\n"
   }

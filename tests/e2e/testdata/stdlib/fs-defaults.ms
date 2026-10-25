@@ -56,7 +56,7 @@ def data_argument(var log: List[String]) -> Bytes:
 test "filesystem writes default to exclusive creation through aliases and bounds":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-default-write-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-write-") | try expect_ok):
         let path = f"{temporary.path()}/file"
         (fs.write_file(path, "first") | try expect_ok)
 
@@ -74,7 +74,7 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 test "filesystem file copies default to no replacement and retain byte limits":
     let fs: FileSystem = filesystem()
 
-    with (fs.temporary("manuscript-default-copy-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-copy-") | try expect_ok):
         let source = f"{temporary.path()}/source"
         let destination = f"{temporary.path()}/destination"
         (fs.write_file(source, "source") | try expect_ok)
@@ -114,7 +114,7 @@ test "filesystem file copies default to no replacement and retain byte limits":
 test "filesystem tree copies default to no replacement with distinct budgets":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-default-tree-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-tree-") | try expect_ok):
         let source = f"{temporary.path()}/source"
         let destination = f"{temporary.path()}/destination"
         (fs.create_directory(source) | try expect_ok)
@@ -166,7 +166,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 test "filesystem directory creation defaults to requiring an existing parent":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-default-directory-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-directory-") | try expect_ok):
         let create = fs.create_directory
         let alias = fs.create_directory
         let child = f"{temporary.path()}/missing/child"
@@ -182,7 +182,7 @@ test "filesystem directory creation defaults to requiring an existing parent":
 test "filesystem removal defaults to retaining nonempty trees":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-default-remove-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-remove-") | try expect_ok):
         let directory = f"{temporary.path()}/nonempty"
         let path = f"{directory}/keep"
         (fs.create_directory(directory) | try expect_ok)
@@ -206,7 +206,7 @@ test "filesystem removal defaults to retaining nonempty trees":
 test "filesystem default preparation retains written argument order":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-default-order-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-default-order-") | try expect_ok):
         var log: List[String] = []
         (
             fs.write_file_bytes(

@@ -186,11 +186,27 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
-| Set `values()`, `entries()` | New lists in insertion order; `entries()` returns `List[List[T]]`, with each inner list `[value, value]`. |
+| Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
 Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
+
+List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: lambda a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
+
+```manuscript
+from "@std/core.ms" import panic
+
+test "sorting and aggregates":
+    var scores = [3, 1, 2]
+    if scores.sorted() != [1, 2, 3]:
+        return panic("check failed")
+    scores.sort(lambda a, b: b - a)
+    if scores != [3, 2, 1]:
+        return panic("check failed")
+    if scores.sum() != 6 or scores.max() != some(3) or List[Int]().min() != none:
+        return panic("check failed")
+```
 
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 

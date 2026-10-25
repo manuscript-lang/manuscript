@@ -49,13 +49,13 @@ test "primitive equality captures operands once in order":
 
 def conditional(marker: String, take: Bool) -> Int:
     if take:
-        with Resource(marker.clone()) as resource: return 7
+        with let resource = Resource(marker.clone()): return 7
     return 8
 
 def matched(marker: String) -> Int:
     return match some(1):
         case some(value):
-            with Resource(marker.clone()) as resource: return value
+            with let resource = Resource(marker.clone()): return value
             0
         case none: 0
 
@@ -63,7 +63,7 @@ def defaulted(
     marker: String,
     value: Int = match some(2):
         case some(number):
-            with Resource(marker.clone()) as resource:
+            with let resource = Resource(marker.clone()):
                 let _used = ()
             number
         case none: 0
@@ -71,13 +71,13 @@ def defaulted(
 
 def nested(marker: String) -> Unit:
     let callback = lambda () -> Unit:
-        with Resource(marker.clone()) as resource: return
+        with let resource = Resource(marker.clone()): return
     callback()
 
 def failed() -> Result[Int, TextError]: error(TextError("expected"))
 
 def propagate(marker: String) -> Result[Int, TextError]:
-    with Resource(marker.clone()) as resource:
+    with let resource = Resource(marker.clone()):
         let value = try failed()
         return ok(value)
 
@@ -95,7 +95,7 @@ def bool_failed() -> Result[Bool, TextError]: error(TextError("expected"))
 
 def nested_results(marker: String) -> Result[Int, TextError]:
     let child = lambda () -> Result[Bool, TextError]:
-        with Resource(marker.clone()) as resource:
+        with let resource = Resource(marker.clone()):
             let value = try bool_failed()
             return ok(value)
 
@@ -108,7 +108,7 @@ def nested_results(marker: String) -> Result[Int, TextError]:
 def statement_match_try(marker: String) -> Result[Int, TextError]:
     match some(1):
         case some(_):
-            with Resource(marker.clone()) as resource:
+            with let resource = Resource(marker.clone()):
                 let value = try failed()
                 return ok(value)
         case none: return ok(0)
@@ -121,7 +121,7 @@ def value_match_loop_try(marker: String) -> Result[Int, TextError]:
     while index < 2:
         let _selected = match some(index):
             case some(number):
-                with Resource(marker.clone()) as resource:
+                with let resource = Resource(marker.clone()):
                     let _value = try failed()
                 number
             case none: 0
@@ -133,7 +133,7 @@ def value_match_loop_try(marker: String) -> Result[Int, TextError]:
 test "combined lowering retains callable state and try boundaries":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-scalar-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
         let dir = temporary.path()
         let expected = Result[Int, TextError].error(TextError("expected"))
         try expect_equal(nested_results(f"{dir}/nested"), expected)
@@ -146,7 +146,7 @@ test "combined lowering retains callable state and try boundaries":
 test "cleanup remains owned by its source callable":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-scalar-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
         let dir = temporary.path()
         try expect_equal(conditional(f"{dir}/skipped", take: False), 8)
         try expect_false(closed(f"{dir}/skipped"))
@@ -177,7 +177,7 @@ test "cleanup remains owned by its source callable":
         while index < 3:
             index += 1
 
-            with Resource(f"{dir}/loop{index}") as resource:
+            with let resource = Resource(f"{dir}/loop{index}"):
                 if index == 1: continue
                 if index == 2: break
 
