@@ -66,7 +66,7 @@ def hasher(parent: Channel[String, Bytes], argument: HashConfig):
 
 def hash_all(chunks: List[Bytes]) -> List[String]:
     var digests = List[String]()
-    with ProcessGroup() as group:
+    with let group = ProcessGroup():
         let worker = group.spawn(hasher, HashConfig(algorithm="sha256"))
         for chunk in chunks:
             worker.send(chunk.clone())
@@ -122,7 +122,7 @@ Illustrative: `digest` is a placeholder; `if let` is the documented unwrap (`doc
   - Unix children run in their own process group (`spawn.rs:86`); Windows uses `CREATE_NEW_PROCESS_GROUP` (`spawn.rs:92`) plus a job object.
 - Orphans: a parent killed without cleanup closes the connection (the OS closes the socket end or pipe handle); the child sees EOF and cancels. Same path as `close`.
 - Death is data:
-  - A child fault runs its cleanups, writes the fault text to its stderr, and exits 70. `wait()` returns 70; `receive()` returns `none`; `send` returns closed. The parent keeps running.
+  - A child fault runs its cleanups, writes the fault text to its stderr, and exits 67. `wait()` returns 70; `receive()` returns `none`; `send` returns closed. The parent keeps running.
   - A child killed by a signal reports -1, as `Subprocess.wait`.
   - This differs from `TaskGroup` v1 (a child fault ends the process), because crash isolation is the reason to use a process and `Commands` already treats exit status as data. Decision 2.
 - Waiting for exit: pidfd on Linux (`spawn.rs:136`); elsewhere slice polling (`command.rs:5-17`).

@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/web_build.ms" import StaticBuild
 from "@std/web_assets.ms" import asset, load_asset
 from "@std/web.ms" import html
@@ -19,8 +20,8 @@ test "static builds render ordinary handlers and export through private scoped s
 
     try site.stage(
         lambda path:
-            captured.take()
-            captured.put(path.clone())
+            with var flag_guard = lock(captured):
+                flag_guard.value = path.clone()
 
             let data = filesystem().read_file(join([path.clone(), "index.html"]), 1024)
             if data.is_error(): return error(IoError.Unavailable)

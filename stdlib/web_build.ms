@@ -128,9 +128,11 @@ impl StaticBuild:
     # All paths are revalidated; file/directory collisions and preexisting symlinks cannot enter
     # staging through this API. Cleanup removes staging on every exit. Publish/copy inside visit.
     def stage(visit: Callable[[String], Result[Unit, IoError]]) -> Result[Unit, IoError]:
-        with Held(try validated(self)) as checked:
-            with try io_result(filesystem().temporary("manuscript-static-")) as directory:
-                with Held(directory.path()) as root:
+        with let checked = Held(try validated(self)):
+            with let directory = try io_result(
+                filesystem().temporary("manuscript-static-")
+            ):
+                with let root = Held(directory.path()):
                     var index = 0
 
                     while index < checked.value.files.length():
@@ -157,9 +159,9 @@ def validated(build: StaticBuild) -> Result[StaticBuild, IoError]:
     return ok(checked)
 
 def stage_file(root: String, file: StaticFile) -> Result[Unit, IoError]:
-    with Held(join([root.clone(), file.path.clone()])) as path:
+    with let path = Held(join([root.clone(), file.path.clone()])):
         try io_result(filesystem().create_directory(dirname(path.value), True))
-        with try io_result(filesystem().open(path.value, "wx", 420)) as output:
+        with let output = try io_result(filesystem().open(path.value, "wx", 420)):
             return io_result(output.write_bytes(file.value.data))
 
     return error(IoError.Closed)

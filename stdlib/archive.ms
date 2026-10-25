@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/bytes.ms" import Bytes
 from "@std/io.ms" import ReadStream, WriteStream, IoError
 from "@std/shared.ms" import Shared, share
@@ -287,9 +288,8 @@ impl CompressionWriter:
             IoError.Closed
         )
 
-        var state = self.state.take()
-        state.busy = True
-        self.state.put(state)
+        with var state_guard = lock(self.state):
+            state_guard.value.busy = True
         return ok(())
 
     # Internal completion; a failed operation poisons every alias.
@@ -297,23 +297,25 @@ impl CompressionWriter:
         result: Result[Unit, IoError],
         finish: Bool = False
     ) -> Result[Unit, IoError]:
-        var state = self.state.take()
-        state.busy = False
-        state.closed = state.closed or finish or result.is_error()
-        self.state.put(state)
+        with var state_guard = lock(self.state):
+            state_guard.value.busy = False
+            state_guard.value.closed = (
+                state_guard.value.closed
+                or finish
+                or result.is_error()
+            )
+
         return result
 
     # Internal budget debit; all owned state returns before downstream suspension.
     def debit_output(size: Int) -> Result[Unit, IoError]:
-        var state = self.state.take()
+        with var state_guard = lock(self.state):
+            if size > state_guard.value.remaining_output:
+                state_guard.value.closed = True
+                return error(IoError.LimitExceeded)
 
-        if size > state.remaining_output:
-            state.closed = True
-            self.state.put(state)
-            return error(IoError.LimitExceeded)
+            state_guard.value.remaining_output -= size
 
-        state.remaining_output -= size
-        self.state.put(state)
         return ok(())
 
     # Internal encoded-output pump; no codec borrow spans downstream suspension.
@@ -321,11 +323,11 @@ impl CompressionWriter:
         while msrt_compress_encoder_has_output(self.state.get().encoder):
             if self.state.get().closed: return error(IoError.Closed)
 
-            with CompressionHeld(
+            with let bytes = CompressionHeld(
                 msrt_compress_encoder_take(
                     self.state.get().encoder, 65536
                 )
-            ) as bytes:
+            ):
                 try self.debit_output(bytes.value.length())
                 try self.output.get().write_bytes(bytes.value)
 
@@ -340,15 +342,13 @@ impl CompressionWriter:
 
     # Internal input budget debit, completed before any downstream write.
     def debit_input(size: Int) -> Result[Unit, IoError]:
-        var state = self.state.take()
+        with var state_guard = lock(self.state):
+            if size > state_guard.value.remaining_input:
+                state_guard.value.closed = True
+                return error(IoError.LimitExceeded)
 
-        if size > state.remaining_input:
-            state.closed = True
-            self.state.put(state)
-            return error(IoError.LimitExceeded)
+            state_guard.value.remaining_input -= size
 
-        state.remaining_input -= size
-        self.state.put(state)
         return ok(())
 
     # Internal bounded feed, returning an error before accepting bytes over the input limit.
@@ -384,7 +384,7 @@ impl CompressionWriter:
 
     # Compresses UTF-8 text while enforcing cumulative encoded and unencoded bounds.
     var def write(data: String) -> Result[Unit, IoError]:
-        with CompressionHeld(data.to_bytes()) as bytes:
+        with let bytes = CompressionHeld(data.to_bytes()):
             return self.write_bytes(bytes.value)
 
     # Compresses bytes incrementally; a destination error poisons every writer alias.
@@ -420,9 +420,8 @@ export def compress_writer(
 impl Closeable for CompressionWriter:
     # Abandons the codec without finalization when a scope exits, including cancellation.
     var def close() -> Unit:
-        var state = self.state.take()
-        state.closed = True
-        self.state.put(state)
+        with var state_guard = lock(self.state):
+            state_guard.value.closed = True
 
 type CompressionOutput:
     owner: CompressionWriter

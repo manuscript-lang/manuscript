@@ -32,7 +32,7 @@ def application(server: Server) -> Result[Unit, HttpError]:
     var routes = Router()
     routes.get("/", lambda request: text_response(identity))
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         if server.member_index == 0:
             let copy = server.clone()
             let _test = tasks.spawn(lambda channel: exercise_and_stop(copy))
@@ -124,18 +124,29 @@ def exercise_tls_members(server: Server) -> Result[Unit, HttpError]:
         if protocol == "h2": expected = "HTTP/2.0"
 
         for attempt in range(0, 128):
-            with try network().http_client(HttpClientOptions(tls: tls.clone())) as client:
+            with let client = try network().http_client(
+                HttpClientOptions(tls: tls.clone())
+            ):
                 var first = ""
 
                 for path in ["/", "/stream", "/", "/stream"]:
-                    with try client.request(
+                    with let response = try client.request(
                         HttpMethod.Get, f"https://{server.address().get()}{path}",
                         headers()
-                    ) as response:
+                    ):
                         if response.metadata().protocol != expected:
                             return error(HttpError.Failed("group ALPN mismatch"))
 
-                        let body = response.read().get().get().decode_utf8().get()
+                        # Consume through EOF: closing after one chunk can discard
+                        # a still-active connection before its framing terminator.
+                        var body = ""
+
+                        while True:
+                            let chunk = response.read().get()
+                            if chunk.is_none(): break
+
+                            body += chunk.get().decode_utf8().get()
+
                         if first == "": first = body.clone()
                         if body != first or not body.ends_with(expected):
                             return error(
@@ -173,7 +184,7 @@ def tls_application(server: Server) -> Result[Unit, HttpError]:
             return stream_response(lambda (var output: WriteStream): output.write(body))
     )
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         if server.member_index == 0:
             let copy = server.clone()
             let _test = tasks.spawn(lambda channel: exercise_tls_and_stop(copy))

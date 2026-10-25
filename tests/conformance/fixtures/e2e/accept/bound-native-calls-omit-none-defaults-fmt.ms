@@ -9,7 +9,4 @@ test "omitted none defaults":
     else:
         try expect_false(not (False))
 
-    if let v = "ab".pad_start(target_length: 4, padding: "-"):
-        try expect_equal(v, "--ab")
-    else:
-        try expect_false(not (False))
+    try expect_equal("ab".pad_start(target_length: 4, padding: "-"), "--ab")

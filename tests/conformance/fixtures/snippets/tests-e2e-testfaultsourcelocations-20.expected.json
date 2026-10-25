@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "",
     "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testfaultsourcelocations-20.ms:4 in divide\n  at tests-e2e-testfaultsourcelocations-20.ms:8 in main\n"
   }

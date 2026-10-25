@@ -14,11 +14,25 @@ def json_doc(count: Int) -> String:
         )
 
     sb.append("]")
-    return sb.freeze()
+    return sb.build()
 
 def encoded_length(value: JsonValue) -> Int:
     if let text = stringify(value):
         return text.length()
+
+    return 0
+
+# Reads three nested fields of one row in place, without copying any subtree.
+def row_weight(tree: JsonValue, index: Int) -> Int:
+    if let row = tree.at(index):
+        var weight = 0
+        if let id = row.get("id"):
+            weight += id.as_int().get(0)
+        if let tags = row.get("tags"):
+            if let last = tags.at(-1):
+                if let tag = last.as_string():
+                    weight += tag.length()
+        return weight
 
     return 0
 
@@ -44,3 +58,14 @@ export def bench_json() -> Unit:
 
             return 0
     )
+
+    if let tree = parse(doc):
+        bench(
+            "json.navigate",
+            100000,
+            lambda () -> Int:
+                var total = 0
+                for i in range(0, 100000):
+                    total += row_weight(tree, i % 5000)
+                return total
+        )

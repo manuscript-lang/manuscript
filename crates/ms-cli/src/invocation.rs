@@ -5,7 +5,7 @@
 use crate::backend::{BuildType, Io};
 use crate::regexp;
 use crate::util::{required_value, resolve_input, split_value_option, usage_error};
-use ms_driver::project::strconv::quote;
+use ms_driver::project::quoting::quote;
 
 /// Long options that take a value (also accepted as `--flag=value`).
 pub const VALUE_OPTIONS: &[&str] = &[
@@ -30,9 +30,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
 ];
 
 /// The `--view` names of `ms diagram`.
-pub const VIEWS: &[&str] = &[
-    "calls", "effects", "errors", "modules", "flow", "scope", "tasks",
-];
+pub const VIEWS: &[&str] = &ms_tooling::views::VIEWS;
 
 /// Commands that accept `--json`.
 pub const JSON_COMMANDS: &[&str] = &[
@@ -434,6 +432,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         return Err(usage_error(
             io,
             "--depth needs --view or --entity; run 'ms help diagram' for examples",
+        ));
+    }
+    if command == "diagram" && inv.structured && !inv.format.is_empty() {
+        return Err(usage_error(
+            io,
+            "--json and --format cannot be combined; --json emits the diagram tree",
         ));
     }
     if command == "diagram"

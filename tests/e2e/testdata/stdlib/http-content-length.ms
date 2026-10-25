@@ -31,7 +31,7 @@ test "declared lengths cover HTTP1 and HTTP2 including HEAD and bodyless statuse
         )
     )
 
-    with try network().serve_stream("127.0.0.1:0", sized, options) as server:
+    with let server = try network().serve_stream("127.0.0.1:0", sized, options):
         for protocol in ["http/1.1", "h2"]:
             let tls = TlsOptions(
                 server_name: "stdlib.test", roots_pem: certificate(),
@@ -39,11 +39,11 @@ test "declared lengths cover HTTP1 and HTTP2 including HEAD and bodyless statuse
                 require_client_certificate: False
             )
 
-            with try network().http_client(HttpClientOptions(tls: tls)) as client:
+            with let client = try network().http_client(HttpClientOptions(tls: tls)):
                 for path in ["/", "/reset", "/not-modified"]:
-                    with try client.request(
+                    with let response = try client.request(
                         HttpMethod.Get, f"https://{server.address()}{path}", headers()
-                    ) as response:
+                    ):
                         let length = (
                             response
                             .metadata()
@@ -59,28 +59,28 @@ test "declared lengths cover HTTP1 and HTTP2 including HEAD and bodyless statuse
                             )
                         )
 
-                with try client.request(
+                with let response = try client.request(
                     HttpMethod.Head, f"https://{server.address()}/", headers()
-                ) as response:
+                ):
                     try expect_equal(
                         response.metadata().headers.text(
                             "Content-Length"
                         ).get().get() [0],
                         "3"
                     )
-                with try client.request(
+                with let response = try client.request(
                     HttpMethod.Head, f"https://{server.address()}/head-unknown",
                     headers()
-                ) as response:
+                ):
                     try expect_true(
                         response.metadata().headers.values(
                             "Content-Length"
                         ).is_none()
                     )
 
-                with try client.request(
+                with let response = try client.request(
                     HttpMethod.Get, f"https://{server.address()}/short", headers()
-                ) as response:
+                ):
                     var failed = False
 
                     while True:
@@ -98,7 +98,7 @@ test "buffered application HEAD uses the final representation length":
     let server = Server("127.0.0.1:0")
     let owner = server.clone()
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         let task = tasks.spawn(
             lambda channel:
                 var routes = Router()

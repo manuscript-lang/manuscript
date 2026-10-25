@@ -136,6 +136,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         ret_expr: None,
         ret_hit: false,
         owned_return: false,
+        owned_value: false,
         lends: Vec::new(),
         getters: HashMap::new(),
         let_pos: HashMap::new(),
@@ -203,6 +204,8 @@ struct Walker<'a> {
     ret_hit: bool,
     /// Some return gives back a value of its own.
     owned_return: bool,
+    /// Some return gives back an owned value other than `none`.
+    owned_value: bool,
     lends: Vec<Lend>,
     getters: HashMap<NodeId, Vec<Name>>,
     /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
@@ -286,13 +289,82 @@ impl Walker<'_> {
             return;
         }
         let saved = (self.ret_expr, self.ret_hit);
-        self.ret_expr = Some(e.id);
+        // `return some(part)` in a `ref Optional[T]` function lends the part itself.
+        let lent = self.lent_by_some(e);
+        self.ret_expr = Some(lent.map_or(e.id, |a| a.id));
         self.ret_hit = false;
-        self.expr(e, Demand::Consume);
+        match lent {
+            Some(arg) => {
+                if let ExprKind::Call { args, .. } = &e.kind {
+                    let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+                    self.facts.calls.insert(e.id, modes);
+                }
+                self.expr(arg, Demand::Consume);
+            }
+            None => self.expr(e, Demand::Consume),
+        }
         if !self.ret_hit {
             self.owned_return = true;
         }
+        if !self.ret_hit && !self.is_none(e) || self.ret_hit && self.lends_owned(lent.unwrap_or(e))
+        {
+            self.owned_value = true;
+        }
         (self.ret_expr, self.ret_hit) = saved;
+    }
+
+    /// Whether `e` is the `none` literal.
+    fn is_none(&self, e: &Expr) -> bool {
+        matches!(
+            self.cx.m.resolution(e),
+            Resolution::Constructor { ty, case: Some(c) }
+                if ty.is_std("Optional") && c.as_str() == "none"
+        )
+    }
+
+    /// Whether the borrow `e` hands back may come from an owned value that dies with the
+    /// function: a call whose result is an owned copy, or a lending call whose lent argument is
+    /// a temporary (`f(s, make())`), directly or through a projection or another lending call.
+    fn lends_owned(&self, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Member { left, .. } | ExprKind::Index { left, .. } if !self.is_place(e) => {
+                self.lends_owned(left)
+            }
+            ExprKind::Call { callee, args } => {
+                let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+                if modes.origin.owned {
+                    return true;
+                }
+                modes.origin.slots.iter().any(|slot| {
+                    self.slot_arg(*slot, e, callee, args).is_some_and(|a| {
+                        !self.is_place(a)
+                            && (self.pure_origins(a).is_none_or(|o| o.is_empty())
+                                || self.lends_owned(a))
+                    })
+                })
+            }
+            _ => false,
+        }
+    }
+
+    /// The argument of `some(argument)` when `e` is that call returned from a function whose
+    /// result is `ref Optional[T]`: the optional wraps a borrow of the argument.
+    fn lent_by_some<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return None;
+        };
+        let f = self.cx.c.func.func()?;
+        if !f.result_ref || args.len() != 1 || args[0].mutable {
+            return None;
+        }
+        match self.cx.m.resolution(e) {
+            Resolution::Constructor { ty, case: Some(c) }
+                if ty.is_std("Optional") && c.as_str() == "some" =>
+            {
+                Some(&args[0].value)
+            }
+            _ => None,
+        }
     }
 
     /// The slot of a read-only parameter or receiver, which may lend its parts to a result.
@@ -361,7 +433,11 @@ impl Walker<'_> {
             _ => None,
         };
         self.lends = lends;
-        ResultOrigin { slots, plain }
+        ResultOrigin {
+            slots,
+            plain,
+            owned: self.owned_value,
+        }
     }
 
     /// Records that `e` hands back parts of the read-only parameters `places` belong to.
@@ -808,11 +884,10 @@ impl Walker<'_> {
         match &s.kind {
             StmtKind::Bind {
                 mutable,
-                by_ref,
                 pattern,
                 value,
                 ..
-            } => self.bind(s, *mutable, *by_ref, pattern, value),
+            } => self.bind(s, *mutable, pattern, value),
             StmtKind::Assign { target, value, .. } => self.assign(s, target, value),
             StmtKind::Call(e) => self.expr(e, Demand::Discard),
             StmtKind::Return(e) => {
@@ -835,15 +910,23 @@ impl Walker<'_> {
                 self.block(body);
                 self.active = Self::join_active(entry, std::mem::take(&mut self.active));
             }
-            StmtKind::For {
-                by_ref, iter, body, ..
-            } => self.for_stmt(s, *by_ref, iter, body),
-            StmtKind::With { value, body, .. } => {
+            StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body),
+            StmtKind::With {
+                mutable,
+                value,
+                body,
+                ..
+            } => {
                 self.expr(value, Demand::Consume);
                 self.release_pending();
                 let mark = self.declared.len();
                 if let Some(b) = self.cx.m.stmt(s).loop_binding {
-                    self.declare(&b, Role::With, Perm::Immutable, None, false);
+                    let perm = if *mutable {
+                        Perm::Mutable
+                    } else {
+                        Perm::Immutable
+                    };
+                    self.declare(&b, Role::With, perm, None, false);
                 }
                 self.block(body);
                 let ended: Vec<usize> = self.declared.drain(mark..).collect();
@@ -892,18 +975,9 @@ impl Walker<'_> {
         self.active = Self::join_active(then_state, else_state);
     }
 
-    fn for_stmt(&mut self, s: &Stmt, by_ref: bool, iter: &Expr, body: &[Stmt]) {
+    fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {
         let mark = self.declared.len();
         let source = self.scrutinee(s.id, iter);
-        if by_ref && source.origins.is_empty() {
-            let text = self.expr_text(iter);
-            self.error(
-                iter.pos,
-                format!(
-                    "`for ref` borrows the elements of a variable or field; `{text}` is an owned value, so drop `ref`"
-                ),
-            );
-        }
         self.release_pending();
         // The iterable stays unchanged for the whole loop.
         let hidden = usize::MAX - self.hidden;
@@ -945,7 +1019,7 @@ impl Walker<'_> {
             .collect();
     }
 
-    fn bind(&mut self, s: &Stmt, mutable: bool, by_ref: bool, pattern: &Pattern, value: &Expr) {
+    fn bind(&mut self, s: &Stmt, mutable: bool, pattern: &Pattern, value: &Expr) {
         let PatternKind::Name(_) = pattern.kind else {
             let scrutinee = self.scrutinee(s.id, value);
             let role = if mutable { Role::Var } else { Role::Pattern };
@@ -957,17 +1031,6 @@ impl Walker<'_> {
             return;
         };
         let role = if mutable { Role::Var } else { Role::Let };
-        if by_ref && self.projection_origins(value).is_none() {
-            let text = self.expr_text(value);
-            let kw = if mutable { "var" } else { "let" };
-            self.error(
-                pattern.pos,
-                format!(
-                    "`{kw} ref {}` borrows part of a value (`a.b`, `xs[i]`) or the result of a call that returns `ref`; `{text}` is an owned value, so drop `ref`",
-                    b.name
-                ),
-            );
-        }
         if !mutable {
             self.let_pos.insert(b.uid, s.pos);
         }
@@ -1659,6 +1722,10 @@ impl Walker<'_> {
                 }
             }
             ExprKind::Unary { op, operand } => {
+                // `try` returns the owned failure from the function on its early exit.
+                if *op == UnaryOp::Try && self.captured.is_empty() {
+                    self.owned_value = true;
+                }
                 let inner = if *op == UnaryOp::Try { d } else { Demand::Read };
                 self.expr(operand, inner);
             }
@@ -1709,6 +1776,14 @@ impl Walker<'_> {
                 Access::Borrow
             };
             self.record(e.id, b, access);
+            return;
+        }
+        // Returning a payload of a read-only parameter lends it.
+        let declared_ref = self.cx.c.func.func().is_some_and(|f| f.result_ref);
+        if declared_ref && self.meta[&b.uid].perm == Perm::Borrowed && self.lend(e, &resolved, None)
+        {
+            self.check_read(e.pos, &resolved, b.name.as_str(), b.uid);
+            self.record(e.id, b, Access::Borrow);
             return;
         }
         self.move_out(e, b, &resolved);

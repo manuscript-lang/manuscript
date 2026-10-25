@@ -14,11 +14,11 @@ let price = 12.50d
 let active = True
 ```
 
-Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
-| `Int` | Platform-sized signed integer (64 bits on 64-bit targets, 32 bits on 32-bit targets) with checked arithmetic |
+| `Int` | Signed 64-bit integer with checked arithmetic; `Int64` is the same type |
 | `Int8`, `Int16`, `Int32` | Signed integers of that width with checked arithmetic; `Int64` is another name for `Int` |
 | `Float` | IEEE 754 binary64; `Float64` is another name for it |
 | `Float32` | IEEE 754 binary32; every operation rounds to binary32 |
@@ -27,19 +27,21 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 
 ## Arithmetic and conversion
 
-- Arithmetic operands must have the same numeric type; the result has that type. `%` takes only `Int`.
+- Arithmetic operands must have the same numeric type; the result has that type. `%` takes integers of the same width.
 - Ordering comparisons need matching numeric types; equality follows the [Equal rules](../types/equality-and-hashing.md). The [expression table](expressions.md#operand-and-result-types) is authoritative.
 - Int overflow and invalid Int/Decimal operations are programming faults; Float follows the rules below.
-- Conversions use the [methods below](#numeric-conversion). Expected types never change a literal's type.
+- Conversions between existing values use the [methods below](#numeric-conversion). A literal can take a sized type from context, as described below.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
 - A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). A literal never changes kind: `let x: Float32 = 1` is rejected.
-- This guide assumes 64-bit `Int`; 32-bit targets narrow the range.
+- The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
 def literals() -> Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
+    let mask: Int = 0xFF_00
+    let flags: Int = 0b1010_0101
     let precise: Decimal = 1e3d
     # Rejected: an Int token does not become Float from context.
     let mismatch: Float = 1
@@ -60,7 +62,7 @@ def sized() -> Unit:
     let c = a + wide
 ```
 
-`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values; see the [sized numeric types proposal](https://github.com/manuscript-lang/manuscript/blob/main/proposals/sized-numeric-types.md) for the staged plan.
+`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values. Convert them explicitly to `Int` or `Float` at those boundaries; see [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/json.md).
 
 ## Numeric conversion
 
@@ -68,13 +70,13 @@ def sized() -> Unit:
 | --- | --- |
 | `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
 | `Float` | `truncate_to_int() -> Optional[Int]` |
-| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
-| `Float`, `Float32` | `to_float32()`, `to_float64()`, `truncate_to_int() -> Optional[Int]` |
+| Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_int()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
+| `Float`, `Float32` | `to_float32()`, `to_float64()`, `to_float()` (`Float32` only), `truncate_to_int() -> Optional[Int]` |
 | `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
 
-`to_intN()` returns the narrower or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
-`abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `min`, `max`, `min_of` and `max_of` already accept any `Comparable` width.
+`abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. `math.min`, `math.max`, `List.min` and `List.max` already accept any `Comparable` width.
 
 ## Runtime numeric outcomes
 
@@ -114,6 +116,16 @@ let discounted = price * (1d - percent / 100d)
 ```
 
 Validate expected bad input with [expected failures](../errors/results.md); see [programming faults](../errors/faults.md) for invariants.
+
+### BigInt
+
+`BigInt` (from `@std/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
+
+```manuscript
+from "@std/math.ms" import from_int
+
+let big = from_int(2) * from_int(3) + from_int(1)
+```
 
 #### Scale rounding and fixed places
 
@@ -158,6 +170,6 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 ## Durations
 
-`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. Import `duration` from `@std/time.ms` for an exact nanosecond interval.
+`500.milliseconds`, `2.seconds`, and `2.minutes` are `Duration` values; the members work on any `Int` expression. A `Duration` is a signed 64-bit nanosecond count (`2.seconds` is 2,000,000,000), and the members check overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`), and `duration(nanoseconds:)`; all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
 `Instant` is an opaque monotonic instant with no source constructor, comparable only within one run's clock domain; crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds + 1` is a type error.

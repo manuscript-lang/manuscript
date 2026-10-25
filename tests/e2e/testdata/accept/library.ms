@@ -13,15 +13,13 @@ from "@std/net.ms" import parse_query
 from "@std/net.ms" import format_query
 from "@std/math.ms" import sqrt
 from "@std/math.ms" import round
-from "@std/bytes.ms" import read_integer
-from "@std/bytes.ms" import write_integer
+from "@std/bytes.ms" import BytesBuilder
 from "@std/archive.ms" import compress
 from "@std/archive.ms" import decompress
 from "@std/json.ms" import JsonError
 from "@std/encoding.ms" import EncodingError
 from "@std/string.ms" import StringError
 from "@std/net.ms" import UrlError
-from "@std/bytes.ms" import BinaryError
 from "@std/archive.ms" import CompressionError
 from "@std/archive.ms" import ArchiveError
 from "@std/archive.ms" import pack
@@ -79,16 +77,9 @@ def verify_url() -> Result[Unit, Error]:
     return ok(())
 
 def verify_binary() -> Result[Unit, Error]:
-    let binary = try write_integer(
-        value: -32768, width: 2, signed: True, little_endian: False
-    )
-    (
-        not (
-            try read_integer(
-                data: binary, offset: 0, width: 2, signed: True, little_endian: False
-            ) == -32768
-        )
-    ) | try expect_false
+    var out = BytesBuilder()
+    out.append_int16_be(-32768)
+    (try out.build().int16_be(0)).to_int() | try expect_equal(-32768)
     return ok(())
 
 def verify_compression() -> Result[Unit, Error]:
@@ -193,12 +184,3 @@ test "malformed and bounded inputs return errors":
 
     let failure4: Result[JsonValue, JsonError] = error(JsonError.LimitExceeded)
     parse(text: "[[[]]]", limits: limits) | try expect_equal(failure4)
-
-    let failure5: Result[Bytes, BinaryError] = error(BinaryError.OutOfRange)
-    (
-        not (
-            write_integer(
-                value: 256, width: 1, signed: False, little_endian: True
-            ) == failure5
-        )
-    ) | try expect_false

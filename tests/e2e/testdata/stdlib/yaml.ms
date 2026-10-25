@@ -72,15 +72,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
                     text: (
                         example
                         .text
-                        .replace(
-                            old: "\n",
-                            new: ending,
-                            max_replacements: (
-                                example
-                                .text
-                                .byte_length()
-                            )
-                        )
+                        .replace(old: "\n", new: ending)
                     ),
                     expected: example.expected.clone()
                 )
@@ -128,15 +120,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
                     text: (
                         example
                         .text
-                        .replace(
-                            old: "\n",
-                            new: ending,
-                            max_replacements: (
-                                example
-                                .text
-                                .byte_length()
-                            )
-                        )
+                        .replace(old: "\n", new: ending)
                     ),
                     expected: example.expected.clone()
                 )
@@ -150,7 +134,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
                 (
                     parse(
                         text: text.replace(
-                            old: "\n", new: ending, max_replacements: text.byte_length()
+                            old: "\n", new: ending
                         )
                     ) | try expect_ok
                 )

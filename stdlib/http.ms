@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/net.ms" import network, QueryEntry, parse_query
 from "@std/io.ms" import WriteStream, read_all
 from "@std/streams.ms" import from_bytes
@@ -956,9 +957,8 @@ type NextScope:
 
 impl Closeable for NextScope:
     var def close() -> Unit:
-        var state = self.state.take()
-        state.active = False
-        self.state.put(state)
+        with var state_guard = lock(self.state):
+            state_guard.value.active = False
 
 def copy_callable[T: Clonable](value: T) -> T:
     return value.clone()
@@ -970,7 +970,7 @@ def next_scope(
 ) -> NextScope:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         let saved_chain = chain.clone()
         let saved_handler = copy_callable(handler)
         let used = share(NextState())
@@ -978,10 +978,8 @@ def next_scope(
         let next = lambda (incoming: Request) -> Response:
             if not used.get().active: panic("middleware: next is no longer active")
             if used.get().called: panic("middleware: next may be called only once")
-
-            var state = used.take()
-            state.called = True
-            used.put(state)
+            with var state_guard = lock(used):
+                state_guard.value.called = True
             return invoke(saved_chain, index + 1, saved_handler, incoming)
 
         return NextScope(used, next)
@@ -994,13 +992,13 @@ def invoke(
 ) -> Response:
     if index >= chain.length(): return handler(request)
 
-    with next_scope(chain, index, handler) as scope:
+    with let scope = next_scope(chain, index, handler):
         return chain[index].call(request, scope.next)
 
 def outer_handler(router: Router) -> Callable[[Request], Response]:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         let saved = router.clone()
         return lambda incoming: saved.dispatch(incoming)
 
@@ -1109,18 +1107,18 @@ impl Router:
 
     # Dispatches through middleware without a network connection; useful for application tests.
     def handle(request: Request) -> Response:
-        with Owned(outer_handler(self)) as handler:
+        with let handler = Owned(outer_handler(self)):
             return invoke(self.middleware, 0, handler.value, request)
 
     # Internal route selection; callers should use handle to include outer middleware.
     def dispatch(request: Request) -> Response:
-        with Owned(route_plan(self, request)) as plan:
+        with let plan = Owned(route_plan(self, request)):
             return invoke(plan.value.chain, 0, plan.value.handler, plan.value.request)
 
 def route_plan(router: Router, request: Request) -> RoutePlan:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         var best = ""
         for route in router.routes:
             if parameters(route.path, request.path).is_some():
@@ -1153,8 +1151,8 @@ def route_plan(router: Router, request: Request) -> RoutePlan:
         if selected.is_none(): selected = fallback
 
         if let route = selected:
-            request.matched_route.take()
-            request.matched_route.put(route.path.clone())
+            with var flag_guard = lock(request.matched_route):
+                flag_guard.value = route.path.clone()
 
             var incoming = request.clone()
             incoming.params = parameters(route.path, incoming.path).get()
@@ -1204,8 +1202,8 @@ type WriterScope:
 
 impl Closeable for WriterScope:
     var def close() -> Unit:
-        self.active.take()
-        self.active.put(False)
+        with var flag_guard = lock(self.active):
+            flag_guard.value = False
 
 type ExchangeWriter:
     exchange: Shared[HttpExchange]
@@ -1215,8 +1213,8 @@ impl WriteStream for ExchangeWriter:
     var def close() -> Unit:
         if not self.active.get(): return
 
-        self.active.take()
-        self.active.put(False)
+        with var flag_guard = lock(self.active):
+            flag_guard.value = False
         self.exchange.get().close()
 
     var def flush() -> Result[Unit, IoError]:
@@ -1237,7 +1235,7 @@ impl WriteStream for ExchangeWriter:
 def writer_scope(exchange: Shared[HttpExchange]) -> WriterScope:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         let active = share(True)
         return WriterScope(active, ExchangeWriter(exchange, active))
 
@@ -1245,13 +1243,13 @@ def produce_body(
     exchange: Shared[HttpExchange],
     produce: Callable[[WriteStream], Result[Unit, IoError]]
 ) -> Result[Unit, IoError]:
-    with writer_scope(exchange) as scope:
+    with let scope = writer_scope(exchange):
         return produce(scope.writer)
 
 def body_action(body: Body) -> Callable[[Shared[HttpExchange]], Result[Unit, IoError]]:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         match body:
             case Buffered(data):
                 let owned = data.clone()
@@ -1264,7 +1262,7 @@ def body_action(body: Body) -> Callable[[Shared[HttpExchange]], Result[Unit, IoE
             )
 
 def send_body(exchange: Shared[HttpExchange], body: Body) -> Result[Unit, HttpError]:
-    with Owned(body_action(body)) as action:
+    with let action = Owned(body_action(body)):
         let result = action.value(exchange)
         if result.is_error(): return error(HttpError.Failed(result.err().message()))
 
@@ -1279,7 +1277,7 @@ type UpgradePlan:
 def upgrade_plan(body: Body) -> Optional[UpgradePlan]:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         match body:
             case Upgrade(handler, origins, protocols, limit): return some(
                 UpgradePlan(
@@ -1296,7 +1294,9 @@ def run_websocket(
     limit: Optional[Int],
     fields: HttpHeaders
 ) -> Result[Unit, WebSocketError]:
-    with try exchange.upgrade_with_headers(origins, protocols, fields, limit) as socket:
+    with let socket = try exchange.upgrade_with_headers(
+        origins, protocols, fields, limit
+    ):
         return handler(socket)
 
 def send_upgrade(
@@ -1309,7 +1309,7 @@ def send_upgrade(
     )
 
 def send(exchange: Shared[HttpExchange], response: Response) -> Result[Unit, HttpError]:
-    with Owned(upgrade_plan(response.body)) as upgrade:
+    with let upgrade = Owned(upgrade_plan(response.body)):
         if upgrade.value.is_some():
             if response.status != 101: return error(HttpError.InvalidInput)
 
@@ -1354,7 +1354,7 @@ impl Closeable for DispatchScope:
 def dispatch_scope(exchange: HttpExchange) -> DispatchScope:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         let shared = share(exchange)
         return DispatchScope(
             shared,
@@ -1370,8 +1370,8 @@ def dispatch_exchange(
     router: Shared[Router],
     exchange: HttpExchange
 ) -> Result[Unit, HttpError]:
-    with dispatch_scope(exchange) as scope:
-        with Owned(router.get().handle(scope.request)) as response:
+    with let scope = dispatch_scope(exchange):
+        with let response = Owned(router.get().handle(scope.request)):
             return send(scope.exchange, response.value)
 
 # Internal shared lifecycle state for a Server and its copies.
@@ -1450,10 +1450,8 @@ impl Server:
             if let active = self.state.get().running: msrt_http_server_check_close(
                 active.get()
             )
-
-            var state = self.state.take()
-            state.stop_requested = True
-            self.state.put(state)
+            with var state_guard = lock(self.state):
+                state_guard.value.stop_requested = True
 
             let _requested = msrt_http_member_write(member.get(), "STOP".to_bytes())
             return ()
@@ -1462,12 +1460,11 @@ impl Server:
 
     # Internal shutdown from the group controller; it never requests another group stop.
     def close_local() -> Unit:
-        var state = self.state.take()
-        state.stopped = True
+        with var state_guard = lock(self.state):
+            state_guard.value.stopped = True
 
-        let running = state.running
-        let waiting = state.start_waiter
-        self.state.put(state)
+        let running = self.state.get().running
+        let waiting = self.state.get().start_waiter
         if waiting != 0: msrt_channel_post(waiting)
         if let active = running: active.get().close()
 
@@ -1476,9 +1473,8 @@ impl Server:
         if self.state.get().stopped: return error(HttpError.Closed)
         if self.state.get().started: return error(HttpError.InvalidInput)
 
-        var starting = self.state.take()
-        starting.started = True
-        self.state.put(starting)
+        with var starting_guard = lock(self.state):
+            starting_guard.value.started = True
 
         let frozen = share(routes)
         let handler: Callable[[HttpExchange], Result[Unit, HttpError]] = lambda exchange: dispatch_exchange(
@@ -1495,22 +1491,20 @@ impl Server:
 
         let running = share(try acquired)
 
-        with RunningScope(running) as scope:
+        with let scope = RunningScope(running):
             if self.state.get().stopped: return error(HttpError.Closed)
 
-            var state = self.state.take()
-            state.running = some(running)
-            state.ready = True
-            self.state.put(state)
+            with var state_guard = lock(self.state):
+                state_guard.value.running = some(running)
+                state_guard.value.ready = True
 
             if let member = self.member:
                 try msrt_http_member_write(member.get(), "READY".to_bytes())
 
                 if not self.state.get().released and not self.state.get().stopped:
                     let token = msrt_channel_token()
-                    var waiting = self.state.take()
-                    waiting.start_waiter = token
-                    self.state.put(waiting)
+                    with var waiting_guard = lock(self.state):
+                        waiting_guard.value.start_waiter = token
                     msrt_channel_park(token)
 
                 if self.state.get().stopped: return error(HttpError.Closed)
@@ -1738,20 +1732,20 @@ type GroupDrainScope:
 
 impl Closeable for GroupDrainScope:
     var def close() -> Unit:
-        with GroupAbortScope(self.group, self.progress, self.members) as rollback:
+        with let rollback = GroupAbortScope(self.group, self.progress, self.members):
             # Failed startup rolls back immediately. A running group drains before
             # the enclosing task scope cancels its control readers.
             if self.progress.get().ready != self.members: return
             if self.progress.get().done == self.members: return
 
-            var state = self.progress.take()
-            let send_stop = not state.stopping
-            state.stopping = True
-            if send_stop: state.draining = clock().now()
+            let send_stop = not self.progress.get().stopping
 
-            let started = state.draining
-            var done = state.done + 0
-            self.progress.put(state)
+            with var state_guard = lock(self.progress):
+                state_guard.value.stopping = True
+                if send_stop: state_guard.value.draining = clock().now()
+
+            let started = self.progress.get().draining
+            var done = self.progress.get().done + 0
 
             if send_stop:
                 for index in range(0, self.members):
@@ -1770,9 +1764,8 @@ impl Closeable for GroupDrainScope:
 
                 if kind == 2: done += 1
 
-            var finished = self.progress.take()
-            finished.done = done
-            self.progress.put(finished)
+            with var finished_guard = lock(self.progress):
+                finished_guard.value.done = done
 
 type GroupAbortScope:
     group: Shared[NativeHttpGroup]
@@ -1802,9 +1795,8 @@ def group_failure(
     index: Int,
     message: String
 ) -> Unit:
-    var recorded = errors.take()
-    recorded.add(index, message)
-    errors.put(recorded)
+    with var recorded_guard = lock(errors):
+        recorded_guard.value.add(index, message)
 
     let _posted = msrt_http_group_post(group.get(), index, 3)
 
@@ -1815,7 +1807,7 @@ def watch_group_member(
 ) -> Unit:
     msrt_shield_enter()
 
-    with ControlShield() as shield:
+    with let shield = ControlShield():
         let connected = msrt_http_group_connect(group.get(), index)
 
         if connected.is_error():
@@ -1863,11 +1855,10 @@ def member_control(server: Server) -> Unit:
         let command = message.get().decode_utf8().get("")
 
         if command == "START":
-            var state = server.state.take()
-            state.released = True
+            with var state_guard = lock(server.state):
+                state_guard.value.released = True
 
-            let waiting = state.start_waiter
-            server.state.put(state)
+            let waiting = server.state.get().start_waiter
             if waiting != 0: msrt_channel_post(waiting)
             continue
 
@@ -1878,7 +1869,7 @@ def run_group_member(application: Callable[[Server], Result[Unit, HttpError]]) -
     let acquired = msrt_http_member_take()
     if acquired.is_error(): return
 
-    with MemberScope(share(acquired.get())) as scope:
+    with let scope = MemberScope(share(acquired.get())):
         let member = scope.member
         let connected = msrt_http_member_connect(member.get())
         if connected.is_error(): return
@@ -1905,7 +1896,7 @@ def run_group_member(application: Callable[[Server], Result[Unit, HttpError]]) -
         )
         var failure = ""
 
-        with TaskGroup[Unit]() as controls:
+        with let controls = TaskGroup[Unit]():
             let controlled = server.clone()
             let _control = controls.spawn(lambda channel: member_control(controlled))
             let result = application(server.clone())
@@ -1986,7 +1977,7 @@ def serve_group(
         cleanup.to_nanoseconds()
     )
 
-    with GroupScope(share(native)) as scope:
+    with let scope = GroupScope(share(native)):
         let group = scope.group
         let members = msrt_http_group_count(group.get())
         let errors = share(Map[Int, String]())
@@ -1996,8 +1987,10 @@ def serve_group(
         var draining = started
         let progress = share(GroupProgress(draining: started))
 
-        with TaskGroup[Unit]() as controls:
-            with GroupDrainScope(group, progress, members, options.grace, cleanup) as drain:
+        with let controls = TaskGroup[Unit]():
+            with let drain = GroupDrainScope(
+                group, progress, members, options.grace, cleanup
+            ):
                 for index in range(0, members):
                     try msrt_http_group_spawn(group.get(), index)
 
@@ -2028,10 +2021,8 @@ def serve_group(
 
                     if kind == 0:
                         ready += 1
-
-                        var update = progress.take()
-                        update.ready = ready
-                        progress.put(update)
+                        with var update_guard = lock(progress):
+                            update_guard.value.ready = ready
                         if ready == members:
                             for member_index in range(0, members):
                                 try msrt_http_group_write(
@@ -2045,10 +2036,10 @@ def serve_group(
                         stopping = True
                         draining = clock().now()
 
-                        var update = progress.take()
-                        update.stopping = True
-                        update.draining = draining
-                        progress.put(update)
+                        with var update_guard = lock(progress):
+                            update_guard.value.stopping = True
+                            update_guard.value.draining = draining
+
                         for member_index in range(0, members):
                             try msrt_http_group_write(
                                 group.get(), member_index, "STOP".to_bytes()
@@ -2063,10 +2054,8 @@ def serve_group(
                         )
 
                         done += 1
-
-                        var update = progress.take()
-                        update.done = done
-                        progress.put(update)
+                        with var update_guard = lock(progress):
+                            update_guard.value.done = done
 
             let waited = controls.wait()
             if waited.is_error(): return error(HttpError.Failed(waited.err().message()))

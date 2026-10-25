@@ -5,10 +5,10 @@ weight = 1
 
 # Using with
 
-`with` acquires a resource and closes it when its indented block ends. The introduced name cannot be reassigned.
+`with let name = resource:` acquires a resource and closes it when its indented block ends. The introduced name cannot be reassigned. `with var name = resource:` lets the block change the value, and the close runs on the value the block ended with, including when a fault or cancellation ends it.
 
 ```manuscript
-with try files.open("data.txt") as file:
+with let file = try files.open("data.txt"):
     let chunk = try file.read(max_bytes: 4096)
 ```
 

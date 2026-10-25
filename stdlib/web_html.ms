@@ -47,7 +47,7 @@ impl Rendering:
         if text.byte_length() > self.remaining: return error(HttpError.LimitExceeded)
 
         self.remaining -= text.byte_length()
-        self.bytes.concat(text.to_bytes())
+        self.bytes.append_bytes(text.to_bytes())
         return ok(())
 
     var def escaped(text: String) -> Result[Unit, HttpError]:
@@ -138,7 +138,7 @@ export def render_html(
 ) -> Result[String, HttpError]:
     msrt_shield_enter()
 
-    with HtmlRendering() as rendering:
+    with let rendering = HtmlRendering():
         if (
             limits.max_bytes < 0
             or limits.max_nodes < 0
@@ -150,7 +150,7 @@ export def render_html(
             BytesBuilder(), limits.max_bytes, limits.max_nodes, limits.max_depth
         )
         try render_node(node, var state, 0)
-        return ok(state.bytes.freeze().decode_utf8().get().clone())
+        return ok(state.bytes.build().decode_utf8().get().clone())
 
 # Renders a buffered HTML response; errors are returned before a response is committed.
 export def html_response(
@@ -180,19 +180,19 @@ def write_fragments(
     fragments: List[Html],
     limits: HtmlLimits
 ) -> Result[Unit, IoError]:
-    with HtmlHeld(share(output)) as destination:
+    with let destination = HtmlHeld(share(output)):
         var remaining = limits.max_bytes + 0
         var index = 0
 
         while index < fragments.length():
-            with HtmlHeld(
+            with let rendered = HtmlHeld(
                 render_html(
                     fragments[index],
                     HtmlLimits(
                         remaining, limits.max_nodes, limits.max_depth
                     )
                 )
-            ) as rendered:
+            ):
                 if rendered.value.is_error(): return error(IoError.InvalidData)
 
                 remaining -= rendered.value.get().byte_length()

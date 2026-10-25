@@ -148,6 +148,34 @@ impl Duration:
     def to_milliseconds() -> Int:
         return msstd_time_duration_to_milliseconds(self)
 
+    # Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
+    def to_string() -> String:
+        var n = self.abs().to_nanoseconds()
+
+        let sign = "-" if self.to_nanoseconds() < 0 else ""
+
+        if n == 0:
+            return "0s"
+        if n < 1000:
+            return f"{sign}{n}ns"
+        if n < 1000000:
+            return f"{sign}{duration_decimal(n / 1000, n % 1000, 3)}µs"
+        if n < 1000000000:
+            return f"{sign}{duration_decimal(n / 1000000, n % 1000000, 6)}ms"
+
+        let hours = n / 3600000000000
+        n = n % 3600000000000
+
+        let minutes = n / 60000000000
+        n = n % 60000000000
+
+        let clock = "" if hours == 0 else f"{hours}h"
+
+        let minute_part = "" if hours == 0 and minutes == 0 else f"{minutes}m"
+
+        let seconds_part = duration_decimal(n / 1000000000, n % 1000000000, 9)
+        return f"{sign}{clock}{minute_part}{seconds_part}s"
+
     # Converts this duration to floating-point seconds.
     def to_seconds() -> Float:
         return msstd_time_duration_to_seconds(self)
@@ -249,6 +277,51 @@ export interface WallClock:
 # Constructs a duration from a number of nanoseconds.
 export def duration(nanoseconds: Int) -> Duration:
     return msstd_time_duration(nanoseconds)
+
+# Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
+def duration_decimal(whole: Int, frac: Int, width: Int) -> String:
+    if frac == 0:
+        return f"{whole}"
+
+    var rest = frac
+    var places = width
+
+    while rest % 10 == 0:
+        rest = rest / 10
+        places -= 1
+
+    var digits = ""
+
+    while places > 0:
+        digits = f"{rest % 10}{digits}"
+        rest = rest / 10
+        places -= 1
+
+    return f"{whole}.{digits}"
+
+# Constructs a duration from a number of nanoseconds, like `duration`.
+export def nanoseconds(n: Int) -> Duration:
+    return duration(nanoseconds: n)
+
+# Constructs a duration of `n` microseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+export def microseconds(n: Int) -> Duration:
+    return duration(nanoseconds: n * 1000)
+
+# Constructs a duration of `n` milliseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+export def milliseconds(n: Int) -> Duration:
+    return duration(nanoseconds: n * 1000000)
+
+# Constructs a duration of `n` seconds, as in `sleep(seconds(2))`; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+export def seconds(n: Int) -> Duration:
+    return duration(nanoseconds: n * 1000000000)
+
+# Constructs a duration of `n` minutes, as in `clock().now().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+export def minutes(n: Int) -> Duration:
+    return duration(nanoseconds: n * 60000000000)
+
+# Constructs a duration of `n` hours; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+export def hours(n: Int) -> Duration:
+    return duration(nanoseconds: n * 3600000000000)
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export def parse_timestamp(text: String) -> Result[Timestamp, TimeError]:

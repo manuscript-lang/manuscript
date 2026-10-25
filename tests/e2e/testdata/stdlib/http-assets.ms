@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/web_assets.ms" import asset, asset_response, Assets
 from "@std/web_dates.ms" import http_date, parse_http_date
 from "@std/http.ms" import Request, Response, Body, HttpMethod, headers
@@ -25,8 +26,8 @@ impl WriteStream for Sink:
     )
 
     var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
-        let old = self.bytes.take()
-        self.bytes.put(old.concat(data))
+        with var guard = lock(self.bytes):
+            guard.value = guard.value.concat(data)
         return ok(())
 
 test "HTTP dates round trip current and obsolete forms with calendar validation":
@@ -151,7 +152,7 @@ test "asset wire responses preserve HEAD 304 and multipart framing over HTTP1 an
     let value = try asset("0123456789".to_bytes(), "text/plain")
     let copied = value.clone()
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         let task = tasks.spawn(
             lambda channel:
                 var routes = Router()
@@ -169,10 +170,10 @@ test "asset wire responses preserve HEAD 304 and multipart framing over HTTP1 an
                 require_client_certificate: False
             )
 
-            with try network().http_client(HttpClientOptions(tls: tls)) as client:
+            with let client = try network().http_client(HttpClientOptions(tls: tls)):
                 let url = f"https://{server.address().get()}/"
 
-                with try client.request(HttpMethod.Head, url, headers()) as response:
+                with let response = try client.request(HttpMethod.Head, url, headers()):
                     try expect_equal(
                         response.metadata().headers.text(
                             "Content-Length"
@@ -184,14 +185,14 @@ test "asset wire responses preserve HEAD 304 and multipart framing over HTTP1 an
                 let conditional = headers()
                 try conditional.append("If-None-Match", value.etag.to_bytes())
 
-                with try client.request(HttpMethod.Get, url, conditional) as response:
+                with let response = try client.request(HttpMethod.Get, url, conditional):
                     try expect_equal(response.metadata().status, 304)
                     try expect_equal((try collect(response)).length(), 0)
 
                 let ranges = headers()
                 try ranges.append("Range", "bytes=0-1,8-9".to_bytes())
 
-                with try client.request(HttpMethod.Get, url, ranges) as response:
+                with let response = try client.request(HttpMethod.Get, url, ranges):
                     try expect_equal(response.metadata().status, 206)
 
                     let body = (try collect(response)).decode_utf8().get()

@@ -4,7 +4,7 @@
 
 use ms_tooling::diff::{parse_diff, removed_content, reverse_apply};
 use ms_tooling::facts::{Fact, Facts, fact_key};
-use ms_tooling::mark::{explain, mark_changes};
+use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, TIER_EFFECT, compare_facts};
 use ms_tooling::tree::Node;
@@ -161,7 +161,7 @@ fn body_edit_is_internal_only() {
     let report = diff_report(&base, &base, &input(&[8]), ReviewOptions::default());
     assert_eq!(report.result, "0 need attention, 1 internal");
     let none = diff_report(&base, &base, &input(&[]), ReviewOptions::default());
-    assert_eq!(none.result, "no semantic change");
+    assert_eq!(none.result, "no tracked semantic changes");
 }
 
 #[test]
@@ -228,11 +228,126 @@ fn cycle_and_depth() {
     a.calls = vec![b.key.clone()];
     b.calls = vec![a.key.clone()];
     let facts = facts_of(vec![a, b]);
+    let unscoped = build_view(&facts, "calls", "", 5).unwrap().ascii();
+    assert!(unscoped.contains("a  (cycle)"), "{unscoped}");
     let deep = build_view(&facts, "calls", "a", 5).unwrap();
     assert!(deep.ascii().contains("a  (cycle)"));
     assert!(deep.mermaid().starts_with("flowchart TD\n    n0[\""));
     let shallow = build_view(&facts, "calls", "a", 1).unwrap().ascii();
     assert!(!shallow.contains("(cycle)") && shallow.contains("b  [fn]"));
+}
+
+#[test]
+fn unscoped_views_include_disconnected_cycles_and_test_entrypoints() {
+    let main = fact("r.ms", "fn", "main", 1);
+    let mut recursive = fact("r.ms", "fn", "recursive", 4);
+    recursive.calls = vec![recursive.key.clone()];
+    let test = fact("r.ms", "test", "works", 8);
+    let facts = facts_of(vec![main, recursive, test]);
+    let tree = build_view(&facts, "calls", "", 3).unwrap();
+    let text = tree.ascii();
+    for name in [
+        "main  [fn]",
+        "recursive  [fn]",
+        "recursive  (cycle)",
+        "works  [test]",
+    ] {
+        assert!(text.contains(name), "{text}");
+    }
+}
+
+#[test]
+fn view_cap_includes_roots_and_cycle_leaves() {
+    let facts = facts_of(
+        (0..250)
+            .map(|n| fact("r.ms", "fn", &format!("f{n:03}"), n + 1))
+            .collect(),
+    );
+    let tree = build_view(&facts, "calls", "", 3).unwrap();
+    assert_eq!(tree.children.len(), 201);
+    assert!(
+        tree.ascii()
+            .contains("+50 more (output capped at 200 nodes)")
+    );
+    assert_eq!(tree.omitted, 50);
+    let mut root = fact("r.ms", "fn", "a", 1);
+    let mut children: Vec<Fact> = (0..250)
+        .map(|n| {
+            let mut f = fact("r.ms", "fn", &format!("f{n:03}"), n + 2);
+            f.calls = vec![root.key.clone()];
+            f
+        })
+        .collect();
+    root.calls = children.iter().map(|f| f.key.clone()).collect();
+    children.push(root);
+    let tree = build_view(&facts_of(children), "calls", "a", 3).unwrap();
+    fn nodes(n: &Node) -> usize {
+        1 + n.children.iter().map(nodes).sum::<usize>()
+    }
+    assert_eq!(nodes(&tree), 202); // title, 200 nodes, omitted summary
+}
+
+#[test]
+fn modules_include_leaf_files_and_bound_large_projects() {
+    let facts = Facts {
+        imports: (0..250)
+            .map(|n| (format!("src/f{n:03}.ms"), vec![]))
+            .collect(),
+        ..Facts::default()
+    };
+    let tree = build_view(&facts, "modules", "", 0).unwrap();
+    assert_eq!(tree.omitted, 50);
+    assert_eq!(tree.children[0].file, "src/f000.ms");
+    let leaf = build_view(&facts, "modules", "src/f249.ms", 0).unwrap();
+    assert!(leaf.ascii().contains("src/f249.ms"));
+    assert_eq!(leaf.omitted, 0);
+}
+
+#[test]
+fn explanation_uses_stable_identity_and_handles_removed_entities() {
+    let (base, head) = (program(false), program(true));
+    let findings = compare_facts(&base, &head, &input(&[8]));
+    let json = explain_json(&findings, &head, "1").unwrap();
+    let id = json
+        .get("finding")
+        .unwrap()
+        .get("id")
+        .unwrap()
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        json.get("diagram").unwrap().get("entity").unwrap().as_str(),
+        Some(id)
+    );
+    assert!(
+        explain(&findings, &head, "1")
+            .unwrap()
+            .contains(&format!("--entity '{id}'"))
+    );
+
+    let removed = compare_facts(&head, &Facts::default(), &input(&[]));
+    let explanation = explain_json(&removed, &Facts::default(), "1").unwrap();
+    assert_eq!(explanation.get("diagram"), Some(&ms_json::Json::Null));
+    assert!(
+        !explain(&removed, &Facts::default(), "1")
+            .unwrap()
+            .contains("ms diagram")
+    );
+}
+
+#[test]
+fn ambiguous_finding_names_need_a_number_or_id() {
+    let facts = facts_of(vec![
+        fact("a.ms", "fn", "same", 1),
+        fact("b.ms", "fn", "same", 1),
+    ]);
+    let findings = compare_facts(&Facts::default(), &facts, &input(&[]));
+    assert!(
+        explain(&findings, &facts, "same")
+            .unwrap_err()
+            .contains("ambiguous")
+    );
+    assert!(explain(&findings, &facts, "a.ms#fn#same").is_ok());
 }
 
 #[test]
@@ -297,7 +412,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     };
     let with = Node {
         kind: "with".into(),
-        label: "with TaskGroup[Int]() as group  [closed on exit]".into(),
+        label: "with let group = TaskGroup[Int]()  [closed on exit]".into(),
         children: vec![
             spawn,
             Node {
@@ -318,7 +433,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
     assert_eq!(
         tasks,
-        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with TaskGroup[Int]() as group  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
     );
 }
 

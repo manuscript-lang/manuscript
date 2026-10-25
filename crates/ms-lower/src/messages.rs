@@ -5,19 +5,11 @@ use crate::iface::Message::{self, Payload, Text};
 /// The `message()` text of each case of a standard error type.
 pub(crate) fn table(name: &str) -> Option<&'static [(&'static str, Message)]> {
     Some(match name {
-        "BinaryError" => &[
-            ("InvalidInput", Text("binary: invalid input")),
-            ("OutOfRange", Text("binary: value out of range")),
-        ],
+        "BinaryError" => &[("OutOfRange", Text("binary: value out of range"))],
         "CollectionError" => &[
             ("InvalidInput", Text("collection: invalid input")),
             ("LimitExceeded", Text("collection: limit exceeded")),
             ("OutOfRange", Text("collection: value out of range")),
-        ],
-        "JsonError" => &[
-            ("InvalidInput", Text("JSON: invalid input")),
-            ("InvalidData", Text("JSON: invalid data")),
-            ("LimitExceeded", Text("JSON: limit exceeded")),
         ],
         "RandomError" => &[
             ("InvalidInput", Text("random: invalid input")),

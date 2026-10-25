@@ -132,8 +132,8 @@ def encode_stream(
     produce: Callable[[WriteStream], Result[Unit, IoError]],
     output: WriteStream
 ) -> Result[Unit, IoError]:
-    with try encoding_writer(policy, output) as writer:
-        with Held(writer.writer()) as destination:
+    with let writer = try encoding_writer(policy, output):
+        with let destination = Held(writer.writer()):
             try produce(destination.value)
             return writer.finish()
 
@@ -168,12 +168,12 @@ def dispatch(
     request: Request,
     next: Callable[[Request], Response]
 ) -> Response:
-    with Held(accepted(request)) as negotiated:
+    with let negotiated = Held(accepted(request)):
         if negotiated.value.is_error(): return text_response(
             "Invalid Accept-Encoding", 400
         )
 
-        with Held(next(request)) as response:
+        with let response = Held(next(request)):
             return encode_response(
                 policy, request, negotiated.value.get(), response.value
             )

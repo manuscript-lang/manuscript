@@ -16,7 +16,7 @@ def square(n: Int) -> Int:
     return n * n
 
 test "a group collects its results in start order":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in [1, 2, 3]:
             group.spawn(lambda ch: square(n))
         group.results() | try expect_ok | try expect_equal([1, 4, 9])
@@ -27,11 +27,12 @@ test "a group collects its results in start order":
 - `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. A task that sends no messages ignores its channel: `lambda ch: square(n)`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
-- `group.results()` waits for every started task and returns their results in start order, or the first task's error. `group.wait()` waits for all of them and reports an error if any ended without a result.
+- `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
 - Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
+- Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A fault in a task ends the program, as a fault anywhere does.
+- A Manuscript fault in a task on the main thread ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
 
@@ -49,7 +50,7 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
     return 1
 
 test "a task that passes its timeout is cancelled":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let task = group.spawn(wait_a_minute, timeout: some(duration(10000000)))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
@@ -80,7 +81,7 @@ def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     return ok(())
 
 test "a task answers messages on its channel":
-    with TaskGroup[Result[Unit, ChannelError], Int, Int]() as group:
+    with let group = TaskGroup[Result[Unit, ChannelError], Int, Int]():
         var task = group.spawn(square_all)
         task.channel.send(3) | try expect_ok
         task.channel.receive() | try expect_ok | try expect_equal(some(9))
@@ -92,6 +93,6 @@ test "a task answers messages on its channel":
 - `receive()` waits for the next value: `ok(some(value))`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.
-- Two tasks that each wait to send to the other while neither reads wait forever; when every task waits like this the program stops with a deadlock fault.
+- Two tasks that each wait to send to the other while neither reads cannot make progress. The task scheduler can detect deadlocks within its own scheduler. Cycles spanning workers or processes are not covered by this guarantee; design protocols so each receive has a corresponding sender.
 - An end has one owner. `.clone()` makes another handle on the same end, so several tasks can send to or receive from it.
 - Write the parameter as `ch` and rebind it with `var c = ch`; a function with a `var` parameter cannot be passed as an entry yet ([#1191](https://github.com/manuscript-lang/manuscript/issues/1191)).

@@ -269,7 +269,7 @@ fn runtime_fault_is_reported_as_json() {
     );
     let backend = Engine::new(Native);
     let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
-    assert_eq!(status, 70, "{err}");
+    assert_eq!(status, 67, "{err}");
     for needle in [
         "\"kind\": \"division_by_zero\"",
         "\"cleanups_ran\": true",
@@ -419,7 +419,7 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -476,7 +476,7 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/process.ms\" import commands\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        let _out = commands().run(\"sleep\", [\"0.5\"])\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/process.ms\" import commands\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        let _out = commands().run(\"sleep\", [\"0.5\"])\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -533,7 +533,7 @@ fn native_http_handler_faults_do_not_leak_per_request() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), f\"{xs[i]}\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    let xs: List[Int] = []\n    let i = request.path.length()\n    return HttpResponse(200, headers(), f\"{xs[i]}\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -618,7 +618,7 @@ fn native_programs_using_tls_and_http_link() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with acquired as server:\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle):\n        with let server = acquired:\n            return 0\n    return 1\n",
     );
     let exe = dir.join("net");
     let backend = Engine::new(Native);
@@ -642,7 +642,7 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse, HttpServerOptions\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, options: HttpServerOptions(grace: duration(10000000000))):\n        with acquired as server:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import headers, HttpRequest, HttpResponse, HttpServerOptions\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: handle, options: HttpServerOptions(grace: duration(10000000000))):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -705,7 +705,7 @@ def handle(request: Request) -> Response:
 def application(server: Server) -> Result[Unit, HttpError]:
     var routes = Router()
     routes.get("/", handle)
-    with TaskGroup[Unit]() as tasks:
+    with let tasks = TaskGroup[Unit]():
         if server.member_index == 0:
             let copy = server.clone()
             let _ready = tasks.spawn(lambda channel: ready(copy))
@@ -910,7 +910,7 @@ def ready(server: Server) -> Unit:
     stdout().flush().get()
 
 def application(server: Server) -> Result[Unit, HttpError]:
-    with TaskGroup[Unit]() as tasks:
+    with let tasks = TaskGroup[Unit]():
         let copy = server.clone()
         let task = tasks.spawn(lambda channel: ready(copy))
         return server.run(Router())
@@ -1003,7 +1003,7 @@ impl Closeable for Payload:
 
 export def main() -> Int:
     let server = Server("127.0.0.1:0", HttpServerOptions(timeout: 500.milliseconds))
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
         let running = tasks.spawn(lambda channel:
             var routes = Router()
@@ -1047,12 +1047,12 @@ export def main() -> Int:
             let file = asset("a".repeat(4194304).get().to_bytes()).get().clone()
             routes.get("/ranges", lambda request: asset_response(request, file))
             routes.get("/slow", lambda request:
-                with Payload("x".repeat(512).get().to_bytes()) as payload:
+                with let payload = Payload("x".repeat(512).get().to_bytes()):
                     sleep(5.seconds)
                     return text_response("late")
             )
             routes.get("/fault", lambda request:
-                with Payload("x".repeat(512).get().to_bytes()) as payload:
+                with let payload = Payload("x".repeat(512).get().to_bytes()):
                     panic("expected fault")
                     return text_response("unreachable")
             )

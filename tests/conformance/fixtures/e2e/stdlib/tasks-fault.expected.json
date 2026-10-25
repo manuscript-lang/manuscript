@@ -3,8 +3,8 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "",
-    "stderr": "index 5 out of range for length 1; pass a default: get(index:, default: ...)\n  at tasks-fault.ms:6 in boom\n  at tasks-fault.ms:12 in <anonymous>\n  at @std/tasks.ms:205 in run\n  at @std/tasks.ms:283 in <anonymous>\n  task started by:\n  at @std/tasks.ms:282 in TaskGroup.spawn\n  at tasks-fault.ms:12 in main\n"
+    "stderr": "index 5 out of range for length 1; pass a default: get(index:, default: ...)\n  at tasks-fault.ms:6 in boom\n  at tasks-fault.ms:12 in <anonymous>\n  at @std/tasks.ms:<LINE> in run\n  at @std/tasks.ms:<LINE> in <anonymous>\n  task started by:\n  at @std/tasks.ms:<LINE> in TaskGroup.spawn\n  at tasks-fault.ms:12 in main\n"
   }
 }

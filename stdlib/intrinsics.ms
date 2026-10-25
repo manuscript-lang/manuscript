@@ -48,25 +48,13 @@ interface StringOperations:
         count: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
-    # Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
-    # Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
-    # An empty old matches at scalar boundaries, and inserted text is not searched again.
-    # Zero changes nothing; negative caps retain replace's programming fault.
-    def replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int] = none
-    ) -> String
-    # Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
-    # Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
-    # The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
-    def replace_n(old: String, new: String, max_replacements: Int) -> String
-    # Compatibility spelling for replace_first, including its explicit replacement cap.
-    def replace(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int] = none
-    ) -> String
+    # Replaces the first occurrence of old; text without a match is unchanged.
+    # An empty old matches at the first scalar boundary, so new is inserted at the start.
+    def replace_first(old: String, new: String) -> String
+    # Replaces every nonoverlapping occurrence of old, scanning left to right; inserted text is not rescanned.
+    # An empty old matches at each scalar boundary, so "ab".replace("", "-") is "-a-b-".
+    # Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
+    def replace(old: String, new: String) -> String
     # Returns the number of Unicode scalar values in the string.
     def scalar_length() -> Int
     # Returns each Unicode scalar value as an integer.
@@ -99,27 +87,12 @@ interface StringOperations:
     def trim_start() -> ref String
     # Removes Unicode whitespace at the end.
     def trim_end() -> ref String
-    # Pads on the left until the scalar length reaches `target_length`.
-    # Empty padding or a shorter target leaves text unchanged; max_bytes still bounds UTF-8 output.
-    def pad_start(
-        target_length: Int,
-        padding: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[String, StringError]
-    # Pads on the right until the scalar length reaches `target_length`.
-    # Empty padding or a shorter target leaves text unchanged; negative targets/budgets return InvalidInput.
-    def pad_end(
-        target_length: Int,
-        padding: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[String, StringError]
-    # Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.
-    # max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
-    def replace_all(
-        old: String,
-        new: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[String, StringError]
+    # Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
+    # A shorter or negative target or empty padding returns the text unchanged; output beyond the string limit faults like `concat`.
+    # Example: `"7".pad_start(3, "0")` is `"007"`.
+    def pad_start(target_length: Int, padding: String) -> String
+    # Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
+    def pad_end(target_length: Int, padding: String) -> String
     # Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
     # Bounds outside 0 <= start <= end <= scalar_length() return StringError.OutOfRange; the receiver is unchanged.
     def slice(start: Int, end: Int) -> Result[String, StringError]
@@ -129,6 +102,8 @@ interface StringOperations:
     def to_bytes() -> Bytes
     # Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
     def parse_int() -> Optional[Int]
+    # Parses a decimal floating-point number with the syntax of `math.parse_float`; invalid or out-of-range text returns none.
+    def parse_float() -> Optional[Float]
 
 # Conversion operations for machine-sized integers.
 interface IntOperations:
@@ -147,6 +122,8 @@ interface IntOperations:
     def sign() -> Int
     # Returns the same value; Int64 is another name for Int while Int is 64 bits wide.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Int8, or returns none when the value is outside Int8's range.
     def to_int8() -> Optional[Int8]
     # Converts to Int16, or returns none when the value is outside Int16's range.
@@ -160,13 +137,13 @@ interface IntOperations:
 
 # Formatting and classification operations for floating-point values.
 interface FloatOperations:
-    # Formats 1..100 significant digits, preserving trailing zeros; an invalid precision returns NumberError.InvalidInput.
-    def to_precision(precision: Int) -> Result[String, NumberError]
-    # Formats scientific notation with 0..100 fractional digits; an invalid count returns NumberError.InvalidInput.
-    def to_exponential(digits: Int) -> Result[String, NumberError]
+    # Formats 1..100 significant digits, preserving trailing zeros; a count outside 1..100 faults.
+    def to_precision(precision: Int) -> String
+    # Formats scientific notation with 0..100 fractional digits; a count outside 0..100 faults.
+    def to_exponential(digits: Int) -> String
     # Formats 0..100 fractional digits; magnitude >= 1e21 uses ordinary round-trip notation.
-    # Invalid digits return NumberError.InvalidInput; rounding uses binary64 ties to even.
-    def to_fixed(digits: Int) -> Result[String, NumberError]
+    # A count outside 0..100 faults; rounding uses binary64 ties to even. Example: `3.14159.to_fixed(2)` is `"3.14"`.
+    def to_fixed(digits: Int) -> String
     # Returns the shortest round-trip representation, including NaN and signed infinities.
     def to_string() -> String
     # Tests whether the value is NaN.
@@ -205,6 +182,8 @@ interface Int8Operations:
     def to_int32() -> Int32
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -231,6 +210,8 @@ interface Int16Operations:
     def to_int32() -> Int32
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -257,6 +238,8 @@ interface Int32Operations:
     def to_int16() -> Optional[Int16]
     # Converts to Int64; every value fits, so no check is needed.
     def to_int64() -> Int64
+    # Converts to Int; every value fits, so no check is needed.
+    def to_int() -> Int
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -276,5 +259,7 @@ interface Float32Operations:
     def sign() -> Float32
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
+    # Converts to Float; every Float32 converts exactly.
+    def to_float() -> Float
     # Converts to Float64; every Float32 converts exactly.
     def to_float64() -> Float64

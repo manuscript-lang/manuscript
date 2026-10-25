@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/web_cache.ms" import ResponseCache
 from "@std/http.ms" import Request, Response, Body, headers, text_response
 from "@std/testing.ms" import expect_equal, expect_true
@@ -14,9 +15,11 @@ test "response cache snapshots headers and supports tag and path invalidation":
     let calls = share(0)
 
     let handler = lambda (request: Request) -> Response:
-        let count = calls.take() + 1
-        calls.put(count)
-        return text_response(f"{count}")
+        with var guard = lock(calls):
+            let count = guard.value + 1
+            guard.value = count
+
+        return text_response(f"{calls.get()}")
 
     let first = cache.handle(Request(path: "/a"), handler, ["page"])
     first.headers.append("Set-Cookie", "late=mutation".to_bytes()).get()

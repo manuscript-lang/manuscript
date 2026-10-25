@@ -83,18 +83,27 @@ impl FnLower<'_> {
         }
         let kind = self.closer_for(&cleanup, &binding.ty)?;
         self.push_scope();
+        // A `var` binding the block changes lives in memory, so a fault or cancellation closes
+        // its value at that moment and not the one it started with.
+        if binding.mutable {
+            self.slotted.insert(binding.uid);
+        }
         self.bind_local(&binding, x);
         self.flush_temps(mark);
         // A fault inside the block runs the close through the runtime's cleanup stack; leaving
         // normally discards the entry and closes the current value.
         let ty = self.locals[&binding.uid].ty;
-        let thunk = self.close_thunk(&kind, ty);
-        let current = self.read_local(&binding)?;
+        let slot = self.locals[&binding.uid].slot;
+        let thunk = self.close_thunk(&kind, ty, slot.is_some());
+        let registered = match slot {
+            Some(ptr) => ptr,
+            None => self.read_local(&binding)?.v,
+        };
         let handle = self
             .b
             .emit(
                 Op::CleanupPush,
-                &[current.v],
+                &[registered],
                 Imm::Func(thunk),
                 Some(MTy::INT),
             )
@@ -160,26 +169,35 @@ impl FnLower<'_> {
     }
 
     /// The function the cleanup stack calls with the registered value.
-    fn close_thunk(&mut self, kind: &CloseKind, ty: MTy) -> FuncId {
+    fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
         let key = match kind {
-            CloseKind::Iface(i, k) => format!("close:iface{}:{k}", i.0),
+            CloseKind::Iface(i, k) => format!("close:iface{}:{k}:{in_slot}", i.0),
             CloseKind::Func { fid, writes_back } => {
-                format!("close:{}:{writes_back}", fid.index())
+                format!("close:{}:{writes_back}:{in_slot}", fid.index())
             }
         };
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
         }
+        // A slot-held binding registers the address of its storage; the close reads it then.
         let ps = vec![Param {
-            ty,
-            mode: Mode::Own,
+            ty: if in_slot { MTy::PTR } else { ty },
+            mode: if in_slot { Mode::Borrow } else { Mode::Own },
         }];
         let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
-        let v = b.params()[0];
+        let mut v = b.params()[0];
+        if in_slot {
+            let op = if b.m.needs_drop(ty) {
+                Op::Take
+            } else {
+                Op::Load
+            };
+            v = b.emit(op, &[v], Imm::Ty(ty), Some(ty)).expect("binding");
+        }
         close_call(&mut b, kind, v, ty);
-        // CleanupPush borrows the bits of the immutable binding, without retaining it.
+        // CleanupPush borrows the bits of the binding, without retaining it.
         // A fault abandons its frame, so this thunk also discharges that ownership.
         // Normal scope exit discards the thunk, then closes and drops the local itself.
         if b.m.needs_drop(ty) {

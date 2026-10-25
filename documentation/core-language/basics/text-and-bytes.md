@@ -67,7 +67,7 @@ The built-in method wins over any field or interface operation named `to_string`
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slice syntax. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
+There is no `text[index]` or slice syntax: scalar position is not a constant-time offset in UTF-8, so use `get(index)` or `for c in text.chars()`. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
 - `get`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `get(index, default:)` returns a one-scalar String; `scalar_at(index, default:)` its code point as an Int. Negative indexes count from the end; out of range gives the default, or a fault without one.
 - Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
@@ -91,21 +91,33 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 
 Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `OutOfRange` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are `error(StringError.OutOfRange)`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections.md), and [Bytes](../../standard-library/reference/bytes.md) references.
 
+## Replacing text
+
+`String.replace(old:, new:)` replaces every nonoverlapping literal occurrence, scanning left to right; inserted text is not searched again, so `"aaa".replace("aa", "b")` is `"ba"`. `String.replace_first(old:, new:)` replaces only the first occurrence. Both return a new String and leave the receiver unchanged. An empty `old` matches at each Unicode scalar boundary: `"ab".replace("", "-")` is `"-a-b-"` and `"ab".replace_first("", "-")` is `"-ab"`. Output beyond the string size limit is a programming fault, as for `concat`. Use `Regex.replace_all` for pattern matches or a bounded result.
+
+The removed spellings migrate as follows.
+
+| Removed | Use |
+| --- | --- |
+| `replace_all(old, new)` returning `Result` | `replace(old, new)` returning `String` |
+| `replace(old, new)` meaning first occurrence | `replace_first(old, new)` |
+| `replace_n(old, new, count)`, `max_replacements:`, `max_bytes:` | `replace_first` for one, otherwise a loop over `index_of` |
+
 ## Encoding and parsing
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
+| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]`; `parse_float() -> Optional[Float]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `[index] Int`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_string() -> Optional[String]` |
 | `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` returns the unsigned byte as Int.
+`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the unsigned byte as Int; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
-`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
+`parse_int` accepts an optional ASCII `+` or `-` then one or more ASCII digits, in range. Leading zeros are fine; whitespace, separators, fractions, exponents, and trailing characters give `none`. `parse_float` takes an optional sign, digits, an optional fraction with digits on both sides of the point, an optional exponent, or `NaN`, `Infinity` and `-Infinity`; anything else, or a finite-looking value beyond the Float range, gives `none`. Use `math.parse_float` and `math.parse_int(text, radix)` when the failure cause or a radix is needed. Exact signatures are in the [API reference](../../standard-library/reference/_index.md). Grapheme and locale operations are unsupported.
 
 ```manuscript
 from "@std/core.ms" import panic
@@ -122,6 +134,40 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("-007".parse_int() == some(-7)):
         return panic("check failed")
+```
+
+## Padding and fixed digits
+
+`pad_start(target_length, padding)` and `pad_end` return a `String`. The text grows to `target_length` scalars by repeating `padding` (the last copy is cut to fit); a shorter or negative target or empty padding returns the text unchanged. An output beyond the string limit faults, as `concat` does, so a table row needs no unwrapping. `Float.to_fixed(digits)`, `to_precision(precision)` and `to_exponential(digits)` also return a `String`; a count outside their range (0 to 100, or 1 to 100 for `to_precision`) is a programming fault.
+
+```manuscript
+from "@std/core.ms" import panic
+
+def row(name: String, amount: Float) -> String:
+    return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
+
+test "padding and fixed digits":
+    if row("total", 3.14159) != "total        3.14":
+        panic("unexpected row")
+```
+
+## Binary data
+
+`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `Result[T, BinaryError]`; bytes that are not all there give `BinaryError.OutOfRange`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); unsigned reads return `Int`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many. An unsigned append outside its range faults.
+
+```manuscript
+from "@std/bytes.ms" import BytesBuilder
+from "@std/core.ms" import panic
+
+test "binary codecs":
+    var out = BytesBuilder()
+    out.append_uint16_be(258)
+    out.append_float64_le(1.5)
+    let data = out.build()
+    if data.uint16_be(0) != ok(258):
+        panic("unexpected integer")
+    if data.float64_le(2) != ok(1.5):
+        panic("unexpected float")
 ```
 
 ## Deterministic formatting

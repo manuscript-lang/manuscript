@@ -240,9 +240,9 @@ def send_ranges(
     parts: List[Interval],
     boundary: String
 ) -> Result[Unit, IoError]:
-    with Held(share(output)) as destination:
+    with let destination = Held(share(output)):
         for range in parts:
-            with Held(part_head(boundary, value, range)) as head:
+            with let head = Held(part_head(boundary, value, range)):
                 try destination.value.get().write(head.value)
 
             var offset = range.first + 0
@@ -252,13 +252,13 @@ def send_ranges(
 
                 let size = 65536 if remaining > 65536 else remaining
 
-                with Held(value.data.slice(offset, offset + size).get()) as chunk:
+                with let chunk = Held(value.data.slice(offset, offset + size).get()):
                     try destination.value.get().write_bytes(chunk.value)
                 offset += size
 
             try destination.value.get().write("\r\n")
 
-        with Held(f"--{boundary}--\r\n") as closing:
+        with let closing = Held(f"--{boundary}--\r\n"):
             return destination.value.get().write(closing.value)
 
 # Responds from an immutable representation. Preconditions precede ranges; malformed or unsatisfiable ranges return 416.
@@ -400,7 +400,7 @@ export def load_asset(
 ) -> Result[Asset, HttpError]:
     if max_bytes < 0: return error(HttpError.InvalidInput)
 
-    with try file_result(filesystem().open(path, "r", 0)) as file:
+    with let file = try file_result(filesystem().open(path, "r", 0)):
         let data = read_all(file.reader(), some(max_bytes))
         if data.is_error(): return error(HttpError.Failed(data.err().message()))
 

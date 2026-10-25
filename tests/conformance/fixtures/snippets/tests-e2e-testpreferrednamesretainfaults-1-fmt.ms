@@ -23,16 +23,6 @@ test "empty remove":
     var items: List[Int] = []
     items.remove(0)
 
-test "old replace":
-    "a".replace("a", "b", -1)
-
-test "new replace":
-    "a".replace_first("a", "b", -1)
-
-test "bound replace":
-    let first = "a".replace_first
-    first("a", "b", -1)
-
 test "continues":
     var result = [1]
     result.set(0, 2)

@@ -496,7 +496,7 @@ pub const MAX_CALL_DEPTH: i64 = 200_000;
 /// Fault frames shown before "... outer frames omitted".
 pub const MAX_FAULT_FRAMES: usize = 32;
 /// Exit statuses.
-pub const EXIT_FAULT: i32 = 70;
+pub const EXIT_FAULT: i32 = 67;
 pub const EXIT_INTERRUPT: i32 = 130;
 pub const EXIT_TERMINATE: i32 = 143;
 /// Largest `main` return value.

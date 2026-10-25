@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/http.ms" import Request, HttpHeaders, headers
 from "@std/io.ms" import ReadStream, IoError
 from "@std/bytes.ms" import Bytes
@@ -153,33 +154,27 @@ def append_input(
 ) -> Result[Unit, IoError]:
     msrt_shield_enter()
 
-    with Preparation() as preparation:
-        var scanner = shared.take()
+    with let preparation = Preparation():
+        with var scanner_guard = lock(shared):
+            if chunk.is_none():
+                scanner_guard.value.eof = True
+                return ok(())
 
-        if chunk.is_none():
-            scanner.eof = True
-            shared.put(scanner)
-            return ok(())
+            let bytes = chunk.get()
+            if bytes.length() == 0:
+                return error(IoError.InvalidData)
+            if bytes.length() > 65536 or bytes.length() > scanner_guard.value.remaining:
+                return error(IoError.LimitExceeded)
 
-        let bytes = chunk.get()
+            scanner_guard.value.remaining -= bytes.length()
+            scanner_guard.value.pending = scanner_guard.value.pending.concat(bytes)
 
-        if bytes.length() == 0:
-            shared.put(scanner)
-            return error(IoError.InvalidData)
-
-        if bytes.length() > 65536 or bytes.length() > scanner.remaining:
-            shared.put(scanner)
-            return error(IoError.LimitExceeded)
-
-        scanner.remaining -= bytes.length()
-        scanner.pending = scanner.pending.concat(bytes)
-        shared.put(scanner)
         return ok(())
 
 def fill(shared: Shared[Scanner]) -> Result[Unit, IoError]:
     if shared.get().eof: return error(IoError.InvalidData)
 
-    with Held(try shared.get().input.body.read(some(65536))) as chunk:
+    with let chunk = Held(try shared.get().input.body.read(some(65536))):
         return append_input(shared, chunk.value)
 
 impl Scanner:
@@ -248,17 +243,15 @@ impl Scanner:
 def scan(shared: Shared[Scanner], limit: Int, line: Bool) -> Result[Step, IoError]:
     msrt_shield_enter()
 
-    with Preparation() as preparation:
-        var scanner = shared.take()
-
-        let result = scanner.line_step(limit) if line else scanner.payload_step(limit)
-
-        shared.put(scanner)
-        return result
+    with let preparation = Preparation():
+        with var scanner_guard = lock(shared):
+            return scanner_guard.value.line_step(limit) if line else scanner_guard.value.payload_step(
+                limit
+            )
 
 def read_line(shared: Shared[Scanner], limit: Int) -> Result[Bytes, IoError]:
     while True:
-        with Held(try scan(shared, limit, True)) as step:
+        with let step = Held(try scan(shared, limit, True)):
             match step.value:
                 case Data(bytes): return ok(bytes.clone())
                 case End: return error(IoError.InvalidData)
@@ -268,7 +261,7 @@ def read_line(shared: Shared[Scanner], limit: Int) -> Result[Bytes, IoError]:
 
 def payload(shared: Shared[Scanner], wanted: Int) -> Result[Optional[Bytes], IoError]:
     while True:
-        with Held(try scan(shared, wanted, False)) as step:
+        with let step = Held(try scan(shared, wanted, False)):
             match step.value:
                 case Data(bytes): return ok(some(bytes.clone()))
                 case End: return ok(none)
@@ -284,8 +277,8 @@ type PartReader:
 
 impl ReadStream for PartReader:
     var def close() -> Unit:
-        self.active.take()
-        self.active.put(False)
+        with var flag_guard = lock(self.active):
+            flag_guard.value = False
 
     var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
         if not self.active.get() or self.busy.get(): return error(IoError.Closed)
@@ -293,19 +286,19 @@ impl ReadStream for PartReader:
         let wanted = max_bytes.get(65536)
         if wanted <= 0: return error(IoError.InvalidInput)
 
-        self.busy.take()
-        self.busy.put(True)
+        with var flag_guard = lock(self.busy):
+            flag_guard.value = True
 
         let result = payload(self.scanner, wanted)
-        self.busy.take()
-        self.busy.put(False)
+        with var flag_guard = lock(self.busy):
+            flag_guard.value = False
         if not self.active.get(): return error(IoError.Closed)
 
         if result.is_error():
-            self.failed.take()
-            self.failed.put(True)
-            self.active.take()
-            self.active.put(False)
+            with var flag_guard = lock(self.failed):
+                flag_guard.value = True
+            with var flag_guard = lock(self.active):
+                flag_guard.value = False
 
         return result
 
@@ -317,8 +310,8 @@ type PartScope:
 
 impl Closeable for PartScope:
     var def close() -> Unit:
-        self.active.take()
-        self.active.put(False)
+        with var flag_guard = lock(self.active):
+            flag_guard.value = False
 
 type MultipartScope:
     scanner: Shared[Scanner]
@@ -334,7 +327,7 @@ def prepare(
 ) -> Result[MultipartScope, IoError]:
     msrt_shield_enter()
 
-    with Preparation() as preparation:
+    with let preparation = Preparation():
         if (
             limits.max_bytes < 0
             or limits.max_part_bytes < 0
@@ -387,19 +380,16 @@ def prepare(
 def reset_part(shared: Shared[Scanner], limit: Int) -> Unit:
     msrt_shield_enter()
 
-    with Preparation() as preparation:
-        var scanner = shared.take()
-        scanner.ended = False
-        scanner.part_remaining = limit
-        shared.put(scanner)
+    with let preparation = Preparation():
+        with var scanner_guard = lock(shared):
+            scanner_guard.value.ended = False
+            scanner_guard.value.part_remaining = limit
 
 def clear_pending(shared: Shared[Scanner]) -> Unit:
     msrt_shield_enter()
-
-    with Preparation() as preparation:
-        var scanner = shared.take()
-        scanner.pending = "".to_bytes()
-        shared.put(scanner)
+    with let preparation = Preparation():
+        with var scanner_guard = lock(shared):
+            scanner_guard.value.pending = "".to_bytes()
 
 def append_header(fields: HttpHeaders, raw: Bytes) -> Result[Unit, IoError]:
     let decoded = raw.decode_utf8()
@@ -422,7 +412,7 @@ def part_scope(
 ) -> Result[PartScope, IoError]:
     msrt_shield_enter()
 
-    with Preparation() as preparation:
+    with let preparation = Preparation():
         let dispositions = fields.text("Content-Disposition")
         if (
             dispositions.is_error()
@@ -460,12 +450,12 @@ def read_part(
 ) -> Result[PartScope, IoError]:
     reset_part(shared, limits.max_part_bytes)
 
-    with Held(headers()) as fields:
+    with let fields = Held(headers()):
         var remaining = limits.max_header_bytes + 0
         var count = 0
 
         while True:
-            with Held(try read_line(shared, remaining)) as raw:
+            with let raw = Held(try read_line(shared, remaining)):
                 remaining -= raw.value.length() + 2
                 if raw.value.length() == 0: break
 
@@ -487,7 +477,7 @@ def epilogue(shared: Shared[Scanner]) -> Result[Unit, IoError]:
 
 def opening(scope: MultipartScope, limits: MultipartLimits) -> Result[Bool, IoError]:
     while True:
-        with Held(try read_line(scope.scanner, limits.max_header_bytes)) as line:
+        with let line = Held(try read_line(scope.scanner, limits.max_header_bytes)):
             if line.value == scope.opening: return ok(True)
 
             if line.value == scope.closing:
@@ -504,7 +494,7 @@ export def multipart(
     visit: Callable[[MultipartPart], Result[Unit, IoError]],
     limits: MultipartLimits = MultipartLimits()
 ) -> Result[Unit, IoError]:
-    with try prepare(request, limits) as scope:
+    with let scope = try prepare(request, limits):
         if not try opening(scope, limits): return ok(())
 
         var count = 0
@@ -514,16 +504,16 @@ export def multipart(
 
             count += 1
 
-            with try read_part(scope.scanner, limits) as part:
+            with let part = try read_part(scope.scanner, limits):
                 try visit(part.part)
-                part.active.take()
-                part.active.put(False)
+                with var flag_guard = lock(part.active):
+                    flag_guard.value = False
                 if part.busy.get() or part.failed.get(): return error(
                     IoError.InvalidData
                 )
 
                 while True:
-                    with Held(try payload(scope.scanner, 65536)) as chunk:
+                    with let chunk = Held(try payload(scope.scanner, 65536)):
                         if chunk.value.is_none(): break
 
         while scope.scanner.get().pending.length() < 2 and not scope.scanner.get().eof:
@@ -552,10 +542,10 @@ export def with_upload(
 ) -> Result[Unit, IoError]:
     if max_bytes < 0: return error(IoError.InvalidInput)
 
-    with try file_result(filesystem().temporary("manuscript-upload-")) as directory:
-        with Held(join([directory.path(), "payload"])) as path:
-            with try file_result(filesystem().open(path.value, "wx", 384)) as file:
-                with Held(file.writer()) as output:
+    with let directory = try file_result(filesystem().temporary("manuscript-upload-")):
+        with let path = Held(join([directory.path(), "payload"])):
+            with let file = try file_result(filesystem().open(path.value, "wx", 384)):
+                with let output = Held(file.writer()):
                     let count = try copy(part.body, output.value, some(max_bytes))
             return visit(path.value)
 

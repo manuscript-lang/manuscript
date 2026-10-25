@@ -4,7 +4,6 @@
 from "@std/testing.ms" import expect_contains, expect_fault, expect_true
 from "@std/string.ms" import StringBuilder
 from "@std/collections.ms" import MapBuilder, SetBuilder
-from "@std/math.ms" import abs_int
 
 type Folded:
     name: String
@@ -47,16 +46,16 @@ test "builder":
     let sb = StringBuilder()
     var alias = sb
     let append = alias.append
-    let freeze = sb.freeze
+    let build = sb.build
     append("a")
     append("é")
-    (freeze() == "aé") | try expect_true
-    (alias.freeze() == "aé") | try expect_true
+    (build() == "aé") | try expect_true
+    (alias.build() == "aé") | try expect_true
 
 test "sealed builder":
     var sb = StringBuilder()
     let append = sb.append
-    sb.freeze()
+    sb.build()
 
     let message = try expect_fault(lambda: append(""))
     message | try expect_contains("builder is sealed")
@@ -64,7 +63,7 @@ test "sealed builder":
 test "sealed map and set builders fault through every spelling":
     let map_builder = MapBuilder[String, Int]()
     let map_add = map_builder.add
-    let map_sealed = map_builder.freeze()
+    let map_sealed = map_builder.build()
     (try expect_fault(lambda: map_add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
@@ -74,7 +73,7 @@ test "sealed map and set builders fault through every spelling":
 
     let set_builder = SetBuilder[Int]()
     let alias = set_builder
-    let set_sealed = set_builder.freeze()
+    let set_sealed = set_builder.build()
     (try expect_fault(lambda: alias.add(1))) | try expect_contains("builder is sealed")
     (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
         "builder is sealed"
@@ -84,14 +83,14 @@ test "unsealed set builder continues":
     let builder = SetBuilder[Int]()
     builder.add(1)
 
-    let frozen = builder.freeze()
+    let frozen = builder.build()
     (frozen.length() == 1) | try expect_true
 
-test "abs_int of the minimum overflows":
+test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
         lambda:
-            let ignored = abs_int(value: smallest)
+            let ignored = smallest.abs()
     )
     message | try expect_contains("Int overflow")
 

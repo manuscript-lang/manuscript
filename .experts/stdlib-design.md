@@ -7,12 +7,13 @@ Cross-cutting rules for shaping `stdlib/*.ms`. Domain-specific mechanics stay in
 Decision: the stdlib reorganization (#659) removed duplicate routes: `cli` moved into `process` (`process.arguments`, `process.control().environment()` is the only environment API), the temp-root query moved to `FileSystem.temporary_root` (`fs` is the only temp-dir API), string-typed `crypto.hmac` was dropped for `HashAlgorithm.hmac`, and the SSE decoder became an interface with `feed`/`finish`/`retry` methods. Before adding a function, search for an existing home with `ms search_symbol`; a second spelling needs a new decision. Do not restore removed names from old docs or branches.
 
 Apply when: adding or moving a stdlib function, or when two modules could both own an operation.
+The scalar `math.abs`, `abs_int`, `sign`, `sign_int` and `to_float32` functions duplicated the `.abs()`, `.sign()` and `.to_float32()` methods and were removed, as was `Set.entries()`, which only repeated `values()` as `[value, value]` pairs; `String.parse_float()` joins `parse_int()` as the Optional form while `math.parse_float` keeps the Result form with its cause.
 Evidence: commit 9a2dc4e6, [process](../stdlib/process.ms), [fs](../stdlib/fs.ms), [crypto](../stdlib/crypto.ms), [sse](../stdlib/sse.ms).
 Verify: `ms search_symbol <old name>` finds no declaration; `make docs-check` passes and every moved symbol has an updated fixture.
 
 ### Pick the failure mode by cause, then the shape
 
-Decision: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. `[]` returns `T` and faults out of range; `get(index, default)` on List, String, and Bytes returns `T` or the default; `at()` is removed (#669). `Optional.get(default)` and `Result.get(default)` replace `unwrap`/`unwrap_or` (a missing default on none/error still faults), `Result.or_else` replaces `unwrap_or_else`, and `Result.err()` replaces `unwrap_error`. Optional keeps a lazy `or_else`; there is no eager/lazy pair on the same type.
+Decision: absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults. `[]` returns `T` and faults out of range; `get(index, default)` on List, String, and Bytes returns `T` or the default; `at()` is removed (#669). `Optional.get(default)` and `Result.get(default)` replace `unwrap`/`unwrap_or` (a missing default on none/error still faults), `get_or_else(create)` on Optional and Result replaces `unwrap_or_else`; `or_else(create)` returns the same wrapper on both (lazy alternative) and `Result.map_error` transforms the error, and `Result.err()` replaces `unwrap_error`. Eager `get(default)` and lazy `get_or_else(create)` are the only pair; `or_else` never unwraps.
 
 Apply when: designing any fallible read, lookup, or conversion.
 Evidence: [Optional](../stdlib/core.ms), [Result](../stdlib/core.ms), commits f7a3f26a and 040f6321, [collection rules](../documentation/core-language/types/collections.md).
@@ -49,3 +50,28 @@ Verified: public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and
 Apply when: adding a module or public member.
 Evidence: [development checks](../documentation/contributing/development.md), [runtime conventions](../documentation/contributing/runtime-conventions.md), [bindings](../stdlib/bindings.json), [docgen](../crates/ms-tooling/src/guide/src/docgen.rs).
 Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform`.
+
+### List structure ops: `entries()` already is `indexed`; piece lists come from one runtime call
+
+Decision: `List.entries()` (`ListEntry` with `index`, `value`) covers the "walk with an index" need, so no `indexed()` alias was added. `zip` returns `Pair[T, U]` and `partition` returns `Partition[T]`, both exported from `@std/collections.ms` but not prelude names, so user types called `Pair` keep working. `chunks`/`windows` share `msrt_list_pieces`; `zip` and `partition` lower to loops with no closure for `zip`. A non-positive size faults.
+
+Apply when: adding List methods that return records or nested lists.
+Evidence: `tests/e2e/testdata/stdlib/list-structural-ops.ms`, `snippets/list-{chunks,windows}-zero-fault`.
+Verify: `ms test tests/e2e/testdata/stdlib/list-structural-ops.ms`; `make stdlib-bench BENCHFILTER=list.` shows zip 2, chunks 7, windows 70, partition 9 ns per element.
+
+### Natural order is a comparator, not a second sort path
+
+Decision: `List.sorted()` and `sort()` without `compare` order by the element's `Comparable.compare`; the checker rewrites the call to pass `lambda a, b: a.compare(b)` (the rewrite is recorded as `Info.desugared` and lowered in place of the written call), so user, generic and built-in element types share the comparator path and `sortgen` still reduces plain Int order to `msrt_list_sort_ints`. `sum`, `min` and `max` are native List members with receiver requirements in `bindings.json` (numeric, Comparable); `math.max_of`/`min_of` were removed. `Float.compare` must treat NaN as equal to itself and above every value, or float sorts are inconsistent.
+
+Apply when: adding a List operation that depends on an element contract, or changing `sortgen`'s recognized comparator shapes.
+Evidence: [collections.ms](../stdlib/collections.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
+Verify: `make stdlib-bench BENCHFILTER=list.sort` shows `sorted_natural` within noise of `sorted`.
+
+
+### Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods
+
+Decision: `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`. Their only failures were a negative budget or a digit count outside 0..100, always a literal in the caller, so every table printed `.get()`. A short target or empty padding returns the text unchanged, there is no byte budget (`repeat` keeps one because it multiplies), output beyond the string limit faults like `concat`, and a digit count out of range faults. Binary data reads and writes are methods: `Bytes.int32_le(at)` and siblings return `Result[T, BinaryError]` (only `OutOfRange`), `BytesBuilder.append_int32_le(value)` and siblings return `Unit`, and `BytesBuilder.concat` became `append_bytes` so `append` means one byte. `read_integer`/`write_integer`/`read_float`/`write_float` were removed: the one stdlib use (`processes.ms` frames) is fixed width. Bodies could not be written in Manuscript: `Bytes` is a native type, so its methods are `msrt_bytes_*` natives. A `Float32` argument reaches a native as the `f64` holding its value and sized-integer arguments as `i64`; only out slots use the packed width.
+
+Apply when: giving a native a `Result` whose error comes only from a constant argument, or adding a sized-number codec.
+Evidence: [text-padding fixture](../tests/e2e/testdata/stdlib/text-padding.ms), [binary fixture](../tests/e2e/testdata/stdlib/binary.ms), `bytes.read_int32_le` and `bytes.append_int32_le` in `bench/perf/stdlib/src/binarybench.ms`.
+Verify: `ms test tests/e2e/testdata/stdlib/binary.ms tests/e2e/testdata/stdlib/text-padding.ms`; `make stdlib-bench BENCHFILTER=bytes.`.

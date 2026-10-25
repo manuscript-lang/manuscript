@@ -5,19 +5,19 @@ weight = 0
 
 # How it works
 
-`ms` is one self-contained binary. It checks your program and compiles it to a native executable. Cranelift and the compiled runtime are embedded, and Linux and macOS release builds optimize with bundled LLVM tools (no `clang` needed); linking requires host tools ([requirements](../contributing/rust-toolchain.md#differences-users-can-see)).
+`ms` checks your program and compiles it ahead of time to a native executable. Execution uses the compiled machine code, with no JIT compiler. The compiler, Cranelift backend, runtime and standard library ship together. Native linking and LLVM optimization use pinned tools downloaded on first use and cached for later builds; a fresh installation needs network access. See [toolchain requirements](../contributing/rust-toolchain.md#differences-users-can-see) for local-tool overrides and platform details.
 
 ```text
 .ms source → parse → check (HIR) → lower (MIR) → Cranelift or LLVM object code → link → executable
 ```
 
 1. **Parse and check.** Resolves imports, then checks types, control flow, cleanup, and effects. Errors stop here.
-2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift (or LLVM, for Linux release builds) emits object code. `ms emit` prints MIR for inspection.
-3. **Link.** The host compiler driver links the object with the embedded runtime and native standard library. `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
+2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift or LLVM emits object code. Debug uses Cranelift to keep compilation fast for quick iteration. Release uses LLVM to optimize runtime performance, and MinSizeRel favors code size as well. Both use Cranelift if the LLVM tools are unavailable or cannot be fetched. `ms emit` prints MIR for inspection.
+3. **Link.** The pinned `lld` links the object with the embedded runtime and native standard library. `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
 
 ## One binary
 
-`ms` also includes the formatter, linter, language server (`ms lsp`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Nothing is downloaded at build time.
+`ms` also includes the formatter, linter, language server (`ms lsp`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Source-only commands such as `check`, `fmt` and `lint` do not need native linking tools. The first native link downloads `lld`; the first optimized build also fetches the LLVM tools. Downloads are checked against pinned SHA-256 hashes. Set `MS_LLD` to a local linker and `MS_LLVM_TOOLS` to a local LLVM tools directory to provision these ahead of time; `MS_BACKEND=cranelift` skips LLVM optimization but still needs a linker.
 
 ## Runtime cache
 

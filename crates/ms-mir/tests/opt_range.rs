@@ -248,7 +248,7 @@ fn slotfuse_passes_the_field_to_the_mutator_without_a_slot() {
     let mut after = before.clone();
     assert!(ms_mir::opt::slotfuse::run(&mut after));
     verify_module(&after).unwrap_or_else(|e| panic!("{e:?}"));
-    // The freeze slot stays; the append's slot and both moves are gone.
+    // The build slot stays; the append's slot and both moves are gone.
     assert_eq!(count(&before, "slot"), count(&after, "slot") + 1);
     assert_eq!(count(&before, "take"), count(&after, "take") + 2);
 }

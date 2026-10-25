@@ -82,6 +82,7 @@ pub fn run(m: &mut Module) -> bool {
                     ret: Ty::UNIT,
                     noreturn: false,
                     pure_: false,
+                    fresh: false,
                 });
                 rewrite_plain(&mut m.funcs[fi], bi, ii, ext, desc);
                 changed = true;
@@ -202,8 +203,8 @@ fn difference_order(m: &Module, g: FuncId) -> Option<bool> {
 /// Whether `g(env, a, b)` for `Int`s is exactly "a before b" (`Some(false)`) or "b before a"
 /// (`Some(true)`), where "before" means a negative result.
 ///
-/// The body may only compare the two arguments with each other, branch on those comparisons
-/// and return constants, so its result depends on nothing but the ordering of `a` and `b` and
+/// The body may only compare the two arguments with each other, branch or select on those
+/// comparisons and return constants, so its result depends on nothing but the ordering of `a` and `b` and
 /// trying the three orderings decides every input. Anything else (arithmetic, calls, a
 /// comparison against a constant) yields `None`.
 fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
@@ -240,6 +241,16 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
                             Cc::Ge => l >= r,
                         };
                         (inst.res?, V::Num(t as i64))
+                    }
+                    (Op::Select, _) => {
+                        let (V::Num(c), V::Num(t), V::Num(e)) = (
+                            *env.get(inst.args.first()?)?,
+                            *env.get(inst.args.get(1)?)?,
+                            *env.get(inst.args.get(2)?)?,
+                        ) else {
+                            return None;
+                        };
+                        (inst.res?, V::Num(if c != 0 { t } else { e }))
                     }
                     (Op::DepthEnter | Op::DepthLeave, _) => continue,
                     _ => return None,

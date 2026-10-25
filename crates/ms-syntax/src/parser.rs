@@ -1222,14 +1222,19 @@ impl<'a> Parser<'a> {
         Ok(body)
     }
 
+    /// Rejects `ref` after `let`, `var`, `for` or `match`: binding a place already borrows it.
+    fn no_binding_ref(&mut self) -> PResult<()> {
+        if self.kind() == Tok::Ref {
+            let at = self.peek();
+            return self.fail(at, "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`");
+        }
+        Ok(())
+    }
+
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
-        let by_ref = self.take(Tok::Ref);
-        let at = self.peek();
+        self.no_binding_ref()?;
         let pattern = self.pattern()?;
-        if by_ref && !matches!(pattern.kind, PatternKind::Name(_)) {
-            return self.fail(at, "`ref` binds a single name, e.g. `let ref x = a.b`");
-        }
         let mut ty = None;
         if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
             ty = Some(self.typ()?);
@@ -1242,7 +1247,6 @@ impl<'a> Parser<'a> {
             pos,
             kind: StmtKind::Bind {
                 mutable,
-                by_ref,
                 pattern,
                 ty,
                 value,
@@ -1312,7 +1316,6 @@ impl<'a> Parser<'a> {
                 );
                 StmtKind::Bind {
                     mutable: false,
-                    by_ref: false,
                     pattern: Pattern {
                         id: pid,
                         pos: name.pos,
@@ -1401,7 +1404,7 @@ impl<'a> Parser<'a> {
                     let c = self.peek();
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \"@std/collections.ms\"");
                 }
-                let by_ref = self.take(Tok::Ref);
+                self.no_binding_ref()?;
                 let name = self.need(Tok::Name)?;
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
@@ -1415,7 +1418,6 @@ impl<'a> Parser<'a> {
                 let iter = self.expression(0)?;
                 let body = self.suite()?;
                 StmtKind::For {
-                    by_ref,
                     name: self.sym(name),
                     iter,
                     body,
@@ -1423,19 +1425,21 @@ impl<'a> Parser<'a> {
             }
             Tok::With => {
                 self.at += 1;
-                let value = self.expression(0)?;
-                let as_tok = self.peek();
-                if as_tok.kind != Tok::Name || self.text(as_tok) != "as" {
+                let kind = self.peek();
+                if kind.kind != Tok::Let && kind.kind != Tok::Var {
                     return self.fail(
-                        as_tok,
-                        "expected 'as'; with binds its resource as: with open(path) as file:",
+                        kind,
+                        "expected 'let' or 'var'; with binds its resource: with let file = open(path):",
                     );
                 }
                 self.at += 1;
                 let name = self.need(Tok::Name)?;
+                self.need(Tok::Assign)?;
+                let value = self.expression(0)?;
                 let body = self.suite()?;
                 StmtKind::With {
                     name: self.sym(name),
+                    mutable: kind.kind == Tok::Var,
                     value,
                     body,
                 }
@@ -1487,7 +1491,7 @@ impl<'a> Parser<'a> {
                         "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with TaskGroup[T]() as group: group.spawn(lambda ch: work())"),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(lambda ch: work())"),
                         _ => {}
                     }
                 }
@@ -1503,7 +1507,8 @@ impl<'a> Parser<'a> {
         Ok(kind)
     }
 
-    /// `xs[i] = value` as the mutator call `xs.set(i, value)`.
+    /// `xs[i] = value` as the call of the member `[]=`, which the checker resolves to `set` on a
+    /// List and `add` on a Map.
     fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
         let (left, index) = match target.kind {
             ExprKind::Index { left, index } => (left, index),
@@ -1519,7 +1524,7 @@ impl<'a> Parser<'a> {
             pos,
             ExprKind::Member {
                 left,
-                name: Symbol::intern("set"),
+                name: Symbol::intern(INDEX_SET),
             },
         );
         let args = vec![
@@ -1550,7 +1555,7 @@ impl<'a> Parser<'a> {
         match e.kind {
             ExprKind::Name(n) if n.as_str() != "self" && n.as_str() != "fixture" => Ok(AssignTarget::Name(n)),
             ExprKind::Member { .. } => Ok(AssignTarget::Member(e)),
-            _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, call its method such as set(index:, value:) on a List or add(key:, value:) on a Map"),
+            _ => self.fail(start, "assignment requires a local binding name or record field; the left side of '=' must be a name or a.field; to change a collection element, write xs[index] = value on a List or m[key] = value on a Map"),
         }
     }
 
@@ -2085,9 +2090,7 @@ impl<'a> Parser<'a> {
                 self.mk(t.pos, ExprKind::List(items))
             }
             Tok::Match => {
-                // `match ref v:` documents that the arms' payloads borrow `v`, which they do by
-                // default; the marker has no other effect.
-                self.take(Tok::Ref);
+                self.no_binding_ref()?;
                 let scrutinee = self.expression(0)?;
                 let arms = self.match_arms(t)?;
                 self.mk(
@@ -2716,6 +2719,9 @@ fn plain_chain(e: &Expr) -> bool {
     }
 }
 
+/// The member name of an index assignment; no source name can spell it.
+pub const INDEX_SET: &str = "[]=";
+
 /// The receiver and index of `left[index]`, however the bracket was parsed.
 fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
     match &e.kind {
@@ -2729,9 +2735,13 @@ fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
     }
 }
 
-/// An index that can be evaluated twice without effect: a name or a number.
+/// An index that can be evaluated twice without effect: a name, a number or a text literal.
 fn plain_index(e: &Expr) -> bool {
-    matches!(e.kind, ExprKind::Name(_) | ExprKind::Number(_))
+    match &e.kind {
+        ExprKind::Name(_) | ExprKind::Number(_) => true,
+        ExprKind::Text(parts) => parts.iter().all(|p| !matches!(p, TextPart::Interp(_))),
+        _ => false,
+    }
 }
 
 /// Spells a type's parameters as the arguments of its impl receiver.

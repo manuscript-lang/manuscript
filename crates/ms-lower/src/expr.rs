@@ -161,7 +161,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = text
+                let f: f64 = ms_syntax::number::canonical(text)
                     .parse()
                     .map_err(|_| Error::new(format!("bad float literal {text}")))?;
                 let f = if negate { -f } else { f };
@@ -175,7 +175,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = ms_std_decimal::Dec::parse(text)
+                let dec = ms_std_decimal::Dec::parse(&ms_syntax::number::canonical(text))
                     .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let dec = if negate { dec.negate() } else { dec };
                 let ty = self.emty(e)?;
@@ -341,7 +341,9 @@ impl<'a> FnLower<'a> {
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
-        let _ = e;
+        if self.ety(left).is_std("Map") {
+            return self.map_index(e, left, index);
+        }
         let l = self.expr(left)?;
         if self.dead {
             return Ok(l);
@@ -374,6 +376,17 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v: got, own: false })
             }
+            TyKind::Bytes => {
+                let no_default = self.b.bconst(false);
+                let zero = self.b.iconst(0);
+                self.at(e.pos);
+                let got =
+                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::INT)?;
+                if l.own {
+                    self.drop_value(l.v);
+                }
+                Ok(Val { v: got, own: false })
+            }
             _ => Err(Error::new("indexing this type is not supported yet")),
         }
     }
@@ -400,6 +413,11 @@ impl<'a> FnLower<'a> {
                     return Ok(x);
                 }
                 let t = self.ty_of(x.v);
+                if self.is_bigint(t) {
+                    let a = self.borrow(x);
+                    let v = self.call_runtime("msstd_bigint_negate", &[a], t)?;
+                    return Ok(Val { v, own: true });
+                }
                 if self.is_decimal(t) {
                     let a = self.borrow(x);
                     let v = self.call_runtime("msstd_decimal_negate", &[a], t)?;
@@ -471,7 +489,7 @@ impl<'a> FnLower<'a> {
 
     /// Brings a 64-bit result back to its sized type: integers fault when out of range,
     /// binary32 floats round. Default-width and 64-bit types pass through.
-    fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
+    pub(crate) fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
         if ct::int_bits(t).is_some_and(|bits| bits < 64) {
             return self.b.narrow_chk(v);
         }
@@ -521,6 +539,17 @@ impl<'a> FnLower<'a> {
             let (a, b) = (self.borrow(l), self.borrow(r));
             return self.call_runtime(sym, &[a, b], t);
         }
+        if self.is_bigint(t) {
+            let sym = match op {
+                BinaryOp::Add => "msstd_bigint_add",
+                BinaryOp::Sub => "msstd_bigint_subtract",
+                BinaryOp::Mul => "msstd_bigint_multiply",
+                BinaryOp::Div => "msstd_bigint_quotient",
+                _ => "msstd_bigint_modulo",
+            };
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            return self.call_runtime(sym, &[a, b], t);
+        }
         if self.is_instant(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
             let (a, b) = (self.borrow(l), self.borrow(r));
             // `instant - instant` is the elapsed duration; a duration moves the instant.
@@ -551,7 +580,12 @@ impl<'a> FnLower<'a> {
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
         }
-        if let Some(sym) = self.ordering_symbol(t) {
+        let sym = if self.is_bigint(t) {
+            Some("msstd_bigint_compare")
+        } else {
+            self.ordering_symbol(t)
+        };
+        if let Some(sym) = sym {
             let a = self.borrow(l);
             let b = self.borrow(r);
             let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
@@ -577,6 +611,11 @@ impl<'a> FnLower<'a> {
     /// Whether `t` is the `Instant` record.
     fn is_instant(&self, t: MTy) -> bool {
         matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Instant")
+    }
+
+    /// Whether `t` is the `BigInt` runtime object.
+    pub(crate) fn is_bigint(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Obj(n, _) if n == "BigInt")
     }
 
     /// Whether `t` is the `Decimal` record.
@@ -639,6 +678,7 @@ impl<'a> FnLower<'a> {
             ret,
             noreturn: false,
             pure_: false,
+            fresh: crate::rtcall::fresh_result(sym),
         });
         Ok(self.b.call_rt(ext, args))
     }
@@ -646,14 +686,5 @@ impl<'a> FnLower<'a> {
 
 /// Parses an integer literal spelling.
 fn parse_int(text: &str) -> Option<i128> {
-    if let Some(h) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
-        return i128::from_str_radix(h, 16).ok();
-    }
-    if let Some(b) = text.strip_prefix("0b").or_else(|| text.strip_prefix("0B")) {
-        return i128::from_str_radix(b, 2).ok();
-    }
-    if let Some(o) = text.strip_prefix("0o").or_else(|| text.strip_prefix("0O")) {
-        return i128::from_str_radix(o, 8).ok();
-    }
-    text.parse().ok()
+    ms_syntax::number::canonical(text).parse().ok()
 }

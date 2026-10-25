@@ -1,6 +1,7 @@
 from "@std/archive.ms" import compress_writer, CompressionFormat
 from "@std/io.ms" import WriteStream, IoError
 from "@std/bytes.ms" import Bytes
+from "@std/sync.ms" import lock
 from "@std/shared.ms" import Shared, share
 from "@std/testing.ms" import expect_equal, expect_true
 
@@ -20,8 +21,8 @@ impl WriteStream for Sink:
     var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
         if self.fail: return error(IoError.Unavailable)
 
-        let old = self.bytes.take()
-        self.bytes.put(old.concat(data))
+        with var guard = lock(self.bytes):
+            guard.value = guard.value.concat(data)
         return ok(())
 
 test "compression writers round trip all formats across writes and sync flush":
@@ -85,8 +86,8 @@ impl WriteStream for SlowSink:
     )
 
     var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
-        self.touched.take()
-        self.touched.put(True)
+        with var guard = lock(self.touched):
+            guard.value = True
         sleep(2.seconds)
         return ok(())
 
@@ -95,7 +96,7 @@ test "cancellation during downstream suspension poisons escaped compression alia
     var writer = try compress_writer(SlowSink(touched))
     let copy = writer.clone()
 
-    with TaskGroup[Unit]() as tasks:
+    with let tasks = TaskGroup[Unit]():
         let task = tasks.spawn(
             lambda channel:
                 var local = copy.clone()

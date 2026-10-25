@@ -35,3 +35,27 @@ fn parse_verify_roundtrip() {
     let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(text, print_module(&m2));
 }
+
+#[test]
+fn extern_attributes_roundtrip() {
+    let src = r#"module "e"
+extern @msrt_string_concat(str, str) -> str fresh
+extern @msrt_fault_string(str) noreturn
+extern @msrt_string_len(str) -> int pure
+fn @main() -> int {
+b0:
+  %a: str = str "a"
+  %b: str = call.rt @msrt_string_concat (%a, %a)
+  %n: int = call.rt @msrt_string_len (%b)
+  drop %b
+  ret %n
+}
+"#;
+    let m = parse_module(src).unwrap_or_else(|e| panic!("{e}"));
+    assert!(m.externs[0].fresh && !m.externs[1].fresh && !m.externs[2].fresh);
+    assert!(m.externs[1].noreturn && m.externs[2].pure_);
+    let text = print_module(&m);
+    assert!(text.contains("-> str fresh\n"), "{text}");
+    let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    assert_eq!(text, print_module(&m2));
+}

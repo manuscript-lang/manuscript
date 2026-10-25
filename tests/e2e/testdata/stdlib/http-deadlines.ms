@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/http.ms" import HttpRequest, HttpResponse, HttpExchange, HttpError, HttpMethod, HttpServerOptions, headers
 from "@std/net.ms" import network
 from "@std/time.ms" import sleep, clock
@@ -8,7 +9,7 @@ def delayed(request: HttpRequest) -> HttpResponse:
     if request.path == "/slow": sleep(5.seconds)
 
     if request.path == "/children":
-        with TaskGroup[Unit]() as children:
+        with let children = TaskGroup[Unit]():
             let _child = children.spawn(lambda channel: sleep(5.seconds))
             let _joined = children.wait()
 
@@ -21,10 +22,10 @@ def delayed_stream(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return ok(())
 
 test "request deadlines cancel sleeping callbacks and do not poison later work":
-    with try network().serve(
+    with let server = try network().serve(
         "127.0.0.1:0", delayed,
         HttpServerOptions(timeout: 50.milliseconds, grace: 1.seconds)
-    ) as server:
+    ):
         for path in ["/slow", "/children"]:
             let began = clock().now()
             let response = try network().request(
@@ -41,10 +42,10 @@ test "request deadlines cancel sleeping callbacks and do not poison later work":
             try expect_equal(healthy.head.status, 200)
 
 test "streaming callback deadlines cancel sleeps and preserve later work":
-    with try network().serve_stream(
+    with let server = try network().serve_stream(
         "127.0.0.1:0", delayed_stream,
         HttpServerOptions(timeout: 50.milliseconds, grace: 1.seconds)
-    ) as server:
+    ):
         let response = try network().request(
             HttpMethod.Get, f"http://{server.address()}/slow", headers(),
             timeout: 2.seconds
@@ -68,8 +69,9 @@ type Payload:
 
 impl Closeable for Payload:
     var def close() -> Unit:
-        let count = self.closed.take()
-        self.closed.put(count + 1)
+        with var guard = lock(self.closed):
+            let count = guard.value
+            guard.value = count + 1
 
 def request_status(server: Server, path: String) -> Int:
     return (
@@ -86,7 +88,7 @@ test "application dispatch and with payloads recover after faults and deadlines"
     let closed = share(0)
     let server = Server("127.0.0.1:0", HttpServerOptions(timeout: 20.milliseconds))
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
 
         let running = tasks.spawn(
@@ -96,24 +98,24 @@ test "application dispatch and with payloads recover after faults and deadlines"
                 routes.get(
                     "/slow",
                     lambda request:
-                        with Payload(
+                        with let payload = Payload(
                             "x".repeat(
                                 65536
                             ).get().to_bytes(),
                             closed
-                        ) as payload:
+                        ):
                             sleep(5.seconds)
                             return text_response("late")
                 )
                 routes.get(
                     "/fault",
                     lambda request:
-                        with Payload(
+                        with let payload = Payload(
                             "x".repeat(
                                 65536
                             ).get().to_bytes(),
                             closed
-                        ) as payload:
+                        ):
                             panic("expected cleanup regression fault")
                             return text_response("unreachable")
                 )

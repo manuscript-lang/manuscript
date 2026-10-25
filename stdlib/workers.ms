@@ -20,6 +20,7 @@ from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/json.ms" import parse, stringify
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 
 extern def msrt_pipe_new() -> Int
 
@@ -39,7 +40,7 @@ extern def msrt_worker_cancel(handle: Int) -> Unit
 
 extern def msrt_worker_wait(handle: Int) -> String
 
-# Why a read from the pipe gave no message. The native side numbers these cases from 1.
+# Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:
     # This end is closed.
     case Closed
@@ -138,20 +139,17 @@ impl Worker[In, Out]:
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
     var def join() -> Result[Unit, WorkerError]:
-        var held = self.ended.take()
+        with var held = lock(self.ended):
+            if held.value.length() > 0:
+                return held.value[0].clone()
 
-        if held.length() > 0:
-            let first = held[0]
-            self.ended.put(held)
-            return first.clone()
+            # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
+            self.channel.close()
 
-        self.channel.close()
-
-        let report = msrt_worker_wait(self.handle)
-        let outcome = outcome_of(report)
-        held.append(outcome.clone())
-        self.ended.put(held)
-        return outcome
+            let report = msrt_worker_wait(self.handle)
+            let outcome = outcome_of(report)
+            held.value.append(outcome.clone())
+            return outcome
 
     # Asks the worker to stop: its next wait or check for cancellation unwinds it.
     def cancel() -> Unit:
@@ -168,7 +166,8 @@ def outcome_of(report: String) -> Result[Unit, WorkerError]:
 
 # A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
 # Open a group with `with`: leaving the block cancels workers that are still running and waits for them.
-# A fault in a worker does not end the program; `join` returns it as `Faulted`.
+# Manuscript faults caught by the worker runtime are reported through `join` as `Faulted`.
+# Worker threads are not a process-crash isolation boundary.
 export type WorkerGroup[In = Unit, Out = Unit]:
     # Internal state: the workers in start order, changed through the shared handle so the group works as a `with` binding.
     workers: Shared[List[Worker[In, Out]]] = share([])
@@ -193,18 +192,14 @@ impl WorkerGroup[In, Out]:
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
         let ended: Shared[List[Result[Unit, WorkerError]]] = share([])
         let worker = Worker(handle, channel, ended)
-        var started = self.workers.take()
-        started.append(worker.clone())
-        self.workers.put(started)
+        with var started = lock(self.workers):
+            started.value.append(worker.clone())
         return ok(worker)
 
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var def close() -> Unit:
-        var started = self.workers.take()
-
-        for index in range(0, started.length()):
-            started[index].cancel()
-            started[index].join()
-
-        self.workers.put(started)
+        with var started = lock(self.workers):
+            for index in range(0, started.value.length()):
+                started.value[index].cancel()
+                started.value[index].join()

@@ -459,16 +459,16 @@ def cors_dispatch(
     request: Request,
     next: Callable[[Request], Response]
 ) -> Response:
-    with CorsHeld(cors_plan(policy, request)) as plan:
+    with let plan = CorsHeld(cors_plan(policy, request)):
         if plan.value.response.is_some(): return plan.value.response.get().clone()
 
-        with CorsHeld(next(request)) as response:
+        with let response = CorsHeld(next(request)):
             return cors_finish(policy, plan.value.origin, response.value)
 
 def cors_plan(policy: Cors, request: Request) -> CorsPlan:
     msrt_shield_enter()
 
-    with CorsPreparation() as preparation:
+    with let preparation = CorsPreparation():
         let origin_result = field_text(request, "Origin", 2048)
         if origin_result.is_error(): return CorsPlan(
             response: some(cors_denied("Invalid origin", 400))
@@ -545,7 +545,7 @@ def cors_preflight(
 def cors_finish(policy: Cors, origin: Optional[String], response: Response) -> Response:
     msrt_shield_enter()
 
-    with CorsPreparation() as preparation:
+    with let preparation = CorsPreparation():
         if origin.is_none():
             vary(response, ["Origin"])
             return response.clone()

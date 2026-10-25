@@ -61,7 +61,7 @@ pub(crate) fn integer(t: &Ty) -> bool {
 
 /// Whether a type is an integer or float of any width, or Decimal.
 pub(crate) fn numeric(t: &Ty) -> bool {
-    integer(t) || float_bits(t).is_some() || t.is_std("Decimal")
+    integer(t) || float_bits(t).is_some() || t.is_std("Decimal") || t.is_std("BigInt")
 }
 
 /// An unsuffixed number literal, possibly negated.
@@ -276,7 +276,13 @@ impl Checker {
         let mut i = Info::default();
         match &e.kind {
             ExprKind::Number(text) => {
-                return self.infer_number(e, text.as_str(), expected, false, i);
+                return self.infer_number(
+                    e,
+                    &ms_syntax::number::canonical(text.as_str()),
+                    expected,
+                    false,
+                    i,
+                );
             }
             ExprKind::Bool(_) => i.ty = Some(bool_()),
             ExprKind::Unit => i.ty = Some(unit()),
@@ -444,6 +450,18 @@ impl Checker {
                         ),
                     );
                     i.ty = Some(invalid());
+                } else if s
+                    .decl
+                    .as_ref()
+                    .is_some_and(|d| d.fn_params().iter().any(|p| p.mutable))
+                {
+                    self.type_error(
+                        e.pos,
+                        format!(
+                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a lambda"
+                        ),
+                    );
+                    i.ty = Some(invalid());
                 }
             }
             return i;
@@ -582,7 +600,22 @@ impl Checker {
             i.native = Some(name);
             return i;
         }
+        // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
+        let index_set = name == ms_syntax::parser::INDEX_SET;
+        let name = match index_set {
+            true if rt.is_std("Map") => n("add"),
+            true => n("set"),
+            false => name,
+        };
         let methods = self.methods(&rt, name);
+        if index_set && methods.is_empty() {
+            self.type_error(
+                e.pos,
+                "index assignment requires a List[T] or Map[K, V]; Bytes and String are immutable, build a new value instead",
+            );
+            i.ty = Some(invalid());
+            return i;
+        }
         if methods.len() > 1 {
             let msg = self.ambiguous_member(&rt, name, &methods);
             self.res_error(e.pos, msg);
@@ -826,7 +859,7 @@ impl Checker {
     ) -> Info {
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && t == "9223372036854775808"
+            && ms_syntax::number::canonical(t.as_str()) == "9223372036854775808"
         {
             i.ty = Some(int());
             self.set_info(
@@ -843,7 +876,13 @@ impl Checker {
             && let ExprKind::Number(t) = &operand.kind
             && !t.ends_with('d')
         {
-            let literal = self.infer_number(operand, t.as_str(), expected, true, Info::default());
+            let literal = self.infer_number(
+                operand,
+                &ms_syntax::number::canonical(t.as_str()),
+                expected,
+                true,
+                Info::default(),
+            );
             self.set_info(operand, literal.clone());
             i.ty = literal.ty.clone();
             return finish_info(i);
@@ -868,7 +907,7 @@ impl Checker {
                 if !numeric(&vt) {
                     self.type_error(
                         e.pos,
-                        format!("numeric sign requires an independently known numeric operand, found {vt}; apply + or - to Int, Float, or Decimal"),
+                        format!("numeric sign requires an independently known numeric operand, found {vt}; apply + or - to Int, Float, Decimal, or BigInt"),
                     );
                 }
                 i.ty = Some(vt);
@@ -1042,7 +1081,7 @@ impl Checker {
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
-                if op == BinaryOp::Rem && !integer(&common) {
+                if op == BinaryOp::Rem && !integer(&common) && !common.is_std("BigInt") {
                     self.type_error(
                         e.pos,
                         format!("remainder requires integer operands, found {common}; convert to Int or use math functions"),

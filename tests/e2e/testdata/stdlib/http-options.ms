@@ -17,17 +17,17 @@ def streamed(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return ok(())
 
 test "both server forms accept omitted and explicitly unlimited options":
-    with try network().serve("127.0.0.1:0", buffered) as first:
+    with let first = try network().serve("127.0.0.1:0", buffered):
         try expect_true(first.address().starts_with("127.0.0.1:"))
-    with try network().serve_stream("127.0.0.1:0", streamed) as second:
+    with let second = try network().serve_stream("127.0.0.1:0", streamed):
         try expect_true(second.address().starts_with("127.0.0.1:"))
 
     let options = HttpServerOptions(
         max_requests: none, max_header_bytes: none, tls: none
     )
-    with try network().serve("127.0.0.1:0", buffered, options) as third:
+    with let third = try network().serve("127.0.0.1:0", buffered, options):
         try expect_true(third.address().starts_with("127.0.0.1:"))
-    with try network().serve_stream("127.0.0.1:0", streamed, options) as fourth:
+    with let fourth = try network().serve_stream("127.0.0.1:0", streamed, options):
         try expect_true(fourth.address().starts_with("127.0.0.1:"))
 
 test "both server forms reject invalid options with the same error":
@@ -62,7 +62,7 @@ test "buffered TLS negotiates HTTP1 and HTTP2 with default server ALPN":
         )
     )
 
-    with try network().serve("127.0.0.1:0", buffered, options) as server:
+    with let server = try network().serve("127.0.0.1:0", buffered, options):
         for protocol in ["http/1.1", "h2"]:
             let tls = TlsOptions(
                 server_name: "stdlib.test", roots_pem: certificate(),
@@ -70,10 +70,10 @@ test "buffered TLS negotiates HTTP1 and HTTP2 with default server ALPN":
                 require_client_certificate: False
             )
 
-            with try network().http_client(HttpClientOptions(tls: tls)) as client:
-                with try client.request(
+            with let client = try network().http_client(HttpClientOptions(tls: tls)):
+                with let response = try client.request(
                     HttpMethod.Get, f"https://{server.address()}/", headers()
-                ) as response:
+                ):
                     var expected = "HTTP/1.1"
                     if protocol == "h2": expected = "HTTP/2.0"
                     try expect_equal(response.metadata().protocol, expected)
@@ -88,7 +88,7 @@ test "streaming TLS negotiates HTTP1 and HTTP2 with default server ALPN":
         )
     )
 
-    with try network().serve_stream("127.0.0.1:0", streamed, options) as server:
+    with let server = try network().serve_stream("127.0.0.1:0", streamed, options):
         for protocol in ["http/1.1", "h2"]:
             let tls = TlsOptions(
                 server_name: "stdlib.test", roots_pem: certificate(),
@@ -96,10 +96,10 @@ test "streaming TLS negotiates HTTP1 and HTTP2 with default server ALPN":
                 require_client_certificate: False
             )
 
-            with try network().http_client(HttpClientOptions(tls: tls)) as client:
-                with try client.request(
+            with let client = try network().http_client(HttpClientOptions(tls: tls)):
+                with let response = try client.request(
                     HttpMethod.Get, f"https://{server.address()}/", headers()
-                ) as response:
+                ):
                     var expected = "HTTP/1.1"
                     if protocol == "h2": expected = "HTTP/2.0"
                     try expect_equal(response.metadata().protocol, expected)

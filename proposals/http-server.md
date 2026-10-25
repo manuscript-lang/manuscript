@@ -40,6 +40,21 @@ is unavailable here. Windows native code cross-checks passed, which do not repla
 runtime validation. Dedicated-runner and cross-platform release acceptance remain
 open; implementation completion is not a blanket framework-equivalence claim.
 
+PR [#1315](https://github.com/manuscript-lang/manuscript/pull/1315) integrates the
+implementation with main `97c5788bc`, including its scoped lock API and current
+`with let`/`with var` syntax. Integration uncovered two compiler regressions:
+indexed last-use placement lost a parent drop scheduled after a pending child
+drop at block start, and automatic cancellation cleanup double-released explicit
+scope owners transferred through loop parameters or mutable receiver slots.
+Focused MIR regressions and the native interrupted-upload recovery test cover
+the corrections. Independent review checked the ownership boundary; independent
+copies still receive cancellation cleanup. Taken slot values and owned results
+derived from protected arguments remain conservatively excluded, so this does
+not claim complete cancellation reclamation for arbitrary user code.
+The [PR follow-up report](../bench/http-server/results/2026-10-25-pr/README.md)
+separates integration verification and fresh measurements from the original
+implementation evidence above.
+
 | Capability | Implementation | Regression evidence |
 | --- | --- | --- |
 | Routing, mounts, middleware, HEAD/OPTIONS/405, JSON | `http.ms` | `http-app`, `http-json` |

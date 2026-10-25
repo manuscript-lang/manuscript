@@ -40,9 +40,49 @@ crate::isolate_static! {
     static CUR_HDR: *mut Hdr = core::ptr::null_mut();
 }
 
+/// A published header with short, signal-safe reader sections. Publishing a replacement waits
+/// for readers that could have observed the old pointer before its stack can be freed or reused.
+/// Readers never wait for the owner, so a signal interrupting publication cannot deadlock it.
+pub(crate) struct PublishedHdr {
+    ptr: core::sync::atomic::AtomicPtr<Hdr>,
+    readers: core::sync::atomic::AtomicUsize,
+}
+
+impl PublishedHdr {
+    pub(crate) const fn new() -> Self {
+        Self {
+            ptr: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
+            readers: core::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    /// The owner keeps `hdr` alive until a subsequent publication returns.
+    pub(crate) fn publish(&self, hdr: *mut Hdr) {
+        self.ptr.store(hdr, Ordering::SeqCst);
+        while self.readers.load(Ordering::SeqCst) != 0 {
+            core::hint::spin_loop();
+        }
+    }
+
+    pub(crate) fn cancel(&self, sig: u8) {
+        // Sequential consistency makes a reader either visible to publication's wait, or
+        // observe the replacement pointer. Acquire/release alone permits both to miss.
+        self.readers.fetch_add(1, Ordering::SeqCst);
+        let hdr = self.ptr.load(Ordering::SeqCst);
+        if !hdr.is_null() {
+            // SAFETY: publication cannot finish retiring this header until this reader exits.
+            unsafe {
+                if (*hdr).shield.load(Ordering::Relaxed) == 0 {
+                    (*hdr).cancel.store(sig, Ordering::Relaxed);
+                }
+            }
+        }
+        self.readers.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// The main isolate's running-task block, for stop-signal handlers that run on any thread.
-static MAIN_CUR: core::sync::atomic::AtomicPtr<Hdr> =
-    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
+static MAIN_CUR: PublishedHdr = PublishedHdr::new();
 
 /// The running task's block.
 #[inline(always)]
@@ -68,21 +108,38 @@ pub fn cancel_flag() -> &'static AtomicU8 {
 
 /// Makes the calling isolate the one stop signals are delivered to.
 pub fn set_main_hdr() {
-    MAIN_CUR.store(cur_hdr(), Ordering::Release);
+    MAIN_CUR.publish(cur_hdr());
 }
 
 /// Called by a stop-signal handler on any thread: raises the cancel flag of the main isolate's
 /// running task unless it is shielded.
 pub fn raise_main_cancel(sig: u8) {
-    let hdr = MAIN_CUR.load(Ordering::Acquire);
-    if hdr.is_null() {
-        return;
+    MAIN_CUR.cancel(sig);
+}
+
+/// Publishes the complete context transition, after the scheduler's pair of swaps.
+pub(crate) fn publish_current_hdr() {
+    if crate::isolate::is_main() {
+        MAIN_CUR.publish(cur_hdr());
+    } else {
+        crate::isolate::publish_hdr(cur_hdr());
     }
-    // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
-    unsafe {
-        if (*hdr).shield.load(Ordering::Relaxed) == 0 {
-            (*hdr).cancel.store(sig, Ordering::Relaxed);
+    // A request can arrive after swap_ctx refreshed this flag but before publication. Readers
+    // that saw the old header are now finished; recover their pending request on the new one.
+    if SHIELD.get() == 0 {
+        let pending = unshielded_cancel_flag();
+        if pending != 0 {
+            cancel_flag().fetch_max(pending, Ordering::Relaxed);
         }
+    }
+}
+
+/// Unpublishes this isolate's header before scheduler teardown releases any task storage.
+pub(crate) fn retire_hdr() {
+    if crate::isolate::is_main() {
+        MAIN_CUR.publish(core::ptr::null_mut());
+    } else {
+        crate::isolate::publish_hdr(core::ptr::null_mut());
     }
 }
 
@@ -221,6 +278,11 @@ crate::isolate_static! {
 pub static PENDING_SIGNAL: AtomicU8 = AtomicU8::new(0);
 crate::isolate_static! {
     static FAULTING: bool = false;
+}
+crate::isolate_static! {
+    /// Set while a cancellation unwinds a guarded task: its frames are abandoned, so drop
+    /// cleanups registered by generated code release what the frames own.
+    static UNWIND_DROPS: bool = false;
 }
 crate::isolate_static! {
     static SECONDARY: Vec<Vec<u8>> = Vec::new();
@@ -363,7 +425,7 @@ pub(crate) unsafe fn isolate_trap_child() {
 /// Exchanges `c` with the live per-task state.
 ///
 /// # Safety
-/// Single threaded; callers pair two swaps per context switch.
+/// Single threaded; callers pair two swaps per context switch, then publish the current header.
 pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
     // SAFETY: single threaded access to the runtime globals.
     unsafe {
@@ -385,11 +447,6 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
             },
             Ordering::Relaxed,
         );
-        if crate::isolate::is_main() {
-            MAIN_CUR.store(cur_hdr(), Ordering::Release);
-        } else {
-            crate::isolate::publish_hdr(cur_hdr());
-        }
     }
 }
 
@@ -904,7 +961,7 @@ fn run_one_cleanup() -> bool {
     }
 }
 
-/// The full fault path: trace, cleanups LIFO, report, exit 70.
+/// The full fault path: trace, cleanups LIFO, report, exit 67.
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {
@@ -995,14 +1052,27 @@ fn finish_report(primary: Option<Vec<u8>>) -> ! {
     }
 }
 
+/// The text of a fault that left a guarded task: its message and the frames that started it.
+pub fn fault_report(msg: &ms_rt_abi::StrVal, started: &[usize]) -> Vec<u8> {
+    // SAFETY: `msg` is a string the guard just produced.
+    let report = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) }.to_vec();
+    #[cfg(not(test))]
+    let report = {
+        let mut report = report;
+        describe_started(&mut report, started);
+        report
+    };
+    #[cfg(test)]
+    let _ = started;
+    report
+}
+
 /// Reports a fault that left a guarded task (its cleanups already ran) and ends the process
 /// with the fault status. A no-op under the unit-test runtime, which keeps faults as panics.
 pub fn exit_with_report(msg: &ms_rt_abi::StrVal, started: &[usize]) {
     #[cfg(not(test))]
     {
-        // SAFETY: `msg` is a string the guard just produced.
-        let mut report = unsafe { core::slice::from_raw_parts(msg.data(), msg.len()) }.to_vec();
-        describe_started(&mut report, started);
+        let mut report = fault_report(msg, started);
         report.push(b'\n');
         crate::io::flush_stdout();
         sys::write_all(sys::STDERR, report.as_slice());
@@ -1164,10 +1234,39 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     }
 }
 
+/// Whether the cleanup stack is running because a cancellation leaves a guarded task. Generated
+/// drop cleanups act only then: a fault ends the process and process exit needs no frees.
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_unwind_drops() -> u8 {
+    // SAFETY: single threaded access.
+    u8::from(unsafe { *UNWIND_DROPS.ptr() })
+}
+
+/// Runs `cleanup` if cancellation or a fault leaves `body` by a jump (which skips Rust
+/// destructors); discards it when `body` returns. Use it around a park that holds a borrow, a
+/// busy flag or another guard that later tasks need.
+pub fn with_cleanup<R>(cleanup: &mut dyn FnMut(), body: impl FnOnce() -> R) -> R {
+    unsafe extern "C-unwind" fn run(arg: *mut u8) {
+        // SAFETY: `arg` points at the `&mut dyn FnMut()` below, live until the handle is discarded.
+        unsafe { (*arg.cast::<&mut dyn FnMut()>())() }
+    }
+    let mut cleanup = cleanup;
+    // SAFETY: the entry is discarded before `cleanup` goes out of scope.
+    let handle = unsafe { msrt_cleanup_push(run, (&raw mut cleanup).cast()) };
+    let r = body();
+    msrt_cleanup_discard(handle);
+    r
+}
+
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
     let sig = crate::isolate::pending_cancel();
+    #[cfg(not(test))]
+    // SAFETY: single threaded access.
+    unsafe {
+        *UNWIND_DROPS.ptr() = guard_active();
+    }
     while run_one_cleanup() {}
     #[cfg(test)]
     {
@@ -1242,6 +1341,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             .pop()
             .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
+        *UNWIND_DROPS.ptr() = false;
         (*cur_hdr()).limit = f.limit;
         SHIELD.set(f.shield);
         set_signal_shield(f.signal_shield);
@@ -1539,6 +1639,75 @@ mod tests {
     static LOG_N: Process<usize> = Process::new(0);
 
     #[test]
+    fn cancellation_during_context_publication_reaches_the_new_task() {
+        let _g = crate::testutil::lock();
+        std::thread::spawn(|| {
+            publish_current_hdr();
+            let hdr = Box::into_raw(Box::new(Hdr::new(0)));
+            // SAFETY: this thread owns both headers; mimic the gap after the context swaps
+            // but before the scheduler publishes its new running task.
+            unsafe { *CUR_HDR.ptr() = hdr };
+            crate::isolate::raise_cancel(crate::isolate::id(), 1);
+            assert_eq!(cancel_flag().load(Ordering::Relaxed), 0);
+            publish_current_hdr();
+            let delivered = cancel_flag().load(Ordering::Relaxed);
+            retire_hdr();
+            // SAFETY: all readers are finished and no task runs on the temporary header.
+            unsafe {
+                *CUR_HDR.ptr() = core::ptr::null_mut();
+                drop(Box::from_raw(hdr));
+            }
+            crate::isolate::unregister();
+            assert_eq!(delivered, 1);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn publishing_waits_while_a_reader_is_inside_its_section() {
+        let _g = crate::testutil::lock();
+        let published = PublishedHdr::new();
+        // A reader that has not left: publication must not return, or the old header's stack
+        // could be freed under it.
+        published.readers.fetch_add(1, Ordering::SeqCst);
+        let returned = core::sync::atomic::AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                published.publish(core::ptr::null_mut());
+                returned.store(true, Ordering::SeqCst);
+            });
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            assert!(
+                !returned.load(Ordering::SeqCst),
+                "publication returned while a reader was still inside its section"
+            );
+            published.readers.fetch_sub(1, Ordering::SeqCst);
+        });
+        assert!(returned.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn cancellation_header_retirement_waits_for_readers() {
+        let _g = crate::testutil::lock();
+        let reader = std::thread::spawn(|| {
+            for _ in 0..2000 {
+                raise_main_cancel(1);
+                std::thread::yield_now();
+            }
+        });
+        for _ in 0..100 {
+            let hdr = Box::into_raw(Box::new(Hdr::new(0)));
+            MAIN_CUR.publish(hdr);
+            std::thread::yield_now();
+            MAIN_CUR.publish(core::ptr::null_mut());
+            // SAFETY: the header has been unpublished; all prior readers must be finished.
+            unsafe { drop(Box::from_raw(hdr)) };
+        }
+        reader.join().unwrap();
+    }
+
+    #[test]
     fn task_header_keeps_the_codegen_layout() {
         fn assert_sync<T: Sync>() {}
         assert_sync::<Hdr>();
@@ -1566,7 +1735,7 @@ mod tests {
             msrt_shield_exit();
         }
         reader.join().unwrap();
-        MAIN_CUR.store(core::ptr::null_mut(), Ordering::Release);
+        MAIN_CUR.publish(core::ptr::null_mut());
         cancel_flag().store(0, Ordering::Relaxed);
         assert!(!live_shielded());
     }
@@ -1820,6 +1989,23 @@ mod tests {
             msrt_cleanup_run(h1);
             assert_eq!(*LOG_N.ptr(), 2);
         }
+    }
+
+    #[test]
+    fn with_cleanup_runs_when_the_body_leaves_by_a_jump_and_not_after_a_return() {
+        let _g = lock();
+        reset_for_tests();
+        let mut ran = 0;
+        let kept = with_cleanup(&mut || ran += 1, || 7);
+        assert_eq!((kept, ran), (7, 0));
+        // SAFETY: test-only access to the cleanup stack.
+        assert!(unsafe { (*CLEANUPS.ptr()).is_empty() });
+        let mut ran = 0;
+        let left = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_cleanup(&mut || ran += 1, || -> i32 { msrt_cancelled() })
+        }));
+        assert!(left.is_err());
+        assert_eq!(ran, 1);
     }
 
     #[test]

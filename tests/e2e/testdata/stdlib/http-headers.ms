@@ -46,12 +46,12 @@ def handle_headers(request: HttpRequest) -> HttpResponse:
     return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
-    with (
+    with let server = (
         network().serve(
             address: "127.0.0.1:0", handler: handle_headers,
             options: HttpServerOptions(max_requests: 2)
         ) | try expect_ok
-    ) as server:
+    ):
         let response = (
             network().request(
                 method: HttpMethod.Get, url: f"http://{server.address()}/",
@@ -105,12 +105,12 @@ def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
-    with (
+    with let server = (
         network().serve_stream(
             address: "127.0.0.1:0", handler: echo_headers,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
-    ) as server:
+    ):
         let response = (
             network().request(
                 method: HttpMethod.Get, url: f"http://{server.address()}/",
@@ -165,16 +165,20 @@ test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()
     (client_options.decompress or client_options.cookies) | try expect_false
     (HttpServerOptions().tls.is_none()) | try expect_true
-    with (
+    with let server = (
         network().serve_stream(
             address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
         ) | try expect_ok
-    ) as server:
-        with (network().http_client(options: HttpClientOptions()) | try expect_ok) as client:
-            with (
+    ):
+        with let client = (
+            network().http_client(
+                options: HttpClientOptions()
+            ) | try expect_ok
+        ):
+            with let response = (
                 client.request(
                     method: HttpMethod.Get, url: f"http://{server.address()}/",
                     headers: (try repeated_headers())
                 ) | try expect_ok
-            ) as response:
+            ):
                 response.metadata().status | try expect_equal(200)

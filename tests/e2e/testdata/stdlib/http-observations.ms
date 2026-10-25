@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/http.ms" import HttpRequest, HttpResponse, HttpExchange, HttpError, HttpMethod, HttpServerOptions, headers
 from "@std/net.ms" import network
 from "@std/shared.ms" import share
@@ -10,9 +11,9 @@ def echo_metadata(request: HttpRequest) -> HttpResponse:
     )
 
 test "transport metadata ignores forwarded headers and event saturation preserves counters":
-    with try network().serve(
+    with let server = try network().serve(
         "127.0.0.1:0", echo_metadata, HttpServerOptions(event_capacity: 1)
-    ) as server:
+    ):
         let fields = headers()
         try fields.append("Forwarded", "for=evil;proto=https".to_bytes())
         try fields.append("X-Forwarded-For", "203.0.113.1".to_bytes())
@@ -47,15 +48,13 @@ test "retaining an exchange does not retain an event reservation":
     let handler: Callable[[HttpExchange], Result[Unit, HttpError]] = lambda exchange:
         try exchange.send_headers(200, headers())
         exchange.write("done").get()
-
-        var values = held.take()
-        values.append(exchange)
-        held.put(values)
+        with var values_guard = lock(held):
+            values_guard.value.append(exchange)
         return ok(())
 
-    with try network().serve_stream(
+    with let server = try network().serve_stream(
         "127.0.0.1:0", handler, HttpServerOptions(event_capacity: 1)
-    ) as server:
+    ):
         let response = try network().request(
             HttpMethod.Get, f"http://{server.address()}/", headers()
         )
@@ -70,9 +69,9 @@ test "deadline outcomes remain observable with delivery disabled":
         sleep(2.seconds)
         return ok(())
 
-    with try network().serve_stream(
+    with let server = try network().serve_stream(
         "127.0.0.1:0", handler, HttpServerOptions(timeout: 20.milliseconds)
-    ) as server:
+    ):
         let response = try network().request(
             HttpMethod.Get, f"http://{server.address()}/", headers()
         )
@@ -89,7 +88,7 @@ from "@std/core.ms" import panic
 test "router labels survive callback faults without logging route captures or query":
     let server = Server("127.0.0.1:0", HttpServerOptions(event_capacity: 4))
 
-    with TaskGroup[Result[Unit, HttpError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
 
         let task = tasks.spawn(
@@ -129,12 +128,12 @@ test "router labels survive callback faults without logging route captures or qu
         let served = try completed
 
 test "pre-request protocol and idle failures are counted independently of request events":
-    with try network().serve(
+    with let server = try network().serve(
         "127.0.0.1:0", echo_metadata, HttpServerOptions(idle_timeout: 20.milliseconds)
-    ) as server:
+    ):
         try expect_true(server.is_ready())
 
-        with try network().connect(server.address()) as socket:
+        with let socket = try network().connect(server.address()):
             try socket.write("BAD REQUEST\r\n\r\n")
 
             while True:
@@ -143,7 +142,7 @@ test "pre-request protocol and idle failures are counted independently of reques
 
         try expect_equal(server.stats().protocol_errors, 1)
         try expect_equal(server.stats().requests, 0)
-        with try network().connect(server.address()) as idle:
+        with let idle = try network().connect(server.address()):
             try expect_true((try idle.read(timeout: 1.seconds)).is_none())
         try expect_equal(server.stats().connection_timeouts, 1)
         try expect_equal(server.stats().connections, 2)
@@ -160,9 +159,9 @@ test "TLS metadata and events identify the direct HTTPS transport over both prot
         private_key_pem: private_key(), alpn: [], require_client_certificate: False
     )
 
-    with try network().serve(
+    with let server = try network().serve(
         "127.0.0.1:0", echo_metadata, HttpServerOptions(tls: tls, event_capacity: 4)
-    ) as server:
+    ):
         for protocol in ["http/1.1", "h2"]:
             let client_tls = TlsOptions(
                 server_name: "stdlib.test", roots_pem: certificate(),
@@ -170,10 +169,12 @@ test "TLS metadata and events identify the direct HTTPS transport over both prot
                 require_client_certificate: False
             )
 
-            with try network().http_client(HttpClientOptions(tls: client_tls)) as client:
-                with try client.request(
+            with let client = try network().http_client(
+                HttpClientOptions(tls: client_tls)
+            ):
+                with let response = try client.request(
                     HttpMethod.Get, f"https://{server.address()}/secure", headers()
-                ) as response:
+                ):
                     var text = ""
 
                     while True:

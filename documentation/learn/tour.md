@@ -43,6 +43,7 @@ test "unread message count":
 
 - `let` fixes the binding; `var` allows reassignment. Types are inferred unless annotated.
 - Basic types: `Int`, `Float`, `Bool`, `String`. `{expression}` interpolates into strings.
+- `Int` is `Int64` and `Float` is `Float64`. Choose `Int8`, `Int16`, `Int32`, or `Float32` explicitly when you need another width. Numeric conversions are explicit; narrowing integer conversions return an `Optional`.
 
 ## Lists, maps, and sets
 
@@ -85,21 +86,20 @@ let checkout_total = total + shipping
 
 `if` branches; `for` visits items; `while` repeats on a condition; `break` and `continue` control loops.
 
-Count with `range`:
+Count with an exclusive range:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/collections.ms" import range
 from "@std/testing.ms" import expect_equal
 
 test "count five iterations":
     var total = 0
-    for index in range(0, 5):
+    for index in 0..5:
         total += index
     try expect_equal(total, 10)
 ```
 
-`range(0, 5)` visits 0 through 4. For other steps see [counting loops](../core-language/control-flow/loops.md#counting-loops).
+`0..5` visits 0 through 4 and needs no import. For other steps see [counting loops](../core-language/control-flow/loops.md#counting-loops).
 
 ## Functions
 
@@ -210,24 +210,26 @@ export def checkout_total() -> Int:
 
 Module-level `let` is a constant used without `()`. Import standard APIs from `@std/…` and local code by relative path ([module rules](../core-language/modules/declarations.md)).
 
-## Closures and shared data
+## Function types and captures {#closures-and-shared-data}
 
+`Callable[[Int], Int]` names a function that takes an `Int` and returns an `Int`. Use `lambda` to create a callback:
+
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
+from "@std/testing.ms" import expect_equal
 
-var subject = "Weekly update"
-let headline = lambda () -> String:
-    return subject
-subject = "Launch announcement"
-# headline() returns "Weekly update".
+def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
+    return transform(value)
 
-var tags = ["docs"]
-let tag_count = lambda () -> Int:
-    return tags.length()
-tags.append("release")
-# tag_count() returns 2.
+test "a callback borrows a prepared value":
+    var offset = 1
+    offset += 1
+    let adjust = lambda (value: Int) -> Int:
+        return value + offset
+    try expect_equal(apply(10, adjust), 12)
 ```
 
-Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed while the closure still uses them. See [closure examples](../core-language/functions/function-values-and-closures.md#snapshot-captures).
+Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#snapshot-captures).
 
 ## Pipe flows
 
@@ -305,7 +307,7 @@ test "own methods":
     try expect_equal(counter.value, 1)
 ```
 
-Use an interface when callers should depend on behavior rather than on the type. Free functions are called as `reset(counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
+Use an interface when callers should depend on behavior rather than on the type. Free functions that mutate an argument are called as `reset(var counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
 
 ## Files and cleanup
 
@@ -313,7 +315,7 @@ Use an interface when callers should depend on behavior rather than on the type.
 from "@std/fs.ms" import filesystem, FileSystemError
 
 def copy_notes() -> Result[Unit, FileSystemError]:
-    with try filesystem().open("notes.txt", flags: "r", mode: 0) as source:
+    with let source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: True)
     return ok(())

@@ -531,3 +531,27 @@ b0:
     assert!(observe(&m).0.is_err());
     assert!(func_text(&m, "main").contains("list.get"));
 }
+
+#[test]
+fn merges_a_long_chain_of_blocks_in_one_sweep() {
+    let n = 10000;
+    let mut src = String::from(
+        "module \"chain\"\nentry @main\nfn @main() -> int {\nb0:\n  %v0: int = iconst 0\n  br b1()\n",
+    );
+    for i in 1..n {
+        src += &format!(
+            "b{i}:\n  %v{i}: int = iadd %v{p}, %v0\n  br b{}()\n",
+            i + 1,
+            p = i - 1
+        );
+    }
+    src += &format!("b{n}:\n  ret %v{}\n}}\n", n - 1);
+    let start = std::time::Instant::now();
+    let after = check(&src);
+    assert_eq!(after.funcs[0].blocks.len(), 1);
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(5),
+        "chain merge took {:?}",
+        start.elapsed()
+    );
+}

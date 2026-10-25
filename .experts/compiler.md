@@ -126,6 +126,19 @@ Verified: repeatedly recomputing use counts and scanning a function to delete th
 Evidence: [dead-code elimination](../crates/ms-mir/src/opt/simplify.rs), [dead-graph and unused-check regressions](../crates/ms-mir/tests/opt_simplify.rs).
 Verify: simplify unused arithmetic chains at N/2N/4N; shared operands disappear without deleting an unused overflow check.
 
+Verified: indexed last-use analysis must count pending drops at block start during both
+liveness and placement. A descendant phi's drop can already be scheduled before the
+first original instruction; filtering placement from instruction zero then removes
+the parent's old drop without inserting a replacement. Use the block-start position
+for incoming values and retain the after-definition bound for instruction results.
+Evidence: [pending-family drop regression](../crates/ms-mir/tests/opt_lastuse.rs).
+Verify: the regression fails ownership verification before the correction; Release
+HTTP response/error paths retain the parent argument until its descendant is dropped.
+
+Verified (2026-10-25): before this change a source `ref` function copied its result at `return`, so `ref` was checker-only and a lending accessor cost a subtree copy. A standard-library function declared `ref` now returns its borrow: the lent instance is a separate `$lent` instance (`Func.ret_borrowed`), its call result is a borrow the caller does not release, `return some(part)` builds `opt.view`, and a pattern variable the checker proved a read-only borrow of a borrowed parent is bound without a copy. An owned value on any path of a lent instance is a lowering error, which is why a function with an owned return (an interface call, whose result is always a copy) must not be lent: the checker records the `ref` functions whose every return lends in `Ownership.lenders` and only those get a `$lent` instance (user functions included); the rest copy at `return`. The inliner must give a `ret_borrowed` join parameter the borrow mode, and an owned scrutinee must never be aliased because it is dropped right after its payload is copied.
+Evidence: [lending accessors](../tests/e2e/testdata/stdlib/json-accessors.ms), [lent results](../tests/e2e/testdata/accept/ref-lend-results.ms), [ownership corpus](../crates/ms-check/tests/ownership/accept/ref_some_payload.ms), `json.navigate` in [the stdlib bench](../bench/perf/stdlib/src/jsonbench.ms) (351 to 56 ns per three nested reads).
+Verify: `ms test tests/e2e/testdata/stdlib/json-accessors.ms --build-type Release` with the debug `ms` (MIR verified after every pass) passes.
+
 Verified: generic function recursion validation must not expand every path through an acyclic call graph. Repeated calls into a shared suffix made checking exponential in the number of declarations. Iterative sink removal identifies paths that cannot reach a cycle; skipping only those paths preserves recursive diagnostics and their order. A specialization-only memo is not interchangeable: the same specialization can be visited under different active ancestors, and reusing that result can hide a type-argument-changing cycle. Paths that lead to cycles still use the original ancestor-sensitive traversal.
 Evidence: [generic recursion validation](../crates/ms-check/src/recursion.rs), [finite DAG and ancestor-context regressions](../crates/ms-check/tests/generic_recursion.rs).
 Verify: a forty-level repeated-call DAG checks without expanding its trillion paths; direct and mutual cycles, changed arguments, acyclic tails, and same-spelled declarations in different modules keep their diagnostics. Do not claim that pruning acyclic suffixes makes cycle-containing graphs globally linear.
@@ -153,9 +166,20 @@ and Optional/variant unboxing. `lastuse` also treats registration as an escape.
 Compiler-owned call temporaries register after argument evaluation and discard
 immediately after normal return, before mutable writeback.
 
+Automatic cancellation cleanup must follow that protected ownership through owning
+block parameters and value updates. Exact SSA identity is insufficient: multipart
+deadline recovery crashed when a loop phi was dropped automatically and then by
+its explicit scope. A `Take` from a mutable receiver slot leaves the original bits
+in storage; dropping it automatically can also double-release the caller's box.
+Propagate protection through ownership transfers, but not independent `Copy`
+references. The current analysis conservatively excludes all taken values and
+owned results derived from protected arguments, even fresh results of consuming
+calls; this can retain memory on cancellation and is not complete slot cleanup.
+
 Apply when: optimizing ownership around callbacks or extending cleanup lowering.
 Evidence: [copy elimination](../crates/ms-mir/src/opt/copyelim.rs),
 [optimizer regressions](../crates/ms-mir/tests/opt_copyelim.rs),
+[cancellation ownership regressions](../crates/ms-mir/tests/unwind.rs),
 [HTTP deadline fixture](../tests/e2e/testdata/stdlib/http-deadlines.ms).
 Verify: both code generators must execute the fault path, not merely verify MIR;
 run the separate-process HTTP ownership recovery test under Debug and Release.

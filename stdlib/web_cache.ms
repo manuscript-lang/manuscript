@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/core.ms" import Closeable
 from "@std/http.ms" import Request, Response, Body, HttpMethod, HttpHeaders
 from "@std/time.ms" import Instant, Duration, clock
@@ -68,11 +69,11 @@ impl ResponseCache:
         produce: Callable[[Request], Response],
         tags: List[String] = []
     ) -> Response:
-        with CacheHeld(cache_lookup(self, request)) as plan:
+        with let plan = CacheHeld(cache_lookup(self, request)):
             if plan.value.hit.is_some(): return plan.value.hit.get().clone()
             if plan.value.key.is_none(): return produce(request)
 
-            with CacheHeld(produce(request)) as response:
+            with let response = CacheHeld(produce(request)):
                 cache_store(self, plan.value, request, response.value, tags)
                 return response.value.clone()
 
@@ -89,25 +90,29 @@ impl ResponseCache:
     def invalidate(path: Optional[String], tag: Optional[String]) -> Unit:
         msrt_shield_enter()
 
-        with CacheTransaction() as transaction:
-            var state = self.state.take()
-            if state.generation < 9223372036854775807: state.generation += 1
+        with let transaction = CacheTransaction():
+            with var state_guard = lock(self.state):
+                if state_guard.value.generation < 9223372036854775807: state_guard.value.generation += 1
 
-            var entries = List[CachedResponse]()
+                var entries = List[CachedResponse]()
 
-            for entry in state.entries:
-                if (
-                    (path.is_none() and tag.is_none())
-                    or (path.is_some() and entry.path == path.get())
-                    or (
-                        tag.is_some()
-                        and entry.tags.contains(tag.get())
-                    )
-                ): state.bytes -= entry.bytes
-                else: entries.append(entry.clone())
+                for entry in state_guard.value.entries:
+                    if (
+                        (path.is_none() and tag.is_none())
+                        or (
+                            path.is_some()
+                            and entry.path == path.get()
+                        )
+                        or (
+                            tag.is_some()
+                            and entry.tags.contains(
+                                tag.get()
+                            )
+                        )
+                    ): state_guard.value.bytes -= entry.bytes
+                    else: entries.append(entry.clone())
 
-            state.entries = entries
-            self.state.put(state)
+                state_guard.value.entries = entries
 
 def header_budget(fields: HttpHeaders) -> Optional[Int]:
     let names = fields.names()
@@ -220,7 +225,7 @@ def snapshot(response: Response) -> Response:
 def cache_lookup(cache: ResponseCache, request: Request) -> CachePlan:
     msrt_shield_enter()
 
-    with CacheTransaction() as transaction:
+    with let transaction = CacheTransaction():
         if (
             cache.max_entries <= 0
             or cache.max_bytes < 0
@@ -232,25 +237,25 @@ def cache_lookup(cache: ResponseCache, request: Request) -> CachePlan:
         if key.is_none(): return CachePlan()
 
         let now = clock().now()
-        var state = cache.state.take()
-        var retained = List[CachedResponse]()
         var hit: Optional[CachedResponse] = none
 
-        for entry in state.entries:
-            if (
-                now.difference(
-                    entry.created
-                ).to_nanoseconds() >= cache.ttl.to_nanoseconds()
-            ):
-                state.bytes -= entry.bytes
-            elif entry.key == key.get(): hit = some(entry.clone())
-            else: retained.append(entry.clone())
+        with var state_guard = lock(cache.state):
+            var retained = List[CachedResponse]()
 
-        if let entry = hit: retained.append(entry.clone())
-        state.entries = retained
+            for entry in state_guard.value.entries:
+                if (
+                    now.difference(
+                        entry.created
+                    ).to_nanoseconds() >= cache.ttl.to_nanoseconds()
+                ):
+                    state_guard.value.bytes -= entry.bytes
+                elif entry.key == key.get(): hit = some(entry.clone())
+                else: retained.append(entry.clone())
 
-        let generation = state.generation + 0
-        cache.state.put(state)
+            if let entry = hit: retained.append(entry.clone())
+            state_guard.value.entries = retained
+
+        let generation = cache.state.get().generation + 0
         if let entry = hit: return CachePlan(
             key, generation, some(snapshot(entry.response))
         )
@@ -266,42 +271,40 @@ def cache_store(
 ) -> Unit:
     msrt_shield_enter()
 
-    with CacheTransaction() as transaction:
+    with let transaction = CacheTransaction():
         let charge = response_charge(response, plan.key.get(), request.path, tags)
         if charge.is_none() or charge.get() > cache.max_bytes: return
 
-        var updated = cache.state.take()
+        with var updated_guard = lock(cache.state):
+            if (
+                updated_guard.value.generation != plan.generation
+                or updated_guard.value.generation == 9223372036854775807
+            ):
+                return
 
-        if (
-            updated.generation != plan.generation
-            or updated.generation == 9223372036854775807
-        ):
-            cache.state.put(updated)
-            return
+            var entries = List[CachedResponse]()
 
-        var entries = List[CachedResponse]()
+            for entry in updated_guard.value.entries:
+                if entry.key == plan.key.get(): updated_guard.value.bytes -= entry.bytes
+                else: entries.append(entry.clone())
 
-        for entry in updated.entries:
-            if entry.key == plan.key.get(): updated.bytes -= entry.bytes
-            else: entries.append(entry.clone())
+            while (
+                entries.length() > 0
+                and (
+                    entries.length() >= cache.max_entries
+                    or updated_guard.value.bytes > cache.max_bytes - charge.get()
+                )
+            ):
+                updated_guard.value.bytes -= entries[0].bytes
+                entries.remove(0)
 
-        while (
-            entries.length() > 0
-            and (
-                entries.length() >= cache.max_entries
-                or updated.bytes > cache.max_bytes - charge.get()
+            entries.append(
+                CachedResponse(
+                    plan.key.get().clone(), request.path.clone(), tags.clone(),
+                    snapshot(response), clock().now(), charge.get()
+                )
             )
-        ):
-            updated.bytes -= entries[0].bytes
-            entries.remove(0)
+            updated_guard.value.entries = entries
+            updated_guard.value.bytes += charge.get()
 
-        entries.append(
-            CachedResponse(
-                plan.key.get().clone(), request.path.clone(), tags.clone(),
-                snapshot(response), clock().now(), charge.get()
-            )
-        )
-        updated.entries = entries
-        updated.bytes += charge.get()
-        cache.state.put(updated)
         return

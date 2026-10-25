@@ -6,7 +6,7 @@
 //! ends have arenas of their own that end with the isolate. A task that must wait (no message
 //! to read, or no room to send) parks on a remote token of its isolate, recorded on the lane;
 //! the other end posts it.
-use crate::task::{TOKEN_REMOTE, msrt_token_new, msrt_token_post_remote};
+use crate::task::{TOKEN_PEER, TOKEN_REMOTE, msrt_token_new, msrt_token_post_remote};
 use core::ptr::null_mut;
 use ms_rt_abi::StrVal;
 use std::sync::Mutex;
@@ -191,6 +191,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
     // SAFETY: a live string by contract.
     let bytes = unsafe { crate::string::bytes(&*message) };
     loop {
+        cancel_if_requested();
         let mut t = table();
         let Some((pipe, side)) = find(&mut t, end) else {
             return CLOSED;
@@ -228,10 +229,19 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
             return OK;
         }
         // SAFETY: tokens belong to the calling isolate.
-        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE | TOKEN_PEER) };
         lane.wait_on(token);
         drop(t);
         park(token);
+    }
+}
+
+/// A cancelled task leaves at its next pipe operation even when the pipe is already closed, which
+/// is what cancelling a worker does to its ends; otherwise a cancel that arrives while the worker
+/// runs would be reported as a normal finish.
+fn cancel_if_requested() {
+    if crate::fault::cancel_flag().load(core::sync::atomic::Ordering::Relaxed) != 0 {
+        crate::fault::msrt_cancelled();
     }
 }
 
@@ -243,6 +253,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8 {
     loop {
+        cancel_if_requested();
         let mut t = table();
         let Some((pipe, side)) = find(&mut t, end) else {
             return CLOSED as u8;
@@ -274,7 +285,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) ->
             return ENDED as u8;
         }
         // SAFETY: tokens belong to the calling isolate.
-        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE | TOKEN_PEER) };
         lane.wait_on(token);
         drop(t);
         park(token);
@@ -376,11 +387,13 @@ mod tests {
         let _g = crate::testutil::lock();
         let a = msrt_pipe_new();
         let b = msrt_pipe_peer(a);
+        // The sending thread plays a worker isolate, which the process counts from its spawn.
+        crate::isolate::count_worker();
         let sender = std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(20));
-            // The sending thread plays a worker isolate: it has no scheduler state of its own
-            // to wait on, and the pipe has room.
+            // It has no scheduler state of its own to wait on, and the pipe has room.
             assert_eq!(send(a, "hi"), OK);
+            crate::isolate::retire_worker();
         });
         assert_eq!(receive(b), Ok("hi".into()));
         sender.join().unwrap();

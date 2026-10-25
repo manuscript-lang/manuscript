@@ -5,6 +5,7 @@ use crate::command::{self, Subprocess};
 use crate::ipc::{self, Link, Reader, Writer};
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
+use ms_rt::fault::with_cleanup;
 use ms_rt::ffi::{
     Handler, ObjBox, ObjMut, ObjRef, ObjShare, Object, StatusCode, abi_handle, native,
 };
@@ -14,7 +15,7 @@ use ms_std_fs::stream::Stream;
 
 /// One end of an IPC pipe. The halves are separate so a reading task and a writing task can use
 /// the end at the same time. A second reader waits for the first (see [`IpcLink::wait_reader`]);
-/// a second writer at once faults.
+/// a second writer waits for the first the same way.
 ///
 /// A task parked in a read or write can be cancelled, which leaves its frame with a jump and
 /// skips destructors, so the halves are guarded by `busy` flags that a runtime cleanup entry
@@ -26,42 +27,14 @@ pub struct IpcLink {
     writing: Cell<bool>,
     /// Tokens of tasks waiting for the current reader to finish.
     waiting: RefCell<Vec<i64>>,
-}
-
-/// Marks a half busy for the duration of one operation, including when the task is cancelled.
-struct Busy<'a> {
-    link: &'a IpcLink,
-    flag: &'a Cell<bool>,
-    cleanup: usize,
-}
-
-#[allow(unsafe_code)]
-unsafe extern "C-unwind" fn release_read(arg: *mut u8) {
-    // SAFETY: the link outlives its tasks' operations; the entry is discarded on normal exit.
-    unsafe { (*arg.cast::<IpcLink>()).end_read() }
-}
-
-#[allow(unsafe_code)]
-unsafe extern "C-unwind" fn release_write(arg: *mut u8) {
-    // SAFETY: as `release_read`.
-    unsafe { (*arg.cast::<IpcLink>()).writing.set(false) }
+    /// Tokens of tasks waiting for the current writer to finish.
+    writers: RefCell<Vec<i64>>,
 }
 
 #[allow(unsafe_code)]
 unsafe extern "C-unwind" fn release_read_buffer(arg: *mut u8) {
     // SAFETY: read registers its unmoved stack buffer until the operation returns.
     unsafe { core::ptr::drop_in_place(arg.cast::<Vec<u8>>()) }
-}
-
-impl Drop for Busy<'_> {
-    fn drop(&mut self) {
-        ms_rt::fault::msrt_cleanup_discard(self.cleanup);
-        if core::ptr::eq(self.flag, &self.link.reading) {
-            self.link.end_read();
-        } else {
-            self.flag.set(false);
-        }
-    }
 }
 
 impl IpcLink {
@@ -74,31 +47,21 @@ impl IpcLink {
             reading: Cell::new(false),
             writing: Cell::new(false),
             waiting: RefCell::new(Vec::new()),
+            writers: RefCell::new(Vec::new()),
         })
+    }
+
+    fn end_write(&self) {
+        self.writing.set(false);
+        for token in self.writers.take() {
+            ms_rt::channel::msrt_channel_post(token);
+        }
     }
 
     fn end_read(&self) {
         self.reading.set(false);
         for token in self.waiting.take() {
             ms_rt::channel::msrt_channel_post(token);
-        }
-    }
-
-    #[allow(unsafe_code)]
-    fn busy<'a>(
-        &'a self,
-        flag: &'a Cell<bool>,
-        release: unsafe extern "C-unwind" fn(*mut u8),
-    ) -> Busy<'a> {
-        flag.set(true);
-        // SAFETY: the entry is discarded by `Busy::drop` before the link can go away.
-        let cleanup = unsafe {
-            ms_rt::fault::msrt_cleanup_push(release, core::ptr::from_ref(self).cast_mut().cast())
-        };
-        Busy {
-            link: self,
-            flag,
-            cleanup,
         }
     }
 
@@ -116,13 +79,12 @@ impl IpcLink {
 
     #[allow(unsafe_code)]
     pub fn read(&self, max: i64) -> Vec<u8> {
-        if self.reading.get() {
-            ms_rt::ffi::fault("another task is already reading this process channel");
-        }
-        let _busy = self.busy(&self.reading, release_read);
+        while self.wait_reader() {}
+        self.reading.set(true);
         // SAFETY: `reading` admits one task, so nothing else holds the half; no borrow is kept
         // across the park.
         let Some(reader) = (unsafe { &mut *self.reader.as_ptr() }).as_mut() else {
+            self.end_read();
             return Vec::new();
         };
         let mut buf = alloc::vec![0u8; max.clamp(1, 1 << 20) as usize];
@@ -135,7 +97,8 @@ impl IpcLink {
             )
         };
         // A failed read means the other process is gone, the same as end of stream.
-        let n = reader.read(&mut buf).unwrap_or(0);
+        let n = with_cleanup(&mut || self.end_read(), || reader.read(&mut buf)).unwrap_or(0);
+        self.end_read();
         ms_rt::fault::msrt_cleanup_discard(cleanup);
         buf.truncate(n);
         buf
@@ -143,13 +106,19 @@ impl IpcLink {
 
     #[allow(unsafe_code)]
     pub fn write(&self, data: &[u8]) -> bool {
-        if self.writing.get() {
-            ms_rt::ffi::fault("another task is already writing this process channel");
+        while self.writing.get() {
+            let token = ms_rt::channel::msrt_channel_token();
+            self.writers.borrow_mut().push(token);
+            ms_rt::channel::msrt_channel_park(token);
         }
-        let _busy = self.busy(&self.writing, release_write);
+        self.writing.set(true);
         // SAFETY: as `read`.
         let writer = unsafe { &mut *self.writer.as_ptr() };
-        writer.as_mut().is_some_and(|w| w.write(data).is_ok())
+        let ok = writer
+            .as_mut()
+            .is_some_and(|w| with_cleanup(&mut || self.end_write(), || w.write(data).is_ok()));
+        self.end_write();
+        ok
     }
 
     pub fn close(&self) {

@@ -99,6 +99,8 @@ struct State {
     initialized: bool,
     /// This thread asked for an arena; set by [`claim_arena`].
     claimed: bool,
+    /// [`release_arena`] ran: any later release of a runtime object on this thread is a bug.
+    released: bool,
     /// Whether the claim is the main isolate's (a larger arena).
     main: bool,
     /// Registry slot of this thread's arena (valid once `initialized` and `base != 0`).
@@ -145,6 +147,7 @@ static STATE: State = State {
     large_cached: 0,
     initialized: false,
     claimed: false,
+    released: false,
     main: false,
     slot: 0,
     #[cfg(any(test, feature = "stats"))]
@@ -231,6 +234,14 @@ pub fn release_arena() {
     s.end = 0;
     s.initialized = true;
     s.claimed = false;
+    s.released = true;
+}
+
+/// Whether the calling thread's arena was already returned to the system (its isolate ended).
+#[inline(always)]
+pub fn arena_released() -> bool {
+    // SAFETY: this isolate's allocator state.
+    unsafe { (*STATE.ptr()).released }
 }
 
 /// Whether the calling thread has an arena (or will map one on its first small allocation).

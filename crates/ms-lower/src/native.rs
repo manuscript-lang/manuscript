@@ -59,7 +59,15 @@ type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -
 fn opt_method(name: &str) -> bool {
     matches!(
         name,
-        "is_some" | "is_none" | "get" | "map" | "and_then" | "or_else" | "ok_or" | "ok_or_else"
+        "is_some"
+            | "is_none"
+            | "get"
+            | "get_or_else"
+            | "map"
+            | "and_then"
+            | "or_else"
+            | "ok_or"
+            | "ok_or_else"
     )
 }
 
@@ -70,6 +78,7 @@ fn is_higher_order(name: &str) -> bool {
         "map"
             | "filter"
             | "flat_map"
+            | "partition"
             | "group_by"
             | "count"
             | "some"
@@ -109,6 +118,15 @@ pub(crate) struct NArg {
     pub wrapped: bool,
 }
 
+/// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
+pub(crate) fn json_native(native: &str) -> &str {
+    match native {
+        "extern:msrt_json_parse" => "json/parse",
+        "extern:msrt_json_stringify" => "json/stringify",
+        other => other,
+    }
+}
+
 impl<'a> FnLower<'a> {
     pub fn native_function(
         &mut self,
@@ -118,6 +136,7 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
+        let native = json_native(native);
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
@@ -200,6 +219,7 @@ impl<'a> FnLower<'a> {
                     ret: MTy::UNIT,
                     noreturn: true,
                     pure_: false,
+                    fresh: false,
                 });
                 self.at(e.pos);
                 self.b.call_rt(ext, &[m]);
@@ -306,8 +326,6 @@ impl<'a> FnLower<'a> {
             }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
-            "math/min_of" => self.math_extreme_of(e, view, false),
-            "math/max_of" => self.math_extreme_of(e, view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other
@@ -383,8 +401,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "math/max_of"
-                | "math/min_of"
                 | "time/duration"
                 | "shared/share"
                 | "core/category"
@@ -411,9 +427,6 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         if matches!(native, "math/min" | "math/max") {
             return self.min_max(native == "math/max", args);
-        }
-        if matches!(native, "math/max_of" | "math/min_of") {
-            return self.extreme_of(native == "math/max_of", args, result);
         }
         if let Some(name) = native.strip_prefix("math/").filter(|n| {
             matches!(
@@ -592,6 +605,7 @@ impl<'a> FnLower<'a> {
                     ret: MTy::INT,
                     noreturn: true,
                     pure_: false,
+                    fresh: false,
                 });
                 self.b.call_rt(ext, &[left, count]);
                 self.b.unreachable();
@@ -614,63 +628,6 @@ impl<'a> FnLower<'a> {
             }
         };
         Ok(Val { v, own: false })
-    }
-
-    /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
-    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
-        use ms_mir::ir::Cc;
-        // The list lives in a variable so the loop and the branches may read it.
-        let list = self.borrow(args[0].val);
-        let lt = self.ty_of(list);
-        let lvar = self.fresh_var(lt);
-        let held_list = self.owned(Val {
-            v: list,
-            own: false,
-        });
-        self.b.def_var(lvar, held_list);
-        let n = self.b.list_len(list);
-        let (zero, one) = (self.b.iconst(0), self.b.iconst(1));
-        let best = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(best, zero);
-        self.counted_loop(one, n, &mut |s, iv| {
-            let bv = s.b.use_var(best);
-            let l = s.b.use_var(lvar);
-            let cur = s.b.list_get(l, iv);
-            let held = s.b.list_get(l, bv);
-            let above = if max {
-                s.strictly_above(cur, held)?
-            } else {
-                s.strictly_above(held, cur)?
-            };
-            let pick = s.b.select(above, iv, bv);
-            s.b.def_var(best, pick);
-            Ok(())
-        })?;
-        let empty = self.b.icmp(Cc::Eq, n, zero);
-        let TyKind::Opt(elem) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("max_of and min_of return an Optional"));
-        };
-        let out = self.two_ways(
-            empty,
-            result,
-            &mut |s| {
-                let v = s.b.opt_none(result);
-                Ok(Some(s.owned(Val { v, own: false })))
-            },
-            &mut |s| {
-                let bv = s.b.use_var(best);
-                let l = s.b.use_var(lvar);
-                let item = s.b.list_get(l, bv);
-                let o = s.owned(Val {
-                    v: item,
-                    own: false,
-                });
-                let _ = elem;
-                Ok(Some(s.b.opt_some(o)))
-            },
-        )?;
-        self.release_source(lvar, true);
-        Ok(out)
     }
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
@@ -1074,10 +1031,13 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
         }
+        let recv_ty = self.ty_of(recv.v);
+        let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         if matches!(
             native,
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
-        ) {
+        ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
+        {
             return self.numeric_conversion(e, recv);
         }
         // Other operations on a sized number run on its 64-bit kind.
@@ -1111,35 +1071,6 @@ impl<'a> FnLower<'a> {
             name
         };
         match (self.b.m.types.kind(rty).clone(), name) {
-            (TyKind::Str, "replace" | "replace_first") => {
-                let sym = if name == "replace" {
-                    "msrt_string_replace"
-                } else {
-                    "msrt_string_replace_first"
-                };
-                let mut vals = vec![self.borrow(recv)];
-                let mut max = None;
-                for a in args {
-                    if a.name.as_str() == "max_replacements" {
-                        max = Some(a);
-                    } else {
-                        vals.push(self.borrow(a.val));
-                    }
-                }
-                let (has, n) = self.optional_int(max)?;
-                vals.push(has);
-                vals.push(n);
-                let out = self.call_runtime(sym, &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
-            (TyKind::Str, "replace_n") => {
-                let mut vals = vec![self.borrow(recv)];
-                for a in args {
-                    vals.push(self.borrow(a.val));
-                }
-                let out = self.call_runtime("msrt_string_replace_n", &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
             (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
                 let r = self.borrow(recv);
                 let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
@@ -1157,10 +1088,6 @@ impl<'a> FnLower<'a> {
             (TyKind::Obj(n, _), "entries") if n == "Map" => {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
-            }
-            (TyKind::Obj(n, _), "entries") if n == "Set" => {
-                let result = self.emty(e)?;
-                self.set_entries(recv, result)
             }
             (TyKind::List(_), "list_keys") => {
                 let result = self.emty(e)?;
@@ -1212,6 +1139,58 @@ impl<'a> FnLower<'a> {
                 let r = self.borrow(recv);
                 let n = self.borrow(args[0].val);
                 let out = self.call_runtime(sym, &[r, d, n], rty)?;
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(_), "list_zip") => {
+                let result = self.emty(e)?;
+                let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
+                    return Err(Error::new("zip without a list result"));
+                };
+                let TyKind::Rec(rid) = self.b.m.types.kind(pair).clone() else {
+                    return Err(Error::new("zip without a record element"));
+                };
+                let other = self.borrow(args[0].val);
+                let other_len = self.b.list_len(other);
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                let acc = self.fresh_var(result);
+                let first = self.b.list_new(pair, other_len);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, i, x| {
+                    let inside = s.b.icmp(ms_mir::ir::Cc::Lt, i, other_len);
+                    let (take, skip) = (s.b.new_block(), s.b.new_block());
+                    s.b.br_if(inside, take, &[], skip, &[]);
+                    s.b.seal_block(take);
+                    s.b.seal_block(skip);
+                    s.b.switch_to(take);
+                    let y = s.b.list_get(other, i);
+                    let xo = s.owned(Val { v: x, own: false });
+                    let yo = s.owned(Val { v: y, own: false });
+                    let rec = s.b.rec_new(rid, &[xo, yo]);
+                    let cur = s.b.use_var(acc);
+                    let next = s.b.list_push(cur, rec);
+                    s.b.def_var(acc, next);
+                    s.b.br(skip, &[]);
+                    s.b.switch_to(skip);
+                    Ok(None)
+                })?;
+                self.release_source(lv, hidden);
+                let out = self.b.use_var(acc);
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(elem), "list_chunks" | "list_windows") => {
+                let chunks = name == "list_chunks";
+                let result = self.emty(e)?;
+                let TyKind::List(inner) = self.b.m.types.kind(result).clone() else {
+                    return Err(Error::new("pieces without a list result"));
+                };
+                let d = self.type_desc(elem);
+                let od = self.type_desc(inner);
+                let r = self.borrow(recv);
+                let size = self.borrow(args[0].val);
+                let step = if chunks { size } else { self.b.iconst(1) };
+                let short = self.b.bconst(chunks);
+                let out =
+                    self.call_runtime("msrt_list_pieces", &[r, d, od, size, step, short], result)?;
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "get") => {
@@ -1332,7 +1311,17 @@ impl<'a> FnLower<'a> {
                     )
                 };
                 let (m1, one, zero) = (self.b.iconst(-1), self.b.iconst(1), self.b.iconst(0));
-                let g = self.b.select(gt, one, zero);
+                // An unordered pair has a NaN: NaN equals NaN and sorts above every other value.
+                let unordered = if name == "compare_float" {
+                    let a_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, a, a);
+                    let b_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, b, b);
+                    let a_only = self.b.select(b_nan, zero, one);
+                    let b_only = self.b.select(b_nan, m1, zero);
+                    self.b.select(a_nan, a_only, b_only)
+                } else {
+                    zero
+                };
+                let g = self.b.select(gt, one, unordered);
                 let v = self.b.select(lt, m1, g);
                 Ok(Val { v, own: false })
             }
@@ -1340,7 +1329,11 @@ impl<'a> FnLower<'a> {
                 let out = self.emty(e)?;
                 self.optional_method(out, e.pos, name, recv, inner, args)
             }
-            (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") => {
+            (
+                TyKind::Alt(a),
+                "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
+                | "to_optional",
+            ) => {
                 let out = self.emty(e)?;
                 self.result_method(out, name, recv, a, args)
             }
@@ -1360,6 +1353,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime("msrt_int_to_string_radix", &[v, r], MTy::STR)?;
                 Ok(Val { v: out, own: true })
             }
+            (_, "to_string") if m.receiver.is_std("Duration") => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
                 let v = self.owned(Val {
@@ -1371,11 +1365,32 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v, own: true })
             }
+            (TyKind::List(_), "sum" | "min" | "max") => {
+                let out = self.emty(e)?;
+                let element = self
+                    .ety(recv_expr)
+                    .args
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| Error::new("sum, min and max take a list"))?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                let r = match name {
+                    "sum" => self.list_sum(lv, &element, out),
+                    _ => self.list_extreme(lv, &element, out, name == "max"),
+                };
+                self.release_source(lv, hidden);
+                r
+            }
             (TyKind::List(elem), "sorted") => {
                 let f = args
                     .into_iter()
                     .next()
                     .ok_or_else(|| Error::new("sorted without comparator"))?;
+                if !self.is_fn(f.val.v) {
+                    return Err(Error::new(
+                        "sorted takes a comparator function; omit compare to sort in natural order",
+                    ));
+                }
                 let ft = self.ty_of(f.val.v);
                 let fvar = self.fresh_var(ft);
                 let fo = self.owned(f.val);
@@ -1547,8 +1562,11 @@ impl<'a> FnLower<'a> {
         {
             return self.result_state(&name, recv, a);
         }
-        if let (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") =
-            (self.b.m.types.kind(rty).clone(), name.as_str())
+        if let (
+            TyKind::Alt(a),
+            "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
+            | "to_optional",
+        ) = (self.b.m.types.kind(rty).clone(), name.as_str())
         {
             return self.result_method(result, &name, recv, a, args.to_vec());
         }
@@ -1859,6 +1877,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
@@ -1898,6 +1917,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
@@ -1915,6 +1935,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[]);
         self.b.unreachable();
@@ -1985,6 +2006,29 @@ impl<'a> FnLower<'a> {
                             s.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                             Ok(None)
                         }
+                    },
+                )
+            }
+            "get_or_else" => {
+                let f = args
+                    .first()
+                    .copied()
+                    .ok_or_else(|| Error::new("missing function"))?;
+                self.two_ways(
+                    some,
+                    inner,
+                    &mut |s| {
+                        let p = s.b.opt_get(r);
+                        let o = s.owned(Val { v: p, own: false });
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(o))
+                    },
+                    &mut |s| {
+                        let v = s.b.call_ind(f.val.v, &[]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
                     },
                 )
             }
@@ -2169,6 +2213,59 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
+                        let o = s.owned(Val { v: r, own: false });
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(o))
+                    },
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, err, 0, r);
+                        let v = s.b.call_ind(f.val.v, &[p]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                )
+            }
+            "map_error" => {
+                let f = f.ok_or_else(|| Error::new("missing function"))?;
+                let TyKind::Alt(oa) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("map_error without Result result"));
+                };
+                let (out_ok, out_err) = {
+                    let cs = &self.b.m.alts[oa.index()].cases;
+                    (
+                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
+                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                    )
+                };
+                self.two_ways(
+                    is_ok,
+                    out,
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, ok, 0, r);
+                        let po = s.owned(Val { v: p, own: false });
+                        let v = s.b.alt_new(oa, out_ok, &[po]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, err, 0, r);
+                        let y = s.b.call_ind(f.val.v, &[p]);
+                        let v = s.b.alt_new(oa, out_err, &[y]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                )
+            }
+            "get_or_else" => {
+                let f = f.ok_or_else(|| Error::new("missing function"))?;
+                self.two_ways(
+                    is_ok,
+                    out,
+                    &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
                         let o = s.owned(Val { v: p, own: false });
                         s.finish(recv);
@@ -2268,7 +2365,14 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
+            "append"
+                | "set"
+                | "prepend"
+                | "insert"
+                | "remove"
+                | "pop"
+                | "reverse_in_place"
+                | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
@@ -2392,6 +2496,23 @@ impl<'a> FnLower<'a> {
                 let r = self.b.use_var(res);
                 let l = self.b.use_var(acc);
                 Ok((l, Some(Val { v: r, own: true })))
+            }
+            "sort" => {
+                let f = args
+                    .iter()
+                    .find(|a| self.is_fn(a.val.v))
+                    .ok_or_else(|| Error::new("sort without comparator"))?;
+                let ft = self.ty_of(f.val.v);
+                let fvar = self.fresh_var(ft);
+                let fo = self.owned(f.val);
+                self.b.def_var(fvar, fo);
+                let var = self.fresh_var(lt);
+                self.b.def_var(var, old);
+                let r = self.list_sorted(var, fvar, elem)?;
+                let o = self.b.use_var(var);
+                self.drop_value(o);
+                self.release_source(fvar, true);
+                Ok((r.v, None))
             }
             "reverse_in_place" => {
                 let var = self.fresh_var(lt);
@@ -2538,6 +2659,42 @@ impl<'a> FnLower<'a> {
                 })?;
                 let r = self.b.use_var(acc);
                 Ok(Val { v: r, own: true })
+            }
+            "partition" => {
+                let TyKind::Rec(rid) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("partition without a record result"));
+                };
+                let lt = self.b.m.records[rid.index()].fields[0].1;
+                let zero = self.b.iconst(0);
+                let (yes, no) = (self.fresh_var(lt), self.fresh_var(lt));
+                for v in [yes, no] {
+                    let first = self.b.list_new(elem, zero);
+                    self.b.def_var(v, first);
+                }
+                self.each_element(lv, &mut |s, _, x| {
+                    let r = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let (hit, miss, join) = (s.b.new_block(), s.b.new_block(), s.b.new_block());
+                    s.b.br_if(r, hit, &[], miss, &[]);
+                    s.b.seal_block(hit);
+                    s.b.seal_block(miss);
+                    for (blk, acc) in [(hit, yes), (miss, no)] {
+                        s.b.switch_to(blk);
+                        let xo = s.owned(Val { v: x, own: false });
+                        let cur = s.b.use_var(acc);
+                        let next = s.b.list_push(cur, xo);
+                        s.b.def_var(acc, next);
+                        s.b.br(join, &[]);
+                    }
+                    s.b.seal_block(join);
+                    s.b.switch_to(join);
+                    Ok(None)
+                })?;
+                let (a, b) = (self.b.use_var(yes), self.b.use_var(no));
+                let rec = self.b.rec_new(rid, &[a, b]);
+                Ok(Val { v: rec, own: true })
             }
             "flat_map" => {
                 let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {
@@ -2762,14 +2919,15 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => match t.as_str().parse::<i64>()
-                {
-                    Ok(n) => Ok(Val {
-                        v: self.b.iconst(n),
-                        own: false,
-                    }),
-                    Err(_) => continue,
-                },
+                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => {
+                    match ms_syntax::number::canonical(t.as_str()).parse::<i64>() {
+                        Ok(n) => Ok(Val {
+                            v: self.b.iconst(n),
+                            own: false,
+                        }),
+                        Err(_) => continue,
+                    }
+                }
                 ExprKind::Text(parts) if parts.iter().all(|t| matches!(t, TextPart::Lit(_))) => {
                     let text: String = parts
                         .iter()

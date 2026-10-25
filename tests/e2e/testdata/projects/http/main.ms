@@ -16,7 +16,7 @@ export def main() -> Int:
             timeout: 2.seconds, grace: 0.seconds
         )
     ):
-        with acquired as server:
+        with let server = acquired:
             if stdout().write(f"{server.address()}\n").is_error():
                 return 1
 

@@ -5,7 +5,7 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Setup needs Make, curl, a SHA-256 utility, and Internet access. Building `ms` needs a C compiler (`cc`); linking programs needs a C compiler only on Windows, and the first link downloads the pinned `lld` into the cache (`MS_LLD` names a local one). Book work needs Hugo Extended 0.146.7 or newer.
+Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Setup needs Make, curl, a SHA-256 utility, and Internet access. Building `ms` needs a C compiler (`cc`); the first native link downloads the pinned `lld` into the cache (`MS_LLD` names a local one), and the first optimized build also fetches the LLVM tools. Linking with the packaged compiler needs no separate C compiler; see the [platform build requirements](rust-toolchain.md). Book work needs Hugo Extended 0.146.7 or newer.
 
 ```sh
 make setup

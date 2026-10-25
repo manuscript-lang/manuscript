@@ -31,13 +31,17 @@ pub const WAIT_KEEP: u32 = 32;
 
 /// `msrt_task_spawn` flag: nobody joins the task; a fault in it ends the process.
 pub const SPAWN_DETACHED: u32 = 1;
-/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 70) as for a detached
+/// `msrt_task_spawn` flag: a fault in the task ends the process (exit 67) as for a detached
 /// task, but the task can still be joined and cancelled.
 pub const SPAWN_FATAL: u32 = 2;
 
 /// `msrt_token_new` flag: another thread will post the token, so while it is unposted the
 /// scheduler waits for it instead of reporting a deadlock.
 pub const TOKEN_REMOTE: u32 = 1;
+/// `msrt_token_new` flag, with `TOKEN_REMOTE`: the post comes from code running in another
+/// isolate, not from a thread that finishes on its own. When every isolate waits only on such
+/// tokens, nothing can wake any of them, which is a deadlock.
+pub const TOKEN_PEER: u32 = 2;
 
 /// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
 /// the slot, whose first page holds the task's `fault::Hdr` (see `stack::create`).
@@ -125,6 +129,8 @@ struct Token {
     live: bool,
     /// Expects a post from another thread that has not been delivered yet.
     remote: bool,
+    /// The pending post comes from another isolate (`TOKEN_PEER`).
+    peer: bool,
     /// Handle of the task parked on the token, or 0.
     waiter: u64,
     /// The value of a delivered post that the waiter has not taken yet.
@@ -144,8 +150,8 @@ struct Sched {
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
     kill_limit: usize,
-    /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
-    fd_waiters: Vec<u64>,
+    /// `fd_waiters[fd]` holds the handles of the tasks waiting on `fd`, oldest first.
+    fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
     epfd: i32,
     pool: Vec<usize>,
@@ -156,6 +162,8 @@ struct Sched {
     free_tokens: Vec<usize>,
     /// Live tokens still expecting a post from another thread.
     remote_tokens: usize,
+    /// Those of `remote_tokens` that another isolate will post.
+    peer_tokens: usize,
 }
 
 /// Token generations are 20 bits: the id's high 12 bits name the owning isolate (see `isolate`).
@@ -182,6 +190,7 @@ crate::isolate_static! {
     tokens: Vec::new(),
     free_tokens: Vec::new(),
     remote_tokens: 0,
+    peer_tokens: 0,
 };
 }
 
@@ -594,10 +603,18 @@ unsafe fn wake(t: *mut Task, result: u32) {
             return;
         }
         if (*t).wait_fd >= 0 {
-            crate::poller::unwatch((*t).wait_fd);
-            s.fd_waiters[(*t).wait_fd as usize] = 0;
+            let fd = (*t).wait_fd;
+            let queue = &mut s.fd_waiters[fd as usize];
+            queue.retain(|&h| h != (*t).handle);
+            let empty = queue.is_empty();
             s.fd_waiting -= 1;
             (*t).wait_fd = -1;
+            if empty {
+                crate::poller::unwatch(fd);
+            } else {
+                // The poller watches what the waiters left behind still ask for.
+                rearm(fd);
+            }
         }
         if (*t).wait_token != 0 {
             if let Some(k) = token_mut(&mut s, (*t).wait_token) {
@@ -715,13 +732,49 @@ unsafe fn poll_ready(timeout_ms: i32) {
             if ev.fd >= s.fd_waiters.len() {
                 continue;
             }
-            let t = lookup(s.fd_waiters[ev.fd]);
-            if !t.is_null() {
-                wake(t, ev.bits & ((*t).wait_events | WAIT_HUP));
+            // Every waiter the event concerns wakes; the one that gets the resource proceeds
+            // and the others wait again. `wake` re-arms for those that stay.
+            let queue = s.fd_waiters[ev.fd].clone();
+            for h in queue {
+                let t = lookup(h);
+                if t.is_null() {
+                    continue;
+                }
+                let bits = ev.bits & ((*t).wait_events | WAIT_HUP);
+                if bits != 0 {
+                    wake(t, bits);
+                }
+            }
+            if !s.fd_waiters[ev.fd].is_empty() {
+                // The registration is one-shot: waiters the event did not concern need it again.
+                rearm(ev.fd as i32);
             }
         }
     }
 }
+
+/// Ends the wait of the task whose park the scheduler is about to fault out of, so its cleanup
+/// can park again without a later post to the old token waking the new wait.
+unsafe fn abandon_wait() {
+    let mut s = sched();
+    // SAFETY: `cur` is the task that is parking.
+    unsafe {
+        let cur = s.cur;
+        if cur.is_null() || (*cur).state != State::Waiting {
+            return;
+        }
+        if (*cur).wait_token != 0 {
+            if let Some(k) = token_mut(&mut s, (*cur).wait_token) {
+                k.waiter = 0;
+            }
+            (*cur).wait_token = 0;
+        }
+        (*cur).deadline = NO_DEADLINE;
+        (*cur).state = State::Running;
+    }
+}
+
+const CROSS_ISOLATE_DEADLOCK: &[u8] = b"deadlock: every isolate is waiting on another (a worker channel or worker result) and nothing can wake them";
 
 /// Blocks until at least one task is runnable.
 unsafe fn reactor_wait() {
@@ -769,10 +822,23 @@ unsafe fn reactor_wait() {
                 };
                 break;
             }
-            if timeout_ms < 0 && s.fd_waiting == 0 && s.remote_tokens == 0 {
-                fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
+            let mut parked = false;
+            if timeout_ms < 0 && s.fd_waiting == 0 {
+                if s.remote_tokens == 0 {
+                    fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
+                }
+                // Waiting only on other isolates: stuck if they all wait like this.
+                parked = s.remote_tokens == s.peer_tokens;
+            }
+            if parked && crate::isolate::enter_idle() {
+                abandon_wait();
+                fault::fault(CROSS_ISOLATE_DEADLOCK);
             }
             poll_ready(timeout_ms);
+            if parked && crate::isolate::leave_idle() {
+                abandon_wait();
+                fault::fault(CROSS_ISOLATE_DEADLOCK);
+            }
         }
     }
 }
@@ -818,6 +884,7 @@ unsafe fn switch_away() {
                 (*next).state = State::Running;
                 fault::swap_ctx(&mut (*cur).ctx);
                 fault::swap_ctx(&mut (*next).ctx);
+                fault::publish_current_hdr();
                 s.cur = next;
                 stack::switch(cur, next);
                 after_switch();
@@ -850,7 +917,17 @@ extern "C" fn task_main() -> ! {
             let mut msg = crate::string::NO_STR;
             (*t).status = fault::msrt_guard_call(entry, (*t).arg, &mut msg);
             if (*t).status == 1 && (*t).fatal {
-                fault::exit_with_report(&msg, &(*t).started_by);
+                if isolate::is_worker() {
+                    // A worker contains its faults: the first one ends its main task, and
+                    // `run_worker_task` hands the report to the parent.
+                    let first = &mut *FATAL.ptr();
+                    if first.is_empty() {
+                        *first = fault::fault_report(&msg, &(*t).started_by);
+                        isolate::raise_cancel(isolate::id(), sys::SIGTERM as u8);
+                    }
+                } else {
+                    fault::exit_with_report(&msg, &(*t).started_by);
+                }
             }
             (*t).msg = msg;
         }
@@ -878,7 +955,7 @@ extern "C" fn task_main() -> ! {
 /// Starts `entry(arg)` as a new task and returns its handle. The task first runs when the
 /// caller parks or yields. `stack_bytes` of 0 selects the default (256 MiB of address space,
 /// committed lazily). With `SPAWN_DETACHED` nobody joins the task and a fault in it ends the
-/// process (exit 70); otherwise the fault is returned by `msrt_task_join`.
+/// process (exit 67); otherwise the fault is returned by `msrt_task_join`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_spawn(
     entry: Entry,
@@ -949,6 +1026,11 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         let mut msg = crate::string::NO_STR;
         let status = msrt_task_join(h, &mut msg);
         fault::msrt_shield_exit();
+        let fatal = core::mem::take(&mut *FATAL.ptr());
+        if !fatal.is_empty() {
+            crate::string::release_opt(&msg);
+            return (1, fatal);
+        }
         let report = if msg.is_empty() {
             Vec::new()
         } else {
@@ -957,6 +1039,11 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         crate::string::release_opt(&msg);
         (status, report)
     }
+}
+
+crate::isolate_static! {
+    /// The report of the first fatal task fault in a worker isolate, empty until one happens.
+    static FATAL: Vec<u8> = Vec::new();
 }
 
 /// Lets other runnable tasks run, then continues.
@@ -986,7 +1073,8 @@ pub extern "C-unwind" fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unw
 /// Parks the current task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`), the
 /// timeout (nanoseconds, negative for none) expires, or cancellation is requested. Returns the
 /// ready bits, `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A file that cannot be polled (a regular
-/// file) is reported ready at once. One task may wait on a given descriptor at a time.
+/// file) is reported ready at once. Several tasks may wait on one descriptor: each wakes when
+/// it becomes ready for what that task asked, and the one that gets the resource proceeds.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
     // SAFETY: single threaded scheduler.
@@ -999,19 +1087,24 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         if fd >= 0 {
             let fd_idx = fd as usize;
             while s.fd_waiters.len() <= fd_idx {
-                s.fd_waiters.push(0);
+                s.fd_waiters.push(Vec::new());
             }
-            if s.fd_waiters[fd_idx] != 0 {
-                fault::fault(b"another task is already waiting on this file descriptor");
+            // Tasks already waiting keep their place; the poller watches what all of them ask.
+            let mut asked = events;
+            for &h in &s.fd_waiters[fd_idx] {
+                let t = lookup(h);
+                let other = if t.is_null() { 0 } else { (*t).wait_events };
+                asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
             }
-            match crate::poller::watch(poller_fd(), fd, events) {
+            match crate::poller::watch(poller_fd(), fd, asked) {
                 crate::poller::Watch::Armed => {}
                 crate::poller::Watch::Always => return events & (WAIT_READ | WAIT_WRITE),
                 crate::poller::Watch::Failed => {
                     fault::fault(b"cannot wait on this file descriptor");
                 }
             }
-            s.fd_waiters[fd_idx] = (*cur).handle;
+            (*cur).wait_events = events;
+            s.fd_waiters[fd_idx].push((*cur).handle);
             s.fd_waiting += 1;
             (*cur).wait_fd = fd;
         }
@@ -1022,6 +1115,28 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         (*cur).state = State::Waiting;
         switch_away();
         (*cur).wait_result
+    }
+}
+
+/// Registers `fd` with the poller for what its waiters ask, or for nothing when none remain.
+unsafe fn rearm(fd: i32) {
+    let s = sched();
+    // SAFETY: waiter handles are checked before use.
+    unsafe {
+        let mut asked = 0;
+        let mut keep = WAIT_KEEP;
+        for &h in &s.fd_waiters[fd as usize] {
+            let t = lookup(h);
+            if !t.is_null() {
+                asked |= (*t).wait_events & (WAIT_READ | WAIT_WRITE);
+                keep &= (*t).wait_events;
+            }
+        }
+        if asked == 0 {
+            asked = WAIT_READ;
+        }
+        // A registration that cannot be renewed leaves its tasks to their timeouts.
+        let _ = crate::poller::watch(poller_fd(), fd, asked | keep);
     }
 }
 
@@ -1384,7 +1499,9 @@ unsafe fn post(id: u64, value: u64, remote: bool) {
     };
     if remote && k.remote {
         k.remote = false;
+        let peer = core::mem::take(&mut k.peer);
         s.remote_tokens -= 1;
+        s.peer_tokens -= usize::from(peer);
     }
     let k = token_mut(&mut s, id).unwrap_or_else(|| fault::fatal(b"runtime invariant: token"));
     if k.posted.is_some() {
@@ -1431,6 +1548,7 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
                     gen_: 0,
                     live: false,
                     remote: false,
+                    peer: false,
                     waiter: 0,
                     posted: None,
                 });
@@ -1444,12 +1562,14 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
         }
         k.live = true;
         k.remote = remote;
+        k.peer = remote && flags & TOKEN_PEER != 0;
         k.waiter = 0;
         k.posted = None;
         let id =
             (isolate::id() as u64) << isolate::ID_SHIFT | (k.gen_ as u64) << 32 | (idx as u64 + 1);
         if remote {
             s.remote_tokens += 1;
+            s.peer_tokens += usize::from(flags & TOKEN_PEER != 0);
         }
         id
     }
@@ -1550,8 +1670,10 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
         k.live = false;
         k.posted = None;
         let remote = std::mem::replace(&mut k.remote, false);
+        let peer = core::mem::take(&mut k.peer);
         if remote {
             s.remote_tokens -= 1;
+            s.peer_tokens -= usize::from(peer);
         }
         s.free_tokens.push((id & 0xffff_ffff) as usize - 1);
     }
@@ -1561,6 +1683,7 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// scenarios in one process; the leak sweep calls it at exit so only real leaks remain in the
 /// live-block count.
 pub fn teardown() {
+    fault::retire_hdr();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();
@@ -1596,6 +1719,7 @@ pub fn teardown() {
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;
+        s.peer_tokens = 0;
         isolate::clear_posts();
     }
 }
@@ -1781,6 +1905,29 @@ mod tests {
             assert_eq!(msrt_task_join(spinner, null_mut()), 0);
             msrt_token_free(token);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+        }
+        teardown();
+    }
+
+    /// A wait for a plain thread (a blocking-pool job, a helper) is not a deadlock even while a
+    /// token that only another isolate could post is also pending.
+    #[test]
+    fn a_thread_post_is_not_a_deadlock_beside_a_pending_peer_token() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; the test thread plays the main isolate.
+        unsafe {
+            let peer = msrt_token_new(TOKEN_REMOTE | TOKEN_PEER);
+            let plain = msrt_token_new(TOKEN_REMOTE);
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                msrt_token_post_remote(plain, 7);
+            });
+            let mut value = 0;
+            assert_eq!(msrt_token_park(plain, -1, &mut value), 0);
+            assert_eq!(value, 7);
+            msrt_token_free(plain);
+            msrt_token_free(peer);
         }
         teardown();
     }
@@ -2092,6 +2239,49 @@ mod tests {
                     msrt_task_wait_fd(fds[0], WAIT_READ, 1_000_000_000) & WAIT_READ,
                     WAIT_READ
                 );
+            }
+            close_all(fds);
+            teardown();
+        }
+
+        unsafe extern "C-unwind" fn shared_reader(arg: *mut u8) {
+            // SAFETY: the test owns this pipe until the tasks join.
+            let result = unsafe { msrt_task_wait_fd(arg as i32, WAIT_READ, 2_000_000_000) };
+            note(if result & WAIT_READ != 0 { 1 } else { 2 });
+        }
+
+        unsafe extern "C-unwind" fn impatient_reader(arg: *mut u8) {
+            // SAFETY: as `shared_reader`.
+            let result = unsafe { msrt_task_wait_fd(arg as i32, WAIT_READ, 5_000_000) };
+            note(if result == WAIT_TIMEOUT { 3 } else { 4 });
+        }
+
+        #[test]
+        #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+        fn several_tasks_wait_on_one_descriptor() {
+            let _g = lock();
+            teardown();
+            let fds = pipe();
+            // SAFETY: tests hold the global lock; the pipe stays open through every join.
+            unsafe {
+                *LOG_N.ptr() = 0;
+                let fd = core::ptr::without_provenance_mut(fds[0] as usize);
+                let a = msrt_task_spawn(shared_reader, fd, 0, 0);
+                let b = msrt_task_spawn(shared_reader, fd, 0, 0);
+                // One waiter leaves by timeout; the others must stay registered.
+                let c = msrt_task_spawn(impatient_reader, fd, 0, 0);
+                let w = msrt_task_spawn(
+                    writer,
+                    core::ptr::without_provenance_mut(fds[1] as usize),
+                    0,
+                    0,
+                );
+                for h in [a, b, c, w] {
+                    assert_eq!(msrt_task_join(h, null_mut()), 0);
+                }
+                let mut log = (&(*LOG.ptr()))[..*LOG_N.ptr()].to_vec();
+                log.sort();
+                assert_eq!(log, [1, 1, 3]);
             }
             close_all(fds);
             teardown();

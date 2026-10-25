@@ -157,10 +157,10 @@ def application(server: Server) -> Result[Unit, HttpError]:
     routes.mount("/api", api)
 
     # Transport owns a bounded event ring. A stalled logger cannot block request completion.
-    with TaskGroup[Result[Unit, LogError]]() as tasks:
+    with let tasks = TaskGroup[Result[Unit, LogError]]():
         let observer = tasks.spawn(
             lambda channel:
-                with try create(stdout_transport(), max_bytes: 16384) as logger:
+                with let logger = try create(stdout_transport(), max_bytes: 16384):
                     while True:
                         for event in observations.take_events(): try record(
                             logger, LogLevel.Info, "http", event

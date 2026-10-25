@@ -1149,12 +1149,12 @@ fn lower_native_thunk(fl: &mut FnLower<'_>, job: &NativeThunkJob) -> Result<(), 
     let func = job.sym.decl.as_ref().and_then(|d| d.func());
     let mut args = fl.thunk_native_args(job.sym.module, func, &job.params, &params[1..])?;
     let ret = fl.ret_ty;
-    match job.native.as_str() {
+    match crate::native::json_native(job.native.as_str()) {
         "json/parse" | "json/stringify" => {
             // Generic natives with their own lowering: the type argument comes from the instance.
             fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
             let have = fl.mty(&job.result)?;
-            let r = if job.native == "json/parse" {
+            let r = if crate::native::json_native(&job.native) == "json/parse" {
                 let t = job.result.args.first().cloned();
                 let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
                 fl.json_parse(&t, have, &args)?

@@ -14,7 +14,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 21,
           "column": 16,
-          "offset": 522
+          "offset": 525
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 21,
           "column": 38,
-          "offset": 544
+          "offset": 547
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
           "column": 19,
-          "offset": 597
+          "offset": 600
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
           "column": 36,
-          "offset": 614
+          "offset": 617
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 24,
           "column": 53,
-          "offset": 631
+          "offset": 634
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 26,
           "column": 8,
-          "offset": 677
+          "offset": 680
         }
       },
       {
@@ -80,7 +80,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 28,
           "column": 8,
-          "offset": 768
+          "offset": 771
         }
       },
       {
@@ -91,20 +91,20 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 30,
           "column": 16,
-          "offset": 863
+          "offset": 866
         },
         "fix": {
           "position": {
             "file": "tests-e2e-testboundedmatchnative-1.ms",
             "line": 30,
             "column": 16,
-            "offset": 863
+            "offset": 866
           },
           "end": {
             "file": "tests-e2e-testboundedmatchnative-1.ms",
             "line": 30,
             "column": 21,
-            "offset": 868
+            "offset": 871
           },
           "replacement": "shapes"
         }
@@ -117,7 +117,7 @@
           "file": "tests-e2e-testboundedmatchnative-1.ms",
           "line": 36,
           "column": 16,
-          "offset": 958
+          "offset": 961
         }
       }
     ],

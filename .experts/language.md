@@ -160,7 +160,7 @@ Verify: parse an inline callback inside a call without consuming the enclosing d
 
 ### Optional values need presence and extraction methods
 
-Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, and `get(default)`; `or_else` takes a lazy Optional fallback. `unwrap`, `unwrap_or`, `unwrap_or_else`, `unwrap_error`, and `at` are removed (Result keeps `get(default)`, `or_else`, `err`). Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, and `get(default)`; `get_or_else` takes a lazy payload fallback and `or_else` a lazy Optional fallback. `unwrap`, `unwrap_or`, `unwrap_or_else`, `unwrap_error`, and `at` are removed (Result keeps `get(default)`, `get_or_else`, `or_else`, `map_error`, `err`). Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
 
 ### No special `get` accessor declarations
 
@@ -192,7 +192,7 @@ Verify: direct and mutual trees execute; cyclic equality terminates; uninitializ
 
 ### Match is uniformly a value expression; indexing returns the element
 
-Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The earlier decision that brackets preserve `.at()`'s Optional result was reversed: `at` is removed, `[]` returns `T` and faults out of range, and `get(index, default: ...)` on List, String, and Bytes returns `T` or the default. Generic specialization retains its existing meaning. The flow-sensitive bounds proof (#552) only narrowed the type while the read still faulted, so it was removed; reintroducing bounds-check elimination needs its own proof.
+Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The earlier decision that brackets preserve `.at()`'s Optional result was reversed: `at` is removed, `[]` returns `T` and faults out of range, and `get(index, default: ...)` on List, String, and Bytes returns `T` or the default. `[]` also reads `Map[K, V]` (one probe; absent key faults `map key not found: <key>`) and `Bytes` (an `Int`, negative from the end); `m[k] = v` is `m.add(k, v)` and `m[k] += v` reads then adds. String has no `[]` because scalar position is not a constant-time offset, and Bytes cannot be assigned (decision: Chinmay, 2026-10-25, card "Both"). Generic specialization retains its existing meaning. The flow-sensitive bounds proof (#552) only narrowed the type while the read still faulted, so it was removed; reintroducing bounds-check elimination needs its own proof.
 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).
@@ -265,9 +265,11 @@ Verify: `let (` entries evaluate in order with earlier ones in scope, `export le
 
 Decision: the reference-syntax spike recommended no marker (inference plus `Clonable` instead), and Chinmay overrode it: a result that lends part of a borrowed parameter is written `ref T`, and a binding that borrows a place is `let ref x = a.b` / `var ref x = xs[i]` (#1137, #1142). Loops and matches over a parameter borrow it unless a payload or loop variable is moved out (#1128). `ref` is not a type: it appears only in a declared result type or a binding, never in function types, fields, elements or type arguments, so there are no lifetimes to teach. The marker is staged: an unmarked lending function still lends by inference.
 
+Update (2026-10-25): Chinmay folded aliasing, borrows and `ref` into one model ([one-borrow model](../proposals/one-borrow-model.md)): binding a place borrows with no marker (`let` shared, `var` exclusive, "doing that implicit is fine"), mutability is chosen by the caller's binding ("var ref on return is unnecessary, we should just do ref"), and `ref` is written only before a result type. `let ref`, `var ref`, `for ref` and `match ref` are parse errors.
+
 Apply when: changing result types, bindings, interface operation agreement, or the ownership pass.
 Evidence: [ownership notes](../crates/ms-check/OWNERSHIP.md), [grammar](../documentation/core-language/basics/grammar.md).
-Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x` on an owned value, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
+Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x = a.b` is a parse error, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
 
 ### `Clonable` replaces ad hoc copying in generic code
 

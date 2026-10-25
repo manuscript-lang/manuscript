@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/web_multipart.ms" import multipart, MultipartPart, MultipartLimits
 from "@std/http.ms" import Request, headers
 from "@std/io.ms" import IoError, ReadStream, read_all
@@ -22,25 +23,21 @@ test "multipart streams split delimiters and expires retained readers":
     let retained = share(List[MultipartPart]())
 
     let visit = lambda (part: MultipartPart) -> Result[Unit, IoError]:
-        var named = names.take()
-        named.append(part.name.clone())
-        names.put(named)
+        with var named_guard = lock(names):
+            named_guard.value.append(part.name.clone())
 
         let bytes = try read_all(part.body, some(100))
-        var contents = bodies.take()
-        contents.append(bytes.decode_utf8().get())
-        bodies.put(contents)
-
-        var readers = retained.take()
-        readers.append(part.clone())
-        retained.put(readers)
+        with var contents_guard = lock(bodies):
+            contents_guard.value.append(bytes.decode_utf8().get())
+        with var readers_guard = lock(retained):
+            readers_guard.value.append(part.clone())
         return ok(())
 
     try multipart(request(upload, 1), visit)
     try expect_equal(names.get(), ["first", "file"])
     try expect_equal(bodies.get(), ["one", "two"])
 
-    var readers = retained.take()
+    var readers = retained.get().clone()
 
     for item in readers:
         var reader = item.clone()
@@ -89,8 +86,8 @@ test "multipart preserves false boundary prefixes and validates dispositions":
 
 def capture(part: MultipartPart, found: Shared[String]) -> Result[Unit, IoError]:
     let bytes = try read_all(part.body, some(100))
-    found.take()
-    found.put(bytes.decode_utf8().get())
+    with var flag_guard = lock(found):
+        flag_guard.value = bytes.decode_utf8().get()
     return ok(())
 
 from "@std/web_multipart.ms" import with_upload
@@ -102,8 +99,8 @@ test "temporary uploads ignore client paths and clean up on success error and ca
     let path = share("")
 
     let save = lambda (location: String) -> Result[Unit, IoError]:
-        path.take()
-        path.put(location.clone())
+        with var flag_guard = lock(path):
+            flag_guard.value = location.clone()
         return ok(())
 
     try multipart(request(upload), lambda part: with_upload(part, save))
@@ -111,8 +108,8 @@ test "temporary uploads ignore client paths and clean up on success error and ca
     try expect_true(filesystem().stat(dirname(path.get()), False).is_error())
 
     let failing = lambda (location: String) -> Result[Unit, IoError]:
-        path.take()
-        path.put(location.clone())
+        with var flag_guard = lock(path):
+            flag_guard.value = location.clone()
         return error(IoError.InvalidData)
 
     try expect_true(
@@ -122,7 +119,7 @@ test "temporary uploads ignore client paths and clean up on success error and ca
     )
     try expect_true(filesystem().stat(dirname(path.get()), False).is_error())
 
-    with TaskGroup[Unit]() as tasks:
+    with let tasks = TaskGroup[Unit]():
         let task = tasks.spawn(
             lambda channel:
                 let result = multipart(
@@ -130,8 +127,8 @@ test "temporary uploads ignore client paths and clean up on success error and ca
                     lambda part: with_upload(
                         part,
                         lambda location:
-                            path.take()
-                            path.put(location.clone())
+                            with var flag_guard = lock(path):
+                                flag_guard.value = location.clone()
                             sleep(2.seconds)
                             return ok(())
                     )

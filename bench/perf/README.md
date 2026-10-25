@@ -1,6 +1,6 @@
 # Performance benchmark
 
-How fast Manuscript is, compared with hand-written Go and Rust and across the standard library. This measures the compiler and runtime only; no agents are involved. For how well agents write programs in different languages, see [`bench/agent/`](../agent/README.md). The two never share results.
+How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and across the standard library. This measures the compiler and runtime only; no agents are involved. For how well agents write programs in different languages, see [`bench/agent/`](../agent/README.md). The two never share results.
 
 | Directory | Measures | Run | Results |
 | --- | --- | --- | --- |
@@ -8,8 +8,9 @@ How fast Manuscript is, compared with hand-written Go and Rust and across the st
 | [`programs/`](programs) | the same pure-Manuscript programs against hand-written Go and Rust, as a ratio | `MS=./target/release/ms GO=go sh bench/perf/programs/run.sh 7` | [`programs/results.md`](programs/results.md) |
 | [`llvm-release.md`](llvm-release.md) | LLVM against Cranelift on all 31 benchmarks | see the page | [`llvm-release.md`](llvm-release.md) |
 | [`kernels/`](kernels) | whole numeric and data-structure kernels (sieve, n-body, life, matmul, trees, collatz, Int map) against hand-written Go and Rust | `MS=./target/release/ms GO=go sh bench/perf/kernels/run.sh 5` | [`kernels/README.md`](kernels/README.md) |
-| [`workloads/`](workloads) | ordinary agent-style programs (parsing, strings, maps, stdin) against Go and Rust on ~3 MB of input, outputs compared | `MS=./target/release/ms sh bench/perf/workloads/run.sh 3` | printed table |
-| [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `sh bench/perf/json/run.sh` | printed table |
+| [`workloads/`](workloads) | ordinary agent-style programs (parsing, strings, maps, stdin) against Go and Rust on ~3 MB of input, outputs compared | `MS=./target/release/ms sh bench/perf/workloads/run.sh 3` | [`workloads/results.md`](workloads/results.md) |
+| [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `sh bench/perf/json/run.sh` | [`json/results.md`](json/results.md) |
+| [`workers/`](workers) | eight CPU-bound jobs over 1, 2 and 4 `WorkerGroup` workers | `MS=./target/release/ms sh bench/perf/workers/run.sh 3` | [`workers/README.md`](workers/README.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 
 Compare numbers only from the same machine; treat them as a profiling guide, not a pass/fail gate.

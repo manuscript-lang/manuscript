@@ -50,6 +50,7 @@ msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
 msrt_cleanup_discard(handle: usize)
+msrt_unwind_drops() -> u8
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal, ) -> u8
 msrt_io_write_stdout(s: *const StrVal)
@@ -104,9 +105,9 @@ msrt_set_is_disjoint_from( a: *const MapVal, b: *const MapVal, kd: *const TypeDe
 msrt_numbers_parse_int( text: *const StrVal, radix: i64, out: *mut i64, ) -> u8
 msrt_numbers_parse_float(text: *const StrVal, out: *mut f64) -> u8
 msrt_numbers_error_message(status: u8, out: *mut StrVal)
-msrt_float_to_precision( v: f64, digits: i64, out: *mut StrVal, ) -> u8
-msrt_float_to_exponential( v: f64, digits: i64, out: *mut StrVal, ) -> u8
-msrt_float_to_fixed( v: f64, digits: i64, out: *mut StrVal, ) -> u8
+msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal)
+msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal)
+msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal)
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
@@ -165,12 +166,10 @@ msrt_string_trim_end(s: *const StrVal, out: *mut StrVal)
 msrt_string_upper(s: *const StrVal, out: *mut StrVal)
 msrt_string_lower(s: *const StrVal, out: *mut StrVal)
 msrt_string_repeat( s: *const StrVal, count: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal)
-msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal)
-msrt_string_replace_n(s: *const StrVal, old: *const StrVal, new: *const StrVal, max: i64, out: *mut StrVal)
-msrt_string_replace_all( s: *const StrVal, old: *const StrVal, new: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_string_pad_start( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
-msrt_string_pad_end( s: *const StrVal, target: i64, padding: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
+msrt_string_replace_first(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
+msrt_string_replace(s: *const StrVal, old: *const StrVal, new: *const StrVal, out: *mut StrVal)
+msrt_string_pad_start(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal)
+msrt_string_pad_end(s: *const StrVal, target: i64, padding: *const StrVal, out: *mut StrVal)
 msrt_string_take( s: *const StrVal, count: i64, out: *mut StrVal, )
 msrt_string_drop_n( s: *const StrVal, count: i64, out: *mut StrVal, )
 msrt_string_slice_scalars( s: *const StrVal, start: i64, end: i64, out: *mut StrVal, ) -> u8
@@ -185,6 +184,7 @@ msrt_string_scalar_values(s: *const StrVal, out: *mut VecVal)
 msrt_string_from_scalars( values: *const VecVal, out: *mut StrVal, ) -> u8
 msrt_string_to_bytes(s: *const StrVal, out: *mut VecVal)
 msrt_string_parse_int(s: *const StrVal, out: *mut i64) -> u8
+msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8
 msrt_string_normalize( s: *const StrVal, form: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_normalize_kind( s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_int_to_string(v: i64, out: *mut StrVal)
@@ -244,6 +244,7 @@ msrt_list_fill( v: *mut VecVal, d: *const TypeDesc, value: *const u8, start: i64
 msrt_list_copy_within( v: *mut VecVal, d: *const TypeDesc, target: i64, start: i64, end: i64, )
 msrt_list_slice( v: *const VecVal, d: *const TypeDesc, start: i64, end: i64, out: *mut VecVal, ) -> u8
 msrt_list_take( v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal, )
+msrt_list_pieces( v: *const VecVal, d: *const TypeDesc, od: *const TypeDesc, size: i64, step: i64, short_last: u8, out: *mut VecVal, )
 msrt_list_drop_n( v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal, )
 msrt_list_concat( a: *const VecVal, b: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_extend( v: *mut VecVal, d: *const TypeDesc, other: *mut VecVal, )
@@ -277,6 +278,37 @@ msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal)
 msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8
 msrt_bytes_append(b: *mut VecVal, value: i64)
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal)
+msrt_bytes_int8(b: *const VecVal, at: i64, out: *mut i8) -> u8
+msrt_bytes_uint8(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int16_le(b: *const VecVal, at: i64, out: *mut i16) -> u8
+msrt_bytes_uint16_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int16_be(b: *const VecVal, at: i64, out: *mut i16) -> u8
+msrt_bytes_uint16_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int32_le(b: *const VecVal, at: i64, out: *mut i32) -> u8
+msrt_bytes_uint32_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int32_be(b: *const VecVal, at: i64, out: *mut i32) -> u8
+msrt_bytes_uint32_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int64_le(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_int64_be(b: *const VecVal, at: i64, out: *mut i64) -> u8
+msrt_bytes_float32_le(b: *const VecVal, at: i64, out: *mut f32) -> u8
+msrt_bytes_float32_be(b: *const VecVal, at: i64, out: *mut f32) -> u8
+msrt_bytes_float64_le(b: *const VecVal, at: i64, out: *mut f64) -> u8
+msrt_bytes_float64_be(b: *const VecVal, at: i64, out: *mut f64) -> u8
+msrt_bytes_append_int8(b: *mut VecVal, value: i64)
+msrt_bytes_append_int16_le(b: *mut VecVal, value: i64)
+msrt_bytes_append_uint16_le(b: *mut VecVal, value: i64)
+msrt_bytes_append_int16_be(b: *mut VecVal, value: i64)
+msrt_bytes_append_uint16_be(b: *mut VecVal, value: i64)
+msrt_bytes_append_int32_le(b: *mut VecVal, value: i64)
+msrt_bytes_append_uint32_le(b: *mut VecVal, value: i64)
+msrt_bytes_append_int32_be(b: *mut VecVal, value: i64)
+msrt_bytes_append_uint32_be(b: *mut VecVal, value: i64)
+msrt_bytes_append_int64_le(b: *mut VecVal, value: i64)
+msrt_bytes_append_int64_be(b: *mut VecVal, value: i64)
+msrt_bytes_append_float32_le(b: *mut VecVal, value: f64)
+msrt_bytes_append_float32_be(b: *mut VecVal, value: f64)
+msrt_bytes_append_float64_le(b: *mut VecVal, value: f64)
+msrt_bytes_append_float64_be(b: *mut VecVal, value: f64)
 msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal)
 msrt_strbuilder_append_int(b: *mut VecVal, n: i64)
 msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal)
@@ -296,6 +328,8 @@ msstd_bigint_bit_or( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_bit_xor( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_divide( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
 msstd_bigint_remainder( a: *const BigObj, other: *const BigObj, out: *mut *mut BigObj, ) -> u8
+msstd_bigint_quotient( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
+msstd_bigint_modulo( a: *const BigObj, other: *const BigObj, ) -> *mut BigObj
 msstd_bigint_compare(a: *const BigObj, other: *const BigObj) -> i64
 msstd_bigint_bit_not(a: *const BigObj) -> *mut BigObj
 msstd_bigint_negate(a: *const BigObj) -> *mut BigObj
@@ -360,10 +394,6 @@ msstd_decimal_to_float(a: *const Dec) -> f64
 msstd_decimal_truncate_to_int(a: *const Dec, out: *mut i64) -> u8
 msstd_decimal_round( value: *const Dec, places: i64, has_mode: u8, mode: i64, out: *mut Dec, ) -> u8
 msstd_decimal_to_fixed( value: *const Dec, digits: i64, has_mode: u8, mode: i64, out: *mut StrVal, ) -> u8
-msrt_binary_read_integer( data: *const VecVal, offset: i64, width: i64, signed: u8, little: u8, out: *mut i64, ) -> u8
-msrt_binary_read_float( data: *const VecVal, offset: i64, little: u8, out: *mut f64, ) -> u8
-msrt_binary_write_integer( value: i64, width: i64, signed: u8, little: u8, out: *mut VecVal, ) -> u8
-msrt_binary_write_float(value: f64, little: u8, out: *mut VecVal)
 msrt_encoding_base64_encode(data: *const VecVal, url_safe: u8, out: *mut StrVal)
 msrt_encoding_base64_decode( text: *const StrVal, url_safe: u8, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_fs_failure_message(out: *mut StrVal)
@@ -501,11 +531,8 @@ msstd_math_atan2(y: f64, x: f64) -> f64
 msstd_math_hypot(left: f64, right: f64) -> f64
 msstd_math_pow(base: f64, exponent: f64) -> f64
 msstd_math_remainder(left: f64, right: f64) -> f64
-msstd_math_abs_int(n: i64) -> i64
-msstd_math_sign_int(n: i64) -> i64
 msstd_math_is_integer(v: f64) -> u8
 msstd_math_is_safe_integer(v: f64) -> u8
-msstd_math_abs(value: f64) -> f64
 msstd_math_acos(value: f64) -> f64
 msstd_math_asin(value: f64) -> f64
 msstd_math_atan(value: f64) -> f64
@@ -531,7 +558,6 @@ msstd_math_cbrt(value: f64) -> f64
 msstd_math_expm1(value: f64) -> f64
 msstd_math_log1p(value: f64) -> f64
 msstd_math_sign(value: f64) -> f64
-msstd_math_to_float32(value: f64) -> f64
 msstd_math_e() -> f64
 msstd_math_pi() -> f64
 msstd_math_infinity() -> f64
@@ -883,7 +909,7 @@ msrt_task_forget_fd(fd: i32)
 msrt_scope_new() -> i64
 msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_limit_ns: i64, ) -> i64
 msrt_scope_started()
-msrt_scope_join(handle: i64, keep: i64) -> i64
+msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64
 msrt_scope_wait(scope: i64) -> i64
 msrt_scope_close(scope: i64)
 msrt_channel_token() -> i64

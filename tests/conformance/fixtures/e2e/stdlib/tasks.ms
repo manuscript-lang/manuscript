@@ -2,6 +2,7 @@
 # conform: phase=test
 from "@std/collections.ms" import range
 from "@std/shared.ms" import share, Shared
+from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import duration, sleep
@@ -17,15 +18,15 @@ def slow(milliseconds: Int, label: String) -> String:
     return label
 
 def record(log: Shared[List[String]], entry: String) -> Unit:
-    let lines = log.take()
-    log.put(lines.concat([entry]))
+    with var lines = lock(log):
+        lines.value.append(entry)
 
 def slow_square(n: Int) -> Int:
     pause(1)
     return n * n
 
 def leave_early(log: Shared[List[String]]) -> Int:
-    with TaskGroup[Unit]() as group:
+    with let group = TaskGroup[Unit]():
         let held = log
 
         group.spawn(
@@ -42,19 +43,19 @@ def wait_for(box: Shared[List[Int]]) -> Int:
     return box.get().get(0)
 
 test "results come back in the order the tasks started":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in [1, 2, 3, 4]:
             group.spawn(lambda ch: square(n))
         group.results() | try expect_ok | try expect_equal([1, 4, 9, 16])
 
 test "results do not depend on which task finishes first":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: slow(30, "slow"))
         group.spawn(lambda ch: slow(1, "fast"))
         group.results() | try expect_ok | try expect_equal(["slow", "fast"])
 
 test "a task handle returns its own result":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let first = group.spawn(lambda ch: square(3))
         let second = group.spawn(lambda ch: square(4))
         second.result() | try expect_ok | try expect_equal(16)
@@ -63,7 +64,7 @@ test "a task handle returns its own result":
 test "tasks switch while one waits":
     let log: Shared[List[String]] = share([])
 
-    with TaskGroup[Unit]() as group:
+    with let group = TaskGroup[Unit]():
         let first = log
         let second = log
 
@@ -81,7 +82,7 @@ test "tasks switch while one waits":
 test "a task owns the values its closure captures":
     let greeting = "hello from a task, long enough for the heap"
 
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: greeting + "!")
         group.results() | try expect_ok | try expect_equal(
             ["hello from a task, long enough for the heap!"]
@@ -90,7 +91,7 @@ test "a task owns the values its closure captures":
 test "leaving the block cancels tasks that are still running":
     let log: Shared[List[String]] = share([])
 
-    with TaskGroup[Unit]() as group:
+    with let group = TaskGroup[Unit]():
         let held = log
 
         group.spawn(
@@ -103,11 +104,11 @@ test "leaving the block cancels tasks that are still running":
     try expect_equal(log.get().length(), 0)
 
 test "an empty group has no results":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         group.results() | try expect_ok | try expect_equal(List[Int]())
 
 test "a task that passes its timeout is cancelled":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         let late = group.spawn(
             lambda ch: slow(2000, "late"), timeout: some(duration(20000000))
         )
@@ -118,31 +119,31 @@ test "a task that passes its timeout is cancelled":
         quick.result() | try expect_ok | try expect_equal("quick")
 
 test "a group timeout limits every task started in it":
-    with TaskGroup[String](timeout: some(duration(50000000))) as group:
+    with let group = TaskGroup[String](timeout: some(duration(50000000))):
         let late = group.spawn(lambda ch: slow(2000, "late"))
         let early = group.spawn(lambda ch: slow(1, "early"))
         early.result() | try expect_ok | try expect_equal("early")
         late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task shorter than its group limit uses its own limit":
-    with TaskGroup[String](timeout: some(duration(2000000000))) as group:
+    with let group = TaskGroup[String](timeout: some(duration(2000000000))):
         let late = group.spawn(
             lambda ch: slow(2000, "late"), timeout: some(duration(20000000))
         )
         late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "wait reports a task that timed out":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: slow(2000, "late"), timeout: some(duration(20000000)))
         group.wait() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task without a timeout runs to its end":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: slow(60, "done"))
         group.results() | try expect_ok | try expect_equal(["done"])
 
 test "wait leaves every outcome readable through its handle":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         let done = group.spawn(lambda ch: slow(1, "done"))
         let late = group.spawn(
             lambda ch: slow(2000, "late"), timeout: some(duration(20000000))
@@ -152,18 +153,18 @@ test "wait leaves every outcome readable through its handle":
         late.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "results reports the first task that has no result":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: slow(1, "done"))
         group.spawn(lambda ch: slow(2000, "late"), timeout: some(duration(20000000)))
         group.results() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a zero timeout times the task out":
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         let task = group.spawn(lambda ch: slow(1, "x"), timeout: some(duration(0)))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a group whose time has passed times new tasks out":
-    with TaskGroup[String](timeout: some(duration(10000000))) as group:
+    with let group = TaskGroup[String](timeout: some(duration(10000000))):
         pause(30)
 
         let task = group.spawn(lambda ch: slow(1, "x"))
@@ -171,12 +172,12 @@ test "a group whose time has passed times new tasks out":
 
 test "a task that never ran releases what it captured":
     let text = "captured by a task that is cancelled before it runs, long enough for the heap"
-    with TaskGroup[String]() as group:
+    with let group = TaskGroup[String]():
         group.spawn(lambda ch: text + "!")
     try expect_equal(1, 1)
 
 test "many tasks run and keep their order":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in range(0, 300):
             group.spawn(lambda ch: slow_square(n))
 
@@ -191,10 +192,10 @@ test "an early exit from the block cancels the tasks":
     try expect_equal(log.get().length(), 0)
 
 test "groups nest and close independently":
-    with TaskGroup[Int]() as outer:
+    with let outer = TaskGroup[Int]():
         let kept = outer.spawn(lambda ch: square(5))
 
-        with TaskGroup[Int]() as inner:
+        with let inner = TaskGroup[Int]():
             let quick = inner.spawn(lambda ch: square(2))
             quick.result() | try expect_ok | try expect_equal(4)
 
@@ -203,16 +204,15 @@ test "groups nest and close independently":
 test "a task can wait for another task's value":
     let box: Shared[List[Int]] = share([])
 
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let producer = box
         let consumer = box
 
         group.spawn(
             lambda ch:
                 pause(10)
-
-                let empty = producer.take()
-                producer.put([42])
+                with var items = lock(producer):
+                    items.value.append(42)
                 return 0
         )
 
@@ -222,7 +222,7 @@ test "a task can wait for another task's value":
 test "a task cancelled before it first ran never starts":
     let log: Shared[List[String]] = share([])
 
-    with TaskGroup[Unit]() as group:
+    with let group = TaskGroup[Unit]():
         let held = log
         group.spawn(lambda ch: record(held, "ran"))
 
@@ -232,13 +232,13 @@ test "closing a group twice leaves a later group alone":
     var first = TaskGroup[Int]()
     first.close()
 
-    with TaskGroup[Int]() as second:
+    with let second = TaskGroup[Int]():
         let task = second.spawn(lambda ch: slow_square(5))
         first.close()
         task.result() | try expect_ok | try expect_equal(25)
 
 test "more sleeping tasks than the timer heap keeps all finish":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in range(0, 1200):
             group.spawn(lambda ch: slow_square(n))
 
@@ -259,7 +259,25 @@ test "using a task after its group closed gives Closed":
     group.results() | try expect_error | try expect_equal(TaskError.Closed)
 
 test "a second result call gives Closed":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let task = group.spawn(lambda ch: square(2))
         task.result() | try expect_ok | try expect_equal(4)
         task.result() | try expect_error | try expect_equal(TaskError.Closed)
+
+test "a group forgets collected tasks":
+    with let group = TaskGroup[Int]():
+        let first = group.spawn(lambda ch: square(2))
+        let second = group.spawn(lambda ch: square(3))
+        let third = group.spawn(lambda ch: square(4))
+        second.result() | try expect_ok | try expect_equal(9)
+        group.results() | try expect_ok | try expect_equal([4, 16])
+        first.result() | try expect_error | try expect_equal(TaskError.Closed)
+        third.result() | try expect_error | try expect_equal(TaskError.Closed)
+        group.results() | try expect_ok | try expect_equal([])
+
+test "a group with a timeout collects many tasks":
+    with let group = TaskGroup[Int](timeout: some(duration(3600000000000))):
+        var total = 0
+        for i in range(0, 5000):
+            total += group.spawn(lambda ch: i).result().get(0)
+        total | try expect_equal(12497500)

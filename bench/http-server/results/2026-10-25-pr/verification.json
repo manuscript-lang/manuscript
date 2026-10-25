@@ -1,0 +1,56 @@
+{
+  "platform": "Linux x86_64",
+  "integrated_main": "97c5788bc17a51f1322b14dcf6f918020deb48f6",
+  "initial_implementation": "32d3d5a0537323c7870fa853de8c32397f4b0ba2",
+  "workspace": {
+    "passed": 981,
+    "ignored_child_entrypoints": 5,
+    "method": "518 native/runtime/MIR tests plus 429 remaining workspace tests and 30 engine tests, run in partitions. After integration compiler corrections, all 118 MIR tests (including four added regressions) and all 30 engine tests passed again.",
+    "engine_seconds": 264.162
+  },
+  "commands": [
+    "cargo check --workspace",
+    "cargo nextest run -p ms-rt -p ms-mir -p ms-std-process -p ms-std-net --test-threads 1",
+    "cargo nextest run --workspace --test-threads 1 -E 'not (package(ms-rt) | package(ms-mir) | package(ms-std-process) | package(ms-std-net) | binary(engine))'",
+    "cargo test -p ms-mir",
+    "cargo nextest run -p ms-cli --test engine --test-threads 1",
+    "cargo clippy --workspace --all-targets -- -D warnings",
+    "cargo fmt --all --check",
+    "cargo run -q -p ms-repo-check",
+    "cargo run -q -p ms-tooling --bin ms-docgen -- -check",
+    "cargo check --target x86_64-pc-windows-gnu -p ms-rt -p ms-std-process -p ms-std-net"
+  ],
+  "clippy": "passed",
+  "format": "passed",
+  "repository_checks": "passed",
+  "documentation": "passed: 540 declarations and 1809 members",
+  "book": "passed: docgen, highlighting test, Hugo with panicOnWarning, publication test",
+  "windows_crosscheck": "passed with installed MinGW compiler; Windows execution unavailable",
+  "macos_execution": "unavailable",
+  "integration_corrections": [
+    "Pending family drop at block start was omitted from last-use placement: ownership-verifier failure fixed and regression added.",
+    "Cancellation cleanup registered a duplicate release for explicit cleanup owners moved through loop parameters, and for taken mutable receivers: native multipart timeout crash fixed; independent copies remain eligible for cleanup.",
+    "TLS affinity fixture must consume the entire response before expecting connection reuse."
+  ],
+  "limitations": [
+    "All taken values and owned results derived from protected arguments are conservatively excluded from automatic cancellation cleanup; arbitrary user code can retain memory on cancellation.",
+    "The full non-HTTP Release e2e suite and distribution smoke were validated before main integration, not repeated in this follow-up.",
+    "An initial conformance invocation selected parse and aliasing fixtures outside the repository gate; it was stopped and replaced by the exact run/check/test gate selection.",
+    "Initial Windows cross-check lacked the MinGW PATH; rerun with the installed compiler passed."
+  ],
+  "http_fixtures": {
+    "files": 21,
+    "tests_per_profile": 95,
+    "profiles": [
+      "Debug",
+      "Release"
+    ],
+    "failed": 0
+  },
+  "additional_e2e": [
+    "compression-writer",
+    "map-string-values",
+    "shared-lock-survives-cancellation",
+    "with-var-closes-final-value"
+  ]
+}

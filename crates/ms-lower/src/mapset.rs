@@ -254,7 +254,9 @@ impl<'a> FnLower<'a> {
                 (self.hir.resolution(a), self.hir.resolution(b)),
                 (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
             ),
-            (ExprKind::Number(x), ExprKind::Number(y)) => x == y,
+            (ExprKind::Number(x), ExprKind::Number(y)) => {
+                ms_syntax::number::canonical(x.as_str()) == ms_syntax::number::canonical(y.as_str())
+            }
             _ => false,
         }
     }
@@ -378,6 +380,143 @@ impl<'a> FnLower<'a> {
                 }
             },
         }
+    }
+
+    /// `m[key]`: one probe, borrowing the entry; an absent key faults with the key's text.
+    pub(crate) fn map_index(&mut self, e: &Expr, map: &Expr, key: &Expr) -> Result<Val, Error> {
+        let stable = self.stable_place(map);
+        let mv = self.expr(map)?;
+        if self.dead {
+            return Ok(mv);
+        }
+        let mv = self.borrow(mv);
+        let kv = self.expr(key)?;
+        if self.dead {
+            return Ok(kv);
+        }
+        let kv = self.borrow(kv);
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let (bad, good) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, bad, &[], good, &[]);
+        self.b.seal_block(bad);
+        self.b.seal_block(good);
+        self.b.switch_to(bad);
+        let head = "map key not found";
+        let msg = if self.ty_of(kv) == MTy::INT {
+            let head = self.b.str_lit(&format!("{head}: "));
+            let text = self.call_runtime("msrt_int_to_string", &[kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[head, text], MTy::STR)?
+        } else if self.ty_of(kv) == MTy::STR {
+            let open = self.b.str_lit(&format!("{head}: \""));
+            let close = self.b.str_lit("\"");
+            let text = self.call_runtime("msrt_string_concat", &[open, kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[text, close], MTy::STR)?
+        } else {
+            self.b.str_lit(head)
+        };
+        let fault = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![ms_mir::ir::Param {
+                ty: MTy::STR,
+                mode: ms_mir::ir::Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+            fresh: false,
+        });
+        self.b.call_rt(fault, &[msg]);
+        self.b.unreachable();
+        self.b.switch_to(good);
+        let v = self
+            .b
+            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        if stable {
+            self.stable_reads.insert(v);
+        }
+        Ok(Val { v, own: false })
+    }
+
+    /// `return m.get(key)` of a lending function: the entry itself, as an optional that borrows it.
+    pub(crate) fn map_get_lent(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if name != "get"
+            || !self.lent_return
+            || self.lent_expr != Some(e as *const Expr as usize)
+            || !self.ety(recv_expr).is_std("Map")
+        {
+            return Ok(None);
+        }
+        let [arg] = view.arguments.as_slice() else {
+            return Ok(None);
+        };
+        let map_ty = self.emty(recv_expr)?;
+        let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
+            return Ok(None);
+        };
+        let key_ty = self.emty(arg.expr)?;
+        if parts.first() != Some(&key_ty) || arg.wrap_optional.is_some() {
+            return Ok(None);
+        }
+        let opt_ty = self.emty(e)?;
+        let mv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(Some(mv));
+        }
+        let mv = self.borrow(mv);
+        let kv = self.expr(arg.expr)?;
+        if self.dead {
+            return Ok(Some(kv));
+        }
+        let kv = self.borrow(kv);
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let out = self.b.declare_var(opt_ty, Mode::Borrow);
+        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, absent, &[], present, &[]);
+        self.b.seal_block(absent);
+        self.b.seal_block(present);
+        self.enter(absent);
+        let none = self.b.opt_none(opt_ty);
+        self.b.def_var(out, none);
+        self.b.br(join, &[]);
+        self.enter(present);
+        let at = self
+            .b
+            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        let some = self.b.opt_view(at);
+        self.b.def_var(out, some);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
+        let v = self.b.use_var(out);
+        Ok(Some(Val { v, own: false }))
     }
 
     /// A fresh empty map or set of type `ty`.
@@ -582,8 +721,8 @@ impl<'a> FnLower<'a> {
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
-        if name == "freeze" {
-            return self.freeze_builder(old, result_ty);
+        if name == "build" {
+            return self.build_builder(old, result_ty);
         }
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
@@ -596,8 +735,8 @@ impl<'a> FnLower<'a> {
                 "msrt_list_insert_copy".to_string()
             }
             (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
-            // `BytesBuilder.concat` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
-            (_, "concat") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
+            // `BytesBuilder.append_bytes` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
+            (_, "append_bytes") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
@@ -701,14 +840,10 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.freeze()`: a copy of the accumulated value; freezing again yields the same.
-    fn freeze_builder(
-        &mut self,
-        old: Value,
-        result_ty: MTy,
-    ) -> Result<(Value, Option<Val>), Error> {
+    /// `builder.build()`: a copy of the accumulated value; building again yields the same.
+    fn build_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
         if result_ty == MTy::STR {
-            // The runtime consumes the buffer it freezes: freeze a copy.
+            // The runtime consumes the buffer it builds from: build from a copy.
             let copy = self.owned(Val { v: old, own: false });
             let slot = self.put_slot(copy);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
@@ -818,31 +953,6 @@ impl<'a> FnLower<'a> {
             Ok(None)
         })?;
         self.release_source(lv, hidden);
-        let out = self.b.use_var(acc);
-        Ok(Val { v: out, own: true })
-    }
-
-    /// `set.entries()`: `[value, value]` lists in insertion order.
-    pub(crate) fn set_entries(&mut self, recv: Val, result: MTy) -> Result<Val, Error> {
-        let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("entries without a list type"));
-        };
-        let TyKind::List(inner) = self.b.m.types.kind(pair).clone() else {
-            return Err(Error::new("entries pair is not a list"));
-        };
-        let acc = self.fresh_var(result);
-        let empty = self.b.list_lit(pair, &[]);
-        self.b.def_var(acc, empty);
-        let m = self.borrow(recv);
-        self.each_entry(m, &mut |s, key, _| {
-            let ko = s.owned(Val { v: key, own: false });
-            let kc = s.owned(Val { v: key, own: false });
-            let p = s.b.list_lit(inner, &[ko, kc]);
-            let cur = s.b.use_var(acc);
-            let next = s.b.list_push(cur, p);
-            s.b.def_var(acc, next);
-            Ok(())
-        })?;
         let out = self.b.use_var(acc);
         Ok(Val { v: out, own: true })
     }

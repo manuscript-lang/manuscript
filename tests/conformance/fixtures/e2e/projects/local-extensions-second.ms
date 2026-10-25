@@ -60,7 +60,7 @@ impl Closeable for Resource:
         self.events.append(value: 20)
 
 def leave(resource: Resource) -> Unit:
-    with resource as local:
+    with let local = resource:
         return
 
 export def second_resource(resource: Resource) -> Closeable:
@@ -69,7 +69,7 @@ export def second_resource(resource: Resource) -> Closeable:
 test "second local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    events.freeze().get(index: 0) | try expect_equal(20)
+    events.build().get(index: 0) | try expect_equal(20)
 
 from "./first.ms" import mixed
 

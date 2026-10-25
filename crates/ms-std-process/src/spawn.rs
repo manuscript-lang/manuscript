@@ -539,17 +539,18 @@ mod tree {
             let parent = found[next];
             next += 1;
             let mut buf = [0 as libc::pid_t; 1024];
-            // SAFETY: `buf` is writable for the byte size passed.
-            let bytes = unsafe {
+            // SAFETY: `buf` is writable for the byte size passed. The return value is ignored: libproc
+            // documents it as a count of pids in some releases and bytes in others, and dividing
+            // a count by the pid size dropped every child of a parent with fewer than four.
+            // Unused slots stay zero and no pid is zero.
+            unsafe {
                 libc::proc_listchildpids(
                     parent,
                     buf.as_mut_ptr().cast(),
                     core::mem::size_of_val(&buf) as libc::c_int,
                 )
             };
-            let count =
-                (bytes.max(0) as usize / core::mem::size_of::<libc::pid_t>()).min(buf.len());
-            for &pid in &buf[..count] {
+            for &pid in buf.iter().take_while(|p| **p > 0) {
                 if !found.contains(&pid) {
                     found.push(pid);
                 }
@@ -559,6 +560,53 @@ mod tree {
         found
     }
 
+    /// Whether `pid` has stopped, or is gone.
+    #[cfg(target_os = "linux")]
+    fn stopped(pid: libc::pid_t) -> bool {
+        let Ok(stat) = std::fs::read_to_string(alloc::format!("/proc/{pid}/stat")) else {
+            return true;
+        };
+        let after = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
+        !matches!(
+            after.trim_start().chars().next(),
+            Some('R' | 'S' | 'D' | 'I')
+        )
+    }
+
+    #[cfg(all(unix, not(target_os = "linux")))]
+    fn stopped(pid: libc::pid_t) -> bool {
+        /// `SSTOP` and `SZOMB` of `pbi_status`.
+        const STOPPED: u32 = 4;
+        const ZOMBIE: u32 = 5;
+        // SAFETY: `info` is writable for the size passed; all-zero is a valid `proc_bsdinfo`.
+        let (read, info) = unsafe {
+            let mut info: libc::proc_bsdinfo = core::mem::zeroed();
+            let read = libc::proc_pidinfo(
+                pid,
+                libc::PROC_PIDTBSDINFO,
+                0,
+                (&raw mut info).cast(),
+                core::mem::size_of::<libc::proc_bsdinfo>() as libc::c_int,
+            );
+            (read, info)
+        };
+        read <= 0 || info.pbi_status == STOPPED || info.pbi_status == ZOMBIE
+    }
+
+    /// Waits until every process in `pids` has stopped. `kill` with SIGSTOP returns before the
+    /// target stops, and a process in the middle of `fork` creates its child before it does, so
+    /// the children of a process are only all listed once it has stopped.
+    fn settle(pids: &[libc::pid_t]) {
+        for &pid in pids {
+            for _ in 0..2000 {
+                if stopped(pid) {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_micros(500));
+            }
+        }
+    }
+
     /// Stops `root` and its descendants until no new one appears (a stopped process cannot fork),
     /// then kills them all.
     pub fn kill(root: libc::pid_t) {
@@ -566,6 +614,7 @@ mod tree {
         // SAFETY: plain system call.
         unsafe { libc::kill(root, libc::SIGSTOP) };
         loop {
+            settle(&frozen);
             let fresh: Vec<libc::pid_t> = descendants(root)
                 .into_iter()
                 .filter(|p| !frozen.contains(p))

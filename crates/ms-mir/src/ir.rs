@@ -26,6 +26,7 @@
 use crate::types::{
     AltDef, AltId, IfaceDef, IfaceId, RecId, RecordDef, Ty, TyKind, TyTable, id_type,
 };
+use std::collections::HashMap;
 use std::fmt;
 
 id_type!(
@@ -278,7 +279,7 @@ pub enum Op {
     // Lists.
     ListNew, ListLit, ListLen, ListGet, ListGetNn, ListGetU, ListSet, ListSetNn, ListSetU, ListFill, ListPush, ListDropLast,
     // Optionals.
-    OptSome, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
+    OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
     StrLen, StrByte, StrAscii,
     // Shared[T].
@@ -395,7 +396,7 @@ impl Op {
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
-        Op::OptSome, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
+        Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
@@ -474,6 +475,7 @@ impl Op {
             Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
             Op::ListDropLast => ("list.droplast", K::None, true, effects!(reads, writes, rc)),
             Op::OptSome => ("opt.some", K::None, true, effects!()),
+            Op::OptView => ("opt.view", K::None, true, effects!()),
             Op::OptNone => ("opt.none", K::None, true, effects!()),
             Op::OptIsSome => ("opt.is_some", K::None, true, effects!()),
             Op::OptGet => ("opt.get", K::None, true, effects!()),
@@ -796,8 +798,11 @@ pub struct Func {
     pub name: String,
     /// Parameters; `blocks[0].params` define their values.
     pub params: Vec<Param>,
-    /// Result type; results are always owned.
+    /// Result type; results are owned unless `ret_borrowed` says the function lends one.
     pub ret: Ty,
+    /// The result is a borrow of an argument that the caller keeps alive: returned without a
+    /// retain, and not released by the caller.
+    pub ret_borrowed: bool,
     /// Visibility.
     pub linkage: Linkage,
     /// Role of the function.
@@ -824,6 +829,7 @@ impl Func {
             name: name.to_string(),
             params: params.clone(),
             ret,
+            ret_borrowed: false,
             linkage: Linkage::Internal,
             kind: FuncKind::Normal,
             inline: InlineHint::Auto,
@@ -972,6 +978,9 @@ pub struct ExternDef {
     /// Whether the call has no observable effect and does not fault, so equal calls
     /// can be merged and unused ones removed.
     pub pure_: bool,
+    /// Whether the result points into no borrowed argument (it is an owned allocation, an
+    /// inline value or a static), so a borrowed argument may be dropped once the call returns.
+    pub fresh: bool,
 }
 
 /// A module-level variable.
@@ -1015,6 +1024,8 @@ pub struct Module {
     pub vtables: Vec<VtableDef>,
     /// String literals (UTF-8).
     pub strings: Vec<String>,
+    /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
+    string_ids: HashMap<String, StrId>,
     /// Runtime functions called.
     pub externs: Vec<ExternDef>,
     /// Module-level variables.
@@ -1046,6 +1057,7 @@ impl Module {
             ifaces: Vec::new(),
             vtables: Vec::new(),
             strings: Vec::new(),
+            string_ids: HashMap::new(),
             externs: Vec::new(),
             globals: Vec::new(),
             funcs: Vec::new(),
@@ -1056,11 +1068,13 @@ impl Module {
 
     /// Interns a string literal.
     pub fn add_string(&mut self, s: &str) -> StrId {
-        if let Some(i) = self.strings.iter().position(|x| x == s) {
-            return StrId(i as u32);
+        if let Some(&id) = self.string_ids.get(s) {
+            return id;
         }
+        let id = StrId(self.strings.len() as u32);
         self.strings.push(s.to_string());
-        StrId(self.strings.len() as u32 - 1)
+        self.string_ids.insert(s.to_string(), id);
+        id
     }
 
     /// Registers a source file and returns its index for [`Loc`].
@@ -1231,6 +1245,11 @@ impl Module {
         if !self.needs_drop(f.ty(res)) {
             return None;
         }
+        if let (Op::Call, Imm::Func(g)) = (inst.op, inst.imm)
+            && self.funcs[g.index()].ret_borrowed
+        {
+            return Some(Mode::Borrow);
+        }
         Some(match inst.op {
             Op::RecGet
             | Op::AltGet
@@ -1243,6 +1262,7 @@ impl Module {
             | Op::Load
             | Op::StrLit
             | Op::StrAscii
+            | Op::OptView
             | Op::OptNone => Mode::Borrow,
             _ => Mode::Own,
         })

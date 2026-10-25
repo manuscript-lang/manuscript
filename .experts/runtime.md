@@ -17,9 +17,11 @@ Verified: production `msrt_guard_call` exits faults and cancellation with a jump
 for state removed across a park; discard it on ordinary return. Interrupted decoders are
 closed and abandoned rather than resumed with potentially partial state.
 
+Decision (#1217): Manuscript frames get the same treatment automatically. `ms_mir::unwind` runs after the optimizer in every profile and, for programs that start tasks, workers or servers, registers one cleanup per owned value live across each call that can reach a cancellation point (`msrt_cleanup_discard` after the call). The cleanup drops only while `msrt_unwind_drops` is true, which `msrt_cancelled` sets when a guard will catch the jump; faults and process exit free nothing. A value moved out of a field and not yet refilled, or held in a stack slot, is skipped (it leaks rather than double frees). Rust natives use `ms_rt::fault::with_cleanup(&mut cleanup, body)` around a park that holds a borrow or flag.
+
 Apply when: native operations take state or resource ownership across a cancellable wait.
 Evidence: [response body guard and cancellation regression](../crates/ms-std-net/src/http/client.rs), [runtime guard](../crates/ms-rt/src/fault.rs).
-Verify: use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard),
+Verify: `make leak-check` on `tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms` reports zero live blocks; use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard),
 assert a stack destructor is skipped, join reports cancellation, later reads return Closed,
 and the peer observes connection release.
 
@@ -210,6 +212,11 @@ Apply when: adding a process-wide `static`, a cache, or a standard-library featu
 Evidence: `proposals/worker-threads.md`; measured scaling 1.8x on two workers and 3.0x on four (`fib(38)` x8); allocator thread-local state cost +0.04% instructions on the program suite.
 Verify: every runtime `static` is an atomic, a `Process` cell (main isolate only), or an `isolate_static!`. Rust code in a worker uses the system allocator, because an arena ends with its worker and Rust code can keep an allocation in a cache another isolate reads (a `Vec` in a worker arena behind a process-wide `OnceLock` was a use-after-free). `Global<T>` in `ms-std-*` faults in a worker. Worker stdout writes bypass the main isolate's buffer. Windows reaches the task header through `msrt_isolate_hdr`, a call, because fibers cannot be aligned.
 
+Verified: the worker must close the pipe end transferred in its startup argument. Publishing
+that end from the parent after thread creation races with an immediate worker exit and leaks
+the end, preventing the peer from seeing closure. The worker's own `END` state owns this
+cleanup. `worker_closes_pipe_before_parent_publishes_handle_metadata` reproduces the ordering.
+
 ### A process entry is found by code offset, so it must capture nothing
 
 Decided: `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fork`, which reads the runner's and the entry's code and drop words and sends them as offsets from `msrt_start` in `MS_ENTRY`. The child rebuilds both closures before `main`. This needs no entry table in the compiler, but only a closure without captures can be rebuilt, so the checker requires the entry to name a top-level `def`. Values cross inside an `Envelope[T]` record because `Unit` has no JSON form: decoding restores an absent `Unit` member.
@@ -245,6 +252,36 @@ Apply when: publishing task metadata to signal handlers or worker cancellation c
 Evidence: [concurrent shield regression and ABI checks](../crates/ms-rt/src/fault.rs).
 Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads`
 passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.
+
+Verified: atomic fields do not keep a published task header alive. Miri catches a remote
+cancellation reading a header after unpublication and deallocation. `PublishedHdr` counts
+short reader sections; publication uses sequentially consistent operations and waits for old
+readers before the caller can free or reuse the previous header. Readers never lock or wait,
+so a signal interrupting the publishing thread cannot deadlock it. Teardown unpublishes first.
+Verify with `cargo +nightly miri test -p ms-rt cancellation_header_retirement_waits_for_readers`;
+keep header layout and shield semantics unchanged, and measure context-switch overhead.
+
+### Worker cancellation must follow startup and retirement
+
+Verified: a cancellation sent immediately after spawn was discarded before the worker published
+its isolate slot. A completed, unjoined worker retained that slot and could cancel a later worker
+that reused it. Keep the request in the worker object, and serialize slot publication, cancellation,
+and retirement before task teardown. Generation-checking the public worker handle alone does not
+protect the separately reused isolate slot.
+
+Apply when: changing worker startup, cancellation or isolate retirement.
+Evidence: [worker regressions](../crates/ms-rt/src/worker.rs)
+(`cancellation_immediately_after_spawn_is_remembered`,
+`cancelling_completed_worker_does_not_cancel_reused_isolate`).
+Verify: immediate cancellation ends the intended worker, and cancelling an exited worker leaves
+its replacement running normally.
+
+## Shared is changed only through a lock guard
+
+Decision (Chinmay, 2026-10-25): a `Shared` payload is changed with `with var guard = lock(box):` from `@std/sync.ms`, like Rust's `Arc<Mutex<T>>`; raw `take`/`put` were the manual lock that a cancellation left set (p13). The guard's close returns the payload on every exit, `lock` waits for a held guard, and the checker rejects `take`, `put` and `locked` outside `@std/sync.ms` and a `Shared` in a worker or process message (#1249). A `with var` binding registers its storage slot, so a fault or cancellation closes the value the block had reached.
+Apply when: adding shared state to the stdlib, or touching `with`, `Shared`, or cancellation cleanup.
+Evidence: [lock proposal](../proposals/shared-lock.md), [cancel regression](../tests/e2e/testdata/accept/shared-lock-survives-cancellation.ms).
+Verify: that fixture passes; without the slot in `crates/ms-lower/src/with.rs` `with-var-closes-final-value.ms` reports `[0]` for `[7]`.
 
 ### HTTP cancellation needs ownership cleanup as well as socket shutdown
 

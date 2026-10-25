@@ -11,4 +11,12 @@ Run several pieces of work at once with a `TaskGroup`, or spread CPU-bound work 
 2. [Worker threads](workers.md)
 3. [Process groups](process-groups.md): the same shape, in child processes.
 
-Tasks share one thread; workers run on threads of their own and share nothing. Both talk to their starter over a two-way `Channel`. See `proposals/taskgroup.md`, `proposals/channels.md` and `proposals/worker-threads.md`.
+| Choose | For | Entry |
+| --- | --- | --- |
+| `TaskGroup[T, In, Out]` | Cooperative work that waits for I/O or messages | A callable taking `Channel[Out, In]` and returning `T` |
+| `WorkerGroup[In, Out]` | CPU work on isolated OS threads | A named zero-argument `def` returning `Unit`; obtains `worker_channel()` |
+| `ProcessGroup[T, In, Out]` | Work in child processes, with separate standard streams when needed | A named `def` taking `Channel[Out, In]` and returning `T` |
+
+Each group owns the work it starts until its `with` block ends. Collect results or join before leaving the block to finish the work; leaving early cancels or stops it. Tasks move values through channels; workers and processes serialize messages as JSON. Their cleanup and failure behavior differ: read the relevant guide before choosing a boundary.
+
+`Channel[Send, Receive]` presents typed `send`, `receive` and `close` operations. Its `Transport[Send, Receive]` supplies the underlying task queue, worker queue or process pipe; see the [channel API](../../standard-library/reference/channels.md).

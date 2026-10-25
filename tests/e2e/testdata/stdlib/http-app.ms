@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/http.ms" import HttpMethod, HttpError, HttpServerOptions, headers, websocket_response, Request, Response, Body, Router, Server, serve, text_response, stream_response
 from "@std/net.ms" import network
 from "@std/io.ms" import WriteStream
@@ -47,9 +48,8 @@ test "middleware wraps mounted routes and can short circuit":
     api.use(
         lambda request,
         next:
-            var log = calls.take()
-            log.append("child")
-            calls.put(log)
+            with var log_guard = lock(calls):
+                log_guard.value.append("child")
             return next(request)
     )
 
@@ -59,14 +59,12 @@ test "middleware wraps mounted routes and can short circuit":
     routes.use(
         lambda request,
         next:
-            var log = calls.take()
-            log.append("before")
-            calls.put(log)
+            with var log_guard = lock(calls):
+                log_guard.value.append("before")
 
             let response = next(request)
-            var after = calls.take()
-            after.append("after")
-            calls.put(after)
+            with var after_guard = lock(calls):
+                after_guard.value.append("after")
             return response
     )
 
@@ -116,8 +114,10 @@ test "real HTTP streams responses without invoking a HEAD producer":
         "/events",
         lambda request: stream_response(
             lambda (var output: WriteStream):
-                let count = produced.take()
-                produced.put(count + 1)
+                with var guard = lock(produced):
+                    let count = guard.value
+                    guard.value = count + 1
+
                 try output.write("data: first\n\n")
                 return output.write("data: second\n\n")
             ,
@@ -127,25 +127,25 @@ test "real HTTP streams responses without invoking a HEAD producer":
 
     let server = Server("127.0.0.1:0")
 
-    with TaskGroup[Result[Unit, HttpError]]() as group:
+    with let group = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
         let task = group.spawn(lambda channel: owner.run(routes.clone()))
         wait_ready(server)
 
-        with try network().http_client(HttpClientOptions()) as client:
-            with try client.request(
+        with let client = try network().http_client(HttpClientOptions()):
+            with let response = try client.request(
                 HttpMethod.Head, "http://" + server.address().get() + "/events",
                 headers()
-            ) as response:
+            ):
                 try expect_equal(response.metadata().status, 200)
                 try expect_true(response.read().get().is_none())
 
             try expect_equal(produced.get(), 0)
 
-            with try client.request(
+            with let response = try client.request(
                 HttpMethod.Get, "http://" + server.address().get() + "/events",
                 headers()
-            ) as response:
+            ):
                 var text = ""
 
                 while True:
@@ -172,12 +172,12 @@ test "request body stays lazy through rejecting middleware":
         "127.0.0.1:0", HttpServerOptions(timeout: some(duration(2000000000)))
     )
 
-    with TaskGroup[Result[Unit, HttpError]]() as group:
+    with let group = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
         let task = group.spawn(lambda channel: owner.run(routes.clone()))
         wait_ready(server)
 
-        with try network().connect(server.address().get()) as socket:
+        with let socket = try network().connect(server.address().get()):
             try socket.write(
                 "POST /upload HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1000000\r\nExpect: 100-continue\r\nConnection: close\r\n\r\n"
             )
@@ -193,7 +193,7 @@ test "request body stays lazy through rejecting middleware":
 test "scoped server runs once and closes through an external owner":
     let server = Server("127.0.0.1:0")
 
-    with TaskGroup[Result[Unit, HttpError]]() as group:
+    with let group = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
 
         let task = group.spawn(
@@ -204,10 +204,10 @@ test "scoped server runs once and closes through an external owner":
         )
 
         wait_ready(server)
-        with try network().http_client(HttpClientOptions()) as client:
-            with try client.request(
+        with let client = try network().http_client(HttpClientOptions()):
+            with let response = try client.request(
                 HttpMethod.Get, "http://" + server.address().get() + "/", headers()
-            ) as response:
+            ):
                 try expect_equal(response.metadata().status, 200)
         server.close()
 
@@ -244,9 +244,8 @@ test "retained middleware continuation cannot run after its scope":
     routes.use(
         lambda request,
         next:
-            var list = saved.take()
-            list.append(next)
-            saved.put(list)
+            with var list_guard = lock(saved):
+                list_guard.value.append(next)
             return text_response("short circuit")
     )
 
@@ -311,7 +310,7 @@ test "nested mount collisions fail before registration":
     try expect_true(report.contains("duplicate mount prefix"))
 
 test "discarding a bind failure cannot make serve succeed":
-    with try network().listen("127.0.0.1:0") as listener:
+    with let listener = try network().listen("127.0.0.1:0"):
         let result = serve(
             listener.address(),
             lambda server:
@@ -337,12 +336,12 @@ test "websocket handshake includes middleware headers and repeated cookies":
 
     let server = Server("127.0.0.1:0")
 
-    with TaskGroup[Result[Unit, HttpError]]() as group:
+    with let group = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
         let task = group.spawn(lambda channel: owner.run(routes.clone()))
         wait_ready(server)
 
-        with try network().connect(server.address().get()) as socket:
+        with let socket = try network().connect(server.address().get()):
             try socket.write(
                 "GET /socket HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
             )
@@ -409,38 +408,36 @@ test "bodyless statuses skip producers and retained writers expire":
         lambda request: stream_response(
             lambda (var output: WriteStream):
                 try output.write("done")
-
-                var list = retained.take()
-                list.append(output)
-                retained.put(list)
+                with var list_guard = lock(retained):
+                    list_guard.value.append(output)
                 return ok(())
         )
     )
 
     let server = Server("127.0.0.1:0")
 
-    with TaskGroup[Result[Unit, HttpError]]() as group:
+    with let group = TaskGroup[Result[Unit, HttpError]]():
         let owner = server.clone()
         let task = group.spawn(lambda channel: owner.run(routes.clone()))
         wait_ready(server)
 
-        with try network().http_client(HttpClientOptions()) as client:
+        with let client = try network().http_client(HttpClientOptions()):
             for path in ["/empty", "/cached"]:
-                with try client.request(
+                with let response = try client.request(
                     HttpMethod.Get, "http://" + server.address().get() + path, headers()
-                ) as response:
+                ):
                     try expect_equal(
                         response.metadata().status, 204 if path == "/empty" else 304
                     )
                     try expect_true(response.read().get().is_none())
 
-            with try client.request(
+            with let response = try client.request(
                 HttpMethod.Get, "http://" + server.address().get() + "/stream",
                 headers()
-            ) as response:
+            ):
                 while (try response.read()).is_some(): continue
 
-            var list = retained.take()
+            var list = retained.get().clone()
             var writer = list.pop().get()
             try expect_true(writer.write("late").is_error())
             writer.close()

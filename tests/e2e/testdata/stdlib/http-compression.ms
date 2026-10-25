@@ -1,3 +1,4 @@
+from "@std/sync.ms" import lock
 from "@std/web_compression.ms" import Compression, compression
 from "@std/http.ms" import Router, Request, Response, Body, HttpMethod, headers, text_response, stream_response
 from "@std/archive.ms" import CompressionFormat
@@ -24,8 +25,8 @@ impl WriteStream for Sink:
     )
 
     var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
-        let old = self.bytes.take()
-        self.bytes.put(old.concat(data))
+        with var guard = lock(self.bytes):
+            guard.value = guard.value.concat(data)
         return ok(())
 
 test "gzip negotiation handles qualities identity refusal and cache metadata":
