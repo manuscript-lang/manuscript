@@ -860,6 +860,7 @@ msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_l
 msrt_scope_contain(scope: i64)
 msrt_scope_fault_message(out: *mut StrVal)
 msrt_scope_started()
+msrt_task_cancel_requested() -> i64
 msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64
 msrt_scope_wait(scope: i64) -> i64
 msrt_scope_close(scope: i64)

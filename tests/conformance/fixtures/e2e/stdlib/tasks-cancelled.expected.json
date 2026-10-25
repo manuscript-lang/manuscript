@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "outside a group: false\nnormal body sees cancelled: false\nnormal cleanup sees cancelled: false\ntimeout cleanup sees cancelled: true\n",
+    "stderr": ""
+  }
+}

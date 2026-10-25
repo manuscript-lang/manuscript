@@ -1,6 +1,6 @@
 # TaskGroup request scopes: contained child faults and a cancel query
 
-Status: **proposed.** Closes the open item in `proposals/taskgroup.md` ("Catching a child fault in the parent instead of ending the program") and adds the one missing runtime query. Needed by the HTTP server roadmap (a per-request `TaskGroup`).
+Status: **stage 1 (contained faults, #1327) and stage 2 (`cancelled()`) implemented.** Closes the open item in `proposals/taskgroup.md` ("Catching a child fault in the parent instead of ending the program") and adds the one missing runtime query. Needed by the HTTP server roadmap (a per-request `TaskGroup`).
 
 ## Problem
 

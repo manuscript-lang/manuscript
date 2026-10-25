@@ -20,6 +20,8 @@ extern def msrt_scope_fault_message() -> String
 
 extern def msrt_scope_started() -> Unit
 
+extern def msrt_task_cancel_requested() -> Int
+
 extern def msrt_scope_join(scope: Int, handle: Int, keep: Int) -> Int
 
 extern def msrt_scope_wait(scope: Int) -> Int
@@ -54,6 +56,12 @@ impl Error for TaskError:
             case Cancelled: return "task: cancelled"
             case Closed: return "task: closed"
             case Faulted(message): return "task: fault: " + message
+
+# Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
+# A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
+# It stays true inside cleanups (`with` blocks), where a cancelled task should do minimal work.
+export def cancelled() -> Bool:
+    return msrt_task_cancel_requested() != 0
 
 # Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
 def outcome(code: Int) -> Result[Unit, TaskError]:
