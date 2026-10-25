@@ -18,7 +18,8 @@
     "cargo fmt --all --check",
     "cargo run -q -p ms-repo-check",
     "cargo run -q -p ms-tooling --bin ms-docgen -- -check",
-    "cargo check --target x86_64-pc-windows-gnu -p ms-rt -p ms-std-process -p ms-std-net"
+    "cargo check --target x86_64-pc-windows-gnu -p ms-rt -p ms-std-process -p ms-std-net",
+    "ms-conform run --ms target/debug/ms --phase run,check,test --exclude-tag aliasing --expect-fail .artifacts/conform-expect-fail.txt --strict --shard 0/1 --jobs 2"
   ],
   "clippy": "passed",
   "format": "passed",
@@ -52,5 +53,26 @@
     "map-string-values",
     "shared-lock-survives-cancellation",
     "with-var-closes-final-value"
-  ]
+  ],
+  "integration_commit": "b661bccb97e70baea5146aea06bca5cf1e7e1584",
+  "compiler_sha256": "c911ccd049f3f78d498992b26a13d65e63a5d543844d58a6a453bd5e9aee7330",
+  "benchmark_server_sha256": "c14f02f92b2fcdc908d6d92c1398bc3c289cb2cc15c886ccadff2949492c76fe",
+  "conformance": {
+    "passed": 2281,
+    "failed": 0,
+    "check": 1524,
+    "run": 503,
+    "test": 254,
+    "selection": "--phase run,check,test --exclude-tag aliasing --expect-fail .artifacts/conform-expect-fail.txt --strict --shard 0/1 --jobs 2"
+  },
+  "performance": {
+    "records": 10,
+    "responses": 137901,
+    "statuses": {
+      "200": 137901
+    },
+    "client_errors": 0,
+    "artifact": "persistent-cpu-integrated.json",
+    "dedicated_runner_acceptance": "open"
+  }
 }
