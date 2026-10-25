@@ -50,8 +50,8 @@ type CustomError:
     detail: String
 
 impl Error for CustomError:
-    def message() -> ref String:
-        return self.detail
+    def message() -> String:
+        return self.detail.clone()
 
 type TaggedError[T]:
     detail: T
@@ -156,8 +156,8 @@ type ReadError:
     retryable: Bool
 
 impl Error for ReadError:
-    def message() -> ref String:
-        return self.diagnostic
+    def message() -> String:
+        return self.diagnostic.clone()
 
 def failed_read() -> Result[Unit, ReadError]:
     return error(

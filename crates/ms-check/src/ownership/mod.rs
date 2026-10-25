@@ -226,6 +226,7 @@ impl Hir<'_> {
         modules: &HashMap<Name, ModuleHir>,
         callables: &[Callable],
         summaries: &Summaries,
+        classes: &Classifier,
     ) -> Vec<Diagnostic> {
         let diag = |file: Name, pos: ms_syntax::Pos, message: String| Diagnostic {
             file: std::sync::Arc::from(file.as_str()),
@@ -293,8 +294,24 @@ impl Hir<'_> {
                 .find(|o| o.name == f.name)
                 .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
             let Some(declared) = declared else { continue };
-            // A `ref` operation lets an implementation lend or own; an owning operation must not
-            // be implemented by a lender, since callers of the contract treat its result as owned.
+            // An implementation follows the operation's contract: it lends exactly when the
+            // operation is declared `ref`. A `Copy` result is the same either way.
+            let copy = modules[&m.module]
+                .type_ref(f.result.id)
+                .is_some_and(|t| classes.class(&t) == Class::Copy);
+            if declared && !f.result_ref && !copy {
+                out.push(insert_ref(
+                    diag(
+                        m.module,
+                        f.result.pos,
+                        format!(
+                            "`{}` implements an operation declared `ref`: the operation lends, so this method must return `ref` and give back part of the receiver or a parameter on every path; or drop `ref` from the operation to return owned values",
+                            f.name
+                        ),
+                    ),
+                    f.result.pos,
+                ));
+            }
             if f.result_ref && !declared {
                 out.push(diag(
                     m.module,
@@ -364,7 +381,7 @@ impl Hir<'_> {
             }
         }
         let mut facts = HashMap::new();
-        let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
+        let mut diagnostics = self.ref_results(&modules, &callables, &summaries, &classes);
         let mut borrows = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();

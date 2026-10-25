@@ -27,9 +27,9 @@ impl Error for PathError:
         return "path: invalid input"
 
 impl Error for CustomError:
-    def message() -> ref String:
+    def message() -> String:
         panic("classification must not call user code")
-        return self.message
+        return self.message.clone()
 
 def is_missing(cause: Error) -> Bool:
     return category(cause) == some(ErrorCategory.NotFound)

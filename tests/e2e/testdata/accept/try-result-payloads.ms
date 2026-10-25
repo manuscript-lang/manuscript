@@ -7,7 +7,7 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> ref String: self.detail
+    def message() -> String: self.detail.clone()
 
 def relay[T, E: Error](result: Result[T, E], var visits: List[Int]) -> Result[T, E]:
     let value = try result

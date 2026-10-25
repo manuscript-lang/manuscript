@@ -2,8 +2,8 @@ type Failed:
     detail: String
 
 impl Error for Failed:
-    def message() -> ref String:
-        return self.detail
+    def message() -> String:
+        return self.detail.clone()
 
 type Recorded:
     result: Result[String, Failed]
